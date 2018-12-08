@@ -67,7 +67,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
-import com.oracle.truffle.trufflenode.threading.SharedMemoryEncodingContext;
+import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
@@ -96,7 +97,7 @@ public class Deserializer {
     /** Maps transfer ID to the transferred object. */
     private Map<Integer, DynamicObject> transferMap = new HashMap<>();
     /** Cache for the last VM-level communication channel. */
-    private SharedMemoryEncodingContext messagePortCache = null;
+    private JavaMessagePortData messagePortCache = null;
 
     public Deserializer(long delegate, ByteBuffer buffer) {
         this.delegate = delegate;
@@ -484,16 +485,13 @@ public class Deserializer {
     }
 
     public Object readSharedJavaObject(JSContext context) {
-        int messagePortHash = readVarInt();
-        if (messagePortCache == null || System.identityHashCode(messagePortCache) != messagePortHash) {
-            messagePortCache = GraalJSAccess.getSharedMemEncodingContextFor(messagePortHash);
+        long messagePortPointer = readVarLong();
+        if (messagePortCache == null || messagePortCache.getMessagePortDataPointer() != messagePortPointer) {
+            messagePortCache = SharedMemMessagingManager.getMessagePortDataFor(messagePortPointer);
         }
         Deque<Object> queue = messagePortCache.getEncodingQueue();
         Object element = queue.removeLast();
         assert element != null;
-        if (queue.isEmpty()) {
-            GraalJSAccess.disposeSharedMemoryMessagePort(messagePortHash);
-        }
         return context.getRealm().getEnv().asGuestValue(element);
     }
 

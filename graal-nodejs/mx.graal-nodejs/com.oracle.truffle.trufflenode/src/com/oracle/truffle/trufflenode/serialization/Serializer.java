@@ -69,7 +69,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
-import com.oracle.truffle.trufflenode.threading.SharedMemoryEncodingContext;
+import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
@@ -168,10 +168,10 @@ public class Serializer {
         } else if (JSRuntime.isBigInt(value)) {
             writeTag(SerializationTag.BIG_INT);
             writeBigIntContents((BigInt) value);
-        } else if (env.isHostObject(value) && access.getCurrentEncodingTarget() != null) {
-            SharedMemoryEncodingContext messagePort = access.getCurrentEncodingTarget();
+        } else if (env.isHostObject(value) && access.getCurrentMessagePortData() != null) {
+            JavaMessagePortData messagePort = access.getCurrentMessagePortData();
             writeTag(SerializationTag.SHARED_JAVA_OBJECT);
-            writeVarInt(System.identityHashCode(messagePort));
+            writeVarInt(messagePort.getMessagePortDataPointer());
             assignId(value);
             messagePort.getEncodingQueue().push(env.asHostObject(value));
         } else {

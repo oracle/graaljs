@@ -67,7 +67,7 @@ public final class GraalSharedChannelBindings extends JSBuiltinObject {
 
     private static final JSBuiltinsContainer BUILTINS = new GraalSharedChannelBuiltins();
 
-    private static final String CLASS_NAME = "GraalSharedChannel";
+    private static final String CLASS_NAME = "SharedMemMessagingManager";
 
     private static final HiddenKey API = new HiddenKey("api");
     private static final Property API_PROPERTY;
@@ -118,7 +118,7 @@ public final class GraalSharedChannelBindings extends JSBuiltinObject {
                 return create(context, graalJSAccess);
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 2, "GraalSharedChannelInit");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 2, "SharedMemMessagingInit");
         return JSFunction.create(realm, functionData);
     }
 

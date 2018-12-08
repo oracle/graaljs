@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.trufflenode.threading;
 
+import java.util.Deque;
+
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -48,6 +50,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
+import com.oracle.truffle.trufflenode.JSExternalObject;
 import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.DisposeNodeGen;
 import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.EncodedRefsNodeGen;
 import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.EnterNodeGen;
@@ -86,7 +89,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
             case leave:
                 return LeaveNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case free:
-                return FreeNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+                return FreeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case encodedJavaRefs:
                 return EncodedRefsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case dispose:
@@ -95,6 +98,9 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         return null;
     }
 
+    /**
+     * Signals that we are starting to encode an object tree onto a native MessagePortData queue.
+     */
     public abstract static class EnterNode extends JSBuiltinNode {
 
         protected EnterNode(JSContext context, JSBuiltin builtin) {
@@ -102,28 +108,17 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
 
         @Specialization
-        public Object enter(DynamicObject self, DynamicObject external) {
+        public Object enter(DynamicObject self, DynamicObject nativeMessagePortData) {
+            assert JSExternalObject.isJSExternalObject(nativeMessagePortData);
             GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
-            SharedMemoryEncodingContext encodingContext = new SharedMemoryEncodingContext(external);
-            access.setCurrentEncodingContext(encodingContext);
+            access.setCurrentMessagePortData(nativeMessagePortData);
             return this;
         }
     }
 
-    public abstract static class FreeNode extends JSBuiltinNode {
-
-        protected FreeNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public Object free(DynamicObject self) {
-            GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
-            access.freeCurrentEncodingContext();
-            return this;
-        }
-    }
-
+    /**
+     * Returns the number of Java objects that were encoded since `enter()` was last called.
+     */
     public abstract static class EncodedRefsNode extends JSBuiltinNode {
 
         protected EncodedRefsNode(JSContext context, JSBuiltin builtin) {
@@ -131,13 +126,37 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
 
         @Specialization
-        public Object encodedJavaRefs(DynamicObject self) {
+        public int encodedJavaRefs(DynamicObject self) {
             GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
-            assert access.getCurrentEncodingTarget() != null;
-            return access.getCurrentEncodingTarget().getEncodingQueue().size() > 0;
+            assert access.getCurrentMessagePortData() != null;
+            return access.getCurrentMessagePortData().getEncodingQueue().size();
         }
     }
 
+    /**
+     * Removes the (last) given number of Java references from the queue.
+     */
+    public abstract static class FreeNode extends JSBuiltinNode {
+
+        protected FreeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public Object free(DynamicObject self, int references) {
+            GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
+            Deque<Object> queue = access.getCurrentMessagePortData().getEncodingQueue();
+            assert queue.size() >= references;
+            for (int i = 0; i < references; i++) {
+                queue.removeLast();
+            }
+            return this;
+        }
+    }
+
+    /**
+     * Signals that we should stop encoding Java references while encoding.
+     */
     public abstract static class LeaveNode extends JSBuiltinNode {
 
         protected LeaveNode(JSContext context, JSBuiltin builtin) {
@@ -147,11 +166,14 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         @Specialization
         public Object leave(DynamicObject self) {
             GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
-            access.unsetCurrentEncodingTarget();
+            access.unsetCurrentMessagePortData();
             return self;
         }
     }
 
+    /**
+     * Free a MessagePortData object and any message pending in its queue.
+     */
     public abstract static class DisposeNode extends JSBuiltinNode {
 
         protected DisposeNode(JSContext context, JSBuiltin builtin) {
@@ -160,8 +182,8 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
 
         @Specialization
         public Object dispose(DynamicObject self, DynamicObject external) {
-            GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
-            access.disposeAllReferencesTo(external);
+            assert JSExternalObject.isJSExternalObject(external);
+            SharedMemMessagingManager.disposeReferences(external);
             return self;
         }
     }

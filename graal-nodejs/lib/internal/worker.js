@@ -89,6 +89,8 @@ Object.defineProperty(MessagePort.prototype, 'onmessage', {
 
 // This is called from inside the `MessagePort` constructor.
 function oninit() {
+  // Graal.js: initialize support for Java objects in messages
+  this.sharedMemMessaging = SharedMemMessagingInit();
   setupPortReferencing(this, this, 'message');
 }
 
@@ -105,6 +107,13 @@ function onclose() {
     // alternatives in a non-EventEmitter usage setting.
     // Refs: https://github.com/whatwg/html/issues/1766
     this.onclose();
+  }
+  // Graal.js: the underlying `uv_async_t` has been closed, so we can 
+  // discard all pending Java references bound to this port (if any),
+  // since the connection is lost and the other side of the channel 
+  // will not process messages.
+  if (this.messagePortDataNative) {
+    this.sharedMemMessaging.dispose(this.messagePortDataNative);
   }
   this.emit('close');
 }
@@ -401,6 +410,9 @@ function setupChild(evalScript) {
   // Called during bootstrap to set up worker script execution.
   debug(`[${threadId}] is setting up worker child environment`);
   const port = getEnvMessagePort();
+  // Graal.js: explicitly initialize support for Java objects in messages, 
+  // since env message port does not call oninit()
+  port.sharedMemMessaging = SharedMemMessagingInit();
 
   const publicWorker = require('worker_threads');
 
@@ -498,63 +510,38 @@ module.exports = {
 // ##### Graal.js Java interop messages handling
 
 // Passed by Graal.js init phase during global module loading.
-const graalSharedChannelInit = arguments.length === 5 ? arguments[4] : undefined;
-if (!graalSharedChannelInit) {
+const SharedMemMessagingInit = arguments.length === 5 ? arguments[4] : undefined;
+if (!SharedMemMessagingInit) {
   assert.fail(`Fatal: cannot initialize Worker`);
 }
 
-const getMessageInternalData = MessagePort.prototype.messageData;
+const getMessagePortDataNative = MessagePort.prototype.messageData;
 delete MessagePort.prototype.messageData;
 
-const baseStart = MessagePort.prototype.start;
-MessagePort.prototype.start = function() {
-  baseStart.call(this);
-  const javaMessagesPort = this.graalPort;
-  this.on('close', () => {
-    // The underlying `uv_async_t` has been closed, so we can discard all pending
-    // messages bound to this port (if any), since the connection is lost and the
-    // other side of the channel will not process them.
-    if (javaMessagesPort) {
-      javaMessagesPort.dispose(messageData);
-    }
-  });
-}
-
-const baseStop = MessagePort.prototype.stop;
-MessagePort.prototype.stop = function() {
-  baseStop.call(this);
-  delete this.graalPort;
-}
-
-const basePostMessage = MessagePort.prototype.postMessage;
+const originalPostMessage = MessagePort.prototype.postMessage;
 MessagePort.prototype.postMessage = function(...args) {
-  if (!this.graalPort) {
-    // This MessagePort was not initialized.
-    const javaMessagesPort = graalSharedChannelInit();
-    const messageData = getMessageInternalData.call(this);
-    this.graalPort = javaMessagesPort;
-  }
   try {
-    const messageInternalData = getMessageInternalData.call(this);
-    if (messageInternalData === undefined) {
+    this.messagePortDataNative = getMessagePortDataNative.call(this);
+    if (this.messagePortDataNative === undefined) {
       // Cannot retrieve message internal metadata. The channel is probably
       // closed, so we don't care about encoding Java messages.
-      basePostMessage.apply(this, args);
+      originalPostMessage.apply(this, args);
     } else {
       // Signal that we are ready to transfer Java objets.
-      this.graalPort.enter(messageInternalData);
+      this.sharedMemMessaging.enter(this.messagePortDataNative);
       // Post message: might encode Java objects as a side effect.
-      const enqueued = basePostMessage.apply(this, args);
-      const encodedJavaRefs = this.graalPort.encodedJavaRefs();
+      const pendingJavaRefs = this.sharedMemMessaging.encodedJavaRefs();
+      const enqueued = originalPostMessage.apply(this, args);
+      const encodedJavaRefs = this.sharedMemMessaging.encodedJavaRefs();
 
-      if (encodedJavaRefs === true && enqueued !== true) {
+      if ((encodedJavaRefs - pendingJavaRefs) > 0 && enqueued !== true) {
         // The message was not delivered to any worker threads.
-        // In this case, we free any Java reference, as the message
-        // will anyway be discarded.
-        this.graalPort.free();
+        // In this case, we free any recorded Java reference, as the
+        // message will anyway be discarded.
+        this.sharedMemMessaging.free(encodedJavaRefs - pendingJavaRefs);
       }
     }
   } finally {
-    this.graalPort.leave();
+    this.sharedMemMessaging.leave();
   }
 }

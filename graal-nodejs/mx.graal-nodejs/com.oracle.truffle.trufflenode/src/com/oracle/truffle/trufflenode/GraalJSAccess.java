@@ -88,13 +88,11 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -211,7 +209,8 @@ import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
 import com.oracle.truffle.trufflenode.serialization.Deserializer;
 import com.oracle.truffle.trufflenode.serialization.Serializer;
 import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBindings;
-import com.oracle.truffle.trufflenode.threading.SharedMemoryEncodingContext;
+import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
 
 /**
  * Entry point for any access to the JavaScript engine from the native code.
@@ -265,12 +264,6 @@ public final class GraalJSAccess {
      * different locations does not trigger any caching on the Node.js side.
      */
     private final Map<String, Reference<String>> sourceCodeCache = new WeakHashMap<>();
-
-    /**
-     * Communication channels factory. Used to establish a communication channels between node
-     * workers when they attempt to exchange Java host objects.
-     */
-    private static final Map<Integer, SharedMemoryEncodingContext> pendingEncodingContexts = new ConcurrentHashMap<>();
 
     private final boolean exposeGC;
 
@@ -3059,49 +3052,24 @@ public final class GraalJSAccess {
         }
     }
 
-    private SharedMemoryEncodingContext currentEncodingContext = null;
+    /**
+     * Used to establish a communication channels between node workers when they attempt to exchange
+     * Java host objects.
+     */
+    private JavaMessagePortData currentMessagePortData = null;
 
-    public void unsetCurrentEncodingTarget() {
-        currentEncodingContext = null;
+    public void unsetCurrentMessagePortData() {
+        currentMessagePortData = null;
     }
 
-    public void setCurrentEncodingContext(SharedMemoryEncodingContext context) {
-        assert context != null;
-        assert currentEncodingContext == null;
-        this.currentEncodingContext = context;
-        pendingEncodingContexts.put(System.identityHashCode(context), context);
+    public void setCurrentMessagePortData(DynamicObject nativeMessagePortData) {
+        assert nativeMessagePortData != null;
+        assert currentMessagePortData == null;
+        currentMessagePortData = SharedMemMessagingManager.getJavaMessagePortDataFor(nativeMessagePortData);
     }
 
-    public SharedMemoryEncodingContext getCurrentEncodingTarget() {
-        return currentEncodingContext;
-    }
-
-    public static void disposeSharedMemoryMessagePort(int contextHash) {
-        assert pendingEncodingContexts.containsKey(contextHash);
-        pendingEncodingContexts.remove(contextHash);
-    }
-
-    public static SharedMemoryEncodingContext getSharedMemEncodingContextFor(int contextHash) {
-        assert pendingEncodingContexts.containsKey(contextHash);
-        return pendingEncodingContexts.get(contextHash);
-    }
-
-    public void freeCurrentEncodingContext() {
-        int contextHash = System.identityHashCode(currentEncodingContext);
-        assert pendingEncodingContexts.containsKey(contextHash);
-        pendingEncodingContexts.remove(contextHash);
-    }
-
-    public void disposeAllReferencesTo(DynamicObject external) {
-        assert JSExternalObject.isJSExternalObject(external);
-        long externalValue = JSExternalObject.getPointer(external);
-        Iterator<SharedMemoryEncodingContext> values = pendingEncodingContexts.values().iterator();
-        while (values.hasNext()) {
-            SharedMemoryEncodingContext next = values.next();
-            if (next.getMessageData() == externalValue) {
-                values.remove();
-            }
-        }
+    public JavaMessagePortData getCurrentMessagePortData() {
+        return currentMessagePortData;
     }
 
 }
