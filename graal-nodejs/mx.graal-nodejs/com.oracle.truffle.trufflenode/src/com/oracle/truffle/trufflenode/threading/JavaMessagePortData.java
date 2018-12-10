@@ -50,19 +50,49 @@ public class JavaMessagePortData {
 
     private final long nativePointer;
     private final Deque<Object> queue;
+    private int encodedRefs;
 
     public JavaMessagePortData(DynamicObject external) {
         assert JSExternalObject.isJSExternalObject(external);
+        this.encodedRefs = 0;
         this.queue = new ConcurrentLinkedDeque<>();
         this.nativePointer = JSExternalObject.getPointer(external);
     }
 
-    public Deque<Object> getEncodingQueue() {
-        return queue;
-    }
-
     public long getMessagePortDataPointer() {
         return nativePointer;
+    }
+
+    public void encodingBegin() {
+        encodedRefs = 0;
+    }
+
+    public void encodingEnd() {
+        encodedRefs = 0;
+    }
+
+    public boolean encodedJavaRefs() {
+        return encodedRefs > 0;
+    }
+
+    public void enqueueJavaRef(Object hostObject) {
+        queue.push(hostObject);
+        encodedRefs++;
+    }
+
+    public void disposeAllRefs() {
+        queue.clear();
+    }
+
+    public void disposeLastMessageRefs() {
+        for (int i = 0; i < encodedRefs; i++) {
+            queue.removeFirst();
+        }
+        encodedRefs = 0;
+    }
+
+    public Object removeLastJavaRef() {
+        return queue.removeLast();
     }
 
 }

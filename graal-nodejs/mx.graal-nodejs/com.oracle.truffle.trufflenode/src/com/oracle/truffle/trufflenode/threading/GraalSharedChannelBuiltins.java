@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.trufflenode.threading;
 
-import java.util.Deque;
-
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -89,7 +87,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
             case leave:
                 return LeaveNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case free:
-                return FreeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return FreeNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case encodedJavaRefs:
                 return EncodedRefsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case dispose:
@@ -126,10 +124,10 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
 
         @Specialization
-        public int encodedJavaRefs(DynamicObject self) {
+        public boolean encodedJavaRefs(DynamicObject self) {
             GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
             assert access.getCurrentMessagePortData() != null;
-            return access.getCurrentMessagePortData().getEncodingQueue().size();
+            return access.getCurrentMessagePortData().encodedJavaRefs();
         }
     }
 
@@ -143,13 +141,9 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         }
 
         @Specialization
-        public Object free(DynamicObject self, int references) {
+        public Object free(DynamicObject self) {
             GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
-            Deque<Object> queue = access.getCurrentMessagePortData().getEncodingQueue();
-            assert queue.size() >= references;
-            for (int i = 0; i < references; i++) {
-                queue.removeLast();
-            }
+            access.getCurrentMessagePortData().disposeLastMessageRefs();
             return this;
         }
     }

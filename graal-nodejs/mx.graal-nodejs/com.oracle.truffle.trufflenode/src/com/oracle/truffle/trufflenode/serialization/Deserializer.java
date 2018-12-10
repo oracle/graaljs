@@ -75,7 +75,6 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -489,8 +488,7 @@ public class Deserializer {
         if (messagePortCache == null || messagePortCache.getMessagePortDataPointer() != messagePortPointer) {
             messagePortCache = SharedMemMessagingManager.getMessagePortDataFor(messagePortPointer);
         }
-        Deque<Object> queue = messagePortCache.getEncodingQueue();
-        Object element = queue.removeLast();
+        Object element = messagePortCache.removeLastJavaRef();
         assert element != null;
         return context.getRealm().getEnv().asGuestValue(element);
     }

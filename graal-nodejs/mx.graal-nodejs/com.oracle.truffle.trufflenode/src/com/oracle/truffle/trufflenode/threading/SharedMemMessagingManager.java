@@ -85,13 +85,12 @@ public class SharedMemMessagingManager {
         assert JSExternalObject.isJSExternalObject(nativeMessagePortData);
         long pointer = JSExternalObject.getPointer(nativeMessagePortData);
 
-        JavaMessagePortData newData = new JavaMessagePortData(nativeMessagePortData);
-        JavaMessagePortData maybeData = activeMessagePortRefs.putIfAbsent(pointer, newData);
-        if (maybeData == null) {
-            return newData;
-        } else {
-            return maybeData;
+        JavaMessagePortData data = activeMessagePortRefs.get(pointer);
+        if (data == null) {
+            data = new JavaMessagePortData(nativeMessagePortData);
+            activeMessagePortRefs.put(pointer, data);
         }
+        return data;
     }
 
     public static void disposeReferences(DynamicObject nativeMessagePortData) {
@@ -100,7 +99,7 @@ public class SharedMemMessagingManager {
 
         JavaMessagePortData maybeRemoved = activeMessagePortRefs.remove(pointer);
         if (maybeRemoved != null) {
-            maybeRemoved.getEncodingQueue().clear();
+            maybeRemoved.disposeAllRefs();
         }
     }
 }

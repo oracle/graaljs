@@ -531,15 +531,14 @@ MessagePort.prototype.postMessage = function(...args) {
       // Signal that we are ready to transfer Java objets.
       this.sharedMemMessaging.enter(messagePortData);
       // Post message: might encode Java objects as a side effect.
-      const pendingJavaRefs = this.sharedMemMessaging.encodedJavaRefs();
       const enqueued = originalPostMessage.apply(this, args);
       const encodedJavaRefs = this.sharedMemMessaging.encodedJavaRefs();
 
-      if ((encodedJavaRefs - pendingJavaRefs) > 0 && enqueued !== true) {
+      if (encodedJavaRefs === true && enqueued !== true) {
         // The message was not delivered to any worker threads.
         // In this case, we free any recorded Java reference, as the
         // message will anyway be discarded.
-        this.sharedMemMessaging.free(encodedJavaRefs - pendingJavaRefs);
+        this.sharedMemMessaging.free();
       }
     }
   } finally {

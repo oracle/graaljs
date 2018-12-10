@@ -2862,7 +2862,6 @@ public final class GraalJSAccess {
     }
 
     public Object valueDeserializerNew(long delegate, Object buffer) {
-        // inbox is allowed to be null if the serializer was used by non-workers
         return new Deserializer(delegate, (ByteBuffer) buffer);
     }
 
@@ -3059,6 +3058,7 @@ public final class GraalJSAccess {
     private JavaMessagePortData currentMessagePortData = null;
 
     public void unsetCurrentMessagePortData() {
+        currentMessagePortData.encodingEnd();
         currentMessagePortData = null;
     }
 
@@ -3066,6 +3066,7 @@ public final class GraalJSAccess {
         assert nativeMessagePortData != null;
         assert currentMessagePortData == null;
         currentMessagePortData = SharedMemMessagingManager.getJavaMessagePortDataFor(nativeMessagePortData);
+        currentMessagePortData.encodingBegin();
     }
 
     public JavaMessagePortData getCurrentMessagePortData() {

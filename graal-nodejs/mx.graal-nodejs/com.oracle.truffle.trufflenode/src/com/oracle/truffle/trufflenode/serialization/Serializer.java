@@ -173,7 +173,7 @@ public class Serializer {
             writeTag(SerializationTag.SHARED_JAVA_OBJECT);
             writeVarInt(messagePort.getMessagePortDataPointer());
             assignId(value);
-            messagePort.getEncodingQueue().push(env.asHostObject(value));
+            messagePort.enqueueJavaRef(env.asHostObject(value));
         } else {
             writeObject(value);
         }
