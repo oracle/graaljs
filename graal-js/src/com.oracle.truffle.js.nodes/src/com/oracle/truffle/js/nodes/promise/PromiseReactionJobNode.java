@@ -106,7 +106,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                 Object argument = getArgument.getValue(functionObject);
 
                 PromiseCapabilityRecord promiseCapability = reaction.getCapability();
-                DynamicObject handler = reaction.getHandler();
+                Object handler = reaction.getHandler();
                 assert promiseCapability != null || handler != Undefined.instance;
 
                 if (promiseCapability != null) {

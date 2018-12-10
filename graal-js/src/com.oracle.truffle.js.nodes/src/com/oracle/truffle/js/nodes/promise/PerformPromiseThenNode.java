@@ -88,8 +88,8 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
     @SuppressWarnings("unchecked")
     public DynamicObject execute(DynamicObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability) {
         assert JSPromise.isJSPromise(promise);
-        DynamicObject onFulfilledHandler = isCallableFulfill.executeBoolean(onFulfilled) ? (DynamicObject) onFulfilled : Undefined.instance;
-        DynamicObject onRejectedHandler = isCallableReject.executeBoolean(onRejected) ? (DynamicObject) onRejected : Undefined.instance;
+        Object onFulfilledHandler = isCallableFulfill.executeBoolean(onFulfilled) ? onFulfilled : Undefined.instance;
+        Object onRejectedHandler = isCallableReject.executeBoolean(onRejected) ? onRejected : Undefined.instance;
         assert resultCapability != null || (onFulfilledHandler != Undefined.instance && onRejectedHandler != Undefined.instance);
         PromiseReactionRecord fulfillReaction = PromiseReactionRecord.create(resultCapability, onFulfilledHandler, true);
         PromiseReactionRecord rejectReaction = PromiseReactionRecord.create(resultCapability, onRejectedHandler, false);
