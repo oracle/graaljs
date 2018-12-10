@@ -172,6 +172,11 @@ public final class JSContextOptions {
     private static final String AWAIT_OPTIMIZATION_HELP = "Use PromiseResolve for Await.";
     @CompilationFinal private boolean awaitOptimization;
 
+    public static final String DISABLE_EVAL_NAME = JS_OPTION_PREFIX + "disable-eval";
+    public static final OptionKey<Boolean> DISABLE_EVAL = new OptionKey<>(false);
+    private static final String DISABLE_EVAL_HELP = "User code is not allowed to parse code via e.g. eval().";
+    @CompilationFinal private boolean disableEval;
+
     /**
      * Options which can be patched without throwing away the pre-initialized context.
      */
@@ -219,6 +224,7 @@ public final class JSContextOptions {
         this.timerResolution = readLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME);
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME);
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME);
+        this.disableEval = readBooleanOption(DISABLE_EVAL, DISABLE_EVAL_NAME);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
@@ -294,6 +300,7 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
         options.add(newOptionDescriptor(GRAAL_BUILTIN, GRAAL_BUILTIN_NAME, OptionCategory.USER, GRAAL_BUILTIN_HELP));
         options.add(newOptionDescriptor(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME, OptionCategory.DEBUG, AWAIT_OPTIMIZATION_HELP));
+        options.add(newOptionDescriptor(DISABLE_EVAL, DISABLE_EVAL_NAME, OptionCategory.EXPERT, DISABLE_EVAL_HELP));
     }
 
     /**
@@ -395,6 +402,10 @@ public final class JSContextOptions {
         return awaitOptimization;
     }
 
+    public boolean isDisableEval() {
+        return disableEval;
+    }
+
     public boolean isConsole() {
         return CONSOLE.getValue(optionValues);
     }
@@ -431,6 +442,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (int) this.timerResolution;
         hash = 53 * hash + (this.agentCanBlock ? 1 : 0);
         hash = 53 * hash + (this.awaitOptimization ? 1 : 0);
+        hash = 53 * hash + (this.disableEval ? 1 : 0);
         return hash;
     }
 
@@ -492,6 +504,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.awaitOptimization != other.awaitOptimization) {
+            return false;
+        }
+        if (this.disableEval != other.disableEval) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

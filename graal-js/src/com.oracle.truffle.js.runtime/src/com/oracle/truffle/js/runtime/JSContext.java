@@ -1287,6 +1287,10 @@ public class JSContext {
         return contextOptions.isParseOnly();
     }
 
+    public boolean isOptionDisableEval() {
+        return contextOptions.isDisableEval();
+    }
+
     public long getTimerResolution() {
         return contextOptions.getTimerResolution();
     }
@@ -1580,5 +1584,11 @@ public class JSContext {
             }
         });
         return JSFunctionData.createCallOnly(this, callTarget, 0, "get " + JSObject.PROTO);
+    }
+
+    public void checkEvalAllowed() {
+        if (isOptionDisableEval()) {
+            throw Errors.createEvalDisabled();
+        }
     }
 }

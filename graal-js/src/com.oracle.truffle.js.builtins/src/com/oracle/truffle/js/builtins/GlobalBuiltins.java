@@ -1142,9 +1142,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                         @Cached("create()") JSToStringNode sourceToStringNode) {
             JSRealm realm = realmNode.execute(frame);
             if (JSObject.hasProperty(scriptObj, EVAL_OBJ_FILE_NAME) && JSObject.hasProperty(scriptObj, EVAL_OBJ_SOURCE)) {
-                Object fileNameObj = JSObject.get(scriptObj, EVAL_OBJ_FILE_NAME);
+                Object scriptNameObj = JSObject.get(scriptObj, EVAL_OBJ_FILE_NAME);
                 Object sourceObj = JSObject.get(scriptObj, EVAL_OBJ_SOURCE);
-                return evalImpl(realm, toString1(fileNameObj), sourceToStringNode.executeString(sourceObj));
+                return evalImpl(realm, toString1(scriptNameObj), sourceToStringNode.executeString(sourceObj));
             } else {
                 throw cannotLoadScript(scriptObj);
             }
@@ -1155,9 +1155,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                         @Cached("create()") JSToStringNode sourceToStringNode) {
             JSRealm realm = realmNode.execute(frame);
             if (Boundaries.mapContainsKey(map, EVAL_OBJ_FILE_NAME) && Boundaries.mapContainsKey(map, EVAL_OBJ_SOURCE)) {
-                Object fileNameObj = Boundaries.mapGet(map, EVAL_OBJ_FILE_NAME);
+                Object scriptNameObj = Boundaries.mapGet(map, EVAL_OBJ_FILE_NAME);
                 Object sourceObj = Boundaries.mapGet(map, EVAL_OBJ_SOURCE);
-                return evalImpl(realm, toString1(fileNameObj), sourceToStringNode.executeString(sourceObj));
+                return evalImpl(realm, toString1(scriptNameObj), sourceToStringNode.executeString(sourceObj));
             } else {
                 throw cannotLoadScript(map);
             }

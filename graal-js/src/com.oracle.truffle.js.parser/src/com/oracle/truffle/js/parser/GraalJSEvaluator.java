@@ -189,6 +189,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     private static ScriptNode parseEval(JSContext context, Node lastNode, Environment env, Source source, boolean isStrict) {
         try {
+            context.checkEvalAllowed();
             EvalEnvironment evalEnv = new EvalEnvironment(env, NodeFactory.getInstance(context), context, env != null);
             return JavaScriptTranslator.translateEvalScript(NodeFactory.getInstance(context), context, evalEnv, source, isStrict);
         } catch (com.oracle.js.parser.ParserException e) {
@@ -227,6 +228,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public ScriptNode evalCompile(JSContext context, String sourceCode, String name) {
         try {
+            context.checkEvalAllowed();
             return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceCode, name).build(), false);
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage());

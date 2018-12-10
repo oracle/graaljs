@@ -683,6 +683,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         private Object evalStringIntl(String sourceText, String languageId, String mimeType) {
+            getContext().checkEvalAllowed();
             Source sourceObject = Source.newBuilder(languageId, sourceText, Evaluator.EVAL_SOURCE_NAME).mimeType(mimeType).build();
 
             CallTarget callTarget;
