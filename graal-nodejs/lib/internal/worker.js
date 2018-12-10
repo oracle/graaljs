@@ -112,8 +112,9 @@ function onclose() {
   // discard all pending Java references bound to this port (if any),
   // since the connection is lost and the other side of the channel 
   // will not process messages.
-  if (this.messagePortDataNative) {
-    this.sharedMemMessaging.dispose(this.messagePortDataNative);
+  const messagePortData = getMessagePortDataNative.call(this);
+  if (messagePortData !== undefined) {
+    this.sharedMemMessaging.dispose(messagePortData);
   }
   this.emit('close');
 }
@@ -521,14 +522,14 @@ delete MessagePort.prototype.messageData;
 const originalPostMessage = MessagePort.prototype.postMessage;
 MessagePort.prototype.postMessage = function(...args) {
   try {
-    this.messagePortDataNative = getMessagePortDataNative.call(this);
-    if (this.messagePortDataNative === undefined) {
+    const messagePortData = getMessagePortDataNative.call(this);
+    if (messagePortData === undefined) {
       // Cannot retrieve message internal metadata. The channel is probably
       // closed, so we don't care about encoding Java messages.
       originalPostMessage.apply(this, args);
     } else {
       // Signal that we are ready to transfer Java objets.
-      this.sharedMemMessaging.enter(this.messagePortDataNative);
+      this.sharedMemMessaging.enter(messagePortData);
       // Post message: might encode Java objects as a side effect.
       const pendingJavaRefs = this.sharedMemMessaging.encodedJavaRefs();
       const enqueued = originalPostMessage.apply(this, args);

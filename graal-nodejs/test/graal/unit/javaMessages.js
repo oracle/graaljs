@@ -101,7 +101,7 @@ describe('Java interop messages', function() {
                 assert(m === ++received);
                 var atomic = new A(m);
                 if (m === 10) {
-                    w.terminate(done);                    
+                    w.terminate(done);
                 } else {
                     w.postMessage(atomic);
                 }
@@ -130,14 +130,18 @@ describe('Java interop messages', function() {
                 assert(m === ++received);
                 var atomic = new A(m);
                 if (m === 10) {
-                    w.terminate(done);                    
+                    w.terminate(done);
                 } else {
-                    w.postMessage({counter:atomic});
+                    w.postMessage({
+                        counter: atomic
+                    });
                 }
             });
-            w.postMessage({counter:atomic});
+            w.postMessage({
+                counter: atomic
+            });
         }
-    });    
+    });
     it('can share with multiple workers', function(done) {
         if (isMainThread) {
             const M = Java.type('java.util.concurrent.ConcurrentHashMap');
@@ -162,12 +166,12 @@ describe('Java interop messages', function() {
                 w.on('message', (m) => {
                     if (++received == workersNum) {
                         assert(map.size() === workersNum);
-                        for (var i = 0; i<workersNum; i++) {
+                        for (var i = 0; i < workersNum; i++) {
                             assert(map.get(42 + i) === true);
                         }
-                        w.terminate(done);                        
+                        w.terminate(done);
                     } else {
-                        w.terminate();                        
+                        w.terminate();
                     }
                 });
                 w.postMessage(map);
@@ -215,5 +219,37 @@ describe('Java interop messages', function() {
                 w.terminate(done);
             });
         }
-    });    
+    });
+    it('Can send messageports and close them', function(done) {
+        if (isMainThread) {
+            const worker = new Worker(`
+                            const { 
+                                parentPort,
+                                MessageChannel
+                            } = require('worker_threads');
+
+                            var channel = new MessageChannel();
+
+                            channel.port1.postMessage(Java.type('java.awt.Point'));
+                            parentPort.postMessage(channel.port1, [channel.port1]);
+                            parentPort.postMessage(channel.port2, [channel.port2]);
+                `, {
+                eval: true
+            });
+            var ports = [];
+            worker.on('message', function(port) {
+                ports.push(port);
+            });
+            worker.on('exit', function() {
+                for (var port of ports) {
+                    port.on('message', function(message) {
+                        const point = new message(40, 2);
+                        assert(point.x + point.y === 42);
+                        ports.map(p => p.unref());
+                        done();
+                    });
+                }
+            });
+        }
+    });
 });
