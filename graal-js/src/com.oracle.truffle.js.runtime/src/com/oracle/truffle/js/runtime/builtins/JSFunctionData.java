@@ -156,7 +156,7 @@ public final class JSFunctionData {
             return result;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return ensureInitializedCall();
+        return ensureInitialized(Target.Call);
     }
 
     public CallTarget getConstructTarget() {
@@ -165,7 +165,7 @@ public final class JSFunctionData {
             return result;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return ensureInitializedConstruct();
+        return ensureInitialized(Target.Construct);
     }
 
     public CallTarget getConstructNewTarget() {
@@ -174,7 +174,7 @@ public final class JSFunctionData {
             return result;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return ensureInitializedConstructNewTarget();
+        return ensureInitialized(Target.ConstructNewTarget);
     }
 
     public JSContext getContext() {
@@ -259,7 +259,7 @@ public final class JSFunctionData {
             return result;
         }
         initBranch.enter();
-        return ensureInitializedCall();
+        return (CallTarget) ensureInitializedCall();
     }
 
     public CallTarget getConstructTarget(BranchProfile initBranch) {
@@ -268,7 +268,7 @@ public final class JSFunctionData {
             return result;
         }
         initBranch.enter();
-        return ensureInitializedConstruct();
+        return (CallTarget) ensureInitializedConstruct();
     }
 
     public CallTarget getConstructNewTarget(BranchProfile initBranch) {
@@ -277,21 +277,21 @@ public final class JSFunctionData {
             return result;
         }
         initBranch.enter();
-        return ensureInitializedConstructNewTarget();
+        return (CallTarget) ensureInitializedConstructNewTarget();
     }
 
     @TruffleBoundary
-    private CallTarget ensureInitializedCall() {
+    private Object ensureInitializedCall() {
         return ensureInitialized(Target.Call);
     }
 
     @TruffleBoundary
-    private CallTarget ensureInitializedConstruct() {
+    private Object ensureInitializedConstruct() {
         return ensureInitialized(Target.Construct);
     }
 
     @TruffleBoundary
-    private CallTarget ensureInitializedConstructNewTarget() {
+    private Object ensureInitializedConstructNewTarget() {
         return ensureInitialized(Target.ConstructNewTarget);
     }
 
