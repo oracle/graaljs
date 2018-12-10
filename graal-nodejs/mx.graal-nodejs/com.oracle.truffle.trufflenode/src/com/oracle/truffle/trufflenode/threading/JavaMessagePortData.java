@@ -76,7 +76,7 @@ public class JavaMessagePortData {
     }
 
     public void enqueueJavaRef(Object hostObject) {
-        queue.push(hostObject);
+        queue.add(hostObject);
         encodedRefs++;
     }
 
@@ -86,13 +86,13 @@ public class JavaMessagePortData {
 
     public void disposeLastMessageRefs() {
         for (int i = 0; i < encodedRefs; i++) {
-            queue.removeFirst();
+            queue.removeLast();
         }
         encodedRefs = 0;
     }
 
-    public Object removeLastJavaRef() {
-        return queue.removeLast();
+    public Object removeJavaRef() {
+        return queue.removeFirst();
     }
 
 }

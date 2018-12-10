@@ -3066,6 +3066,7 @@ public final class GraalJSAccess {
         assert nativeMessagePortData != null;
         assert currentMessagePortData == null;
         currentMessagePortData = SharedMemMessagingManager.getJavaMessagePortDataFor(nativeMessagePortData);
+        assert currentMessagePortData != null;
         currentMessagePortData.encodingBegin();
     }
 

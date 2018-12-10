@@ -252,4 +252,34 @@ describe('Java interop messages', function() {
             });
         }
     });
+    it('Java Refs encoding order is respected', function(done) {
+        if (isMainThread) {
+            var A = Java.type('java.util.concurrent.atomic.AtomicInteger');
+            var a1 = new A(1);
+            var a2 = new A(2);
+            var a3 = new A(3);            
+            let w = new Worker(`
+                            const { 
+                                parentPort
+                            } = require('worker_threads');
+                            const assert = require('assert');
+
+                            parentPort.on('message', (m) => {
+                                assert(m.a1.incrementAndGet() === 2);
+                                assert(m.a2.incrementAndGet() === 3);
+                                assert(m.a3.a3.incrementAndGet() === 4);
+                                parentPort.postMessage(m);
+                            });
+            `, {
+                eval: true
+            });
+            w.on('message', (m) => {
+                assert(m.a1.get() === 2);
+                assert(m.a2.get() === 3);
+                assert(m.a3.a3.get() === 4);
+                w.terminate(done);
+            });
+            w.postMessage({a1:a1, a2:a2, a3:{a3:a3}});
+        }
+    });
 });

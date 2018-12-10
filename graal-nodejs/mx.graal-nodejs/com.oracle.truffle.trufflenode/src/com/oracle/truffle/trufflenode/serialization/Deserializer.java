@@ -488,7 +488,7 @@ public class Deserializer {
         if (messagePortCache == null || messagePortCache.getMessagePortDataPointer() != messagePortPointer) {
             messagePortCache = SharedMemMessagingManager.getMessagePortDataFor(messagePortPointer);
         }
-        Object element = messagePortCache.removeLastJavaRef();
+        Object element = messagePortCache.removeJavaRef();
         assert element != null;
         return context.getRealm().getEnv().asGuestValue(element);
     }

@@ -521,13 +521,13 @@ delete MessagePort.prototype.messageData;
 
 const originalPostMessage = MessagePort.prototype.postMessage;
 MessagePort.prototype.postMessage = function(...args) {
-  try {
-    const messagePortData = getMessagePortDataNative.call(this);
-    if (messagePortData === undefined) {
-      // Cannot retrieve message internal metadata. The channel is probably
-      // closed, so we don't care about encoding Java messages.
-      originalPostMessage.apply(this, args);
-    } else {
+  const messagePortData = getMessagePortDataNative.call(this);
+  if (messagePortData === undefined) {
+    // Cannot retrieve message internal metadata. The channel is probably
+    // closed, so we don't care about encoding Java messages.
+    originalPostMessage.apply(this, args);
+  } else {
+    try {
       // Signal that we are ready to transfer Java objets.
       this.sharedMemMessaging.enter(messagePortData);
       // Post message: might encode Java objects as a side effect.
@@ -540,8 +540,8 @@ MessagePort.prototype.postMessage = function(...args) {
         // message will anyway be discarded.
         this.sharedMemMessaging.free();
       }
+    } finally {
+      this.sharedMemMessaging.leave();
     }
-  } finally {
-    this.sharedMemMessaging.leave();
   }
 }
