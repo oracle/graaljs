@@ -1171,17 +1171,17 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (parsedReplaceParam == null) {
                 appendSubstitution(sb, input, replaceString, searchString, pos, dollarProfile);
             } else {
-                ReplaceStringParser.processParsed(parsedReplaceParam, new ReplaceStringConsumer(sb, input, replaceString, searchString, pos));
+                ReplaceStringParser.processParsed(parsedReplaceParam, new ReplaceStringConsumer(sb, input, replaceString, searchString, pos), null);
             }
             Boundaries.builderAppend(sb, input, pos + searchString.length(), input.length());
             return Boundaries.builderToString(sb);
         }
 
         private static void appendSubstitution(StringBuilder sb, String input, String replaceStr, String matched, int pos, BranchProfile dollarProfile) {
-            ReplaceStringParser.process(replaceStr, 0, false, dollarProfile, new ReplaceStringConsumer(sb, input, replaceStr, matched, pos));
+            ReplaceStringParser.process(replaceStr, 0, false, dollarProfile, new ReplaceStringConsumer(sb, input, replaceStr, matched, pos), null);
         }
 
-        private static final class ReplaceStringConsumer implements ReplaceStringParser.Consumer {
+        private static final class ReplaceStringConsumer implements ReplaceStringParser.Consumer<Void> {
 
             private final StringBuilder sb;
             private final String input;
@@ -1198,32 +1198,32 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            public void literal(int start, int end) {
+            public void literal(Void node, int start, int end) {
                 Boundaries.builderAppend(sb, replaceStr, start, end);
             }
 
             @Override
-            public void match() {
+            public void match(Void node) {
                 Boundaries.builderAppend(sb, matched);
             }
 
             @Override
-            public void matchHead() {
+            public void matchHead(Void node) {
                 Boundaries.builderAppend(sb, input, 0, matchedPos);
             }
 
             @Override
-            public void matchTail() {
+            public void matchTail(Void node) {
                 Boundaries.builderAppend(sb, input, matchedPos + matched.length(), input.length());
             }
 
             @Override
-            public void captureGroup(int groupNumber, int literalStart, int literalEnd) {
+            public void captureGroup(Void node, int groupNumber, int literalStart, int literalEnd) {
                 throw Errors.shouldNotReachHere();
             }
 
             @Override
-            public void namedCaptureGroup(String groupName) {
+            public void namedCaptureGroup(Void node, String groupName) {
                 throw Errors.shouldNotReachHere();
             }
         }
