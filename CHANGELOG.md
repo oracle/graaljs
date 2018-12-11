@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC11
 * Added option `js.disable-eval` to disable eval() and similar methods of dynamic code evaluation.
+* Added option `js.disable-with` to disable the with statement.
 
 ## Version 1.0.0 RC10
 * Added support for `Array.prototype.{flat,flatMap}`, [a Stage 3 proposal](https://github.com/tc39/proposal-flatMap).

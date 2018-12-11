@@ -1291,6 +1291,10 @@ public class JSContext {
         return contextOptions.isDisableEval();
     }
 
+    public boolean isOptionDisableWith() {
+        return contextOptions.isDisableWith();
+    }
+
     public long getTimerResolution() {
         return contextOptions.getTimerResolution();
     }

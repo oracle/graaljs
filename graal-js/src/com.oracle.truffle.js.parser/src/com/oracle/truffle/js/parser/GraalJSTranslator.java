@@ -2981,6 +2981,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterWithNode(com.oracle.js.parser.ir.WithNode withNode) {
+        if (context.isOptionDisableWith()) {
+            throw Errors.createSyntaxError("with statement is disabled.");
+        }
         JavaScriptNode withExpression = transform(withNode.getExpression());
         JavaScriptNode toObject = factory.createToObjectFromWith(context, withExpression, true);
         String withVarName = makeUniqueTempVarNameForStatement(withNode);
