@@ -54,6 +54,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
@@ -89,6 +90,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
     private final JSContext context;
 
     private final BranchProfile catchBranch = BranchProfile.create();
+    private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
     protected TryCatchNode(JSContext context, JavaScriptNode tryBlock, JavaScriptNode catchBlock, JSWriteFrameSlotNode writeErrorVar, BlockScopeNode blockScope, JavaScriptNode destructuring,
                     JavaScriptNode conditionExpression) {
@@ -139,7 +141,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             throw cfe;
         } catch (Throwable ex) {
             catchBranch.enter();
-            if (shouldCatch(ex)) {
+            if (shouldCatch(ex, typeProfile)) {
                 return executeCatch(frame, ex);
             } else {
                 throw ex;
@@ -147,10 +149,14 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
     }
 
+    public static boolean shouldCatch(Throwable ex, ValueProfile vp) {
+        return shouldCatch(vp.profile(ex));
+    }
+
     public static boolean shouldCatch(Throwable ex) {
         if (ex instanceof TruffleException) {
-            TruffleException truffleEx = (TruffleException) ex;
-            return !(truffleEx.isExit() || truffleEx.isCancelled() || truffleEx.isInternalError());
+            TruffleException tex = (TruffleException) ex;
+            return !(tex.isExit() || tex.isCancelled() || tex.isInternalError());
         } else {
             return (ex instanceof StackOverflowError);
         }
@@ -198,7 +204,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                 throw cfe;
             } catch (Throwable ex) {
                 catchBranch.enter();
-                if (shouldCatch(ex)) {
+                if (shouldCatch(ex, typeProfile)) {
                     VirtualFrame catchFrame = blockScope == null ? frame : blockScope.appendScopeFrame(frame);
                     try {
                         return executeCatchInner(catchFrame, ex);

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -116,6 +117,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Child private FulfillPromiseNode fulfillPromise;
             @Child private RejectPromiseNode rejectPromise;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+            private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
             // PromiseResolveThenableJob
             @Child private PropertySetNode setPromise;
@@ -146,7 +148,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     then = getThen(resolution);
                 } catch (Throwable ex) {
                     enterErrorBranch();
-                    if (TryCatchNode.shouldCatch(ex)) {
+                    if (TryCatchNode.shouldCatch(ex, typeProfile)) {
                         return rejectPromise(promise, ex);
                     } else {
                         throw ex;

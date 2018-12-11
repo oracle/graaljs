@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -58,6 +59,7 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
     private final BranchProfile notDoneBranch = BranchProfile.create();
+    private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
     protected IteratorCloseWrapperNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done) {
         this.context = context;
@@ -84,7 +86,7 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
             }
             throw e;
         } catch (Throwable e) {
-            if (TryCatchNode.shouldCatch(e)) {
+            if (TryCatchNode.shouldCatch(e, typeProfile)) {
                 throwBranch.enter();
                 if (!isDone(frame)) {
                     iteratorClose().executeAbrupt(getIteratorRecord(frame).getIterator());

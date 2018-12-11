@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseAllOrRaceNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
@@ -114,6 +115,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSFunctionCallNode callReject;
         @Child private IteratorCloseNode iteratorClose;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+        private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
         protected PromiseAllOrRaceNode(JSContext context, JSBuiltin builtin, PerformPromiseAllOrRaceNode performPromiseOp) {
             super(context, builtin);
@@ -172,7 +174,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
             }
-            return TryCatchNode.shouldCatch(exception);
+            return TryCatchNode.shouldCatch(exception, typeProfile);
         }
 
         @SuppressWarnings("unused")
