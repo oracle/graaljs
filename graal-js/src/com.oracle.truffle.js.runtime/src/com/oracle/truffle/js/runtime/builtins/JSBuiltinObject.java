@@ -373,7 +373,7 @@ public abstract class JSBuiltinObject extends JSClass {
     }
 
     @TruffleBoundary
-    protected static PropertyDescriptor ordinaryGetOwnPropertyIntl(DynamicObject thisObj, Object property, Property x) {
+    public static PropertyDescriptor ordinaryGetOwnPropertyIntl(DynamicObject thisObj, Object property, Property x) {
         PropertyDescriptor d = null;
         if (JSProperty.isData(x)) {
             d = PropertyDescriptor.createData(JSObject.get(thisObj, property));
