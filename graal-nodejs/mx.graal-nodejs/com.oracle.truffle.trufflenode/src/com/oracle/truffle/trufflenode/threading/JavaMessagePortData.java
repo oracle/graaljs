@@ -80,10 +80,6 @@ public class JavaMessagePortData {
         encodedRefs++;
     }
 
-    public void disposeAllRefs() {
-        queue.clear();
-    }
-
     public void disposeLastMessageRefs() {
         for (int i = 0; i < encodedRefs; i++) {
             queue.removeLast();

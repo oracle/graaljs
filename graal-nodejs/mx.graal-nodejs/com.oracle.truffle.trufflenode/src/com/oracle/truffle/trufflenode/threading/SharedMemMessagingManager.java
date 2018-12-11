@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.trufflenode.threading;
 
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -59,26 +58,9 @@ public class SharedMemMessagingManager {
      */
     private static final Map<Long, JavaMessagePortData> activeMessagePortRefs = new ConcurrentHashMap<>();
 
-    public static void disposeSharedMemoryMessagePort(long contextHash) {
-        assert activeMessagePortRefs.containsKey(contextHash);
-        activeMessagePortRefs.remove(contextHash);
-    }
-
     public static JavaMessagePortData getMessagePortDataFor(long nativePointer) {
         assert activeMessagePortRefs.containsKey(nativePointer);
         return activeMessagePortRefs.get(nativePointer);
-    }
-
-    public void disposeAllReferencesTo(DynamicObject external) {
-        assert JSExternalObject.isJSExternalObject(external);
-        long externalValue = JSExternalObject.getPointer(external);
-        Iterator<JavaMessagePortData> values = activeMessagePortRefs.values().iterator();
-        while (values.hasNext()) {
-            JavaMessagePortData next = values.next();
-            if (next.getMessagePortDataPointer() == externalValue) {
-                values.remove();
-            }
-        }
     }
 
     public static JavaMessagePortData getJavaMessagePortDataFor(DynamicObject nativeMessagePortData) {
@@ -96,10 +78,6 @@ public class SharedMemMessagingManager {
     public static void disposeReferences(DynamicObject nativeMessagePortData) {
         assert JSExternalObject.isJSExternalObject(nativeMessagePortData);
         long pointer = JSExternalObject.getPointer(nativeMessagePortData);
-
-        JavaMessagePortData maybeRemoved = activeMessagePortRefs.remove(pointer);
-        if (maybeRemoved != null) {
-            maybeRemoved.disposeAllRefs();
-        }
+        activeMessagePortRefs.remove(pointer);
     }
 }

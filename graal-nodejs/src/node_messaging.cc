@@ -708,12 +708,11 @@ void MessagePort::Drain(const FunctionCallbackInfo<Value>& args) {
 }
 
 void MessagePort::MessageData(const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
   MessagePort* port;
   ASSIGN_OR_RETURN_UNWRAP(&port, args.This());
   // Graal.js: keep track of the internal `data_` to enable sharing of Java
   // objects even when a MessagePort is transferred to another worker.
-  v8::Handle<v8::External> external_data = v8::External::New(env->isolate(), port->data_.get());
+  v8::Handle<v8::External> external_data = v8::External::New(args.GetIsolate(), port->data_.get());
   args.GetReturnValue().Set(external_data);
 }
 

@@ -208,7 +208,7 @@ import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
 import com.oracle.truffle.trufflenode.serialization.Deserializer;
 import com.oracle.truffle.trufflenode.serialization.Serializer;
-import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBindings;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBindings;
 import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
 
@@ -1711,7 +1711,7 @@ public final class GraalJSAccess {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
             Object[] extendedArgs = new Object[userArgs.length + 1];
             System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-            extendedArgs[userArgs.length] = GraalSharedChannelBindings.createInitFunction(this, node);
+            extendedArgs[userArgs.length] = SharedMemMessagingBindings.createInitFunction(this, node);
             return extendedArgs;
         } else {
             return userArgs;

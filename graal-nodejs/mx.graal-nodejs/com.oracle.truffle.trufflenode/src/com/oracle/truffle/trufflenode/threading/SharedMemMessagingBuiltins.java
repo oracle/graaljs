@@ -49,23 +49,23 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.JSExternalObject;
-import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.DisposeNodeGen;
-import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.EncodedRefsNodeGen;
-import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.EnterNodeGen;
-import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.FreeNodeGen;
-import com.oracle.truffle.trufflenode.threading.GraalSharedChannelBuiltinsFactory.LeaveNodeGen;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.DisposeNodeGen;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.EncodedRefsNodeGen;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.EnterNodeGen;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.FreeNodeGen;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBuiltinsFactory.LeaveNodeGen;
 
-public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<GraalSharedChannelBuiltins.API> {
-    protected GraalSharedChannelBuiltins() {
-        super("GraalSharedChannel.prototype", API.class);
+public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<SharedMemMessagingBuiltins.API> {
+    protected SharedMemMessagingBuiltins() {
+        super("SharedMemMessaging.prototype", API.class);
     }
 
     public enum API implements BuiltinEnum<API> {
-        enter(0),
+        enter(1),
         leave(0),
         free(0),
         encodedJavaRefs(0),
-        dispose(0);
+        dispose(1);
 
         private final int length;
 
@@ -89,7 +89,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
             case free:
                 return FreeNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case encodedJavaRefs:
-                return EncodedRefsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return EncodedRefsNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case dispose:
                 return DisposeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
@@ -108,7 +108,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
         @Specialization
         public Object enter(DynamicObject self, DynamicObject nativeMessagePortData) {
             assert JSExternalObject.isJSExternalObject(nativeMessagePortData);
-            GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
+            GraalJSAccess access = (GraalJSAccess) SharedMemMessagingBindings.getApiField(self);
             access.setCurrentMessagePortData(nativeMessagePortData);
             return this;
         }
@@ -125,7 +125,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
 
         @Specialization
         public boolean encodedJavaRefs(DynamicObject self) {
-            GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
+            GraalJSAccess access = (GraalJSAccess) SharedMemMessagingBindings.getApiField(self);
             assert access.getCurrentMessagePortData() != null;
             return access.getCurrentMessagePortData().encodedJavaRefs();
         }
@@ -142,7 +142,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
 
         @Specialization
         public Object free(DynamicObject self) {
-            GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
+            GraalJSAccess access = (GraalJSAccess) SharedMemMessagingBindings.getApiField(self);
             access.getCurrentMessagePortData().disposeLastMessageRefs();
             return this;
         }
@@ -159,7 +159,7 @@ public class GraalSharedChannelBuiltins extends JSBuiltinsContainer.SwitchEnum<G
 
         @Specialization
         public Object leave(DynamicObject self) {
-            GraalJSAccess access = (GraalJSAccess) GraalSharedChannelBindings.getApiField(self);
+            GraalJSAccess access = (GraalJSAccess) SharedMemMessagingBindings.getApiField(self);
             access.unsetCurrentMessagePortData();
             return self;
         }

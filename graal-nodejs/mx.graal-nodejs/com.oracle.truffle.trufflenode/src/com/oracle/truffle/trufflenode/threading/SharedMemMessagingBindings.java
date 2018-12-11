@@ -61,13 +61,17 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
-public final class GraalSharedChannelBindings extends JSBuiltinObject {
+/**
+ * JS Builtins used by Node.s workers to send Java object references via message passing (@see
+ * lib/internal/worker.js).
+ */
+public final class SharedMemMessagingBindings extends JSBuiltinObject {
 
-    private static final GraalSharedChannelBindings INSTANCE = new GraalSharedChannelBindings();
+    private static final SharedMemMessagingBindings INSTANCE = new SharedMemMessagingBindings();
 
-    private static final JSBuiltinsContainer BUILTINS = new GraalSharedChannelBuiltins();
+    private static final JSBuiltinsContainer BUILTINS = new SharedMemMessagingBuiltins();
 
-    private static final String CLASS_NAME = "SharedMemMessagingManager";
+    private static final String CLASS_NAME = "SharedMemMessaging";
 
     private static final HiddenKey API = new HiddenKey("api");
     private static final Property API_PROPERTY;
@@ -82,14 +86,10 @@ public final class GraalSharedChannelBindings extends JSBuiltinObject {
     }
 
     public static Object getApiField(DynamicObject obj) {
-        return API_PROPERTY.get(obj, isGraalWorkerChannel(obj));
+        return API_PROPERTY.get(obj, isInstance(obj, INSTANCE));
     }
 
-    public static boolean isGraalWorkerChannel(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
-    }
-
-    private GraalSharedChannelBindings() {
+    private SharedMemMessagingBindings() {
     }
 
     @TruffleBoundary
