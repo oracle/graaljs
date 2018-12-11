@@ -47,6 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -98,6 +99,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
             @Child private JSFunctionCallNode callHandlerNode;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
             private final ConditionProfile handlerProf = ConditionProfile.createBinaryProfile();
+            private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -151,7 +153,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
                 }
-                return TryCatchNode.shouldCatch(exception);
+                return TryCatchNode.shouldCatch(exception, typeProfile);
             }
 
             private JSFunctionCallNode callResolve() {

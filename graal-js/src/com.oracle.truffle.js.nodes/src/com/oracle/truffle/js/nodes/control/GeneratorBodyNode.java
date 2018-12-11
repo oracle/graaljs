@@ -50,6 +50,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -78,6 +79,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         @Child private JavaScriptNode functionBody;
         @Child private JSWriteFrameSlotNode writeYieldValue;
         @Child private JSReadFrameSlotNode readYieldResult;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         GeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection) {
             super(context.getLanguage(), functionSourceSection, null);
@@ -142,8 +144,10 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         private GeneratorState generatorValidate(DynamicObject generatorObject) {
             Object generatorState = getGeneratorState.getValue(generatorObject);
             if (generatorState == Undefined.instance) {
+                errorBranch.enter();
                 throw Errors.createTypeErrorGeneratorObjectExpected();
             } else if (GeneratorState.Executing.equals(generatorState)) {
+                errorBranch.enter();
                 throw Errors.createTypeError("generator is already executing");
             }
             return (GeneratorState) generatorState;
