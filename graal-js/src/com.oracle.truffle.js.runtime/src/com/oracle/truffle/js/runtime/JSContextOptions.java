@@ -182,6 +182,21 @@ public final class JSContextOptions {
     private static final String DISABLE_WITH_HELP = "User code is not allowed to use the 'with' statement.";
     @CompilationFinal private boolean disableWith;
 
+    public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
+    private static final OptionKey<Boolean> REGEX_DUMP_AUTOMATA = new OptionKey<>(false);
+    private static final String REGEX_DUMP_AUTOMATA_HELP = helpWithDefault("Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.", REGEX_DUMP_AUTOMATA);
+    @CompilationFinal private boolean regexDumpAutomata;
+
+    public static final String REGEX_STEP_EXECUTION_NAME = JS_OPTION_PREFIX + "regex.step-execution";
+    private static final OptionKey<Boolean> REGEX_STEP_EXECUTION = new OptionKey<>(false);
+    private static final String REGEX_STEP_EXECUTION_HELP = helpWithDefault("Trace the execution of automata in JSON files.", REGEX_STEP_EXECUTION);
+    @CompilationFinal private boolean regexStepExecution;
+
+    public static final String REGEX_ALWAYS_EAGER_NAME = JS_OPTION_PREFIX + "regex.always-eager";
+    private static final OptionKey<Boolean> REGEX_ALWAYS_EAGER = new OptionKey<>(false);
+    private static final String REGEX_ALWAYS_EAGER_HELP = helpWithDefault("Always match capture groups eagerly.", REGEX_ALWAYS_EAGER);
+    @CompilationFinal private boolean regexAlwaysEager;
+
     /**
      * Options which can be patched without throwing away the pre-initialized context.
      */
@@ -231,6 +246,9 @@ public final class JSContextOptions {
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME);
         this.disableEval = readBooleanOption(DISABLE_EVAL, DISABLE_EVAL_NAME);
         this.disableWith = readBooleanOption(DISABLE_WITH, DISABLE_WITH_NAME);
+        this.regexDumpAutomata = readBooleanOption(REGEX_DUMP_AUTOMATA, REGEX_DUMP_AUTOMATA_NAME);
+        this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME);
+        this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
@@ -308,6 +326,9 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME, OptionCategory.DEBUG, AWAIT_OPTIMIZATION_HELP));
         options.add(newOptionDescriptor(DISABLE_EVAL, DISABLE_EVAL_NAME, OptionCategory.EXPERT, DISABLE_EVAL_HELP));
         options.add(newOptionDescriptor(DISABLE_WITH, DISABLE_WITH_NAME, OptionCategory.EXPERT, DISABLE_WITH_HELP));
+        options.add(newOptionDescriptor(REGEX_DUMP_AUTOMATA, REGEX_DUMP_AUTOMATA_NAME, OptionCategory.DEBUG, REGEX_DUMP_AUTOMATA_HELP));
+        options.add(newOptionDescriptor(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME, OptionCategory.DEBUG, REGEX_STEP_EXECUTION_HELP));
+        options.add(newOptionDescriptor(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME, OptionCategory.DEBUG, REGEX_ALWAYS_EAGER_HELP));
     }
 
     /**
@@ -417,6 +438,18 @@ public final class JSContextOptions {
         return disableWith;
     }
 
+    public boolean isRegexDumpAutomata() {
+        return regexDumpAutomata;
+    }
+
+    public boolean isRegexStepExecution() {
+        return regexStepExecution;
+    }
+
+    public boolean isRegexAlwaysEager() {
+        return regexAlwaysEager;
+    }
+
     public boolean isConsole() {
         return CONSOLE.getValue(optionValues);
     }
@@ -455,6 +488,9 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.awaitOptimization ? 1 : 0);
         hash = 53 * hash + (this.disableEval ? 1 : 0);
         hash = 53 * hash + (this.disableWith ? 1 : 0);
+        hash = 53 * hash + (this.regexDumpAutomata ? 1 : 0);
+        hash = 53 * hash + (this.regexStepExecution ? 1 : 0);
+        hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
         return hash;
     }
 
@@ -522,6 +558,15 @@ public final class JSContextOptions {
             return false;
         }
         if (this.disableWith != other.disableWith) {
+            return false;
+        }
+        if (this.regexDumpAutomata != other.regexDumpAutomata) {
+            return false;
+        }
+        if (this.regexStepExecution != other.regexStepExecution) {
+            return false;
+        }
+        if (this.regexAlwaysEager != other.regexAlwaysEager) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
