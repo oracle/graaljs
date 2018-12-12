@@ -261,15 +261,19 @@ public final class JSDictionaryObject extends JSBuiltinObject {
         EconomicMap<Object, PropertyDescriptor> hashMap = newHashMap();
         List<Property> properties = currentShape.getPropertyListInternal(true);
         for (Property p : properties) {
-            if (JSObject.HIDDEN_PROTO.equals(p.getKey())) {
-                assert hashedShape.hasProperty(p.getKey());
+            Object key = p.getKey();
+            if (JSObject.HIDDEN_PROTO.equals(key)) {
+                assert hashedShape.hasProperty(key);
                 continue; // has already been added
             } else if (p.isHidden() || p.getLocation().isValue()) {
                 hashedShape = hashedShape.addProperty(p);
             } else {
                 // normal properties
                 Object value = p.get(obj, false);
-                hashMap.put(p.getKey(), toPropertyDescriptor(p, value));
+                hashMap.put(key, toPropertyDescriptor(p, value));
+
+                // invalidate property assumptions (for final properties)
+                JSShape.invalidatePropertyAssumption(currentShape, key);
             }
         }
 
@@ -280,11 +284,6 @@ public final class JSDictionaryObject extends JSBuiltinObject {
         obj.setShapeAndResize(currentShape, hashedShape);
 
         hashMapProperty.setSafe(obj, hashMap, null);
-
-        // invalidate property assumptions (rewrite assumption check nodes for final properties)
-        for (Object key : hashMap.getKeys()) {
-            JSShape.invalidatePropertyAssumption(currentShape, key);
-        }
 
         assert isJSDictionaryObject(obj) && obj.getShape().getProperty(HASHMAP_PROPERTY_NAME) != null;
     }
