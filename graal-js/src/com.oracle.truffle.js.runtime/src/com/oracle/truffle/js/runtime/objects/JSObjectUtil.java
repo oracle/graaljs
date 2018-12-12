@@ -344,14 +344,18 @@ public final class JSObjectUtil {
 
         Shape newShape = newRootShape;
         for (Property p : oldShape.getPropertyListInternal(true)) {
-            if (!newRootShape.hasProperty(p.getKey())) {
+            Object key = p.getKey();
+            if (!newRootShape.hasProperty(key)) {
                 if (p.isHidden() || p.getLocation().isValue()) {
                     newShape = newShape.addProperty(p);
                 } else {
-                    newShape = newShape.defineProperty(p.getKey(), archive.get(p.getKey()), p.getFlags());
+                    // we're allocating new property locations, so previous assumptions are invalid
+                    JSShape.invalidatePropertyAssumption(oldShape, key);
+
+                    newShape = newShape.defineProperty(key, archive.get(key), p.getFlags());
                 }
                 if (!p.getLocation().isValue()) {
-                    newShape.getLastProperty().setSafe(object, archive.get(p.getKey()), newShape.getParent(), newShape);
+                    newShape.getLastProperty().setSafe(object, archive.get(key), newShape.getParent(), newShape);
                 } else {
                     object.setShapeAndGrow(newShape.getParent(), newShape);
                 }
