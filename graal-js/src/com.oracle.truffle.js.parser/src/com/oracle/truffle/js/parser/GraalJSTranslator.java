@@ -117,6 +117,7 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
+import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.binary.JSBinaryNode;
 import com.oracle.truffle.js.nodes.binary.JSOrNode;
@@ -1693,6 +1694,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (rhs instanceof JSOrNode.NotUndefinedOrNode && ((JSOrNode.NotUndefinedOrNode) rhs).getRight() instanceof FunctionNameHolder) {
             // used in destructuring assignment
             setAnonymousFunctionName(((JSOrNode.NotUndefinedOrNode) rhs).getRight(), name);
+        } else if (rhs instanceof com.oracle.truffle.js.nodes.control.IfNode) {
+            // used in default parameter
+            com.oracle.truffle.js.nodes.control.IfNode ifNode = (com.oracle.truffle.js.nodes.control.IfNode) rhs;
+            JavaScriptNode thenPart = ifNode.getThenPart();
+            if (thenPart instanceof FunctionNameHolder && ifNode.getElsePart() instanceof AccessIndexedArgumentNode) {
+                setAnonymousFunctionName(thenPart, name);
+            }
         }
     }
 
