@@ -38,51 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode.info;
+package com.oracle.truffle.trufflenode.threading;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.runtime.JSRealm;
+import java.util.Deque;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
-public final class Script {
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.trufflenode.JSExternalObject;
 
-    private final int id;
-    private final ScriptNode scriptNode;
-    private final Object parseResult;
-    private final JSRealm realm;
-    private final boolean graalInternal;
+public class JavaMessagePortData {
 
-    public Script(ScriptNode scriptNode, Object parseResult, JSRealm realm, int id) {
-        this.scriptNode = scriptNode;
-        this.parseResult = parseResult;
-        this.realm = realm;
-        this.id = id;
-        this.graalInternal = isGraalInternalScript(scriptNode.getRootNode().getSourceSection().getSource());
+    private final long nativePointer;
+    private final Deque<Object> queue;
+    private int encodedRefs;
+
+    public JavaMessagePortData(DynamicObject external) {
+        assert JSExternalObject.isJSExternalObject(external);
+        this.encodedRefs = 0;
+        this.queue = new ConcurrentLinkedDeque<>();
+        this.nativePointer = JSExternalObject.getPointer(external);
     }
 
-    public ScriptNode getScriptNode() {
-        return scriptNode;
+    public long getMessagePortDataPointer() {
+        return nativePointer;
     }
 
-    public Object getParseResult() {
-        return parseResult;
+    public void encodingBegin() {
+        encodedRefs = 0;
     }
 
-    public JSRealm getRealm() {
-        return realm;
+    public void encodingEnd() {
+        encodedRefs = 0;
     }
 
-    public int getId() {
-        return id;
+    public boolean encodedJavaRefs() {
+        return encodedRefs > 0;
     }
 
-    public boolean isGraalInternal() {
-        return graalInternal;
+    public void enqueueJavaRef(Object hostObject) {
+        queue.add(hostObject);
+        encodedRefs++;
     }
 
-    private static boolean isGraalInternalScript(Source source) {
-        String name = source.getName();
-        return name.startsWith("graal/") || name.startsWith("internal/graal/") || name.equals("internal/worker.js");
+    public void disposeLastMessageRefs() {
+        for (int i = 0; i < encodedRefs; i++) {
+            queue.removeLast();
+        }
+        encodedRefs = 0;
+    }
+
+    public Object removeJavaRef() {
+        return queue.removeFirst();
     }
 
 }

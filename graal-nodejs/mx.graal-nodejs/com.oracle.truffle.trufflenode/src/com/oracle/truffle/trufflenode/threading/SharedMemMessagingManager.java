@@ -38,51 +38,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode.info;
+package com.oracle.truffle.trufflenode.threading;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.runtime.JSRealm;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-public final class Script {
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.trufflenode.JSExternalObject;
 
-    private final int id;
-    private final ScriptNode scriptNode;
-    private final Object parseResult;
-    private final JSRealm realm;
-    private final boolean graalInternal;
+/**
+ * Registry of active node::MessagePortData objects that have exchanged Java object references
+ * during message encoding using Node's workers.
+ */
+public class SharedMemMessagingManager {
 
-    public Script(ScriptNode scriptNode, Object parseResult, JSRealm realm, int id) {
-        this.scriptNode = scriptNode;
-        this.parseResult = parseResult;
-        this.realm = realm;
-        this.id = id;
-        this.graalInternal = isGraalInternalScript(scriptNode.getRootNode().getSourceSection().getSource());
+    /**
+     * Active MessagePortData objects allocated by node Workers that have exchanged Java objects in
+     * messages. Map from their native pointer address to their Java-space representation.
+     */
+    private static final Map<Long, JavaMessagePortData> activeMessagePortRefs = new ConcurrentHashMap<>();
+
+    public static JavaMessagePortData getMessagePortDataFor(long nativePointer) {
+        assert activeMessagePortRefs.containsKey(nativePointer);
+        return activeMessagePortRefs.get(nativePointer);
     }
 
-    public ScriptNode getScriptNode() {
-        return scriptNode;
+    public static JavaMessagePortData getJavaMessagePortDataFor(DynamicObject nativeMessagePortData) {
+        assert JSExternalObject.isJSExternalObject(nativeMessagePortData);
+        long pointer = JSExternalObject.getPointer(nativeMessagePortData);
+
+        JavaMessagePortData data = activeMessagePortRefs.get(pointer);
+        if (data == null) {
+            data = new JavaMessagePortData(nativeMessagePortData);
+            activeMessagePortRefs.put(pointer, data);
+        }
+        return data;
     }
 
-    public Object getParseResult() {
-        return parseResult;
+    public static void disposeReferences(DynamicObject nativeMessagePortData) {
+        assert JSExternalObject.isJSExternalObject(nativeMessagePortData);
+        long pointer = JSExternalObject.getPointer(nativeMessagePortData);
+        activeMessagePortRefs.remove(pointer);
     }
-
-    public JSRealm getRealm() {
-        return realm;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public boolean isGraalInternal() {
-        return graalInternal;
-    }
-
-    private static boolean isGraalInternalScript(Source source) {
-        String name = source.getName();
-        return name.startsWith("graal/") || name.startsWith("internal/graal/") || name.equals("internal/worker.js");
-    }
-
 }

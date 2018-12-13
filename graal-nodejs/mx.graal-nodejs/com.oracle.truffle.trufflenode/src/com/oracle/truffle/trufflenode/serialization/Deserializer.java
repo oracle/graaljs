@@ -67,6 +67,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
+import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
+
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -92,6 +95,8 @@ public class Deserializer {
     private Map<Integer, Object> objectMap = new HashMap<>();
     /** Maps transfer ID to the transferred object. */
     private Map<Integer, DynamicObject> transferMap = new HashMap<>();
+    /** Cache for the last VM-level communication channel. */
+    private JavaMessagePortData messagePortCache = null;
 
     public Deserializer(long delegate, ByteBuffer buffer) {
         this.delegate = delegate;
@@ -170,6 +175,8 @@ public class Deserializer {
                 return readObjectReference();
             case HOST_OBJECT:
                 return readHostObject();
+            case SHARED_JAVA_OBJECT:
+                return readSharedJavaObject(context);
             default:
                 throw Errors.createError("Deserialization of a value tagged " + tag);
         }
@@ -474,6 +481,16 @@ public class Deserializer {
         assert JSSharedArrayBuffer.isJSSharedArrayBuffer(sharedArrayBuffer);
         assignId(sharedArrayBuffer);
         return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, (DynamicObject) sharedArrayBuffer) : sharedArrayBuffer;
+    }
+
+    public Object readSharedJavaObject(JSContext context) {
+        long messagePortPointer = readVarLong();
+        if (messagePortCache == null || messagePortCache.getMessagePortDataPointer() != messagePortPointer) {
+            messagePortCache = SharedMemMessagingManager.getMessagePortDataFor(messagePortPointer);
+        }
+        Object element = messagePortCache.removeJavaRef();
+        assert element != null;
+        return context.getRealm().getEnv().asGuestValue(element);
     }
 
     public int readBytes(int length) {

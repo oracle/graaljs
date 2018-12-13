@@ -209,6 +209,9 @@ import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
 import com.oracle.truffle.trufflenode.serialization.Deserializer;
 import com.oracle.truffle.trufflenode.serialization.Serializer;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBindings;
+import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
 
 /**
  * Entry point for any access to the JavaScript engine from the native code.
@@ -1705,6 +1708,12 @@ public final class GraalJSAccess {
             System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
             extendedArgs[userArgs.length] = setBreakPoint;
             return extendedArgs;
+        } else if ("internal/worker.js".equals(moduleName)) {
+            // The Shared-mem channel initialization is similar to NIO-based buffers.
+            Object[] extendedArgs = new Object[userArgs.length + 1];
+            System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
+            extendedArgs[userArgs.length] = SharedMemMessagingBindings.createInitFunction(this, node);
+            return extendedArgs;
         } else {
             return userArgs;
         }
@@ -2817,7 +2826,7 @@ public final class GraalJSAccess {
     }
 
     public Object valueSerializerNew(long delegatePointer) {
-        return new Serializer(delegatePointer);
+        return new Serializer(mainJSContext, this, delegatePointer);
     }
 
     public int valueSerializerSize(Object serializer) {
@@ -3048,6 +3057,29 @@ public final class GraalJSAccess {
         public JSModuleRecord loadModule(Source moduleSource) {
             throw new UnsupportedOperationException();
         }
+    }
+
+    /**
+     * Used to establish a communication channels between node workers when they attempt to exchange
+     * Java host objects.
+     */
+    private JavaMessagePortData currentMessagePortData = null;
+
+    public void unsetCurrentMessagePortData() {
+        currentMessagePortData.encodingEnd();
+        currentMessagePortData = null;
+    }
+
+    public void setCurrentMessagePortData(DynamicObject nativeMessagePortData) {
+        assert nativeMessagePortData != null;
+        assert currentMessagePortData == null;
+        currentMessagePortData = SharedMemMessagingManager.getJavaMessagePortDataFor(nativeMessagePortData);
+        assert currentMessagePortData != null;
+        currentMessagePortData.encodingBegin();
+    }
+
+    public JavaMessagePortData getCurrentMessagePortData() {
+        return currentMessagePortData;
     }
 
 }

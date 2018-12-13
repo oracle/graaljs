@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.trufflenode.serialization;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -67,6 +69,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
+import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
+
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -96,8 +100,13 @@ public class Serializer {
     /** Determines whether {@code ArrayBuffer}s should be serialized as host objects. */
     private boolean treatArrayBufferViewsAsHostObjects;
 
-    public Serializer(long delegate) {
+    private final Env env;
+    private final GraalJSAccess access;
+
+    public Serializer(JSContext mainJSContext, GraalJSAccess access, long delegate) {
         this.delegate = delegate;
+        this.env = mainJSContext.getRealm().getEnv();
+        this.access = access;
     }
 
     public void setTreatArrayBufferViewsAsHostObjects(boolean treatArrayBufferViewsAsHostObjects) {
@@ -159,6 +168,12 @@ public class Serializer {
         } else if (JSRuntime.isBigInt(value)) {
             writeTag(SerializationTag.BIG_INT);
             writeBigIntContents((BigInt) value);
+        } else if (env.isHostObject(value) && access.getCurrentMessagePortData() != null) {
+            JavaMessagePortData messagePort = access.getCurrentMessagePortData();
+            writeTag(SerializationTag.SHARED_JAVA_OBJECT);
+            writeVarInt(messagePort.getMessagePortDataPointer());
+            assignId(value);
+            messagePort.enqueueJavaRef(env.asHostObject(value));
         } else {
             writeObject(value);
         }
