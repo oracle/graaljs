@@ -4680,9 +4680,9 @@ loop:
 
             if (expr instanceof BaseNode || expr instanceof IdentNode) {
                 if (isStrictMode && expr instanceof IdentNode) {
-                    String varName = ((IdentNode) expr).getName();
-                    if (!"this".equals(varName)) {
-                        throw error(AbstractParser.message("strict.cant.delete.ident", varName), unaryToken);
+                    IdentNode ident = (IdentNode) expr;
+                    if (!ident.isThis() && !ident.isNewTarget()) {
+                        throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
                     }
                 }
                 return new UnaryNode(unaryToken, expr);
