@@ -93,7 +93,11 @@ public class ConcurrentAccess {
             t.start();
             startGate.countDown();
             while (!hadException.get()) {
-                code.execute();
+                try {
+                    code.execute();
+                } catch (IllegalStateException e) {
+                    hadException.set(true);
+                }
             }
             endGate.await();
             t.join(10000);
