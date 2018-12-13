@@ -55,15 +55,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -170,9 +171,19 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @Override
-    public JavaScriptNode parseInlineExpression(JSContext context, Source source, Environment env, boolean isStrict) {
-        Expression expression = GraalJSParserHelper.parseExpression(source, ((GraalJSParserOptions) context.getParserOptions()).putStrict(isStrict));
-        return JavaScriptTranslator.translateExpression(NodeFactory.getInstance(context), context, env, source, isStrict, expression);
+    public JavaScriptNode parseInlineScript(JSContext context, Source source, Environment env, boolean isStrict) {
+        ScriptNode script = JavaScriptTranslator.translateInlineScript(NodeFactory.getInstance(context), context, env, source, isStrict);
+        RootCallTarget callTarget = script.getCallTarget();
+        JSFunctionData functionData = script.getFunctionData();
+        return new JavaScriptNode() {
+            @Child DirectCallNode callNode = DirectCallNode.create(callTarget);
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                DynamicObject closure = JSFunction.create(context.getRealm(), functionData, frame.materialize());
+                return callNode.call(JSArguments.createZeroArg(JSFrameUtil.getThisObj(frame), closure));
+            }
+        };
     }
 
     @TruffleBoundary
@@ -188,10 +199,11 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     private static ScriptNode parseEval(JSContext context, Node lastNode, Environment env, Source source, boolean isStrict) {
+        context.checkEvalAllowed();
+        NodeFactory nodeFactory = NodeFactory.getInstance(context);
+        EvalEnvironment evalEnv = new EvalEnvironment(env, nodeFactory, context, env != null);
         try {
-            context.checkEvalAllowed();
-            EvalEnvironment evalEnv = new EvalEnvironment(env, NodeFactory.getInstance(context), context, env != null);
-            return JavaScriptTranslator.translateEvalScript(NodeFactory.getInstance(context), context, evalEnv, source, isStrict);
+            return JavaScriptTranslator.translateEvalScript(nodeFactory, context, evalEnv, source, isStrict);
         } catch (com.oracle.js.parser.ParserException e) {
             throw parserToJSError(lastNode, e);
         }
