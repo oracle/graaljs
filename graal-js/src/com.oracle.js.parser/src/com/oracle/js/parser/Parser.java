@@ -459,6 +459,7 @@ public class Parser extends AbstractParser {
             final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), PROGRAM_NAME);
             final FunctionNode.Kind functionKind = generator ? FunctionNode.Kind.GENERATOR : FunctionNode.Kind.NORMAL;
             final ParserContextFunctionNode function = createParserContextFunctionNode(ident, functionToken, functionKind, functionLine, Collections.<IdentNode>emptyList(), 0);
+            function.clearFlag(FunctionNode.IS_PROGRAM);
             if (async) {
                 function.setFlag(FunctionNode.IS_ASYNC);
             }
