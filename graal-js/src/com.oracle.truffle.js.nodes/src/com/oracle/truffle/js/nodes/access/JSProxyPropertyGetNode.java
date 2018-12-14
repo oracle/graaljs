@@ -48,14 +48,19 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.JSReflectUtils;
@@ -66,6 +71,9 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
     @Child protected GetMethodNode trapGet;
     @Child private JSFunctionCallNode callNode;
     @Child private JSToPropertyKeyNode toPropertyKeyNode;
+    @Child private JSGetOwnPropertyNode getOwnPropertyNode;
+    @Child private JSIdenticalNode sameValueNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected JSProxyPropertyGetNode(JSContext context) {
         this.callNode = JSFunctionCallNode.createCall();
@@ -95,8 +103,46 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
             }
         }
         Object trapResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, receiver));
-        JSProxy.checkProxyGetTrapInvariants(target, propertyKey, trapResult);
+        checkInvariants(propertyKey, target, trapResult);
         return trapResult;
+    }
+
+    private void checkInvariants(Object propertyKey, TruffleObject truffleTarget, Object trapResult) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        if (!JSObject.isJSObject(truffleTarget)) {
+            return; // best effort, cannot check for foreign objects
+        }
+        PropertyDescriptor targetDesc = getOwnProperty((DynamicObject) truffleTarget, propertyKey);
+        if (targetDesc != null) {
+            if (targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && !targetDesc.getWritable()) {
+                if (!isSameValue(trapResult, targetDesc.getValue())) {
+                    errorBranch.enter();
+                    throw Errors.createTypeError("Trap result must be the same as the value of the proxy target's corresponding non-writable, non-configurable own data property");
+                }
+            }
+            if (targetDesc.isAccessorDescriptor() && !targetDesc.getConfigurable() && targetDesc.getGet() == Undefined.instance) {
+                if (trapResult != Undefined.instance) {
+                    errorBranch.enter();
+                    throw Errors.createTypeError("Trap result must be undefined since the proxy target has a corresponding non-configurable own accessor property with undefined getter");
+                }
+            }
+        }
+    }
+
+    private boolean isSameValue(Object trapResult, Object value) {
+        if (sameValueNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            sameValueNode = insert(JSIdenticalNode.createSameValue());
+        }
+        return sameValueNode.executeBoolean(trapResult, value);
+    }
+
+    private PropertyDescriptor getOwnProperty(DynamicObject target, Object propertyKey) {
+        if (getOwnPropertyNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getOwnPropertyNode = insert(JSGetOwnPropertyNode.create());
+        }
+        return getOwnPropertyNode.execute(target, propertyKey);
     }
 
     private Object toPropertyKey(Object key) {
