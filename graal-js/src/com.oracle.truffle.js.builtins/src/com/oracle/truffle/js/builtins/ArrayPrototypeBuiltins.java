@@ -997,27 +997,31 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private final ConditionProfile lengthIsZero = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile lengthLargerOne = ConditionProfile.createBinaryProfile();
         protected final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
 
         protected static boolean isSparseArray(DynamicObject thisObj) {
             return arrayGetArrayType(thisObj) instanceof SparseArray;
         }
 
-        @Specialization(guards = {"isJSArray(thisObj)", "!isSparseArray(thisObj)", "!isArrayWithHoles(thisObj, arrayTypeProfile)"})
+        @Specialization(guards = {"isJSArray(thisObj)", "!isArrayWithHoles(thisObj, arrayTypeProfile)"})
         protected Object shift(DynamicObject thisObj) {
             long len = getLength(thisObj);
-            if (lengthIsZero.profile(len > 0)) {
+
+            if (lengthIsZero.profile(len == 0)) {
+                return Undefined.instance;
+            } else {
                 Object firstElement = read(thisObj, 0);
-                ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(thisObj));
-                arraySetArrayType(thisObj, array.removeRange(thisObj, 0, 1, errorBranch));
+                if (lengthLargerOne.profile(len > 1)) {
+                    ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(thisObj));
+                    arraySetArrayType(thisObj, array.removeRange(thisObj, 0, 1, errorBranch));
+                }
                 setLength(thisObj, len - 1);
                 return firstElement;
-            } else {
-                return Undefined.instance;
             }
         }
 
-        @Specialization(guards = {"isJSArray(thisObj)", "!isSparseArray(thisObj)", "isArrayWithHoles(thisObj, arrayTypeProfile)"})
+        @Specialization(guards = {"isJSArray(thisObj)", "isArrayWithHoles(thisObj, arrayTypeProfile)", "!isSparseArray(thisObj)"})
         protected Object shiftWithHoles(DynamicObject thisObj,
                         @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode) {
             long len = getLength(thisObj);
