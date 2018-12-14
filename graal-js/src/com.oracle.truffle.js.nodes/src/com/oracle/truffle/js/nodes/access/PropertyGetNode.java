@@ -1301,6 +1301,33 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
+    public static final class FunctionLengthPropertyGetNode extends LinkedPropertyGetNode {
+        private final BranchProfile isBoundBranch = BranchProfile.create();
+        private final JSFunction.FunctionLengthPropertyProxy property;
+
+        public FunctionLengthPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
+            assert JSProperty.isData(property);
+            assert isFunctionLengthProperty(property);
+            this.property = (JSFunction.FunctionLengthPropertyProxy) JSProperty.getConstantProxy(property);
+        }
+
+        @Override
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
+        }
+
+        @Override
+        protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return property.getProfiled(receiverCheck.getStore(thisObj), isBoundBranch);
+        }
+
+        @Override
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
+        }
+    }
+
     public static final class ClassPrototypePropertyGetNode extends LinkedPropertyGetNode {
 
         @CompilationFinal private DynamicObject constantFunction;
@@ -1595,6 +1622,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         } else {
             if (isArrayLengthProperty(property)) {
                 return new ArrayLengthPropertyGetNode(dataProperty, receiverCheck);
+            } else if (isFunctionLengthProperty(property)) {
+                return new FunctionLengthPropertyGetNode(dataProperty, receiverCheck);
             } else if (isClassPrototypeProperty(property)) {
                 return new ClassPrototypePropertyGetNode(dataProperty, receiverCheck, context);
             } else if (isStringLengthProperty(property)) {
