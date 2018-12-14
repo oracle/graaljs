@@ -126,6 +126,28 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         return getUserObjectIntl(thisObj, prop);
     }
 
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"isJSFunction(thisObj)", "cachedPropertyKey.equals(propertyKey)", "cachedShape == thisObj.getShape()", "cachedProperty != null"}, assumptions = {
+                    "cachedShape.getValidAssumption()"}, limit = "1")
+    public PropertyDescriptor jsFunctionCacheShape(DynamicObject thisObj, Object propertyKey,
+                    @Cached("thisObj.getShape()") Shape cachedShape,
+                    @Cached("propertyKey") Object cachedPropertyKey,
+                    @Cached("cachedShape.getProperty(propertyKey)") Property cachedProperty) {
+        assert cachedProperty == thisObj.getShape().getProperty(propertyKey);
+        return getUserObjectIntl(thisObj, cachedProperty);
+
+    }
+
+    @Specialization(guards = "isJSFunction(thisObj)", replaces = "jsFunctionCacheShape")
+    public PropertyDescriptor jsFunction(DynamicObject thisObj, Object propertyKey) {
+        assert JSRuntime.isPropertyKey(propertyKey) || propertyKey instanceof HiddenKey;
+        Property prop = thisObj.getShape().getProperty(propertyKey);
+        if (prop == null) {
+            return null;
+        }
+        return getUserObjectIntl(thisObj, prop);
+    }
+
     private static PropertyDescriptor getUserObjectIntl(DynamicObject thisObj, Property prop) {
         PropertyDescriptor d = null;
         if (JSProperty.isData(prop)) {
