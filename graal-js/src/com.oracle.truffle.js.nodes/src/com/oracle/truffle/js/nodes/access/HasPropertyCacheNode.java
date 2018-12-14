@@ -173,19 +173,21 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
         private final boolean hasOwnProperty;
         @Child private JSProxyHasPropertyNode proxyGet;
+        @Child private JSGetOwnPropertyNode getOwnPropertyNode;
 
         public JSProxyDispatcherPropertyHasNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, boolean hasOwnProperty) {
             super(receiverCheck);
             this.hasOwnProperty = hasOwnProperty;
             assert JSRuntime.isPropertyKey(key);
             this.proxyGet = hasOwnProperty ? null : JSProxyHasPropertyNodeGen.create(context);
+            this.getOwnPropertyNode = hasOwnProperty ? JSGetOwnPropertyNode.create() : null;
         }
 
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             Object key = root.getKey();
             if (hasOwnProperty) {
-                return JSObject.getOwnProperty(receiverCheck.getStore(thisObj), key) != null;
+                return getOwnPropertyNode.execute(receiverCheck.getStore(thisObj), key) != null;
             } else {
                 return proxyGet.executeWithTargetAndKeyBoolean(receiverCheck.getStore(thisObj), key);
             }
