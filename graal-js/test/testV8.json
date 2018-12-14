@@ -645,9 +645,6 @@
     "filePath" : "mjsunit/es6/object-literals-super.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/object-tostring.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/promise-all-overflow-1.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
