@@ -793,7 +793,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         if (JSRuntime.isArrayIndex(idx)) {
             ScriptArray array = arrayGetArrayType(thisObj, false);
             if (array.hasElement(thisObj, idx)) {
-                Object value = JSObject.get(thisObj, propertyKey);
+                Object value = array.getElement(thisObj, idx);
                 return PropertyDescriptor.createData(value, true, !array.isFrozen(), !array.isSealed());
             }
         }
