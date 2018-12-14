@@ -151,11 +151,20 @@ public final class JSFunction extends JSBuiltinObject {
 
     private static final PropertyProxy LENGTH_PROXY = new FunctionLengthPropertyProxy();
 
-    private static final PropertyProxy NAME_PROXY = new PropertyProxy() {
+    public static class FunctionNamePropertyProxy implements PropertyProxy {
         @Override
         public Object get(DynamicObject store) {
             assert JSFunction.isJSFunction(store);
             if (JSFunction.isBoundFunction(store)) {
+                return getBoundFunctionName(store);
+            }
+            return JSFunction.getName(store);
+        }
+
+        public String getProfiled(DynamicObject store, BranchProfile isBoundBranch) {
+            assert JSFunction.isJSFunction(store);
+            if (JSFunction.isBoundFunction(store)) {
+                isBoundBranch.enter();
                 return getBoundFunctionName(store);
             }
             return JSFunction.getName(store);
@@ -169,7 +178,9 @@ public final class JSFunction extends JSBuiltinObject {
                 return JSFunction.getName(store);
             }
         }
-    };
+    }
+
+    private static final PropertyProxy NAME_PROXY = new FunctionNamePropertyProxy();
 
     /** Placeholder for lazy initialization of the prototype property. */
     private static final Object CLASS_PROTOTYPE_PLACEHOLDER = new Object();

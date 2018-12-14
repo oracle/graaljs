@@ -1531,6 +1531,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSFunction.FunctionLengthPropertyProxy;
     }
 
+    protected static boolean isFunctionNameProperty(Property property) {
+        return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSFunction.FunctionNamePropertyProxy;
+    }
+
     protected static boolean isClassPrototypeProperty(Property property) {
         return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSFunction.ClassPrototypeProxyProperty;
     }
