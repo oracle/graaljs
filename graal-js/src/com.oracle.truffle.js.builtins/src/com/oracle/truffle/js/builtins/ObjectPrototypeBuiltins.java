@@ -308,11 +308,10 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected String doJSProxy(DynamicObject thisObj,
                         @Cached("create()") JSClassProfile jsclassProfile,
                         @Cached("create()") BranchProfile noStringTagProfile) {
-            JSRuntime.isArray(thisObj); // might throw
+            TruffleObject target = JSProxy.getTargetNonProxy(thisObj);
             String toString = getToStringTag(thisObj);
             if (toString == null) {
                 noStringTagProfile.enter();
-                TruffleObject target = JSProxy.getTargetNonProxy(thisObj);
                 if (JSObject.isJSObject(target)) {
                     toString = jsclassProfile.getJSClass((DynamicObject) target).getBuiltinToStringTag((DynamicObject) target);
                 } else {

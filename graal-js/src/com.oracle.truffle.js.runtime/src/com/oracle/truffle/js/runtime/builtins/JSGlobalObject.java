@@ -45,7 +45,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
 public final class JSGlobalObject extends JSBuiltinObject {
@@ -63,15 +66,18 @@ public final class JSGlobalObject extends JSBuiltinObject {
     public static DynamicObject create(JSRealm realm, DynamicObject objectPrototype) {
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = realm.getContext();
+        DynamicObject global;
         if (context.isMultiContext()) {
             Shape shape = context.makeEmptyShapeWithPrototypeInObject(INSTANCE, JSObject.PROTO_PROPERTY);
-            DynamicObject global = JSObject.createInit(shape);
+            global = JSObject.createInit(shape);
             JSObject.PROTO_PROPERTY.setSafe(global, objectPrototype, shape);
-            return global;
+        } else {
+            // keep a separate shape tree for the global object in order not to pollute user objects
+            Shape shape = JSShape.makeUniqueRootWithPrototype(JSObject.LAYOUT, INSTANCE, context, objectPrototype);
+            global = JSObject.createInit(shape);
         }
-        // keep a separate shape tree for the global object in order not to pollute user objects
-        Shape shape = JSShape.makeUniqueRootWithPrototype(JSObject.LAYOUT, INSTANCE, context, objectPrototype);
-        return JSObject.createInit(shape);
+        JSObjectUtil.putDataProperty(context, global, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        return global;
     }
 
     public static boolean isJSGlobalObject(Object obj) {
@@ -87,8 +93,4 @@ public final class JSGlobalObject extends JSBuiltinObject {
         return CLASS_NAME;
     }
 
-    @Override
-    public String getBuiltinToStringTag(DynamicObject object) {
-        return getClassName(object);
-    }
 }
