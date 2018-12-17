@@ -668,9 +668,6 @@
     "filePath" : "mjsunit/es6/proxies-function.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/proxies-get.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/proxies-prototype-handler-stackoverflow.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"

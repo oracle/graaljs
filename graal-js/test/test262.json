@@ -18526,12 +18526,6 @@
     "filePath" : "language/statements/for-of/head-lhs-let.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/for-of/iterator-next-error.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/iterator-next-result-value-attr-error.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/for-of/scope-head-lex-open.js",
     "status" : "FAIL"
   }, {
