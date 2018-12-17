@@ -82,6 +82,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
@@ -234,8 +235,9 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         final Source source = request.getSource();
         final MaterializedFrame requestFrame = request.getFrame();
         final JSContext context = getContextReference().get().getContext();
+        final boolean strict = isStrictLocation(request.getLocation());
         final ExecutableNode executableNode = new ExecutableNode(this) {
-            @Child private JavaScriptNode expression = insert(parseInline(source, context, requestFrame));
+            @Child private JavaScriptNode expression = insert(parseInline(source, context, requestFrame, strict));
             @Child private ExportValueNode exportValueNode = ExportValueNode.create(context);
 
             @Override
@@ -246,6 +248,16 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             }
         };
         return executableNode;
+    }
+
+    private static boolean isStrictLocation(Node location) {
+        if (location != null) {
+            RootNode rootNode = location.getRootNode();
+            if (rootNode instanceof FunctionRootNode) {
+                return ((FunctionRootNode) rootNode).getFunctionData().isStrict();
+            }
+        }
+        return true;
     }
 
     private RootNode parseWithArgumentNames(Source source, List<String> argumentNames) {
@@ -344,11 +356,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @TruffleBoundary
-    protected static JavaScriptNode parseInline(Source code, JSContext context, MaterializedFrame lexicalContextFrame) {
+    protected static JavaScriptNode parseInline(Source code, JSContext context, MaterializedFrame lexicalContextFrame, boolean strict) {
         long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
         try {
             Environment env = assembleDebugEnvironment(context, lexicalContextFrame);
-            return ((JSParser) context.getEvaluator()).parseInlineExpression(context, code, env, true);
+            return ((JSParser) context.getEvaluator()).parseInlineScript(context, code, env, strict);
         } finally {
             if (JSTruffleOptions.ProfileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());

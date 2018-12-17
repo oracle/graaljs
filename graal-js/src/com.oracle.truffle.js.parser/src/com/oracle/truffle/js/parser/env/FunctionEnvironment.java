@@ -112,20 +112,21 @@ public class FunctionEnvironment extends Environment {
     private Map<String, ImportBindingRef> importBindings;
 
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context,
-                    boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction) {
+                    boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction,
+                    boolean isGlobal) {
         super(parent, factory, context);
         this.isDirectEval = isDirectEval;
         this.isAsyncFunction = isAsyncFunction;
-        this.isStrictMode = isStrictMode || (parent != null && parent.isStrictMode());
+        this.isStrictMode = isStrictMode;
         this.isEval = isEval;
         this.isArrowFunction = isArrowFunction;
         this.isGeneratorFunction = isGeneratorFunction;
         this.isDerivedConstructor = isDerivedConstructor;
+        this.isGlobal = isGlobal;
         this.parent = parent == null ? null : parent.function();
 
         this.frameDescriptor = factory.createFrameDescriptor();
         this.parameters = new ArrayList<>();
-        this.isGlobal = parent == null || isDirectEval && (!isStrictMode && parent.function().isGlobal());
         this.inDirectEval = isDirectEval || (parent != null && parent.function() != null && parent.function().inDirectEval());
     }
 
