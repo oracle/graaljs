@@ -65,6 +65,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -646,6 +647,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     private static CallTarget createGetFormatCallTarget(JSRealm realm, JSContext context) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
+            private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -664,7 +667,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     if (state.boundFormatFunction == null) {
                         JSFunctionData formatFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DateTimeFormatFormat, c -> createFormatFunctionData(c));
                         DynamicObject formatFn = JSFunction.create(realm, formatFunctionData);
-                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn), true);
+                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn), true, isAsyncProfile,
+                                        setProtoProfile);
                         state.boundFormatFunction = boundFn;
                     }
 

@@ -57,6 +57,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -273,6 +274,9 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     private static CallTarget createGetCompareCallTarget(JSRealm realm, JSContext context) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
 
+            private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
+            private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
+
             @Override
             public Object execute(VirtualFrame frame) {
 
@@ -298,7 +302,8 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                             compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCompare, c -> createCompareFunctionData(c));
                             compareFn = JSFunction.create(realm, compareFunctionData);
                         }
-                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, compareFn, collatorObj, new Object[]{}, JSObject.getPrototype(compareFn), true);
+                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, compareFn, collatorObj, new Object[]{}, JSObject.getPrototype(compareFn), true, isAsyncProfile,
+                                        setProtoProfile);
                         state.boundCompareFunction = boundFn;
                     }
 
