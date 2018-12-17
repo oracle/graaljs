@@ -115,9 +115,10 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         PropertyDescriptor targetDesc = getOwnProperty((DynamicObject) truffleTarget, propertyKey);
         if (targetDesc != null) {
             if (targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && !targetDesc.getWritable()) {
-                if (!isSameValue(trapResult, targetDesc.getValue())) {
+                Object targetValue = targetDesc.getValue();
+                if (!isSameValue(trapResult, targetValue)) {
                     errorBranch.enter();
-                    throw Errors.createTypeError("Trap result must be the same as the value of the proxy target's corresponding non-writable, non-configurable own data property");
+                    throw Errors.createTypeErrorProxyGetInvariantViolated(propertyKey, targetValue, trapResult);
                 }
             }
             if (targetDesc.isAccessorDescriptor() && !targetDesc.getConfigurable() && targetDesc.getGet() == Undefined.instance) {

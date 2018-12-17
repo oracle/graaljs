@@ -528,6 +528,15 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorProxyGetInvariantViolated(Object propertyKey, Object expectedValue, Object actualValue) {
+        String propertyName = propertyKey.toString();
+        String expected = JSRuntime.safeToString(expectedValue);
+        String actual = JSRuntime.safeToString(actualValue);
+        return createTypeError("'get' on proxy: property '" + propertyName +
+                        "' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value (expected '" + expected + "' but got '" + actual + "')");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorInteropException(TruffleObject receiver, InteropException cause, Message message, Node originatingNode) {
         String reason = cause.getMessage();
         if (reason == null) {
