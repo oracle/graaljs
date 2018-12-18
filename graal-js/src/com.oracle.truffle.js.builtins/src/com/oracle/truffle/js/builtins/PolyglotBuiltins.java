@@ -648,8 +648,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             String languageId = languageIdOrMimeType;
             String mimeType = null;
             if (languageIdOrMimeType.indexOf('/') >= 0) {
-                languageId = Source.findLanguage(languageIdOrMimeType);
-                mimeType = languageIdOrMimeType;
+                String language = Source.findLanguage(languageIdOrMimeType);
+                if (language != null) {
+                    languageId = language;
+                    mimeType = languageIdOrMimeType;
+                }
             }
             return new Pair<>(languageId, mimeType);
         }
