@@ -47,7 +47,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class ConcurrentAccess {
@@ -56,7 +55,6 @@ public class ConcurrentAccess {
      * Concurrent execution of code belonging to the same engine is prevented without
      * entering/leaving the Graal.js context.
      */
-    @Ignore
     @Test(timeout = 30000)
     public void concurrentEvalsNoEnter() {
         final CountDownLatch startGate = new CountDownLatch(1);
@@ -93,7 +91,11 @@ public class ConcurrentAccess {
             t.start();
             startGate.countDown();
             while (!hadException.get()) {
-                code.execute();
+                try {
+                    code.execute();
+                } catch (IllegalStateException e) {
+                    hadException.set(true);
+                }
             }
             endGate.await();
             t.join(10000);
