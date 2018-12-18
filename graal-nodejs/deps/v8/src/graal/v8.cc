@@ -2379,7 +2379,7 @@ namespace v8 {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
         GraalValue* graal_value = reinterpret_cast<GraalValue*> (*value);
         JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_write_value, private_->serializer, graal_value->GetJavaObject());
-        return Just<bool>(true);
+        return graal_isolate->GetJNIEnv()->ExceptionCheck() ? Nothing<bool>() : Just<bool>(true);
     }
 
     void ValueSerializer::SetTreatArrayBufferViewsAsHostObjects(bool mode) {
