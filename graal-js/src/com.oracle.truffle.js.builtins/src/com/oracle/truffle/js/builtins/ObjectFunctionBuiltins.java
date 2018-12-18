@@ -77,6 +77,7 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectValues
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
@@ -243,14 +244,14 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
-        private final JSClassProfile classProfile = JSClassProfile.create();
+        @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
 
         @Specialization
         protected DynamicObject getOwnPropertyDescriptor(Object thisObj, Object propertyKey) {
             TruffleObject tobject = toTruffleObject(thisObj);
             if (JSObject.isJSObject(tobject)) {
                 DynamicObject object = (DynamicObject) tobject;
-                PropertyDescriptor desc = JSObject.getOwnProperty(object, toPropertyKeyNode.execute(propertyKey), classProfile);
+                PropertyDescriptor desc = getOwnPropertyNode.execute(object, toPropertyKeyNode.execute(propertyKey));
                 return JSRuntime.fromPropertyDescriptor(desc, getContext());
             } else {
                 return Undefined.instance;
@@ -260,6 +261,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class ObjectGetOwnPropertyDescriptorsNode extends ObjectOperation {
         private final JSClassProfile classProfile = JSClassProfile.create();
+        @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
 
         public ObjectGetOwnPropertyDescriptorsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -275,7 +277,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 for (Iterator<Object> iterator = Boundaries.iterator(JSObject.ownPropertyKeys(thisObj, classProfile)); Boundaries.iteratorHasNext(iterator);) {
                     Object key = Boundaries.iteratorNext(iterator);
                     assert JSRuntime.isPropertyKey(key);
-                    PropertyDescriptor desc = JSObject.getOwnProperty(thisObj, key, classProfile);
+                    PropertyDescriptor desc = getOwnPropertyNode.execute(thisObj, key);
                     if (desc != null) {
                         DynamicObject propDesc = JSRuntime.fromPropertyDescriptor(desc, getContext());
                         retObj.define(key, propDesc, JSAttributes.configurableEnumerableWritable());
@@ -709,6 +711,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile elementProfile = BranchProfile.create();
         private final JSClassProfile classProfile = JSClassProfile.create();
         private final BranchProfile notAJSObjectBranch = BranchProfile.create();
+        @Child private JSGetOwnPropertyNode getOwnPropertyNode;
 
         public ObjectAssignNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -726,7 +729,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     DynamicObject from = JSRuntime.expectJSObject(toObject(o), notAJSObjectBranch);
                     for (Iterator<Object> iterator = Boundaries.iterator(JSObject.ownPropertyKeys(from, classProfile)); Boundaries.iteratorHasNext(iterator);) {
                         Object nextKey = Boundaries.iteratorNext(iterator);
-                        PropertyDescriptor desc = JSObject.getOwnProperty(from, nextKey, classProfile);
+                        PropertyDescriptor desc = getOwnProperty(from, nextKey);
                         if (desc != null && desc.getEnumerable()) {
                             elementProfile.enter();
                             Object propValue = readAny(from, nextKey);
@@ -736,6 +739,14 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             }
             return to;
+        }
+
+        private PropertyDescriptor getOwnProperty(DynamicObject obj, Object key) {
+            if (getOwnPropertyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getOwnPropertyNode = insert(JSGetOwnPropertyNode.create());
+            }
+            return getOwnPropertyNode.execute(obj, key);
         }
     }
 

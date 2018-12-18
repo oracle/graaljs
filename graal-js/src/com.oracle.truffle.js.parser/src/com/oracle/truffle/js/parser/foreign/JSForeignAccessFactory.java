@@ -60,6 +60,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -404,13 +405,14 @@ public class JSForeignAccessFactory {
 
         @Child protected JSToPropertyKeyNode toKey = JSToPropertyKeyNode.create();
         @Child protected JSForeignToJSTypeNode cast = JSForeignToJSTypeNode.create();
+        @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
 
         public Object access(DynamicObject target, Object key) {
             Object propertyKey = toKey.execute(cast.executeWithTarget(key));
             PropertyDescriptor desc = null;
             boolean isProxy = false;
             for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
-                desc = JSObject.getOwnProperty(proto, propertyKey);
+                desc = getOwnPropertyNode.execute(proto, propertyKey);
                 if (JSProxy.isProxy(proto)) {
                     isProxy = true;
                     break;
