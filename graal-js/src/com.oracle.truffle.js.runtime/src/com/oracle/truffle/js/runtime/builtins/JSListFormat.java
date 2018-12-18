@@ -41,14 +41,16 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.EnumSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 
 import com.ibm.icu.impl.ICUData;
 import com.ibm.icu.impl.ICUResourceBundle;
 import com.ibm.icu.text.ListFormatter;
+import com.ibm.icu.text.SimpleFormatter;
 import com.ibm.icu.util.ULocale;
 import com.ibm.icu.util.UResourceBundle;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -107,7 +109,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
         DynamicObject listFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, listFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, listFormatPrototype, PROTOTYPE_NAME);
-        JSObjectUtil.putDataProperty(ctx, listFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Object", JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putDataProperty(ctx, listFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.ListFormat", JSAttributes.configurableNotEnumerableNotWritable());
         return listFormatPrototype;
     }
 
@@ -141,7 +143,21 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     @TruffleBoundary
     public static void setupInternalListFormatter(InternalState state) {
         state.javaLocale = Locale.forLanguageTag(state.locale);
-        state.listFormatter = createFormatter(state.javaLocale, "standard");
+        String lfStyle = null;
+        if (state.type.equals("conjunction")) {
+            lfStyle = "standard";
+        } else if (state.type.equals("disjunction")) {
+            lfStyle = "or";
+        } else if (state.type.equals("unit")) {
+            if (state.style.equals("narrow")) {
+                lfStyle = "unit-narrow";
+            } else if (state.style.equals("short")) {
+                lfStyle = "unit-short";
+            } else {
+                lfStyle = "unit";
+            }
+        }
+        state.listFormatter = createFormatter(state.javaLocale, lfStyle);
     }
 
     public static ListFormatter getListFormatterProperty(DynamicObject obj) {
@@ -149,23 +165,49 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     }
 
     @TruffleBoundary
-    public static String format(DynamicObject listFormatObj, Object n) {
+    public static String format(DynamicObject listFormatObj, List<String> list) {
+        ensureIsListFormat(listFormatObj);
         ListFormatter listFormatter = getListFormatterProperty(listFormatObj);
-        return listFormatter.format(n);
+        return listFormatter.format(list);
     }
 
     @TruffleBoundary
-    public static String formatToParts(DynamicObject listFormatObj, Object n) {
+    public static DynamicObject formatToParts(JSContext context, DynamicObject listFormatObj, List<String> list) {
+        ensureIsListFormat(listFormatObj);
+        if (list.size() == 0) {
+            return JSArray.createConstant(context, new JSUserObject[]{});
+        }
         ListFormatter listFormatter = getListFormatterProperty(listFormatObj);
-        return listFormatter.format(n);
+        String pattern = listFormatter.getPatternForNumItems(list.size());
+        int[] offsets = new int[list.size()];
+        SimpleFormatter simpleFormatter = SimpleFormatter.compile(pattern);
+        StringBuilder formatted = new StringBuilder();
+        simpleFormatter.formatAndAppend(formatted, offsets, list.toArray(new String[]{}));
+        int i = 0;
+        int idx = 0;
+        List<Object> resultParts = new LinkedList<>();
+        for (String element : list) {
+            int nextOffset = offsets[idx++];
+            if (i < nextOffset) { // literal
+                resultParts.add(IntlUtil.makePart(context, "literal", formatted.substring(i, nextOffset)));
+                i = nextOffset;
+            }
+            if (i == nextOffset) { // element
+                int elemLength = element.length();
+                resultParts.add(IntlUtil.makePart(context, "element", formatted.substring(i, i + elemLength)));
+                i += elemLength;
+            }
+        }
+        if (i < formatted.length()) {
+            resultParts.add(IntlUtil.makePart(context, "literal", formatted.substring(i, formatted.length())));
+        }
+        return JSArray.createConstant(context, resultParts.toArray());
     }
 
     public static class InternalState {
 
         public boolean initialized = false;
         public ListFormatter listFormatter;
-
-        DynamicObject boundCompareFunction = null;
 
         public String locale;
         public Locale javaLocale;
@@ -182,6 +224,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
         }
     }
 
+    // there is currently no way currently to use any style but standard with the non-deprecated API
     @SuppressWarnings("deprecation")
     private static ListFormatter createFormatter(Locale locale, String style) {
         ULocale ulocale = ULocale.forLocale(locale);

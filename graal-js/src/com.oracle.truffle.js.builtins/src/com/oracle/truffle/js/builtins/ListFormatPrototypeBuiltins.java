@@ -41,10 +41,15 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+
+import java.util.List;
+
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.ListFormatPrototypeBuiltinsFactory.JSListFormatResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.ListFormatPrototypeBuiltinsFactory.JSListFormatFormatNodeGen;
 import com.oracle.truffle.js.builtins.ListFormatPrototypeBuiltinsFactory.JSListFormatFormatToPartsNodeGen;
+import com.oracle.truffle.js.nodes.cast.JSStringListFromIterableNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -113,8 +118,10 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = {"isDynamicObject(listFormat)"})
-        public Object doFormatToParts(DynamicObject listFormat, Object value) {
-            return JSListFormat.format(listFormat, value);
+        public String doFormat(DynamicObject listFormat, Object value,
+                        @Cached("create(getContext())") JSStringListFromIterableNode strListFromIterableNode) {
+            List<String> list = strListFromIterableNode.executeIterable(value);
+            return JSListFormat.format(listFormat, list);
         }
 
         @Specialization(guards = "!isDynamicObject(bummer)")
@@ -131,8 +138,10 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = {"isDynamicObject(listFormat)"})
-        public Object doFormatToParts(DynamicObject listFormat, Object value) {
-            return JSListFormat.formatToParts(listFormat, value);
+        public Object doFormatToParts(DynamicObject listFormat, Object value,
+                        @Cached("create(getContext())") JSStringListFromIterableNode strListFromIterableNode) {
+            List<String> list = strListFromIterableNode.executeIterable(value);
+            return JSListFormat.formatToParts(getContext(), listFormat, list);
         }
 
         @Specialization(guards = "!isDynamicObject(bummer)")

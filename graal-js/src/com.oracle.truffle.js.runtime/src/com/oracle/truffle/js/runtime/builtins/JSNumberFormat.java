@@ -565,7 +565,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                             type = fieldToType.get(a);
                             assert type != null;
                         }
-                        resultParts.add(makePart(context, type, value));
+                        resultParts.add(IntlUtil.makePart(context, type, value));
                         i = fit.getRunLimit();
                         break;
                     } else {
@@ -574,7 +574,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 }
             } else {
                 String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
-                resultParts.add(makePart(context, "literal", value));
+                resultParts.add(IntlUtil.makePart(context, "literal", value));
                 i = fit.getRunLimit();
             }
         }
@@ -595,13 +595,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         } else {
             throw Errors.shouldNotReachHere();
         }
-    }
-
-    private static Object makePart(JSContext context, String type, String value) {
-        DynamicObject p = JSUserObject.create(context);
-        JSObject.set(p, "type", type);
-        JSObject.set(p, "value", value);
-        return p;
     }
 
     public static class BasicInternalState {
