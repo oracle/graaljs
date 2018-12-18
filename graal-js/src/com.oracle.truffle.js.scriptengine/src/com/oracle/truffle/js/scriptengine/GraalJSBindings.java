@@ -50,7 +50,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 
-final class GraalJSBindings extends AbstractMap<String, Object> implements Bindings {
+final class GraalJSBindings extends AbstractMap<String, Object> implements Bindings, AutoCloseable {
 
     private static final TypeLiteral<Map<String, Object>> STRING_MAP = new TypeLiteral<Map<String, Object>>() {
     };
@@ -110,4 +110,8 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
         return global.entrySet();
     }
 
+    @Override
+    public void close() {
+        context.close();
+    }
 }
