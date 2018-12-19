@@ -116,8 +116,7 @@ EXPORT_TO_JS(FrameGetScriptName) {
 EXPORT_TO_JS(FrameGetScriptId) {
     Local<StackTrace> trace = createStackTrace(args);
     Local<StackFrame> frame = trace->GetFrame(0);
-    //int id = frame->GetScriptId(); //TODO not available currently
-    int id = -frame->GetLineNumber(); //negative number, ensures we fail
+    int id = frame->GetScriptId();
     args.GetReturnValue().Set(id);
 }
 

@@ -70,3 +70,8 @@ v8::Local<v8::String> GraalStackFrame::GetFunctionName() const {
     GraalString* graal_function_name = new GraalString(Isolate(), (jstring) function_name);
     return reinterpret_cast<v8::String*> (graal_function_name);
 }
+
+bool GraalStackFrame::IsEval() const {
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::stack_frame_is_eval, Boolean, GetJavaObject());
+    return result;
+}

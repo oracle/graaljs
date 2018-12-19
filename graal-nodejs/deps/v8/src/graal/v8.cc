@@ -1404,8 +1404,7 @@ namespace v8 {
     }
 
     bool StackFrame::IsEval() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalStackFrame*> (this)->IsEval();
     }
 
     int StackTrace::GetFrameCount() const {
@@ -1427,8 +1426,11 @@ namespace v8 {
     }
 
     bool String::IsOneByte() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalString*> (this)->ContainsOnlyOneByte();
+    }
+
+    bool String::ContainsOnlyOneByte() const {
+        return reinterpret_cast<const GraalString*> (this)->ContainsOnlyOneByte();
     }
 
     int String::Length() const {

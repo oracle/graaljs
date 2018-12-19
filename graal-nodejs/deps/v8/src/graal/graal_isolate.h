@@ -252,6 +252,7 @@ enum GraalAccessMethod {
     stack_frame_get_column,
     stack_frame_get_script_name,
     stack_frame_get_function_name,
+    stack_frame_is_eval,
     make_weak,
     clear_weak,
     string_external_resource_callback,

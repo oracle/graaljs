@@ -2065,6 +2065,11 @@ public final class GraalJSAccess {
         return element.getFunctionName();
     }
 
+    public boolean stackFrameIsEval(Object stackFrame) {
+        GraalJSException.JSStackTraceElement element = (GraalJSException.JSStackTraceElement) stackFrame;
+        return element.isEval();
+    }
+
     /**
      * Key for a weak callback.
      */

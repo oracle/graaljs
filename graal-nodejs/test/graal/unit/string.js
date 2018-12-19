@@ -118,7 +118,7 @@ describe('String', function () {
             assert.strictEqual(module.String_IsExternalOneByte(""), false);
         });
     });
-    describe.skip('IsOneByte', function () {
+    describe('IsOneByte', function () {
         it('should return true for ""', function () {
             assert.strictEqual(module.String_IsOneByte(""), true);
         });
