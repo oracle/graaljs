@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -229,7 +228,7 @@ public abstract class JSClass extends ObjectType {
         if (JSRuntime.isObject(object)) {
             Object toStringTag = JSObject.get(object, Symbol.SYMBOL_TO_STRING_TAG);
             if (JSRuntime.isString(toStringTag)) {
-                result = Boundaries.javaToString(toStringTag);
+                result = JSRuntime.toStringIsString(toStringTag);
             }
         }
         if (result == null) {

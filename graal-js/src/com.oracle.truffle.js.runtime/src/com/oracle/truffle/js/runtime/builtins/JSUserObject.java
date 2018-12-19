@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -119,7 +118,7 @@ public final class JSUserObject extends JSBuiltinObject implements PrototypeSupp
         if (context.getEcmaScriptVersion() <= 5) {
             Object toStringTag = get(object, Symbol.SYMBOL_TO_STRING_TAG);
             if (JSRuntime.isString(toStringTag)) {
-                return Boundaries.javaToString(toStringTag);
+                return JSRuntime.toStringIsString(toStringTag);
             }
         }
         return CLASS_NAME;

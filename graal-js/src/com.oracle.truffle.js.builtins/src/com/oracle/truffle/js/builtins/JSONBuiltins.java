@@ -231,7 +231,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                 Object v = JSObject.get(replacerObj, JSRuntime.toString(i));
                 String item = "";
                 if (JSRuntime.isString(v)) {
-                    item = Boundaries.javaToString(v);
+                    item = JSRuntime.toStringIsString(v);
                 } else if (JSRuntime.isNumber(v) || JSNumber.isJSNumber(v) || JSString.isJSString(v)) {
                     item = toString(v);
                 }
@@ -272,7 +272,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                 gap = makeGap(newSpace);
             } else if (JSRuntime.isString(space)) {
                 spaceIsStringBranch.enter();
-                gap = makeGap(Boundaries.javaToString(space));
+                gap = makeGap(JSRuntime.toStringIsString(space));
             } else {
                 gap = "";
             }

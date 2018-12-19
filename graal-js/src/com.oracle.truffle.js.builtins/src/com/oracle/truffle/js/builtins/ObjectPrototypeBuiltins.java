@@ -70,7 +70,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -279,7 +278,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (getContext().getEcmaScriptVersion() >= 6) {
                 Object toStringTag = getStringTagNode.getValue(thisObj);
                 if (JSRuntime.isString(toStringTag)) {
-                    return Boundaries.javaToString(toStringTag);
+                    return JSRuntime.toStringIsString(toStringTag);
                 }
             }
             return null;
