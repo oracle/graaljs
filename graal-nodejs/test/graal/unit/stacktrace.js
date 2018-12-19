@@ -102,10 +102,9 @@ describe('StackFrame', function () {
             assert.strictEqual(isEval, true);
         });
     });
-    describe.skip('GetScriptId', function () { //not supported by our v8.h
+    describe.skipOnGraal('GetScriptId', function () {
         it('should return an integer', function () {
             var id = module.StackTrace_FrameGetScriptId();
-            console.log(id);
             assert.strictEqual(typeof id, "number");
             assert.strictEqual(id > 0, true);
         });
