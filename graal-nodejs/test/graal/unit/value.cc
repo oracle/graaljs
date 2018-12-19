@@ -362,7 +362,11 @@ EXPORT_TO_JS(ToBoolean) {
 EXPORT_TO_JS(ToNumber) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
-    args.GetReturnValue().Set(args[0]->ToNumber(context).ToLocalChecked());
+    MaybeLocal<Number> number = args[0]->ToNumber(context);
+    if (number.IsEmpty()) {
+        return;
+    }
+    args.GetReturnValue().Set(number.ToLocalChecked());
 }
 
 EXPORT_TO_JS(ToString) {
@@ -376,13 +380,13 @@ EXPORT_TO_JS(ToInteger) {
 EXPORT_TO_JS(ToUint32) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
-    args.GetReturnValue().Set(args[0]->ToUint32(context).ToLocalChecked());
+    args.GetReturnValue().Set(args[0]->ToUint32(context).ToLocalChecked()->Value());
 }
 
 EXPORT_TO_JS(ToInt32) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
-    args.GetReturnValue().Set(args[0]->ToInt32(context).ToLocalChecked());
+    args.GetReturnValue().Set(args[0]->ToInt32(context).ToLocalChecked()->Value());
 }
 
 EXPORT_TO_JS(ToArrayIndex) {

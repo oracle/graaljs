@@ -765,7 +765,7 @@ describe('Value - To*()', function () {
             assert.strictEqual(module.Value_ToNumber("3.1415"), 3.1415);
             assert.strictEqual(module.Value_ToNumber("-123456789"), -123456789);
         });
-        it.skip('should throw for symbol input', function () { //requires ECMAScript 2015
+        it('should throw for symbol input', function () {
             assert.throws(function () {
                 module.Value_ToNumber(Symbol("test"));
             }, TypeError);
@@ -858,9 +858,9 @@ describe('Value - To*()', function () {
             assert.strictEqual(module.Value_ToUint32(two32), 0);
             assert.strictEqual(module.Value_ToUint32(two32 + 1), 1);
         });
-        it.skip('should convert outside range (failing on Node 6.2.2)', function () {
+        it('should convert outside range', function () {
             var two32 = Math.pow(2, 32);
-            assert.strictEqual(module.Value_ToUint32(-1), two32 - 1); //node 6.2.2 off spec?
+            assert.strictEqual(module.Value_ToUint32(-1), two32 - 1);
             assert.strictEqual(module.Value_ToUint32(-2), two32 - 2);
         });
     });
