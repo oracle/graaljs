@@ -4,6 +4,7 @@ This changelog summarizes major changes between GraalVM versions of the Graal Ja
 The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC11
+* Graal.js only supports ECMAScript 5 (ES5) and newer, and enforces that rule.
 * Added option `js.disable-eval` to enable eval() and similar methods of dynamic code evaluation (enabled by default, set to `false` to disable).
 * Added option `js.disable-with` to enable the with statement (enabled by default, set to `false` to disable).
 * Instrumentation: Extended inline parsing to support statements.
