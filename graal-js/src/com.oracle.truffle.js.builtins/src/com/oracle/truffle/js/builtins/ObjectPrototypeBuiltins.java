@@ -51,6 +51,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.FormatCacheNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeDefineGetterOrSetterNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeHasOwnPropertyNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeIsPrototypeOfNodeGen;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectProto
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeToStringNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeValueOfNodeGen;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -268,10 +270,14 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Child private PropertyGetNode getStringTagNode;
+        @Child private FormatCacheNode formatCacheNode;
 
-        @TruffleBoundary
-        private static String formatString(String name) {
-            return "[object " + name + "]";
+        private String formatString(String name) {
+            if (formatCacheNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                formatCacheNode = insert(FormatCacheNode.create());
+            }
+            return formatCacheNode.execute(name);
         }
 
         private String getToStringTag(DynamicObject thisObj) {
@@ -362,6 +368,29 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected String doObject(Object thisObj) {
             assert thisObj != null;
             return JSObject.defaultToString(toObject(thisObj));
+        }
+    }
+
+    public abstract static class FormatCacheNode extends JavaScriptBaseNode {
+
+        public abstract String execute(String name);
+
+        public static FormatCacheNode create() {
+            return FormatCacheNodeGen.create();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"cachedName.equals(name)"}, limit = "10")
+        protected String executeCached(String name,
+                        @Cached("name") String cachedName,
+                        @Cached("executeUncached(name)") String cachedResult) {
+            return cachedResult;
+        }
+
+        @TruffleBoundary
+        @Specialization
+        protected String executeUncached(String name) {
+            return "[object " + name + "]";
         }
     }
 
