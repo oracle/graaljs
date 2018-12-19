@@ -1404,8 +1404,7 @@ namespace v8 {
     }
 
     bool StackFrame::IsEval() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalStackFrame*> (this)->IsEval();
     }
 
     int StackTrace::GetFrameCount() const {

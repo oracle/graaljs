@@ -97,7 +97,7 @@ describe('StackFrame', function () {
             var isEval = module.StackTrace_FrameIsEval(thrower);
             assert.strictEqual(isEval, false);
         });
-        it.skip('should be inside eval', function () { //never returns true for any frame, on Node.js
+        it('should be inside eval', function () { //never returns true for any frame, on Node.js
             var isEval = eval("function test() { return module.StackTrace_FrameIsEval(); }; test();");
             assert.strictEqual(isEval, true);
         });

@@ -682,6 +682,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::stack_frame_get_column, "stackFrameGetColumn", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::stack_frame_get_script_name, "stackFrameGetScriptName", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::stack_frame_get_function_name, "stackFrameGetFunctionName", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::stack_frame_is_eval, "stackFrameIsEval", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::make_weak, "makeWeak", "(Ljava/lang/Object;JJJI)V")
     ACCESS_METHOD(GraalAccessMethod::clear_weak, "clearWeak", "(Ljava/lang/Object;J)J")
     ACCESS_METHOD(GraalAccessMethod::string_external_resource_callback, "stringExternalResourceCallback", "(Ljava/lang/Object;JJ)V")
