@@ -483,3 +483,19 @@ v8::Local<v8::String> GraalString::NewExternal(v8::Isolate* isolate, v8::String:
     }
     return result;
 }
+
+bool GraalString::ContainsOnlyOneByte() const {
+    jstring java_string = (jstring) GetJavaObject();
+    JNIEnv* env = Isolate()->GetJNIEnv();
+    int length = env->GetStringLength(java_string);
+    const jchar* data = env->GetStringCritical(java_string, nullptr);
+    bool onlyOneByte = true;
+    for (int i = 0; i < length; i++) {
+        if (data[i] >= 256) {
+            onlyOneByte = false;
+            break;
+        }
+    }
+    env->ReleaseStringCritical(java_string, data);
+    return onlyOneByte;
+}

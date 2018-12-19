@@ -1426,8 +1426,11 @@ namespace v8 {
     }
 
     bool String::IsOneByte() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalString*> (this)->ContainsOnlyOneByte();
+    }
+
+    bool String::ContainsOnlyOneByte() const {
+        return reinterpret_cast<const GraalString*> (this)->ContainsOnlyOneByte();
     }
 
     int String::Length() const {
