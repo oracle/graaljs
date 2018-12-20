@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -52,7 +53,6 @@ import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
-import com.oracle.truffle.js.nodes.cast.JSStringListFromIterableNodeGen;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -80,8 +80,9 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isString(s)"})
-    protected static List<String> stringToList(String s) {
-        int[] codePoints = s.codePoints().toArray();
+    @TruffleBoundary
+    protected static List<String> stringToList(Object s) {
+        int[] codePoints = JSRuntime.toStringIsString(s).codePoints().toArray();
         int length = codePoints.length;
         List<String> result = new ArrayList<>(length);
         for (int i = 0; i < length; i++) {

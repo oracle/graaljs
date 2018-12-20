@@ -96,7 +96,7 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
 
             if ("narrow".equals(optStyle) && !"unit".equals(optType)) {
                 throw Errors.createRangeError(
-                        "When style is 'narrow', 'unit' is the only allowed value for the type option.", this);
+                                "When style is 'narrow', 'unit' is the only allowed value for the type option.", this);
             }
 
             state.initialized = true;
