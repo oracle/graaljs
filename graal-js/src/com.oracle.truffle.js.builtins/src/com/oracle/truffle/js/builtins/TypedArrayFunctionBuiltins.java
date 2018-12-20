@@ -100,7 +100,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         protected DynamicObject arrayOf(Object thisObj, Object... args) {
             if (!isTypedArrayConstructor(thisObj)) {
-                throw Errors.createTypeErrorConstructorExpected();
+                throw Errors.createTypeErrorNotAConstructor(thisObj);
             }
             int len = args.length;
             DynamicObject newObj = getArraySpeciesConstructorNode().typedArrayCreate((DynamicObject) thisObj, len);
@@ -130,7 +130,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
             Object thisArg = JSRuntime.getArgOrUndefined(args, 2);
 
             if (!JSFunction.isConstructor(thisObj)) {
-                throw Errors.createTypeErrorConstructorExpected();
+                throw Errors.createTypeErrorNotAConstructor(thisObj);
             }
             return arrayFromIntl(thisObj, source, mapFn, thisArg, false);
         }

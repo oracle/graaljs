@@ -508,7 +508,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             if (!isConstructorNode.executeBoolean(ctor)) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorConstructorExpected();
+                throw Errors.createTypeErrorNotAConstructor(ctor);
             }
             return construct((DynamicObject) ctor, JSRuntime.longToIntOrDouble(length));
         }
@@ -558,7 +558,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             if (!isConstructorNode.executeBoolean(speciesConstructor)) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorConstructorExpected();
+                throw Errors.createTypeErrorNotAConstructor(speciesConstructor);
             }
             return (DynamicObject) speciesConstructor;
         }

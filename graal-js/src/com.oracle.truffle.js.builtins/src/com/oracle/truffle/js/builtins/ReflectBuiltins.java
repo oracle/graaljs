@@ -231,7 +231,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             ensureObject(obj);
             DynamicObject constrObj = (DynamicObject) (obj);
             if (!JSRuntime.isConstructor(constrObj)) {
-                throw Errors.createTypeErrorConstructorExpected();
+                throw Errors.createTypeErrorNotAConstructor(constrObj);
             }
         }
     }
