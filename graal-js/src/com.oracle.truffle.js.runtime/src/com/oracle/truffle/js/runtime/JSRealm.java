@@ -239,6 +239,8 @@ public class JSRealm {
 
     private final DynamicObject globalScope;
 
+    private DynamicObject scriptEngineImportScope;
+
     private TruffleLanguage.Env truffleLanguageEnv;
 
     /**
@@ -294,6 +296,9 @@ public class JSRealm {
 
         this.globalObject = JSGlobalObject.create(this, objectPrototype);
         this.globalScope = JSObject.createInit(context.getGlobalScopeShape());
+        if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
+            this.scriptEngineImportScope = JSObject.createInit(context.createEmptyShape());
+        }
 
         this.objectConstructor = createObjectConstructor(this, objectPrototype);
         JSObjectUtil.putDataProperty(context, this.objectPrototype, JSObject.CONSTRUCTOR, objectConstructor, JSAttributes.getDefaultNotEnumerable());
@@ -789,6 +794,10 @@ public class JSRealm {
         if (context.isOptionNashornCompatibilityMode()) {
             initGlobalNashornExtensions(global);
         }
+        if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
+            JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
+                            lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
+        }
         setupPolyglot(global);
         if (isJavaInteropAvailable()) {
             setupJavaInterop(global);
@@ -1085,6 +1094,10 @@ public class JSRealm {
         return globalScope;
     }
 
+    public DynamicObject getScriptEngineImportScope() {
+        return scriptEngineImportScope;
+    }
+
     /**
      * Adds several objects to the global object, in case scripting mode is enabled (for Nashorn
      * compatibility). This includes an {@code $OPTIONS} property that exposes several options to
@@ -1367,5 +1380,4 @@ public class JSRealm {
         }
         return consoleUtil;
     }
-
 }

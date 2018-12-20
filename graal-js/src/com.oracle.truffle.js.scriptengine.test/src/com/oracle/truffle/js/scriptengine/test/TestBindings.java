@@ -51,6 +51,7 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.script.SimpleBindings;
 
+import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
 import org.junit.Test;
 
 public class TestBindings {
@@ -80,6 +81,39 @@ public class TestBindings {
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put(varName, defaultVarValue);
         boolean result = (boolean) engine.eval(varName + " === '" + defaultVarValue + "';");
+        assertTrue(result);
+    }
+
+    @Test
+    public void bindingsPutGlobal() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        bindings.put(varName, defaultVarValue);
+        boolean result = (boolean) engine.eval(varName + " === '" + defaultVarValue + "';");
+        assertTrue(result);
+    }
+
+    @Test
+    public void bindingsUpdateGlobal() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        bindings.put(varName, defaultVarValue);
+        boolean result = (boolean) engine.eval(varName + " === '" + defaultVarValue + "';");
+        assertTrue(result);
+        bindings.put(varName, updatedVarValue);
+        result = (boolean) engine.eval(varName + " === '" + updatedVarValue + "';");
+        assertTrue(result);
+    }
+
+    @Test
+    public void bindingsRemoveGlobal() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        bindings.put(varName, defaultVarValue);
+        boolean result = (boolean) engine.eval(varName + " === '" + defaultVarValue + "';");
+        assertTrue(result);
+        bindings.remove(varName);
+        result = (boolean) engine.eval("typeof " + varName + " === 'undefined';");
         assertTrue(result);
     }
 
@@ -244,5 +278,25 @@ public class TestBindings {
         engine.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
         assertEquals(defaultArgs[0], engine.eval(argsName + "[0];"));
         assertEquals(defaultArgs[1], engine.eval(argsName + "[1];"));
+    }
+
+    @Test
+    public void importFunctionInvisible() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        boolean result = (boolean) engine.eval("typeof " + GraalJSScriptEngine.SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME + " === 'undefined';");
+        assertTrue(result);
+    }
+
+    @Test
+    public void importFunctionOverwrite() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put(GraalJSScriptEngine.SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME, defaultVarValue);
+        Bindings globalBindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        globalBindings.put(varName, defaultVarValue);
+        boolean result = (boolean) engine.eval(GraalJSScriptEngine.SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME + " === '" + defaultVarValue + "';");
+        assertTrue(result);
+        result = (boolean) engine.eval(varName + " === '" + defaultVarValue + "';");
+        assertTrue(result);
     }
 }

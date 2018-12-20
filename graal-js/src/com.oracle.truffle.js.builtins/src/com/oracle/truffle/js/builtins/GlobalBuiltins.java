@@ -68,7 +68,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -80,6 +86,7 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.GlobalScriptingEXECN
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalDecodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalEncodeURINodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalExitNodeGen;
+import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalImportScriptEngineGlobalBindingsNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalIndirectEvalNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalIsFiniteNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalIsNaNNodeGen;
@@ -129,7 +136,10 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSURLDecoder;
 import com.oracle.truffle.js.runtime.builtins.JSURLEncoder;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
@@ -276,7 +286,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             readLine(1),
             readFully(1),
             exec(1), // $EXEC
-            parseToJSON(3);
+            parseToJSON(3),
+            importScriptEngineGlobalBindings(1);
 
             private final int length;
 
@@ -300,11 +311,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     return JSGlobalReadLineNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readFully:
                     return JSGlobalReadFullyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-
                 case parseToJSON:
                     return GlobalNashornExtensionParseToJSONNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
                 case exec:
                     return GlobalScriptingEXECNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                case importScriptEngineGlobalBindings:
+                    return JSGlobalImportScriptEngineGlobalBindingsNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
             }
             return null;
         }
@@ -1441,6 +1453,97 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return arrayBuffer;
             } catch (Exception ex) {
                 throw Errors.createErrorFromException(ex);
+            }
+        }
+    }
+
+    /**
+     * Non-standard import helper function for support of global scope bindings in
+     * GraalJSScriptEngine.
+     */
+    abstract static class JSGlobalImportScriptEngineGlobalBindingsNode extends JSBuiltinNode {
+
+        @Child private Node invokeKeySetNode = Message.INVOKE.createNode();
+        @Child private Node invokeIteratorNode = Message.INVOKE.createNode();
+        @Child private Node invokeHasNextNode = Message.INVOKE.createNode();
+        @Child private Node invokeNextNode = Message.INVOKE.createNode();
+
+        JSGlobalImportScriptEngineGlobalBindingsNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        final Object importGlobalContext(TruffleObject globalContextBindings) {
+            try {
+                DynamicObject globalObject = getContext().getRealm().getGlobalObject();
+                Object keys = ForeignAccess.sendInvoke(invokeKeySetNode, globalContextBindings, "keySet");
+                if (!(keys instanceof TruffleObject)) {
+                    throw Errors.shouldNotReachHere();
+                }
+                Object iterator = ForeignAccess.sendInvoke(invokeIteratorNode, (TruffleObject) keys, "iterator");
+                if (!(iterator instanceof TruffleObject)) {
+                    throw Errors.shouldNotReachHere();
+                }
+                while (hasNext((TruffleObject) iterator)) {
+                    Object key = ForeignAccess.sendInvoke(invokeNextNode, (TruffleObject) iterator, "next");
+                    if (!(key instanceof String)) {
+                        throw Errors.shouldNotReachHere();
+                    }
+                    if (!globalObject.getShape().hasProperty(key) && !JSObject.getPrototype(globalObject).getShape().hasProperty(key)) {
+                        JSObjectUtil.defineProxyProperty(globalObject, key, new ScriptEngineGlobalScopeBindingsPropertyProxy(globalContextBindings, key), JSAttributes.getDefault());
+                    }
+                }
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw Errors.shouldNotReachHere();
+            }
+            return null;
+        }
+
+        private boolean hasNext(TruffleObject iterator) throws UnsupportedTypeException, ArityException, UnknownIdentifierException, UnsupportedMessageException {
+            Object hasNext = ForeignAccess.sendInvoke(invokeHasNextNode, iterator, "hasNext");
+            if (!(hasNext instanceof Boolean)) {
+                throw Errors.shouldNotReachHere();
+            }
+            return (boolean) hasNext;
+        }
+
+        // for legacy NashornJavaInterop mode
+        @Specialization
+        @SuppressWarnings("unchecked")
+        final Object importGlobalContextJavaLangObject(Object globalContextBindings) {
+            return importGlobalContext((TruffleObject) getContext().getRealm().getEnv().asGuestValue(globalContextBindings));
+        }
+
+        private static class ScriptEngineGlobalScopeBindingsPropertyProxy implements PropertyProxy {
+
+            private static final Node SLOW_INVOKE_NODE = Message.INVOKE.createNode();
+            private static final Node SLOW_IS_NULL_NODE = Message.IS_NULL.createNode();
+            private final TruffleObject globalContextBindings;
+            private final Object key;
+
+            ScriptEngineGlobalScopeBindingsPropertyProxy(TruffleObject globalContextBindings, Object key) {
+                this.globalContextBindings = globalContextBindings;
+                this.key = key;
+            }
+
+            @Override
+            @TruffleBoundary
+            public Object get(DynamicObject store) {
+                try {
+                    Object value = ForeignAccess.sendInvoke(SLOW_INVOKE_NODE, globalContextBindings, "get", key);
+                    if (value instanceof TruffleObject && ForeignAccess.sendIsNull(SLOW_IS_NULL_NODE, (TruffleObject) value)) {
+                        return Undefined.instance;
+                    }
+                    return value;
+                } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
+                    throw Errors.shouldNotReachHere();
+                }
+            }
+
+            @Override
+            public boolean set(DynamicObject store, Object value) {
+                JSObjectUtil.defineDataProperty(store, key, value, JSAttributes.getDefault());
+                return true;
             }
         }
     }
