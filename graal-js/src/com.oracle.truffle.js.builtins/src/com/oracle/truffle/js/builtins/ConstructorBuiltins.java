@@ -293,7 +293,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         public boolean isNewTargetConstructor() {
-            return EnumSet.range(Array, SharedArrayBuffer).contains(this);
+            return EnumSet.range(Array, AsyncGeneratorFunction).contains(this);
         }
 
         @Override
