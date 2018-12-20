@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.cast.JSStringListFromIterableNodeGen;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -111,7 +112,7 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
                     iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
                     throw Errors.createTypeError("nonString value encountered!");
                 }
-                list.add(JSRuntime.toString(nextValue));
+                Boundaries.listAdd(list, JSRuntime.toString(nextValue));
             }
         }
         return list;
