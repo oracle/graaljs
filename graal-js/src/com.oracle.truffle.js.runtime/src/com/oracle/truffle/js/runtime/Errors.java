@@ -134,6 +134,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotAConstructor(Object object) {
+        return createTypeErrorNotAConstructor(object, null);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNotAConstructor(Object object, Node originatingNode) {
         return JSException.create(JSErrorType.TypeError, String.format("%s is not a constructor", JSRuntime.safeToString(object)), originatingNode);
     }
@@ -401,11 +406,6 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorCallableExpected() {
         return Errors.createTypeError("Callable expected");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorConstructorExpected() {
-        return Errors.createTypeError("Constructor expected");
     }
 
     @TruffleBoundary
