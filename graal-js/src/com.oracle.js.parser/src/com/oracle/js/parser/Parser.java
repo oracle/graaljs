@@ -3685,13 +3685,15 @@ loop:
         Expression lhs = memberExpression(yield, await);
 
         if (type == LPAREN) {
-            final List<Expression> arguments = optimizeList(argumentList(yield, await));
+            final boolean inPatternPosition = ES8_ASYNC_FUNCTION && isES8() && lhs.isTokenType(ASYNC);
+
+            final List<Expression> arguments = optimizeList(argumentList(yield, await, inPatternPosition));
 
             // Catch special functions.
             if (lhs instanceof IdentNode) {
                 // async () => ...
                 // async ( ArgumentsList ) => ...
-                if (ES8_ASYNC_FUNCTION && isES8() && lhs.isTokenType(ASYNC) && type == ARROW && checkNoLineTerminator()) {
+                if (inPatternPosition && type == ARROW && checkNoLineTerminator()) {
                     return new ExpressionList(callToken, callLine, arguments);
                 }
 
@@ -3710,7 +3712,7 @@ loop:
             switch (type) {
             case LPAREN: {
                 // Get NEW or FUNCTION arguments.
-                final List<Expression> arguments = optimizeList(argumentList(yield, await));
+                final List<Expression> arguments = optimizeList(argumentList(yield, await, false));
 
                 // Create call node.
                 lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
@@ -3798,7 +3800,7 @@ loop:
 
         // Allow for missing arguments.
         if (type == LPAREN) {
-            arguments = argumentList(yield, await);
+            arguments = argumentList(yield, await, false);
         } else {
             arguments = new ArrayList<>();
         }
@@ -3985,7 +3987,7 @@ loop:
      *
      * @return Argument list.
      */
-    private ArrayList<Expression> argumentList(boolean yield, boolean await) {
+    private ArrayList<Expression> argumentList(boolean yield, boolean await, boolean inPatternPosition) {
         // Prepare to accumulate list of arguments.
         final ArrayList<Expression> nodeList = new ArrayList<>();
         // LPAREN tested in caller.
@@ -4013,7 +4015,7 @@ loop:
             }
 
             // Get argument expression.
-            Expression expression = assignmentExpression(true, yield, await);
+            Expression expression = assignmentExpression(true, yield, await, inPatternPosition);
             if (spreadToken != 0) {
                 expression = new UnaryNode(Token.recast(spreadToken, TokenType.SPREAD_ARGUMENT), expression);
             }
