@@ -10,6 +10,10 @@
 -->
 <module name="Checker">
   <property name="severity" value="warning"/>
+  <module name="SuppressionFilter">
+    <property name="file" value="src/com.oracle.truffle.js.runtime/.checkstyle_suppressions.xml"/>
+    <property name="optional" value="false"/>
+  </module>
   <module name="TreeWalker">
     <property name="tabWidth" value="4"/>
     <module name="JavadocStyle">
