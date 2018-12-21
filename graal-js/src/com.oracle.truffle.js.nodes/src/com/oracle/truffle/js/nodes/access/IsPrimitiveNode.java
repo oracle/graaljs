@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.nodes.JSGuards.isNumber;
 import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -54,7 +53,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-@ReportPolymorphism
 public abstract class IsPrimitiveNode extends JavaScriptBaseNode {
 
     protected static final int MAX_CLASSES = 3;

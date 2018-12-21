@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.unary;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -67,7 +66,6 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
  *
  */
 @ImportStatic(JSInteropUtil.class)
-@ReportPolymorphism
 public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     protected static final int MAX_SHAPE_COUNT = 1;
     protected static final int MAX_TYPE_COUNT = 1;
