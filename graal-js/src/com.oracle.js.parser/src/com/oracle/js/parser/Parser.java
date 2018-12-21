@@ -3685,17 +3685,29 @@ loop:
         Expression lhs = memberExpression(yield, await);
 
         if (type == LPAREN) {
-            final List<Expression> arguments = optimizeList(argumentList(yield, await));
+            boolean async = ES8_ASYNC_FUNCTION && isES8() && lhs.isTokenType(ASYNC);
+            final List<Expression> arguments = optimizeList(argumentList(yield, await, async));
 
             // Catch special functions.
             if (lhs instanceof IdentNode) {
-                // async () => ...
-                // async ( ArgumentsList ) => ...
-                if (ES8_ASYNC_FUNCTION && isES8() && lhs.isTokenType(ASYNC) && type == ARROW && checkNoLineTerminator()) {
-                    return new ExpressionList(callToken, callLine, arguments);
-                }
+                detectSpecialFunction((IdentNode) lhs);
+            }
 
-                detectSpecialFunction((IdentNode)lhs);
+            if (async) {
+                if (type == ARROW && checkNoLineTerminator()) {
+                    // async () => ...
+                    // async ( ArgumentsList ) => ...
+                    return new ExpressionList(callToken, callLine, arguments);
+                } else {
+                    // invocation of a function named 'async'
+                    for (Expression argument : arguments) {
+                        if (hasCoverInitializedName(argument)) {
+                            // would be thrown by assignmentExpression() if we knew that
+                            // we are parsing arguments (and not arrow parameter list)
+                            throw error(AbstractParser.message("invalid.property.initializer"));
+                        }
+                    }
+                }
             }
 
             lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
@@ -3970,6 +3982,10 @@ loop:
         return lhs;
     }
 
+    private ArrayList<Expression> argumentList(boolean yield, boolean await) {
+        return argumentList(yield, await, false);
+    }
+
     /**
      * Parse function call arguments.
      *
@@ -3985,7 +4001,7 @@ loop:
      *
      * @return Argument list.
      */
-    private ArrayList<Expression> argumentList(boolean yield, boolean await) {
+    private ArrayList<Expression> argumentList(boolean yield, boolean await, boolean inPatternPosition) {
         // Prepare to accumulate list of arguments.
         final ArrayList<Expression> nodeList = new ArrayList<>();
         // LPAREN tested in caller.
@@ -4013,7 +4029,7 @@ loop:
             }
 
             // Get argument expression.
-            Expression expression = assignmentExpression(true, yield, await);
+            Expression expression = assignmentExpression(true, yield, await, inPatternPosition);
             if (spreadToken != 0) {
                 expression = new UnaryNode(Token.recast(spreadToken, TokenType.SPREAD_ARGUMENT), expression);
             }
