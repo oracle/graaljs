@@ -40,32 +40,51 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
-import com.oracle.truffle.api.dsl.Specialization;
+import java.util.Set;
+
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 
-public abstract class IsIdenticalUndefinedNode extends IsIdenticalBaseNode {
+public abstract class IsIdenticalBaseNode extends JSUnaryNode {
 
-    protected IsIdenticalUndefinedNode(JavaScriptNode operand, boolean leftConstant) {
-        super(operand, leftConstant);
+    protected final boolean leftConstant;
+
+    public IsIdenticalBaseNode(JavaScriptNode operand, boolean leftConstant) {
+        super(operand);
+        this.leftConstant = leftConstant;
     }
 
-    @Specialization
-    protected boolean doDynamicObject(Object a) {
-        return a == Undefined.instance;
-    }
+    protected abstract Object getConstantValue();
 
-    public static IsIdenticalUndefinedNode create(JavaScriptNode operand, boolean leftConstant) {
-        return IsIdenticalUndefinedNodeGen.create(operand, leftConstant);
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == BinaryExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(getOperand()), leftConstant);
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(BinaryExpressionTag.class)) {
+            JSConstantNode constantNode = JSConstantNode.create(getConstantValue());
+            JavaScriptNode materialized;
+            if (leftConstant) {
+                materialized = JSIdenticalNode.createUnoptimized(constantNode, getOperand());
+            } else {
+                materialized = JSIdenticalNode.createUnoptimized(getOperand(), constantNode);
+            }
+            transferSourceSectionAddExpressionTag(this, constantNode);
+            transferSourceSectionAndTags(this, materialized);
+            return materialized;
+        } else {
+            return this;
+        }
     }
 
-    @Override
-    protected Object getConstantValue() {
-        return Undefined.instance;
-    }
 }

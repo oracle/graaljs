@@ -47,12 +47,12 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
-public abstract class IsIdenticalStringNode extends JSUnaryNode {
+public abstract class IsIdenticalStringNode extends IsIdenticalBaseNode {
 
     private final String string;
 
-    protected IsIdenticalStringNode(String string, JavaScriptNode operand) {
-        super(operand);
+    protected IsIdenticalStringNode(String string, JavaScriptNode operand, boolean leftConstant) {
+        super(operand, leftConstant);
         this.string = string;
     }
 
@@ -72,12 +72,17 @@ public abstract class IsIdenticalStringNode extends JSUnaryNode {
         return false;
     }
 
-    public static IsIdenticalStringNode create(String string, JavaScriptNode operand) {
-        return IsIdenticalStringNodeGen.create(string, operand);
+    public static IsIdenticalStringNode create(String string, JavaScriptNode operand, boolean leftConstant) {
+        return IsIdenticalStringNodeGen.create(string, operand, leftConstant);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(string, cloneUninitialized(getOperand()));
+        return create(string, cloneUninitialized(getOperand()), leftConstant);
+    }
+
+    @Override
+    protected Object getConstantValue() {
+        return string;
     }
 }

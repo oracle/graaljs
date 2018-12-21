@@ -46,12 +46,12 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
-public abstract class IsIdenticalIntegerNode extends JSUnaryNode {
+public abstract class IsIdenticalIntegerNode extends IsIdenticalBaseNode {
 
     private final int integer;
 
-    protected IsIdenticalIntegerNode(JavaScriptNode operand, int integer) {
-        super(operand);
+    protected IsIdenticalIntegerNode(JavaScriptNode operand, int integer, boolean leftConstant) {
+        super(operand, leftConstant);
         this.integer = integer;
     }
 
@@ -82,12 +82,17 @@ public abstract class IsIdenticalIntegerNode extends JSUnaryNode {
         return false;
     }
 
-    public static IsIdenticalIntegerNode create(int integer, JavaScriptNode operand) {
-        return IsIdenticalIntegerNodeGen.create(operand, integer);
+    public static IsIdenticalIntegerNode create(int integer, JavaScriptNode operand, boolean leftConstant) {
+        return IsIdenticalIntegerNodeGen.create(operand, integer, leftConstant);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(integer, cloneUninitialized(getOperand()));
+        return create(integer, cloneUninitialized(getOperand()), leftConstant);
+    }
+
+    @Override
+    protected Object getConstantValue() {
+        return integer;
     }
 }
