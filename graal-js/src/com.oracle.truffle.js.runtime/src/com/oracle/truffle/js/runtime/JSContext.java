@@ -926,20 +926,27 @@ public class JSContext {
         return dictionaryObjectFactory;
     }
 
-    private static String createRegexEngineOptions() {
+    private String createRegexEngineOptions() {
         StringBuilder options = new StringBuilder(30);
         if (JSTruffleOptions.U180EWhitespace) {
-            options.append("U180EWhitespace=true");
+            options.append(RegexOptions.U180E_WHITESPACE_NAME + "=true,");
         }
         if (JSTruffleOptions.RegexRegressionTestMode) {
-            if (options.length() > 0) {
-                options.append(",");
-            }
-            options.append("RegressionTestMode=true");
+            options.append(RegexOptions.REGRESSION_TEST_MODE_NAME + "=true,");
+        }
+        if (getContextOptions().isRegexDumpAutomata()) {
+            options.append(RegexOptions.DUMP_AUTOMATA_NAME + "=true,");
+        }
+        if (getContextOptions().isRegexStepExecution()) {
+            options.append(RegexOptions.STEP_EXECUTION_NAME + "=true,");
+        }
+        if (getContextOptions().isRegexAlwaysEager()) {
+            options.append(RegexOptions.ALWAYS_EAGER_NAME + "=true,");
         }
         return options.toString();
     }
 
+    @SuppressWarnings("checkstyle:NoWhitespaceBefore")
     public TruffleObject getRegexEngine() {
         if (regexEngine == null) {
             RegexCompiler joniCompiler = new JoniRegexCompiler(null);
@@ -952,7 +959,17 @@ public class JSContext {
                     throw ex.raise();
                 }
             } else {
-                RegexOptions regexOptions = RegexOptions.newBuilder().u180eWhitespace(JSTruffleOptions.U180EWhitespace).regressionTestMode(JSTruffleOptions.RegexRegressionTestMode).build();
+                // Checkstyle: stop
+                // @formatter:off
+                RegexOptions regexOptions = RegexOptions.newBuilder()
+                        .u180eWhitespace(JSTruffleOptions.U180EWhitespace)
+                        .regressionTestMode(JSTruffleOptions.RegexRegressionTestMode)
+                        .dumpAutomata(getContextOptions().isRegexDumpAutomata())
+                        .stepExecution(getContextOptions().isRegexStepExecution())
+                        .alwaysEager(getContextOptions().isRegexAlwaysEager())
+                        .build();
+                // @formatter:on
+                // Checkstyle: resume
                 regexEngine = new CachingRegexEngine(joniCompiler, regexOptions);
             }
         }
