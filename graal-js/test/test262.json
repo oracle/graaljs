@@ -11597,10 +11597,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "language/expressions/function/arguments-with-arguments-fn.js",
-    "status" : "FAIL",
-    "comment" : "TODO: script passes with disabled assertions"
-  }, {
     "filePath" : "language/expressions/function/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -11615,10 +11611,6 @@
   }, {
     "filePath" : "language/expressions/function/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/generators/arguments-with-arguments-fn.js",
-    "status" : "FAIL",
-    "comment" : "TODO: script passes with disabled assertions"
   }, {
     "filePath" : "language/expressions/generators/scope-body-lex-distinct.js",
     "status" : "FAIL"
@@ -18551,10 +18543,6 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
   }, {
-    "filePath" : "language/statements/function/arguments-with-arguments-fn.js",
-    "status" : "FAIL",
-    "comment" : "TODO: script passes with disabled assertions"
-  }, {
     "filePath" : "language/statements/function/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -18569,10 +18557,6 @@
   }, {
     "filePath" : "language/statements/function/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/generators/arguments-with-arguments-fn.js",
-    "status" : "FAIL",
-    "comment" : "TODO: script passes with disabled assertions"
   }, {
     "filePath" : "language/statements/generators/scope-body-lex-distinct.js",
     "status" : "FAIL"

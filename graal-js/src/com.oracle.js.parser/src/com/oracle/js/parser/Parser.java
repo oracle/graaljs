@@ -4179,10 +4179,6 @@ loop:
             } else if (env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.WARNING) {
                 warning(JSErrorType.SyntaxError, AbstractParser.message("no.func.decl.here.warn"), functionToken);
             }
-            if ((topLevel || !useBlockScope()) && isArguments(name)) {
-                // (only) top-level function declarations override `arguments`
-                lc.getCurrentFunction().setFlag(FunctionNode.DEFINES_ARGUMENTS);
-            }
         }
 
         if (isAnonymous) {
