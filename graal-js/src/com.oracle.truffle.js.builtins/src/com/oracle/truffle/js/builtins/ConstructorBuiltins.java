@@ -72,7 +72,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNod
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberFormatNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallListFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRequiresNewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeGen;
@@ -351,7 +350,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return construct ? (newTarget
                                 ? ConstructListFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
                                 : ConstructListFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
-                                : CallListFormatNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                                : createCallRequiresNew(context, builtin);
             case NumberFormat:
                 return construct ? (newTarget
                                 ? ConstructNumberFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
@@ -1063,22 +1062,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getCollatorConstructor().getPrototype();
         }
 
-    }
-
-    public abstract static class CallListFormatNode extends JSBuiltinNode {
-
-        @Child InitializeListFormatNode initializeListFormatNode;
-
-        public CallListFormatNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-            initializeListFormatNode = InitializeListFormatNode.createInitalizeListFormatNode(context);
-        }
-
-        @Specialization
-        protected DynamicObject callListFormat(Object locales, Object options) {
-            DynamicObject listFormat = JSListFormat.create(getContext());
-            return initializeListFormatNode.executeInit(listFormat, locales, options);
-        }
     }
 
     public abstract static class ConstructListFormatNode extends ConstructWithNewTargetNode {
