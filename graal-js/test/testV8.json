@@ -349,19 +349,11 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/accessors-on-global-object.js",
-    "status" : "SKIP",
-    "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
-  }, {
     "filePath" : "mjsunit/allocation-site-info.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
     "filePath" : "mjsunit/array-constructor-feedback.js",
-    "status" : "SKIP",
-    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
-  }, {
-    "filePath" : "mjsunit/array-feedback.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
@@ -593,9 +585,6 @@
     "filePath" : "mjsunit/es6/computed-property-names-super.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/debug-promises/throw-with-undefined-reject.js",
-    "status" : "SKIP"
-  }, {
     "filePath" : "mjsunit/es6/default-parameters-destructuring.js",
     "status" : "FAIL"
   }, {
@@ -615,10 +604,6 @@
     "filePath" : "mjsunit/es6/generator-destructuring.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/generators-objects.js",
-    "status" : "SKIP",
-    "comment" : "V8 cannot construct Generators"
-  }, {
     "filePath" : "mjsunit/es6/global-proto-proxy.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -635,9 +620,6 @@
       "BIG_ENDIAN" : "SKIP"
     },
     "comment" : "fails due to byte order (LE required)\nfails atm on SPARC GR-1672"
-  }, {
-    "filePath" : "mjsunit/es6/microtask-delivery.js",
-    "status" : "SKIP"
   }, {
     "filePath" : "mjsunit/es6/new-target.js",
     "status" : "FAIL"
@@ -725,10 +707,6 @@
     "filePath" : "mjsunit/es6/throw-type-error-function-restrictions.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/typed-array-iterator.js",
-    "status" : "SKIP",
-    "comment" : "violating spec: Array.prototype.entries !== %TypedArray%.prototype.entries according to ES6 22.2.3.6"
-  }, {
     "filePath" : "mjsunit/es6/typedarray-construct-by-array-like-prototype-element-added.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -784,9 +762,6 @@
     "status" : "SKIP",
     "comment" : "test should fail (V8 should report Early Error as we do)"
   }, {
-    "filePath" : "mjsunit/es7/typed-array-includes.js",
-    "status" : "SKIP"
-  }, {
     "filePath" : "mjsunit/es8/async-await-basic.js",
     "status" : "FAIL"
   }, {
@@ -834,10 +809,6 @@
     "filePath" : "mjsunit/generated-transition-stub.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
-  }, {
-    "filePath" : "mjsunit/global-accessors.js",
-    "status" : "SKIP",
-    "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
   }, {
     "filePath" : "mjsunit/harmony/async-await-optimization.js",
     "status" : "FAIL",
@@ -1171,10 +1142,6 @@
     "status" : "SKIP",
     "comment" : "Ignition statistics - https://codereview.chromium.org/1899133004"
   }, {
-    "filePath" : "mjsunit/indexed-accessors.js",
-    "status" : "SKIP",
-    "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
-  }, {
     "filePath" : "mjsunit/intl-numberformat-formattoparts.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1239,10 +1206,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
-    "filePath" : "mjsunit/modules-namespace1.js",
-    "status" : "SKIP",
-    "comment" : "An incorrect test - it even contains 'TODO(neis): The next two should be False.' comment before a failing assert."
-  }, {
     "filePath" : "mjsunit/modules-namespace4.js",
     "status" : "FAIL",
     "comment" : "Our uninitialized binding check does not work for an uninitialized default binding."
@@ -1258,19 +1221,12 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
-    "filePath" : "mjsunit/parallel-optimize-disabled.js",
-    "status" : "SKIP",
-    "comment" : "const variable assignment should throw but test expects no error"
-  }, {
     "filePath" : "mjsunit/primitive-keyed-access.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/random-bit-correlations.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
-  }, {
-    "filePath" : "mjsunit/readonly.js",
-    "status" : "SKIP"
   }, {
     "filePath" : "mjsunit/realm-property-access.js",
     "status" : "FAIL"
@@ -1305,9 +1261,6 @@
     "filePath" : "mjsunit/regress/redeclaration-error-types.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/regress/regress-1039610.js",
-    "status" : "SKIP"
-  }, {
     "filePath" : "mjsunit/regress/regress-105.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -1338,20 +1291,12 @@
     "filePath" : "mjsunit/regress/regress-1199637.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/regress/regress-1240.js",
-    "status" : "SKIP",
-    "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
-  }, {
     "filePath" : "mjsunit/regress/regress-148378.js",
     "status" : "SKIP",
     "comment" : "NOW: Fails consistently with NoClassDefFoundError. Uses infinite recursion, expects to run out of stack and catch the exception. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
   }, {
     "filePath" : "mjsunit/regress/regress-1548.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/regress/regress-186.js",
-    "status" : "SKIP",
-    "comment" : "const variable declared in eval code leaking into outer scope"
   }, {
     "filePath" : "mjsunit/regress/regress-233.js",
     "runInIsolation" : true,
@@ -1400,10 +1345,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
-    "filePath" : "mjsunit/regress/regress-394.js",
-    "status" : "SKIP",
-    "comment" : "__defineGetter__, __defineSetter__, __lookupSetter__, __lookupGetter__ not according to spec"
-  }, {
     "filePath" : "mjsunit/regress/regress-411210.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1422,10 +1363,6 @@
     "filePath" : "mjsunit/regress/regress-458987.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
-  }, {
-    "filePath" : "mjsunit/regress/regress-4665.js",
-    "status" : "SKIP",
-    "comment" : "TypedArray.prototype.subarray failing as the created object has a TypedArray as prototype, but JSArrayBufferView.isArrayBufferView() returns false"
   }, {
     "filePath" : "mjsunit/regress/regress-4693.js",
     "status" : "FAIL"
@@ -1448,17 +1385,9 @@
     "status" : "SKIP",
     "comment" : "obj instanceof Proxy throws (as Proxy.prototype is not an object) but the test expects it to be false"
   }, {
-    "filePath" : "mjsunit/regress/regress-5405.js",
-    "status" : "SKIP",
-    "comment" : "async"
-  }, {
     "filePath" : "mjsunit/regress/regress-543994.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-544991.js",
-    "status" : "SKIP",
-    "comment" : "'will fail later, if so, delete the test' on line 14"
   }, {
     "filePath" : "mjsunit/regress/regress-5454.js",
     "status" : "FAIL"
@@ -1526,10 +1455,6 @@
     "filePath" : "mjsunit/regress/regress-633998.js",
     "status" : "SKIP",
     "comment" : "'Wrong' test - checking error message (which is not always complete and contains a typo) instead of error type\nsee https://github.com/v8/v8/commit/ea6b9609a67b78f5f8d327c578e931d4db2a5268"
-  }, {
-    "filePath" : "mjsunit/regress/regress-639270.js",
-    "status" : "SKIP",
-    "comment" : "async"
   }, {
     "filePath" : "mjsunit/regress/regress-6677.js",
     "status" : "FAIL",
@@ -1674,10 +1599,6 @@
     "filePath" : "mjsunit/regress/regress-crbug-160010.js",
     "status" : "FAIL",
     "comment" : "timeout unknown"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-245480.js",
-    "status" : "SKIP",
-    "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-352586.js",
     "runInIsolation" : true,
@@ -2342,10 +2263,6 @@
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
-    "filePath" : "mjsunit/samevalue.js",
-    "status" : "SKIP",
-    "comment" : "--expose-natives-as="
-  }, {
     "filePath" : "mjsunit/serialize-embedded-error.js",
     "status" : "FAIL"
   }, {
@@ -2463,10 +2380,6 @@
     "filePath" : "mjsunit/undetectable.js",
     "status" : "SKIP",
     "comment" : "undetectable"
-  }, {
-    "filePath" : "mjsunit/value-wrapper-accessor.js",
-    "status" : "SKIP",
-    "comment" : "fails due to GenericPropertyGetNode (in noIC mode)"
   }, {
     "filePath" : "mjsunit/verify-assert-false.js",
     "status" : "SKIP",
