@@ -799,7 +799,7 @@ public class JSRealm {
                             lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
         setupPolyglot(global);
-        if (isJavaInteropAvailable()) {
+        if (isJavaInteropAvailable() && isJavaInteropEnabled()) {
             setupJavaInterop(global);
         }
         if (context.isOptionDebugBuiltin()) {
@@ -950,8 +950,19 @@ public class JSRealm {
         symbolFunction.define(name, symbol, JSAttributes.notConfigurableNotEnumerableNotWritable(), (s, v) -> s.allocator().constantLocation(v));
     }
 
+    /**
+     * Can we do Java interop in principle.
+     */
     static boolean isJavaInteropAvailable() {
         return !JSTruffleOptions.SubstrateVM;
+    }
+
+    /**
+     * Is Java interop actually enabled.
+     */
+    private boolean isJavaInteropEnabled() {
+        assert isJavaInteropAvailable();
+        return getEnv() != null && getEnv().isHostLookupAllowed();
     }
 
     private void setupJavaInterop(DynamicObject global) {
