@@ -109,10 +109,14 @@ Source can be of type:
 * a JavaScript object: the object is queried for a `name` and a `script` property, which represent the source name and code, respectively.
 * all other types: the source is converted to a String.
 
+`load` is available by default and can be deactivated by setting the `js.load` option to `false`.
+
 #### `print(...arg)` and `printErr(...arg)`
 
 Prints the arguments on the console (stdout and stderr, respectively).
 Provides a best-effort human readable output.
+
+`print` and `printErr` are available by default and can be deactivated by setting the `js.print` option to `false`.
 
 #### Methods of the `console` global object
 
@@ -129,6 +133,8 @@ Node.js provides its own implementation that is used instead.
 * `console.count()`, and `console.countReset()`: counts and print how many times it has been called, or resets this counter
 * `console.group`, and `console.groupEnd`: increases or decreases the indentation for succeeding outputs to the console
 * `console.time()`, `console.timeLog()`, and `console.timeEnd()`: starts a timer, prints the duration the timer has been active, or prints the duration and stops the timer, respectively
+
+The `console` object is available by default and can be deactivated by setting the option `js.console` to `false`.
 
 ### Additional global functions in the `js` shell
 
@@ -208,7 +214,7 @@ if (typeof Graal != 'undefined') {
 }
 ```
 
-The Graal object is available in Graal JavaScript by default, unless deactivated by an option (`truffle.js.GraalBuiltin=false`).
+The Graal object is available in Graal JavaScript by default, unless deactivated by an option (`js.graal-builtin=false`).
 
 #### `Graal.versionJS`
 
@@ -308,6 +314,8 @@ This function requires the Nashorn compatibility mode flag.
 ### Polyglot
 
 The functions of the `Polyglot` object allow to interact with values from other polyglot languages.
+
+The `Polyglot` object is available by default, unless deactivated by setting the `js.polyglot-builtin` option to `false`.
 
 #### `Polyglot.export(key, value)`
 
