@@ -1857,10 +1857,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-849024.js",
-    "status" : "SKIP",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29) - fails only with noic"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-865892.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
