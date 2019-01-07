@@ -163,6 +163,14 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHELL = new OptionKey<>(false);
     private static final String SHELL_HELP = "provide global functions for js shell.";
 
+    public static final String PRINT_NAME = JS_OPTION_PREFIX + "print";
+    public static final OptionKey<Boolean> PRINT = new OptionKey<>(true);
+    private static final String PRINT_HELP = "provide 'print' global method.";
+
+    public static final String LOAD_NAME = JS_OPTION_PREFIX + "load";
+    public static final OptionKey<Boolean> LOAD = new OptionKey<>(true);
+    private static final String LOAD_HELP = "provide 'load' global method.";
+
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
     private static final String GRAAL_BUILTIN_HELP = "provide 'Graal' global property.";
@@ -328,6 +336,8 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(CONSOLE, CONSOLE_NAME, OptionCategory.USER, CONSOLE_HELP));
         options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
         options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
+        options.add(newOptionDescriptor(PRINT, PRINT_NAME, OptionCategory.USER, PRINT_HELP));
+        options.add(newOptionDescriptor(LOAD, LOAD_NAME, OptionCategory.USER, LOAD_HELP));
         options.add(newOptionDescriptor(GRAAL_BUILTIN, GRAAL_BUILTIN_NAME, OptionCategory.USER, GRAAL_BUILTIN_HELP));
         options.add(newOptionDescriptor(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME, OptionCategory.DEBUG, AWAIT_OPTIMIZATION_HELP));
         options.add(newOptionDescriptor(DISABLE_EVAL, DISABLE_EVAL_NAME, OptionCategory.EXPERT, DISABLE_EVAL_HELP));
@@ -463,6 +473,14 @@ public final class JSContextOptions {
 
     public boolean isConsole() {
         return CONSOLE.getValue(optionValues);
+    }
+    
+    public boolean isPrint() {
+        return PRINT.getValue(optionValues);
+    }
+    
+    public boolean isLoad() {
+        return LOAD.getValue(optionValues);
     }
 
     public boolean isPerformance() {

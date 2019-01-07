@@ -798,6 +798,12 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
                             lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
+        if (context.getContextOptions().isPrint()) {
+            initGlobalPrintExtensions(global);
+        }
+        if (context.getContextOptions().isLoad()) {
+            initGlobalLoadExtensions(global);
+        }
         setupPolyglot(global);
         if (isJavaInteropAvailable() && isJavaInteropEnabled()) {
             setupJavaInterop(global);
@@ -872,6 +878,16 @@ public class JSRealm {
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "$EXEC", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "readFully", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readFully"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "readLine", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readLine"), JSAttributes.getDefaultNotEnumerable());
+    }
+
+    private void initGlobalPrintExtensions(DynamicObject global) {
+        putGlobalProperty(global, "print", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "print"));
+        putGlobalProperty(global, "printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
+    }
+
+    private void initGlobalLoadExtensions(DynamicObject global) {
+        putGlobalProperty(global, "load", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "load"));
+        putGlobalProperty(global, "loadWithNewGlobal", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "loadWithNewGlobal"));
     }
 
     /**

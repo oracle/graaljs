@@ -57,6 +57,8 @@ public final class JSGlobalObject extends JSBuiltinObject {
     public static final String EVAL_NAME = "eval";
     public static final String CLASS_NAME_NASHORN_EXTENSIONS = "globalNashornScripting";
     public static final String CLASS_NAME_SHELL_EXTENSIONS = "globalShell";
+    public static final String CLASS_NAME_PRINT_EXTENSIONS = "globalPrint";
+    public static final String CLASS_NAME_LOAD_EXTENSIONS = "globalLoad";
 
     public static final JSGlobalObject INSTANCE = new JSGlobalObject();
 
