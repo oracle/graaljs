@@ -28,6 +28,7 @@
     packages+: {
       'pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
+      'pip:ninja_syntax': '==1.7.2',
     },
     catch_files+: [
       'Graal diagnostic output saved in (?P<filename>.+.zip)',

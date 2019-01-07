@@ -167,6 +167,41 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
     private static final String GRAAL_BUILTIN_HELP = "provide 'Graal' global property.";
 
+    public static final String AWAIT_OPTIMIZATION_NAME = JS_OPTION_PREFIX + "await-optimization";
+    public static final OptionKey<Boolean> AWAIT_OPTIMIZATION = new OptionKey<>(true);
+    private static final String AWAIT_OPTIMIZATION_HELP = "Use PromiseResolve for Await.";
+    @CompilationFinal private boolean awaitOptimization;
+
+    public static final String DISABLE_EVAL_NAME = JS_OPTION_PREFIX + "disable-eval";
+    public static final OptionKey<Boolean> DISABLE_EVAL = new OptionKey<>(false);
+    private static final String DISABLE_EVAL_HELP = "User code is not allowed to parse code via e.g. eval().";
+    @CompilationFinal private boolean disableEval;
+
+    public static final String DISABLE_WITH_NAME = JS_OPTION_PREFIX + "disable-with";
+    public static final OptionKey<Boolean> DISABLE_WITH = new OptionKey<>(false);
+    private static final String DISABLE_WITH_HELP = "User code is not allowed to use the 'with' statement.";
+    @CompilationFinal private boolean disableWith;
+
+    public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
+    private static final OptionKey<Boolean> REGEX_DUMP_AUTOMATA = new OptionKey<>(false);
+    private static final String REGEX_DUMP_AUTOMATA_HELP = helpWithDefault("Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.", REGEX_DUMP_AUTOMATA);
+    @CompilationFinal private boolean regexDumpAutomata;
+
+    public static final String REGEX_STEP_EXECUTION_NAME = JS_OPTION_PREFIX + "regex.step-execution";
+    private static final OptionKey<Boolean> REGEX_STEP_EXECUTION = new OptionKey<>(false);
+    private static final String REGEX_STEP_EXECUTION_HELP = helpWithDefault("Trace the execution of automata in JSON files.", REGEX_STEP_EXECUTION);
+    @CompilationFinal private boolean regexStepExecution;
+
+    public static final String REGEX_ALWAYS_EAGER_NAME = JS_OPTION_PREFIX + "regex.always-eager";
+    private static final OptionKey<Boolean> REGEX_ALWAYS_EAGER = new OptionKey<>(false);
+    private static final String REGEX_ALWAYS_EAGER_HELP = helpWithDefault("Always match capture groups eagerly.", REGEX_ALWAYS_EAGER);
+    @CompilationFinal private boolean regexAlwaysEager;
+
+    public static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME = JS_OPTION_PREFIX + "script-engine-global-scope-import";
+    public static final OptionKey<Boolean> SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT = new OptionKey<>(false);
+    private static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP = "Enable ScriptEngine-specific global scope import function.";
+    @CompilationFinal private boolean scriptEngineGlobalScopeImport;
+
     /**
      * Options which can be patched without throwing away the pre-initialized context.
      */
@@ -213,6 +248,13 @@ public final class JSContextOptions {
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
         this.timerResolution = readLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME);
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME);
+        this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME);
+        this.disableEval = readBooleanOption(DISABLE_EVAL, DISABLE_EVAL_NAME);
+        this.disableWith = readBooleanOption(DISABLE_WITH, DISABLE_WITH_NAME);
+        this.regexDumpAutomata = readBooleanOption(REGEX_DUMP_AUTOMATA, REGEX_DUMP_AUTOMATA_NAME);
+        this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME);
+        this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME);
+        this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
@@ -287,6 +329,13 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
         options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
         options.add(newOptionDescriptor(GRAAL_BUILTIN, GRAAL_BUILTIN_NAME, OptionCategory.USER, GRAAL_BUILTIN_HELP));
+        options.add(newOptionDescriptor(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME, OptionCategory.DEBUG, AWAIT_OPTIMIZATION_HELP));
+        options.add(newOptionDescriptor(DISABLE_EVAL, DISABLE_EVAL_NAME, OptionCategory.EXPERT, DISABLE_EVAL_HELP));
+        options.add(newOptionDescriptor(DISABLE_WITH, DISABLE_WITH_NAME, OptionCategory.EXPERT, DISABLE_WITH_HELP));
+        options.add(newOptionDescriptor(REGEX_DUMP_AUTOMATA, REGEX_DUMP_AUTOMATA_NAME, OptionCategory.DEBUG, REGEX_DUMP_AUTOMATA_HELP));
+        options.add(newOptionDescriptor(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME, OptionCategory.DEBUG, REGEX_STEP_EXECUTION_HELP));
+        options.add(newOptionDescriptor(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME, OptionCategory.DEBUG, REGEX_ALWAYS_EAGER_HELP));
+        options.add(newOptionDescriptor(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, OptionCategory.EXPERT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP));
     }
 
     /**
@@ -384,6 +433,34 @@ public final class JSContextOptions {
         return agentCanBlock;
     }
 
+    public boolean isAwaitOptimization() {
+        return awaitOptimization;
+    }
+
+    public boolean isDisableEval() {
+        return disableEval;
+    }
+
+    public boolean isDisableWith() {
+        return disableWith;
+    }
+
+    public boolean isRegexDumpAutomata() {
+        return regexDumpAutomata;
+    }
+
+    public boolean isRegexStepExecution() {
+        return regexStepExecution;
+    }
+
+    public boolean isRegexAlwaysEager() {
+        return regexAlwaysEager;
+    }
+
+    public boolean isScriptEngineGlobalScopeImport() {
+        return scriptEngineGlobalScopeImport;
+    }
+
     public boolean isConsole() {
         return CONSOLE.getValue(optionValues);
     }
@@ -419,6 +496,13 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.parseOnly ? 1 : 0);
         hash = 53 * hash + (int) this.timerResolution;
         hash = 53 * hash + (this.agentCanBlock ? 1 : 0);
+        hash = 53 * hash + (this.awaitOptimization ? 1 : 0);
+        hash = 53 * hash + (this.disableEval ? 1 : 0);
+        hash = 53 * hash + (this.disableWith ? 1 : 0);
+        hash = 53 * hash + (this.regexDumpAutomata ? 1 : 0);
+        hash = 53 * hash + (this.regexStepExecution ? 1 : 0);
+        hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
+        hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
         return hash;
     }
 
@@ -477,6 +561,27 @@ public final class JSContextOptions {
             return false;
         }
         if (this.agentCanBlock != other.agentCanBlock) {
+            return false;
+        }
+        if (this.awaitOptimization != other.awaitOptimization) {
+            return false;
+        }
+        if (this.disableEval != other.disableEval) {
+            return false;
+        }
+        if (this.disableWith != other.disableWith) {
+            return false;
+        }
+        if (this.regexDumpAutomata != other.regexDumpAutomata) {
+            return false;
+        }
+        if (this.regexStepExecution != other.regexStepExecution) {
+            return false;
+        }
+        if (this.regexAlwaysEager != other.regexAlwaysEager) {
+            return false;
+        }
+        if (this.scriptEngineGlobalScopeImport != other.scriptEngineGlobalScopeImport) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

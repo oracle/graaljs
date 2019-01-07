@@ -3,8 +3,8 @@ suite = {
 
   "name" : "graal-js",
 
-  "version" : "1.0.0-rc10",
-  "release" : True,
+  "version" : "1.0.0-rc11",
+  "release" : False,
   "groupId" : "org.graalvm.js",
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "89c602e4a75b404a8fc08a2db0299dee9281689c",
+           "version" : "385201b14d38d5f204c8a9ae24f0ce188cd7b960",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -555,7 +555,7 @@ suite = {
     },
 
     "TRUFFLE_JS_TESTS" : {
-      "dependencies" : ["com.oracle.truffle.js.test.external", "com.oracle.truffle.js.test.instrumentation"],
+      "dependencies" : ["com.oracle.truffle.js.test.external", "com.oracle.truffle.js.test.instrumentation", "com.oracle.truffle.js.test.threading"],
       "exclude" : [
         "mx:HAMCREST",
         "mx:JUNIT",

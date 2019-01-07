@@ -52,32 +52,26 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
-import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
-import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.builtins.JSError;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -96,6 +90,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
     private final JSContext context;
 
     private final BranchProfile catchBranch = BranchProfile.create();
+    private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
     protected TryCatchNode(JSContext context, JavaScriptNode tryBlock, JavaScriptNode catchBlock, JSWriteFrameSlotNode writeErrorVar, BlockScopeNode blockScope, JavaScriptNode destructuring,
                     JavaScriptNode conditionExpression) {
@@ -146,7 +141,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             throw cfe;
         } catch (Throwable ex) {
             catchBranch.enter();
-            if (shouldCatch(ex)) {
+            if (shouldCatch(ex, typeProfile)) {
                 return executeCatch(frame, ex);
             } else {
                 throw ex;
@@ -154,10 +149,14 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
     }
 
+    public static boolean shouldCatch(Throwable ex, ValueProfile vp) {
+        return shouldCatch(vp.profile(ex));
+    }
+
     public static boolean shouldCatch(Throwable ex) {
         if (ex instanceof TruffleException) {
-            TruffleException truffleEx = (TruffleException) ex;
-            return !(truffleEx.isExit() || truffleEx.isCancelled() || truffleEx.isInternalError());
+            TruffleException tex = (TruffleException) ex;
+            return !(tex.isExit() || tex.isCancelled() || tex.isInternalError());
         } else {
             return (ex instanceof StackOverflowError);
         }
@@ -205,7 +204,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                 throw cfe;
             } catch (Throwable ex) {
                 catchBranch.enter();
-                if (shouldCatch(ex)) {
+                if (shouldCatch(ex, typeProfile)) {
                     VirtualFrame catchFrame = blockScope == null ? frame : blockScope.appendScopeFrame(frame);
                     try {
                         return executeCatchInner(catchFrame, ex);
@@ -275,6 +274,9 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
 
         private Object doJSException(JSException exception) {
+            // fill in any missing stack trace elements
+            TruffleStackTraceElement.fillIn(exception);
+
             DynamicObject errorObj = exception.getErrorObject();
             // not thread safe, but should be alright in this case
             if (errorObj == null) {
@@ -294,60 +296,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             JSErrorType errorType = exception.getErrorType();
             String message = Objects.requireNonNull(exception.getRawMessage());
             return JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, realm.getErrorConstructor(errorType).getPrototype(), message);
-        }
-    }
-
-    public static final class InitErrorObjectNode extends JavaScriptBaseNode {
-        @Child private PropertySetNode setException;
-        @Child private PropertySetNode setFormattedStack;
-        private final boolean defaultColumnNumber;
-        @Child private CreateMethodPropertyNode setLineNumber;
-        @Child private CreateMethodPropertyNode setColumnNumber;
-
-        private InitErrorObjectNode(JSContext context, boolean defaultColumnNumber) {
-            this.setException = PropertySetNode.createSetHidden(JSError.EXCEPTION_PROPERTY_NAME, context);
-            this.setFormattedStack = PropertySetNode.createSetHidden(JSError.FORMATTED_STACK_NAME, context);
-            this.defaultColumnNumber = defaultColumnNumber;
-            if (JSTruffleOptions.NashornCompatibilityMode) {
-                this.setLineNumber = CreateMethodPropertyNode.create(context, JSError.LINE_NUMBER_PROPERTY_NAME);
-                this.setColumnNumber = CreateMethodPropertyNode.create(context, JSError.COLUMN_NUMBER_PROPERTY_NAME);
-            }
-        }
-
-        public static InitErrorObjectNode create(JSContext context, boolean defaultColumnNumber) {
-            return new InitErrorObjectNode(context, defaultColumnNumber);
-        }
-
-        public DynamicObject execute(DynamicObject errorObj, GraalJSException exception) {
-            setException.setValue(errorObj, exception);
-            // stack is not formatted until it is accessed
-            setFormattedStack.setValue(errorObj, null);
-            // fill in any missing stack trace elements
-            return executeIntl(errorObj, exception);
-        }
-
-        @TruffleBoundary
-        private DynamicObject executeIntl(DynamicObject errorObj, GraalJSException exception) {
-            TruffleStackTraceElement.fillIn(exception);
-
-            Property stackProperty = errorObj.getShape().getProperty(JSError.STACK_NAME);
-            int attrs = JSAttributes.getDefaultNotEnumerable();
-            if (stackProperty != null) {
-                if (!JSProperty.isConfigurable(stackProperty)) {
-                    throw Errors.createTypeErrorCannotRedefineProperty(JSError.STACK_NAME);
-                }
-                if (JSProperty.isEnumerable(stackProperty)) {
-                    attrs = JSAttributes.getDefault();
-                }
-            }
-            /// use nodes (GR-1989)
-            JSObjectUtil.defineProxyProperty(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, attrs | JSProperty.PROXY);
-            if (JSTruffleOptions.NashornCompatibilityMode && exception.getJSStackTrace().length > 0) {
-                JSStackTraceElement topStackTraceElement = exception.getJSStackTrace()[0];
-                setLineNumber.executeVoid(errorObj, topStackTraceElement.getLineNumber());
-                setColumnNumber.executeVoid(errorObj, defaultColumnNumber ? JSError.DEFAULT_COLUMN_NUMBER : topStackTraceElement.getColumnNumber());
-            }
-            return errorObj;
         }
     }
 }

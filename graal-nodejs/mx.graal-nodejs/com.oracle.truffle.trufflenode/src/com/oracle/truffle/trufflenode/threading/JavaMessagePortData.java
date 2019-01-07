@@ -38,37 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.cast;
+package com.oracle.truffle.trufflenode.threading;
 
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import java.util.Deque;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
-/**
- * Expect a {@code double} or an {@code int} value and coerce it to {@code double}.
- */
-public abstract class AsDoubleNode extends JavaScriptBaseNode {
-    public abstract double executeDouble(Object value) throws UnexpectedResultException;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.trufflenode.JSExternalObject;
 
-    public abstract Object execute(Object value);
+public class JavaMessagePortData {
 
-    public static AsDoubleNode create() {
-        return AsDoubleNodeGen.create();
+    private final long nativePointer;
+    private final Deque<Object> queue;
+    private int encodedRefs;
+
+    public JavaMessagePortData(DynamicObject external) {
+        assert JSExternalObject.isJSExternalObject(external);
+        this.encodedRefs = 0;
+        this.queue = new ConcurrentLinkedDeque<>();
+        this.nativePointer = JSExternalObject.getPointer(external);
     }
 
-    @Specialization
-    protected static double doInteger(int value) {
-        return value;
+    public long getMessagePortDataPointer() {
+        return nativePointer;
     }
 
-    @Specialization
-    protected static double doDouble(double value) {
-        return value;
+    public void encodingBegin() {
+        encodedRefs = 0;
     }
 
-    @Fallback
-    protected static Object doNotNumber(Object value) {
-        return value;
+    public void encodingEnd() {
+        encodedRefs = 0;
     }
+
+    public boolean encodedJavaRefs() {
+        return encodedRefs > 0;
+    }
+
+    public void enqueueJavaRef(Object hostObject) {
+        queue.add(hostObject);
+        encodedRefs++;
+    }
+
+    public void disposeLastMessageRefs() {
+        for (int i = 0; i < encodedRefs; i++) {
+            queue.removeLast();
+        }
+        encodedRefs = 0;
+    }
+
+    public Object removeJavaRef() {
+        return queue.removeFirst();
+    }
+
 }

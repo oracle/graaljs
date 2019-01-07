@@ -58,7 +58,7 @@ public interface JSParser extends NodeEvaluator {
     /**
      * Creates a script that will be evaluated in a specified lexical context.
      */
-    JavaScriptNode parseInlineExpression(JSContext context, Source source, Environment environment, boolean isStrict);
+    JavaScriptNode parseInlineScript(JSContext context, Source source, Environment environment, boolean isStrict);
 
     ScriptNode parseScriptNode(JSContext context, Source source, ByteBuffer binary);
 

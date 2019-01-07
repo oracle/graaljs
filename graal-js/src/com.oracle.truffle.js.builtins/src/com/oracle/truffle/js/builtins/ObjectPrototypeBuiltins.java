@@ -59,6 +59,7 @@ import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectProto
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeToStringNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeValueOfNodeGen;
+import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -308,11 +309,10 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected String doJSProxy(DynamicObject thisObj,
                         @Cached("create()") JSClassProfile jsclassProfile,
                         @Cached("create()") BranchProfile noStringTagProfile) {
-            JSRuntime.isArray(thisObj); // might throw
+            TruffleObject target = JSProxy.getTargetNonProxy(thisObj);
             String toString = getToStringTag(thisObj);
             if (toString == null) {
                 noStringTagProfile.enter();
-                TruffleObject target = JSProxy.getTargetNonProxy(thisObj);
                 if (JSObject.isJSObject(target)) {
                     toString = jsclassProfile.getJSClass((DynamicObject) target).getBuiltinToStringTag((DynamicObject) target);
                 } else {
@@ -394,14 +394,14 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
+        @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
         private final ConditionProfile descNull = ConditionProfile.createBinaryProfile();
-        private final JSClassProfile classProfile = JSClassProfile.create();
 
         @Specialization
         protected boolean propertyIsEnumerable(Object obj, Object key) {
             Object propertyKey = toPropertyKeyNode.execute(key);
             DynamicObject thisJSObj = toObject(obj);
-            PropertyDescriptor desc = JSObject.getOwnProperty(thisJSObj, propertyKey, classProfile);
+            PropertyDescriptor desc = getOwnPropertyNode.execute(thisJSObj, propertyKey);
             if (descNull.profile(desc == null)) {
                 return false;
             } else {
@@ -570,6 +570,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     public abstract static class ObjectPrototypeLookupGetterOrSetterNode extends ObjectOperation {
         private final boolean getter;
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
+        @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
 
         public ObjectPrototypeLookupGetterOrSetterNode(JSContext context, JSBuiltin builtin, boolean getter) {
             super(context, builtin);
@@ -583,7 +584,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             DynamicObject current = object;
             do {
-                PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
+                PropertyDescriptor desc = getOwnPropertyNode.execute(current, key);
                 if (desc != null) {
                     if (desc.isAccessorDescriptor()) {
                         return getter ? desc.getGet() : desc.getSet();

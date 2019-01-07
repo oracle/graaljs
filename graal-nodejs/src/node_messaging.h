@@ -162,6 +162,7 @@ class MessagePort : public HandleWrap {
   static void Start(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Stop(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Drain(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void MessageData(const v8::FunctionCallbackInfo<v8::Value>& args);
 
   // Turns `a` and `b` into siblings, i.e. connects the sending side of one
   // to the receiving side of the other. This is not thread-safe.
@@ -201,6 +202,11 @@ class MessagePort : public HandleWrap {
 
   std::unique_ptr<MessagePortData> data_ = nullptr;
   bool stop_event_loop_ = false;
+
+  // Used by Graal.js to keep track of messages that have been added to the
+  // `sibling_`'s queue. In this way, messages containing Java references
+  // can be garbage collected when they have not been encoded.
+  bool message_was_enqueued_ = false;
 
   friend class MessagePortData;
 };

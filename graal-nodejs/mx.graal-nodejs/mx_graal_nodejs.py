@@ -503,6 +503,7 @@ def buildSvmImage(args):
 def _prepare_svm_env():
     setLibraryPath()
     _setEnvVar('NODE_JVM_LIB', join(_suite.dir, mx.add_lib_suffix('nodejs')))
+    _setEnvVar('ICU4J_DATA_PATH', join(mx.suite('graal-js').dir, 'lib', 'icu4j', 'icudt'))
 
 def testsvmnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     _prepare_svm_env()

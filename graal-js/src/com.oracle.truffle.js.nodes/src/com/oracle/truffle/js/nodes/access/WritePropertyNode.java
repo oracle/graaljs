@@ -207,12 +207,13 @@ public class WritePropertyNode extends JSTargetableNode implements WriteNode {
     public final void executeVoid(VirtualFrame frame) {
         Object target = evaluateTarget(frame);
         Object receiver = evaluateReceiver(frame, target);
-        if (valueState == 0) {
+        byte vs = valueState;
+        if (vs == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             executeAndSpecialize(frame, target, receiver);
             return;
         }
-        if (valueState == VALUE_INT) {
+        if (vs == VALUE_INT) {
             try {
                 int value = rhsNode.executeInt(frame);
                 executeIntEvaluated(target, value, receiver);
@@ -220,7 +221,7 @@ public class WritePropertyNode extends JSTargetableNode implements WriteNode {
                 valueState = VALUE_OBJECT;
                 executeEvaluated(target, e.getResult(), receiver);
             }
-        } else if (valueState == VALUE_DOUBLE) {
+        } else if (vs == VALUE_DOUBLE) {
             try {
                 double value = rhsNode.executeDouble(frame);
                 executeDoubleEvaluated(target, value, receiver);
@@ -229,7 +230,7 @@ public class WritePropertyNode extends JSTargetableNode implements WriteNode {
                 executeEvaluated(target, e.getResult(), receiver);
             }
         } else {
-            assert valueState == VALUE_OBJECT;
+            assert vs == VALUE_OBJECT;
             Object value = rhsNode.execute(frame);
             executeEvaluated(target, value, receiver);
         }

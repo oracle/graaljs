@@ -107,6 +107,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
@@ -208,6 +209,9 @@ import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
 import com.oracle.truffle.trufflenode.serialization.Deserializer;
 import com.oracle.truffle.trufflenode.serialization.Serializer;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBindings;
+import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
 
 /**
  * Entry point for any access to the JavaScript engine from the native code.
@@ -1704,6 +1708,12 @@ public final class GraalJSAccess {
             System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
             extendedArgs[userArgs.length] = setBreakPoint;
             return extendedArgs;
+        } else if ("internal/worker.js".equals(moduleName)) {
+            // The Shared-mem channel initialization is similar to NIO-based buffers.
+            Object[] extendedArgs = new Object[userArgs.length + 1];
+            System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
+            extendedArgs[userArgs.length] = SharedMemMessagingBindings.createInitFunction(this, node);
+            return extendedArgs;
         } else {
             return userArgs;
         }
@@ -1894,7 +1904,7 @@ public final class GraalJSAccess {
     }
 
     public boolean tryCatchHasTerminated(Object exception) {
-        return (exception instanceof GraalJSKillException);
+        return (exception instanceof GraalJSKillException) || (exception instanceof TruffleException && ((TruffleException) exception).isCancelled());
     }
 
     private static GraalJSException.JSStackTraceElement messageGraalJSExceptionStackFrame(Object exception) {
@@ -2053,6 +2063,11 @@ public final class GraalJSAccess {
     public Object stackFrameGetFunctionName(Object stackFrame) {
         GraalJSException.JSStackTraceElement element = (GraalJSException.JSStackTraceElement) stackFrame;
         return element.getFunctionName();
+    }
+
+    public boolean stackFrameIsEval(Object stackFrame) {
+        GraalJSException.JSStackTraceElement element = (GraalJSException.JSStackTraceElement) stackFrame;
+        return element.isEval();
     }
 
     /**
@@ -2346,8 +2361,8 @@ public final class GraalJSAccess {
     }
 
     public void isolateInternalErrorCheck(Object exception) {
-        boolean internalError = !(exception instanceof GraalJSException) && !(exception instanceof StackOverflowError) && !(exception instanceof OutOfMemoryError) &&
-                        !(exception instanceof ControlFlowException) && !(exception instanceof ExitException) && !(exception instanceof GraalJSKillException);
+        boolean internalError = !(exception instanceof TruffleException) && !(exception instanceof StackOverflowError) && !(exception instanceof OutOfMemoryError) &&
+                        !(exception instanceof ControlFlowException) && !(exception instanceof GraalJSKillException);
         if (internalError) {
             ((Throwable) exception).printStackTrace();
             exit(1);
@@ -2373,6 +2388,9 @@ public final class GraalJSAccess {
 
     public synchronized void isolateCancelTerminateExecution() {
         terminateExecution = false;
+        if (Thread.currentThread() == agent.getThread()) {
+            Thread.interrupted(); // Clear the interrupted flag
+        }
     }
 
     public synchronized void isolateTerminateExecution() {
@@ -2380,6 +2398,10 @@ public final class GraalJSAccess {
             return; // termination in progress already
         }
         terminateExecution = true;
+        Thread thread = agent.getThread();
+        if (thread != null) {
+            thread.interrupt();
+        }
         Debugger debugger = lookupInstrument("debugger", Debugger.class);
         if (debugger == null) {
             System.err.println("Debugger is not available!");
@@ -2809,7 +2831,7 @@ public final class GraalJSAccess {
     }
 
     public Object valueSerializerNew(long delegatePointer) {
-        return new Serializer(delegatePointer);
+        return new Serializer(mainJSContext, this, delegatePointer);
     }
 
     public int valueSerializerSize(Object serializer) {
@@ -3040,6 +3062,29 @@ public final class GraalJSAccess {
         public JSModuleRecord loadModule(Source moduleSource) {
             throw new UnsupportedOperationException();
         }
+    }
+
+    /**
+     * Used to establish a communication channels between node workers when they attempt to exchange
+     * Java host objects.
+     */
+    private JavaMessagePortData currentMessagePortData = null;
+
+    public void unsetCurrentMessagePortData() {
+        currentMessagePortData.encodingEnd();
+        currentMessagePortData = null;
+    }
+
+    public void setCurrentMessagePortData(DynamicObject nativeMessagePortData) {
+        assert nativeMessagePortData != null;
+        assert currentMessagePortData == null;
+        currentMessagePortData = SharedMemMessagingManager.getJavaMessagePortDataFor(nativeMessagePortData);
+        assert currentMessagePortData != null;
+        currentMessagePortData.encodingBegin();
+    }
+
+    public JavaMessagePortData getCurrentMessagePortData() {
+        return currentMessagePortData;
     }
 
 }

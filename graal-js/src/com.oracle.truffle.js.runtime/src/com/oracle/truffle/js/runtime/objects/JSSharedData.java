@@ -40,8 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
@@ -57,7 +56,7 @@ import com.oracle.truffle.js.runtime.util.DebugCounter;
 public final class JSSharedData implements ShapeListener {
     private final JSContext context;
     private final Property prototypeProperty;
-    private Map<Object, Assumption> propertyAssumptions;
+    private EconomicMap<Object, Assumption> propertyAssumptions;
     private Assumption prototypeAssumption;
 
     private static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
@@ -72,7 +71,7 @@ public final class JSSharedData implements ShapeListener {
 
     Assumption getPropertyAssumption(Object propertyName) {
         if (propertyAssumptions == null) {
-            propertyAssumptions = new HashMap<>();
+            propertyAssumptions = EconomicMap.create();
         } else {
             Assumption assumption = propertyAssumptions.get(propertyName);
             if (assumption != null) {

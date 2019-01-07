@@ -40,6 +40,13 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.text.Collator;
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Locale;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -49,6 +56,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
@@ -88,8 +96,9 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringToU
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringTrimLeftNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringTrimNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringTrimRightNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode;
-import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecIntlRunNode;
+import com.oracle.truffle.js.builtins.helper.ReplaceStringParser;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -131,14 +140,8 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-
-import java.text.Collator;
-import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Locale;
 
 /**
  * Contains builtins for {@linkplain JSString}.prototype.
@@ -441,7 +444,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class JSStringOperationWithRegExpArgument extends JSStringOperation {
-        @Child protected JSRegExpExecIntlRunNode regExpNode;
+        @Child protected JSRegExpExecIntlNode regExpNode;
         @Child protected JSRegExpExecIntlIgnoreLastIndexNode regExpIgnoreLastIndexNode;
 
         @Child private JSFunctionCallNode callNode;
@@ -457,14 +460,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected final TruffleObject matchIgnoreLastIndex(DynamicObject regExp, String input, int fromIndex) {
             assert getContext().getEcmaScriptVersion() <= 5;
-            return (TruffleObject) getRegExpIgnoreLastIndexNode().execute(regExp, input, fromIndex);
+            return getRegExpIgnoreLastIndexNode().execute(regExp, input, fromIndex);
         }
 
         // only used in ES5 mode
-        protected JSRegExpExecIntlRunNode getRegExpNode() {
+        protected JSRegExpExecIntlNode getRegExpNode() {
             if (regExpNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                regExpNode = insert(JSRegExpExecIntlRunNode.create(getContext()));
+                regExpNode = insert(JSRegExpExecIntlNode.create(getContext()));
             }
             return regExpNode;
         }
@@ -473,7 +476,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected JSRegExpExecIntlIgnoreLastIndexNode getRegExpIgnoreLastIndexNode() {
             if (regExpIgnoreLastIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                regExpIgnoreLastIndexNode = insert(JSRegExpExecIntlIgnoreLastIndexNode.create(getContext()));
+                regExpIgnoreLastIndexNode = insert(JSRegExpExecIntlIgnoreLastIndexNode.create(getContext(), true));
             }
             return regExpIgnoreLastIndexNode;
         }
@@ -820,13 +823,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (posNaN.profile(Double.isNaN(dVal))) {
                 pos = len;
             } else {
-                if (Double.isInfinite(dVal)) {
-                    pos = (dVal > 0) ? len : 0;
-                } else if (dVal > Integer.MAX_VALUE) {
-                    pos = len;
-                } else {
-                    pos = within((int) JSRuntime.toInteger(numPos), 0, len);
-                }
+                pos = within((int) dVal, 0, len);
             }
             if (searchStrZero.profile(searchStr.length() == 0)) {
                 return pos;
@@ -854,6 +851,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final BranchProfile isUndefinedBranch = BranchProfile.create();
         private final BranchProfile isStringBranch = BranchProfile.create();
         private final BranchProfile isRegexpBranch = BranchProfile.create();
+        private final BranchProfile growProfile = BranchProfile.create();
 
         @Child private JSToUInt32Node toUInt32Node;
         @Child private JSToStringNode toString2Node;
@@ -963,23 +961,23 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (parent.match.profile(end == -1)) {
                     return new Object[]{input};
                 }
-                return regularSplitIntl(input, limit, separator, end);
+                return regularSplitIntl(input, limit, separator, end, parent);
             }
 
             @TruffleBoundary
-            private static Object[] regularSplitIntl(String input, int limit, String separator, int endParam) {
-                List<String> splits = new ArrayList<>();
+            private static Object[] regularSplitIntl(String input, int limit, String separator, int endParam, JSStringSplitNode parent) {
+                SimpleArrayList<String> splits = SimpleArrayList.create(limit);
                 int start = 0;
                 int end = endParam;
                 while (end != -1) {
-                    splits.add(input.substring(start, end));
+                    splits.add(input.substring(start, end), parent.growProfile);
                     if (splits.size() == limit) {
                         return splits.toArray();
                     }
                     start = end + separator.length();
                     end = input.indexOf(separator, start);
                 }
-                splits.add(input.substring(start));
+                splits.add(input.substring(start), parent.growProfile);
                 return splits.toArray();
             }
 
@@ -1016,7 +1014,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (parent.match.profile(!parent.getResultAccessor().isMatch(result))) {
                     return new Object[]{input};
                 }
-                List<Object> splits = new ArrayList<>();
+                SimpleArrayList<Object> splits = new SimpleArrayList<>();
                 int start = 0;
                 while (parent.getResultAccessor().isMatch(result)) {
                     int matchStart = parent.getResultAccessor().captureGroupStart(result, 0);
@@ -1030,24 +1028,24 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         continue;
                     }
                     String split = Boundaries.substring(input, start, matchStart);
-                    Boundaries.listAdd(splits, split);
+                    splits.add(split, parent.growProfile);
                     int count = Math.min(parent.getResultAccessor().groupCount(result) - 1, limit - splits.size());
                     for (int i = 1; i <= count; i++) {
                         int groupStart = parent.getResultAccessor().captureGroupStart(result, i);
                         if (groupStart == TRegexUtil.Constants.CAPTURE_GROUP_NO_MATCH) {
-                            Boundaries.listAdd(splits, Undefined.instance);
+                            splits.add(Undefined.instance, parent.growProfile);
                         } else {
-                            Boundaries.listAdd(splits, Boundaries.substring(input, groupStart, parent.getResultAccessor().captureGroupEnd(result, i)));
+                            splits.add(Boundaries.substring(input, groupStart, parent.getResultAccessor().captureGroupEnd(result, i)), parent.growProfile);
                         }
                     }
                     if (splits.size() == limit) {
-                        return Boundaries.listToArray(splits);
+                        return splits.toArray();
                     }
                     start = matchEnd + (matchEnd == start ? 1 : 0);
                     result = parent.matchIgnoreLastIndex(regExp, input, start);
                 }
-                Boundaries.listAdd(splits, Boundaries.substring(input, start));
-                return Boundaries.listToArray(splits);
+                splits.add(Boundaries.substring(input, start), parent.growProfile);
+                return splits.toArray();
             }
         }
     }
@@ -1089,33 +1087,50 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile functionalReplaceProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile replaceNecessaryProfile = ConditionProfile.createBinaryProfile();
         private final BranchProfile dollarProfile = BranchProfile.create();
+        private final ValueProfile searchValueProfile = ValueProfile.createIdentityProfile();
+        private final ValueProfile replaceValueProfile = ValueProfile.createIdentityProfile();
 
         public JSStringReplaceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization
-        protected Object replace(Object thisObj, Object searchValue, Object replParam) {
+        @Specialization(guards = "cachedReplaceValue.equals(replaceValue)")
+        protected Object replaceStringCached(Object thisObj, String searchValue, @SuppressWarnings("unused") String replaceValue,
+                        @Cached("replaceValue") String cachedReplaceValue,
+                        @Cached(value = "parseReplaceValue(replaceValue)", dimensions = 1) ReplaceStringParser.Token[] cachedParsedReplaceValue) {
             requireObjectCoercible(thisObj);
-            if (isSpecialProfile.profile(!(searchValue == Undefined.instance || searchValue == Null.instance))) {
-                Object replacer = getMethod(searchValue, Symbol.SYMBOL_REPLACE);
+            return builtinReplaceString(searchValue, cachedReplaceValue, thisObj, cachedParsedReplaceValue);
+        }
+
+        @Specialization(replaces = "replaceStringCached")
+        protected Object replaceString(Object thisObj, String searchValue, String replaceValue) {
+            requireObjectCoercible(thisObj);
+            return builtinReplaceString(searchValue, replaceValue, thisObj, null);
+        }
+
+        @Specialization
+        protected Object replaceObject(Object thisObj, Object searchValue, Object replaceValue) {
+            requireObjectCoercible(thisObj);
+            Object searchVal = searchValueProfile.profile(searchValue);
+            Object replaceVal = replaceValueProfile.profile(replaceValue);
+            if (isSpecialProfile.profile(!(searchVal == Undefined.instance || searchVal == Null.instance))) {
+                Object replacer = getMethod(searchVal, Symbol.SYMBOL_REPLACE);
                 if (callSpecialProfile.profile(replacer != Undefined.instance)) {
-                    return call(replacer, searchValue, new Object[]{thisObj, replParam});
+                    return call(replacer, searchVal, new Object[]{thisObj, replaceVal});
                 }
             }
-            if (toString2Node == null) {
+            // all child nodes must be checked to avoid race conditions on shared ASTs
+            if (toString2Node == null || toString3Node == null || isCallableNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toString2Node = insert(JSToStringNode.create());
-            }
-            if (toString3Node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 toString3Node = insert(JSToStringNode.create());
-            }
-            if (isCallableNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 isCallableNode = insert(IsCallableNode.create());
             }
-            return builtinReplace(searchValue, replParam, thisObj);
+            return builtinReplace(searchVal, replaceVal, thisObj);
+        }
+
+        static ReplaceStringParser.Token[] parseReplaceValue(String replaceValue) {
+            return ReplaceStringParser.parse(replaceValue, 0, false);
         }
 
         private String builtinReplace(Object searchValue, Object replParam, Object o) {
@@ -1134,89 +1149,83 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return string;
             }
             StringBuilder sb = new StringBuilder(pos + (string.length() - (pos + searchString.length())) + 20);
-            Boundaries.builderAppend(sb, Boundaries.substring(string, 0, pos));
-
+            Boundaries.builderAppend(sb, string, 0, pos);
             if (functionalReplaceProfile.profile(functionalReplace)) {
                 Object replValue = functionReplaceCall(replaceFunction, Undefined.instance, new Object[]{searchString, pos, string});
                 Boundaries.builderAppend(sb, toString3Node.executeString(replValue));
             } else {
-                appendSubstitution(sb, string, searchString, pos, replaceString);
+                appendSubstitution(sb, string, replaceString, searchString, pos, dollarProfile);
             }
-            Boundaries.builderAppend(sb, Boundaries.substring(string, pos + searchString.length()));
+            Boundaries.builderAppend(sb, string, pos + searchString.length(), string.length());
             return Boundaries.builderToString(sb);
         }
 
-        public void appendSubstitution(StringBuilder sb, String input, String matched, int position, String replaceStr) {
-            if (!replaceStr.isEmpty()) {
-                int pos = nextDollar(sb, 0, replaceStr);
-                if (pos != -1) {
-                    dollarProfile.enter();
-                    int tailPos = position + matched.length();
-                    while (pos != -1) {
-                        pos = appendSubstitutionIntl(sb, input, pos + 1, position, tailPos, replaceStr, matched);
-                        pos = nextDollar(sb, pos, replaceStr);
-                    }
-                }
+        private String builtinReplaceString(String searchString, String replaceString, Object o, ReplaceStringParser.Token[] parsedReplaceParam) {
+            String input = toString(o);
+            int pos = input.indexOf(searchString);
+            if (replaceNecessaryProfile.profile(pos < 0)) {
+                return input;
             }
+            StringBuilder sb = new StringBuilder(pos + (input.length() - (pos + searchString.length())) + 20);
+            Boundaries.builderAppend(sb, input, 0, pos);
+            if (parsedReplaceParam == null) {
+                appendSubstitution(sb, input, replaceString, searchString, pos, dollarProfile);
+            } else {
+                ReplaceStringParser.processParsed(parsedReplaceParam, new ReplaceStringConsumer(sb, input, replaceString, searchString, pos), null);
+            }
+            Boundaries.builderAppend(sb, input, pos + searchString.length(), input.length());
+            return Boundaries.builderToString(sb);
         }
 
-        public static void appendSubstitutionStatic(StringBuilder sb, String input, String matched, int position, String replaceStr) {
-            if (!replaceStr.isEmpty()) {
-                int pos = nextDollar(sb, 0, replaceStr);
-                if (pos != -1) {
-                    int tailPos = position + matched.length();
-                    while (pos != -1) {
-                        pos = appendSubstitutionIntl(sb, input, pos + 1, position, tailPos, replaceStr, matched);
-                        pos = nextDollar(sb, pos, replaceStr);
-                    }
-                }
-            }
+        private static void appendSubstitution(StringBuilder sb, String input, String replaceStr, String matched, int pos, BranchProfile dollarProfile) {
+            ReplaceStringParser.process(replaceStr, 0, false, dollarProfile, new ReplaceStringConsumer(sb, input, replaceStr, matched, pos), null);
         }
 
-        private static int nextDollar(StringBuilder sb, int start, String replaceStr) {
-            int pos = replaceStr.indexOf('$', start);
-            int end = (pos == -1) ? replaceStr.length() : pos;
-            Boundaries.builderAppend(sb, replaceStr, start, end);
-            return pos;
-        }
+        private static final class ReplaceStringConsumer implements ReplaceStringParser.Consumer<Void> {
 
-        private static int appendSubstitutionIntl(StringBuilder sb, String input, int pos, int startPos, int endPos, String replaceStr, String matched) {
-            if (pos == replaceStr.length()) {
-                Boundaries.builderAppend(sb, '$');
-                return pos;
+            private final StringBuilder sb;
+            private final String input;
+            private final String replaceStr;
+            private final String matched;
+            private final int matchedPos;
+
+            private ReplaceStringConsumer(StringBuilder sb, String input, String replaceStr, String matched, int matchedPos) {
+                this.sb = sb;
+                this.input = input;
+                this.replaceStr = replaceStr;
+                this.matched = matched;
+                this.matchedPos = matchedPos;
             }
-            char ch = replaceStr.charAt(pos);
-            switch (ch) {
-                case '$':
-                    Boundaries.builderAppend(sb, '$');
-                    break;
-                case '&':
-                    Boundaries.builderAppend(sb, matched);
-                    break;
-                case '`':
-                    Boundaries.builderAppend(sb, input, 0, startPos);
-                    break;
-                case '\'':
-                    Boundaries.builderAppend(sb, input, endPos, input.length());
-                    break;
-                default:
-                    if (Boundaries.characterIsDigit(ch)) {
-                        // value is replaced with ""
-                        if (replaceStr.length() > (pos + 1) && Boundaries.characterIsDigit(replaceStr.charAt(pos + 1))) {
-                            Boundaries.builderAppend(sb, '$');
-                            Boundaries.builderAppend(sb, ch);
-                            Boundaries.builderAppend(sb, replaceStr.charAt(pos + 1));
-                            return pos + 2;
-                        }
-                        Boundaries.builderAppend(sb, '$');
-                        Boundaries.builderAppend(sb, ch);
-                        return pos + 1;
-                    } else {
-                        Boundaries.builderAppend(sb, '$');
-                        Boundaries.builderAppend(sb, ch);
-                    }
+
+            @Override
+            public void literal(Void node, int start, int end) {
+                Boundaries.builderAppend(sb, replaceStr, start, end);
             }
-            return pos + 1;
+
+            @Override
+            public void match(Void node) {
+                Boundaries.builderAppend(sb, matched);
+            }
+
+            @Override
+            public void matchHead(Void node) {
+                Boundaries.builderAppend(sb, input, 0, matchedPos);
+            }
+
+            @Override
+            public void matchTail(Void node) {
+                Boundaries.builderAppend(sb, input, matchedPos + matched.length(), input.length());
+            }
+
+            @Override
+            public void captureGroup(Void node, int groupNumber, int literalStart, int literalEnd) {
+                throw Errors.shouldNotReachHere();
+            }
+
+            @Override
+            public void namedCaptureGroup(Void node, String groupName) {
+                throw Errors.shouldNotReachHere();
+            }
         }
 
         protected final Object functionReplaceCall(Object splitter, Object separator, Object[] args) {
@@ -1403,6 +1412,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         protected static final class StringReplacer extends Replacer<String> {
+
+            private final BranchProfile dollarProfile = BranchProfile.create();
+
             private StringReplacer() {
             }
 
@@ -1433,7 +1445,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             @Override
             void appendReplacement(StringBuilder sb, String input, String matchedString, int pos, String replaceValue) {
-                JSStringReplaceNode.appendSubstitutionStatic(sb, input, matchedString, pos, replaceValue);
+                JSStringReplaceNode.appendSubstitution(sb, input, replaceValue, matchedString, pos, dollarProfile);
             }
 
             private int appendSubstitution(StringBuilder sb, int pos, TruffleObject result, String replaceStr) {
@@ -2363,7 +2375,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (args.length == 0) {
                 return thisStr;
             }
-            int len = Math.max(0, toInteger(args[0]));
+            int len = toInteger(args[0]);
+            if (len <= thisStr.length()) {
+                return thisStr;
+            } else if (len > JSTruffleOptions.StringLengthLimit) {
+                CompilerDirectives.transferToInterpreter();
+                throw Errors.createRangeErrorInvalidStringLength();
+            }
             String fillStr;
             if (args.length <= 1 || args[1] == Undefined.instance) {
                 fillStr = " ";

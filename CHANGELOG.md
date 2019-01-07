@@ -3,6 +3,14 @@
 This changelog summarizes major changes between GraalVM versions of the Graal JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 1.0.0 RC11
+* Added option `js.disable-eval` to disable eval() and similar methods of dynamic code evaluation.
+* Added option `js.disable-with` to disable the with statement.
+* Instrumentation: Extended inline parsing to support statements.
+* Added support for sharing Java objects using the experimental Node.js Worker Threads API.
+* Added support for ScriptEngine `GLOBAL_SCOPE` bindings.
+* Made `Bindings` created by `ScriptEngine#createBindings()` implement `AutoCloseable` to allow closing the underlying `Context`.
+
 ## Version 1.0.0 RC10
 * Added support for `Array.prototype.{flat,flatMap}`, [a Stage 3 proposal](https://github.com/tc39/proposal-flatMap).
 * `Atomics.wake` available under its new name (`Atomics.notify`) as well.

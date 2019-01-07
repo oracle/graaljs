@@ -117,6 +117,7 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
+import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.binary.JSBinaryNode;
 import com.oracle.truffle.js.nodes.binary.JSOrNode;
@@ -146,6 +147,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.parser.env.BlockEnvironment;
+import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.Environment.VarRef;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
@@ -257,7 +259,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     protected final JavaScriptNode translateExpression(Expression expression) {
-        try (EnvironmentCloseable dummyFunctionEnv = enterFunctionEnvironment(true, false, false, false, false)) {
+        try (EnvironmentCloseable dummyFunctionEnv = enterFunctionEnvironment(true, false, false, false, false, false)) {
             currentFunction().setNeedsParentFrame(true);
             currentFunction().freeze(); // cannot add frame slots
             return transform(expression);
@@ -287,7 +289,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         boolean isMethod = functionNode.isMethod();
         boolean needsNewTarget = functionNode.usesNewTarget() || functionNode.hasDirectSuper();
         boolean isClassConstructor = functionNode.isClassConstructor();
-        boolean isConstructor = !isArrowFunction && ((!isMethod || context.getEcmaScriptVersion() == 5) || isClassConstructor || isGeneratorFunction);
+        boolean isConstructor = !isArrowFunction && !isGeneratorFunction && !isAsyncFunction && ((!isMethod || context.getEcmaScriptVersion() == 5) || isClassConstructor);
         assert !isDerivedConstructor || isConstructor;
         boolean strictFunctionProperties = isStrict || isArrowFunction || isMethod || isGeneratorFunction;
         boolean isBuiltin = false;
@@ -304,6 +306,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             Environment evalParent = environment.getParent();
             isGlobal = evalParent == null || (isDirectEval && (!isStrict && evalParent.function().isGlobal()));
             inDirectEval = isDirectEval || (evalParent != null && evalParent.function().inDirectEval());
+        } else if (environment instanceof DebugEnvironment) {
+            isGlobal = environment.getParent() == null;
+            isEval = true;
+            inDirectEval = true;
         } else {
             isGlobal = environment == null;
             inDirectEval = environment != null && currentFunction().inDirectEval();
@@ -327,12 +333,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             Environment parentEnv = environment;
             functionData.setLazyInit(fd -> {
                 GraalJSTranslator translator = newTranslator(parentEnv);
-                translator.translateFunctionOnDemand(functionNode, fd, isStrict, isArrowFunction, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, needsNewTarget, needsParentFrame,
-                                functionName);
+                translator.translateFunctionOnDemand(functionNode, fd, isStrict, isArrowFunction, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, isGlobal,
+                                needsNewTarget, needsParentFrame, functionName);
             });
             functionRoot = null;
         } else {
-            try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction)) {
+            try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal)) {
                 FunctionEnvironment currentFunction = currentFunction();
                 currentFunction.setFunctionName(functionName);
                 currentFunction.setInternalFunctionName(!functionName.isEmpty() ? functionName : functionNode.getIdent().getName());
@@ -432,8 +438,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private FunctionRootNode translateFunctionOnDemand(FunctionNode functionNode, JSFunctionData functionData, boolean isStrict, boolean isArrowFunction, boolean isGeneratorFunction,
-                    boolean isAsyncFunction, boolean isDerivedConstructor, boolean needsNewTarget, boolean needsParentFrame, String functionName) {
-        try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction)) {
+                    boolean isAsyncFunction, boolean isDerivedConstructor, boolean isGlobal, boolean needsNewTarget, boolean needsParentFrame, String functionName) {
+        try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal)) {
             FunctionEnvironment currentFunction = currentFunction();
             currentFunction.setFunctionName(functionName);
             currentFunction.setInternalFunctionName(!functionName.isEmpty() ? functionName : functionNode.getIdent().getName());
@@ -675,12 +681,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return body;
     }
 
-    private EnvironmentCloseable enterFunctionEnvironment(boolean isStrict, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction) {
+    private EnvironmentCloseable enterFunctionEnvironment(boolean isStrict, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction,
+                    boolean isGlobal) {
         Environment functionEnv;
         if (environment instanceof EvalEnvironment) {
-            functionEnv = new FunctionEnvironment(environment.getParent(), factory, context, isStrict, true, ((EvalEnvironment) environment).isDirectEval(), false, false, false, false);
+            assert !isArrowFunction && !isGeneratorFunction && !isDerivedConstructor && !isAsyncFunction;
+            functionEnv = new FunctionEnvironment(environment.getParent(), factory, context, isStrict, true, ((EvalEnvironment) environment).isDirectEval(), false, false, false, false, isGlobal);
+        } else if (environment instanceof DebugEnvironment) {
+            assert !isArrowFunction && !isGeneratorFunction && !isDerivedConstructor && !isAsyncFunction;
+            functionEnv = new FunctionEnvironment(environment, factory, context, isStrict, true, true, false, false, false, false, isGlobal);
         } else {
-            functionEnv = new FunctionEnvironment(environment, factory, context, isStrict, false, false, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction);
+            functionEnv = new FunctionEnvironment(environment, factory, context, isStrict, false, false, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal);
         }
         return new EnvironmentCloseable(functionEnv);
     }
@@ -1693,6 +1704,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (rhs instanceof JSOrNode.NotUndefinedOrNode && ((JSOrNode.NotUndefinedOrNode) rhs).getRight() instanceof FunctionNameHolder) {
             // used in destructuring assignment
             setAnonymousFunctionName(((JSOrNode.NotUndefinedOrNode) rhs).getRight(), name);
+        } else if (rhs instanceof com.oracle.truffle.js.nodes.control.IfNode) {
+            // used in default parameter
+            com.oracle.truffle.js.nodes.control.IfNode ifNode = (com.oracle.truffle.js.nodes.control.IfNode) rhs;
+            JavaScriptNode thenPart = ifNode.getThenPart();
+            if (thenPart instanceof FunctionNameHolder && ifNode.getElsePart() instanceof AccessIndexedArgumentNode) {
+                setAnonymousFunctionName(thenPart, name);
+            }
         }
     }
 
@@ -1820,24 +1838,33 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef iteratorVar = environment.createTempVar();
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(iterator);
         VarRef nextResultVar = environment.createTempVar();
-        VarRef doneVar = environment.createTempVar();
+        VarRef dontCloseIterVar = environment.createTempVar();
         JavaScriptNode iteratorNext = factory.createIteratorNext(iteratorVar.createReadNode());
         // nextResult = IteratorNext(iterator)
         // while(!(done = IteratorComplete(nextResult)))
-        JavaScriptNode condition = factory.createUnary(UnaryOperation.NOT, doneVar.createWriteNode(factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
+        JavaScriptNode condition = factory.createDual(context,
+                        dontCloseIterVar.createWriteNode(factory.createConstantBoolean(true)),
+                        factory.createUnary(UnaryOperation.NOT, factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
         JavaScriptNode wrappedBody;
         try (EnvironmentCloseable blockEnv = forNode.hasPerIterationScope() ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
             // var nextValue = IteratorValue(nextResult);
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
+            VarRef nextValueVar = environment.createTempVar();
+            VarRef dontCloseIterVar2 = environment.findTempVar(dontCloseIterVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
             JavaScriptNode nextValue = factory.createIteratorValue(context, nextResult);
-            JavaScriptNode writeNext = tagStatement(desugarForHeadAssignment(forNode, nextValue), forNode);
+            JavaScriptNode writeNextValue = nextValueVar.createWriteNode(nextValue);
+            JavaScriptNode writeNext = tagStatement(desugarForHeadAssignment(forNode, nextValueVar.createReadNode()), forNode);
             JavaScriptNode body = transform(forNode.getBody());
-            wrappedBody = blockEnv.wrapBlockScope(createBlock(writeNext, body));
+            wrappedBody = blockEnv.wrapBlockScope(createBlock(
+                            writeNextValue,
+                            dontCloseIterVar2.createWriteNode(factory.createConstantBoolean(false)),
+                            writeNext,
+                            body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
         JavaScriptNode whileNode = createWhileDo(condition, wrappedBody);
-        JavaScriptNode wrappedWhile = factory.createIteratorCloseIfNotDone(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), doneVar.createReadNode());
+        JavaScriptNode wrappedWhile = factory.createIteratorCloseIfNotDone(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), dontCloseIterVar.createReadNode());
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
         return createBlock(iteratorInit, wrappedWhile);
@@ -1859,7 +1886,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef iteratorVar = environment.createTempVar();
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(getIterator);
         VarRef nextResultVar = environment.createTempVar();
-        VarRef doneVar = environment.createTempVar();
+        VarRef dontCloseIterVar = environment.createTempVar();
 
         currentFunction().addAwait();
         JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
@@ -1867,22 +1894,31 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode iteratorNext = factory.createAsyncIteratorNext(context, iteratorVar.createReadNode(), asyncContextNode, asyncResultNode);
         // nextResult = Await(IteratorNext(iterator))
         // while(!(done = IteratorComplete(nextResult)))
-        JavaScriptNode condition = factory.createUnary(UnaryOperation.NOT, doneVar.createWriteNode(factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
+        JavaScriptNode condition = factory.createDual(context,
+                        dontCloseIterVar.createWriteNode(factory.createConstantBoolean(true)),
+                        factory.createUnary(UnaryOperation.NOT, factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
         JavaScriptNode wrappedBody;
         try (EnvironmentCloseable blockEnv = forNode.hasPerIterationScope() ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
             // var nextValue = IteratorValue(nextResult);
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
+            VarRef nextValueVar = environment.createTempVar();
+            VarRef dontCloseIterVar2 = environment.findTempVar(dontCloseIterVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
             JavaScriptNode nextValue = factory.createIteratorValue(context, nextResult);
-            JavaScriptNode writeNext = tagStatement(desugarForHeadAssignment(forNode, nextValue), forNode);
+            JavaScriptNode writeNextValue = nextValueVar.createWriteNode(nextValue);
+            JavaScriptNode writeNext = tagStatement(desugarForHeadAssignment(forNode, nextValueVar.createReadNode()), forNode);
             JavaScriptNode body = transform(forNode.getBody());
-            wrappedBody = blockEnv.wrapBlockScope(createBlock(writeNext, body));
+            wrappedBody = blockEnv.wrapBlockScope(createBlock(
+                            writeNextValue,
+                            dontCloseIterVar2.createWriteNode(factory.createConstantBoolean(false)),
+                            writeNext,
+                            body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
         JavaScriptNode whileNode = createWhileDo(condition, wrappedBody);
         currentFunction().addAwait();
         JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), asyncContextNode, asyncResultNode,
-                        doneVar.createReadNode());
+                        dontCloseIterVar.createReadNode());
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
         return createBlock(iteratorInit, wrappedWhile);
@@ -2981,6 +3017,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterWithNode(com.oracle.js.parser.ir.WithNode withNode) {
+        if (context.isOptionDisableWith()) {
+            throw Errors.createSyntaxError("with statement is disabled.");
+        }
         JavaScriptNode withExpression = transform(withNode.getExpression());
         JavaScriptNode toObject = factory.createToObjectFromWith(context, withExpression, true);
         String withVarName = makeUniqueTempVarNameForStatement(withNode);

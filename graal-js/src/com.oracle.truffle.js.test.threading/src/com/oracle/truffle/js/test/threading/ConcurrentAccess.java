@@ -63,7 +63,7 @@ public class ConcurrentAccess {
 
         final Context cx = Context.create("js");
 
-        Value code = cx.eval("js", "function() { return 42;};");
+        Value code = cx.eval("js", "(function() { return 42;})");
 
         Thread t = new Thread(new Runnable() {
 
@@ -91,7 +91,11 @@ public class ConcurrentAccess {
             t.start();
             startGate.countDown();
             while (!hadException.get()) {
-                code.execute();
+                try {
+                    code.execute();
+                } catch (IllegalStateException e) {
+                    hadException.set(true);
+                }
             }
             endGate.await();
             t.join(10000);
@@ -115,7 +119,7 @@ public class ConcurrentAccess {
         final Context cx = Context.create("js");
 
         cx.enter();
-        Value code = cx.eval("js", "function() { return 42;};");
+        Value code = cx.eval("js", "(function() { return 42;})");
         cx.leave();
 
         Thread t = new Thread(new Runnable() {

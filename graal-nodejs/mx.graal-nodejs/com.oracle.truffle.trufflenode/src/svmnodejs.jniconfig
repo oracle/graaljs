@@ -178,6 +178,7 @@
       { "name": "stackFrameGetFunctionName" },
       { "name": "stackFrameGetLineNumber" },
       { "name": "stackFrameGetScriptName" },
+      { "name": "stackFrameIsEval" },
       { "name": "stackTraceCurrentStackTrace" },
       { "name": "stringExternalResourceCallback" },
       { "name": "stringObjectNew" },

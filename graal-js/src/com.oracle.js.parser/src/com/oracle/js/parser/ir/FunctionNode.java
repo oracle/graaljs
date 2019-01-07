@@ -532,17 +532,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     /**
-     * Does this function's method needs to be variable arity (gather all script-declared parameters in a final
-     * {@code Object[]} parameter. Functions that need to have the "arguments" object as well as functions that simply
-     * declare too many arguments for JVM to handle with fixed arity will need to be variable arity.
-     * @return true if the Java method in the generated code that implements this function needs to be variable arity.
-     * @see #needsArguments()
-     */
-    public boolean isVarArg() {
-        return needsArguments() /* || parameters.size() > LinkerCallSite.ARGLIMIT */;
-    }
-
-    /**
      * Check whether a function would need dynamic scope, which is does if it has
      * evals and isn't strict.
      * @return true if dynamic scope is needed

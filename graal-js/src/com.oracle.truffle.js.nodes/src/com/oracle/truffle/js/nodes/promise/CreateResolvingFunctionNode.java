@@ -46,6 +46,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -108,19 +109,20 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
     private static JSFunctionData createPromiseResolveFunctionImpl(JSContext context) {
         class PromiseResolveRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode resolutionNode = AccessIndexedArgumentNode.create(0);
-            @Child private PropertyGetNode getPromise = PropertyGetNode.createGetHidden(PROMISE_KEY, context);
+            @Child private PropertyGetNode getPromise;
             @Child private PropertyGetNode getAlreadyResolved = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
-            @Child private PropertyGetNode getThen = PropertyGetNode.create(JSPromise.THEN, false, context);
+            @Child private PropertyGetNode getThen;
             @Child private IsCallableNode isCallable = IsCallableNode.create();
             @Child private IsObjectNode isObjectNode = IsObjectNode.create();
-            @Child private FulfillPromiseNode fulfillPromise = FulfillPromiseNode.create(context);
+            @Child private FulfillPromiseNode fulfillPromise;
             @Child private RejectPromiseNode rejectPromise;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+            private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
             // PromiseResolveThenableJob
-            @Child private PropertySetNode setPromise = PropertySetNode.createSetHidden(PROMISE_KEY, context);
-            @Child private PropertySetNode setThenable = PropertySetNode.createSetHidden(THENABLE_KEY, context);
-            @Child private PropertySetNode setThen = PropertySetNode.createSetHidden(THEN_KEY, context);
+            @Child private PropertySetNode setPromise;
+            @Child private PropertySetNode setThenable;
+            @Child private PropertySetNode setThen;
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -130,7 +132,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     return Undefined.instance;
                 }
                 alreadyResolved.value = true;
-                DynamicObject promise = (DynamicObject) getPromise.getValue(functionObject);
+                DynamicObject promise = (DynamicObject) getPromise(functionObject);
                 context.notifyPromiseHook(PromiseHook.TYPE_RESOLVE, promise);
 
                 Object resolution = resolutionNode.execute(frame);
@@ -139,25 +141,49 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     return rejectPromise(promise, Errors.createTypeError("self resolution!"));
                 }
                 if (!isObjectNode.executeBoolean(resolution)) {
-                    return fulfillPromise.execute(promise, resolution);
+                    return fulfillPromise(promise, resolution);
                 }
                 Object then;
                 try {
-                    then = getThen.getValue(resolution);
+                    then = getThen(resolution);
                 } catch (Throwable ex) {
                     enterErrorBranch();
-                    if (TryCatchNode.shouldCatch(ex)) {
+                    if (TryCatchNode.shouldCatch(ex, typeProfile)) {
                         return rejectPromise(promise, ex);
                     } else {
                         throw ex;
                     }
                 }
                 if (!isCallable.executeBoolean(then)) {
-                    return fulfillPromise.execute(promise, resolution);
+                    return fulfillPromise(promise, resolution);
                 }
                 DynamicObject job = promiseResolveThenableJob(promise, resolution, then);
                 context.promiseEnqueueJob(job);
                 return Undefined.instance;
+            }
+
+            private Object fulfillPromise(DynamicObject promise, Object resolution) {
+                if (fulfillPromise == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    fulfillPromise = insert(FulfillPromiseNode.create(context));
+                }
+                return fulfillPromise.execute(promise, resolution);
+            }
+
+            private Object getThen(Object resolution) {
+                if (getThen == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getThen = insert(PropertyGetNode.create(JSPromise.THEN, false, context));
+                }
+                return getThen.getValue(resolution);
+            }
+
+            private Object getPromise(DynamicObject functionObject) {
+                if (getPromise == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getPromise = insert(PropertyGetNode.createGetHidden(PROMISE_KEY, context));
+                }
+                return getPromise.getValue(functionObject);
             }
 
             private Object rejectPromise(DynamicObject promise, Throwable exception) {
@@ -174,6 +200,12 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             }
 
             private DynamicObject promiseResolveThenableJob(DynamicObject promise, Object thenable, Object then) {
+                if (setPromise == null || setThenable == null || setThen == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    setPromise = insert(PropertySetNode.createSetHidden(PROMISE_KEY, context));
+                    setThenable = insert(PropertySetNode.createSetHidden(THENABLE_KEY, context));
+                    setThen = insert(PropertySetNode.createSetHidden(THEN_KEY, context));
+                }
                 JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseResolveThenableJob, (c) -> createPromiseResolveThenableJobImpl(c));
                 DynamicObject function = JSFunction.create(context.getRealm(), functionData);
                 setPromise.setValue(function, promise);
@@ -216,13 +248,14 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
     private static JSFunctionData createPromiseRejectFunctionImpl(JSContext context) {
         class PromiseRejectRootNode extends JavaScriptRootNode {
-            @Child private JavaScriptNode reasonNode = AccessIndexedArgumentNode.create(0);
-            @Child private PropertyGetNode getPromise = PropertyGetNode.createGetHidden(PROMISE_KEY, context);
+            @Child private JavaScriptNode reasonNode;
+            @Child private PropertyGetNode getPromise;
             @Child private PropertyGetNode getAlreadyResolved = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
-            @Child private RejectPromiseNode rejectPromise = RejectPromiseNode.create(context);
+            @Child private RejectPromiseNode rejectPromise;
 
             @Override
             public Object execute(VirtualFrame frame) {
+                init();
                 DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolved.getValue(functionObject);
                 if (alreadyResolved.value) {
@@ -233,6 +266,14 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
                 Object reason = reasonNode.execute(frame);
                 return rejectPromise.execute(promise, reason);
+            }
+
+            public void init() {
+                if (reasonNode == null || getPromise == null || rejectPromise == null) {
+                    reasonNode = insert(AccessIndexedArgumentNode.create(0));
+                    getPromise = insert(PropertyGetNode.createGetHidden(PROMISE_KEY, context));
+                    rejectPromise = insert(RejectPromiseNode.create(context));
+                }
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseRejectRootNode());

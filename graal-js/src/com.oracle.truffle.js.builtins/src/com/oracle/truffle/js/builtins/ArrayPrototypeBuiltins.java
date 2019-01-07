@@ -44,7 +44,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -168,6 +167,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 import com.oracle.truffle.js.runtime.util.Pair;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * Contains builtins for {@linkplain JSArray}.prototype.
@@ -508,7 +508,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             if (!isConstructorNode.executeBoolean(ctor)) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorConstructorExpected();
+                throw Errors.createTypeErrorNotAConstructor(ctor);
             }
             return construct((DynamicObject) ctor, JSRuntime.longToIntOrDouble(length));
         }
@@ -558,7 +558,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             if (!isConstructorNode.executeBoolean(speciesConstructor)) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorConstructorExpected();
+                throw Errors.createTypeErrorNotAConstructor(speciesConstructor);
             }
             return (DynamicObject) speciesConstructor;
         }
@@ -1432,6 +1432,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final ConditionProfile isOne = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isTwo = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isSparse = ConditionProfile.createBinaryProfile();
+        private final BranchProfile growProfile = BranchProfile.create();
         private final BranchProfile sbAppendProfile = BranchProfile.create();
 
         public JSArrayJoinNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
@@ -1526,7 +1527,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private String joinSparse(TruffleObject thisObject, long length, String joinSeparator, final boolean appendSep) {
-            ArrayList<Object> converted = new ArrayList<>();
+            SimpleArrayList<Object> converted = SimpleArrayList.create(length);
             long calculatedLength = 0;
             long i = 0;
             while (i < length) {
@@ -1536,8 +1537,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     int stringLength = string.length();
                     if (stringLength > 0) {
                         calculatedLength += stringLength;
-                        Boundaries.listAdd(converted, i);
-                        Boundaries.listAdd(converted, string);
+                        converted.add(i, growProfile);
+                        converted.add(string, growProfile);
                     }
                 }
                 i = nextElementIndex(thisObject, i, length);
@@ -1553,8 +1554,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             final DelimitedStringBuilder res = new DelimitedStringBuilder((int) calculatedLength);
             long lastIndex = 0;
             for (int j = 0; j < converted.size(); j += 2) {
-                long index = (long) Boundaries.listGet(converted, j);
-                String value = (String) Boundaries.listGet(converted, j + 1);
+                long index = (long) converted.get(j);
+                String value = (String) converted.get(j + 1);
                 if (appendSep) {
                     for (long k = lastIndex; k < index; k++) {
                         res.append(joinSeparator, sbAppendProfile);
@@ -2331,6 +2332,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile arrayIsDefaultBranch = BranchProfile.create();
         private final BranchProfile hasCompareFnBranch = BranchProfile.create();
         private final BranchProfile noCompareFnBranch = BranchProfile.create();
+        private final BranchProfile growProfile = BranchProfile.create();
 
         public JSArraySortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -2493,10 +2495,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private Object[] getArraySparse(DynamicObject thisObj, ScriptArray scriptArray, long len) {
             long pos = scriptArray.firstElementIndex(thisObj);
-            ArrayList<Object> list = new ArrayList<>();
+            SimpleArrayList<Object> list = new SimpleArrayList<>();
             while (pos <= scriptArray.lastElementIndex(thisObj)) {
                 assert scriptArray.hasElement(thisObj, pos);
-                Boundaries.listAdd(list, scriptArray.getElement(thisObj, pos));
+                list.add(scriptArray.getElement(thisObj, pos), growProfile);
                 pos = nextElementIndex(thisObj, pos, len);
             }
             return list.toArray(new Object[list.size()]);
@@ -2556,22 +2558,22 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        private static Object[] objectToArray(DynamicObject thisObj, long len, Iterable<Object> keys) {
-            ArrayList<Object> list = new ArrayList<>();
+        private Object[] objectToArray(DynamicObject thisObj, long len, Iterable<Object> keys) {
+            SimpleArrayList<Object> list = SimpleArrayList.create(len);
             for (Object key : keys) {
                 long index = JSRuntime.propertyKeyToArrayIndex(key);
                 if (0 <= index && index < len) {
-                    Boundaries.listAdd(list, JSObject.get(thisObj, index));
+                    list.add(JSObject.get(thisObj, index), growProfile);
                 }
             }
             return list.toArray();
         }
 
         @TruffleBoundary
-        private static Object[] truffleobjectToArray(TruffleObject thisObj, long len) {
-            ArrayList<Object> list = new ArrayList<>();
+        private Object[] truffleobjectToArray(TruffleObject thisObj, long len) {
+            SimpleArrayList<Object> list = SimpleArrayList.create(len);
             for (int index = 0; index < len; index++) {
-                Boundaries.listAdd(list, JSInteropNodeUtil.read(thisObj, index));
+                list.add(JSInteropNodeUtil.read(thisObj, index), growProfile);
             }
             return list.toArray();
         }

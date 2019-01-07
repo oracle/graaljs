@@ -44,9 +44,7 @@ import static com.oracle.truffle.js.runtime.JSTruffleOptions.ECMAScript2017;
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.ECMAScript2018;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.WeakHashMap;
@@ -118,6 +116,7 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
+import com.oracle.truffle.js.nodes.access.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
@@ -137,7 +136,6 @@ import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
-import com.oracle.truffle.js.nodes.control.TryCatchNode.InitErrorObjectNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -150,7 +148,6 @@ import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
@@ -198,6 +195,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.WeakMap;
 
@@ -295,7 +293,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         public boolean isNewTargetConstructor() {
-            return EnumSet.range(Array, SharedArrayBuffer).contains(this);
+            return EnumSet.range(Array, AsyncGeneratorFunction).contains(this);
         }
 
         @Override
@@ -1164,12 +1162,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return (arg0 == Undefined.instance) || (arg0 == Null.instance);
         }
 
+        @Specialization(guards = {"isNewTargetCase"})
+        protected DynamicObject constructObjectNewTarget(DynamicObject newTarget, @SuppressWarnings("unused") Object[] arguments) {
+            return newObject(newTarget);
+        }
+
         @Specialization(guards = {"arguments.length == 0"})
         protected DynamicObject constructObject0(DynamicObject newTarget, @SuppressWarnings("unused") Object[] arguments) {
             return newObject(newTarget);
         }
 
-        @Specialization(guards = {"arguments.length > 0", "!arg0NullOrUndefined(arguments)"})
+        @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"})
         protected TruffleObject constructObjectJSObject(@SuppressWarnings("unused") DynamicObject newTarget, Object[] arguments,
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
             return toObjectNode.executeTruffleObject(arguments[0]);
@@ -1476,7 +1479,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
             this.errorType = JSErrorType.valueOf(getBuiltin().getName());
             this.stackTraceLimitNode = ErrorStackTraceLimitNode.create(context);
-            this.initErrorObjectNode = InitErrorObjectNode.create(context, false);
+            this.initErrorObjectNode = InitErrorObjectNode.create(context);
         }
 
         @Specialization
@@ -1677,10 +1680,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructJavaImporter(Object... args) {
-            List<DynamicObject> pkgs = new ArrayList<>();
+            SimpleArrayList<DynamicObject> pkgs = new SimpleArrayList<>(args.length);
             for (Object pkg : args) {
                 if (JavaPackage.isJavaPackage(pkg)) {
-                    Boundaries.listAdd(pkgs, (DynamicObject) pkg);
+                    pkgs.addUnchecked((DynamicObject) pkg);
                 }
             }
             return JavaImporter.create(getContext(), pkgs.toArray(new DynamicObject[pkgs.size()]));
@@ -1971,8 +1974,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject construct(VirtualFrame frame, DynamicObject newTarget, Object executor) {
             DynamicObject promise = createPromiseFromConstructor.executeWithConstructor(frame, newTarget);
             setPromiseState.setValueInt(promise, JSPromise.PENDING);
-            setPromiseFulfillReactions.setValue(promise, new ArrayList<>());
-            setPromiseRejectReactions.setValue(promise, new ArrayList<>());
+            setPromiseFulfillReactions.setValue(promise, new SimpleArrayList<>());
+            setPromiseRejectReactions.setValue(promise, new SimpleArrayList<>());
             setPromiseIsHandled.setValueBoolean(promise, false);
 
             getContext().notifyPromiseHook(PromiseHook.TYPE_INIT, promise);

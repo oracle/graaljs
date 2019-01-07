@@ -68,6 +68,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createEvalError(String message) {
+        return JSException.create(JSErrorType.EvalError, message);
+    }
+
+    @TruffleBoundary
     public static JSException createRangeError(String message) {
         return JSException.create(JSErrorType.RangeError, message);
     }
@@ -129,6 +134,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotAConstructor(Object object) {
+        return createTypeErrorNotAConstructor(object, null);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNotAConstructor(Object object, Node originatingNode) {
         return JSException.create(JSErrorType.TypeError, String.format("%s is not a constructor", JSRuntime.safeToString(object)), originatingNode);
     }
@@ -141,6 +151,11 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorPluralRulesExpected() {
         return createTypeError("PluralRules object expected.");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorCalledOnNonObject() {
+        return createTypeError("called on non-object");
     }
 
     @TruffleBoundary
@@ -394,11 +409,6 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorConstructorExpected() {
-        return Errors.createTypeError("Constructor expected");
-    }
-
-    @TruffleBoundary
     public static JSException createTypeErrorGeneratorObjectExpected() {
         return Errors.createTypeError("Not a generator object");
     }
@@ -473,6 +483,11 @@ public final class Errors {
         throw new IllegalStateException("should not reach here: " + message);
     }
 
+    public static RuntimeException shouldNotReachHere(Throwable exception) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new IllegalStateException("should not reach here", exception);
+    }
+
     @TruffleBoundary
     public static JSException createTypeErrorConfigurableExpected() {
         return createTypeError("configurable expected");
@@ -510,6 +525,15 @@ public final class Errors {
 
     public static JSException createTypeErrorProxyRevoked() {
         return createTypeError("proxy has been revoked");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorProxyGetInvariantViolated(Object propertyKey, Object expectedValue, Object actualValue) {
+        String propertyName = propertyKey.toString();
+        String expected = JSRuntime.safeToString(expectedValue);
+        String actual = JSRuntime.safeToString(actualValue);
+        return createTypeError("'get' on proxy: property '" + propertyName +
+                        "' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value (expected '" + expected + "' but got '" + actual + "')");
     }
 
     @TruffleBoundary
@@ -551,6 +575,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createErrorFromException(Exception e) {
+        return JSException.create(JSErrorType.Error, e.getMessage(), e, null);
+    }
+
+    @TruffleBoundary
     public static JSException createICU4JDataError() {
         return Errors.createError("ICU4J library not properly configured to work with native image. " +
                         "Please either set system property, " +
@@ -563,5 +592,10 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorStringExpected() {
         return Errors.createTypeError("string expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createEvalDisabled() {
+        return Errors.createEvalError("dynamic evaluation of code is disabled.");
     }
 }

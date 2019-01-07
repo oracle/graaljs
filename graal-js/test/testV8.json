@@ -469,10 +469,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/compiler/object-constructor.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/compiler/promise-resolve.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -649,9 +645,6 @@
     "filePath" : "mjsunit/es6/object-literals-super.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/object-tostring.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/promise-all-overflow-1.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -675,9 +668,6 @@
     "filePath" : "mjsunit/es6/proxies-function.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/proxies-get.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/proxies-prototype-handler-stackoverflow.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -688,9 +678,6 @@
     "filePath" : "mjsunit/es6/proxies.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/es6/reflect-construct.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/reflect-set-prototype-of.js",
     "status" : "FAIL"
@@ -899,14 +886,6 @@
     "filePath" : "mjsunit/harmony/generators.js",
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
-  }, {
-    "filePath" : "mjsunit/harmony/harmony-string-pad-end.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/harmony-string-pad-start.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/harmony/import-from-compilation-errored.js",
     "status" : "FAIL",
@@ -1491,9 +1470,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/regress/regress-5664.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-5669.js",
     "status" : "FAIL"
   }, {
@@ -1603,14 +1579,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/regress/regress-7677.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-7716.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-7791.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
@@ -1877,10 +1845,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-807096.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-808192.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1931,9 +1895,6 @@
     "filePath" : "mjsunit/regress/regress-inline-getter-near-stack-limit.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-integer-indexed-element.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-osr-in-case-label.js",
     "status" : "SKIP",

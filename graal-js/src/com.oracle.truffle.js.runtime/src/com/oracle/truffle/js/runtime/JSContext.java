@@ -44,10 +44,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.ZoneId;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -176,6 +176,13 @@ public class JSContext {
      * spec).
      */
     @CompilationFinal private Assumption typedArrayNotDetachedAssumption;
+
+    /**
+     * Assumption: Static RegExp results (RegExp.$1 etc) are never used. As long as this assumption
+     * holds, just the arguments of the last RegExp execution are stored, allowing RegExp result
+     * objects to be virtualized in RegExp#exec().
+     */
+    private final Assumption regExpStaticResultUnusedAssumption;
 
     /**
      * Local time zone information. Initialized lazily.
@@ -392,13 +399,14 @@ public class JSContext {
         this.typedArrayNotDetachedAssumption = Truffle.getRuntime().createAssumption("typedArrayNotDetachedAssumption");
         this.fastArrayAssumption = Truffle.getRuntime().createAssumption("fastArrayAssumption");
         this.fastArgumentsObjectAssumption = Truffle.getRuntime().createAssumption("fastArgumentsObjectAssumption");
+        this.regExpStaticResultUnusedAssumption = Truffle.getRuntime().createAssumption("regExpStaticResultUnusedAssumption");
 
         this.evaluator = evaluator;
         this.nodeFactory = evaluator.getDefaultNodeFactory();
 
         this.moduleNamespaceFactory = JSObjectFactory.createBound(this, Null.instance, JSModuleNamespace.makeInitialShape(this).createFactory());
 
-        this.promiseJobsQueue = new LinkedList<>();
+        this.promiseJobsQueue = new ArrayDeque<>(4);
         this.promiseJobsQueueNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseJobsQueueNotUsedAssumption");
 
         this.promiseHookNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseHookNotUsedAssumption");
@@ -568,6 +576,10 @@ public class JSContext {
         return typedArrayNotDetachedAssumption;
     }
 
+    public final Assumption getRegExpStaticResultUnusedAssumption() {
+        return regExpStaticResultUnusedAssumption;
+    }
+
     public static JSContext createContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
         return new JSContext(evaluator, lookup, contextOptions, lang, env);
     }
@@ -657,14 +669,14 @@ public class JSContext {
     /**
      * ECMA 8.4.1 EnqueueJob.
      */
-    public final void promiseEnqueueJob(DynamicObject newTarget) {
+    public final void promiseEnqueueJob(DynamicObject job) {
         invalidatePromiseQueueNotUsedAssumption();
-        promiseJobQueueAdd(newTarget);
+        promiseJobQueueAdd(job);
     }
 
     @TruffleBoundary
-    private void promiseJobQueueAdd(DynamicObject newTarget) {
-        promiseJobsQueue.push(newTarget);
+    private void promiseJobQueueAdd(DynamicObject job) {
+        promiseJobsQueue.push(job);
     }
 
     private void invalidatePromiseQueueNotUsedAssumption() {
@@ -914,20 +926,27 @@ public class JSContext {
         return dictionaryObjectFactory;
     }
 
-    private static String createRegexEngineOptions() {
+    private String createRegexEngineOptions() {
         StringBuilder options = new StringBuilder(30);
         if (JSTruffleOptions.U180EWhitespace) {
-            options.append("U180EWhitespace=true");
+            options.append(RegexOptions.U180E_WHITESPACE_NAME + "=true,");
         }
         if (JSTruffleOptions.RegexRegressionTestMode) {
-            if (options.length() > 0) {
-                options.append(",");
-            }
-            options.append("RegressionTestMode=true");
+            options.append(RegexOptions.REGRESSION_TEST_MODE_NAME + "=true,");
+        }
+        if (getContextOptions().isRegexDumpAutomata()) {
+            options.append(RegexOptions.DUMP_AUTOMATA_NAME + "=true,");
+        }
+        if (getContextOptions().isRegexStepExecution()) {
+            options.append(RegexOptions.STEP_EXECUTION_NAME + "=true,");
+        }
+        if (getContextOptions().isRegexAlwaysEager()) {
+            options.append(RegexOptions.ALWAYS_EAGER_NAME + "=true,");
         }
         return options.toString();
     }
 
+    @SuppressWarnings("checkstyle:NoWhitespaceBefore")
     public TruffleObject getRegexEngine() {
         if (regexEngine == null) {
             RegexCompiler joniCompiler = new JoniRegexCompiler(null);
@@ -940,7 +959,17 @@ public class JSContext {
                     throw ex.raise();
                 }
             } else {
-                RegexOptions regexOptions = RegexOptions.newBuilder().u180eWhitespace(JSTruffleOptions.U180EWhitespace).regressionTestMode(JSTruffleOptions.RegexRegressionTestMode).build();
+                // Checkstyle: stop
+                // @formatter:off
+                RegexOptions regexOptions = RegexOptions.newBuilder()
+                        .u180eWhitespace(JSTruffleOptions.U180EWhitespace)
+                        .regressionTestMode(JSTruffleOptions.RegexRegressionTestMode)
+                        .dumpAutomata(getContextOptions().isRegexDumpAutomata())
+                        .stepExecution(getContextOptions().isRegexStepExecution())
+                        .alwaysEager(getContextOptions().isRegexAlwaysEager())
+                        .build();
+                // @formatter:on
+                // Checkstyle: resume
                 regexEngine = new CachingRegexEngine(joniCompiler, regexOptions);
             }
         }
@@ -975,8 +1004,8 @@ public class JSContext {
                         JSModuleRecord newModule = getEvaluator().parseModule(JSContext.this, source, this);
                         moduleMap.put(canonicalPath, newModule);
                         return newModule;
-                    } catch (IOException e) {
-                        throw Errors.createError(e.getMessage());
+                    } catch (IOException | SecurityException e) {
+                        throw Errors.createErrorFromException(e);
                     }
                 }
 
@@ -1275,8 +1304,20 @@ public class JSContext {
         return contextOptions.isParseOnly();
     }
 
+    public boolean isOptionDisableEval() {
+        return contextOptions.isDisableEval();
+    }
+
+    public boolean isOptionDisableWith() {
+        return contextOptions.isDisableWith();
+    }
+
     public long getTimerResolution() {
         return contextOptions.getTimerResolution();
+    }
+
+    public boolean usePromiseResolve() {
+        return contextOptions.isAwaitOptimization();
     }
 
     public void initializeJavaInteropWorkers(EcmaAgent workerMain, EcmaAgent.Factory workerFactory) {
@@ -1564,5 +1605,11 @@ public class JSContext {
             }
         });
         return JSFunctionData.createCallOnly(this, callTarget, 0, "get " + JSObject.PROTO);
+    }
+
+    public void checkEvalAllowed() {
+        if (isOptionDisableEval()) {
+            throw Errors.createEvalDisabled();
+        }
     }
 }

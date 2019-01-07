@@ -77,13 +77,13 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         return propertyNode.getValue(target);
     }
 
-    @Specialization(guards = {"isArrayIndex(index)"})
+    @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
     Object doIntIndex(DynamicObject target, int index,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         return JSObject.get(target, index, jsclassProfile);
     }
 
-    @Specialization(guards = {"toArrayIndexNode.isArrayIndex(key)"}, replaces = {"doIntIndex"})
+    @Specialization(guards = {"toArrayIndexNode.isArrayIndex(key)", "!isJSProxy(target)"}, replaces = {"doIntIndex"})
     Object doArrayIndex(DynamicObject target, Object key,
                     @Cached("createNoToPropertyKey()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("create()") JSClassProfile jsclassProfile) {

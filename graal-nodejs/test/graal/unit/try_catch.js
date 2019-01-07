@@ -120,10 +120,9 @@ describe('TryCatch', function () {
             assert.strictEqual(typeof line, "string");
         });
     });
-    describe.skip('HasTerminated', function () {
+    describe('HasTerminated', function () {
         it('should be callable', function () {
-            module.TryCatch_HasTerminatedNoException();
-            assert.strictEqual(true, true);
+            assert.strictEqual(module.TryCatch_HasTerminatedNoException(), false);
         });
     });
     describe('Fatal Error', function () {

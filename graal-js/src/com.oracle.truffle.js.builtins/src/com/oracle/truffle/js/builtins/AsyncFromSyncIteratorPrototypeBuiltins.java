@@ -66,6 +66,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
+import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -135,6 +136,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         @Child private JSFunctionCallNode executePromiseMethod;
         @Child private NewPromiseCapabilityNode newPromiseCapability;
         @Child protected PerformPromiseThenNode performPromiseThenNode;
+        @Child private PromiseResolveNode promiseResolveNode;
 
         @Child protected IteratorNextNode iteratorNext;
         @Child protected IteratorValueNode iteratorValue;
@@ -153,6 +155,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             this.getSyncIteratorRecord = PropertyGetNode.createGetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
             this.setDoneNode = PropertySetNode.createSetHidden(DONE, context);
             this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+            this.promiseResolveNode = PromiseResolveNode.create(context);
         }
 
         protected PromiseCapabilityRecord createPromiseCapability() {
@@ -178,6 +181,35 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         protected Object getPromise(DynamicObject promiseCapability) {
             return getPromise.getValue(promiseCapability);
+        }
+
+        protected final Object asyncFromSyncIteratorContinuation(DynamicObject result, PromiseCapabilityRecord promiseCapability) {
+            boolean done;
+            try {
+                done = iteratorComplete.execute(result);
+            } catch (GraalJSException e) {
+                promiseCapabilityReject(promiseCapability, e);
+                return promiseCapability.getPromise();
+            }
+            Object returnValue;
+            try {
+                returnValue = iteratorValue.execute(result);
+            } catch (GraalJSException e) {
+                promiseCapabilityReject(promiseCapability, e);
+                return promiseCapability.getPromise();
+            }
+            JSRealm realm = getContext().getRealm();
+            DynamicObject valueWrapper;
+            if (getContext().usePromiseResolve()) {
+                valueWrapper = promiseResolveNode.execute(realm.getPromiseConstructor(), returnValue);
+            } else {
+                PromiseCapabilityRecord valueWrapperCapability = createPromiseCapability();
+                promiseCapabilityResolve(valueWrapperCapability, returnValue);
+                valueWrapper = valueWrapperCapability.getPromise();
+            }
+            DynamicObject onFulfilled = createIteratorValueUnwrapFunction(realm, done);
+            performPromiseThenNode.execute(valueWrapper, onFulfilled, Undefined.instance, promiseCapability);
+            return promiseCapability.getPromise();
         }
 
         /**
@@ -229,8 +261,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityReject(promiseCapability, typeError);
                 return promiseCapability.getPromise();
             }
-            boolean nextDone;
-            Object nextValue;
             DynamicObject nextResult;
             IteratorRecord syncIteratorRecord = (IteratorRecord) getSyncIteratorRecord.getValue(thisObj);
             try {
@@ -239,23 +269,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityReject(promiseCapability, e);
                 return promiseCapability.getPromise();
             }
-            try {
-                nextDone = iteratorComplete.execute(nextResult);
-            } catch (GraalJSException e) {
-                promiseCapabilityReject(promiseCapability, e);
-                return promiseCapability.getPromise();
-            }
-            try {
-                nextValue = iteratorValue.execute(nextResult);
-            } catch (GraalJSException e) {
-                promiseCapabilityReject(promiseCapability, e);
-                return promiseCapability.getPromise();
-            }
-            PromiseCapabilityRecord valueWrapperCapability = createPromiseCapability();
-            promiseCapabilityResolve(valueWrapperCapability, nextValue);
-            DynamicObject onFulfilled = createIteratorValueUnwrapFunction(getContext().getRealm(), nextDone);
-            performPromiseThenNode.execute(valueWrapperCapability.getPromise(), onFulfilled, Undefined.instance, promiseCapability);
-            return promiseCapability.getPromise();
+            return asyncFromSyncIteratorContinuation(nextResult, promiseCapability);
         }
 
     }
@@ -280,7 +294,6 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityReject(promiseCapability, typeError);
                 return promiseCapability.getPromise();
             }
-            boolean done;
             IteratorRecord syncIteratorRecord = (IteratorRecord) getSyncIteratorRecord.getValue(thisObj);
             DynamicObject syncIterator = syncIteratorRecord.getIterator();
             Object method = getMethod().executeWithTarget(syncIterator);
@@ -298,24 +311,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityReject(promiseCapability, Errors.createTypeErrorNotAnObject(returnResult));
                 return promiseCapability.getPromise();
             }
-            try {
-                done = iteratorComplete.execute((DynamicObject) returnResult);
-            } catch (GraalJSException e) {
-                promiseCapabilityReject(promiseCapability, e);
-                return promiseCapability.getPromise();
-            }
-            Object returnValue;
-            try {
-                returnValue = iteratorValue.execute((DynamicObject) returnResult);
-            } catch (GraalJSException e) {
-                promiseCapabilityReject(promiseCapability, e);
-                return promiseCapability.getPromise();
-            }
-            PromiseCapabilityRecord valueWrapperCapability = createPromiseCapability();
-            promiseCapabilityResolve(valueWrapperCapability, returnValue);
-            DynamicObject onFulfilled = createIteratorValueUnwrapFunction(getContext().getRealm(), done);
-            performPromiseThenNode.execute(valueWrapperCapability.getPromise(), onFulfilled, Undefined.instance, promiseCapability);
-            return promiseCapability.getPromise();
+            return asyncFromSyncIteratorContinuation((DynamicObject) returnResult, promiseCapability);
         }
     }
 

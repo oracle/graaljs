@@ -79,7 +79,8 @@ public enum SerializationTag {
     END_DENSE_JS_ARRAY('$'), // kEndDenseJSArray
     THE_HOLE('-'), // kTheHole
     OBJECT_REFERENCE('^'), // kObjectReference
-    HOST_OBJECT('\\'); // kHostObject
+    HOST_OBJECT('\\'), // kHostObject
+    SHARED_JAVA_OBJECT('J'); // Custom, for shared interop Java objects
 
     private final byte tag;
 

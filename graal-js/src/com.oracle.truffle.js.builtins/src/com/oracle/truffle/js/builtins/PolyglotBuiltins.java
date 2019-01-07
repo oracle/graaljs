@@ -60,8 +60,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotConstructNodeGen;
 import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotCreateForeignDynamicObjectNodeGen;
@@ -98,6 +100,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.util.Pair;
 
 public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<PolyglotBuiltins.Polyglot> {
     protected PolyglotBuiltins() {
@@ -627,23 +630,63 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
     }
 
-    abstract static class PolyglotEvalNode extends JSBuiltinNode {
+    abstract static class PolyglotEvalBaseNode extends JSBuiltinNode {
+
+        protected final ConditionProfile isValid = ConditionProfile.createBinaryProfile();
+
+        PolyglotEvalBaseNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected boolean isPublicLanguage(String language) {
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            LanguageInfo info = env.getLanguages().get(getLanguageIdAndMimeType(language).getFirst());
+            return info == null || !info.isInternal(); // Truffle throws on unknown language
+        }
+
+        protected Pair<String, String> getLanguageIdAndMimeType(String languageIdOrMimeType) {
+            String languageId = languageIdOrMimeType;
+            String mimeType = null;
+            if (languageIdOrMimeType.indexOf('/') >= 0) {
+                String language = Source.findLanguage(languageIdOrMimeType);
+                if (language != null) {
+                    languageId = language;
+                    mimeType = languageIdOrMimeType;
+                }
+            }
+            return new Pair<>(languageId, mimeType);
+        }
+    }
+
+    abstract static class PolyglotEvalNode extends PolyglotEvalBaseNode {
 
         PolyglotEvalNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isString(language)", "isString(source)"})
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"language.equals(cachedLanguage)", "isPublicLanguage"}, limit = "1")
         @TruffleBoundary
-        protected Object evalString(Object language, Object source) {
-            String languageIdOrMimeType = language.toString();
-            String sourceText = source.toString();
-            String languageId = languageIdOrMimeType;
-            String mimeType = null;
-            if (languageIdOrMimeType.indexOf('/') >= 0) {
-                languageId = Source.findLanguage(languageIdOrMimeType);
-                mimeType = languageIdOrMimeType;
+        protected Object evalCachedLanguage(String language, String source,
+                        @Cached("language") String cachedLanguage,
+                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair,
+                        @Cached("isPublicLanguage(language)") boolean isPublicLanguage) {
+            return evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond());
+        }
+
+        @Specialization(replaces = "evalCachedLanguage")
+        @TruffleBoundary
+        protected Object evalString(String language, String source) {
+            Pair<String, String> pair = getLanguageIdAndMimeType(language);
+            if (isValid.profile(isPublicLanguage(pair.getFirst()))) {
+                return evalStringIntl(source, pair.getFirst(), pair.getSecond());
+            } else {
+                throw Errors.createTypeError("Cannot eval internal languages");
             }
+        }
+
+        private Object evalStringIntl(String sourceText, String languageId, String mimeType) {
+            getContext().checkEvalAllowed();
             Source sourceObject = Source.newBuilder(languageId, sourceText, Evaluator.EVAL_SOURCE_NAME).mimeType(mimeType).build();
 
             CallTarget callTarget;
@@ -663,23 +706,34 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
     }
 
-    abstract static class PolyglotEvalFileNode extends JSBuiltinNode {
+    abstract static class PolyglotEvalFileNode extends PolyglotEvalBaseNode {
 
         PolyglotEvalFileNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isString(language)", "isString(file)"})
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"language.equals(cachedLanguage)", "isPublicLanguage"}, limit = "1")
         @TruffleBoundary
-        protected Object evalString(Object language, Object file) {
-            String languageIdOrMimeType = language.toString();
-            String fileName = file.toString();
-            String languageId = languageIdOrMimeType;
-            String mimeType = null;
-            if (languageIdOrMimeType.indexOf('/') >= 0) {
-                languageId = Source.findLanguage(languageIdOrMimeType);
-                mimeType = languageIdOrMimeType;
+        protected Object evalFileCachedLanguage(String language, String file,
+                        @Cached("language") String cachedLanguage,
+                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair,
+                        @Cached("isPublicLanguage(language)") boolean isPublicLanguage) {
+            return evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond());
+        }
+
+        @Specialization(replaces = "evalFileCachedLanguage")
+        @TruffleBoundary
+        protected Object evalFileString(String language, String file) {
+            Pair<String, String> pair = getLanguageIdAndMimeType(language);
+            if (isValid.profile(isPublicLanguage(pair.getFirst()))) {
+                return evalFileIntl(file, pair.getFirst(), pair.getSecond());
+            } else {
+                throw Errors.createTypeError("Cannot evalFile internal languages");
             }
+        }
+
+        private Object evalFileIntl(String fileName, String languageId, String mimeType) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
             Source source;
             try {
@@ -688,7 +742,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                 throw Errors.createError("Cannot evaluate file " + fileName + ": permission denied");
             } catch (NoSuchFileException e) {
                 throw Errors.createError("Cannot evaluate file " + fileName + ": no such file");
-            } catch (IOException e) {
+            } catch (IOException | SecurityException e) {
                 throw Errors.createError("Cannot evaluate file: " + e.getMessage());
             }
 

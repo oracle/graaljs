@@ -247,8 +247,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         PropertyDescriptor targetDesc = JSObject.getOwnProperty(target, propertyKey);
         if (targetDesc != null) {
             if (targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && !targetDesc.getWritable()) {
-                if (!JSRuntime.isSameValue(trapResult, targetDesc.getValue())) {
-                    throw Errors.createTypeError("Trap result must be the same as the value of the proxy target's corresponding non-writable, non-configurable own data property");
+                Object targetValue = targetDesc.getValue();
+                if (!JSRuntime.isSameValue(trapResult, targetValue)) {
+                    throw Errors.createTypeErrorProxyGetInvariantViolated(propertyKey, targetValue, trapResult);
                 }
             }
             if (targetDesc.isAccessorDescriptor() && !targetDesc.getConfigurable() && targetDesc.getGet() == Undefined.instance) {

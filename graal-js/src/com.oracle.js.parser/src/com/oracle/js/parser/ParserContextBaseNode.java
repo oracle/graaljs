@@ -91,6 +91,11 @@ abstract class ParserContextBaseNode implements ParserContextNode {
         return flags;
     }
 
+    public int clearFlag(final int flag) {
+        flags &= ~flag;
+        return flags;
+    }
+
     /**
      * @return The list of statements that belongs to this node
      */

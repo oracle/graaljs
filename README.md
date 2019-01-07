@@ -1,4 +1,4 @@
-[![Join the chat at https://gitter.im/graalvm/graal-core](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/graalvm/graal-core?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://gitter.im/graalvm/graaljs](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/graalvm/graaljs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 A high performance implementation of the JavaScript programming language.
 Built on the GraalVM by Oracle Labs.
@@ -31,14 +31,14 @@ For instance, a guide how to build Graal JavaScript from source code can be foun
 
 ## Current Status
 
-Graal JavaScript is compatible with the ECMAScript 2017 specification.
-New features, e.g. for the upcoming 2018 edition, are added frequently.
+Graal JavaScript is compatible with the ECMAScript 2018 specification.
+New features, e.g. for the upcoming 2019 edition, are added frequently.
 In addition, some popular extensions of other engines are supported, see [`JavaScriptCompatibility.md`](docs/user/JavaScriptCompatibility.md).
 
 Graal JavaScript can execute Node.js applications.
 It provides high compatibility with existing npm packages, with high likelyhood that your application will run out of the box.
 This includes npm packages with native implementations.
-Note that you will need to re-compile from source with Graal JavaScript if you want to run binaries that have beeen compiled for Node.js based on V8, or any other compatible engine.
+Note that you will need to re-compile from source with Graal JavaScript if you want to run binaries that have been compiled for Node.js based on V8, or any other compatible engine.
 
 ## Graal JavaScript Reference Manual
 
@@ -53,11 +53,11 @@ The discussion on [gitter](https://gitter.im/graalvm/graal-core) is a good way t
 
 The main authors of Graal JavaScript in order of joining the project are:
 
-Andreas Woess, Christian Wirth, Danilo Ansaloni, Daniele Bonetta, Jan Stola, Jakub Podlesak, Tomas Mysik, Jirka Marsik
+Andreas Woess, Christian Wirth, Danilo Ansaloni, Daniele Bonetta, Jan Stola, Jakub Podlesak, Tomas Mysik, Jirka Marsik, Josef Haider
 
 Additionally:
 
-Thomas Würthinger, Josef Haider, Christian Humer
+Thomas Würthinger, Christian Humer
 
 Collaborations with:
 

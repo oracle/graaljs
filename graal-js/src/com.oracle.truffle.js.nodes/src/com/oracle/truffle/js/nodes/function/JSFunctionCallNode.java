@@ -91,7 +91,6 @@ import com.oracle.truffle.js.nodes.interop.ExportArgumentsNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -116,6 +115,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 import com.oracle.truffle.js.runtime.util.Pair;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaScriptFunctionCallNode {
     private static final DebugCounter megamorphicCount = DebugCounter.create("Megamorphic call site count");
@@ -463,8 +463,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     public NodeCost getCost() {
         if (cacheNode == null) {
             return NodeCost.UNINITIALIZED;
+        } else if (isGeneric(cacheNode)) {
+            return NodeCost.MEGAMORPHIC;
+        } else if (cacheNode.nextNode != null) {
+            return NodeCost.POLYMORPHIC;
         } else {
-            return cacheNode.getCost();
+            return NodeCost.MONOMORPHIC;
         }
     }
 
@@ -483,19 +487,20 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     @ExplodeLoop
-    protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int delta) {
-        ArrayList<Object> argList = new ArrayList<>(arguments.length + delta);
-        for (int i = 0; i < delta; i++) {
-            Boundaries.listAdd(argList, args[i]);
+    protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int fixedArgumentsLength, BranchProfile growProfile) {
+        // assume size that avoids growing
+        SimpleArrayList<Object> argList = SimpleArrayList.create(fixedArgumentsLength + arguments.length + JSTruffleOptions.SpreadArgumentPlaceholderCount);
+        for (int i = 0; i < fixedArgumentsLength; i++) {
+            argList.addUnchecked(args[i]);
         }
         for (int i = 0; i < arguments.length; i++) {
             if (arguments[i] instanceof SpreadArgumentNode) {
-                ((SpreadArgumentNode) arguments[i]).executeToList(frame, argList);
+                ((SpreadArgumentNode) arguments[i]).executeToList(frame, argList, growProfile);
             } else {
-                Boundaries.listAdd(argList, arguments[i].execute(frame));
+                argList.add(arguments[i].execute(frame), growProfile);
             }
         }
-        return Boundaries.listToArray(argList);
+        return argList.toArray();
     }
 
     abstract static class CallNode extends JSFunctionCallNode {
@@ -676,13 +681,16 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     static class CallSpreadNode extends CallNNode {
+
+        private final BranchProfile growProfile = BranchProfile.create();
+
         protected CallSpreadNode(JavaScriptNode targetNode, JavaScriptNode functionNode, JavaScriptNode[] arguments, byte flags) {
             super(targetNode, functionNode, arguments, flags);
         }
 
         @Override
         protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
-            return executeFillObjectArraySpread(arguments, frame, args, delta);
+            return executeFillObjectArraySpread(arguments, frame, args, delta, growProfile);
         }
 
         @Override
@@ -901,6 +909,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     static class InvokeSpreadNode extends InvokeNNode {
+        private final BranchProfile growProfile = BranchProfile.create();
+
         protected InvokeSpreadNode(JSTargetableNode functionNode, JavaScriptNode[] arguments, byte flags) {
             this(null, functionNode, arguments, flags);
         }
@@ -911,7 +921,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
-            return executeFillObjectArraySpread(arguments, frame, args, delta);
+            return executeFillObjectArraySpread(arguments, frame, args, delta, growProfile);
         }
 
         @Override
@@ -947,7 +957,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     protected static JSFunctionCacheNode createCallableNode(DynamicObject function, JSFunctionData functionData, boolean isNew, boolean isNewTarget, boolean cacheOnInstance) {
-        CallTarget callTarget = getCallTarget(function, isNew, isNewTarget);
+        CallTarget callTarget = getCallTarget(functionData, isNew, isNewTarget);
         assert callTarget != null;
         if (JSFunction.isBoundFunction(function)) {
             if (cacheOnInstance) {
@@ -969,13 +979,13 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    protected static CallTarget getCallTarget(DynamicObject function, boolean isNew, boolean isNewTarget) {
+    protected static CallTarget getCallTarget(JSFunctionData functionData, boolean isNew, boolean isNewTarget) {
         if (isNewTarget) {
-            return JSFunction.getConstructNewTarget(function);
+            return functionData.getConstructNewTarget();
         } else if (isNew) {
-            return JSFunction.getConstructTarget(function);
+            return functionData.getConstructTarget();
         } else {
-            return JSFunction.getCallTarget(function);
+            return functionData.getCallTarget();
         }
     }
 
@@ -1095,11 +1105,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        public NodeCost getCost() {
-            if (nextNode != null) {
-                return NodeCost.POLYMORPHIC;
-            }
-            return NodeCost.MONOMORPHIC;
+        public final NodeCost getCost() {
+            return NodeCost.NONE;
         }
     }
 
@@ -1670,35 +1677,28 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Child private IndirectCallNode indirectCallNode;
         @Child private AbstractCacheNode next;
+        private final BranchProfile initBranch;
 
         GenericJSFunctionCacheNode(byte flags, AbstractCacheNode next) {
             this.flags = flags;
             this.indirectCallNode = Truffle.getRuntime().createIndirectCallNode();
             this.next = next;
+            this.initBranch = BranchProfile.create();
             megamorphicCount.inc();
         }
 
         @Override
         public Object executeCall(Object[] arguments) {
             Object function = JSArguments.getFunctionObject(arguments);
-            Object target = JSArguments.getThisObject(arguments);
-            return executeCallFunction(arguments, (DynamicObject) function, target);
-        }
-
-        private Object executeCallFunction(Object[] arguments, DynamicObject functionObject, Object target) {
-            assert functionObject == JSArguments.getFunctionObject(arguments) && target == JSArguments.getThisObject(arguments);
+            DynamicObject functionObject = (DynamicObject) function;
+            JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
             if (isNewTarget(flags)) {
-                return JSFunction.indirectConstructNewTarget(indirectCallNode, arguments);
+                return indirectCallNode.call(functionData.getConstructNewTarget(initBranch), arguments);
             } else if (isNew(flags)) {
-                return JSFunction.indirectConstruct(indirectCallNode, arguments);
+                return indirectCallNode.call(functionData.getConstructTarget(initBranch), arguments);
             } else {
-                return JSFunction.indirectCall(indirectCallNode, arguments);
+                return indirectCallNode.call(functionData.getCallTarget(initBranch), arguments);
             }
-        }
-
-        @Override
-        public NodeCost getCost() {
-            return NodeCost.MEGAMORPHIC;
         }
 
         @Override
@@ -1863,11 +1863,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 }
             }
             return Errors.createTypeErrorNotAFunction(expressionStr != null ? expressionStr : function, this);
-        }
-
-        @Override
-        public NodeCost getCost() {
-            return NodeCost.MEGAMORPHIC;
         }
     }
 

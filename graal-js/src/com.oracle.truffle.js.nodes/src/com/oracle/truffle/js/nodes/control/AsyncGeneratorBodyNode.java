@@ -53,6 +53,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -85,6 +86,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode;
         @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+        private final ValueProfile typeProfile = ValueProfile.createClassProfile();
         private final JSContext context;
 
         AsyncGeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection) {
@@ -152,7 +154,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
                 asyncGeneratorRejectNode = insert(AsyncGeneratorRejectNode.create(context));
             }
-            return TryCatchNode.shouldCatch(exception);
+            return TryCatchNode.shouldCatch(exception, typeProfile);
         }
 
         @Override

@@ -459,6 +459,7 @@ public class Parser extends AbstractParser {
             final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), PROGRAM_NAME);
             final FunctionNode.Kind functionKind = generator ? FunctionNode.Kind.GENERATOR : FunctionNode.Kind.NORMAL;
             final ParserContextFunctionNode function = createParserContextFunctionNode(ident, functionToken, functionKind, functionLine, Collections.<IdentNode>emptyList(), 0);
+            function.clearFlag(FunctionNode.IS_PROGRAM);
             if (async) {
                 function.setFlag(FunctionNode.IS_ASYNC);
             }
@@ -3226,7 +3227,7 @@ loop:
         // Object context.
         // Prepare to accumulate elements.
         final ArrayList<PropertyNode> elements = new ArrayList<>();
-        final Map<String, Integer> map = new HashMap<>();
+        final Map<String, PropertyNode> map = new HashMap<>();
 
         // Create a block for the object literal.
         boolean commaSeen = true;
@@ -3254,23 +3255,20 @@ loop:
                     commaSeen = false;
                     // Get and add the next property.
                     final PropertyNode property = propertyDefinition(yield, await);
+                    elements.add(property);
                     hasCoverInitializedName = hasCoverInitializedName || property.isCoverInitializedName() || hasCoverInitializedName(property.getValue());
 
                     if (property.isComputed() || property.getKey().isTokenType(SPREAD_OBJECT)) {
-                        elements.add(property);
                         break;
                     }
 
                     final String key = property.getKeyName();
-                    final Integer existing = map.get(key);
+                    final PropertyNode existingProperty = map.get(key);
 
-                    if (existing == null) {
-                        map.put(key, elements.size());
-                        elements.add(property);
+                    if (existingProperty == null) {
+                        map.put(key, property);
                         break;
                     }
-
-                    final PropertyNode existingProperty = elements.get(existing);
 
                     // ECMA section 11.1.5 Object Initialiser
                     // point # 4 on property assignment production
@@ -3290,15 +3288,16 @@ loop:
                         }
                     }
 
-                    if (value != null || prevValue != null) {
-                        map.put(key, elements.size());
-                        elements.add(property);
-                    } else if (getter != null) {
-                        assert prevGetter != null || prevSetter != null;
-                        elements.set(existing, existingProperty.setGetter(getter));
-                    } else if (setter != null) {
-                        assert prevGetter != null || prevSetter != null;
-                        elements.set(existing, existingProperty.setSetter(setter));
+                    if (!isES6() && value == null && prevValue == null) {
+                        // Update the map with existing (merged accessor) properties
+                        // for the purpose of checkPropertyRedefinition() above
+                        if (getter != null) {
+                            assert prevGetter != null || prevSetter != null;
+                            map.put(key, existingProperty.setGetter(getter));
+                        } else if (setter != null) {
+                            assert prevGetter != null || prevSetter != null;
+                            map.put(key, existingProperty.setSetter(setter));
+                        }
                     }
                     break;
             }
@@ -3686,17 +3685,29 @@ loop:
         Expression lhs = memberExpression(yield, await);
 
         if (type == LPAREN) {
-            final List<Expression> arguments = optimizeList(argumentList(yield, await));
+            boolean async = ES8_ASYNC_FUNCTION && isES8() && lhs.isTokenType(ASYNC);
+            final List<Expression> arguments = optimizeList(argumentList(yield, await, async));
 
             // Catch special functions.
             if (lhs instanceof IdentNode) {
-                // async () => ...
-                // async ( ArgumentsList ) => ...
-                if (ES8_ASYNC_FUNCTION && isES8() && lhs.isTokenType(ASYNC) && type == ARROW && checkNoLineTerminator()) {
-                    return new ExpressionList(callToken, callLine, arguments);
-                }
+                detectSpecialFunction((IdentNode) lhs);
+            }
 
-                detectSpecialFunction((IdentNode)lhs);
+            if (async) {
+                if (type == ARROW && checkNoLineTerminator()) {
+                    // async () => ...
+                    // async ( ArgumentsList ) => ...
+                    return new ExpressionList(callToken, callLine, arguments);
+                } else {
+                    // invocation of a function named 'async'
+                    for (Expression argument : arguments) {
+                        if (hasCoverInitializedName(argument)) {
+                            // would be thrown by assignmentExpression() if we knew that
+                            // we are parsing arguments (and not arrow parameter list)
+                            throw error(AbstractParser.message("invalid.property.initializer"));
+                        }
+                    }
+                }
             }
 
             lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
@@ -3971,6 +3982,10 @@ loop:
         return lhs;
     }
 
+    private ArrayList<Expression> argumentList(boolean yield, boolean await) {
+        return argumentList(yield, await, false);
+    }
+
     /**
      * Parse function call arguments.
      *
@@ -3986,7 +4001,7 @@ loop:
      *
      * @return Argument list.
      */
-    private ArrayList<Expression> argumentList(boolean yield, boolean await) {
+    private ArrayList<Expression> argumentList(boolean yield, boolean await, boolean inPatternPosition) {
         // Prepare to accumulate list of arguments.
         final ArrayList<Expression> nodeList = new ArrayList<>();
         // LPAREN tested in caller.
@@ -4014,7 +4029,7 @@ loop:
             }
 
             // Get argument expression.
-            Expression expression = assignmentExpression(true, yield, await);
+            Expression expression = assignmentExpression(true, yield, await, inPatternPosition);
             if (spreadToken != 0) {
                 expression = new UnaryNode(Token.recast(spreadToken, TokenType.SPREAD_ARGUMENT), expression);
             }
@@ -4163,10 +4178,6 @@ loop:
                 throw error(JSErrorType.SyntaxError, AbstractParser.message("no.func.decl.here"), functionToken);
             } else if (env.functionStatement == ScriptEnvironment.FunctionStatementBehavior.WARNING) {
                 warning(JSErrorType.SyntaxError, AbstractParser.message("no.func.decl.here.warn"), functionToken);
-            }
-            if ((topLevel || !useBlockScope()) && isArguments(name)) {
-                // (only) top-level function declarations override `arguments`
-                lc.getCurrentFunction().setFlag(FunctionNode.DEFINES_ARGUMENTS);
             }
         }
 
@@ -4682,9 +4693,9 @@ loop:
 
             if (expr instanceof BaseNode || expr instanceof IdentNode) {
                 if (isStrictMode && expr instanceof IdentNode) {
-                    String varName = ((IdentNode) expr).getName();
-                    if (!"this".equals(varName)) {
-                        throw error(AbstractParser.message("strict.cant.delete.ident", varName), unaryToken);
+                    IdentNode ident = (IdentNode) expr;
+                    if (!ident.isThis() && !ident.isNewTarget()) {
+                        throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
                     }
                 }
                 return new UnaryNode(unaryToken, expr);
@@ -5258,6 +5269,11 @@ loop:
                 if (((IdentNode) initializer).getName().equals(AWAIT.getName())) {
                     throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
                 }
+            }
+            if (lc.getCurrentNonArrowFunction().getFlag(FunctionNode.USES_THIS) != 0) {
+                // this may be used by the initializer (and enclosing function
+                // was marked as using 'this' from parenthesizedExpressionAndArrowParameterList())
+                currentFunction.setFlag(FunctionNode.USES_THIS);
             }
             if (lhs instanceof IdentNode) {
                 // default parameter

@@ -312,7 +312,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                     }
                     Object mapped = getIteratorValue((DynamicObject) next);
                     if (mapping) {
-                        mapped = callMapFn(thisArg, (DynamicObject) mapFn, new Object[]{mapped, k});
+                        mapped = callMapFn(thisArg, (DynamicObject) mapFn, new Object[]{mapped, JSRuntime.positiveLongToIntOrDouble(k)});
                     }
                     if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
                         writeOwn(obj, k, mapped);
@@ -332,12 +332,12 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
             DynamicObject obj = constructOrArray(thisObj, len, true);
 
-            int k = 0;
+            long k = 0;
             while (k < len) {
                 Object value = read(items, k);
                 Object mapped = value;
                 if (mapping) {
-                    mapped = callMapFn(thisArg, (DynamicObject) mapFn, new Object[]{mapped, k});
+                    mapped = callMapFn(thisArg, (DynamicObject) mapFn, new Object[]{mapped, JSRuntime.positiveLongToIntOrDouble(k)});
                 }
                 if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
                     writeOwn(obj, k, mapped);

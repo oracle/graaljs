@@ -156,6 +156,10 @@ public final class TRegexUtil {
         return (boolean) readExceptionIsFatal(readNode, regexFlagsObject, Props.Flags.UNICODE);
     }
 
+    public static boolean readDotAllFlag(Node readNode, TruffleObject regexFlagsObject) {
+        return (boolean) readExceptionIsFatal(readNode, regexFlagsObject, Props.Flags.DOT_ALL);
+    }
+
     public static boolean readResultIsMatch(Node readNode, TruffleObject regexResultObject) {
         return (boolean) readExceptionIsFatal(readNode, regexResultObject, Props.RegexResult.IS_MATCH);
     }
@@ -273,6 +277,56 @@ public final class TRegexUtil {
         }
     }
 
+    public static final class TRegexNamedCaptureGroupsAccessor extends Node {
+
+        @Child private Node isNullNode;
+        @Child private Node hasGroupNode;
+        @Child private Node readGroupNode;
+
+        private TRegexNamedCaptureGroupsAccessor() {
+        }
+
+        public static TRegexNamedCaptureGroupsAccessor create() {
+            return new TRegexNamedCaptureGroupsAccessor();
+        }
+
+        public boolean isNull(TruffleObject namedCaptureGroupsMap) {
+            return ForeignAccess.sendIsNull(getIsNullNode(), namedCaptureGroupsMap);
+        }
+
+        public boolean hasGroup(TruffleObject namedCaptureGroupsMap, String name) {
+            return ForeignAccess.sendKeyInfo(getHasGroupNode(), namedCaptureGroupsMap, name) != 0;
+        }
+
+        public int getGroupNumber(TruffleObject namedCaptureGroupsMap, String name) {
+            return (int) readExceptionIsFatal(getReadGroupNode(), namedCaptureGroupsMap, name);
+        }
+
+        private Node getIsNullNode() {
+            if (isNullNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isNullNode = insert(Message.IS_NULL.createNode());
+            }
+            return isNullNode;
+        }
+
+        private Node getHasGroupNode() {
+            if (hasGroupNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                hasGroupNode = insert(Message.KEY_INFO.createNode());
+            }
+            return hasGroupNode;
+        }
+
+        private Node getReadGroupNode() {
+            if (readGroupNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readGroupNode = insert(createReadNode());
+            }
+            return readGroupNode;
+        }
+    }
+
     public static final class TRegexFlagsAccessor extends Node {
 
         @Child private Node readSourceNode;
@@ -281,6 +335,7 @@ public final class TRegexUtil {
         @Child private Node readIgnoreCaseNode;
         @Child private Node readStickyNode;
         @Child private Node readUnicodeNode;
+        @Child private Node readDotAllNode;
 
         private TRegexFlagsAccessor() {
         }
@@ -311,6 +366,10 @@ public final class TRegexUtil {
 
         public boolean unicode(TruffleObject regexFlagsObject) {
             return readUnicodeFlag(getReadUnicodeNode(), regexFlagsObject);
+        }
+
+        public boolean dotAll(TruffleObject regexFlagsObject) {
+            return readDotAllFlag(getReadDotAllNode(), regexFlagsObject);
         }
 
         private Node getReadSourceNode() {
@@ -359,6 +418,14 @@ public final class TRegexUtil {
                 readUnicodeNode = insert(createReadNode());
             }
             return readUnicodeNode;
+        }
+
+        private Node getReadDotAllNode() {
+            if (readDotAllNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readDotAllNode = insert(createReadNode());
+            }
+            return readDotAllNode;
         }
     }
 
@@ -505,6 +572,10 @@ public final class TRegexUtil {
         }
 
         public Object materializeGroup(TruffleObject regexResult, int i) {
+            return materializeGroup(accessor, regexResult, i);
+        }
+
+        public static Object materializeGroup(TRegexResultAccessor accessor, TruffleObject regexResult, int i) {
             final String input = accessor.input(regexResult);
             final int beginIndex = accessor.captureGroupStart(regexResult, i);
             if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {

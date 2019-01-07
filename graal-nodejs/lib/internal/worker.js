@@ -89,6 +89,8 @@ Object.defineProperty(MessagePort.prototype, 'onmessage', {
 
 // This is called from inside the `MessagePort` constructor.
 function oninit() {
+  // Graal.js: initialize support for Java objects in messages
+  this.sharedMemMessaging = SharedMemMessagingInit();
   setupPortReferencing(this, this, 'message');
 }
 
@@ -105,6 +107,14 @@ function onclose() {
     // alternatives in a non-EventEmitter usage setting.
     // Refs: https://github.com/whatwg/html/issues/1766
     this.onclose();
+  }
+  // Graal.js: the underlying `uv_async_t` has been closed, so we can 
+  // discard all pending Java references bound to this port (if any),
+  // since the connection is lost and the other side of the channel 
+  // will not process messages.
+  const messagePortData = getMessagePortDataNative.call(this);
+  if (messagePortData !== undefined) {
+    this.sharedMemMessaging.dispose(messagePortData);
   }
   this.emit('close');
 }
@@ -401,6 +411,9 @@ function setupChild(evalScript) {
   // Called during bootstrap to set up worker script execution.
   debug(`[${threadId}] is setting up worker child environment`);
   const port = getEnvMessagePort();
+  // Graal.js: explicitly initialize support for Java objects in messages, 
+  // since env message port does not call oninit()
+  port.sharedMemMessaging = SharedMemMessagingInit();
 
   const publicWorker = require('worker_threads');
 
@@ -494,3 +507,41 @@ module.exports = {
   isMainThread,
   workerStdio
 };
+
+// ##### Graal.js Java interop messages handling
+
+// Passed by Graal.js init phase during global module loading.
+const SharedMemMessagingInit = arguments.length === 5 ? arguments[4] : undefined;
+if (!SharedMemMessagingInit) {
+  assert.fail(`Fatal: cannot initialize Worker`);
+}
+
+const getMessagePortDataNative = MessagePort.prototype.messageData;
+delete MessagePort.prototype.messageData;
+
+const originalPostMessage = MessagePort.prototype.postMessage;
+MessagePort.prototype.postMessage = function(...args) {
+  const messagePortData = getMessagePortDataNative.call(this);
+  if (messagePortData === undefined) {
+    // Cannot retrieve message internal metadata. The channel is probably
+    // closed, so we don't care about encoding Java messages.
+    originalPostMessage.apply(this, args);
+  } else {
+    try {
+      // Signal that we are ready to transfer Java objets.
+      this.sharedMemMessaging.enter(messagePortData);
+      // Post message: might encode Java objects as a side effect.
+      const enqueued = originalPostMessage.apply(this, args);
+      const encodedJavaRefs = this.sharedMemMessaging.encodedJavaRefs();
+
+      if (encodedJavaRefs === true && enqueued !== true) {
+        // The message was not delivered to any worker threads.
+        // In this case, we free any recorded Java reference, as the
+        // message will anyway be discarded.
+        this.sharedMemMessaging.free();
+      }
+    } finally {
+      this.sharedMemMessaging.leave();
+    }
+  }
+}

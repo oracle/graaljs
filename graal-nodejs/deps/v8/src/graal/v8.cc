@@ -1404,8 +1404,7 @@ namespace v8 {
     }
 
     bool StackFrame::IsEval() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalStackFrame*> (this)->IsEval();
     }
 
     int StackTrace::GetFrameCount() const {
@@ -1427,8 +1426,11 @@ namespace v8 {
     }
 
     bool String::IsOneByte() const {
-        TRACE
-        return false;
+        return reinterpret_cast<const GraalString*> (this)->ContainsOnlyOneByte();
+    }
+
+    bool String::ContainsOnlyOneByte() const {
+        return reinterpret_cast<const GraalString*> (this)->ContainsOnlyOneByte();
     }
 
     int String::Length() const {
@@ -2379,7 +2381,7 @@ namespace v8 {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
         GraalValue* graal_value = reinterpret_cast<GraalValue*> (*value);
         JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_serializer_write_value, private_->serializer, graal_value->GetJavaObject());
-        return Just<bool>(true);
+        return graal_isolate->GetJNIEnv()->ExceptionCheck() ? Nothing<bool>() : Just<bool>(true);
     }
 
     void ValueSerializer::SetTreatArrayBufferViewsAsHostObjects(bool mode) {

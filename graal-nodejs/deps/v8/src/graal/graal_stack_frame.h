@@ -52,6 +52,7 @@ public:
     int GetColumn() const;
     v8::Local<v8::String> GetScriptName() const;
     v8::Local<v8::String> GetFunctionName() const;
+    bool IsEval() const;
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };

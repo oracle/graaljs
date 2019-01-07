@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.DynamicObject;
-
 public final class PromiseReactionRecord {
     private final PromiseCapabilityRecord capability;
     private final boolean fulfill;
-    private final DynamicObject handler;
+    private final Object handler;
 
-    private PromiseReactionRecord(PromiseCapabilityRecord capability, DynamicObject handler, boolean fulfill) {
+    private PromiseReactionRecord(PromiseCapabilityRecord capability, Object handler, boolean fulfill) {
         this.capability = capability;
         this.handler = handler;
         this.fulfill = fulfill;
@@ -57,7 +55,7 @@ public final class PromiseReactionRecord {
         return capability;
     }
 
-    public DynamicObject getHandler() {
+    public Object getHandler() {
         return handler;
     }
 
@@ -69,7 +67,7 @@ public final class PromiseReactionRecord {
         return !isFulfill();
     }
 
-    public static PromiseReactionRecord create(PromiseCapabilityRecord capability, DynamicObject handler, boolean fulfill) {
+    public static PromiseReactionRecord create(PromiseCapabilityRecord capability, Object handler, boolean fulfill) {
         return new PromiseReactionRecord(capability, handler, fulfill);
     }
 }

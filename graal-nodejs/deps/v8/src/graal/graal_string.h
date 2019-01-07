@@ -66,6 +66,7 @@ public:
     int WriteUtf8(char* buffer, int length, int* nchars_ref, int options) const;
     int WriteOneByte(uint8_t* buffer, int start, int length, int options) const;
     int Write(uint16_t* buffer, int start, int length, int options) const;
+    bool ContainsOnlyOneByte() const;
 
     /* Determines whether the given character is a continuation byte in UTF8 */
     static inline bool IsContinuationByte(const unsigned char c) {

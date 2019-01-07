@@ -45,6 +45,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -72,6 +73,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
     private final BranchProfile notDoneBranch = BranchProfile.create();
+    private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
     protected AsyncIteratorCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iteratorNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode,
                     JavaScriptNode doneNode) {
@@ -112,7 +114,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                     throw e;
                 }
             } catch (Throwable e) {
-                if (TryCatchNode.shouldCatch(e)) {
+                if (TryCatchNode.shouldCatch(e, typeProfile)) {
                     throwBranch.enter();
                     IteratorRecord iteratorRecord = getIteratorRecord(frame);
                     DynamicObject iterator = iteratorRecord.getIterator();

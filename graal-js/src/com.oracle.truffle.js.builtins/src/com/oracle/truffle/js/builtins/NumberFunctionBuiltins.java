@@ -187,7 +187,7 @@ public final class NumberFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (Double.isNaN(arg) || !Double.isFinite(arg)) {
                 return false;
             }
-            long l = JSRuntime.toInteger(arg);
+            long l = (long) arg;
             if (l != arg) {
                 return false;
             }

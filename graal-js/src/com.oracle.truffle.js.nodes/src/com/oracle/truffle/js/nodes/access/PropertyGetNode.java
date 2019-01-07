@@ -60,7 +60,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -80,7 +81,6 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthReadNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNodeFactory.GetPropertyFromJSObjectNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -132,7 +132,12 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode
  * @see PropertyNode
  * @see GlobalPropertyNode
  */
-public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode> {
+public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheNode> {
+    private final boolean isGlobal;
+    private final boolean getOwnProperty;
+    @CompilationFinal private boolean isMethod;
+    private boolean propertyAssumptionCheckEnabled = true;
+
     public static PropertyGetNode create(Object key, JSContext context) {
         return create(key, false, context);
     }
@@ -143,11 +148,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     }
 
     private static PropertyGetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty) {
-        if (JSTruffleOptions.PropertyCacheLimit > 0) {
-            return new UninitializedPropertyGetNode(key, isGlobal, context, getOwnProperty);
-        } else {
-            return createGeneric(key, isGlobal, false, getOwnProperty, context);
-        }
+        return new PropertyGetNode(key, context, isGlobal, getOwnProperty);
     }
 
     public static PropertyGetNode createGetOwn(Object key, JSContext context) {
@@ -160,8 +161,10 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         return createGetOwn(key, context);
     }
 
-    protected PropertyGetNode(Object key) {
-        super(key);
+    protected PropertyGetNode(Object key, JSContext context, boolean isGlobal, boolean getOwnProperty) {
+        super(key, context);
+        this.isGlobal = isGlobal;
+        this.getOwnProperty = getOwnProperty;
     }
 
     public final Object getValue(Object obj) {
@@ -184,185 +187,128 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         return getValueLong(obj, obj);
     }
 
-    protected abstract Object getValue(Object obj, Object receiver);
-
-    protected abstract int getValueInt(Object obj, Object receiver) throws UnexpectedResultException;
-
-    protected abstract double getValueDouble(Object obj, Object receiver) throws UnexpectedResultException;
-
-    protected abstract boolean getValueBoolean(Object obj, Object receiver) throws UnexpectedResultException;
-
-    protected abstract long getValueLong(Object obj, Object receiver) throws UnexpectedResultException;
-
-    public abstract static class LinkedPropertyGetNode extends PropertyGetNode {
-        @Child protected PropertyGetNode next;
-        @Child protected ReceiverCheckNode receiverCheck;
-
-        public LinkedPropertyGetNode(Object key, ReceiverCheckNode receiverCheck) {
-            super(key);
-            this.receiverCheck = receiverCheck;
-        }
-
-        @Override
-        public final Object getValue(Object thisObj, Object receiver) {
-            try {
-                boolean condition = receiverCheck.accept(thisObj);
-                if (condition) {
-                    return getValueUnchecked(thisObj, receiver, condition);
-                } else {
-                    return next.getValue(thisObj, receiver);
-                }
-            } catch (InvalidAssumptionException e) {
-                return rewrite(reasonShapeAssumptionInvalidated(key)).getValue(thisObj);
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    protected Object getValue(Object thisObj, Object receiver) {
+        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c.isGeneric()) {
+                return c.getValue(thisObj, receiver, this, false);
+            }
+            if (!c.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                break;
+            }
+            boolean guard = c.accepts(thisObj);
+            if (guard) {
+                return c.getValue(thisObj, receiver, this, guard);
             }
         }
+        deoptimize();
+        return specialize(thisObj).getValue(thisObj, receiver, this, false);
+    }
 
-        @Override
-        public NodeCost getCost() {
-            if (next != null && next.getCost() == NodeCost.MONOMORPHIC) {
-                return NodeCost.POLYMORPHIC;
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    protected int getValueInt(Object thisObj, Object receiver) throws UnexpectedResultException {
+        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c.isGeneric()) {
+                return c.getValueInt(thisObj, receiver, this, false);
             }
-            return super.getCost();
-        }
-
-        public abstract Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition);
-
-        @Override
-        public final int getValueInt(Object thisObj, Object receiver) throws UnexpectedResultException {
-            try {
-                boolean condition = receiverCheck.accept(thisObj);
-                if (condition) {
-                    return getValueUncheckedInt(thisObj, receiver, condition);
-                } else {
-                    return next.getValueInt(thisObj, receiver);
-                }
-            } catch (InvalidAssumptionException e) {
-                return rewrite(reasonShapeAssumptionInvalidated(key)).getValueInt(thisObj);
+            if (!c.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                break;
+            }
+            boolean guard = c.accepts(thisObj);
+            if (guard) {
+                return c.getValueInt(thisObj, receiver, this, guard);
             }
         }
+        deoptimize();
+        return specialize(thisObj).getValueInt(thisObj, receiver, this, false);
+    }
 
-        public int getValueUncheckedInt(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(getValueUnchecked(thisObj, receiver, floatingCondition));
-        }
-
-        @Override
-        public final double getValueDouble(Object thisObj, Object receiver) throws UnexpectedResultException {
-            try {
-                boolean condition = receiverCheck.accept(thisObj);
-                if (condition) {
-                    return getValueUncheckedDouble(thisObj, receiver, condition);
-                } else {
-                    return next.getValueDouble(thisObj, receiver);
-                }
-            } catch (InvalidAssumptionException e) {
-                return rewrite(reasonShapeAssumptionInvalidated(key)).getValueDouble(thisObj);
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    protected double getValueDouble(Object thisObj, Object receiver) throws UnexpectedResultException {
+        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c.isGeneric()) {
+                return c.getValueDouble(thisObj, receiver, this, false);
+            }
+            if (!c.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                break;
+            }
+            boolean guard = c.accepts(thisObj);
+            if (guard) {
+                return c.getValueDouble(thisObj, receiver, this, guard);
             }
         }
+        deoptimize();
+        return specialize(thisObj).getValueDouble(thisObj, receiver, this, false);
+    }
 
-        public double getValueUncheckedDouble(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            return JSTypesGen.expectDouble(getValueUnchecked(thisObj, receiver, floatingCondition));
-        }
-
-        @Override
-        public final boolean getValueBoolean(Object thisObj, Object receiver) throws UnexpectedResultException {
-            try {
-                boolean condition = receiverCheck.accept(thisObj);
-                if (condition) {
-                    return getValueUncheckedBoolean(thisObj, receiver, condition);
-                } else {
-                    return next.getValueBoolean(thisObj, receiver);
-                }
-            } catch (InvalidAssumptionException e) {
-                return rewrite(reasonShapeAssumptionInvalidated(key)).getValueBoolean(thisObj);
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    protected boolean getValueBoolean(Object thisObj, Object receiver) throws UnexpectedResultException {
+        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c.isGeneric()) {
+                return c.getValueBoolean(thisObj, receiver, this, false);
+            }
+            if (!c.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                break;
+            }
+            boolean guard = c.accepts(thisObj);
+            if (guard) {
+                return c.getValueBoolean(thisObj, receiver, this, guard);
             }
         }
+        deoptimize();
+        return specialize(thisObj).getValueBoolean(thisObj, receiver, this, false);
+    }
 
-        public boolean getValueUncheckedBoolean(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            return JSTypesGen.expectBoolean(getValueUnchecked(thisObj, receiver, floatingCondition));
-        }
-
-        @Override
-        public final long getValueLong(Object thisObj, Object receiver) throws UnexpectedResultException {
-            try {
-                boolean condition = receiverCheck.accept(thisObj);
-                if (condition) {
-                    return getValueUncheckedLong(thisObj, receiver, condition);
-                } else {
-                    return next.getValueLong(thisObj, receiver);
-                }
-            } catch (InvalidAssumptionException e) {
-                return rewrite(reasonShapeAssumptionInvalidated(key)).getValueLong(thisObj);
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    protected long getValueLong(Object thisObj, Object receiver) throws UnexpectedResultException {
+        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c.isGeneric()) {
+                return c.getValueLong(thisObj, receiver, this, false);
+            }
+            if (!c.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                break;
+            }
+            boolean guard = c.accepts(thisObj);
+            if (guard) {
+                return c.getValueLong(thisObj, receiver, this, guard);
             }
         }
+        deoptimize();
+        return specialize(thisObj).getValueLong(thisObj, receiver, this, false);
+    }
 
-        public long getValueUncheckedLong(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            return JSTypesGen.expectLong(getValueUnchecked(thisObj, receiver, floatingCondition));
+    public abstract static class GetCacheNode extends PropertyCacheNode.CacheNode<GetCacheNode> {
+        protected GetCacheNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
         }
 
-        protected PropertyGetNode rewrite(CharSequence reason) {
-            CompilerAsserts.neverPartOfCompilation();
-            assert next != null;
-            PropertyGetNode replacedNext = replace(next, reason);
-            return replacedNext;
+        protected abstract Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard);
+
+        protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
+            return JSTypesGen.expectInteger(getValue(thisObj, receiver, root, guard));
         }
 
-        @Override
-        protected final Shape getShape() {
-            return receiverCheck.getShape();
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
+            return JSTypesGen.expectDouble(getValue(thisObj, receiver, root, guard));
         }
 
-        @Override
-        @TruffleBoundary
-        public String debugString() {
-            return getClass().getSimpleName() + "<property=" + key + ",shape=" + getShape() + ">\n" + ((next == null) ? "" : next.debugString());
+        protected boolean getValueBoolean(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
+            return JSTypesGen.expectBoolean(getValue(thisObj, receiver, root, guard));
         }
 
-        @Override
-        @TruffleBoundary
-        public String toString() {
-            return super.toString() + " property=" + key;
+        protected long getValueLong(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
+            return JSTypesGen.expectLong(getValue(thisObj, receiver, root, guard));
         }
+    }
 
-        @Override
-        public PropertyGetNode getNext() {
-            return next;
-        }
-
-        @Override
-        protected final void setNext(PropertyGetNode to) {
-            next = to;
-        }
-
-        protected final boolean assertFinalValue(Object finalValue, Object thisObj) {
-            if (!JSTruffleOptions.AssertFinalPropertySpecialization) {
-                return true;
-            }
-            int depth = ((AbstractShapeCheckNode) (receiverCheck != null ? receiverCheck : ((AssumedFinalPropertyGetNode) getParent()).receiverCheck)).getDepth();
-            DynamicObject store = (DynamicObject) thisObj;
-            for (int i = 0; i < depth; i++) {
-                store = JSObject.getPrototype(store);
-            }
-            return finalValue.equals(store.get(key));
-        }
-
-        @Override
-        public JSContext getContext() {
-            return getNext().getContext();
-        }
-
-        @Override
-        protected boolean isGlobal() {
-            return getNext().isGlobal();
-        }
-
-        @Override
-        protected boolean isMethod() {
-            return getNext().isMethod();
-        }
-
-        @Override
-        protected boolean isOwnProperty() {
-            return getNext().isOwnProperty();
+    public abstract static class LinkedPropertyGetNode extends GetCacheNode {
+        protected LinkedPropertyGetNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
         }
     }
 
@@ -371,30 +317,56 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final Property property;
 
         public ObjectPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isData(property);
             this.property = property;
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return JSProperty.getValue(property, receiverCheck.getStore(thisObj), receiver, floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return JSProperty.getValue(property, receiverCheck.getStore(thisObj), receiver, guard);
         }
     }
 
-    public static final class FinalObjectPropertyGetNode extends LinkedPropertyGetNode {
+    protected abstract static class AbstractFinalDataPropertyGetNode extends LinkedPropertyGetNode {
+        private final Assumption finalAssumption;
+
+        protected AbstractFinalDataPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck) {
+            super(shapeCheck);
+            this.finalAssumption = property.getLocation().isFinal() ? null : property.getLocation().getFinalAssumption();
+        }
+
+        @Override
+        protected boolean isValid() {
+            return super.isValid() && (finalAssumption == null || finalAssumption.isValid());
+        }
+
+        protected final boolean assertFinalValue(Object finalValue, Object thisObj, PropertyGetNode root) {
+            if (!JSTruffleOptions.AssertFinalPropertySpecialization) {
+                return true;
+            }
+            int depth = ((AbstractShapeCheckNode) receiverCheck).getDepth();
+            DynamicObject store = (DynamicObject) thisObj;
+            for (int i = 0; i < depth; i++) {
+                store = JSObject.getPrototype(store);
+            }
+            return finalValue.equals(store.get(root.getKey()));
+        }
+    }
+
+    public static final class FinalObjectPropertyGetNode extends AbstractFinalDataPropertyGetNode {
 
         private final Object finalValue;
 
         public FinalObjectPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, Object value) {
-            super(property.getKey(), shapeCheck);
+            super(property, shapeCheck);
             assert JSProperty.isData(property);
             this.finalValue = value;
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            assert assertFinalValue(finalValue, thisObj);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            assert assertFinalValue(finalValue, thisObj, root);
             return finalValue;
         }
     }
@@ -404,51 +376,51 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final IntLocation location;
 
         public IntPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isData(property);
             this.location = (IntLocation) property.getLocation();
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return location.getInt(receiverCheck.getStore(thisObj), floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return location.getInt(receiverCheck.getStore(thisObj), guard);
         }
 
         @Override
-        public int getValueUncheckedInt(Object thisObj, Object receiver, boolean floatingCondition) {
-            return location.getInt(receiverCheck.getStore(thisObj), floatingCondition);
+        protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return location.getInt(receiverCheck.getStore(thisObj), guard);
         }
 
         @Override
-        public double getValueUncheckedDouble(Object thisObj, Object receiver, boolean floatingCondition) {
-            return location.getInt(receiverCheck.getStore(thisObj), floatingCondition);
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return location.getInt(receiverCheck.getStore(thisObj), guard);
         }
     }
 
-    public static final class FinalIntPropertyGetNode extends LinkedPropertyGetNode {
+    public static final class FinalIntPropertyGetNode extends AbstractFinalDataPropertyGetNode {
 
         private final int finalValue;
 
         public FinalIntPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, int value) {
-            super(property.getKey(), shapeCheck);
+            super(property, shapeCheck);
             assert JSProperty.isData(property);
             this.finalValue = value;
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getValueUncheckedInt(thisObj, receiver, floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
         }
 
         @Override
-        public int getValueUncheckedInt(Object thisObj, Object receiver, boolean floatingCondition) {
-            assert assertFinalValue(finalValue, thisObj);
+        protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            assert assertFinalValue(finalValue, thisObj, root);
             return finalValue;
         }
 
         @Override
-        public double getValueUncheckedDouble(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getValueUncheckedInt(thisObj, receiver, floatingCondition);
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
         }
     }
 
@@ -457,40 +429,40 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final DoubleLocation location;
 
         public DoublePropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isData(property);
             this.location = (DoubleLocation) property.getLocation();
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return location.getDouble(receiverCheck.getStore(thisObj), floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return location.getDouble(receiverCheck.getStore(thisObj), guard);
         }
 
         @Override
-        public double getValueUncheckedDouble(Object thisObj, Object receiver, boolean floatingCondition) {
-            return location.getDouble(receiverCheck.getStore(thisObj), floatingCondition);
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return location.getDouble(receiverCheck.getStore(thisObj), guard);
         }
     }
 
-    public static final class FinalDoublePropertyGetNode extends LinkedPropertyGetNode {
+    public static final class FinalDoublePropertyGetNode extends AbstractFinalDataPropertyGetNode {
 
         private final double finalValue;
 
         public FinalDoublePropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, double value) {
-            super(property.getKey(), shapeCheck);
+            super(property, shapeCheck);
             assert JSProperty.isData(property);
             this.finalValue = value;
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getValueUncheckedDouble(thisObj, receiver, floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueDouble(thisObj, receiver, root, guard);
         }
 
         @Override
-        public double getValueUncheckedDouble(Object thisObj, Object receiver, boolean floatingCondition) {
-            assert assertFinalValue(finalValue, thisObj);
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            assert assertFinalValue(finalValue, thisObj, root);
             return finalValue;
         }
     }
@@ -500,40 +472,40 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final BooleanLocation location;
 
         public BooleanPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isData(property);
             this.location = (BooleanLocation) property.getLocation();
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getValueUncheckedBoolean(thisObj, receiver, floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueBoolean(thisObj, receiver, root, guard);
         }
 
         @Override
-        public boolean getValueUncheckedBoolean(Object thisObj, Object receiver, boolean floatingCondition) {
-            return location.getBoolean(receiverCheck.getStore(thisObj), floatingCondition);
+        protected boolean getValueBoolean(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return location.getBoolean(receiverCheck.getStore(thisObj), guard);
         }
     }
 
-    public static final class FinalBooleanPropertyGetNode extends LinkedPropertyGetNode {
+    public static final class FinalBooleanPropertyGetNode extends AbstractFinalDataPropertyGetNode {
 
         private final boolean finalValue;
 
         public FinalBooleanPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, boolean value) {
-            super(property.getKey(), shapeCheck);
+            super(property, shapeCheck);
             assert JSProperty.isData(property);
             this.finalValue = value;
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getValueUncheckedBoolean(thisObj, receiver, floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueBoolean(thisObj, receiver, root, guard);
         }
 
         @Override
-        public boolean getValueUncheckedBoolean(Object thisObj, Object receiver, boolean floatingCondition) {
-            assert assertFinalValue(finalValue, thisObj);
+        protected boolean getValueBoolean(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            assert assertFinalValue(finalValue, thisObj, root);
             return finalValue;
         }
     }
@@ -543,103 +515,41 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final LongLocation location;
 
         public LongPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isData(property);
             this.location = (LongLocation) property.getLocation();
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return location.getLong(receiverCheck.getStore(thisObj), floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return location.getLong(receiverCheck.getStore(thisObj), guard);
         }
 
         @Override
-        public long getValueUncheckedLong(Object thisObj, Object receiver, boolean floatingCondition) {
-            return location.getLong(receiverCheck.getStore(thisObj), floatingCondition);
+        protected long getValueLong(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return location.getLong(receiverCheck.getStore(thisObj), guard);
         }
     }
 
-    public static final class FinalLongPropertyGetNode extends LinkedPropertyGetNode {
+    public static final class FinalLongPropertyGetNode extends AbstractFinalDataPropertyGetNode {
 
         private final long finalValue;
 
         public FinalLongPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, long value) {
-            super(property.getKey(), shapeCheck);
+            super(property, shapeCheck);
             assert JSProperty.isData(property);
             this.finalValue = value;
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getValueUncheckedLong(thisObj, receiver, floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueLong(thisObj, receiver, root, guard);
         }
 
         @Override
-        public long getValueUncheckedLong(Object thisObj, Object receiver, boolean floatingCondition) {
-            assert assertFinalValue(finalValue, thisObj);
+        protected long getValueLong(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            assert assertFinalValue(finalValue, thisObj, root);
             return finalValue;
-        }
-    }
-
-    public static final class AssumedFinalPropertyGetNode extends LinkedPropertyGetNode {
-        @Child private LinkedPropertyGetNode finalGetNode;
-        private final Assumption finalAssumption;
-
-        public AssumedFinalPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, LinkedPropertyGetNode getNode) {
-            super(property.getKey(), shapeCheck);
-            assert JSProperty.isData(property);
-            this.finalGetNode = getNode;
-            this.finalAssumption = property.getLocation().getFinalAssumption();
-        }
-
-        @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            try {
-                finalAssumption.check();
-                return finalGetNode.getValueUnchecked(thisObj, receiver, floatingCondition);
-            } catch (InvalidAssumptionException e) {
-                return rewrite(reasonFinalAssumptionInvalidated(key)).getValue(thisObj, receiver);
-            }
-        }
-
-        @Override
-        public int getValueUncheckedInt(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            try {
-                finalAssumption.check();
-                return finalGetNode.getValueUncheckedInt(thisObj, receiver, floatingCondition);
-            } catch (InvalidAssumptionException e) {
-                return rewrite(reasonFinalAssumptionInvalidated(key)).getValueInt(thisObj, receiver);
-            }
-        }
-
-        @Override
-        public double getValueUncheckedDouble(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            try {
-                finalAssumption.check();
-                return finalGetNode.getValueUncheckedDouble(thisObj, receiver, floatingCondition);
-            } catch (InvalidAssumptionException e) {
-                return rewrite(reasonFinalAssumptionInvalidated(key)).getValueDouble(thisObj, receiver);
-            }
-        }
-
-        @Override
-        public boolean getValueUncheckedBoolean(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            try {
-                finalAssumption.check();
-                return finalGetNode.getValueUncheckedBoolean(thisObj, receiver, floatingCondition);
-            } catch (InvalidAssumptionException e) {
-                return rewrite(reasonFinalAssumptionInvalidated(key)).getValueBoolean(thisObj, receiver);
-            }
-        }
-
-        @Override
-        public long getValueUncheckedLong(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            try {
-                finalAssumption.check();
-                return finalGetNode.getValueUncheckedLong(thisObj, receiver, floatingCondition);
-            } catch (InvalidAssumptionException e) {
-                return rewrite(reasonFinalAssumptionInvalidated(key)).getValueLong(thisObj, receiver);
-            }
         }
     }
 
@@ -649,16 +559,16 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final BranchProfile undefinedGetterBranch = BranchProfile.create();
 
         public AccessorPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isAccessor(property);
             this.property = property;
             this.callNode = JSFunctionCallNode.createCall();
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            Accessor accessor = (Accessor) property.get(store, floatingCondition);
+            Accessor accessor = (Accessor) property.get(store, guard);
 
             DynamicObject getter = accessor.getGetter();
             if (getter != Undefined.instance) {
@@ -678,22 +588,15 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final Assumption finalAssumption;
 
         public FinalAccessorPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, Accessor finalAccessor) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isAccessor(property);
             this.callNode = JSFunctionCallNode.createCall();
             this.finalAccessor = finalAccessor;
-            this.finalAssumption = property.getLocation().isAssumedFinal() ? property.getLocation().getFinalAssumption() : null;
+            this.finalAssumption = property.getLocation().isFinal() ? null : property.getLocation().getFinalAssumption();
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            if (finalAssumption != null) {
-                try {
-                    finalAssumption.check();
-                } catch (InvalidAssumptionException e) {
-                    return rewrite(reasonFinalAssumptionInvalidated(key)).getValue(thisObj, receiver);
-                }
-            }
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             DynamicObject getter = finalAccessor.getGetter();
             if (getter != Undefined.instance) {
                 return callNode.executeCall(JSArguments.createZeroArg(receiver, getter));
@@ -702,6 +605,11 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 return Undefined.instance;
             }
         }
+
+        @Override
+        protected boolean isValid() {
+            return super.isValid() && (finalAssumption == null || finalAssumption.isValid());
+        }
     }
 
     /**
@@ -709,12 +617,12 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
      */
     public static final class UndefinedPropertyGetNode extends LinkedPropertyGetNode {
 
-        public UndefinedPropertyGetNode(Object key, ReceiverCheckNode receiverCheck) {
-            super(key, receiverCheck);
+        public UndefinedPropertyGetNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             return Undefined.instance;
         }
     }
@@ -724,13 +632,13 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
      */
     public static final class UndefinedPropertyErrorNode extends LinkedPropertyGetNode {
 
-        public UndefinedPropertyErrorNode(Object key, ReceiverCheckNode receiverCheck) {
-            super(key, receiverCheck);
+        public UndefinedPropertyErrorNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            throw Errors.createReferenceErrorNotDefined(key, this);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            throw Errors.createReferenceErrorNotDefined(root.getKey(), this);
         }
     }
 
@@ -738,73 +646,72 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
      * For use when a property is undefined and __noSuchProperty__/__noSuchMethod__ had been set.
      */
     public static final class CheckNoSuchPropertyNode extends LinkedPropertyGetNode {
-        private final boolean isGlobal;
         private final JSContext context;
-        @Child private PropertyNode getNoSuchProperty;
-        @Child private PropertyNode getNoSuchMethod;
+        @Child private PropertyGetNode getNoSuchProperty;
+        @Child private PropertyGetNode getNoSuchMethod;
         @Child private JSHasPropertyNode hasProperty;
         @Child private JSFunctionCallNode callNoSuch;
 
-        public CheckNoSuchPropertyNode(Object key, ReceiverCheckNode receiverCheck, boolean isGlobal, JSContext context) {
-            super(key, receiverCheck);
-            this.isGlobal = isGlobal;
+        public CheckNoSuchPropertyNode(Object key, ReceiverCheckNode receiverCheck, JSContext context) {
+            super(receiverCheck);
             this.context = context;
+            assert !(key instanceof Symbol);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            if (!(key instanceof Symbol) && JSRuntime.isObject(thisObj) && !JSAdapter.isJSAdapter(thisObj) && !JSProxy.isProxy(thisObj)) {
-                if (!context.getNoSuchMethodUnusedAssumption().isValid() && isMethod() && getHasProperty().executeBoolean((DynamicObject) thisObj, JSObject.NO_SUCH_METHOD_NAME)) {
-                    Object function = getNoSuchMethod().executeWithTarget(thisObj);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            if (JSRuntime.isObject(thisObj) && !JSAdapter.isJSAdapter(thisObj) && !JSProxy.isProxy(thisObj)) {
+                if (!context.getNoSuchMethodUnusedAssumption().isValid() && root.isMethod() && getHasProperty().executeBoolean((DynamicObject) thisObj, JSObject.NO_SUCH_METHOD_NAME)) {
+                    Object function = getNoSuchMethod().getValue(thisObj);
                     if (function != Undefined.instance) {
                         if (JSFunction.isJSFunction(function)) {
-                            return callNoSuchHandler((DynamicObject) thisObj, (DynamicObject) function, false);
+                            return callNoSuchHandler((DynamicObject) thisObj, (DynamicObject) function, root, false);
                         } else {
-                            return getFallback();
+                            return getFallback(root);
                         }
                     }
                 }
                 if (!context.getNoSuchPropertyUnusedAssumption().isValid()) {
-                    Object function = getNoSuchProperty().executeWithTarget(thisObj);
+                    Object function = getNoSuchProperty().getValue(thisObj);
                     if (JSFunction.isJSFunction(function)) {
-                        return callNoSuchHandler((DynamicObject) thisObj, (DynamicObject) function, true);
+                        return callNoSuchHandler((DynamicObject) thisObj, (DynamicObject) function, root, true);
                     }
                 }
             }
-            return getFallback();
+            return getFallback(root);
         }
 
-        private Object callNoSuchHandler(DynamicObject thisObj, DynamicObject function, boolean noSuchProperty) {
+        private Object callNoSuchHandler(DynamicObject thisObj, DynamicObject function, PropertyGetNode root, boolean noSuchProperty) {
             // if accessing a global variable, pass undefined as `this` instead of global object.
             // only matters if callee is strict. cf. Nashorn ScriptObject.noSuch{Property,Method}.
-            Object thisObject = isGlobal ? Undefined.instance : thisObj;
+            Object thisObject = root.isGlobal() ? Undefined.instance : thisObj;
             if (noSuchProperty) {
-                return getCallNoSuch().executeCall(JSArguments.createOneArg(thisObject, function, key));
+                return getCallNoSuch().executeCall(JSArguments.createOneArg(thisObject, function, root.getKey()));
             } else {
-                return new JSNoSuchMethodAdapter(function, key, thisObject);
+                return new JSNoSuchMethodAdapter(function, root.getKey(), thisObject);
             }
         }
 
-        private Object getFallback() {
-            if (isGlobal) {
-                throw Errors.createReferenceErrorNotDefined(key, this);
+        private Object getFallback(PropertyGetNode root) {
+            if (root.isGlobal()) {
+                throw Errors.createReferenceErrorNotDefined(root.getKey(), this);
             } else {
                 return Undefined.instance;
             }
         }
 
-        public PropertyNode getNoSuchProperty() {
+        public PropertyGetNode getNoSuchProperty() {
             if (getNoSuchProperty == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getNoSuchProperty = insert(NodeFactory.getInstance(context).createProperty(context, null, JSObject.NO_SUCH_PROPERTY_NAME));
+                getNoSuchProperty = insert(PropertyGetNode.create(JSObject.NO_SUCH_PROPERTY_NAME, context));
             }
             return getNoSuchProperty;
         }
 
-        public PropertyNode getNoSuchMethod() {
+        public PropertyGetNode getNoSuchMethod() {
             if (getNoSuchMethod == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getNoSuchMethod = insert(NodeFactory.getInstance(context).createProperty(context, null, JSObject.NO_SUCH_METHOD_NAME));
+                getNoSuchMethod = insert(PropertyGetNode.create(JSObject.NO_SUCH_METHOD_NAME, context));
             }
             return getNoSuchMethod;
         }
@@ -830,30 +737,27 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
      * If object is undefined or null, throw TypeError.
      */
     public static final class TypeErrorPropertyGetNode extends LinkedPropertyGetNode {
-        private final boolean isMethod;
-
-        public TypeErrorPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod) {
-            super(key, receiverCheck);
-            this.isMethod = isMethod;
+        public TypeErrorPropertyGetNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             assert (thisObj == Undefined.instance || thisObj == Null.instance || thisObj == null) : thisObj;
-            throw Errors.createTypeErrorCannotGetProperty(key, thisObj, isMethod, this);
+            throw Errors.createTypeErrorCannotGetProperty(root.getKey(), thisObj, root.isMethod(), this);
         }
     }
 
     public static final class JavaGetterPropertyGetNode extends LinkedPropertyGetNode {
         @Child private JSFunctionCallNode.JavaMethodCallNode methodCall;
 
-        public JavaGetterPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, JavaGetter getter) {
-            super(key, receiverCheck);
+        public JavaGetterPropertyGetNode(ReceiverCheckNode receiverCheck, JavaGetter getter) {
+            super(receiverCheck);
             this.methodCall = JSFunctionCallNode.JavaMethodCallNode.create(getter);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             return methodCall.executeCall(JSArguments.createZeroArg(thisObj, null));
         }
     }
@@ -861,29 +765,27 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     public static final class JavaMethodPropertyGetNode extends LinkedPropertyGetNode {
         private final JavaMethod method;
 
-        public JavaMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, JavaMethod method) {
-            super(key, receiverCheck);
+        public JavaMethodPropertyGetNode(ReceiverCheckNode receiverCheck, JavaMethod method) {
+            super(receiverCheck);
             this.method = method;
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             return method;
         }
     }
 
     public static final class JavaPackagePropertyGetNode extends LinkedPropertyGetNode {
-        private final JSContext context;
-
-        public JavaPackagePropertyGetNode(JSContext context, Object key, ReceiverCheckNode receiverCheck) {
-            super(key, receiverCheck);
-            this.context = context;
+        public JavaPackagePropertyGetNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            Object key = root.getKey();
             if (key instanceof String) {
-                return JavaPackage.getJavaClassOrConstructorOrSubPackage(context, (DynamicObject) thisObj, (String) key);
+                return JavaPackage.getJavaClassOrConstructorOrSubPackage(root.getContext(), (DynamicObject) thisObj, (String) key);
             } else {
                 return Undefined.instance;
             }
@@ -894,41 +796,16 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         @Child private PropertyGetNode nested;
 
         public JSJavaWrapperPropertyGetNode(Object key, boolean isGlobal, boolean isMethod, boolean getOwnProperty, JSContext context) {
-            super(key, new JSClassCheckNode(JSJavaWrapper.getJSClassInstance()));
-            this.nested = new UninitializedPropertyGetNode(key, isGlobal, context, getOwnProperty);
+            super(new JSClassCheckNode(JSJavaWrapper.getJSClassInstance()));
+            this.nested = createImpl(key, isGlobal, context, getOwnProperty);
             if (isMethod) {
                 this.nested.setMethod();
             }
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             return nested.getValue(JSJavaWrapper.getWrapped((DynamicObject) thisObj));
-        }
-    }
-
-    public static final class CachedJavaPackagePropertyGetNode extends LinkedPropertyGetNode {
-        private final JSContext context;
-        private final DynamicObject javaPackage;
-        private final Object member;
-
-        public CachedJavaPackagePropertyGetNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, DynamicObject javaPackage) {
-            super(key, receiverCheck);
-            this.context = context;
-            this.javaPackage = javaPackage;
-            this.member = key instanceof String ? JavaPackage.getJavaClassOrConstructorOrSubPackage(context, javaPackage, (String) key) : Undefined.instance;
-        }
-
-        @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            if (javaPackage == thisObj) {
-                return member;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                JavaPackagePropertyGetNode newNode = new JavaPackagePropertyGetNode(context, key, receiverCheck);
-                newNode.next = this.next;
-                return this.replace(newNode).getValueUnchecked(thisObj, receiver, floatingCondition);
-            }
         }
     }
 
@@ -937,20 +814,21 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         protected final boolean allowReflection;
 
         public JavaClassPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod, boolean allowReflection) {
-            super(key, receiverCheck);
+            super(receiverCheck);
             this.isMethod = isMethod;
             this.allowReflection = allowReflection;
+            assert key instanceof String;
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getMember((JavaClass) thisObj);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getMember((JavaClass) thisObj, (String) root.getKey());
         }
 
-        protected final Object getMember(JavaClass type) {
-            JavaMember member = type.getMember((String) key, JavaClass.STATIC, getJavaMemberTypes(isMethod), allowReflection);
+        protected final Object getMember(JavaClass type, String key) {
+            JavaMember member = type.getMember(key, JavaClass.STATIC, getJavaMemberTypes(isMethod), allowReflection);
             if (member == null) {
-                return JSRuntime.nullToUndefined(type.getInnerClass((String) key));
+                return JSRuntime.nullToUndefined(type.getInnerClass(key));
             }
             if (member instanceof JavaGetter) {
                 return JSRuntime.toJSNull(((JavaGetter) member).getValue(null));
@@ -959,85 +837,40 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
     }
 
-    public static final class CachedJavaClassPropertyGetNode extends JavaClassPropertyGetNode {
-        private final JavaClass javaClass;
-        private final Object cachedMember;
-
-        public CachedJavaClassPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod, boolean allowReflection, JavaClass javaClass) {
-            super(key, receiverCheck, isMethod, allowReflection);
-            this.javaClass = javaClass;
-            this.cachedMember = getMember(javaClass);
-        }
-
-        @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            if (javaClass == thisObj) {
-                return cachedMember;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                JavaClassPropertyGetNode newNode = new JavaClassPropertyGetNode(key, receiverCheck, isMethod, allowReflection);
-                newNode.next = this.next;
-                return this.replace(newNode).getValueUnchecked(thisObj, receiver, floatingCondition);
-            }
-        }
-    }
-
     public static class JavaSuperMethodPropertyGetNode extends LinkedPropertyGetNode {
         protected final boolean allowReflection;
 
         public JavaSuperMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean allowReflection) {
-            super(key, receiverCheck);
+            super(receiverCheck);
             this.allowReflection = allowReflection;
+            assert key instanceof String;
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getSuperMethod(((JavaSuperAdapter) thisObj).getAdapter().getClass());
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getSuperMethod(((JavaSuperAdapter) thisObj).getAdapter().getClass(), (String) root.getKey(), allowReflection);
         }
 
         @TruffleBoundary
-        protected final Object getSuperMethod(Class<? extends Object> adapterClass) {
-            return JSRuntime.nullToUndefined(JavaClass.forClass(adapterClass).getSuperMethod((String) key, allowReflection));
-        }
-    }
-
-    public static final class CachedJavaSuperMethodPropertyGetNode extends JavaSuperMethodPropertyGetNode {
-        private final Class<? extends Object> expectedClass;
-        private final Object cachedMember;
-
-        public CachedJavaSuperMethodPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean allowReflection, JavaSuperAdapter javaSuperAdapter) {
-            super(key, receiverCheck, allowReflection);
-            this.expectedClass = javaSuperAdapter.getAdapter().getClass();
-            this.cachedMember = getSuperMethod(expectedClass);
-        }
-
-        @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            if (((JavaSuperAdapter) thisObj).getAdapter().getClass() == expectedClass) {
-                return cachedMember;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                JavaSuperMethodPropertyGetNode newNode = new JavaSuperMethodPropertyGetNode(key, receiverCheck, allowReflection);
-                newNode.next = this.next;
-                return this.replace(newNode).getValueUnchecked(thisObj, receiver, floatingCondition);
-            }
+        protected static Object getSuperMethod(Class<? extends Object> adapterClass, String key, boolean allowReflection) {
+            return JSRuntime.nullToUndefined(JavaClass.forClass(adapterClass).getSuperMethod(key, allowReflection));
         }
     }
 
     public static class JavaStringMethodGetNode extends LinkedPropertyGetNode {
         @Child private Node readNode;
 
-        public JavaStringMethodGetNode(Object key, ReceiverCheckNode receiverCheck) {
-            super(key, receiverCheck);
+        public JavaStringMethodGetNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
             this.readNode = Message.READ.createNode();
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             String thisStr = (String) thisObj;
-            Object boxedString = getContext().getRealm().getEnv().asBoxedGuestValue(thisStr);
+            Object boxedString = root.getContext().getRealm().getEnv().asBoxedGuestValue(thisStr);
             try {
-                return ForeignAccess.sendRead(readNode, (TruffleObject) boxedString, key);
+                return ForeignAccess.sendRead(readNode, (TruffleObject) boxedString, root.getKey());
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 return Undefined.instance;
             }
@@ -1050,18 +883,13 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         @SuppressWarnings("unused")
         public JSProxyDispatcherPropertyGetNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, boolean isMethod) {
-            super(key, receiverCheck);
+            super(receiverCheck);
             this.proxyGet = JSProxyPropertyGetNode.create(context);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, key);
-        }
-
-        @Override
-        public int getValueUncheckedInt(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, key));
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return proxyGet.executeWithReceiver(receiverCheck.getStore(thisObj), receiver, root.getKey());
         }
     }
 
@@ -1072,13 +900,14 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
         @SuppressWarnings("unused")
         public JSProxyDispatcherRequiredPropertyGetNode(JSContext context, Object key, ReceiverCheckNode receiverCheck, boolean isMethod) {
-            super(key, receiverCheck);
+            super(receiverCheck);
             this.proxyGet = JSProxyPropertyGetNode.create(context);
             this.proxyHas = JSProxyHasPropertyNode.create(context);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            Object key = root.getKey();
             DynamicObject proxy = receiverCheck.getStore(thisObj);
             if (proxyHas.executeWithTargetAndKeyBoolean(proxy, key)) {
                 return proxyGet.executeWithReceiver(proxy, receiver, key);
@@ -1090,16 +919,14 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     }
 
     public static final class JSAdapterPropertyGetNode extends LinkedPropertyGetNode {
-        private final boolean isMethod;
-
-        public JSAdapterPropertyGetNode(Object key, ReceiverCheckNode receiverCheck, boolean isMethod) {
-            super(key, receiverCheck);
-            this.isMethod = isMethod;
+        public JSAdapterPropertyGetNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            if (isMethod) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            Object key = root.getKey();
+            if (root.isMethod()) {
                 return JSObject.getMethod((DynamicObject) thisObj, key);
             } else {
                 return JSObject.get((DynamicObject) thisObj, key);
@@ -1108,81 +935,13 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     }
 
     public static final class UnspecializedPropertyGetNode extends LinkedPropertyGetNode {
-        public UnspecializedPropertyGetNode(Object key, ReceiverCheckNode receiverCheck) {
-            super(key, receiverCheck);
+        public UnspecializedPropertyGetNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return JSObject.get((DynamicObject) thisObj, key);
-        }
-    }
-
-    public abstract static class TerminalPropertyGetNode extends PropertyGetNode {
-        protected final JSContext context;
-        @CompilationFinal private boolean isMethod;
-        private final boolean getOwnProperty;
-
-        public TerminalPropertyGetNode(Object key, JSContext context, boolean getOwnProperty) {
-            super(key);
-            this.context = context;
-            this.getOwnProperty = getOwnProperty;
-        }
-
-        @Override
-        protected final PropertyGetNode getNext() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected final void setNext(PropertyGetNode next) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected final Shape getShape() {
-            return null;
-        }
-
-        @Override
-        public final int getValueInt(Object obj, Object receiver) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(getValue(obj, receiver));
-        }
-
-        @Override
-        public final double getValueDouble(Object obj, Object receiver) throws UnexpectedResultException {
-            return JSTypesGen.expectDouble(getValue(obj, receiver));
-        }
-
-        @Override
-        public final boolean getValueBoolean(Object obj, Object receiver) throws UnexpectedResultException {
-            return JSTypesGen.expectBoolean(getValue(obj, receiver));
-        }
-
-        @Override
-        public final long getValueLong(Object obj, Object receiver) throws UnexpectedResultException {
-            return JSTypesGen.expectLong(getValue(obj, receiver));
-        }
-
-        @Override
-        protected boolean isMethod() {
-            return isMethod;
-        }
-
-        @Override
-        protected void setMethod() {
-            CompilerAsserts.neverPartOfCompilation();
-            this.isMethod = true;
-        }
-
-        @Override
-        protected boolean isOwnProperty() {
-            return this.getOwnProperty;
-        }
-
-        @Override
-        public JSContext getContext() {
-            return context;
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return JSObject.get((DynamicObject) thisObj, root.getKey());
         }
     }
 
@@ -1203,7 +962,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final JSContext context;
 
         public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal, JSContext context) {
-            super(key, new ForeignLanguageCheckNode());
+            super(new ForeignLanguageCheckNode());
             this.context = context;
             this.isNull = Message.IS_NULL.createNode();
             this.read = Message.READ.createNode();
@@ -1213,7 +972,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             this.isGlobal = isGlobal;
         }
 
-        private Object foreignGet(TruffleObject thisObj) {
+        private Object foreignGet(TruffleObject thisObj, PropertyGetNode root) {
+            Object key = root.getKey();
             if (ForeignAccess.sendIsNull(isNull, thisObj)) {
                 throw Errors.createTypeErrorCannotGetProperty(key, thisObj, isMethod, this);
             }
@@ -1225,7 +985,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     optimistic = false;
                     if (context.isOptionNashornCompatibilityMode() && key instanceof String) {
-                        foreignResult = tryInvokeGetter(thisObj);
+                        foreignResult = tryInvokeGetter(thisObj, root);
                     } else {
                         return Undefined.instance;
                     }
@@ -1244,7 +1004,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                         return Undefined.instance;
                     }
                 } else if (context.isOptionNashornCompatibilityMode() && key instanceof String) {
-                    foreignResult = tryInvokeGetter(thisObj);
+                    foreignResult = tryInvokeGetter(thisObj, root);
                 } else {
                     return Undefined.instance;
                 }
@@ -1253,15 +1013,15 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()`.
-        private Object tryInvokeGetter(TruffleObject thisObj) {
+        private Object tryInvokeGetter(TruffleObject thisObj, PropertyGetNode root) {
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
-                Object result = tryGetResult(thisObj, "get");
+                Object result = tryGetResult(thisObj, "get", root);
                 if (result != null) {
                     return result;
                 }
-                result = tryGetResult(thisObj, "is");
+                result = tryGetResult(thisObj, "is", root);
                 if (result != null) {
                     return result;
                 }
@@ -1269,8 +1029,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             return Undefined.instance;
         }
 
-        private Object tryGetResult(TruffleObject thisObj, String prefix) {
-            String getterKey = getAccessorKey(prefix);
+        private Object tryGetResult(TruffleObject thisObj, String prefix, PropertyGetNode root) {
+            String getterKey = root.getAccessorKey(prefix);
             if (getterKey == null) {
                 return null;
             }
@@ -1316,7 +1076,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
 
         @Override
-        public Object getValueUnchecked(Object object, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object object, Object receiver, PropertyGetNode root, boolean guard) {
             TruffleObject thisObj = (TruffleObject) object;
             if (isMethod && !isGlobal) {
                 return thisObj;
@@ -1324,13 +1084,12 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             if (isLength && hasSizeProperty(thisObj)) {
                 return getSize(thisObj);
             }
-            return foreignGet(thisObj);
+            return foreignGet(thisObj, root);
         }
     }
 
     @NodeInfo(cost = NodeCost.MEGAMORPHIC)
-    public static class GenericPropertyGetNode extends TerminalPropertyGetNode {
-        private final boolean isRequired;
+    public static class GenericPropertyGetNode extends GetCacheNode {
         @Child private JSToObjectNode toObjectNode;
         @Child private ForeignPropertyGetNode foreignGetNode;
         @Child private GetPropertyFromJSObjectNode getFromJSObjectNode;
@@ -1339,68 +1098,55 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final BranchProfile notAJSObjectBranch = BranchProfile.create();
         private final BranchProfile fallbackBranch = BranchProfile.create();
 
-        public GenericPropertyGetNode(Object key, JSContext context, boolean isMethod, boolean getOwnProperty, boolean isRequired) {
-            super(key, context, getOwnProperty);
-            if (isMethod) {
-                setMethod();
-            }
-            this.isRequired = isRequired;
+        public GenericPropertyGetNode() {
+            super(null);
         }
 
         @Override
-        public Object getValue(Object thisObj, Object receiver) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             if (isJSObject.profile(JSObject.isJSObject(thisObj))) {
-                return getPropertyFromJSObject((DynamicObject) thisObj, receiver);
+                return getPropertyFromJSObject((DynamicObject) thisObj, receiver, root);
             } else {
                 if (isForeignObject.profile(JSGuards.isForeignObject(thisObj))) {
                     // a TruffleObject from another language
                     if (foreignGetNode == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        foreignGetNode = insert(new ForeignPropertyGetNode(key, isMethod(), isGlobal(), context));
+                        foreignGetNode = insert(new ForeignPropertyGetNode(root.getKey(), root.isMethod(), root.isGlobal(), root.getContext()));
                     }
-                    return foreignGetNode.getValue(thisObj, receiver);
+                    return foreignGetNode.getValue(thisObj, receiver, root, guard);
                 } else {
                     // a primitive, or a Symbol
                     if (toObjectNode == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(context));
+                        toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(root.getContext()));
                     }
                     DynamicObject object = JSRuntime.expectJSObject(toObjectNode.executeTruffleObject(thisObj), notAJSObjectBranch);
-                    return getPropertyFromJSObject(object, receiver);
+                    return getPropertyFromJSObject(object, receiver, root);
                 }
             }
         }
 
-        private Object getPropertyFromJSObject(DynamicObject thisObj, Object receiver) {
-            if (key instanceof HiddenKey) {
-                Object result = thisObj.get(key);
+        private Object getPropertyFromJSObject(DynamicObject thisObj, Object receiver, PropertyGetNode root) {
+            if (root.getKey() instanceof HiddenKey) {
+                Object result = thisObj.get(root.getKey());
                 if (result != null) {
                     return result;
                 } else {
                     fallbackBranch.enter();
-                    return getFallback(thisObj);
+                    return getFallback(thisObj, root);
                 }
             } else {
                 if (getFromJSObjectNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getFromJSObjectNode = insert(GetPropertyFromJSObjectNode.create(key, context, isRequired));
+                    getFromJSObjectNode = insert(GetPropertyFromJSObjectNode.create(root.getKey(), root.getContext(), root.isRequired()));
                 }
-                return getFromJSObjectNode.executeWithJSObject(thisObj, receiver, isMethod());
+                return getFromJSObjectNode.executeWithJSObject(thisObj, receiver, root.isMethod());
             }
         }
 
-        @Override
-        protected void setPropertyAssumptionCheckEnabled(boolean value) {
-        }
-
-        @Override
-        protected boolean isGlobal() {
-            return isRequired;
-        }
-
-        protected Object getFallback(@SuppressWarnings("unused") DynamicObject thisObj) {
-            if (isRequired) {
-                throw Errors.createReferenceErrorNotDefined(key, this);
+        protected Object getFallback(@SuppressWarnings("unused") DynamicObject thisObj, PropertyGetNode root) {
+            if (root.isRequired()) {
+                throw Errors.createReferenceErrorNotDefined(root.getKey(), this);
             }
             return Undefined.instance;
         }
@@ -1510,72 +1256,41 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
     }
 
-    @NodeInfo(cost = NodeCost.UNINITIALIZED)
-    public static final class UninitializedPropertyGetNode extends TerminalPropertyGetNode {
-        private final boolean isGlobal;
-        private boolean propertyAssumptionCheckEnabled = true;
-
-        public UninitializedPropertyGetNode(Object key, boolean isGlobal, JSContext context, boolean getOwnProperty) {
-            super(key, context, getOwnProperty);
-            this.isGlobal = isGlobal;
-        }
-
-        @Override
-        public Object getValue(Object thisObject, Object receiver) {
-            return rewrite(context, thisObject, null).getValue(thisObject, receiver);
-        }
-
-        @Override
-        protected boolean isGlobal() {
-            return isGlobal;
-        }
-
-        @Override
-        protected boolean isPropertyAssumptionCheckEnabled() {
-            return propertyAssumptionCheckEnabled && context.isSingleRealm();
-        }
-
-        @Override
-        protected void setPropertyAssumptionCheckEnabled(boolean value) {
-            this.propertyAssumptionCheckEnabled = value;
-        }
-    }
-
     public static final class ArrayLengthPropertyGetNode extends LinkedPropertyGetNode {
         @Child private ArrayLengthReadNode arrayLengthRead;
         @CompilationFinal private boolean longLength;
 
         public ArrayLengthPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isData(property);
             assert isArrayLengthProperty(property);
             this.arrayLengthRead = ArrayLengthReadNode.create();
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             if (!longLength) {
                 try {
-                    return arrayLengthRead.executeInt(receiverCheck.getStore(thisObj), floatingCondition);
+                    return arrayLengthRead.executeInt(receiverCheck.getStore(thisObj), guard);
                 } catch (UnexpectedResultException e) {
                     longLength = true;
                     return e.getResult();
                 }
             } else {
-                return arrayLengthRead.executeDouble((DynamicObject) thisObj, floatingCondition);
+                return arrayLengthRead.executeDouble((DynamicObject) thisObj, guard);
             }
         }
 
         @Override
-        public int getValueUncheckedInt(Object thisObj, Object receiver, boolean floatingCondition) throws UnexpectedResultException {
+        protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
             assert assertIsArray(thisObj);
-            return arrayLengthRead.executeInt(receiverCheck.getStore(thisObj), floatingCondition);
+            return arrayLengthRead.executeInt(receiverCheck.getStore(thisObj), guard);
         }
 
         @Override
-        public double getValueUncheckedDouble(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             assert assertIsArray(thisObj);
-            return arrayLengthRead.executeDouble(receiverCheck.getStore(thisObj), floatingCondition);
+            return arrayLengthRead.executeDouble(receiverCheck.getStore(thisObj), guard);
         }
 
         private boolean assertIsArray(Object thisObj) {
@@ -1583,6 +1298,50 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             // shape check should be sufficient to guarantee this assertion
             assert JSArray.isJSArray(store);
             return true;
+        }
+    }
+
+    public static final class FunctionLengthPropertyGetNode extends LinkedPropertyGetNode {
+        private final BranchProfile isBoundBranch = BranchProfile.create();
+        private final JSFunction.FunctionLengthPropertyProxy property;
+
+        public FunctionLengthPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
+            assert JSProperty.isData(property);
+            assert isFunctionLengthProperty(property);
+            this.property = (JSFunction.FunctionLengthPropertyProxy) JSProperty.getConstantProxy(property);
+        }
+
+        @Override
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
+        }
+
+        @Override
+        protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return property.getProfiled(receiverCheck.getStore(thisObj), isBoundBranch);
+        }
+
+        @Override
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
+        }
+    }
+
+    public static final class FunctionNamePropertyGetNode extends LinkedPropertyGetNode {
+        private final BranchProfile isBoundBranch = BranchProfile.create();
+        private final JSFunction.FunctionNamePropertyProxy property;
+
+        public FunctionNamePropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
+            assert JSProperty.isData(property);
+            assert isFunctionNameProperty(property);
+            this.property = (JSFunction.FunctionNamePropertyProxy) JSProperty.getConstantProxy(property);
+        }
+
+        @Override
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return property.getProfiled(receiverCheck.getStore(thisObj), isBoundBranch);
         }
     }
 
@@ -1603,14 +1362,14 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private static final DynamicObject GENERIC_FUN = null;
 
         public ClassPrototypePropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isData(property) && isClassPrototypeProperty(property);
             this.context = context;
             this.constantFunction = context.isMultiContext() ? GENERIC_FUN : UNKNOWN_FUN;
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             DynamicObject functionObj = receiverCheck.getStore(thisObj);
             assert JSFunction.isJSFunction(functionObj);
             DynamicObject constantFun = constantFunction;
@@ -1673,25 +1432,25 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         private final ValueProfile charSequenceClassProfile = ValueProfile.createClassProfile();
 
         public StringLengthPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isData(property);
             assert isStringLengthProperty(property);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getValueUncheckedInt(thisObj, receiver, floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
         }
 
         @Override
-        public int getValueUncheckedInt(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             CharSequence charSequence = JSString.getCharSequence(receiverCheck.getStore(thisObj));
             return charSequenceClassProfile.profile(charSequence).length();
         }
 
         @Override
-        public double getValueUncheckedDouble(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getValueUncheckedInt(thisObj, receiver, floatingCondition);
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
         }
     }
 
@@ -1701,24 +1460,24 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         @Child private Node readStartArrayElementNode = TRegexUtil.createReadNode();
 
         public LazyRegexResultIndexPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert JSProperty.isData(property);
             assert isLazyRegexResultIndexProperty(property);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getValueUncheckedInt(thisObj, receiver, floatingCondition);
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
         }
 
         @Override
-        public int getValueUncheckedInt(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             return TRegexUtil.readResultStartIndex(readStartArrayNode, readStartArrayElementNode, arrayGetRegexResult(receiverCheck.getStore(thisObj)), 0);
         }
 
         @Override
-        public double getValueUncheckedDouble(Object thisObj, Object receiver, boolean floatingCondition) {
-            return getValueUncheckedInt(thisObj, receiver, floatingCondition);
+        protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueInt(thisObj, receiver, root, guard);
         }
     }
 
@@ -1729,14 +1488,14 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
 
         public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context, int groupIndex) {
-            super(property.getKey(), receiverCheck);
+            super(receiverCheck);
             assert isLazyNamedCaptureGroupProperty(property);
             this.groupIndex = groupIndex;
             this.getResultNode = PropertyGetNode.create(JSRegExp.GROUPS_RESULT_ID, false, context);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
             TruffleObject regexResult = (TruffleObject) getResultNode.getValue(store);
             return materializeNode.materializeGroup(regexResult, groupIndex);
@@ -1744,14 +1503,14 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     }
 
     public static final class MapPropertyGetNode extends LinkedPropertyGetNode {
-        public MapPropertyGetNode(Object key, ReceiverCheckNode receiverCheck) {
-            super(key, receiverCheck);
+        public MapPropertyGetNode(ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
         }
 
         @Override
-        public Object getValueUnchecked(Object thisObj, Object receiver, boolean floatingCondition) {
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             Map<?, ?> map = (Map<?, ?>) thisObj;
-            Object value = Boundaries.mapGet(map, key);
+            Object value = Boundaries.mapGet(map, root.getKey());
             if (value != null) {
                 return value;
             } else {
@@ -1767,15 +1526,16 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
      * @param property The particular entry of the property being accessed.
      */
     @Override
-    protected LinkedPropertyGetNode createCachedPropertyNode(Property property, Object thisObj, int depth, JSContext context, Object value) {
+    protected GetCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, Object value, GetCacheNode currentHead) {
         assert !isOwnProperty() || depth == 0;
         if (!(JSObject.isDynamicObject(thisObj))) {
-            return createCachedPropertyNodeNotJSObject(property, thisObj, depth, context);
+            return createCachedPropertyNodeNotJSObject(property, thisObj, depth);
         }
 
         Shape cacheShape = ((DynamicObject) thisObj).getShape();
 
-        if (JSProperty.isData(property) && !JSProperty.isProxy(property) && (property.getLocation().isFinal() || property.getLocation().isAssumedFinal())) {
+        if ((JSProperty.isData(property) && !JSProperty.isProxy(property) || JSProperty.isAccessor(property)) &&
+                        (property.getLocation().isFinal() || property.getLocation().isAssumedFinal())) {
             /**
              * if property is final and: <br>
              * (1) shape not in cache: specialize on final property with constant object [prototype
@@ -1786,41 +1546,27 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
              *
              * (3) evict cache entry and treat property as non-final.
              */
-            PropertyGetNode existingNode = getCacheEntryByShape(cacheShape);
-            boolean existingNodeIsFinal = existingNode instanceof FinalObjectPropertyGetNode || existingNode instanceof FinalDoublePropertyGetNode || existingNode instanceof FinalIntPropertyGetNode ||
-                            existingNode instanceof FinalBooleanPropertyGetNode || existingNode instanceof FinalLongPropertyGetNode || existingNode instanceof AssumedFinalPropertyGetNode;
-            // assert existingNode == null || existingNodeIsFinal : existingNode.getClass();
-
-            boolean finalSpecializationAllowed = existingNode == null || ((LinkedPropertyGetNode) existingNode).receiverCheck instanceof ConstantObjectPrototypeShapeCheckNode ||
-                            ((LinkedPropertyGetNode) existingNode).receiverCheck instanceof ConstantObjectPrototypeChainShapeCheckNode;
-
-            if (existingNode != null && existingNodeIsFinal) {
-                // evict existing createNode from cache
-                ((LinkedPropertyGetNode) existingNode).rewrite("evict existing cache node");
+            boolean isConstantObjectFinal = isPropertyAssumptionCheckEnabled();
+            for (GetCacheNode cur = currentHead; cur != null; cur = cur.next) {
+                if (isFinalSpecialization(cur)) {
+                    if (cur.receiverCheck instanceof ConstantObjectReceiverCheck) {
+                        // invalidate the specialization and disable constant object checks
+                        ((ConstantObjectReceiverCheck) cur.receiverCheck).clearExpectedObject();
+                        setPropertyAssumptionCheckEnabled(false);
+                        return null; // clean up cache
+                    }
+                    assert !(cur.receiverCheck instanceof ConstantObjectReceiverCheck) || ((ConstantObjectReceiverCheck) cur.receiverCheck).getExpectedObject() == thisObj;
+                }
             }
 
-            boolean isConstantObjectFinal = existingNode == null;
-            if (finalSpecializationAllowed && isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
-                return createFinalSpecialization(property, cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal);
-            }
-        } else if (JSProperty.isAccessor(property) && (property.getLocation().isFinal() || property.getLocation().isAssumedFinal())) {
-            PropertyGetNode existingNode = getCacheEntryByShape(cacheShape);
-            boolean existingNodeIsFinal = existingNode instanceof FinalAccessorPropertyGetNode;
-
-            boolean finalSpecializationAllowed = existingNode == null || ((LinkedPropertyGetNode) existingNode).receiverCheck instanceof ConstantObjectPrototypeShapeCheckNode ||
-                            ((LinkedPropertyGetNode) existingNode).receiverCheck instanceof ConstantObjectPrototypeChainShapeCheckNode;
-
-            if (existingNode != null && existingNodeIsFinal) {
-                // evict existing createNode from cache
-                ((LinkedPropertyGetNode) existingNode).rewrite("evict existing cache node");
-            }
-
-            boolean isConstantObjectFinal = existingNode == null;
-            if (finalSpecializationAllowed && isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
-                AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal, false);
-                finalShapeCheckNode.adoptChildren();
-                DynamicObject store = finalShapeCheckNode.getStore(thisObj);
-                return new FinalAccessorPropertyGetNode(property, finalShapeCheckNode, (Accessor) property.get(store, null));
+            if (JSProperty.isData(property) && !JSProperty.isProxy(property)) {
+                if (isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
+                    return createFinalSpecialization(property, cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal);
+                }
+            } else if (JSProperty.isAccessor(property)) {
+                if (isEligibleForFinalSpecialization(cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal)) {
+                    return createFinalAccessorSpecialization(property, cacheShape, (DynamicObject) thisObj, depth, isConstantObjectFinal);
+                }
             }
         }
 
@@ -1831,6 +1577,10 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             assert JSProperty.isAccessor(property);
             return new AccessorPropertyGetNode(property, shapeCheck);
         }
+    }
+
+    private static boolean isFinalSpecialization(GetCacheNode existingNode) {
+        return existingNode instanceof AbstractFinalDataPropertyGetNode || existingNode instanceof FinalAccessorPropertyGetNode;
     }
 
     private boolean isEligibleForFinalSpecialization(Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
@@ -1848,7 +1598,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                         : (JSTruffleOptions.SkipFinalShapeCheck && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(cacheShape, key).isValid());
     }
 
-    private LinkedPropertyGetNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, int depth, JSContext context) {
+    private GetCacheNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, int depth) {
         final ReceiverCheckNode receiverCheck;
         if (depth == 0) {
             if (isMethod() && thisObj instanceof String && ((JSTruffleOptions.NashornJavaInterop && JSTruffleOptions.NashornCompatibilityMode) || context.isOptionNashornCompatibilityMode())) {
@@ -1856,7 +1606,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                 // for length in s.length() where s is a java.lang.String. Required by Nashorn.
                 // We do this only for depth 0, because JavaScript prototype functions in turn
                 // are preferred over Java methods with the same name.
-                LinkedPropertyGetNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, depth, context);
+                GetCacheNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, depth);
                 if (javaPropertyNode != null) {
                     return javaPropertyNode;
                 }
@@ -1864,7 +1614,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
 
             receiverCheck = new InstanceofCheckNode(thisObj.getClass(), context);
         } else {
-            receiverCheck = createPrimitiveReceiverCheck(thisObj, depth, context);
+            receiverCheck = createPrimitiveReceiverCheck(thisObj, depth);
         }
 
         if (JSProperty.isData(property)) {
@@ -1875,7 +1625,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
     }
 
-    private static LinkedPropertyGetNode createSpecializationFromDataProperty(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
+    private static GetCacheNode createSpecializationFromDataProperty(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
         Property dataProperty = property;
 
         if (property.getLocation() instanceof IntLocation) {
@@ -1889,6 +1639,10 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         } else {
             if (isArrayLengthProperty(property)) {
                 return new ArrayLengthPropertyGetNode(dataProperty, receiverCheck);
+            } else if (isFunctionLengthProperty(property)) {
+                return new FunctionLengthPropertyGetNode(dataProperty, receiverCheck);
+            } else if (isFunctionNameProperty(property)) {
+                return new FunctionNamePropertyGetNode(dataProperty, receiverCheck);
             } else if (isClassPrototypeProperty(property)) {
                 return new ClassPrototypePropertyGetNode(dataProperty, receiverCheck, context);
             } else if (isStringLengthProperty(property)) {
@@ -1904,20 +1658,14 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
     }
 
-    private LinkedPropertyGetNode createFinalSpecialization(Property property, Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
+    private GetCacheNode createFinalSpecialization(Property property, Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
         AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, thisObj, depth, isConstantObjectFinal, false);
         finalShapeCheckNode.adoptChildren();
         DynamicObject store = finalShapeCheckNode.getStore(thisObj);
-
-        if (property.getLocation().isFinal()) {
-            return createFinalSpecializationImpl(property, finalShapeCheckNode, store);
-        } else {
-            assert property.getLocation().isAssumedFinal();
-            return new AssumedFinalPropertyGetNode(property, finalShapeCheckNode, createFinalSpecializationImpl(property, null, store));
-        }
+        return createFinalSpecializationImpl(property, finalShapeCheckNode, store);
     }
 
-    private static LinkedPropertyGetNode createFinalSpecializationImpl(Property property, AbstractShapeCheckNode shapeCheckNode, DynamicObject store) {
+    private static GetCacheNode createFinalSpecializationImpl(Property property, AbstractShapeCheckNode shapeCheckNode, DynamicObject store) {
         if (property.getLocation() instanceof IntLocation) {
             return new FinalIntPropertyGetNode(property, shapeCheckNode, ((IntLocation) property.getLocation()).getInt(store, false));
         } else if (property.getLocation() instanceof DoubleLocation) {
@@ -1932,38 +1680,34 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
         }
     }
 
-    private PropertyGetNode getCacheEntryByShape(Shape theShape) {
-        assert this instanceof UninitializedPropertyGetNode;
-        PropertyGetNode cur = this;
-        while (cur.getParent() instanceof PropertyGetNode) {
-            cur = (PropertyGetNode) cur.getParent();
-            if (cur.getShape() == theShape) {
-                return cur;
-            }
-        }
-        return null;
+    private GetCacheNode createFinalAccessorSpecialization(Property property, Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
+        AbstractShapeCheckNode finalShapeCheckNode = createShapeCheckNode(cacheShape, thisObj, depth, isConstantObjectFinal, false);
+        finalShapeCheckNode.adoptChildren();
+        DynamicObject store = finalShapeCheckNode.getStore(thisObj);
+        Accessor accessor = (Accessor) property.get(store, null);
+        return new FinalAccessorPropertyGetNode(property, finalShapeCheckNode, accessor);
     }
 
     @Override
-    protected LinkedPropertyGetNode createJavaPropertyNodeMaybe(Object thisObj, int depth, JSContext context) {
+    protected GetCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth) {
         if (JSTruffleOptions.SubstrateVM) {
             return null;
         }
-        return createJavaPropertyNodeMaybe0(thisObj, depth, context);
+        return createJavaPropertyNodeMaybe0(thisObj, depth);
     }
 
     /* In a separate method for Substrate VM support. */
-    private LinkedPropertyGetNode createJavaPropertyNodeMaybe0(Object thisObj, int depth, JSContext context) {
+    private GetCacheNode createJavaPropertyNodeMaybe0(Object thisObj, int depth) {
         if (JSObject.isDynamicObject(thisObj)) {
             if (JavaPackage.isJavaPackage(thisObj)) {
-                return new CachedJavaPackagePropertyGetNode(context, key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)), (DynamicObject) thisObj);
+                return new JavaPackagePropertyGetNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
             } else if (JavaImporter.isJavaImporter(thisObj)) {
-                return new UnspecializedPropertyGetNode(key, new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+                return new UnspecializedPropertyGetNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
             }
         }
         if (!JSTruffleOptions.NashornJavaInterop) {
             if (thisObj instanceof String && isMethod()) {
-                return new JavaStringMethodGetNode(key, createPrimitiveReceiverCheck(thisObj, depth, context));
+                return new JavaStringMethodGetNode(createPrimitiveReceiverCheck(thisObj, depth));
             }
             return null;
         }
@@ -1973,22 +1717,24 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             } else {
                 return null;
             }
+        } else if (!(key instanceof String) && !(thisObj instanceof Map)) {
+            return null;
         } else if (thisObj instanceof JavaClass) {
-            return new CachedJavaClassPropertyGetNode(key, new InstanceofCheckNode(JavaClass.class, context), isMethod(), JavaAccess.isReflectionAllowed(context), (JavaClass) thisObj);
+            return new JavaClassPropertyGetNode(key, new InstanceofCheckNode(JavaClass.class, context), isMethod(), JavaAccess.isReflectionAllowed(context));
         } else if (thisObj instanceof JavaSuperAdapter) {
-            return new CachedJavaSuperMethodPropertyGetNode(key, new JavaSuperAdapterCheckNode((JavaSuperAdapter) thisObj), JavaAccess.isReflectionAllowed(context), (JavaSuperAdapter) thisObj);
+            return new JavaSuperMethodPropertyGetNode(key, new JavaSuperAdapterCheckNode((JavaSuperAdapter) thisObj), JavaAccess.isReflectionAllowed(context));
         } else {
-            JavaMember member = getInstanceMember(thisObj, context);
+            JavaMember member = getInstanceMember(thisObj);
             if (member != null) {
                 if (member instanceof JavaGetter) {
-                    return new JavaGetterPropertyGetNode(key, new InstanceofCheckNode(thisObj.getClass(), context), (JavaGetter) member);
+                    return new JavaGetterPropertyGetNode(new InstanceofCheckNode(thisObj.getClass(), context), (JavaGetter) member);
                 } else {
                     assert member instanceof JavaMethod;
-                    return new JavaMethodPropertyGetNode(key, new InstanceofCheckNode(thisObj.getClass(), context), (JavaMethod) member);
+                    return new JavaMethodPropertyGetNode(new InstanceofCheckNode(thisObj.getClass(), context), (JavaMethod) member);
                 }
             } else {
                 if (thisObj instanceof Map) {
-                    return new MapPropertyGetNode(key, new InstanceofCheckNode(thisObj.getClass(), context));
+                    return new MapPropertyGetNode(new InstanceofCheckNode(thisObj.getClass(), context));
                 }
             }
             return null;
@@ -1996,8 +1742,8 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     }
 
     @Override
-    protected LinkedPropertyGetNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, JSContext context, Object value) {
-        LinkedPropertyGetNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, depth, context);
+    protected GetCacheNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, Object value) {
+        GetCacheNode javaPropertyNode = createJavaPropertyNodeMaybe(thisObj, depth);
         if (javaPropertyNode != null) {
             return javaPropertyNode;
         }
@@ -2008,7 +1754,7 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
             AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, jsobject, depth, false, false);
             ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(jsobject)) : shapeCheck;
             if (JSAdapter.isJSAdapter(store)) {
-                return new JSAdapterPropertyGetNode(key, receiverCheck, isMethod());
+                return new JSAdapterPropertyGetNode(receiverCheck);
             } else if (JSProxy.isProxy(store) && !(key instanceof HiddenKey)) {
                 if (isRequired()) {
                     return new JSProxyDispatcherRequiredPropertyGetNode(context, key, receiverCheck, isMethod());
@@ -2016,47 +1762,47 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
                     return new JSProxyDispatcherPropertyGetNode(context, key, receiverCheck, isMethod());
                 }
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
-                return new UnspecializedPropertyGetNode(key, receiverCheck);
+                return new UnspecializedPropertyGetNode(receiverCheck);
             } else {
-                return createUndefinedJSObjectPropertyNode(depth, context, jsobject);
+                return createUndefinedJSObjectPropertyNode(jsobject, depth);
             }
         } else if (JSProxy.isProxy(store)) {
-            ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth, context);
+            ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth);
             return new JSProxyDispatcherPropertyGetNode(context, key, receiverCheck, isMethod());
         } else {
             if (thisObj == null) {
-                return new TypeErrorPropertyGetNode(key, new NullCheckNode(), isMethod());
+                return new TypeErrorPropertyGetNode(new NullCheckNode());
             } else {
-                ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth, context);
+                ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth);
                 return createUndefinedOrErrorPropertyNode(receiverCheck);
             }
         }
     }
 
-    private LinkedPropertyGetNode createUndefinedJSObjectPropertyNode(int depth, JSContext context, DynamicObject jsobject) {
+    private GetCacheNode createUndefinedJSObjectPropertyNode(DynamicObject jsobject, int depth) {
         AbstractShapeCheckNode shapeCheck = createShapeCheckNode(jsobject.getShape(), jsobject, depth, false, false);
         if (JSRuntime.isObject(jsobject)) {
             if (context.isOptionNashornCompatibilityMode() && !(key instanceof Symbol)) {
                 if ((!context.getNoSuchMethodUnusedAssumption().isValid() && JSObject.hasProperty(jsobject, JSObject.NO_SUCH_METHOD_NAME)) ||
                                 (!context.getNoSuchPropertyUnusedAssumption().isValid() && JSObject.hasProperty(jsobject, JSObject.NO_SUCH_PROPERTY_NAME))) {
-                    return new CheckNoSuchPropertyNode(key, shapeCheck, isGlobal(), context);
+                    return new CheckNoSuchPropertyNode(key, shapeCheck, context);
                 }
             }
             return createUndefinedOrErrorPropertyNode(shapeCheck);
         } else {
-            return new TypeErrorPropertyGetNode(key, shapeCheck, isMethod());
+            return new TypeErrorPropertyGetNode(shapeCheck);
         }
     }
 
-    private LinkedPropertyGetNode createUndefinedOrErrorPropertyNode(ReceiverCheckNode receiverCheck) {
+    private GetCacheNode createUndefinedOrErrorPropertyNode(ReceiverCheckNode receiverCheck) {
         if (isRequired()) {
-            return new UndefinedPropertyErrorNode(key, receiverCheck);
+            return new UndefinedPropertyErrorNode(receiverCheck);
         } else {
-            return new UndefinedPropertyGetNode(key, receiverCheck);
+            return new UndefinedPropertyGetNode(receiverCheck);
         }
     }
 
-    private JavaMember getInstanceMember(Object thisObj, JSContext context) {
+    private JavaMember getInstanceMember(Object thisObj) {
         if (thisObj == null) {
             return null;
         }
@@ -2069,46 +1815,53 @@ public abstract class PropertyGetNode extends PropertyCacheNode<PropertyGetNode>
     }
 
     /**
-     * Make a generic-case createNode, for when polymorphism becomes too high.
+     * Make a generic-case node, for when polymorphism becomes too high.
      */
     @Override
-    protected PropertyGetNode createGenericPropertyNode(JSContext context) {
-        return createGeneric(key, isRequired(), isMethod(), isOwnProperty(), context);
-    }
-
-    private static PropertyGetNode createGeneric(Object key, boolean required, boolean isMethod, boolean getOwnProperty, JSContext context) {
-        return new GenericPropertyGetNode(key, context, isMethod, getOwnProperty, required);
+    protected GetCacheNode createGenericPropertyNode() {
+        return new GenericPropertyGetNode();
     }
 
     protected final boolean isRequired() {
         return isGlobal();
     }
 
-    protected abstract boolean isMethod();
+    @Override
+    protected final boolean isGlobal() {
+        return isGlobal;
+    }
+
+    @Override
+    protected final boolean isOwnProperty() {
+        return getOwnProperty;
+    }
+
+    protected boolean isMethod() {
+        return isMethod;
+    }
 
     protected void setMethod() {
-        throw new UnsupportedOperationException();
+        CompilerAsserts.neverPartOfCompilation();
+        this.isMethod = true;
     }
 
     @Override
-    protected final Class<PropertyGetNode> getBaseClass() {
-        return PropertyGetNode.class;
+    protected boolean isPropertyAssumptionCheckEnabled() {
+        return propertyAssumptionCheckEnabled && getContext().isSingleRealm();
     }
 
     @Override
-    protected Class<? extends PropertyGetNode> getUninitializedNodeClass() {
-        return UninitializedPropertyGetNode.class;
+    protected void setPropertyAssumptionCheckEnabled(boolean value) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.propertyAssumptionCheckEnabled = value;
     }
 
     @Override
-    protected PropertyGetNode createTruffleObjectPropertyNode(TruffleObject thisObject, JSContext context) {
+    protected GetCacheNode createTruffleObjectPropertyNode(TruffleObject thisObject) {
         return new ForeignPropertyGetNode(key, isMethod(), isGlobal(), context);
     }
 
     protected static Class<? extends JavaMember>[] getJavaMemberTypes(boolean isMethod) {
         return isMethod ? JavaClass.METHOD_GETTER : JavaClass.GETTER_METHOD;
     }
-
-    @Override
-    public abstract JSContext getContext();
 }

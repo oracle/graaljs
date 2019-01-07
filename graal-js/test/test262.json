@@ -3615,22 +3615,6 @@
     "filePath" : "language/expressions/async-generator/expression-yield-star-before-newline.js",
     "status" : "SKIP"
   }, {
-    "filePath" : "language/expressions/await/async-await-interleaved.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/await/async-generator-interleaved.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/await/await-monkey-patched-promise.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/await/for-await-of-interleaved.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "language/expressions/call/eval-spread-empty-leading.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -11613,10 +11597,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "language/expressions/function/arguments-with-arguments-fn.js",
-    "status" : "FAIL",
-    "comment" : "TODO: script passes with disabled assertions"
-  }, {
     "filePath" : "language/expressions/function/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -11631,10 +11611,6 @@
   }, {
     "filePath" : "language/expressions/function/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/generators/arguments-with-arguments-fn.js",
-    "status" : "FAIL",
-    "comment" : "TODO: script passes with disabled assertions"
   }, {
     "filePath" : "language/expressions/generators/scope-body-lex-distinct.js",
     "status" : "FAIL"
@@ -18542,12 +18518,6 @@
     "filePath" : "language/statements/for-of/head-lhs-let.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/for-of/iterator-next-error.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/iterator-next-result-value-attr-error.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/for-of/scope-head-lex-open.js",
     "status" : "FAIL"
   }, {
@@ -18573,10 +18543,6 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
   }, {
-    "filePath" : "language/statements/function/arguments-with-arguments-fn.js",
-    "status" : "FAIL",
-    "comment" : "TODO: script passes with disabled assertions"
-  }, {
     "filePath" : "language/statements/function/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -18591,10 +18557,6 @@
   }, {
     "filePath" : "language/statements/function/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/generators/arguments-with-arguments-fn.js",
-    "status" : "FAIL",
-    "comment" : "TODO: script passes with disabled assertions"
   }, {
     "filePath" : "language/statements/generators/scope-body-lex-distinct.js",
     "status" : "FAIL"

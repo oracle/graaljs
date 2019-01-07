@@ -170,6 +170,7 @@ public class JSRealm {
     @CompilationFinal(dimensions = 1) private final JSConstructor[] errorConstructors;
     private final JSConstructor callSiteConstructor;
 
+    private final Shape initialRegExpPrototypeShape;
     private final Shape initialUserObjectShape;
     private final JSObjectFactory.RealmData objectFactories;
 
@@ -238,6 +239,8 @@ public class JSRealm {
 
     private final DynamicObject globalScope;
 
+    private DynamicObject scriptEngineImportScope;
+
     private TruffleLanguage.Env truffleLanguageEnv;
 
     /**
@@ -252,6 +255,9 @@ public class JSRealm {
 
     /** Support for RegExp.$1. */
     private TruffleObject regexResult;
+    private TruffleObject lazyStaticRegexResultCompiledRegex;
+    private String lazyStaticRegexResultInputString = "";
+    private long lazyStaticRegexResultFromIndex;
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     private final SplittableRandom random = new SplittableRandom();
@@ -290,6 +296,9 @@ public class JSRealm {
 
         this.globalObject = JSGlobalObject.create(this, objectPrototype);
         this.globalScope = JSObject.createInit(context.getGlobalScopeShape());
+        if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
+            this.scriptEngineImportScope = JSObject.createInit(context.createEmptyShape());
+        }
 
         this.objectConstructor = createObjectConstructor(this, objectPrototype);
         JSObjectUtil.putDataProperty(context, this.objectPrototype, JSObject.CONSTRUCTOR, objectConstructor, JSAttributes.getDefaultNotEnumerable());
@@ -306,6 +315,7 @@ public class JSRealm {
         this.stringConstructor = JSString.createConstructor(this);
         this.regExpConstructor = JSRegExp.createConstructor(this);
         this.dateConstructor = JSDate.createConstructor(this);
+        this.initialRegExpPrototypeShape = this.regExpConstructor.getPrototype().getShape();
         boolean es6 = JSTruffleOptions.MaxECMAScriptVersion >= 6;
         if (es6) {
             this.symbolConstructor = JSSymbol.createConstructor(this);
@@ -539,6 +549,10 @@ public class JSRealm {
 
     public final Shape getInitialUserObjectShape() {
         return initialUserObjectShape;
+    }
+
+    public final Shape getInitialRegExpPrototypeShape() {
+        return initialRegExpPrototypeShape;
     }
 
     public final JSConstructor getArrayBufferConstructor() {
@@ -779,6 +793,10 @@ public class JSRealm {
 
         if (context.isOptionNashornCompatibilityMode()) {
             initGlobalNashornExtensions(global);
+        }
+        if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
+            JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
+                            lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
         setupPolyglot(global);
         if (isJavaInteropAvailable()) {
@@ -1076,6 +1094,10 @@ public class JSRealm {
         return globalScope;
     }
 
+    public DynamicObject getScriptEngineImportScope() {
+        return scriptEngineImportScope;
+    }
+
     /**
      * Adds several objects to the global object, in case scripting mode is enabled (for Nashorn
      * compatibility). This includes an {@code $OPTIONS} property that exposes several options to
@@ -1217,10 +1239,51 @@ public class JSRealm {
         return regexResult;
     }
 
+    public TruffleObject getLazyStaticRegexResultCompiledRegex() {
+        return lazyStaticRegexResultCompiledRegex;
+    }
+
+    public String getLazyStaticRegexResultInputString() {
+        return lazyStaticRegexResultInputString;
+    }
+
+    public long getLazyStaticRegexResultFromIndex() {
+        return lazyStaticRegexResultFromIndex;
+    }
+
     public void setRegexResult(TruffleObject regexResult) {
         assert context.isOptionRegexpStaticResult();
+        assert !context.getRegExpStaticResultUnusedAssumption().isValid();
         assert TRegexUtil.readResultIsMatch(TRegexUtil.createReadNode(), regexResult);
         this.regexResult = regexResult;
+    }
+
+    /**
+     * To allow virtualization of TRegex RegexResults, we want to avoid storing the last result
+     * globally. Instead, we store the values needed to calculate the result on demand, under the
+     * assumption that this non-standard feature is often not used at all.
+     */
+    private void setRegexResultLazy(TruffleObject tRegexCompiledRegex, String inputString, long fromIndex) {
+        assert context.isOptionRegexpStaticResult();
+        assert context.getRegExpStaticResultUnusedAssumption().isValid();
+        lazyStaticRegexResultCompiledRegex = tRegexCompiledRegex;
+        lazyStaticRegexResultInputString = inputString;
+        lazyStaticRegexResultFromIndex = fromIndex;
+    }
+
+    public void setStaticRegexResult(TruffleObject compiledRegex, String input, long fromIndex, TruffleObject result) {
+        if (context.getRegExpStaticResultUnusedAssumption().isValid()) {
+            setRegexResultLazy(compiledRegex, input, fromIndex);
+        } else {
+            setRegexResult(result);
+        }
+    }
+
+    public void switchToEagerStaticRegExpResults() {
+        context.getRegExpStaticResultUnusedAssumption().invalidate();
+        lazyStaticRegexResultCompiledRegex = null;
+        lazyStaticRegexResultInputString = null;
+        lazyStaticRegexResultFromIndex = 0;
     }
 
     public OptionValues getOptions() {
@@ -1317,5 +1380,4 @@ public class JSRealm {
         }
         return consoleUtil;
     }
-
 }

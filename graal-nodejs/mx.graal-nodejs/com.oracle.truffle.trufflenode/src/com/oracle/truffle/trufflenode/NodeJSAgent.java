@@ -64,6 +64,10 @@ public class NodeJSAgent extends JSAgent {
         }
     }
 
+    Thread getThread() {
+        return thread;
+    }
+
     @Override
     public void wakeAgent(int w) {
         synchronized (agents) {
