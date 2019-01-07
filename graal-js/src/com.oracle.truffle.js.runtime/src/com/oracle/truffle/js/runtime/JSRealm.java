@@ -804,7 +804,9 @@ public class JSRealm {
         if (context.getContextOptions().isLoad()) {
             initGlobalLoadExtensions(global);
         }
-        setupPolyglot(global);
+        if (context.getContextOptions().isPolyglotBuiltin()) {
+            setupPolyglot(global);
+        }
         if (isJavaInteropAvailable() && isJavaInteropEnabled()) {
             setupJavaInterop(global);
         }

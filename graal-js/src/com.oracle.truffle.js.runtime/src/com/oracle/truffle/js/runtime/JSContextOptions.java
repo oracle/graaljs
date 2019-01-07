@@ -175,6 +175,10 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
     private static final String GRAAL_BUILTIN_HELP = "provide 'Graal' global property.";
 
+    public static final String POLYGLOT_BUILTIN_NAME = JS_OPTION_PREFIX + "polyglot-builtin";
+    public static final OptionKey<Boolean> POLYGLOT_BUILTIN = new OptionKey<>(true);
+    private static final String POLYGLOT_BUILTIN_HELP = "provide 'Polyglot' global property.";
+
     public static final String AWAIT_OPTIMIZATION_NAME = JS_OPTION_PREFIX + "await-optimization";
     public static final OptionKey<Boolean> AWAIT_OPTIMIZATION = new OptionKey<>(true);
     private static final String AWAIT_OPTIMIZATION_HELP = "Use PromiseResolve for Await.";
@@ -339,6 +343,7 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(PRINT, PRINT_NAME, OptionCategory.USER, PRINT_HELP));
         options.add(newOptionDescriptor(LOAD, LOAD_NAME, OptionCategory.USER, LOAD_HELP));
         options.add(newOptionDescriptor(GRAAL_BUILTIN, GRAAL_BUILTIN_NAME, OptionCategory.USER, GRAAL_BUILTIN_HELP));
+        options.add(newOptionDescriptor(POLYGLOT_BUILTIN, POLYGLOT_BUILTIN_NAME, OptionCategory.USER, POLYGLOT_BUILTIN_HELP));
         options.add(newOptionDescriptor(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME, OptionCategory.DEBUG, AWAIT_OPTIMIZATION_HELP));
         options.add(newOptionDescriptor(DISABLE_EVAL, DISABLE_EVAL_NAME, OptionCategory.EXPERT, DISABLE_EVAL_HELP));
         options.add(newOptionDescriptor(DISABLE_WITH, DISABLE_WITH_NAME, OptionCategory.EXPERT, DISABLE_WITH_HELP));
@@ -474,11 +479,11 @@ public final class JSContextOptions {
     public boolean isConsole() {
         return CONSOLE.getValue(optionValues);
     }
-    
+
     public boolean isPrint() {
         return PRINT.getValue(optionValues);
     }
-    
+
     public boolean isLoad() {
         return LOAD.getValue(optionValues);
     }
@@ -493,6 +498,10 @@ public final class JSContextOptions {
 
     public boolean isGraalBuiltin() {
         return GRAAL_BUILTIN.getValue(optionValues);
+    }
+
+    public boolean isPolyglotBuiltin() {
+        return POLYGLOT_BUILTIN.getValue(optionValues);
     }
 
     @Override
