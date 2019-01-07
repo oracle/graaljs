@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,6 +97,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
@@ -171,6 +172,7 @@ public class JSRealm {
     private final JSConstructor pluralRulesConstructor;
     private final JSConstructor listFormatConstructor;
     private final JSConstructor dateTimeFormatConstructor;
+    private final JSConstructor relativeTimeFormatConstructor;
     private final JSConstructor dateConstructor;
     @CompilationFinal(dimensions = 1) private final JSConstructor[] errorConstructors;
     private final JSConstructor callSiteConstructor;
@@ -363,12 +365,14 @@ public class JSRealm {
             this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
             this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
             this.listFormatConstructor = JSListFormat.createConstructor(this);
+            this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
         } else {
             this.collatorConstructor = null;
             this.numberFormatConstructor = null;
             this.dateTimeFormatConstructor = null;
             this.pluralRulesConstructor = null;
             this.listFormatConstructor = null;
+            this.relativeTimeFormatConstructor = null;
         }
 
         this.iteratorPrototype = createIteratorPrototype();
@@ -524,6 +528,10 @@ public class JSRealm {
 
     public final JSConstructor getListFormatConstructor() {
         return listFormatConstructor;
+    }
+
+    public final JSConstructor getRelativeTimeFormatConstructor() {
+        return relativeTimeFormatConstructor;
     }
 
     public final JSConstructor getDateTimeFormatConstructor() {
@@ -764,11 +772,13 @@ public class JSRealm {
             DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor().getFunctionObject();
             DynamicObject pluralRulesFn = getPluralRulesConstructor().getFunctionObject();
             DynamicObject listFormatFn = getListFormatConstructor().getFunctionObject();
+            DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor().getFunctionObject();
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
             putGlobalProperty(global, JSIntl.CLASS_NAME, intlObject);
         }
 

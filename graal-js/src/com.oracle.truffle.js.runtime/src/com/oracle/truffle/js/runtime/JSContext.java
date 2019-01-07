@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,6 +105,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -356,6 +357,7 @@ public class JSContext {
     private final JSObjectFactory pluralRulesFactory;
     private final JSObjectFactory dateTimeFormatFactory;
     private final JSObjectFactory listFormatFactory;
+    private final JSObjectFactory relativeTimeFormatFactory;
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
@@ -500,6 +502,7 @@ public class JSContext {
         this.dateTimeFormatFactory = intl402 ? builder.create(JSDateTimeFormat.INSTANCE) : null;
         this.pluralRulesFactory = intl402 ? builder.create(JSPluralRules.INSTANCE) : null;
         this.listFormatFactory = intl402 ? builder.create(JSListFormat.INSTANCE) : null;
+        this.relativeTimeFormatFactory = intl402 ? builder.create(JSRelativeTimeFormat.INSTANCE) : null;
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode || JSTruffleOptions.NashornJavaInterop;
@@ -882,6 +885,10 @@ public class JSContext {
 
     public final JSObjectFactory getListFormatFactory() {
         return listFormatFactory;
+    }
+
+    public final JSObjectFactory getRelativeTimeFormatFactory() {
+        return relativeTimeFormatFactory;
     }
 
     public final JSObjectFactory getDateTimeFormatFactory() {
