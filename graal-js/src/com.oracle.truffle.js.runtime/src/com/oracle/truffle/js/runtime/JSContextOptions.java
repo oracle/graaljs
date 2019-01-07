@@ -197,6 +197,11 @@ public final class JSContextOptions {
     private static final String REGEX_ALWAYS_EAGER_HELP = helpWithDefault("Always match capture groups eagerly.", REGEX_ALWAYS_EAGER);
     @CompilationFinal private boolean regexAlwaysEager;
 
+    public static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME = JS_OPTION_PREFIX + "script-engine-global-scope-import";
+    public static final OptionKey<Boolean> SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT = new OptionKey<>(false);
+    private static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP = "Enable ScriptEngine-specific global scope import function.";
+    @CompilationFinal private boolean scriptEngineGlobalScopeImport;
+
     /**
      * Options which can be patched without throwing away the pre-initialized context.
      */
@@ -249,6 +254,7 @@ public final class JSContextOptions {
         this.regexDumpAutomata = readBooleanOption(REGEX_DUMP_AUTOMATA, REGEX_DUMP_AUTOMATA_NAME);
         this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME);
         this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME);
+        this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
@@ -329,6 +335,7 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(REGEX_DUMP_AUTOMATA, REGEX_DUMP_AUTOMATA_NAME, OptionCategory.DEBUG, REGEX_DUMP_AUTOMATA_HELP));
         options.add(newOptionDescriptor(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME, OptionCategory.DEBUG, REGEX_STEP_EXECUTION_HELP));
         options.add(newOptionDescriptor(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME, OptionCategory.DEBUG, REGEX_ALWAYS_EAGER_HELP));
+        options.add(newOptionDescriptor(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, OptionCategory.EXPERT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP));
     }
 
     /**
@@ -450,6 +457,10 @@ public final class JSContextOptions {
         return regexAlwaysEager;
     }
 
+    public boolean isScriptEngineGlobalScopeImport() {
+        return scriptEngineGlobalScopeImport;
+    }
+
     public boolean isConsole() {
         return CONSOLE.getValue(optionValues);
     }
@@ -491,6 +502,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.regexDumpAutomata ? 1 : 0);
         hash = 53 * hash + (this.regexStepExecution ? 1 : 0);
         hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
+        hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
         return hash;
     }
 
@@ -567,6 +579,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.regexAlwaysEager != other.regexAlwaysEager) {
+            return false;
+        }
+        if (this.scriptEngineGlobalScopeImport != other.scriptEngineGlobalScopeImport) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
