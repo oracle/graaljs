@@ -152,7 +152,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     public static String format(DynamicObject relativeTimeFormatObj, double amount, String unit) {
         ensureIsRelativeTimeFormat(relativeTimeFormatObj);
         RelativeDateTimeFormatter relativeDateTimeFormatter = getRelativeDateTimeFormatterProperty(relativeTimeFormatObj);
-        return relativeDateTimeFormatter.format(amount, singularRelativeTimeUnit("format", unit));
+        return relativeDateTimeFormatter.formatNumeric(amount, singularRelativeTimeUnit("format", unit));
     }
 
     public static class InternalState {
