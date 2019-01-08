@@ -34,7 +34,7 @@ from mx import BinarySuite, VC
 from mx_gate import Task
 from argparse import ArgumentParser
 from os import remove, symlink, unlink
-from os.path import dirname, exists, join, isdir, isfile, islink
+from os.path import exists, join, isdir, isfile, islink
 
 _suite = mx.suite('graal-nodejs')
 _currentOs = mx.get_os()
@@ -441,33 +441,6 @@ def _parseArgs(args):
 
     return mode, vmArgs, progArgs
 
-def pylint(args):
-    rcfile = join(dirname(mx.__file__), '.pylintrc')
-    pythonpath = dirname(mx.__file__)
-    for suite in mx.suites(True):
-        pythonpath = os.pathsep.join([pythonpath, suite.mxDir])
-
-    def findfiles_by_vc(pyfiles):
-        for suite in mx.suites(True, includeBinary=False):
-            if not suite.primary:
-                continue
-            files = suite.vc.locate(suite.mxDir, ['*.py'])
-            for pyfile in files:
-                pyfile = join(suite.mxDir, pyfile)
-                if exists(pyfile):
-                    pyfiles.append(pyfile)
-
-    pyfiles = []
-    findfiles_by_vc(pyfiles)
-    env = os.environ.copy()
-    env['PYTHONPATH'] = pythonpath
-
-    for pyfile in pyfiles:
-        mx.log('Running pylint on ' + pyfile + '...')
-        mx.run(['pylint', '--reports=n', '--rcfile=' + rcfile, pyfile], env=env)
-
-    return 0
-
 def overrideBuild():
     def build(args):
         # add custom build arguments
@@ -549,7 +522,6 @@ mx.update_commands(_suite, {
     'npm' : [npm, ''],
     'node-gyp' : [node_gyp, ''],
     'testnode' : [testnode, ''],
-    'pylint' : [pylint, ''],
     'makeinnodeenv' : [makeInNodeEnvironment, ''],
     'buildsvmimage' : [buildSvmImage, ''],
     'svmnode' : [svmnode, ''],
