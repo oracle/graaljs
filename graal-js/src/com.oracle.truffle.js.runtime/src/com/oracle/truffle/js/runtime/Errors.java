@@ -399,6 +399,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorInvalidUnitArgument(String functionName, String unit) {
+        return createRangeError(String.format("Invalid unit argument for %s() '%s'", functionName, unit));
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorDetachedBuffer() {
         return Errors.createTypeError("Detached buffer");
     }

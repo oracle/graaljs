@@ -41,7 +41,9 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import com.ibm.icu.text.DisplayContext;
 import com.ibm.icu.text.RelativeDateTimeFormatter;
@@ -150,8 +152,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     public static String format(DynamicObject relativeTimeFormatObj, double amount, String unit) {
         ensureIsRelativeTimeFormat(relativeTimeFormatObj);
         RelativeDateTimeFormatter relativeDateTimeFormatter = getRelativeDateTimeFormatterProperty(relativeTimeFormatObj);
-        RelativeDateTimeUnit.valueOf(unit.substring(0, unit.length() - 1).toUpperCase());
-        return relativeDateTimeFormatter.format(amount, RelativeDateTimeUnit.DAY);
+        return relativeDateTimeFormatter.format(amount, singularRelativeTimeUnit("format", unit));
     }
 
     public static class InternalState {
@@ -200,5 +201,34 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getRelativeTimeFormatConstructor().getPrototype();
+    }
+
+    private static final Map<String, RelativeDateTimeFormatter.RelativeDateTimeUnit> TimeUnitMAP = new HashMap<>();
+    static {
+        TimeUnitMAP.put("second", RelativeDateTimeUnit.SECOND);
+        TimeUnitMAP.put("seconds", RelativeDateTimeUnit.SECOND);
+        TimeUnitMAP.put("minute", RelativeDateTimeUnit.MINUTE);
+        TimeUnitMAP.put("minutes", RelativeDateTimeUnit.MINUTE);
+        TimeUnitMAP.put("hour", RelativeDateTimeUnit.HOUR);
+        TimeUnitMAP.put("hours", RelativeDateTimeUnit.HOUR);
+        TimeUnitMAP.put("day", RelativeDateTimeUnit.DAY);
+        TimeUnitMAP.put("days", RelativeDateTimeUnit.DAY);
+        TimeUnitMAP.put("week", RelativeDateTimeUnit.WEEK);
+        TimeUnitMAP.put("weeks", RelativeDateTimeUnit.WEEK);
+        TimeUnitMAP.put("month", RelativeDateTimeUnit.MONTH);
+        TimeUnitMAP.put("months", RelativeDateTimeUnit.MONTH);
+        TimeUnitMAP.put("quarter", RelativeDateTimeUnit.QUARTER);
+        TimeUnitMAP.put("quarters", RelativeDateTimeUnit.QUARTER);
+        TimeUnitMAP.put("year", RelativeDateTimeUnit.YEAR);
+        TimeUnitMAP.put("years", RelativeDateTimeUnit.YEAR);
+    }
+
+    private static RelativeDateTimeUnit singularRelativeTimeUnit(String functionName, String unit) {
+        RelativeDateTimeUnit result = TimeUnitMAP.get(unit);
+        if (result != null) {
+            return result;
+        } else {
+            throw Errors.createRangeErrorInvalidUnitArgument(functionName, unit);
+        }
     }
 }
