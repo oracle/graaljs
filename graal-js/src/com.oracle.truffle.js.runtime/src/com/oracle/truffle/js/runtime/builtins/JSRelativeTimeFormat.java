@@ -42,10 +42,13 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 import com.ibm.icu.text.DisplayContext;
+import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.text.RelativeDateTimeFormatter;
 import com.ibm.icu.text.RelativeDateTimeFormatter.RelativeDateTimeUnit;
 import com.ibm.icu.util.ULocale;
@@ -153,6 +156,27 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         ensureIsRelativeTimeFormat(relativeTimeFormatObj);
         RelativeDateTimeFormatter relativeDateTimeFormatter = getRelativeDateTimeFormatterProperty(relativeTimeFormatObj);
         return relativeDateTimeFormatter.formatNumeric(amount, singularRelativeTimeUnit("format", unit));
+    }
+
+    @TruffleBoundary
+    public static DynamicObject formatToParts(JSContext context, DynamicObject relativeTimeFormatObj, double amount, String unit) {
+        ensureIsRelativeTimeFormat(relativeTimeFormatObj);
+        RelativeDateTimeFormatter relativeDateTimeFormatter = getRelativeDateTimeFormatterProperty(relativeTimeFormatObj);
+        String allText = relativeDateTimeFormatter.formatNumeric(amount, singularRelativeTimeUnit("format", unit));
+        NumberFormat numberFormat = relativeDateTimeFormatter.getNumberFormat();
+        String numberText = numberFormat.format(amount);
+        List<Object> resultParts = new LinkedList<>();
+        int numberIndex = allText.indexOf(numberText);
+        if (numberIndex > -1) {
+            resultParts.add(IntlUtil.makePart(context, "literal", allText.substring(0, numberIndex)));
+            resultParts.addAll(JSNumberFormat.innerFormatToParts(context, numberFormat, amount));
+            if (numberIndex + numberText.length() < allText.length()) {
+                resultParts.add(IntlUtil.makePart(context, "literal", allText.substring(numberIndex + numberText.length(), allText.length())));
+            }
+        } else {
+            resultParts.add(IntlUtil.makePart(context, "literal", allText));
+        }
+        return JSArray.createConstant(context, resultParts.toArray());
     }
 
     public static class InternalState {

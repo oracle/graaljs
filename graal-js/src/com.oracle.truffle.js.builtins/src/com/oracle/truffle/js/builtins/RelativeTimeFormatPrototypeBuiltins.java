@@ -140,7 +140,7 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
         public Object doFormatToParts(DynamicObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
-            return JSRelativeTimeFormat.format(relativeTimeFormat, toNumberNode.executeNumber(value).doubleValue(), toStringNode.executeString(unit));
+            return JSRelativeTimeFormat.formatToParts(getContext(), relativeTimeFormat, toNumberNode.executeNumber(value).doubleValue(), toStringNode.executeString(unit));
         }
 
         @Specialization(guards = "!isDynamicObject(bummer)")
