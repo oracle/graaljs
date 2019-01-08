@@ -46,10 +46,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -61,7 +63,25 @@ public final class JSContextOptions {
     @CompilationFinal private OptionValues optionValues;
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSTruffleOptions.MaxECMAScriptVersion);
+    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSTruffleOptions.MaxECMAScriptVersion,
+                    new OptionType<>(
+                                    "ecmascript-version",
+                                    JSTruffleOptions.MaxECMAScriptVersion,
+                                    new Function<String, Integer>() {
+
+                                        @Override
+                                        public Integer apply(String t) {
+                                            try {
+                                                int version = Integer.parseInt(t);
+                                                if (version < 5 || version > JSTruffleOptions.MaxECMAScriptVersion) {
+                                                    throw new IllegalArgumentException("Supported values are between 5 and " + JSTruffleOptions.MaxECMAScriptVersion + ".");
+                                                }
+                                                return version;
+                                            } catch (NumberFormatException e) {
+                                                throw new IllegalArgumentException(e.getMessage(), e);
+                                            }
+                                        }
+                                    }));
     private static final String ECMASCRIPT_VERSION_HELP = "ECMAScript Version.";
     @CompilationFinal private int ecmascriptVersion;
 
