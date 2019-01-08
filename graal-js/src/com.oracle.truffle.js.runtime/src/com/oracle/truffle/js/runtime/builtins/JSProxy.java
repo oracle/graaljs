@@ -226,7 +226,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object trap = getTrapFromObject(handler, GET);
         if (trap == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
-                return JSReflectUtils.performOrdinaryGet((DynamicObject) target, propertyKey, receiver);
+                return JSObject.getJSClass((DynamicObject) target).getHelper((DynamicObject) target, receiver, propertyKey);
             } else {
                 return JSInteropNodeUtil.read(target, propertyKey);
             }
