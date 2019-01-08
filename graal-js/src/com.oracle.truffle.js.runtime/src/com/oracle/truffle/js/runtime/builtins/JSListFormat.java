@@ -175,7 +175,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     public static DynamicObject formatToParts(JSContext context, DynamicObject listFormatObj, List<String> list) {
         ensureIsListFormat(listFormatObj);
         if (list.size() == 0) {
-            return JSArray.createConstant(context, new JSUserObject[]{});
+            return JSArray.createConstantEmptyArray(context);
         }
         ListFormatter listFormatter = getListFormatterProperty(listFormatObj);
         String pattern = listFormatter.getPatternForNumItems(list.size());
