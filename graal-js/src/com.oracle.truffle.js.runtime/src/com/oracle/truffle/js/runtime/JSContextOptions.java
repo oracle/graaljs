@@ -163,9 +163,21 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHELL = new OptionKey<>(false);
     private static final String SHELL_HELP = "provide global functions for js shell.";
 
+    public static final String PRINT_NAME = JS_OPTION_PREFIX + "print";
+    public static final OptionKey<Boolean> PRINT = new OptionKey<>(true);
+    private static final String PRINT_HELP = "provide 'print' global method.";
+
+    public static final String LOAD_NAME = JS_OPTION_PREFIX + "load";
+    public static final OptionKey<Boolean> LOAD = new OptionKey<>(true);
+    private static final String LOAD_HELP = "provide 'load' global method.";
+
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
     private static final String GRAAL_BUILTIN_HELP = "provide 'Graal' global property.";
+
+    public static final String POLYGLOT_BUILTIN_NAME = JS_OPTION_PREFIX + "polyglot-builtin";
+    public static final OptionKey<Boolean> POLYGLOT_BUILTIN = new OptionKey<>(true);
+    private static final String POLYGLOT_BUILTIN_HELP = "provide 'Polyglot' global property.";
 
     public static final String AWAIT_OPTIMIZATION_NAME = JS_OPTION_PREFIX + "await-optimization";
     public static final OptionKey<Boolean> AWAIT_OPTIMIZATION = new OptionKey<>(true);
@@ -328,7 +340,10 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(CONSOLE, CONSOLE_NAME, OptionCategory.USER, CONSOLE_HELP));
         options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
         options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
+        options.add(newOptionDescriptor(PRINT, PRINT_NAME, OptionCategory.USER, PRINT_HELP));
+        options.add(newOptionDescriptor(LOAD, LOAD_NAME, OptionCategory.USER, LOAD_HELP));
         options.add(newOptionDescriptor(GRAAL_BUILTIN, GRAAL_BUILTIN_NAME, OptionCategory.USER, GRAAL_BUILTIN_HELP));
+        options.add(newOptionDescriptor(POLYGLOT_BUILTIN, POLYGLOT_BUILTIN_NAME, OptionCategory.USER, POLYGLOT_BUILTIN_HELP));
         options.add(newOptionDescriptor(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME, OptionCategory.DEBUG, AWAIT_OPTIMIZATION_HELP));
         options.add(newOptionDescriptor(DISABLE_EVAL, DISABLE_EVAL_NAME, OptionCategory.EXPERT, DISABLE_EVAL_HELP));
         options.add(newOptionDescriptor(DISABLE_WITH, DISABLE_WITH_NAME, OptionCategory.EXPERT, DISABLE_WITH_HELP));
@@ -465,6 +480,14 @@ public final class JSContextOptions {
         return CONSOLE.getValue(optionValues);
     }
 
+    public boolean isPrint() {
+        return PRINT.getValue(optionValues);
+    }
+
+    public boolean isLoad() {
+        return LOAD.getValue(optionValues);
+    }
+
     public boolean isPerformance() {
         return PERFORMANCE.getValue(optionValues);
     }
@@ -475,6 +498,10 @@ public final class JSContextOptions {
 
     public boolean isGraalBuiltin() {
         return GRAAL_BUILTIN.getValue(optionValues);
+    }
+
+    public boolean isPolyglotBuiltin() {
+        return POLYGLOT_BUILTIN.getValue(optionValues);
     }
 
     @Override

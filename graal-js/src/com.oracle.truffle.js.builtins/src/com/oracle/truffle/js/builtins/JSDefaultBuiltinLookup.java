@@ -120,6 +120,8 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new GlobalBuiltins());
         defineBuiltins(new GlobalBuiltins.GlobalNashornScriptingBuiltins());
         defineBuiltins(new GlobalBuiltins.GlobalShellBuiltins());
+        defineBuiltins(new GlobalBuiltins.GlobalPrintBuiltins());
+        defineBuiltins(new GlobalBuiltins.GlobalLoadBuiltins());
 
         defineBuiltins(JSConstructor.BUILTINS, new ConstructorBuiltins());
 

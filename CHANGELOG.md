@@ -4,12 +4,16 @@ This changelog summarizes major changes between GraalVM versions of the Graal Ja
 The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC11
-* Added option `js.disable-eval` to disable eval() and similar methods of dynamic code evaluation.
-* Added option `js.disable-with` to disable the with statement.
+* Added option `js.disable-eval` to enable eval() and similar methods of dynamic code evaluation (enabled by default, set to `false` to disable).
+* Added option `js.disable-with` to enable the with statement (enabled by default, set to `false` to disable).
 * Instrumentation: Extended inline parsing to support statements.
 * Added support for sharing Java objects using the experimental Node.js Worker Threads API.
 * Added support for ScriptEngine `GLOBAL_SCOPE` bindings.
 * Made `Bindings` created by `ScriptEngine#createBindings()` implement `AutoCloseable` to allow closing the underlying `Context`.
+* Do not provide `Java` builtin object when Java interop is disabled.
+* Added option `js.print` to enable the `print` and `printErr` builtins (enabled by default, set to `false` to disable).
+* Added option `js.load` to enable the `load` and `loadWithNewGlobal` builtins (enabled by default, set to `false` to disable).
+* Added option `js.polyglot-builtin` to enable the `Polyglot` builtins (enabled by default, set to `false` to disable).
 
 ## Version 1.0.0 RC10
 * Added support for `Array.prototype.{flat,flatMap}`, [a Stage 3 proposal](https://github.com/tc39/proposal-flatMap).

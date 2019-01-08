@@ -798,8 +798,16 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
                             lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
-        setupPolyglot(global);
-        if (isJavaInteropAvailable()) {
+        if (context.getContextOptions().isPrint()) {
+            initGlobalPrintExtensions(global);
+        }
+        if (context.getContextOptions().isLoad()) {
+            initGlobalLoadExtensions(global);
+        }
+        if (context.getContextOptions().isPolyglotBuiltin()) {
+            setupPolyglot(global);
+        }
+        if (isJavaInteropAvailable() && isJavaInteropEnabled()) {
             setupJavaInterop(global);
         }
         if (context.isOptionDebugBuiltin()) {
@@ -872,6 +880,16 @@ public class JSRealm {
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "$EXEC", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "readFully", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readFully"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "readLine", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readLine"), JSAttributes.getDefaultNotEnumerable());
+    }
+
+    private void initGlobalPrintExtensions(DynamicObject global) {
+        putGlobalProperty(global, "print", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "print"));
+        putGlobalProperty(global, "printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
+    }
+
+    private void initGlobalLoadExtensions(DynamicObject global) {
+        putGlobalProperty(global, "load", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "load"));
+        putGlobalProperty(global, "loadWithNewGlobal", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "loadWithNewGlobal"));
     }
 
     /**
@@ -950,8 +968,19 @@ public class JSRealm {
         symbolFunction.define(name, symbol, JSAttributes.notConfigurableNotEnumerableNotWritable(), (s, v) -> s.allocator().constantLocation(v));
     }
 
+    /**
+     * Can we do Java interop in principle.
+     */
     static boolean isJavaInteropAvailable() {
         return !JSTruffleOptions.SubstrateVM;
+    }
+
+    /**
+     * Is Java interop actually enabled.
+     */
+    private boolean isJavaInteropEnabled() {
+        assert isJavaInteropAvailable();
+        return getEnv() != null && getEnv().isHostLookupAllowed();
     }
 
     private void setupJavaInterop(DynamicObject global) {

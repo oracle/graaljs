@@ -166,13 +166,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         // Annex B
         escape(1),
-        unescape(1),
-
-        // non-standard extensions
-        print(1),
-        printErr(1),
-        load(1),
-        loadWithNewGlobal(1);
+        unescape(1);
 
         private final int length;
 
@@ -216,14 +210,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return JSGlobalUnEscapeNodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case unescape:
                 return JSGlobalUnEscapeNodeGen.create(context, builtin, true, args().fixedArgs(1).createArgumentNodes(context));
-            case print:
-                return JSGlobalPrintNodeGen.create(context, builtin, false, args().varArgs().createArgumentNodes(context));
-            case printErr:
-                return JSGlobalPrintNodeGen.create(context, builtin, true, args().varArgs().createArgumentNodes(context));
-            case load:
-                return JSGlobalLoadNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case loadWithNewGlobal:
-                return JSGlobalLoadWithNewGlobalNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
         }
         return null;
     }
@@ -265,6 +251,78 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     return JSGlobalReadFullyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readbuffer:
                     return JSGlobalReadBufferNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Built-ins for print.
+     */
+    public static final class GlobalPrintBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalPrintBuiltins.GlobalPrint> {
+        protected GlobalPrintBuiltins() {
+            super(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, GlobalPrint.class);
+        }
+
+        public enum GlobalPrint implements BuiltinEnum<GlobalPrint> {
+            print(1),
+            printErr(1);
+
+            private final int length;
+
+            GlobalPrint(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalPrint builtinEnum) {
+            switch (builtinEnum) {
+                case print:
+                    return JSGlobalPrintNodeGen.create(context, builtin, false, args().varArgs().createArgumentNodes(context));
+                case printErr:
+                    return JSGlobalPrintNodeGen.create(context, builtin, true, args().varArgs().createArgumentNodes(context));
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Built-ins for load.
+     */
+    public static final class GlobalLoadBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalLoadBuiltins.GlobalLoad> {
+        protected GlobalLoadBuiltins() {
+            super(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, GlobalLoad.class);
+        }
+
+        public enum GlobalLoad implements BuiltinEnum<GlobalLoad> {
+            load(1),
+            loadWithNewGlobal(1);
+
+            private final int length;
+
+            GlobalLoad(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalLoad builtinEnum) {
+            switch (builtinEnum) {
+                case load:
+                    return JSGlobalLoadNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case loadWithNewGlobal:
+                    return JSGlobalLoadWithNewGlobalNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
             }
             return null;
         }
