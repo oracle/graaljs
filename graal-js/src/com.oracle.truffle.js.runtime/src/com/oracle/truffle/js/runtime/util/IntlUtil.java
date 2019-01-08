@@ -288,7 +288,7 @@ public class IntlUtil {
         }
     }
 
-    public static Object makePart(JSContext context, String type, String value) {
+    public static DynamicObject makePart(JSContext context, String type, String value) {
         DynamicObject p = JSUserObject.create(context);
         JSObject.set(p, "type", type);
         JSObject.set(p, "value", value);

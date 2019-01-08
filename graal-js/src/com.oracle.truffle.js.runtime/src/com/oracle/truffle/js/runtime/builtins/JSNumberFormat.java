@@ -535,7 +535,12 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
 
-        List<Object> resultParts = new LinkedList<>();
+        List<DynamicObject> resultParts = innerFormatToParts(context, numberFormat, x);
+        return JSArray.createConstant(context, resultParts.toArray());
+    }
+
+    static List<DynamicObject> innerFormatToParts(JSContext context, NumberFormat numberFormat, Number x) {
+        List<DynamicObject> resultParts = new LinkedList<>();
         AttributedCharacterIterator fit = numberFormat.formatToCharacterIterator(x);
         String formatted = numberFormat.format(x);
         int i = fit.getBeginIndex();
@@ -576,7 +581,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 i = fit.getRunLimit();
             }
         }
-        return JSArray.createConstant(context, resultParts.toArray());
+        return resultParts;
     }
 
     private static boolean isPlusSign(String str) {
