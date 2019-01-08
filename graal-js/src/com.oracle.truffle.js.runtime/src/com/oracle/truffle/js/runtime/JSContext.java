@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -992,15 +990,15 @@ public class JSContext {
                 @Override
                 public JSModuleRecord resolveImportedModule(JSModuleRecord referencingModule, String specifier) {
                     try {
-                        String path = getPath(referencingModule.getSource());
-                        File moduleFile = Paths.get(path).resolveSibling(specifier).toFile();
-                        String canonicalPath = moduleFile.getCanonicalPath();
+                        JSRealm realm = getRealm();
+                        TruffleFile refFile = realm.getEnv().getTruffleFile(getPath(referencingModule.getSource())).getCanonicalFile();
+                        TruffleFile moduleFile = refFile.resolveSibling(specifier);
+                        String canonicalPath = moduleFile.getCanonicalFile().getPath();
                         JSModuleRecord existingModule = moduleMap.get(canonicalPath);
                         if (existingModule != null) {
                             return existingModule;
                         }
-                        TruffleFile truffleFile = getRealm().getEnv().getTruffleFile(moduleFile.getPath());
-                        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, truffleFile).name(specifier).build();
+                        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, moduleFile).name(specifier).build();
                         JSModuleRecord newModule = getEvaluator().parseModule(JSContext.this, source, this);
                         moduleMap.put(canonicalPath, newModule);
                         return newModule;
@@ -1009,7 +1007,7 @@ public class JSContext {
                     }
                 }
 
-                String getPath(Source source) {
+                private String getPath(Source source) {
                     String path = source.getPath();
                     if (path == null) {
                         path = source.getName();
@@ -1017,17 +1015,22 @@ public class JSContext {
                             path = path.substring("module:".length());
                         }
                     }
-                    try {
-                        return Paths.get(path).toFile().getCanonicalPath();
-                    } catch (IOException e) {
-                        throw Errors.createError(e.getMessage());
-                    }
+                    return path;
                 }
 
                 @Override
                 public JSModuleRecord loadModule(Source source) {
                     String path = getPath(source);
-                    return moduleMap.computeIfAbsent(path, (key) -> getEvaluator().parseModule(JSContext.this, source, this));
+                    String canoncialPath = path;
+                    try {
+                        TruffleFile moduleFile = getRealm().getEnv().getTruffleFile(path);
+                        canoncialPath = moduleFile.getCanonicalFile().getPath();
+                    } catch (IOException e) {
+                        throw Errors.createErrorFromException(e);
+                    } catch (SecurityException e) {
+                        // ignore: might be a literal source that does not exist on the file system.
+                    }
+                    return moduleMap.computeIfAbsent(canoncialPath, (key) -> getEvaluator().parseModule(JSContext.this, source, this));
                 }
             };
         }
