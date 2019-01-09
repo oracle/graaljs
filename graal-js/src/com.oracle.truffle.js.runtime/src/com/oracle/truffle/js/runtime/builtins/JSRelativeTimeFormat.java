@@ -151,20 +151,38 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         return getInternalState(obj).relativeDateTimeFormatter;
     }
 
+    private static void ensureFiniteNumber(double d) {
+        if (Double.isNaN(d) || Double.isInfinite(d)) {
+            throw Errors.createRangeError("Value need to be finite number for Intl.RelativeTimeFormat operation");
+        }
+    }
+
     @TruffleBoundary
     public static String format(DynamicObject relativeTimeFormatObj, double amount, String unit) {
         ensureIsRelativeTimeFormat(relativeTimeFormatObj);
-        RelativeDateTimeFormatter relativeDateTimeFormatter = getRelativeDateTimeFormatterProperty(relativeTimeFormatObj);
-        return relativeDateTimeFormatter.formatNumeric(amount, singularRelativeTimeUnit("format", unit));
+        ensureFiniteNumber(amount);
+        InternalState state = getInternalState(relativeTimeFormatObj);
+        RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("format", unit);
+        return innerFormat(amount, state, state.relativeDateTimeFormatter, icuUnit);
+    }
+
+    private static String innerFormat(double amount, InternalState state, RelativeDateTimeFormatter relativeDateTimeFormatter, RelativeDateTimeUnit icuUnit) {
+        if (state.numeric.equals("always")) {
+            return relativeDateTimeFormatter.formatNumeric(amount, icuUnit);
+        } else {
+            return relativeDateTimeFormatter.format(amount, icuUnit);
+        }
     }
 
     @TruffleBoundary
     public static DynamicObject formatToParts(JSContext context, DynamicObject relativeTimeFormatObj, double amount, String unit) {
         ensureIsRelativeTimeFormat(relativeTimeFormatObj);
-        RelativeDateTimeFormatter relativeDateTimeFormatter = getRelativeDateTimeFormatterProperty(relativeTimeFormatObj);
+        ensureFiniteNumber(amount);
+        InternalState state = getInternalState(relativeTimeFormatObj);
+        RelativeDateTimeFormatter relativeDateTimeFormatter = state.relativeDateTimeFormatter;
         NumberFormat numberFormat = relativeDateTimeFormatter.getNumberFormat();
         RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("formatToParts", unit);
-        String formattedText = relativeDateTimeFormatter.formatNumeric(amount, icuUnit);
+        String formattedText = innerFormat(amount, state, relativeDateTimeFormatter, icuUnit);
         String formattedNumber = numberFormat.format(amount);
         int numberIndex = formattedText.indexOf(formattedNumber);
         boolean numberPresentInFormattedText = numberIndex > -1;
@@ -212,9 +230,9 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, DynamicObject RelativeTimeFormatObj) {
-        ensureIsRelativeTimeFormat(RelativeTimeFormatObj);
-        InternalState state = getInternalState(RelativeTimeFormatObj);
+    public static DynamicObject resolvedOptions(JSContext context, DynamicObject relativeTimeFormatObj) {
+        ensureIsRelativeTimeFormat(relativeTimeFormatObj);
+        InternalState state = getInternalState(relativeTimeFormatObj);
         return state.toResolvedOptionsObject(context);
     }
 
