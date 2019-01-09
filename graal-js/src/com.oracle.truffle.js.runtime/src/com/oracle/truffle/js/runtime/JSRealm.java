@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
@@ -58,11 +59,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -110,6 +113,8 @@ import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -271,6 +276,7 @@ public class JSRealm {
     private PrintWriterWrapper errorWriter;
 
     @CompilationFinal private JSConsoleUtil consoleUtil;
+    private JSModuleLoader moduleLoader;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -1408,5 +1414,66 @@ public class JSRealm {
             consoleUtil = new JSConsoleUtil();
         }
         return consoleUtil;
+    }
+
+    public JSModuleLoader getModuleLoader() {
+        if (moduleLoader == null) {
+            createModuleLoader();
+        }
+        return moduleLoader;
+    }
+
+    @TruffleBoundary
+    private synchronized void createModuleLoader() {
+        if (moduleLoader == null) {
+            moduleLoader = new JSModuleLoader() {
+                private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
+
+                @Override
+                public JSModuleRecord resolveImportedModule(JSModuleRecord referencingModule, String specifier) {
+                    try {
+                        TruffleFile refFile = getEnv().getTruffleFile(getPath(referencingModule.getSource())).getCanonicalFile();
+                        TruffleFile moduleFile = refFile.resolveSibling(specifier);
+                        String canonicalPath = moduleFile.getCanonicalFile().getPath();
+                        JSModuleRecord existingModule = moduleMap.get(canonicalPath);
+                        if (existingModule != null) {
+                            return existingModule;
+                        }
+                        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, moduleFile).name(specifier).build();
+                        JSModuleRecord newModule = getContext().getEvaluator().parseModule(getContext(), source, this);
+                        moduleMap.put(canonicalPath, newModule);
+                        return newModule;
+                    } catch (IOException | SecurityException e) {
+                        throw Errors.createErrorFromException(e);
+                    }
+                }
+
+                private String getPath(Source source) {
+                    String path = source.getPath();
+                    if (path == null) {
+                        path = source.getName();
+                        if (path.startsWith("module:")) {
+                            path = path.substring("module:".length());
+                        }
+                    }
+                    return path;
+                }
+
+                @Override
+                public JSModuleRecord loadModule(Source source) {
+                    String path = getPath(source);
+                    String canoncialPath = path;
+                    try {
+                        TruffleFile moduleFile = getEnv().getTruffleFile(path);
+                        canoncialPath = moduleFile.getCanonicalFile().getPath();
+                    } catch (IOException e) {
+                        throw Errors.createErrorFromException(e);
+                    } catch (SecurityException e) {
+                        // ignore: might be a literal source that does not exist on the file system.
+                    }
+                    return moduleMap.computeIfAbsent(canoncialPath, (key) -> getContext().getEvaluator().parseModule(getContext(), source, this));
+                }
+            };
+        }
     }
 }

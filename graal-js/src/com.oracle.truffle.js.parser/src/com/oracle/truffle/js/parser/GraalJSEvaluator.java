@@ -274,7 +274,7 @@ public final class GraalJSEvaluator implements JSParser {
 
             @TruffleBoundary
             private Object evalModule(JSRealm realm) {
-                JSModuleRecord moduleRecord = context.getModuleLoader().loadModule(source);
+                JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source);
                 moduleDeclarationInstantiation(moduleRecord);
                 return moduleEvaluation(realm, moduleRecord);
             }
