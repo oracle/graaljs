@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -251,7 +251,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
 
     private static void ensureIsListFormat(Object obj) {
         if (!isJSListFormat(obj)) {
-            throw Errors.createTypeError("ListFormatter method called on a non-object or on a wrong type of object (uninitialized ListFormatter?).");
+            throw Errors.createTypeError("ListFormatter method called on a non-object or on a wrong type of object.");
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -706,7 +706,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                     InternalState state = getInternalState((DynamicObject) numberFormatObj);
 
                     if (state == null || !state.initialized) {
-                        throw Errors.createTypeError("Method format called on a non-object or on a wrong type of object (uninitialized NumberFormat?).");
+                        throw Errors.createTypeError("Method format called on a non-object or on a wrong type of object.");
                     }
 
                     if (state.boundFormatFunction == null) {
@@ -726,7 +726,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     private static void ensureIsNumberFormat(Object obj) {
         if (!isJSNumberFormat(obj)) {
-            throw Errors.createTypeError("NumberFormat method called on a non-object or on a wrong type of object (uninitialized NumberFormat?).");
+            throw Errors.createTypeError("NumberFormat method called on a non-object or on a wrong type of object.");
         }
     }
 
