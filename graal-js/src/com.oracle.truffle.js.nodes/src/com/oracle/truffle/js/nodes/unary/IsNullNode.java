@@ -44,10 +44,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.Null;
 
-public abstract class IsNullNode extends JSUnaryNode {
+public abstract class IsNullNode extends IsIdenticalBaseNode {
 
-    protected IsNullNode(JavaScriptNode operand) {
-        super(operand);
+    protected IsNullNode(JavaScriptNode operand, boolean leftConstant) {
+        super(operand, leftConstant);
     }
 
     @Specialization
@@ -55,12 +55,17 @@ public abstract class IsNullNode extends JSUnaryNode {
         return operand == Null.instance;
     }
 
-    public static IsNullNode create(JavaScriptNode operand) {
-        return IsNullNodeGen.create(operand);
+    public static IsNullNode create(JavaScriptNode operand, boolean leftConstant) {
+        return IsNullNodeGen.create(operand, leftConstant);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return IsNullNode.create(cloneUninitialized(getOperand()));
+        return IsNullNode.create(cloneUninitialized(getOperand()), leftConstant);
+    }
+
+    @Override
+    protected Object getConstantValue() {
+        return Null.instance;
     }
 }

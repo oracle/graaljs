@@ -96,27 +96,31 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return JSIdenticalNodeGen.create(null, null, SAME_VALUE_ZERO);
     }
 
+    public static JavaScriptNode createUnoptimized(JavaScriptNode left, JavaScriptNode right) {
+        return JSIdenticalNodeGen.create(left, right, STRICT_EQUALITY_COMPARISON);
+    }
+
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         if (left instanceof JSConstantNullNode) {
-            return IsNullNode.create(right);
+            return IsNullNode.create(right, true);
         } else if (right instanceof JSConstantNullNode) {
-            return IsNullNode.create(left);
+            return IsNullNode.create(left, false);
         } else if (left instanceof JSConstantStringNode) {
-            return IsIdenticalStringNode.create((String) left.execute(null), right);
+            return IsIdenticalStringNode.create((String) left.execute(null), right, true);
         } else if (right instanceof JSConstantStringNode) {
-            return IsIdenticalStringNode.create((String) right.execute(null), left);
+            return IsIdenticalStringNode.create((String) right.execute(null), left, false);
         } else if (left instanceof JSConstantIntegerNode) {
-            return IsIdenticalIntegerNode.create((int) left.execute(null), right);
+            return IsIdenticalIntegerNode.create((int) left.execute(null), right, true);
         } else if (right instanceof JSConstantIntegerNode) {
-            return IsIdenticalIntegerNode.create((int) right.execute(null), left);
+            return IsIdenticalIntegerNode.create((int) right.execute(null), left, false);
         } else if (left instanceof JSConstantBooleanNode) {
-            return IsIdenticalBooleanNode.create((boolean) left.execute(null), right);
+            return IsIdenticalBooleanNode.create((boolean) left.execute(null), right, true);
         } else if (right instanceof JSConstantBooleanNode) {
-            return IsIdenticalBooleanNode.create((boolean) right.execute(null), left);
+            return IsIdenticalBooleanNode.create((boolean) right.execute(null), left, false);
         } else if (left instanceof JSConstantUndefinedNode) {
-            return IsIdenticalUndefinedNode.create(right);
+            return IsIdenticalUndefinedNode.create(right, true);
         } else if (right instanceof JSConstantUndefinedNode) {
-            return IsIdenticalUndefinedNode.create(left);
+            return IsIdenticalUndefinedNode.create(left, false);
         }
         return JSIdenticalNodeGen.create(left, right, STRICT_EQUALITY_COMPARISON);
     }

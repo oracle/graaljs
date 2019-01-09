@@ -129,6 +129,16 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
     }
 
     @Test
+    public void eq() {
+        binaryOperationTest(42, 43, "==");
+    }
+
+    @Test
+    public void strictEq() {
+        binaryOperationTest(42, 43, "===");
+    }
+
+    @Test
     public void plus() {
         binaryOperationTest(42, 43, "+");
     }
@@ -179,17 +189,26 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
     }
 
     @Test
-    public void fakeUnary() {
-        String src = "var a = 2 != 1";
+    public void desugaredBinaryNeq() {
+        binaryOperationTest("!=", "!", "==");
+    }
+
+    @Test
+    public void desugaredBinarystrictNeq() {
+        binaryOperationTest("!==", "!", "===");
+    }
+
+    private void binaryOperationTest(String srcOperator, String unOperator, String binOperator) {
+        String src = "var a = 42 " + srcOperator + " 41";
 
         evalWithTags(src, new Class[]{BinaryExpressionTag.class, UnaryExpressionTag.class});
 
         enter(UnaryExpressionTag.class, (e, u) -> {
-            assertAttribute(e, OPERATOR, "!");
+            assertAttribute(e, OPERATOR, unOperator);
             enter(BinaryExpressionTag.class, (e2, b) -> {
-                assertAttribute(e2, OPERATOR, "==");
-                b.input(2);
-                b.input(1);
+                assertAttribute(e2, OPERATOR, binOperator);
+                b.input(42);
+                b.input(41);
             }).exit();
             u.input(false);
         }).exit();
