@@ -162,19 +162,25 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     public static DynamicObject formatToParts(JSContext context, DynamicObject relativeTimeFormatObj, double amount, String unit) {
         ensureIsRelativeTimeFormat(relativeTimeFormatObj);
         RelativeDateTimeFormatter relativeDateTimeFormatter = getRelativeDateTimeFormatterProperty(relativeTimeFormatObj);
-        String allText = relativeDateTimeFormatter.formatNumeric(amount, singularRelativeTimeUnit("format", unit));
         NumberFormat numberFormat = relativeDateTimeFormatter.getNumberFormat();
-        String numberText = numberFormat.format(amount);
+        RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("formatToParts", unit);
+        String formattedText = relativeDateTimeFormatter.formatNumeric(amount, icuUnit);
+        String formattedNumber = numberFormat.format(amount);
+        int numberIndex = formattedText.indexOf(formattedNumber);
+        boolean numberPresentInFormattedText = numberIndex > -1;
+
         List<Object> resultParts = new LinkedList<>();
-        int numberIndex = allText.indexOf(numberText);
-        if (numberIndex > -1) {
-            resultParts.add(IntlUtil.makePart(context, "literal", allText.substring(0, numberIndex)));
-            resultParts.addAll(JSNumberFormat.innerFormatToParts(context, numberFormat, amount));
-            if (numberIndex + numberText.length() < allText.length()) {
-                resultParts.add(IntlUtil.makePart(context, "literal", allText.substring(numberIndex + numberText.length(), allText.length())));
+        if (numberPresentInFormattedText) {
+            resultParts.add(IntlUtil.makePart(context, "literal", formattedText.substring(0, numberIndex)));
+
+            String esUnit = icuUnit.toString().toLowerCase();
+            resultParts.addAll(JSNumberFormat.innerFormatToParts(context, numberFormat, amount, esUnit));
+
+            if (numberIndex + formattedNumber.length() < formattedText.length()) {
+                resultParts.add(IntlUtil.makePart(context, "literal", formattedText.substring(numberIndex + formattedNumber.length(), formattedText.length())));
             }
         } else {
-            resultParts.add(IntlUtil.makePart(context, "literal", allText));
+            resultParts.add(IntlUtil.makePart(context, "literal", formattedText));
         }
         return JSArray.createConstant(context, resultParts.toArray());
     }

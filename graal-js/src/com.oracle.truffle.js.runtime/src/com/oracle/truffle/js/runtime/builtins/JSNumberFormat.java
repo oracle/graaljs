@@ -535,11 +535,11 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
 
-        List<DynamicObject> resultParts = innerFormatToParts(context, numberFormat, x);
+        List<DynamicObject> resultParts = innerFormatToParts(context, numberFormat, x, null);
         return JSArray.createConstant(context, resultParts.toArray());
     }
 
-    static List<DynamicObject> innerFormatToParts(JSContext context, NumberFormat numberFormat, Number x) {
+    static List<DynamicObject> innerFormatToParts(JSContext context, NumberFormat numberFormat, Number x, String unit) {
         List<DynamicObject> resultParts = new LinkedList<>();
         AttributedCharacterIterator fit = numberFormat.formatToCharacterIterator(x);
         String formatted = numberFormat.format(x);
@@ -568,7 +568,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                             type = fieldToType.get(a);
                             assert type != null;
                         }
-                        resultParts.add(IntlUtil.makePart(context, type, value));
+                        resultParts.add(IntlUtil.makePart(context, type, value, unit));
                         i = fit.getRunLimit();
                         break;
                     } else {
@@ -577,7 +577,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 }
             } else {
                 String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
-                resultParts.add(IntlUtil.makePart(context, "literal", value));
+                resultParts.add(IntlUtil.makePart(context, "literal", value, unit));
                 i = fit.getRunLimit();
             }
         }
