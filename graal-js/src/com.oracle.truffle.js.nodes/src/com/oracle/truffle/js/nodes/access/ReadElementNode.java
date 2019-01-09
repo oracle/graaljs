@@ -1450,6 +1450,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private Node getSize;
         @Child private Node getterKeyInfo;
         @Child private Node getterInvoke;
+        @Child private ReadElementNode readFromPrototypeNode;
 
         TruffleObjectReadElementTypeCacheNode(JSContext context, Class<? extends TruffleObject> targetClass) {
             super(context);
@@ -1479,7 +1480,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 } else if (context.isOptionNashornCompatibilityMode() && exportedKey instanceof String) {
                     foreignResult = tryInvokeGetter(truffleObject, (String) exportedKey);
                 } else {
-                    return Undefined.instance;
+                    return maybeReadFromPrototype(truffleObject, index);
                 }
             } catch (UnsupportedMessageException e) {
                 return Undefined.instance;
@@ -1500,7 +1501,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return result;
                 }
             }
-            return Undefined.instance;
+            return maybeReadFromPrototype(thisObj, key);
         }
 
         private Object tryGetResult(TruffleObject thisObj, String prefix, String key) {
@@ -1553,6 +1554,19 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 return ForeignAccess.sendGetSize(getSize, thisObj);
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(thisObj, e, Message.GET_SIZE, this);
+            }
+        }
+
+        private Object maybeReadFromPrototype(TruffleObject truffleObject, Object index) {
+            if (context.getContextOptions().isArrayLikePrototype() && hasSize(truffleObject)) {
+                if (readFromPrototypeNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.readFromPrototypeNode = insert(ReadElementNode.create(context));
+                }
+                DynamicObject prototype = context.getRealm().getArrayConstructor().getPrototype();
+                return readFromPrototypeNode.executeWithTargetAndIndex(prototype, index);
+            } else {
+                return Undefined.instance;
             }
         }
 
