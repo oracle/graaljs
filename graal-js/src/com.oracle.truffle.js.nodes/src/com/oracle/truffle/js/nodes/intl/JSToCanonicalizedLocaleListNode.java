@@ -118,7 +118,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isJSString(object)", "isUndefined(object)", "!isJSNull(object)"})
+    @Specialization(guards = {"isUndefined(object)"})
     protected String[] doUndefined(DynamicObject object) {
         return new String[]{};
     }
