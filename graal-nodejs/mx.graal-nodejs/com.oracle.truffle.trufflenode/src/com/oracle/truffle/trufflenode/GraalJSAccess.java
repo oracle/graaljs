@@ -43,9 +43,9 @@ package com.oracle.truffle.trufflenode;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.BIGINT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_FALSE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_TRUE;
 import static com.oracle.truffle.trufflenode.ValueType.DATA_VIEW_OBJECT;
@@ -209,8 +209,8 @@ import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
 import com.oracle.truffle.trufflenode.serialization.Deserializer;
 import com.oracle.truffle.trufflenode.serialization.Serializer;
-import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBindings;
 import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBindings;
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
 
 /**
@@ -2758,14 +2758,12 @@ public final class GraalJSAccess {
         return JavaScriptTranslator.translateModule(factory, jsContext, source, getModuleLoader());
     }
 
-    private Map<JSModuleRecord, Object> moduleErrorMap = new WeakHashMap<>();
-
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
         JSContext jsContext = ((JSRealm) context).getContext();
         try {
-            jsContext.getEvaluator().moduleDeclarationInstantiation((JSModuleRecord) module);
+            jsContext.getEvaluator().moduleInstantiation((JSModuleRecord) module);
         } finally {
             loader.setResolver(0);
         }
@@ -2775,39 +2773,38 @@ public final class GraalJSAccess {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
-        if (moduleRecord.isEvaluated()) {
-            Object errorObject = moduleErrorMap.get(moduleRecord);
-            if (errorObject != null) {
-                throw exceptionObjectToException(errorObject);
-            }
+        if (moduleRecord.isEvaluated() && moduleRecord.getEvaluationError() == null) {
+            return Undefined.instance;
         }
-        try {
-            return jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
-        } catch (GraalJSException ex) {
-            moduleErrorMap.put(moduleRecord, ex.getErrorObjectEager(jsContext));
-            throw ex;
-        }
+        return jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
     }
 
     public int moduleGetStatus(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
-        if (moduleErrorMap.containsKey(record)) {
-            return 5; // v8::Module::Status::kErrored
-        }
-        if (record.isResolved()) {
-            if (record.isEvaluated()) {
-                return 4; // v8::Module::Status::kEvaluated
-            } else {
+        switch (record.getStatus()) {
+            case Uninstantiated:
+                return 0; // v8::Module::Status::kUninstantiated
+            case Instantiating:
+                return 1; // v8::Module::Status::kInstantiating
+            case Instantiated:
                 return 2; // v8::Module::Status::kInstantiated
-            }
-        } else {
-            return 0; // v8::Module::Status::kUninstantiated
+            case Evaluating:
+                return 3; // v8::Module::Status::Evaluating
+            case Evaluated:
+            default:
+                assert record.getStatus() == JSModuleRecord.Status.Evaluated;
+                if (record.getEvaluationError() == null) {
+                    return 4; // v8::Module::Status::kEvaluated
+                } else {
+                    return 5; // v8::Module::Status::kErrored
+                }
         }
     }
 
     public Object moduleGetException(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
-        return moduleErrorMap.get(record);
+        TruffleException evaluationError = (TruffleException) record.getEvaluationError();
+        return evaluationError.getExceptionObject();
     }
 
     public int moduleGetRequestsLength(Object module) {

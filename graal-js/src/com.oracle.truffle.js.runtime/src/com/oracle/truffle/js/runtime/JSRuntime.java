@@ -2795,4 +2795,9 @@ public final class JSRuntime {
                         value instanceof Double ||
                         value instanceof Character;
     }
+
+    @SuppressWarnings("unchecked")
+    public static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
+    }
 }

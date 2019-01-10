@@ -44,10 +44,12 @@ import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_SO
 import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -62,6 +64,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -73,6 +76,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -81,6 +85,7 @@ import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -95,6 +100,7 @@ import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -275,7 +281,7 @@ public final class GraalJSEvaluator implements JSParser {
             @TruffleBoundary
             private Object evalModule(JSRealm realm) {
                 JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source);
-                moduleDeclarationInstantiation(moduleRecord);
+                moduleInstantiation(moduleRecord);
                 return moduleEvaluation(realm, moduleRecord);
             }
         };
@@ -457,17 +463,67 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @Override
-    public void moduleDeclarationInstantiation(JSModuleRecord moduleRecord) {
-        if (moduleRecord.isResolved()) {
-            return;
+    public void moduleInstantiation(JSModuleRecord moduleRecord) {
+        assert moduleRecord.getStatus() != Status.Instantiating && moduleRecord.getStatus() != Status.Evaluating;
+        Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
+
+        try {
+            innerModuleInstantiation(moduleRecord, stack, 0);
+        } catch (GraalJSException e) {
+            for (JSModuleRecord m : stack) {
+                assert m.getStatus() == Status.Instantiating;
+                m.setUninstantiated();
+            }
+            assert moduleRecord.getStatus() == Status.Uninstantiated;
+            throw e;
         }
 
-        moduleRecord.setResolved(true);
+        assert moduleRecord.getStatus() == Status.Instantiated || moduleRecord.getStatus() == Status.Evaluated;
+        assert stack.isEmpty();
+    }
+
+    private int innerModuleInstantiation(JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
+        int index = index0;
+        if (moduleRecord.getStatus() == Status.Instantiating || moduleRecord.getStatus() == Status.Instantiated || moduleRecord.getStatus() == Status.Evaluated) {
+            return index;
+        }
+        assert moduleRecord.getStatus() == Status.Uninstantiated;
+        moduleRecord.setStatus(Status.Instantiating);
+        moduleRecord.setDFSIndex(index);
+        moduleRecord.setDFSAncestorIndex(index);
+        index++;
+        stack.push(moduleRecord);
+
         Module module = (Module) moduleRecord.getModule();
         for (String requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
-            moduleDeclarationInstantiation(requiredModule);
+            index = innerModuleInstantiation(requiredModule, stack, index);
+            assert requiredModule.getStatus() == Status.Instantiating || requiredModule.getStatus() == Status.Instantiated ||
+                            requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
+            assert (requiredModule.getStatus() == Status.Instantiating) == stack.contains(requiredModule);
+            if (requiredModule.getStatus() == Status.Instantiating) {
+                moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
+            }
         }
+        moduleDeclarationEnvironmentSetup(moduleRecord);
+
+        assert occursExactlyOnce(moduleRecord, stack);
+        assert moduleRecord.getDFSAncestorIndex() <= moduleRecord.getDFSIndex();
+        if (moduleRecord.getDFSAncestorIndex() == moduleRecord.getDFSIndex()) {
+            while (true) {
+                JSModuleRecord requiredModule = stack.pop();
+                requiredModule.setStatus(Status.Instantiated);
+                if (requiredModule.equals(moduleRecord)) {
+                    break;
+                }
+            }
+        }
+        return index;
+    }
+
+    private void moduleDeclarationEnvironmentSetup(JSModuleRecord moduleRecord) {
+        assert moduleRecord.getStatus() == Status.Instantiating;
+        Module module = (Module) moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
             ExportResolution resolution = resolveExport(moduleRecord, exportEntry.getExportName());
             if (resolution.isNull() || resolution.isAmbiguous()) {
@@ -502,18 +558,81 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord) {
-        assert moduleRecord.isResolved();
-        if (moduleRecord.isEvaluated()) {
-            return Undefined.instance;
-        }
+        assert moduleRecord.getStatus() == Status.Instantiated || moduleRecord.getStatus() == Status.Evaluated;
+        Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
 
-        moduleRecord.setEvaluated(true);
+        try {
+            innerModuleEvaluation(realm, moduleRecord, stack, 0);
+        } catch (Throwable e) {
+            if (e instanceof TruffleException && TryCatchNode.shouldCatch(e)) {
+                for (JSModuleRecord m : stack) {
+                    assert m.getStatus() == Status.Evaluating;
+                    m.setStatus(Status.Evaluated);
+                    m.setEvaluationError(e);
+                }
+                assert moduleRecord.getStatus() == Status.Evaluated && moduleRecord.getEvaluationError() == e;
+            }
+            throw e;
+        }
+        assert moduleRecord.getStatus() == Status.Evaluated && moduleRecord.getEvaluationError() == null;
+        assert stack.isEmpty();
+        return moduleRecord.getExecutionResult();
+    }
+
+    private int innerModuleEvaluation(JSRealm realm, JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
+        int index = index0;
+        if (moduleRecord.getStatus() == Status.Evaluated) {
+            if (moduleRecord.getEvaluationError() == null) {
+                return index;
+            } else {
+                throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
+            }
+        }
+        if (moduleRecord.getStatus() == Status.Evaluating) {
+            return index;
+        }
+        assert moduleRecord.getStatus() == Status.Instantiated;
+        moduleRecord.setStatus(Status.Evaluating);
+        moduleRecord.setDFSIndex(index);
+        moduleRecord.setDFSAncestorIndex(index);
+        index++;
+        stack.push(moduleRecord);
+
         Module module = (Module) moduleRecord.getModule();
         for (String requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
-            moduleEvaluation(realm, requiredModule);
+            // Note: Instantiate must have completed successfully prior to invoking this method,
+            // so every requested module is guaranteed to resolve successfully.
+            index = innerModuleEvaluation(realm, requiredModule, stack, index);
+            assert requiredModule.getStatus() == Status.Evaluating || requiredModule.getStatus() == Status.Evaluated : requiredModule.getStatus();
+            assert (requiredModule.getStatus() == Status.Evaluating) == stack.contains(requiredModule);
+            if (requiredModule.getStatus() == Status.Evaluating) {
+                moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
+            }
         }
+        Object result = moduleExecution(realm, moduleRecord);
+        moduleRecord.setExecutionResult(result);
+
+        assert occursExactlyOnce(moduleRecord, stack);
+        assert moduleRecord.getDFSAncestorIndex() <= moduleRecord.getDFSIndex();
+        if (moduleRecord.getDFSAncestorIndex() == moduleRecord.getDFSIndex()) {
+            while (true) {
+                JSModuleRecord requiredModule = stack.pop();
+                requiredModule.setStatus(Status.Evaluated);
+                if (requiredModule.equals(moduleRecord)) {
+                    break;
+                }
+            }
+        }
+        return index;
+    }
+
+    private static Object moduleExecution(JSRealm realm, JSModuleRecord moduleRecord) {
         return JSFunction.call(JSFunction.create(realm, moduleRecord.getFunctionData()), Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+    }
+
+    private static boolean occursExactlyOnce(JSModuleRecord moduleRecord, Collection<JSModuleRecord> stack) {
+        return stack.stream().filter(moduleRecord::equals).count() == 1;
     }
 
     @Override
