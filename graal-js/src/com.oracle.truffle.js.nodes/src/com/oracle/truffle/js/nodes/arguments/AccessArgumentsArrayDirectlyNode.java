@@ -109,6 +109,8 @@ public final class AccessArgumentsArrayDirectlyNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new AccessArgumentsArrayDirectlyNode(cloneUninitialized(writeArgumentsNode), cloneUninitialized(readArgumentsNode), leadingArgCount, trailingArgCount);
+        AccessArgumentsArrayDirectlyNode copy = new AccessArgumentsArrayDirectlyNode(cloneUninitialized(writeArgumentsNode), cloneUninitialized(readArgumentsNode), leadingArgCount, trailingArgCount);
+        copy.directArrayAccess = directArrayAccess;
+        return copy;
     }
 }
