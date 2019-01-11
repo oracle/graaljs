@@ -75,6 +75,7 @@ public final class IfNode extends StatementNode implements ResumableNode {
         if (condition instanceof JSNotNode) {
             // if (!a) {b()} => if (a) {} else {b(); }
             JavaScriptNode operand = ((JSNotNode) condition).getOperand();
+            transferSourceSectionAddExpressionTag(condition, operand);
             return new IfNode(operand, elsePart, thenPart);
         }
         return new IfNode(condition, thenPart, elsePart);
