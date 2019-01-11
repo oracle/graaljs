@@ -1067,7 +1067,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "!isJSArray(thisObj)")
         protected Object shift(Object thisObj,
-                        @Cached("createNonStrict(getContext())") DeletePropertyNode deleteNode) {
+                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deleteNode) {
             TruffleObject thisJSObj = toObject(thisObj);
             long len = getLength(thisJSObj);
 
