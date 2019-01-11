@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesSelectNodeGen;
@@ -91,12 +92,12 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
             super(context, builtin);
         }
 
-        @Specialization
+        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
         public Object doResolvedOptions(DynamicObject pluralRules) {
             return JSPluralRules.resolvedOptions(getContext(), pluralRules);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Fallback
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorPluralRulesExpected();
         }
@@ -108,12 +109,12 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isDynamicObject(pluralRules)"})
+        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
         public Object doSelect(DynamicObject pluralRules, Object value) {
             return JSPluralRules.select(pluralRules, value);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Fallback
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorPluralRulesExpected();

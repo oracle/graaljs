@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatToPartsNodeGen;
@@ -91,12 +92,12 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             super(context, builtin);
         }
 
-        @Specialization
+        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
         public Object doResolvedOptions(DynamicObject dateTimeFormat) {
             return JSDateTimeFormat.resolvedOptions(getContext(), dateTimeFormat);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Fallback
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorDateTimeFormatExpected();
         }
@@ -108,12 +109,12 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isDynamicObject(dateTimeFormat)"})
+        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
         public Object doFormatToParts(DynamicObject dateTimeFormat, Object value) {
             return JSDateTimeFormat.formatToParts(getContext(), dateTimeFormat, value);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Fallback
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorDateTimeFormatExpected();

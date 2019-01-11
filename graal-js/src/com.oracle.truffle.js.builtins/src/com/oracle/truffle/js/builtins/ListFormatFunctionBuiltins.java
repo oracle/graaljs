@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,30 +40,26 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.builtins.CollatorPrototypeBuiltinsFactory.JSCollatorResolvedOptionsNodeGen;
+import com.oracle.truffle.js.builtins.CollatorFunctionBuiltinsFactory.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSCollator;
+import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 
-public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<CollatorPrototypeBuiltins.CollatorPrototype> {
-
-    protected CollatorPrototypeBuiltins() {
-        super(JSCollator.PROTOTYPE_NAME, CollatorPrototype.class);
+/**
+ * Contains builtins for {@linkplain JSListFormat} function (constructor).
+ */
+public final class ListFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ListFormatFunctionBuiltins.ListFormatFunction> {
+    protected ListFormatFunctionBuiltins() {
+        super(JSListFormat.CLASS_NAME, ListFormatFunction.class);
     }
 
-    public enum CollatorPrototype implements BuiltinEnum<CollatorPrototype> {
-
-        resolvedOptions(0);
+    public enum ListFormatFunction implements BuiltinEnum<ListFormatFunction> {
+        supportedLocalesOf(1);
 
         private final int length;
 
-        CollatorPrototype(int length) {
+        ListFormatFunction(int length) {
             this.length = length;
         }
 
@@ -74,28 +70,11 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, CollatorPrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ListFormatFunction builtinEnum) {
         switch (builtinEnum) {
-            case resolvedOptions:
-                return JSCollatorResolvedOptionsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case supportedLocalesOf:
+                return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
-    }
-
-    public abstract static class JSCollatorResolvedOptionsNode extends JSBuiltinNode {
-
-        public JSCollatorResolvedOptionsNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization(guards = {"isJSCollator(collator)"})
-        public Object doResolvedOptions(DynamicObject collator) {
-            return JSCollator.resolvedOptions(getContext(), collator);
-        }
-
-        @Fallback
-        public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeError("Collator object expected.");
-        }
     }
 }

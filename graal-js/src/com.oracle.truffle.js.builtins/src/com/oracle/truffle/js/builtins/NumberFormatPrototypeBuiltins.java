@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatToPartsNodeGen;
@@ -91,12 +92,12 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
             super(context, builtin);
         }
 
-        @Specialization
+        @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
         public Object doResolvedOptions(DynamicObject numberFormat) {
             return JSNumberFormat.resolvedOptions(getContext(), numberFormat);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Fallback
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorNumberFormatExpected();
         }
@@ -108,12 +109,12 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isDynamicObject(numberFormat)"})
+        @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
         public Object doFormatToParts(DynamicObject numberFormat, Object value) {
             return JSNumberFormat.formatToParts(getContext(), numberFormat, value);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Fallback
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorNumberFormatExpected();

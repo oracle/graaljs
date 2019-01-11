@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -262,7 +262,6 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     @TruffleBoundary
     public static DynamicObject resolvedOptions(JSContext context, DynamicObject collatorObj) {
-        ensureIsCollator(collatorObj);
         InternalState state = getInternalState(collatorObj);
         return state.toResolvedOptionsObject(context);
     }
@@ -288,7 +287,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                     InternalState state = getInternalState((DynamicObject) collatorObj);
 
                     if (state == null || !state.initializedCollator) {
-                        throw Errors.createTypeError("Method compare called on a non-object or on a wrong type of object (uninitialized collator?).");
+                        throw Errors.createTypeError("Method compare called on a non-object or on a wrong type of object.");
                     }
 
                     if (state.boundCompareFunction == null) {
@@ -312,12 +311,6 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                 throw Errors.createTypeError("expected collator object");
             }
         });
-    }
-
-    private static void ensureIsCollator(Object obj) {
-        if (!isJSCollator(obj)) {
-            throw Errors.createTypeError("Collator method called on a non-object or on a wrong type of object (uninitialized collator?).");
-        }
     }
 
     private static JSFunctionData createCompareFunctionData(JSContext context) {

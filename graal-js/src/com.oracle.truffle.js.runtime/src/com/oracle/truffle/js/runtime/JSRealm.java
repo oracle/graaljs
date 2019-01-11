@@ -83,6 +83,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSIntl;
 import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
+import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -165,6 +166,7 @@ public class JSRealm {
     private final JSConstructor collatorConstructor;
     private final JSConstructor numberFormatConstructor;
     private final JSConstructor pluralRulesConstructor;
+    private final JSConstructor listFormatConstructor;
     private final JSConstructor dateTimeFormatConstructor;
     private final JSConstructor dateConstructor;
     @CompilationFinal(dimensions = 1) private final JSConstructor[] errorConstructors;
@@ -358,11 +360,13 @@ public class JSRealm {
             this.numberFormatConstructor = JSNumberFormat.createConstructor(this);
             this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
             this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
+            this.listFormatConstructor = JSListFormat.createConstructor(this);
         } else {
             this.collatorConstructor = null;
             this.numberFormatConstructor = null;
             this.dateTimeFormatConstructor = null;
             this.pluralRulesConstructor = null;
+            this.listFormatConstructor = null;
         }
 
         boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
@@ -517,6 +521,10 @@ public class JSRealm {
 
     public final JSConstructor getPluralRulesConstructor() {
         return pluralRulesConstructor;
+    }
+
+    public final JSConstructor getListFormatConstructor() {
+        return listFormatConstructor;
     }
 
     public final JSConstructor getDateTimeFormatConstructor() {
@@ -756,10 +764,12 @@ public class JSRealm {
             DynamicObject numberFormatFn = getNumberFormatConstructor().getFunctionObject();
             DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor().getFunctionObject();
             DynamicObject pluralRulesFn = getPluralRulesConstructor().getFunctionObject();
+            DynamicObject listFormatFn = getListFormatConstructor().getFunctionObject();
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
             putGlobalProperty(global, JSIntl.CLASS_NAME, intlObject);
         }
 
