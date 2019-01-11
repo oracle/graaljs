@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.CollatorPrototypeBuiltinsFactory.JSCollatorResolvedOptionsNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -87,12 +88,12 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             super(context, builtin);
         }
 
-        @Specialization
+        @Specialization(guards = {"isJSCollator(collator)"})
         public Object doResolvedOptions(DynamicObject collator) {
             return JSCollator.resolvedOptions(getContext(), collator);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Fallback
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeError("Collator object expected.");
         }

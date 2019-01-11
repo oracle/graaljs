@@ -262,7 +262,6 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     @TruffleBoundary
     public static DynamicObject resolvedOptions(JSContext context, DynamicObject collatorObj) {
-        ensureIsCollator(collatorObj);
         InternalState state = getInternalState(collatorObj);
         return state.toResolvedOptionsObject(context);
     }
@@ -312,12 +311,6 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                 throw Errors.createTypeError("expected collator object");
             }
         });
-    }
-
-    private static void ensureIsCollator(Object obj) {
-        if (!isJSCollator(obj)) {
-            throw Errors.createTypeError("Collator method called on a non-object or on a wrong type of object.");
-        }
     }
 
     private static JSFunctionData createCompareFunctionData(JSContext context) {

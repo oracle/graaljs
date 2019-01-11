@@ -533,7 +533,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     @TruffleBoundary
     public static DynamicObject formatToParts(JSContext context, DynamicObject numberFormatObj, Object n) {
 
-        ensureIsNumberFormat(numberFormatObj);
         NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
 
@@ -681,7 +680,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     @TruffleBoundary
     public static DynamicObject resolvedOptions(JSContext context, DynamicObject numberFormatObj) {
-        ensureIsNumberFormat(numberFormatObj);
         InternalState state = getInternalState(numberFormatObj);
         return state.toResolvedOptionsObject(context);
     }
@@ -722,12 +720,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 throw Errors.createTypeError("expected NumberFormat object");
             }
         });
-    }
-
-    private static void ensureIsNumberFormat(Object obj) {
-        if (!isJSNumberFormat(obj)) {
-            throw Errors.createTypeError("NumberFormat method called on a non-object or on a wrong type of object.");
-        }
     }
 
     private static JSFunctionData createFormatFunctionData(JSContext context) {
