@@ -120,7 +120,7 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
     }
 
     private static boolean isFalse(Object o) {
-        return (o instanceof Boolean) && ((Boolean) o) == Boolean.FALSE;
+        return o == Boolean.FALSE;
     }
 
     @Specialization(guards = "isUndefined(value)")

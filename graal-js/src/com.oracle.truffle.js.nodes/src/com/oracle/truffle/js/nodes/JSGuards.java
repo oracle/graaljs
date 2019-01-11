@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -253,6 +254,14 @@ public final class JSGuards {
 
     public static boolean isJSUserObject(Object value) {
         return JSUserObject.isJSUserObject(value);
+    }
+
+    public static boolean isJSListFormat(DynamicObject value) {
+        return JSListFormat.isJSListFormat(value);
+    }
+
+    public static boolean isJSListFormat(Object value) {
+        return JSListFormat.isJSListFormat(value);
     }
 
     public static boolean isNumber(Object operand) {
@@ -539,7 +548,7 @@ public final class JSGuards {
     }
 
     public static boolean isNullOrUndefined(Object value) {
-        return JSObject.isDynamicObject(value) && isNullOrUndefined((DynamicObject) value);
+        return JSObject.isDynamicObject(value) && isNullOrUndefined(value);
     }
 
     public static boolean isNullOrUndefined(DynamicObject value) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.ListFormatPrototypeBuiltinsFactory.JSListFormatResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.ListFormatPrototypeBuiltinsFactory.JSListFormatFormatNodeGen;
@@ -100,12 +101,12 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization
-        public Object doResolvedOptions(DynamicObject numberFormat) {
-            return JSListFormat.resolvedOptions(getContext(), numberFormat);
+        @Specialization(guards = "isJSListFormat(listFormat)")
+        public Object doResolvedOptions(DynamicObject listFormat) {
+            return JSListFormat.resolvedOptions(getContext(), listFormat);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Fallback
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorListFormatExpected();
         }
@@ -117,14 +118,14 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isDynamicObject(listFormat)"})
+        @Specialization(guards = {"isJSListFormat(listFormat)"})
         public String doFormat(DynamicObject listFormat, Object value,
                         @Cached("create(getContext())") JSStringListFromIterableNode strListFromIterableNode) {
             List<String> list = strListFromIterableNode.executeIterable(value);
             return JSListFormat.format(listFormat, list);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Fallback
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorListFormatExpected();
@@ -137,14 +138,14 @@ public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isDynamicObject(listFormat)"})
+        @Specialization(guards = {"isJSListFormat(listFormat)"})
         public Object doFormatToParts(DynamicObject listFormat, Object value,
                         @Cached("create(getContext())") JSStringListFromIterableNode strListFromIterableNode) {
             List<String> list = strListFromIterableNode.executeIterable(value);
             return JSListFormat.formatToParts(getContext(), listFormat, list);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Fallback
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorListFormatExpected();

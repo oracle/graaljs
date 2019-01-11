@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
@@ -51,13 +51,13 @@ import com.ibm.icu.text.ListFormatter;
 import com.ibm.icu.text.SimpleFormatter;
 import com.ibm.icu.util.ULocale;
 import com.ibm.icu.util.UResourceBundle;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -166,14 +166,12 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
 
     @TruffleBoundary
     public static String format(DynamicObject listFormatObj, List<String> list) {
-        ensureIsListFormat(listFormatObj);
         ListFormatter listFormatter = getListFormatterProperty(listFormatObj);
         return listFormatter.format(list);
     }
 
     @TruffleBoundary
     public static DynamicObject formatToParts(JSContext context, DynamicObject listFormatObj, List<String> list) {
-        ensureIsListFormat(listFormatObj);
         if (list.size() == 0) {
             return JSArray.createConstantEmptyArray(context);
         }
@@ -185,7 +183,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
         simpleFormatter.formatAndAppend(formatted, offsets, list.toArray(new String[]{}));
         int i = 0;
         int idx = 0;
-        List<Object> resultParts = new LinkedList<>();
+        List<Object> resultParts = new ArrayList<>();
         for (String element : list) {
             int nextOffset = offsets[idx++];
             if (i < nextOffset) { // literal
@@ -240,19 +238,12 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
 
     @TruffleBoundary
     public static DynamicObject resolvedOptions(JSContext context, DynamicObject listFormatObj) {
-        ensureIsListFormat(listFormatObj);
         InternalState state = getInternalState(listFormatObj);
         return state.toResolvedOptionsObject(context);
     }
 
     public static InternalState getInternalState(DynamicObject listFormatObj) {
         return (InternalState) INTERNAL_STATE_PROPERTY.get(listFormatObj, isJSListFormat(listFormatObj));
-    }
-
-    private static void ensureIsListFormat(Object obj) {
-        if (!isJSListFormat(obj)) {
-            throw Errors.createTypeError("ListFormatter method called on a non-object or on a wrong type of object.");
-        }
     }
 
     @Override
