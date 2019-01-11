@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -258,6 +259,14 @@ public final class JSGuards {
 
     public static boolean isJSUserObject(Object value) {
         return JSUserObject.isJSUserObject(value);
+    }
+
+    public static boolean isJSDateTimeFormat(DynamicObject value) {
+        return JSDateTimeFormat.isJSDateTimeFormat(value);
+    }
+
+    public static boolean isJSDateTimeFormat(Object value) {
+        return JSDateTimeFormat.isJSDateTimeFormat(value);
     }
 
     public static boolean isJSCollator(DynamicObject value) {

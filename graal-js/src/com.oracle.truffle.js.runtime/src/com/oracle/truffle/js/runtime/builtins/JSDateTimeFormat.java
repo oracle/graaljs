@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -475,7 +475,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     @TruffleBoundary
     public static String format(JSContext context, DynamicObject numberFormatObj, Object n) {
-        ensureIsDateTimeFormat(numberFormatObj);
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
         return dateFormat.format(timeClip(context, n));
     }
@@ -519,7 +518,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     @TruffleBoundary
     public static DynamicObject formatToParts(JSContext context, DynamicObject numberFormatObj, Object n) {
 
-        ensureIsDateTimeFormat(numberFormatObj);
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
 
         double x = timeClip(context, n);
@@ -636,7 +634,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     @TruffleBoundary
     public static DynamicObject resolvedOptions(JSContext context, DynamicObject numberFormatObj) {
-        ensureIsDateTimeFormat(numberFormatObj);
         InternalState state = getInternalState(numberFormatObj);
         return state.toResolvedOptionsObject(context);
     }
@@ -677,12 +674,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                 throw Errors.createTypeError("expected DateTimeFormat object");
             }
         });
-    }
-
-    private static void ensureIsDateTimeFormat(Object obj) {
-        if (!isJSDateTimeFormat(obj)) {
-            throw Errors.createTypeError("DateTimeFormat method called on a non-object or on a wrong type of object (uninitialized DateTimeFormat?).");
-        }
     }
 
     private static JSFunctionData createFormatFunctionData(JSContext context) {
