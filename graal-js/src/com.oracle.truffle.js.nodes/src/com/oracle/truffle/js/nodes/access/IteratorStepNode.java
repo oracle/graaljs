@@ -84,7 +84,7 @@ public abstract class IteratorStepNode extends JavaScriptNode {
         // passing undefined might be wrong, we should NOT pass "value"
         Object result = iteratorNextNode.execute(iteratorRecord, Undefined.instance);
         Object done = iteratorCompleteNode.execute((DynamicObject) result);
-        if (done instanceof Boolean && ((Boolean) done) == Boolean.TRUE) {
+        if (done == Boolean.TRUE) {
             return false;
         }
         return result;

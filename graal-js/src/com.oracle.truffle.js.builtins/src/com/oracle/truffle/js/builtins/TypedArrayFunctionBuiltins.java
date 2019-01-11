@@ -142,7 +142,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
             IteratorRecord iteratorRecord = getIterator(items, usingIterator);
             while (true) {
                 Object next = iteratorStep(iteratorRecord);
-                if (next instanceof Boolean && ((Boolean) next) == Boolean.FALSE) {
+                if (next == Boolean.FALSE) {
                     break;
                 }
                 Object nextValue = getIteratorValue((DynamicObject) next);

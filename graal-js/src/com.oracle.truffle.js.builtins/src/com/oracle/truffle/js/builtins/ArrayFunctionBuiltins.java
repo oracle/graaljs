@@ -306,7 +306,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             try {
                 while (true) {
                     Object next = iteratorStep(iteratorRecord);
-                    if (next instanceof Boolean && ((Boolean) next) == Boolean.FALSE) {
+                    if (next == Boolean.FALSE) {
                         setLength(obj, k);
                         return obj;
                     }
