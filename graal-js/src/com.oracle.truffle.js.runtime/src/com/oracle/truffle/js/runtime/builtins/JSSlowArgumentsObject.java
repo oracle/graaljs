@@ -58,7 +58,8 @@ public final class JSSlowArgumentsObject extends JSAbstractArgumentsObject {
             return true;
         }
 
-        Object oldValue = get(thisObj, index);
+        boolean indexDisconnected = wasIndexDisconnected(thisObj, index);
+        Object oldValue = indexDisconnected ? null : get(thisObj, index);
 
         boolean wasDeleted;
         ScriptArray arrayType = arrayGetArrayType(thisObj, isJSSlowArgumentsObject(thisObj));
@@ -69,7 +70,7 @@ public final class JSSlowArgumentsObject extends JSAbstractArgumentsObject {
             wasDeleted = JSUserObject.INSTANCE.delete(thisObj, index, isStrict);
         }
 
-        if (wasDeleted && !wasIndexDisconnected(thisObj, index)) {
+        if (wasDeleted && !indexDisconnected) {
             disconnectIndex(thisObj, index, oldValue);
         }
         return wasDeleted;
