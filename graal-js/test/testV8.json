@@ -607,10 +607,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/es6/promise-resolve-thenable-job.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/es6/proxies-accesschecks.js",
     "status" : "FAIL"
   }, {

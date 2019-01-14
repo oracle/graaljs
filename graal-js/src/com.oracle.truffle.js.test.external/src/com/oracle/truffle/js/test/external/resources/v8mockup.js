@@ -339,7 +339,7 @@ function v8MakeReferenceError(message) {
 
 function v8AbortJS(message) {
     printErr(message);
-    exit(1);
+    quit(1);
 }
 
 function v8HomeObjectSymbol() {
@@ -868,5 +868,17 @@ function v8HandleDebuggerStatement() {
 }
 
 function setTimeout(fn) {
-    return TestV8.setTimeout(fn);
+    // d8 invokes the callback when the promise job queue is empty,
+    // graal.js does not have this type of callbacks => mimicking that
+    // by inserting the callback far into the promise job queue
+    var lateJob = function (n) {
+        if (n === 0) {
+            return fn;
+        } else {
+            return function () {
+                TestV8.enqueueJob(lateJob(n - 1));
+            };
+        }
+    };
+    return lateJob(10)();
 }
