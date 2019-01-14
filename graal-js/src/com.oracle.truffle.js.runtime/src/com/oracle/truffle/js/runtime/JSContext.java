@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -63,7 +60,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -127,8 +123,6 @@ import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
-import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -208,8 +202,6 @@ public class JSContext {
 
     /** The RegExp engine, as obtained from RegexLanguage. */
     private TruffleObject regexEngine;
-
-    private JSModuleLoader moduleLoader;
 
     private PromiseRejectionTracker promiseRejectionTracker;
     private final Assumption promiseRejectionTrackerNotUsedAssumption;
@@ -981,63 +973,6 @@ public class JSContext {
             }
         }
         return regexEngine;
-    }
-
-    public JSModuleLoader getModuleLoader() {
-        if (moduleLoader == null) {
-            createModuleLoader();
-        }
-        return moduleLoader;
-    }
-
-    @TruffleBoundary
-    private synchronized void createModuleLoader() {
-        if (moduleLoader == null) {
-            moduleLoader = new JSModuleLoader() {
-                private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
-
-                @Override
-                public JSModuleRecord resolveImportedModule(JSModuleRecord referencingModule, String specifier) {
-                    try {
-                        String path = getPath(referencingModule.getSource());
-                        File moduleFile = Paths.get(path).resolveSibling(specifier).toFile();
-                        String canonicalPath = moduleFile.getCanonicalPath();
-                        JSModuleRecord existingModule = moduleMap.get(canonicalPath);
-                        if (existingModule != null) {
-                            return existingModule;
-                        }
-                        TruffleFile truffleFile = getRealm().getEnv().getTruffleFile(moduleFile.getPath());
-                        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, truffleFile).name(specifier).build();
-                        JSModuleRecord newModule = getEvaluator().parseModule(JSContext.this, source, this);
-                        moduleMap.put(canonicalPath, newModule);
-                        return newModule;
-                    } catch (IOException | SecurityException e) {
-                        throw Errors.createErrorFromException(e);
-                    }
-                }
-
-                String getPath(Source source) {
-                    String path = source.getPath();
-                    if (path == null) {
-                        path = source.getName();
-                        if (path.startsWith("module:")) {
-                            path = path.substring("module:".length());
-                        }
-                    }
-                    try {
-                        return Paths.get(path).toFile().getCanonicalPath();
-                    } catch (IOException e) {
-                        throw Errors.createError(e.getMessage());
-                    }
-                }
-
-                @Override
-                public JSModuleRecord loadModule(Source source) {
-                    String path = getPath(source);
-                    return moduleMap.computeIfAbsent(path, (key) -> getEvaluator().parseModule(JSContext.this, source, this));
-                }
-            };
-        }
     }
 
     private static class LocalTimeZoneHolder {
