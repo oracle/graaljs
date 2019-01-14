@@ -92,20 +92,7 @@ public class IfStatementTest extends FineGrainedAccessTest {
 
     @Test
     public void basicFilter() {
-        String src = "if (true) { 3; };";
-
-        evalWithTags(src, new Class[]{ControlFlowRootTag.class, ControlFlowBlockTag.class, ControlFlowBranchTag.class},
-                        new Class[]{});
-
-        enter(ControlFlowRootTag.class, (e1) -> {
-            assertAttribute(e1, TYPE, ControlFlowRootTag.Type.Conditional.name());
-            // condition
-            enter(ControlFlowBranchTag.class, (e) -> {
-                assertAttribute(e, TYPE, ControlFlowBranchTag.Type.Condition.name());
-            }).exit(assertReturnValue(true));
-            // enter if branch
-            enter(ControlFlowBlockTag.class).exit();
-        }).exit();
+        evalIfBlock("if (true) { 3; };", true, 3);
     }
 
     @Test
@@ -125,4 +112,28 @@ public class IfStatementTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void testDesugarNeq() {
+        evalIfBlock("if (42 != 41) { 42; } else { false; };", false, 42);
+    }
+
+    @Test
+    public void testDesugarStrictNeq() {
+        evalIfBlock("if (42 !== 41) { 42; } else { false; };", false, 42);
+    }
+
+    private void evalIfBlock(String src, Object condition, Object blockReturns) {
+        evalWithTags(src, new Class[]{ControlFlowRootTag.class, ControlFlowBlockTag.class, ControlFlowBranchTag.class},
+                        new Class[]{});
+
+        enter(ControlFlowRootTag.class, (e1) -> {
+            assertAttribute(e1, TYPE, ControlFlowRootTag.Type.Conditional.name());
+            // condition
+            enter(ControlFlowBranchTag.class, (e) -> {
+                assertAttribute(e, TYPE, ControlFlowBranchTag.Type.Condition.name());
+            }).exit(assertReturnValue(condition));
+            // enter if branch
+            enter(ControlFlowBlockTag.class).exit(assertReturnValue(blockReturns));
+        }).exit();
+    }
 }
