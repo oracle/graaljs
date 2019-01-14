@@ -99,12 +99,12 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
             super(context, builtin);
         }
 
-        @Specialization
-        public Object doResolvedOptions(DynamicObject numberFormat) {
-            return JSRelativeTimeFormat.resolvedOptions(getContext(), numberFormat);
+        @Specialization(guards = "isJSRelativeTimeFormat(relativeTimeFormat)")
+        public Object doResolvedOptions(DynamicObject relativeTimeFormat) {
+            return JSRelativeTimeFormat.resolvedOptions(getContext(), relativeTimeFormat);
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorRelativeTimeFormatExpected();
         }
@@ -116,14 +116,14 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isDynamicObject(relativeTimeFormat)"})
+        @Specialization(guards = "isJSRelativeTimeFormat(relativeTimeFormat)")
         public String doFormat(DynamicObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
             return JSRelativeTimeFormat.format(relativeTimeFormat, toNumberNode.executeNumber(value).doubleValue(), toStringNode.executeString(unit));
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value, Object unit) {
             throw Errors.createTypeErrorRelativeTimeFormatExpected();
@@ -136,14 +136,14 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isDynamicObject(relativeTimeFormat)"})
+        @Specialization(guards = {"isJSRelativeTimeFormat(relativeTimeFormat)"})
         public Object doFormatToParts(DynamicObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
             return JSRelativeTimeFormat.formatToParts(getContext(), relativeTimeFormat, toNumberNode.executeNumber(value).doubleValue(), toStringNode.executeString(unit));
         }
 
-        @Specialization(guards = "!isDynamicObject(bummer)")
+        @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value, Object unit) {
             throw Errors.createTypeErrorRelativeTimeFormatExpected();

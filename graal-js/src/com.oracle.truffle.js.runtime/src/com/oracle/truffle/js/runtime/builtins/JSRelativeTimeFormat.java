@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -159,7 +159,6 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     @TruffleBoundary
     public static String format(DynamicObject relativeTimeFormatObj, double amount, String unit) {
-        ensureIsRelativeTimeFormat(relativeTimeFormatObj);
         ensureFiniteNumber(amount);
         InternalState state = getInternalState(relativeTimeFormatObj);
         RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("format", unit);
@@ -176,7 +175,6 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     @TruffleBoundary
     public static DynamicObject formatToParts(JSContext context, DynamicObject relativeTimeFormatObj, double amount, String unit) {
-        ensureIsRelativeTimeFormat(relativeTimeFormatObj);
         ensureFiniteNumber(amount);
         InternalState state = getInternalState(relativeTimeFormatObj);
         RelativeDateTimeFormatter relativeDateTimeFormatter = state.relativeDateTimeFormatter;
@@ -187,7 +185,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         int numberIndex = formattedText.indexOf(formattedNumber);
         boolean numberPresentInFormattedText = numberIndex > -1;
 
-        List<Object> resultParts = new LinkedList<>();
+        List<Object> resultParts = new ArrayList<>();
         if (numberPresentInFormattedText) {
             resultParts.add(IntlUtil.makePart(context, "literal", formattedText.substring(0, numberIndex)));
 
@@ -231,19 +229,12 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     @TruffleBoundary
     public static DynamicObject resolvedOptions(JSContext context, DynamicObject relativeTimeFormatObj) {
-        ensureIsRelativeTimeFormat(relativeTimeFormatObj);
         InternalState state = getInternalState(relativeTimeFormatObj);
         return state.toResolvedOptionsObject(context);
     }
 
     public static InternalState getInternalState(DynamicObject relativeTimeFormatObj) {
         return (InternalState) INTERNAL_STATE_PROPERTY.get(relativeTimeFormatObj, isJSRelativeTimeFormat(relativeTimeFormatObj));
-    }
-
-    private static void ensureIsRelativeTimeFormat(Object obj) {
-        if (!isJSRelativeTimeFormat(obj)) {
-            throw Errors.createTypeError("RelativeTimeFormatter method called on a non-object or on a wrong type of object (uninitialized RelativeTimeFormatter?).");
-        }
     }
 
     @Override
