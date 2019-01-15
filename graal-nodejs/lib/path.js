@@ -77,18 +77,16 @@ function normalizeString(path, allowAboveRoot, separator, isPathSeparator) {
             res.charCodeAt(res.length - 2) !== CHAR_DOT) {
           if (res.length > 2) {
             const lastSlashIndex = res.lastIndexOf(separator);
-            if (lastSlashIndex !== res.length - 1) {
-              if (lastSlashIndex === -1) {
-                res = '';
-                lastSegmentLength = 0;
-              } else {
-                res = res.slice(0, lastSlashIndex);
-                lastSegmentLength = res.length - 1 - res.lastIndexOf(separator);
-              }
-              lastSlash = i;
-              dots = 0;
-              continue;
+            if (lastSlashIndex === -1) {
+              res = '';
+              lastSegmentLength = 0;
+            } else {
+              res = res.slice(0, lastSlashIndex);
+              lastSegmentLength = res.length - 1 - res.lastIndexOf(separator);
             }
+            lastSlash = i;
+            dots = 0;
+            continue;
           } else if (res.length === 2 || res.length === 1) {
             res = '';
             lastSegmentLength = 0;
@@ -1075,16 +1073,13 @@ const posix = {
   resolve: function resolve() {
     var resolvedPath = '';
     var resolvedAbsolute = false;
-    var cwd;
 
     for (var i = arguments.length - 1; i >= -1 && !resolvedAbsolute; i--) {
       var path;
       if (i >= 0)
         path = arguments[i];
       else {
-        if (cwd === undefined)
-          cwd = process.cwd();
-        path = cwd;
+        path = process.cwd();
       }
 
       assertPath(path);

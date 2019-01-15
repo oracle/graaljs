@@ -2640,6 +2640,47 @@ TEST(SnapshotCreatorNoExternalReferencesDefault) {
   delete[] blob.data;
 }
 
+v8::StartupData CreateCustomSnapshotArrayJoinWithKeep() {
+  v8::SnapshotCreator creator;
+  v8::Isolate* isolate = creator.GetIsolate();
+  {
+    v8::HandleScope handle_scope(isolate);
+    {
+      v8::Local<v8::Context> context = v8::Context::New(isolate);
+      v8::Context::Scope context_scope(context);
+      CompileRun(
+          "[].join('');\n"
+          "function g() { return String([1,2,3]); }\n");
+      ExpectString("g()", "1,2,3");
+      creator.SetDefaultContext(context);
+    }
+  }
+  return creator.CreateBlob(v8::SnapshotCreator::FunctionCodeHandling::kKeep);
+}
+
+TEST(SnapshotCreatorArrayJoinWithKeep) {
+  DisableAlwaysOpt();
+  v8::StartupData blob = CreateCustomSnapshotArrayJoinWithKeep();
+
+  // Deserialize with an incomplete list of external references.
+  {
+    v8::Isolate::CreateParams params;
+    params.snapshot_blob = &blob;
+    params.array_buffer_allocator = CcTest::array_buffer_allocator();
+    // Test-appropriate equivalent of v8::Isolate::New.
+    v8::Isolate* isolate = TestIsolate::New(params);
+    {
+      v8::Isolate::Scope isolate_scope(isolate);
+      v8::HandleScope handle_scope(isolate);
+      v8::Local<v8::Context> context = v8::Context::New(isolate);
+      v8::Context::Scope context_scope(context);
+      ExpectString("g()", "1,2,3");
+    }
+    isolate->Dispose();
+  }
+  delete[] blob.data;
+}
+
 TEST(SnapshotCreatorNoExternalReferencesCustomFail1) {
   DisableAlwaysOpt();
   v8::StartupData blob = CreateSnapshotWithDefaultAndCustom();
@@ -3329,7 +3370,8 @@ UNINITIALIZED_TEST(ReinitializeHashSeedNotRehashable) {
   v8::Isolate* isolate = v8::Isolate::New(create_params);
   {
     // Check that no rehashing has been performed.
-    CHECK_EQ(42, reinterpret_cast<i::Isolate*>(isolate)->heap()->HashSeed());
+    CHECK_EQ(static_cast<uint64_t>(42),
+             reinterpret_cast<i::Isolate*>(isolate)->heap()->HashSeed());
     v8::Isolate::Scope isolate_scope(isolate);
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = v8::Context::New(isolate);
@@ -3391,7 +3433,8 @@ UNINITIALIZED_TEST(ReinitializeHashSeedRehashable) {
   v8::Isolate* isolate = v8::Isolate::New(create_params);
   {
     // Check that rehashing has been performed.
-    CHECK_EQ(1337, reinterpret_cast<i::Isolate*>(isolate)->heap()->HashSeed());
+    CHECK_EQ(static_cast<uint64_t>(1337),
+             reinterpret_cast<i::Isolate*>(isolate)->heap()->HashSeed());
     v8::Isolate::Scope isolate_scope(isolate);
     v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = v8::Context::New(isolate);

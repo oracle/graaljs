@@ -5,6 +5,8 @@ prefix parallel
 # sample-test                        : PASS,FLAKY
 
 [true] # This section applies to all platforms
+# https://github.com/nodejs/node/issues/23207
+test-net-connect-options-port: PASS,FLAKY
 
 ### Graal.js-specific ###
 
@@ -164,6 +166,9 @@ test-tls-ocsp-callback          : FAIL
 test-tls-passphrase             : FAIL
 
 [$system==win32]
+test-http2-pipe: PASS,FLAKY
+test-worker-syntax-error: PASS,FLAKY
+test-worker-syntax-error-file: PASS,FLAKY
 
 [$system==linux]
 
@@ -178,7 +183,5 @@ test-http2-respond-file-fd-invalid : FAIL
 [$system==solaris] # Also applies to SmartOS
 
 [$system==freebsd]
-# https://github.com/nodejs/node/issues/21038
-test-trace-events-fs-sync: PASS,FLAKY
 
 [$system==aix]

@@ -5,7 +5,6 @@ process.emitWarning(
   'tracked by any versioning system or deprecation process.',
   'internal/test/heap');
 
-const { internalBinding } = require('internal/bootstrap/loaders');
 const { createHeapDump, buildEmbedderGraph } = internalBinding('heap_utils');
 const assert = require('assert');
 
@@ -37,8 +36,8 @@ function createJSHeapDump() {
     const fromNode = nodes[fromNodeIndex];
     const edge = {
       type,
-      toNode,
-      fromNode,
+      to: toNode,
+      from: fromNode,
       name: typeof name_or_index === 'string' ? name_or_index : null
     };
     toNode.incomingEdges.push(edge);

@@ -1,12 +1,11 @@
 'use strict';
 
-const { internalBinding } = require('internal/bootstrap/loaders');
 const {
   setImportModuleDynamicallyCallback,
   setInitializeImportMetaObjectCallback
 } = internalBinding('module_wrap');
 
-const { getURLFromFilePath } = require('internal/url');
+const { pathToFileURL } = require('internal/url');
 const Loader = require('internal/modules/esm/loader');
 const path = require('path');
 const { URL } = require('url');
@@ -17,7 +16,7 @@ const {
 
 function normalizeReferrerURL(referrer) {
   if (typeof referrer === 'string' && path.isAbsolute(referrer)) {
-    return getURLFromFilePath(referrer).href;
+    return pathToFileURL(referrer).href;
   }
   return new URL(referrer).href;
 }
@@ -49,10 +48,10 @@ exports.setup = function() {
 
   let ESMLoader = new Loader();
   const loaderPromise = (async () => {
-    const userLoader = process.binding('config').userLoader;
+    const userLoader = require('internal/options').getOptionValue('--loader');
     if (userLoader) {
       const hooks = await ESMLoader.import(
-        userLoader, getURLFromFilePath(`${process.cwd()}/`).href);
+        userLoader, pathToFileURL(`${process.cwd()}/`).href);
       ESMLoader = new Loader();
       ESMLoader.hook(hooks);
       exports.ESMLoader = ESMLoader;

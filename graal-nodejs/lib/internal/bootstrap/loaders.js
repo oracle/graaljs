@@ -100,7 +100,15 @@
     internalBinding = function internalBinding(module) {
       let mod = bindingObj[module];
       if (typeof mod !== 'object') {
-        mod = bindingObj[module] = getInternalBinding(module);
+        try {
+          mod = getInternalBinding(module);
+        } catch {
+          // v10.x only: Fall back to `process.binding()`,
+          // to avoid future merge conflicts when backporting changes that use
+          // `internalBinding()` to v10.x.
+          mod = process.binding(module);
+        }
+        bindingObj[module] = mod;
         moduleLoadList.push(`Internal Binding ${module}`);
       }
       return mod;
@@ -127,6 +135,8 @@
   const config = getBinding('config');
 
   const codeCache = getInternalBinding('code_cache');
+  const codeCacheHash = getInternalBinding('code_cache_hash');
+  const sourceHash = getInternalBinding('natives_hash');
   const compiledWithoutCache = NativeModule.compiledWithoutCache = [];
   const compiledWithCache = NativeModule.compiledWithCache = [];
 
@@ -207,8 +217,7 @@
 
     NativeModule.isInternal = function(id) {
       return id.startsWith('internal/') ||
-          (id === 'worker_threads' &&
-           !process.binding('config').experimentalWorker);
+          (id === 'worker_threads' && !config.experimentalWorker);
     };
   }
 
@@ -221,7 +230,7 @@
   };
 
   NativeModule.wrapper = [
-    '(function (exports, require, module, process) {',
+    '(function (exports, require, module, process, internalBinding) {',
     '\n});'
   ];
 
@@ -231,33 +240,115 @@
       undefined;
   };
 
+  // Provide named exports for all builtin libraries so that the libraries
+  // may be imported in a nicer way for esm users. The default export is left
+  // as the entire namespace (module.exports) and wrapped in a proxy such
+  // that APMs and other behavior are still left intact.
+  NativeModule.prototype.proxifyExports = function() {
+    this.exportKeys = ObjectKeys(this.exports);
+
+    const update = (property, value) => {
+      if (this.reflect !== undefined &&
+          ReflectApply(ObjectHasOwnProperty,
+                       this.reflect.exports, [property]))
+        this.reflect.exports[property].set(value);
+    };
+
+    const handler = {
+      __proto__: null,
+      defineProperty: (target, prop, descriptor) => {
+        // Use `Object.defineProperty` instead of `Reflect.defineProperty`
+        // to throw the appropriate error if something goes wrong.
+        ObjectDefineProperty(target, prop, descriptor);
+        if (typeof descriptor.get === 'function' &&
+            !ReflectHas(handler, 'get')) {
+          handler.get = (target, prop, receiver) => {
+            const value = ReflectGet(target, prop, receiver);
+            if (ReflectApply(ObjectHasOwnProperty, target, [prop]))
+              update(prop, value);
+            return value;
+          };
+        }
+        update(prop, getOwn(target, prop));
+        return true;
+      },
+      deleteProperty: (target, prop) => {
+        if (ReflectDeleteProperty(target, prop)) {
+          update(prop, undefined);
+          return true;
+        }
+        return false;
+      },
+      set: (target, prop, value, receiver) => {
+        const descriptor = ReflectGetOwnPropertyDescriptor(target, prop);
+        if (ReflectSet(target, prop, value, receiver)) {
+          if (descriptor && typeof descriptor.set === 'function') {
+            for (const key of this.exportKeys) {
+              update(key, getOwn(target, key, receiver));
+            }
+          } else {
+            update(prop, getOwn(target, prop, receiver));
+          }
+          return true;
+        }
+        return false;
+      }
+    };
+
+    this.exports = new Proxy(this.exports, handler);
+  };
+
   NativeModule.prototype.compile = function() {
-    let source = NativeModule.getSource(this.id);
+    const id = this.id;
+    let source = NativeModule.getSource(id);
     source = NativeModule.wrap(source);
 
     this.loading = true;
 
     try {
+      // Currently V8 only checks that the length of the source code is the
+      // same as the code used to generate the hash, so we add an additional
+      // check here:
+      // 1. During compile time, when generating node_javascript.cc and
+      //    node_code_cache.cc, we compute and include the hash of the
+      //   (unwrapped) JavaScript source in both.
+      // 2. At runtime, we check that the hash of the code being compiled
+      //   and the hash of the code used to generate the cache
+      //   (inside the wrapper) is the same.
+      // This is based on the assumptions:
+      // 1. `internalBinding('code_cache_hash')` must be in sync with
+      //    `internalBinding('code_cache')` (same C++ file)
+      // 2. `internalBinding('natives_hash')` must be in sync with
+      //    `process.binding('natives')` (same C++ file)
+      // 3. If `internalBinding('natives_hash')` is in sync with
+      //    `internalBinding('natives_hash')`, then the (unwrapped)
+      //    code used to generate `internalBinding('code_cache')`
+      //    should be in sync with the (unwrapped) code in
+      //    `process.binding('natives')`
+      // There will be, however, false positives if the wrapper used
+      // to generate the cache is different from the one used at run time,
+      // and the length of the wrapper somehow stays the same.
+      // But that should be rare and can be eased once we make the
+      // two bootstrappers cached and checked as well.
+      const cache = codeCacheHash[id] &&
+        (codeCacheHash[id] === sourceHash[id]) ? codeCache[id] : undefined;
+
       // (code, filename, lineOffset, columnOffset
       // cachedData, produceCachedData, parsingContext)
       const script = new ContextifyScript(
         source, this.filename, 0, 0,
-        codeCache[this.id], false, undefined
+        cache, false, undefined
       );
 
+      // This will be used to create code cache in tools/generate_code_cache.js
       this.script = script;
 
       // One of these conditions may be false when any of the inputs
       // of the `node_js2c` target in node.gyp is modified.
-      // FIXME(joyeecheung):
-      // 1. Figure out how to resolve the dependency issue. When the
-      //    code cache was introduced we were at a point where refactoring
-      //    node.gyp may not be worth the effort.
-      // 2. Calculate checksums in both js2c and generate_code_cache.js
-      //    and compare them before compiling the native modules since
-      //    V8 only checks the length of the source to decide whether to
-      //    reject the cache.
-      if (!codeCache[this.id] || script.cachedDataRejected) {
+      // FIXME(joyeecheung): Figure out how to resolve the dependency issue.
+      // When the code cache was introduced we were at a point where refactoring
+      // node.gyp may not be worth the effort.
+      if (!cache || script.cachedDataRejected) {
         compiledWithoutCache.push(this.id);
       } else {
         compiledWithCache.push(this.id);
@@ -268,60 +359,10 @@
       const requireFn = this.id.startsWith('internal/deps/') ?
         NativeModule.requireForDeps :
         NativeModule.require;
-      fn(this.exports, requireFn, this, process);
+      fn(this.exports, requireFn, this, process, internalBinding);
 
       if (config.experimentalModules && !NativeModule.isInternal(this.id)) {
-        this.exportKeys = ObjectKeys(this.exports);
-
-        const update = (property, value) => {
-          if (this.reflect !== undefined &&
-              ReflectApply(ObjectHasOwnProperty,
-                           this.reflect.exports, [property]))
-            this.reflect.exports[property].set(value);
-        };
-
-        const handler = {
-          __proto__: null,
-          defineProperty: (target, prop, descriptor) => {
-            // Use `Object.defineProperty` instead of `Reflect.defineProperty`
-            // to throw the appropriate error if something goes wrong.
-            ObjectDefineProperty(target, prop, descriptor);
-            if (typeof descriptor.get === 'function' &&
-                !ReflectHas(handler, 'get')) {
-              handler.get = (target, prop, receiver) => {
-                const value = ReflectGet(target, prop, receiver);
-                if (ReflectApply(ObjectHasOwnProperty, target, [prop]))
-                  update(prop, value);
-                return value;
-              };
-            }
-            update(prop, getOwn(target, prop));
-            return true;
-          },
-          deleteProperty: (target, prop) => {
-            if (ReflectDeleteProperty(target, prop)) {
-              update(prop, undefined);
-              return true;
-            }
-            return false;
-          },
-          set: (target, prop, value, receiver) => {
-            const descriptor = ReflectGetOwnPropertyDescriptor(target, prop);
-            if (ReflectSet(target, prop, value, receiver)) {
-              if (descriptor && typeof descriptor.set === 'function') {
-                for (const key of this.exportKeys) {
-                  update(key, getOwn(target, key, receiver));
-                }
-              } else {
-                update(prop, getOwn(target, prop, receiver));
-              }
-              return true;
-            }
-            return false;
-          }
-        };
-
-        this.exports = new Proxy(this.exports, handler);
+        this.proxifyExports();
       }
 
       this.loaded = true;

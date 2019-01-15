@@ -14,9 +14,9 @@
 !.gitkeep
 !.mailmap
 !.nycrc
-!.remarkrc
-!.checkstyle_checks.xml
 !.travis.yml
+!.eslintrc.yaml
+!.checkstyle_checks.xml
 
 core
 *.jar
@@ -41,6 +41,7 @@ icu_config.gypi
 .eslintcache
 node_trace.*.log
 coverage/
+!**/node_modules/**/coverage
 
 /nbproject/private
 /out
@@ -51,6 +52,7 @@ Debug/
 !deps/v8/src/debug/
 !**/src/main/java/**/debug/
 Release/
+!**/node_modules/**/release
 !doc/blog/**
 *.sln
 !nodemsi.sln
@@ -69,7 +71,6 @@ ipch/
 *.VC.opendb
 .vs/
 .vscode/
-/deps/v8/src/debug/obj
 /*.exe
 
 /config.mk
@@ -103,6 +104,7 @@ deps/openssl/openssl.xml
 deps/openssl/openssl.target.mk
 deps/zlib/zlib.target.mk
 
+!deps/npm/node_modules
 # not needed and causes issues for distro packagers
 deps/npm/node_modules/.bin/
 
@@ -114,9 +116,10 @@ deps/npm/node_modules/.bin/
 # api docs artifacts
 tools/doc/node_modules
 
+# clang-format artifacts
+tools/clang-format/node_modules
+
 # test artifacts
-tools/remark-cli/node_modules
-tools/remark-preset-lint-node/node_modules
 icu_config.gypi
 *.tap
 /test/graal/node_modules/
@@ -163,8 +166,6 @@ deps/uv/docs/src/guide/
 # ignore VS compiler output unhandled by V8's .gitignore
 deps/v8/gypfiles/Debug/
 deps/v8/gypfiles/Release/
-deps/v8/src/Debug/
-deps/v8/src/Release/
-deps/v8/src/inspector/Debug/
-deps/v8/src/inspector/Release/
 deps/v8/third_party/eu-strip/
+
+.DS_Store

@@ -56,9 +56,9 @@ class SyncProcessOutputBuffer {
  private:
   // Use unsigned int because that's what `uv_buf_init` takes.
   mutable char data_[kBufferSize];
-  unsigned int used_;
+  unsigned int used_ = 0;
 
-  SyncProcessOutputBuffer* next_;
+  SyncProcessOutputBuffer* next_ = nullptr;
 };
 
 
@@ -152,8 +152,8 @@ class SyncProcessRunner {
 
   inline Environment* env() const;
 
-  v8::Local<v8::Object> Run(v8::Local<v8::Value> options);
-  void TryInitializeAndRunLoop(v8::Local<v8::Value> options);
+  v8::MaybeLocal<v8::Object> Run(v8::Local<v8::Value> options);
+  v8::Maybe<bool> TryInitializeAndRunLoop(v8::Local<v8::Value> options);
   void CloseHandlesAndDeleteLoop();
 
   void CloseStdioPipes();
@@ -172,7 +172,7 @@ class SyncProcessRunner {
   v8::Local<v8::Object> BuildResultObject();
   v8::Local<v8::Array> BuildOutputArray();
 
-  int ParseOptions(v8::Local<v8::Value> js_value);
+  v8::Maybe<int> ParseOptions(v8::Local<v8::Value> js_value);
   int ParseStdioOptions(v8::Local<v8::Value> js_value);
   int ParseStdioOption(int child_fd, v8::Local<v8::Object> js_stdio_option);
 
@@ -184,8 +184,10 @@ class SyncProcessRunner {
   inline int AddStdioInheritFD(uint32_t child_fd, int inherit_fd);
 
   static bool IsSet(v8::Local<v8::Value> value);
-  int CopyJsString(v8::Local<v8::Value> js_value, const char** target);
-  int CopyJsStringArray(v8::Local<v8::Value> js_value, char** target);
+  v8::Maybe<int> CopyJsString(v8::Local<v8::Value> js_value,
+                              const char** target);
+  v8::Maybe<int> CopyJsStringArray(v8::Local<v8::Value> js_value,
+                                   char** target);
 
   static void ExitCallback(uv_process_t* handle,
                            int64_t exit_status,
@@ -201,7 +203,7 @@ class SyncProcessRunner {
 
   uint32_t stdio_count_;
   uv_stdio_container_t* uv_stdio_containers_;
-  std::unique_ptr<std::unique_ptr<SyncProcessStdioPipe>[]> stdio_pipes_;
+  std::vector<std::unique_ptr<SyncProcessStdioPipe>> stdio_pipes_;
   bool stdio_pipes_initialized_;
 
   uv_process_options_t uv_process_options_;

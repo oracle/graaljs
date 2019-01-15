@@ -5,9 +5,8 @@ prefix sequential
 # sample-test                       : PASS,FLAKY
 
 [true] # This section applies to all platforms
-# This test will be flaky until https://github.com/libuv/libuv/pull/1742 lands
-# on Node.js.
-test-fs-readfile-tostring-fail: PASS, FLAKY
+# https://github.com/nodejs/node/issues/22336
+test-gc-http-client: PASS,FLAKY
 
 ### Graal-specific start ###
 
@@ -35,6 +34,8 @@ test-timers-blocking-callback : SKIP
 ### Graal-specific end ###
 
 [$system==win32]
+# https://github.com/nodejs/node/issues/22327
+test-http2-large-file: PASS, FLAKY
 
 [$system==linux]
 
@@ -45,3 +46,7 @@ test-timers-blocking-callback : SKIP
 [$system==freebsd]
 
 [$system==aix]
+
+[$arch==arm]
+# https://github.com/nodejs/node/issues/20628
+test-http2-session-timeout: PASS,FLAKY

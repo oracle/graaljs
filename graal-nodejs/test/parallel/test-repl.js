@@ -132,7 +132,11 @@ const errorTests = [
   // Uncaught error throws and prints out
   {
     send: 'throw new Error(\'test error\');',
-    expect: /^Error: test error/
+    expect: 'Error: test error'
+  },
+  {
+    send: "throw { foo: 'bar' };",
+    expect: "Thrown: { foo: 'bar' }"
   },
   // Common syntax error is treated as multiline command
   {
@@ -526,7 +530,7 @@ const errorTests = [
   {
     send: 'require("internal/repl")',
     expect: [
-      /^Error: Cannot find module 'internal\/repl'/,
+      /^{ Error: Cannot find module 'internal\/repl'/,
       /^    at .*/,
       /^    at .*/,
       /^    at .*/,
@@ -780,8 +784,8 @@ function startTCPRepl() {
     client.setEncoding('utf8');
 
     client.on('connect', common.mustCall(() => {
-      assert.strictEqual(true, client.readable);
-      assert.strictEqual(true, client.writable);
+      assert.strictEqual(client.readable, true);
+      assert.strictEqual(client.writable, true);
 
       resolveSocket(client);
     }));
@@ -823,8 +827,8 @@ function startUnixRepl() {
     client.setEncoding('utf8');
 
     client.on('connect', common.mustCall(() => {
-      assert.strictEqual(true, client.readable);
-      assert.strictEqual(true, client.writable);
+      assert.strictEqual(client.readable, true);
+      assert.strictEqual(client.writable, true);
 
       resolveSocket(client);
     }));
