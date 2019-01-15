@@ -882,3 +882,21 @@ function setTimeout(fn) {
     };
     return lateJob(10)();
 }
+
+var testRunner = (function() {
+    var _done;
+    var _waitUntilDone = function() {
+        if (!_done) {
+            TestV8.enqueueJob(_waitUntilDone);
+        }
+    };
+    return {
+        notifyDone() {
+            _done = true;
+        },
+        waitUntilDone() {
+            _done = false;
+            _waitUntilDone();
+        }
+    };
+})();

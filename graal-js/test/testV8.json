@@ -429,17 +429,9 @@
     "status" : "SKIP",
     "comment" : "code coverage support (GR-6539)"
   }, {
-    "filePath" : "mjsunit/compiler/lazy-deopt-async-function-resolve.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/compiler/native-context-specialization-hole-check.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/compiler/promise-resolve.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/compiler/regress-801097.js",
     "status" : "FAIL",
@@ -777,10 +769,6 @@
     "filePath" : "mjsunit/generated-transition-stub.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
-  }, {
-    "filePath" : "mjsunit/harmony/async-await-optimization.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/harmony/async-for-of-non-iterable.js",
     "status" : "FAIL",
