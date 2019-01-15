@@ -119,4 +119,17 @@ public class ExpressionTest extends SourceSectionInstrumentationTest {
         });
     }
 
+    @Test
+    public void strLitCallExpression() {
+        evalExpressions("'bar'.replace(/bar/, 'baz');");
+
+        assertSourceSections(new String[]{
+                        "'bar'",
+                        "'bar'.replace",
+                        "/bar/",
+                        "'baz'",
+                        "'bar'.replace(/bar/, 'baz')",
+        });
+    }
+
 }
