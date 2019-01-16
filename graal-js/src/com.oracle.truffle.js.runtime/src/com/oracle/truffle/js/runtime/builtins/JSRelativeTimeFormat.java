@@ -187,7 +187,10 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
         List<Object> resultParts = new ArrayList<>();
         if (numberPresentInFormattedText) {
-            resultParts.add(IntlUtil.makePart(context, "literal", formattedText.substring(0, numberIndex)));
+
+            if (numberIndex > 0) {
+                resultParts.add(IntlUtil.makePart(context, "literal", formattedText.substring(0, numberIndex)));
+            }
 
             String esUnit = icuUnit.toString().toLowerCase();
             resultParts.addAll(JSNumberFormat.innerFormatToParts(context, numberFormat, amount, esUnit));
