@@ -47,6 +47,7 @@
 #include "include/v8.h"
 #include "jni.h"
 #include <pthread.h>
+#include <string.h>
 #include <vector>
 
 #define JNI_CALL_HELPER(semicolon, equals, return_type, variable, isolate, id, type, ...) \
@@ -534,8 +535,19 @@ public:
     void Externalize(jobject java_buffer);
 
     static void SetFlags(int argc, char** argv) {
+        if (GraalIsolate::argv != nullptr) {
+            for (int i = 0; i < GraalIsolate::argc; i++) {
+                delete[] GraalIsolate::argv[i];
+            }
+            delete[] GraalIsolate::argv;
+        }
         GraalIsolate::argc = argc;
-        GraalIsolate::argv = argv;
+        GraalIsolate::argv = new char*[argc];
+        for (int i = 0; i < argc; i++) {
+            int len = strlen(argv[i]) + 1;
+            GraalIsolate::argv[i] = new char[len];
+            strncpy(GraalIsolate::argv[i], argv[i], len);
+        }
     }
 
     static void SetMode(int mode) {
