@@ -2965,7 +2965,7 @@ inline int Start(uv_loop_t* event_loop,
   Isolate* const isolate = NewIsolate(allocator.get());
   if (isolate == nullptr)
     return 12;  // Signal internal error.
-  isolate->EnterPolyglotEngine(event_loop, allocator.get(), argc, (void*) argv, exec_argc, (void*) exec_argv, &StartInPolyglotEngine);
+  isolate->EnterPolyglotEngine(event_loop, allocator.get(), args.size(), (void*) args.data(), exec_args.size(), (void*) exec_args.data(), &StartInPolyglotEngine);
   return 0;
 }
 
@@ -2976,6 +2976,8 @@ static void StartInPolyglotEngine(void* isolate_, void* event_loop_, void* alloc
   uv_loop_t* event_loop = static_cast<uv_loop_t*> (event_loop_);
   const char* const* argv = static_cast<const char* const*> (argv_);
   const char* const* exec_argv = static_cast<const char* const*> (exec_argv_);
+  std::vector<std::string> args(argv, argv + argc);
+  std::vector<std::string> exec_args(exec_argv, exec_argv + exec_argc);
   ArrayBufferAllocator* allocator = static_cast<ArrayBufferAllocator*>(allocator_);
 
   {
