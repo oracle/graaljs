@@ -98,6 +98,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -173,6 +174,7 @@ public class JSRealm {
     private final JSConstructor listFormatConstructor;
     private final JSConstructor dateTimeFormatConstructor;
     private final JSConstructor relativeTimeFormatConstructor;
+    private final JSConstructor segmenterConstructor;
     private final JSConstructor dateConstructor;
     @CompilationFinal(dimensions = 1) private final JSConstructor[] errorConstructors;
     private final JSConstructor callSiteConstructor;
@@ -359,6 +361,7 @@ public class JSRealm {
         this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
         this.listFormatConstructor = JSListFormat.createConstructor(this);
         this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
+        this.segmenterConstructor = JSSegmenter.createConstructor(this);
 
         this.iteratorPrototype = createIteratorPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
@@ -517,6 +520,10 @@ public class JSRealm {
 
     public final JSConstructor getRelativeTimeFormatConstructor() {
         return relativeTimeFormatConstructor;
+    }
+
+    public final JSConstructor getSegmenterConstructor() {
+        return segmenterConstructor;
     }
 
     public final JSConstructor getDateTimeFormatConstructor() {
@@ -919,12 +926,14 @@ public class JSRealm {
             DynamicObject pluralRulesFn = getPluralRulesConstructor().getFunctionObject();
             DynamicObject listFormatFn = getListFormatConstructor().getFunctionObject();
             DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor().getFunctionObject();
+            DynamicObject segmenterFn = getSegmenterConstructor().getFunctionObject();
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(segmenterFn), segmenterFn, JSAttributes.getDefaultNotEnumerable());
 
             putGlobalProperty(JSIntl.CLASS_NAME, intlObject);
         }

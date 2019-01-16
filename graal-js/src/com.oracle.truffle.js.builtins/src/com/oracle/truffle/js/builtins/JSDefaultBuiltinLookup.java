@@ -209,6 +209,8 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new PluralRulesFunctionBuiltins());
         defineBuiltins(new RelativeTimeFormatPrototypeBuiltins());
         defineBuiltins(new RelativeTimeFormatFunctionBuiltins());
+        defineBuiltins(new SegmenterPrototypeBuiltins());
+        defineBuiltins(new SegmenterFunctionBuiltins());
         defineBuiltins(new IntlBuiltins());
     }
 

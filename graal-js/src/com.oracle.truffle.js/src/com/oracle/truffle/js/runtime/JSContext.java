@@ -112,6 +112,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -367,6 +368,7 @@ public class JSContext {
     private final JSObjectFactory dateTimeFormatFactory;
     private final JSObjectFactory listFormatFactory;
     private final JSObjectFactory relativeTimeFormatFactory;
+    private final JSObjectFactory segmenterFactory;
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
@@ -515,6 +517,7 @@ public class JSContext {
         this.pluralRulesFactory = builder.create(JSPluralRules.INSTANCE);
         this.listFormatFactory = builder.create(JSListFormat.INSTANCE);
         this.relativeTimeFormatFactory = builder.create(JSRelativeTimeFormat.INSTANCE);
+        this.segmenterFactory = builder.create(JSSegmenter.INSTANCE);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
@@ -907,6 +910,10 @@ public class JSContext {
 
     public final JSObjectFactory getRelativeTimeFormatFactory() {
         return relativeTimeFormatFactory;
+    }
+
+    public final JSObjectFactory getSegmenterFactory() {
+        return segmenterFactory;
     }
 
     public final JSObjectFactory getDateTimeFormatFactory() {
