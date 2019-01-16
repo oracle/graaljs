@@ -1692,12 +1692,12 @@ public final class GraalJSAccess {
     private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
         String moduleName = node.getRootNode().getSourceSection().getSource().getName();
-        if (USE_NIO_BUFFER && NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
+        if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
             Object[] extendedArgs = new Object[userArgs.length + 1];
             System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-            extendedArgs[userArgs.length] = NIOBufferObject.createInitFunction(node);
+            extendedArgs[userArgs.length] = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(node) : Undefined.instance;
             return extendedArgs;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
             JSContext context = node.getContext();

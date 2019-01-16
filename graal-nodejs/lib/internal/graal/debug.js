@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-const setBreakPoint = arguments.length === 5 ? arguments[4] : undefined;
+const setBreakPoint = arguments[arguments.length - 1];
 
 module.exports = {
 	setBreakPoint: setBreakPoint

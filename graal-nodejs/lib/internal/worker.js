@@ -546,7 +546,7 @@ module.exports = {
 // ##### Graal.js Java interop messages handling
 
 // Passed by Graal.js init phase during global module loading.
-const SharedMemMessagingInit = arguments.length === 5 ? arguments[4] : undefined;
+const SharedMemMessagingInit = arguments[arguments.length - 1];
 if (!SharedMemMessagingInit) {
   assert.fail(`Fatal: cannot initialize Worker`);
 }
