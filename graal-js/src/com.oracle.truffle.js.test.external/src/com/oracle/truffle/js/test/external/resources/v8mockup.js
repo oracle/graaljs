@@ -370,9 +370,8 @@ function v8CreatePrivateOwnSymbol(sym) {
     return Symbol(sym);
 }
 
-function v8ArrayBufferNeuter(arr) {
+function v8ArrayBufferDetach(arr) {
     TestV8.typedArrayDetachBuffer(arr);
-    return arr;
 }
 
 function v8GetScript(name) {
@@ -881,6 +880,15 @@ function setTimeout(fn) {
         }
     };
     return lateJob(10)();
+}
+
+// new mockups from 2019-01-15 update
+
+function v8PerformMicrotaskCheckpoint() {
+}
+
+function v8IsThreadInWasm() {
+    return v8IgnoreResult;
 }
 
 var testRunner = (function() {
