@@ -3725,7 +3725,7 @@ loop:
                 final List<Expression> arguments = optimizeList(argumentList(yield, await));
 
                 // Create call node.
-                lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
+                lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
 
                 break;
             }
@@ -3758,7 +3758,7 @@ loop:
                 final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
                 // Create call node.
-                lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
+                lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
 
                 break;
             }

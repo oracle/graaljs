@@ -132,4 +132,21 @@ public class ExpressionTest extends SourceSectionInstrumentationTest {
         });
     }
 
+    @Test
+    public void chainedCallExpressions() {
+        evalExpressions("'foobar'.replace(/bar/, 'baz').replace(/foo/, 'boo');");
+
+        assertSourceSections(new String[]{
+                        "'foobar'",
+                        "'foobar'.replace",
+                        "/bar/",
+                        "'baz'",
+                        "'foobar'.replace(/bar/, 'baz')",
+                        "'foobar'.replace(/bar/, 'baz').replace",
+                        "/foo/",
+                        "'boo'",
+                        "'foobar'.replace(/bar/, 'baz').replace(/foo/, 'boo')",
+        });
+    }
+
 }
