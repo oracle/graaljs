@@ -174,7 +174,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ------------------------------------------------------------------------------
 
            Node.js
-Node JS 10.9.0
+Node JS 10.15.0
 
 Node.js is licensed for use as follows:
 
