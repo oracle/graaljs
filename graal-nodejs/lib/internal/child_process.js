@@ -21,24 +21,24 @@ const dgram = require('dgram');
 const util = require('util');
 const assert = require('assert');
 
-const defaultProcess = process.binding('process_wrap').Process;
 if (process.__node_cluster_threading) {
   var vProcess = require('internal/graal/thread_process_wrap').Process;
   var vPipe = require('internal/graal/thread_pipe_wrap').Pipe;
 } else {
-  var vProcess = defaultProcess;
-  var vPipe = process.binding('pipe_wrap').Pipe;
+  var vProcess = internalBinding('process_wrap').Process;
+  var vPipe = internalBinding('pipe_wrap').Pipe;
 }
 const Process = vProcess;
 const Pipe = vPipe;
-const { WriteWrap } = process.binding('stream_wrap');
-const { constants: PipeConstants } = process.binding('pipe_wrap');
-const { TTY } = process.binding('tty_wrap');
-const { TCP } = process.binding('tcp_wrap');
-const { UDP } = process.binding('udp_wrap');
+const { WriteWrap } = internalBinding('stream_wrap');
+const { constants: PipeConstants } = internalBinding('pipe_wrap');
+const { TTY } = internalBinding('tty_wrap');
+const { TCP } = internalBinding('tcp_wrap');
+const { UDP } = internalBinding('udp_wrap');
 const SocketList = require('internal/socket_list');
+const { owner_symbol } = require('internal/async_hooks').symbols;
 const { convertToValidSignal } = require('internal/util');
-const { isUint8Array } = require('internal/util/types');
+const { isArrayBufferView } = require('internal/util/types');
 const spawn_sync = process.binding('spawn_sync');
 const { HTTPParser } = process.binding('http_parser');
 const { freeParser } = require('_http_common');
@@ -219,7 +219,7 @@ function ChildProcess() {
   this.spawnfile = null;
 
   this._handle = new Process();
-  this._handle.owner = this;
+  this._handle[owner_symbol] = this;
 
   this._handle.onexit = (exitCode, signalCode) => {
     if (signalCode) {
@@ -944,7 +944,7 @@ function _validateStdio(stdio, sync) {
         wrapType: getHandleWrapType(handle),
         handle: handle
       });
-    } else if (isUint8Array(stdio) || typeof stdio === 'string') {
+    } else if (isArrayBufferView(stdio) || typeof stdio === 'string') {
       if (!sync) {
         cleanup();
         throw new ERR_INVALID_SYNC_FORK_INPUT(util.inspect(stdio));

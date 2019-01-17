@@ -95,6 +95,24 @@ Tells the kernel to join a multicast group at the given `multicastAddress` and
 one interface and will add membership to it. To add membership to every
 available interface, call `addMembership` multiple times, once per interface.
 
+When sharing a UDP socket across multiple `cluster` workers, the
+`socket.addMembership()` function must be called only once or an
+`EADDRINUSE` error will occur:
+
+```js
+const cluster = require('cluster');
+const dgram = require('dgram');
+if (cluster.isMaster) {
+  cluster.fork(); // Works ok.
+  cluster.fork(); // Fails with EADDRINUSE.
+} else {
+  const s = dgram.createSocket('udp4');
+  s.bind(1234, () => {
+    s.addMembership('224.0.0.114');
+  });
+}
+```
+
 ### socket.address()
 <!-- YAML
 added: v0.1.99
@@ -259,7 +277,7 @@ Calling `socket.ref()` multiples times will have no additional effect.
 The `socket.ref()` method returns a reference to the socket so calls can be
 chained.
 
-### socket.send(msg, [offset, length,] port [, address] [, callback])
+### socket.send(msg[, offset, length], port[, address][, callback])
 <!-- YAML
 added: v0.1.99
 changes:
@@ -395,7 +413,7 @@ added: v8.6.0
 
 * `multicastInterface` {string}
 
-*Note: All references to scope in this section are referring to
+*All references to scope in this section are referring to
 [IPv6 Zone Indices][], which are defined by [RFC 4007][]. In string form, an IP
 with a scope index is written as `'IP%scope'` where scope is an interface name
 or interface number.*
@@ -546,8 +564,7 @@ chained.
 ### Change to asynchronous `socket.bind()` behavior
 
 As of Node.js v0.10, [`dgram.Socket#bind()`][] changed to an asynchronous
-execution model. Legacy code that assumes synchronous behavior, as in the
-following example:
+execution model. Legacy code would use synchronous behavior:
 
 ```js
 const s = dgram.createSocket('udp4');
@@ -555,8 +572,8 @@ s.bind(1234);
 s.addMembership('224.0.0.114');
 ```
 
-Must be changed to pass a callback function to the [`dgram.Socket#bind()`][]
-function:
+Such legacy code would need to be changed to pass a callback function to the
+[`dgram.Socket#bind()`][] function:
 
 ```js
 const s = dgram.createSocket('udp4');

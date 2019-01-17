@@ -231,6 +231,12 @@
         <in>main_thread_interface.cc</in>
         <in>node_string.cc</in>
         <in>tracing_agent.cc</in>
+        <in>worker_agent.cc</in>
+        <in>worker_inspector.cc</in>
+      </df>
+      <df name="large_pages">
+        <in>node_large_page.cc</in>
+        <in>node_large_page.h</in>
       </df>
       <df name="tracing">
         <in>agent.cc</in>
@@ -284,6 +290,8 @@
       <in>node_i18n.cc</in>
       <in>node_main.cc</in>
       <in>node_messaging.cc</in>
+      <in>node_options-inl.h</in>
+      <in>node_options.cc</in>
       <in>node_os.cc</in>
       <in>node_perf.cc</in>
       <in>node_platform.cc</in>
@@ -2201,6 +2209,10 @@
       </item>
       <item path="src/inspector/tracing_agent.cc" ex="false" tool="1" flavor2="0">
       </item>
+      <item path="src/inspector/worker_agent.cc" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="src/inspector/worker_inspector.cc" ex="false" tool="1" flavor2="0">
+      </item>
       <item path="src/inspector_agent.cc" ex="false" tool="1" flavor2="0">
       </item>
       <item path="src/inspector_agent.h" ex="false" tool="3" flavor2="0">
@@ -2243,6 +2255,10 @@
             <Elem>_DEBUG</Elem>
           </preprocessorList>
         </ccTool>
+      </item>
+      <item path="src/large_pages/node_large_page.cc" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="src/large_pages/node_large_page.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="src/module_wrap.cc" ex="false" tool="1" flavor2="8">
         <ccTool flags="0">
@@ -2657,6 +2673,10 @@
         </ccTool>
       </item>
       <item path="src/node_messaging.cc" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="src/node_options-inl.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="src/node_options.cc" ex="false" tool="1" flavor2="0">
       </item>
       <item path="src/node_os.cc" ex="false" tool="1" flavor2="8">
         <ccTool flags="0">

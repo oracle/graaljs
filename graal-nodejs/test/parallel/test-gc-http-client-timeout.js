@@ -4,6 +4,7 @@
 // but with a timeout set
 
 const common = require('../common');
+const onGC = require('../common/ongc');
 
 function serverHandler(req, res) {
   setTimeout(function() {
@@ -14,7 +15,7 @@ function serverHandler(req, res) {
 }
 
 const http = require('http');
-const todo = 550;
+const todo = 300;
 let done = 0;
 let count = 0;
 let countGC = 0;
@@ -22,37 +23,35 @@ let countGC = 0;
 console.log(`We should do ${todo} requests`);
 
 const server = http.createServer(serverHandler);
-server.listen(0, getall);
+server.listen(0, common.mustCall(getall));
 
 function getall() {
   if (count >= todo)
     return;
 
-  (function() {
-    function cb(res) {
-      res.resume();
-      done += 1;
-    }
+  const req = http.get({
+    hostname: 'localhost',
+    pathname: '/',
+    port: server.address().port
+  }, cb);
 
-    const req = http.get({
-      hostname: 'localhost',
-      pathname: '/',
-      port: server.address().port
-    }, cb);
+  req.setTimeout(10, function() {
+    console.log('timeout (expected)');
+  });
 
-    req.setTimeout(10, function() {
-      console.log('timeout (expected)');
-    });
-
-    count++;
-    common.onGC(req, { ongc });
-  })();
+  count++;
+  onGC(req, { ongc });
 
   setImmediate(getall);
 }
 
 for (let i = 0; i < 10; i++)
   getall();
+
+function cb(res) {
+  res.resume();
+  done += 1;
+}
 
 function ongc() {
   countGC++;

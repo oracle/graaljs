@@ -12,15 +12,27 @@ To view this documentation as a manual page in a terminal, run `man node`.
 
 `node [options] [V8 options] [script.js | -e "script" | -] [--] [arguments]`
 
-`node debug [script.js | -e "script" | <host>:<port>] …`
+`node inspect [script.js | -e "script" | <host>:<port>] …`
 
 `node --v8-options`
 
 Execute without arguments to start the [REPL][].
 
-_For more info about `node debug`, please see the [debugger][] documentation._
+_For more info about `node inspect`, please see the [debugger][] documentation._
 
 ## Options
+<!-- YAML
+changes:
+  - version: v10.12.0
+    pr-url: https://github.com/nodejs/node/pull/23020
+    description: Underscores instead of dashes are now allowed for
+                 Node.js options as well, in addition to V8 options.
+-->
+
+All options, including V8 options, allow words to be separated by both
+dashes (`-`) or underscores (`_`).
+
+For example, `--pending-deprecation` is equivalent to `--pending_deprecation`.
 
 ### `-`
 <!-- YAML
@@ -51,6 +63,17 @@ analysis using a debugger (such as `lldb`, `gdb`, and `mdb`).
 If this flag is passed, the behavior can still be set to not abort through
 [`process.setUncaughtExceptionCaptureCallback()`][] (and through usage of the
 `domain` module that uses it).
+
+### `--completion-bash`
+<!-- YAML
+added: v10.12.0
+-->
+
+Print source-able bash completion script for Node.js.
+```console
+$ node --completion-bash > node_bash_completion
+$ source node_bash_completion
+```
 
 ### `--enable-fips`
 <!-- YAML
@@ -121,6 +144,9 @@ Useful when activating the inspector by sending the `SIGUSR1` signal.
 
 Default host is `127.0.0.1`.
 
+See the [security warning](#inspector_security) below regarding the `host`
+parameter usage.
+
 ### `--inspect[=[host:]port]`
 <!-- YAML
 added: v6.3.0
@@ -131,6 +157,36 @@ Activate inspector on `host:port`. Default is `127.0.0.1:9229`.
 V8 inspector integration allows tools such as Chrome DevTools and IDEs to debug
 and profile Node.js instances. The tools attach to Node.js instances via a
 tcp port and communicate using the [Chrome DevTools Protocol][].
+
+<a id="inspector_security"></a>
+#### Warning: binding inspector to a public IP:port combination is insecure
+
+Binding the inspector to a public IP (including `0.0.0.0`) with an open port is
+insecure, as it allows external hosts to connect to the inspector and perform
+a [remote code execution][] attack.
+
+If you specify a host, make sure that at least one of the following is true:
+either the host is not public, or the port is properly firewalled to disallow
+unwanted connections.
+
+**More specifically, `--inspect=0.0.0.0` is insecure if the port (`9229` by
+default) is not firewall-protected.**
+
+See the [debugging security implications][] section for more information.
+
+### `--loader=file`
+<!-- YAML
+added: v9.0.0
+-->
+
+Specify the `file` of the custom [experimental ECMAScript Module][] loader.
+
+### `--max-http-header-size=size`
+<!-- YAML
+added: v10.15.0
+-->
+
+Specify the maximum size, in bytes, of HTTP headers. Defaults to 8KB.
 
 ### `--napi-modules`
 <!-- YAML
@@ -372,11 +428,6 @@ added: v0.1.3
 
 Print V8 command line options.
 
-V8 options allow words to be separated by both dashes (`-`) or
-underscores (`_`).
-
-For example, `--stack-trace-limit` is equivalent to `--stack_trace_limit`.
-
 ### `--v8-pool-size=num`
 <!-- YAML
 added: v5.10.0
@@ -500,6 +551,9 @@ malformed, but any errors are otherwise ignored.
 Note that neither the well known nor extra certificates are used when the `ca`
 options property is explicitly specified for a TLS or HTTPS client or server.
 
+This environment variable is ignored when `node` runs as setuid root or
+has Linux file capabilities set.
+
 ### `NODE_ICU_DATA=file`
 <!-- YAML
 added: v0.11.15
@@ -525,7 +579,7 @@ if they had been specified on the command line before the actual command line
 (so they can be overridden). Node.js will exit with an error if an option
 that is not allowed in the environment is used, such as `-p` or a script file.
 
-Node options that are allowed are:
+Node.js options that are allowed are:
 - `--enable-fips`
 - `--experimental-modules`
 - `--experimental-repl-await`
@@ -537,6 +591,7 @@ Node options that are allowed are:
 - `--inspect-brk`
 - `--inspect-port`
 - `--loader`
+- `--max-http-header-size`
 - `--napi-modules`
 - `--no-deprecation`
 - `--no-force-async-hooks-checks`
@@ -618,6 +673,32 @@ Path to the file used to store the persistent REPL history. The default path is
 `~/.node_repl_history`, which is overridden by this variable. Setting the value
 to an empty string (`''` or `' '`) disables persistent REPL history.
 
+### `NODE_V8_COVERAGE=dir`
+
+When set, Node.js will begin outputting [V8 JavaScript code coverage][] to the
+directory provided as an argument. Coverage is output as an array of
+[ScriptCoverage][] objects:
+
+```json
+{
+  "result": [
+    {
+      "scriptId": "67",
+      "url": "internal/tty.js",
+      "functions": []
+    }
+  ]
+}
+```
+
+`NODE_V8_COVERAGE` will automatically propagate to subprocesses, making it
+easier to instrument applications that call the `child_process.spawn()` family
+of functions. `NODE_V8_COVERAGE` can be set to an empty string, to prevent
+propagation.
+
+At this time coverage is only collected in the main thread and will not be
+output for code executed by worker threads.
+
 ### `OPENSSL_CONF=file`
 <!-- YAML
 added: v6.11.0
@@ -684,6 +765,11 @@ greater than `4` (its current default value). For more information, see the
 [`process.setUncaughtExceptionCaptureCallback()`]: process.html#process_process_setuncaughtexceptioncapturecallback_fn
 [Chrome DevTools Protocol]: https://chromedevtools.github.io/devtools-protocol/
 [REPL]: repl.html
+[ScriptCoverage]: https://chromedevtools.github.io/devtools-protocol/tot/Profiler#type-ScriptCoverage
+[V8 JavaScript code coverage]: https://v8project.blogspot.com/2017/12/javascript-code-coverage.html
 [debugger]: debugger.html
+[debugging security implications]: https://nodejs.org/en/docs/guides/debugging-getting-started/#security-implications
 [emit_warning]: process.html#process_process_emitwarning_warning_type_code_ctor
+[experimental ECMAScript Module]: esm.html#esm_loader_hooks
 [libuv threadpool documentation]: http://docs.libuv.org/en/latest/threadpool.html
+[remote code execution]: https://www.owasp.org/index.php/Code_Injection

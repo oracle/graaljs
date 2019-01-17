@@ -4,10 +4,7 @@
 // but aborting every connection that comes in.
 
 const common = require('../common');
-
-function serverHandler(req, res) {
-  res.connection.destroy();
-}
+const onGC = require('../common/ongc');
 
 const http = require('http');
 const todo = 500;
@@ -17,33 +14,35 @@ let countGC = 0;
 
 console.log(`We should do ${todo} requests`);
 
+function serverHandler(req, res) {
+  res.connection.destroy();
+}
+
 const server = http.createServer(serverHandler);
-server.listen(0, getall);
+server.listen(0, common.mustCall(() => {
+  for (let i = 0; i < 10; i++)
+    getall();
+}));
 
 function getall() {
   if (count >= todo)
     return;
 
-  (function() {
-    function cb(res) {
-      done += 1;
-    }
+  const req = http.get({
+    hostname: 'localhost',
+    pathname: '/',
+    port: server.address().port
+  }, cb).on('error', cb);
 
-    const req = http.get({
-      hostname: 'localhost',
-      pathname: '/',
-      port: server.address().port
-    }, cb).on('error', cb);
-
-    count++;
-    common.onGC(req, { ongc });
-  })();
+  count++;
+  onGC(req, { ongc });
 
   setImmediate(getall);
 }
 
-for (let i = 0; i < 10; i++)
-  getall();
+function cb(res) {
+  done += 1;
+}
 
 function ongc() {
   countGC++;

@@ -162,6 +162,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -861,18 +862,48 @@ public final class GraalJSAccess {
         return JSArray.createConstantObjectArray(context, namesArray);
     }
 
-    public Object objectGetPropertyNames(Object object) {
-        List<Object> names = new ArrayList<>();
+    public Object objectGetPropertyNames(Object object, boolean ownOnly,
+                    boolean enumerableOnly, boolean configurableOnly, boolean writableOnly,
+                    boolean skipIndices, boolean skipSymbols, boolean skipStrings,
+                    boolean keepNumbers) {
+        List<Object> keys = new ArrayList<>();
         DynamicObject dynamicObject = (DynamicObject) object;
         JSContext context = JSObject.getJSContext(dynamicObject);
-        while (dynamicObject != Null.instance) {
-            List<String> newNames = JSObject.enumerableOwnNames(dynamicObject);
-            names.addAll(newNames);
+        do {
+            JSClass jsclass = JSObject.getJSClass(dynamicObject);
+            Iterable<Object> ownKeys = jsclass.ownPropertyKeys(dynamicObject);
+            for (Object key : ownKeys) {
+                Object keyToStore = key;
+                if (key instanceof String) {
+                    boolean index = JSRuntime.isArrayIndex((String) key);
+                    if (index) {
+                        if (skipIndices) {
+                            continue;
+                        }
+                        if (keepNumbers) {
+                            keyToStore = JSRuntime.stringToNumber((String) key);
+                        }
+                    } else {
+                        if (skipStrings) {
+                            continue;
+                        }
+                    }
+                } else {
+                    assert key instanceof Symbol;
+                    if (skipSymbols) {
+                        continue;
+                    }
+                }
+                PropertyDescriptor desc = jsclass.getOwnProperty(dynamicObject, key);
+                if ((enumerableOnly && (desc == null || !desc.getEnumerable())) || (configurableOnly && (desc == null || !desc.getConfigurable())) ||
+                                (writableOnly && (desc == null || !desc.getWritable()))) {
+                    continue;
+                }
+                keys.add(keyToStore);
+            }
             dynamicObject = JSObject.getPrototype(dynamicObject);
-        }
-        Object[] namesArray = names.toArray();
-        convertArrayIndicesToNumbers(namesArray);
-        return JSArray.createConstantObjectArray(context, namesArray);
+        } while (!ownOnly && dynamicObject != Null.instance);
+        return JSArray.createConstantObjectArray(context, keys.toArray());
     }
 
     private void convertArrayIndicesToNumbers(Object[] namesArray) {
@@ -1692,12 +1723,12 @@ public final class GraalJSAccess {
     private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
         String moduleName = node.getRootNode().getSourceSection().getSource().getName();
-        if (USE_NIO_BUFFER && NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
+        if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
             Object[] extendedArgs = new Object[userArgs.length + 1];
             System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-            extendedArgs[userArgs.length] = NIOBufferObject.createInitFunction(node);
+            extendedArgs[userArgs.length] = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(node) : Undefined.instance;
             return extendedArgs;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
             JSContext context = node.getContext();

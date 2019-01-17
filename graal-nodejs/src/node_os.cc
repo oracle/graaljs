@@ -52,6 +52,7 @@ using v8::Context;
 using v8::Float64Array;
 using v8::Function;
 using v8::FunctionCallbackInfo;
+using v8::Int32;
 using v8::Integer;
 using v8::Local;
 using v8::MaybeLocal;
@@ -367,6 +368,8 @@ static void GetUserInfo(const FunctionCallbackInfo<Value>& args) {
     return args.GetReturnValue().SetUndefined();
   }
 
+  OnScopeLeave free_passwd([&]() { uv_os_free_passwd(&pwd); });
+
   Local<Value> error;
 
   Local<Value> uid = Number::New(env->isolate(), pwd.uid);
@@ -388,7 +391,6 @@ static void GetUserInfo(const FunctionCallbackInfo<Value>& args) {
 
   if (username.IsEmpty() || homedir.IsEmpty() || shell.IsEmpty()) {
     CHECK(!error.IsEmpty());
-    uv_os_free_passwd(&pwd);
     env->isolate()->ThrowException(error);
     return;
   }
@@ -402,6 +404,46 @@ static void GetUserInfo(const FunctionCallbackInfo<Value>& args) {
   entry->Set(env->shell_string(), shell.ToLocalChecked());
 
   args.GetReturnValue().Set(entry);
+}
+
+
+static void SetPriority(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+
+  CHECK_EQ(args.Length(), 3);
+  CHECK(args[0]->IsInt32());
+  CHECK(args[1]->IsInt32());
+
+  const int pid = args[0].As<Int32>()->Value();
+  const int priority = args[1].As<Int32>()->Value();
+  const int err = uv_os_setpriority(pid, priority);
+
+  if (err) {
+    CHECK(args[2]->IsObject());
+    env->CollectUVExceptionInfo(args[2], err, "uv_os_setpriority");
+  }
+
+  args.GetReturnValue().Set(err);
+}
+
+
+static void GetPriority(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+
+  CHECK_EQ(args.Length(), 2);
+  CHECK(args[0]->IsInt32());
+
+  const int pid = args[0].As<Int32>()->Value();
+  int priority;
+  const int err = uv_os_getpriority(pid, &priority);
+
+  if (err) {
+    CHECK(args[1]->IsObject());
+    env->CollectUVExceptionInfo(args[1], err, "uv_os_getpriority");
+    return;
+  }
+
+  args.GetReturnValue().Set(priority);
 }
 
 
@@ -420,6 +462,8 @@ void Initialize(Local<Object> target,
   env->SetMethod(target, "getInterfaceAddresses", GetInterfaceAddresses);
   env->SetMethod(target, "getHomeDirectory", GetHomeDirectory);
   env->SetMethod(target, "getUserInfo", GetUserInfo);
+  env->SetMethod(target, "setPriority", SetPriority);
+  env->SetMethod(target, "getPriority", GetPriority);
   target->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "isBigEndian"),
               Boolean::New(env->isolate(), IsBigEndian()));
 }

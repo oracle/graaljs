@@ -565,7 +565,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::object_get_prototype, "objectGetPrototype", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_set_prototype, "objectSetPrototype", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_get_constructor_name, "objectGetConstructorName", "(Ljava/lang/Object;)Ljava/lang/String;")
-    ACCESS_METHOD(GraalAccessMethod::object_get_property_names, "objectGetPropertyNames", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::object_get_property_names, "objectGetPropertyNames", "(Ljava/lang/Object;ZZZZZZZZ)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_get_own_property_names, "objectGetOwnPropertyNames", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_creation_context, "objectCreationContext", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_define_property, "objectDefineProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;ZZZZZZ)Z")

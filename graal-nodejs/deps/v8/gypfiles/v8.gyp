@@ -7,19 +7,20 @@
     'v8_code': 1,
     'v8_random_seed%': 314159265,
     'v8_vector_stores%': 0,
-    'embed_script%': "",
-    'warmup_script%': "",
+    'v8_embed_script%': "",
     'v8_extra_library_files%': [],
     'v8_experimental_extra_library_files%': [],
     'mksnapshot_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)mksnapshot<(EXECUTABLE_SUFFIX)',
     'v8_os_page_size%': 0,
+    'torque_generated_pure_headers': [
+      '<(SHARED_INTERMEDIATE_DIR)/torque-generated/builtin-definitions-from-dsl.h',
+    ],
   },
-  'includes': ['toolchain.gypi', 'features.gypi', 'inspector.gypi'],
+  'includes': ['toolchain.gypi', 'features.gypi'],
   'targets': [
     {
       'target_name': 'v8',
-      'dependencies_traverse': 1,
-      'dependencies': ['v8_maybe_snapshot', 'v8_dump_build_config#target'],
+      'dependencies': [ 'v8_maybe_snapshot' ],
       'conditions': [
         ['want_separate_host_toolset==1', {
           'toolsets': ['host', 'target'],
@@ -60,11 +61,55 @@
         }],
       ],
       'direct_dependent_settings': {
-        'include_dirs': [
-          '../include/',
-        ],
+        'include_dirs': [ '../include/', ],
       },
-    },
+      'actions': [
+        {
+          'action_name': 'v8_dump_build_config',
+          'toolsets': ['target'],
+          'inputs': [
+            '../tools/testrunner/utils/dump_build_config_gyp.py',
+          ],
+          'outputs': [
+            '<(PRODUCT_DIR)/v8_build_config.json',
+          ],
+          'variables': {
+            'v8_dump_build_config_args': [
+              '<(PRODUCT_DIR)/v8_build_config.json',
+              'dcheck_always_on=<(dcheck_always_on)',
+              'is_asan=<(asan)',
+              'is_cfi=<(cfi_vptr)',
+              'is_component_build=<(component)',
+              'is_debug=<(CONFIGURATION_NAME)',
+              # Not available in gyp.
+              'is_gcov_coverage=0',
+              'is_msan=<(msan)',
+              'is_tsan=<(tsan)',
+              # Not available in gyp.
+              'is_ubsan_vptr=0',
+              'target_cpu=<(target_arch)',
+              'v8_enable_i18n_support=<(v8_enable_i18n_support)',
+              'v8_enable_verify_predictable=<(v8_enable_verify_predictable)',
+              'v8_target_cpu=<(v8_target_arch)',
+              'v8_use_snapshot=<(v8_use_snapshot)',
+            ]
+          },
+          'conditions': [
+            ['v8_target_arch=="mips" or v8_target_arch=="mipsel" \
+              or v8_target_arch=="mips64" or v8_target_arch=="mips64el"', {
+              'v8_dump_build_config_args':[
+                'mips_arch_variant=<(mips_arch_variant)',
+                'mips_use_msa=<(mips_use_msa)',
+              ],
+            }],
+          ],
+          'action': [
+            'python', '../tools/testrunner/utils/dump_build_config_gyp.py',
+            '<@(v8_dump_build_config_args)',
+          ],
+        },
+      ],
+    }, # v8
     {
       # This rule delegates to either v8_snapshot, v8_nosnapshot, or
       # v8_external_snapshot, depending on the current variables.
@@ -86,21 +131,9 @@
         }],
         ['v8_use_snapshot=="true" and v8_use_external_startup_data==1 and want_separate_host_toolset==0', {
           'dependencies': ['v8_base', 'v8_external_snapshot'],
-          'inputs': [ '<(PRODUCT_DIR)/snapshot_blob.bin', ],
         }],
         ['v8_use_snapshot=="true" and v8_use_external_startup_data==1 and want_separate_host_toolset==1', {
           'dependencies': ['v8_base', 'v8_external_snapshot'],
-          'target_conditions': [
-            ['_toolset=="host"', {
-              'inputs': [
-                '<(PRODUCT_DIR)/snapshot_blob_host.bin',
-              ],
-            }, {
-              'inputs': [
-                '<(PRODUCT_DIR)/snapshot_blob.bin',
-              ],
-            }],
-          ],
         }],
         ['want_separate_host_toolset==1', {
           'toolsets': ['host', 'target'],
@@ -108,24 +141,27 @@
           'toolsets': ['target'],
         }],
       ]
-    },
+    }, # v8_maybe_snapshot
     {
       'target_name': 'v8_init',
       'type': 'static_library',
       'dependencies': [
         'v8_initializers',
-        'v8_torque#host',
+        # We need this transitive dependency, since it also does codegen.
+        'v8_base',
       ],
       'variables': {
         'optimize': 'max',
       },
-      'include_dirs+': [
+      'include_dirs': [
         '..',
         '../include/',
+        # This is for `gen/builtins-generated`
+        '<(SHARED_INTERMEDIATE_DIR)',
       ],
       'sources': [
         '../src/setup-isolate-full.cc',
-        '<(SHARED_INTERMEDIATE_DIR)/torque-generated/builtin-definitions-from-dsl.h',
+        '<@(torque_generated_pure_headers)',
       ],
       'conditions': [
         ['want_separate_host_toolset==1', {
@@ -134,18 +170,17 @@
           'toolsets': ['target'],
         }],
       ],
-    },
+    }, # v8_init
     {
       'target_name': 'v8_initializers',
       'type': 'static_library',
       'dependencies': [
         'v8_base',
-        'v8_torque#host',
       ],
        'variables': {
         'optimize': 'max',
       },
-      'include_dirs+': [
+      'include_dirs': [
         '..',
         '../include/',
       ],
@@ -223,6 +258,7 @@
         '<(SHARED_INTERMEDIATE_DIR)/torque-generated/builtins-base-from-dsl-gen.h',
         '<(SHARED_INTERMEDIATE_DIR)/torque-generated/builtins-typed-array-from-dsl-gen.cc',
         '<(SHARED_INTERMEDIATE_DIR)/torque-generated/builtins-typed-array-from-dsl-gen.h',
+        '<@(torque_generated_pure_headers)',
       ],
       'conditions': [
         ['want_separate_host_toolset==1', {
@@ -276,7 +312,7 @@
           ],
         }],
       ],
-    },
+    }, # v8_initializers
     {
       'target_name': 'v8_snapshot',
       'type': 'static_library',
@@ -308,60 +344,61 @@
       'dependencies': [
         'v8_base',
       ],
-      'include_dirs+': [
+      'include_dirs': [
         '..',
         '<(DEPTH)',
       ],
+      'variables': {
+        'mksnapshot_flags': [ '--turbo_instruction_scheduling', ],
+        'conditional_snapshot_outputs': [ ],
+        'conditional_inputs': [ ],
+        'conditions': [
+          ['v8_random_seed != 0', {
+            'mksnapshot_flags': ['--random-seed', '<(v8_random_seed)'],
+          }],
+          ['v8_os_page_size != 0', {
+            'mksnapshot_flags': ['--v8_os_page_size', '<(v8_os_page_size)'],
+          }],
+          ['v8_use_external_startup_data !=0 ', {
+            'conditional_snapshot_outputs': [ '<(INTERMEDIATE_DIR)/snapshot_blob.bin', ],
+            'mksnapshot_flags': [ '--startup_blob', '<(INTERMEDIATE_DIR)/snapshot_blob.bin', ]
+          }, {
+             'conditional_snapshot_outputs': [ "<(INTERMEDIATE_DIR)/snapshot.cc" ],
+             'mksnapshot_flags': [ '--startup_src', '<(INTERMEDIATE_DIR)/snapshot.cc', ]
+           }],
+          ['v8_embed_script != ""', {
+            'conditional_inputs': [ '<(v8_embed_script)' ],
+            'mksnapshot_flags': [ '<(v8_embed_script)' ],
+          }],
+        ],
+      },
       'sources': [],
       'actions': [
         {
           'action_name': 'run_mksnapshot',
+          'message': 'generating: >@(conditional_snapshot_outputs)',
           'inputs': [
             '<(mksnapshot_exec)',
-          ],
-          'conditions': [
-            ['embed_script!=""', {
-              'inputs': [
-                '<(embed_script)',
-              ],
-            }],
-            ['warmup_script!=""', {
-              'inputs': [
-                '<(warmup_script)',
-              ],
-            }],
+            '>@(conditional_inputs)',
           ],
           'outputs': [
-            '<(INTERMEDIATE_DIR)/snapshot.cc',
+            '>@(conditional_snapshot_outputs)',
           ],
-          'variables': {
-            'mksnapshot_flags': [],
-            'conditions': [
-              ['v8_random_seed!=0', {
-                'mksnapshot_flags': ['--random-seed', '<(v8_random_seed)'],
-              }],
-              ['v8_vector_stores!=0', {
-                'mksnapshot_flags': ['--vector-stores'],
-              }],
-            ],
-          },
+          'process_outputs_as_sources': 1,
           'action': [
-            '<(mksnapshot_exec)',
-            '<@(mksnapshot_flags)',
-            '--startup_src', '<@(INTERMEDIATE_DIR)/snapshot.cc',
-            '<(embed_script)',
-            '<(warmup_script)',
+            '>@(_inputs)',
+            '>@(mksnapshot_flags)',
           ],
         },
       ],
-    },
+    }, # v8_snapshot
     {
       'target_name': 'v8_nosnapshot',
       'type': 'none', # 'type': 'static_library',
       'dependencies': [
         'v8_base',
       ],
-      'include_dirs+': [
+      'include_dirs': [
         '..',
         '<(DEPTH)',
       ],
@@ -369,138 +406,23 @@
       'conditions': []
     },
     {
-      'target_name': 'v8_external_snapshot',
-      'type': 'static_library',
-      'conditions': [
-        [ 'v8_use_external_startup_data==1', {
-          'conditions': [
-            ['want_separate_host_toolset==1', {
-              'toolsets': ['host', 'target'],
-              'dependencies': [
-                'mksnapshot#host',
-                'js2c#host',
-                'natives_blob',
-            ]}, {
-              'toolsets': ['target'],
-              'dependencies': [
-                'mksnapshot',
-                'js2c',
-                'natives_blob',
-              ],
-            }],
-            ['component=="shared_library"', {
-              'defines': [
-                'BUILDING_V8_SHARED',
-              ],
-              'direct_dependent_settings': {
-                'defines': [
-                  'USING_V8_SHARED',
-                ],
-              },
-            }],
-          ],
-          'dependencies': [
-            'v8_base',
-          ],
-          'include_dirs+': [
-            '..',
-            '<(DEPTH)',
-          ],
-          'sources': [
-            '../src/setup-isolate-deserialize.cc',
-            '../src/snapshot/natives-external.cc',
-            '../src/snapshot/snapshot-external.cc',
-          ],
-          'actions': [
-            {
-              'action_name': 'run_mksnapshot (external)',
-              'inputs': [
-                '<(mksnapshot_exec)',
-              ],
-              'variables': {
-                'mksnapshot_flags': [],
-                'conditions': [
-                  ['v8_random_seed!=0', {
-                    'mksnapshot_flags': ['--random-seed', '<(v8_random_seed)'],
-                  }],
-                  ['v8_vector_stores!=0', {
-                    'mksnapshot_flags': ['--vector-stores'],
-                  }],
-                  ['v8_os_page_size!=0', {
-                    'mksnapshot_flags': ['--v8_os_page_size', '<(v8_os_page_size)'],
-                  }],
-                ],
-              },
-              'conditions': [
-                ['embed_script!=""', {
-                  'inputs': [
-                    '<(embed_script)',
-                  ],
-                }],
-                ['warmup_script!=""', {
-                  'inputs': [
-                    '<(warmup_script)',
-                  ],
-                }],
-                ['want_separate_host_toolset==1', {
-                  'target_conditions': [
-                    ['_toolset=="host"', {
-                      'outputs': [
-                        '<(PRODUCT_DIR)/snapshot_blob_host.bin',
-                      ],
-                      'action': [
-                        '<(mksnapshot_exec)',
-                        '<@(mksnapshot_flags)',
-                        '--startup_blob', '<(PRODUCT_DIR)/snapshot_blob_host.bin',
-                        '<(embed_script)',
-                        '<(warmup_script)',
-                      ],
-                    }, {
-                      'outputs': [
-                        '<(PRODUCT_DIR)/snapshot_blob.bin',
-                      ],
-                      'action': [
-                        '<(mksnapshot_exec)',
-                        '<@(mksnapshot_flags)',
-                        '--startup_blob', '<(PRODUCT_DIR)/snapshot_blob.bin',
-                        '<(embed_script)',
-                        '<(warmup_script)',
-                      ],
-                    }],
-                  ],
-                }, {
-                  'outputs': [
-                    '<(PRODUCT_DIR)/snapshot_blob.bin',
-                  ],
-                  'action': [
-                    '<(mksnapshot_exec)',
-                    '<@(mksnapshot_flags)',
-                    '--startup_blob', '<(PRODUCT_DIR)/snapshot_blob.bin',
-                    '<(embed_script)',
-                    '<(warmup_script)',
-                  ],
-                }],
-              ],
-            },
-          ],
-        }],
-      ],
-    },
-    {
       'target_name': 'v8_base',
       'type': 'static_library',
+      # Since this target is a static-library, but as a side effect it generates
+      # header files, it needs to be a hard dependency.
+      'hard_dependency': 1,
       'dependencies': [
         'v8_libbase',
         'v8_libsampler',
       ],
       'direct_dependent_settings': {
-        'include_dirs+': ['<(SHARED_INTERMEDIATE_DIR)'],
+        'include_dirs': ['<(SHARED_INTERMEDIATE_DIR)'],
       },
       'objs': ['foo.o'],
       'variables': {
         'optimize': 'max',
       },
-      'include_dirs+': [
+      'include_dirs': [
         '..',
         '../../uv/include',
         '<(graalvm)/include/',
@@ -613,7 +535,7 @@
         '../src/graal/graal_value.cc',
         '../src/graal/v8.cc'
       ],
-    },
+    }, # v8_base
     {
       'target_name': 'v8_libbase',
       'type': 'none',
@@ -621,15 +543,15 @@
       'variables': {
         'optimize': 'max',
       },
-      'include_dirs+': [
+      'include_dirs': [
         '..',
       ],
       'direct_dependent_settings': {
-        'include_dirs+': ['..'],
+        'include_dirs': ['..'],
       },
       'sources': [
       ],
-    },
+    }, # v8_libbase
     {
       'target_name': 'v8_libplatform',
       'type': 'none',
@@ -639,23 +561,52 @@
       'dependencies': [
         'v8_libbase',
       ],
-      'include_dirs+': [
+      'include_dirs': [
         '..',
         '<(DEPTH)',
         '../include/',
       ],
       'sources': [
-        '../include/libplatform/libplatform.h',
         '../include/libplatform/libplatform-export.h',
+        '../include/libplatform/libplatform.h',
         '../include/libplatform/v8-tracing.h',
-        'libplatform/default-platform.h',
+        '../src/libplatform/default-foreground-task-runner.cc',
+        '../src/libplatform/default-foreground-task-runner.h',
+        '../src/libplatform/default-platform.cc',
+        '../src/libplatform/default-platform.h',
+        '../src/libplatform/default-worker-threads-task-runner.cc',
+        '../src/libplatform/default-worker-threads-task-runner.h',
+        '../src/libplatform/task-queue.cc',
+        '../src/libplatform/task-queue.h',
+        '../src/libplatform/tracing/trace-buffer.cc',
+        '../src/libplatform/tracing/trace-buffer.h',
+        '../src/libplatform/tracing/trace-config.cc',
+        '../src/libplatform/tracing/trace-object.cc',
+        '../src/libplatform/tracing/trace-writer.cc',
+        '../src/libplatform/tracing/trace-writer.h',
+        '../src/libplatform/tracing/tracing-controller.cc',
+        '../src/libplatform/worker-thread.cc',
+        '../src/libplatform/worker-thread.h',
+      ],
+      'conditions': [
+        ['want_separate_host_toolset==1', {
+          'toolsets': ['host', 'target'],
+        }, {
+          'toolsets': ['target'],
+        }],
+        ['component=="shared_library"', {
+          'direct_dependent_settings': {
+            'defines': [ 'USING_V8_PLATFORM_SHARED' ],
+          },
+          'defines': [ 'BUILDING_V8_PLATFORM_SHARED' ],
+        }]
       ],
       'direct_dependent_settings': {
         'include_dirs': [
           '../include/',
         ],
       },
-    },
+    }, # v8_libplatform
     {
       'target_name': 'v8_libsampler',
       'type': 'none',
@@ -665,7 +616,7 @@
       'dependencies': [
         'v8_libbase',
       ],
-      'include_dirs+': [
+      'include_dirs': [
         '..',
         '../include/',
       ],
@@ -683,7 +634,7 @@
           '../include/',
         ],
       },
-    },
+    }, # v8_libsampler
     {
       'target_name': 'natives_blob',
       'type': 'none',
@@ -1071,7 +1022,7 @@
         '../third_party/antlr4/runtime/Cpp/runtime/src/tree/xpath/XPathWildcardElement.cpp',
         '../third_party/antlr4/runtime/Cpp/runtime/src/tree/xpath/XPathWildcardElement.h',
       ],
-    },
+    }, # torque_base
     {
       'target_name': 'v8_torque',
       'type': 'none',
@@ -1101,7 +1052,7 @@
           'action': ['<@(_inputs)', '-o', '<(SHARED_INTERMEDIATE_DIR)/torque-generated'],
         },
       ],
-    },
+    }, # torque
     {
       'target_name': 'postmortem-metadata',
       'type': 'none',
@@ -1123,6 +1074,8 @@
             '../src/objects/js-regexp-string-iterator.h',
             '../src/objects/map.h',
             '../src/objects/map-inl.h',
+            '../src/objects/name.h',
+            '../src/objects/name-inl.h',
             '../src/objects/scope-info.h',
             '../src/objects/script.h',
             '../src/objects/script-inl.h',
@@ -1133,24 +1086,24 @@
         ],
       },
       'actions': [
-          {
-            'action_name': 'gen-postmortem-metadata',
-            'inputs': [
-              '../tools//gen-postmortem-metadata.py',
-              '<@(heapobject_files)',
-            ],
-            'outputs': [
-              '<(SHARED_INTERMEDIATE_DIR)/debug-support.cc',
-            ],
-            'action': [
-              'python',
-              '../tools//gen-postmortem-metadata.py',
-              '<@(_outputs)',
-              '<@(heapobject_files)'
-            ]
-          }
-        ]
-    },
+        {
+          'action_name': 'gen-postmortem-metadata',
+          'inputs': [
+            '../tools/gen-postmortem-metadata.py',
+            '<@(heapobject_files)',
+          ],
+          'outputs': [
+            '<(SHARED_INTERMEDIATE_DIR)/debug-support.cc',
+          ],
+          'action': [
+            'python',
+            '../tools/gen-postmortem-metadata.py',
+            '<@(_outputs)',
+            '<@(heapobject_files)'
+          ],
+        },
+      ],
+    }, # postmortem-metadata
     {
       'target_name': 'mksnapshot',
       'type': 'executable',
@@ -1161,7 +1114,7 @@
         'v8_libplatform',
         'v8_nosnapshot',
       ],
-      'include_dirs+': [
+      'include_dirs': [
         '..',
         '<(DEPTH)',
       ],
@@ -1181,53 +1134,9 @@
           'toolsets': ['target'],
         }],
       ],
-    },
+    }, # mksnapshot
     {
-      'target_name': 'v8_dump_build_config',
-      'type': 'none',
-      'variables': {
-      },
-      'actions': [
-        {
-          'action_name': 'v8_dump_build_config',
-          'inputs': [
-            '../tools//testrunner/utils/dump_build_config_gyp.py',
-          ],
-          'outputs': [
-            '<(PRODUCT_DIR)/v8_build_config.json',
-          ],
-          'action': [
-            'python',
-            '../tools//testrunner/utils/dump_build_config_gyp.py',
-            '<(PRODUCT_DIR)/v8_build_config.json',
-            'dcheck_always_on=<(dcheck_always_on)',
-            'is_asan=<(asan)',
-            'is_cfi=<(cfi_vptr)',
-            'is_component_build=<(component)',
-            'is_debug=<(CONFIGURATION_NAME)',
-            # Not available in gyp.
-            'is_gcov_coverage=0',
-            'is_msan=<(msan)',
-            'is_tsan=<(tsan)',
-            # Not available in gyp.
-            'is_ubsan_vptr=0',
-            'target_cpu=<(target_arch)',
-            'v8_enable_i18n_support=<(v8_enable_i18n_support)',
-            'v8_enable_verify_predictable=<(v8_enable_verify_predictable)',
-            'v8_target_cpu=<(v8_target_arch)',
-            'v8_use_snapshot=<(v8_use_snapshot)',
-          ],
-          'conditions': [
-            ['v8_target_arch=="mips" or v8_target_arch=="mipsel" \
-              or v8_target_arch=="mips64" or v8_target_arch=="mips64el"', {
-                'action':[
-                  'mips_arch_variant=<(mips_arch_variant)',
-                  'mips_use_msa=<(mips_use_msa)',
-                ],
-            }],
-          ],
-        },
-      ],
-    },
+      'includes': [ 'v8_external_snapshot.gypi' ],
+    }, # v8_external_snapshot
   ],
 }

@@ -18,9 +18,7 @@ on which a Node.js application is running. Specifically, when running on a
 Windows operating system, the `path` module will assume that Windows-style
 paths are being used.
 
-For example, using the `path.basename()` function with the Windows file path
-`C:\temp\myfile.html`, will yield different results when running on POSIX than
-when run on Windows:
+So using `path.basename()` might yield different results on POSIX and Windows:
 
 On POSIX:
 
@@ -56,9 +54,9 @@ path.posix.basename('/tmp/myfile.html');
 // Returns: 'myfile.html'
 ```
 
-*Note:* On Windows Node.js follows the concept of per-drive working directory.
+On Windows Node.js follows the concept of per-drive working directory.
 This behavior can be observed when using a drive path without a backslash. For
-example `path.resolve('c:\\')` can potentially return a different result than
+example, `path.resolve('c:\\')` can potentially return a different result than
 `path.resolve('c:')`. For more information, see
 [this MSDN page][MSDN-Rel-Path].
 
@@ -258,7 +256,7 @@ The `path.isAbsolute()` method determines if `path` is an absolute path.
 
 If the given `path` is a zero-length string, `false` will be returned.
 
-For example on POSIX:
+For example, on POSIX:
 
 ```js
 path.isAbsolute('/foo/bar'); // true
@@ -290,7 +288,7 @@ added: v0.1.16
 * Returns: {string}
 
 The `path.join()` method joins all given `path` segments together using the
-platform specific separator as a delimiter, then normalizes the resulting path.
+platform-specific separator as a delimiter, then normalizes the resulting path.
 
 Zero-length `path` segments are ignored. If the joined path string is a
 zero-length string then `'.'` will be returned, representing the current
@@ -319,13 +317,13 @@ The `path.normalize()` method normalizes the given `path`, resolving `'..'` and
 
 When multiple, sequential path segment separation characters are found (e.g.
 `/` on POSIX and either `\` or `/` on Windows), they are replaced by a single
-instance of the platform specific path segment separator (`/` on POSIX and
+instance of the platform-specific path segment separator (`/` on POSIX and
 `\` on Windows). Trailing separators are preserved.
 
 If the `path` is a zero-length string, `'.'` is returned, representing the
 current working directory.
 
-For example on POSIX:
+For example, on POSIX:
 
 ```js
 path.normalize('/foo/bar//baz/asdf/quux/..');
@@ -369,7 +367,7 @@ The returned object will have the following properties:
 * `name` {string}
 * `ext` {string}
 
-For example on POSIX:
+For example, on POSIX:
 
 ```js
 path.parse('/home/user/dir/file.txt');
@@ -446,7 +444,7 @@ path (after calling `path.resolve()` on each), a zero-length string is returned.
 If a zero-length string is passed as `from` or `to`, the current working
 directory will be used instead of the zero-length strings.
 
-For example on POSIX:
+For example, on POSIX:
 
 ```js
 path.relative('/data/orandea/test/aaa', '/data/orandea/impl/bbb');
@@ -515,7 +513,7 @@ Provides the platform-specific path segment separator:
 * `\` on Windows
 * `/` on POSIX
 
-For example on POSIX:
+For example, on POSIX:
 
 ```js
 'foo/bar/baz'.split(path.sep);
@@ -545,7 +543,7 @@ On Windows systems only, returns an equivalent [namespace-prefixed path][] for
 the given `path`. If `path` is not a string, `path` will be returned without
 modifications.
 
-This method is meaningful only on Windows system. On posix systems, the
+This method is meaningful only on Windows system. On POSIX systems, the
 method is non-operational and always returns `path` without modifications.
 
 ## path.win32

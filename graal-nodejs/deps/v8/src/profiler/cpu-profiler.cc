@@ -345,19 +345,19 @@ void CpuProfiler::CollectSample() {
   }
 }
 
-void CpuProfiler::StartProfiling(const char* title, bool record_samples) {
-  if (profiles_->StartProfiling(title, record_samples)) {
+void CpuProfiler::StartProfiling(const char* title, bool record_samples,
+                                 ProfilingMode mode) {
+  if (profiles_->StartProfiling(title, record_samples, mode)) {
     TRACE_EVENT0("v8", "CpuProfiler::StartProfiling");
     StartProcessorIfNotStarted();
   }
 }
 
-
-void CpuProfiler::StartProfiling(String* title, bool record_samples) {
-  StartProfiling(profiles_->GetName(title), record_samples);
+void CpuProfiler::StartProfiling(String* title, bool record_samples,
+                                 ProfilingMode mode) {
+  StartProfiling(profiles_->GetName(title), record_samples, mode);
   isolate_->debug()->feature_tracker()->Track(DebugFeatureTracker::kProfiler);
 }
-
 
 void CpuProfiler::StartProcessorIfNotStarted() {
   if (processor_) {
@@ -368,8 +368,11 @@ void CpuProfiler::StartProcessorIfNotStarted() {
   // Disable logging when using the new implementation.
   saved_is_logging_ = logger->is_logging_;
   logger->is_logging_ = false;
+
+  bool codemap_needs_initialization = false;
   if (!generator_) {
     generator_.reset(new ProfileGenerator(profiles_.get()));
+    codemap_needs_initialization = true;
     CreateEntriesForRuntimeCallStats();
   }
   processor_.reset(new ProfilerEventsProcessor(isolate_, generator_.get(),
@@ -382,12 +385,14 @@ void CpuProfiler::StartProcessorIfNotStarted() {
   isolate_->set_is_profiling(true);
   // Enumerate stuff we already have in the heap.
   DCHECK(isolate_->heap()->HasBeenSetUp());
-  if (!FLAG_prof_browser_mode) {
-    logger->LogCodeObjects();
+  if (codemap_needs_initialization) {
+    if (!FLAG_prof_browser_mode) {
+      logger->LogCodeObjects();
+    }
+    logger->LogCompiledFunctions();
+    logger->LogAccessorCallbacks();
+    LogBuiltins();
   }
-  logger->LogCompiledFunctions();
-  logger->LogAccessorCallbacks();
-  LogBuiltins();
   // Enable stack sampling.
   processor_->AddCurrentStack(isolate_);
   processor_->StartSynchronously();
@@ -426,7 +431,7 @@ void CpuProfiler::LogBuiltins() {
     CodeEventsContainer evt_rec(CodeEventRecord::REPORT_BUILTIN);
     ReportBuiltinEventRecord* rec = &evt_rec.ReportBuiltinEventRecord_;
     Builtins::Name id = static_cast<Builtins::Name>(i);
-    rec->start = builtins->builtin(id)->address();
+    rec->instruction_start = builtins->builtin(id)->InstructionStart();
     rec->builtin_id = id;
     processor_->Enqueue(evt_rec);
   }

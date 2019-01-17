@@ -32,18 +32,20 @@ Their privileges include but are not limited to:
 Modifications of the contents of the nodejs/node repository are made on
 a collaborative basis. Anybody with a GitHub account may propose a
 modification via pull request and it will be considered by the project
-Collaborators. All pull requests must be reviewed and accepted by a
-Collaborator with sufficient expertise who is able to take full
-responsibility for the change. In the case of pull requests proposed
-by an existing Collaborator, an additional Collaborator is required
-for sign-off.
+Collaborators.
+
+At least two Collaborators must approve a pull request before the pull request
+lands. (One Collaborator approval is enough if the pull request has been open
+for more than 7 days.) Approving a pull request indicates that the Collaborator
+accepts responsibility for the change. Approval must be from Collaborators who
+are not authors of the change.
 
 If one or more Collaborators oppose a proposed change, then the change cannot
 be accepted unless:
 
 * Discussions and/or additional changes result in no Collaborators objecting to
   the change. Previously-objecting Collaborators do not necessarily have to
-  sign-off on the change, but they should not be opposed to it.
+  sign off on the change, but they should not be opposed to it.
 * The change is escalated to the TSC and the TSC votes to approve the change.
   This should only happen if disagreements between Collaborators cannot be
   resolved through discussion.
@@ -121,8 +123,8 @@ The meeting chair is responsible for ensuring that minutes are taken and that a
 pull request with the minutes is submitted after the meeting.
 
 Due to the challenges of scheduling a global meeting with participants in
-several timezones, the TSC will seek to resolve as many agenda items as possible
-outside of meetings using
+several time zones, the TSC will seek to resolve as many agenda items as
+possible outside of meetings using
 [the TSC issue tracker](https://github.com/nodejs/TSC/issues). The process in
 the issue tracker is:
 
@@ -194,7 +196,7 @@ completed within a month after the nomination is accepted.
 
 ## Consensus Seeking Process
 
-The TSC follows a [Consensus Seeking][] decision making model as described by
+The TSC follows a [Consensus Seeking][] decision-making model as described by
 the [TSC Charter][].
 
 [collaborators-discussions]: https://github.com/orgs/nodejs/teams/collaborators/discussions

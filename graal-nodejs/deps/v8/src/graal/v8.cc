@@ -197,6 +197,10 @@ namespace v8 {
         return reinterpret_cast<GraalContext*> (this)->SlowGetEmbedderData(index);
     }
 
+    uint32_t Context::GetNumberOfEmbedderDataFields() {
+        return 64;
+    }
+
     void CpuProfiler::SetIdle(bool) {
         TRACE
     }
@@ -561,11 +565,19 @@ namespace v8 {
     }
 
     Local<Array> Object::GetPropertyNames() {
-        return reinterpret_cast<GraalObject*> (this)->GetPropertyNames();
+        return GetPropertyNames(GetIsolate()->GetCurrentContext()).ToLocalChecked();
     }
 
     MaybeLocal<Array> Object::GetPropertyNames(Local<Context> context) {
-        return reinterpret_cast<GraalObject*> (this)->GetPropertyNames();
+        return GetPropertyNames(context, KeyCollectionMode::kIncludePrototypes,
+                static_cast<v8::PropertyFilter> (ONLY_ENUMERABLE | SKIP_SYMBOLS),
+                v8::IndexFilter::kIncludeIndices);
+    }
+
+    MaybeLocal<Array> Object::GetPropertyNames(Local<Context> context, KeyCollectionMode mode,
+            PropertyFilter property_filter, IndexFilter index_filter,
+            KeyConversionMode key_conversion) {
+        return reinterpret_cast<GraalObject*> (this)->GetPropertyNames(context, mode, property_filter, index_filter, key_conversion);
     }
 
     Local<Value> Object::GetPrototype() {
@@ -810,6 +822,10 @@ namespace v8 {
         GraalString* graal_concat = new GraalString(isolate, env->NewString(str, length));
         delete[] str;
         return reinterpret_cast<String*> (graal_concat);
+    }
+
+    Local<String> String::Concat(Isolate* isolate, Local<String> left, Local<String> right) {
+        return Concat(left, right);
     }
 
     const String::ExternalOneByteStringResource* String::GetExternalOneByteStringResource() const {
@@ -1415,6 +1431,10 @@ namespace v8 {
         return reinterpret_cast<const GraalStackTrace*> (this)->GetFrame(index);
     }
 
+    Local<StackFrame> StackTrace::GetFrame(Isolate* isolate, uint32_t index) const {
+        return reinterpret_cast<const GraalStackTrace*> (this)->GetFrame(index);
+    }
+
     bool String::IsExternal() const {
         TRACE
         return false;
@@ -1441,7 +1461,15 @@ namespace v8 {
         return reinterpret_cast<const GraalString*> (this)->Utf8Length();
     }
 
+    int String::Utf8Length(Isolate* isolate) const {
+        return reinterpret_cast<const GraalString*> (this)->Utf8Length();
+    }
+
     int String::WriteOneByte(uint8_t* buffer, int start, int length, int options) const {
+        return reinterpret_cast<const GraalString*> (this)->WriteOneByte(buffer, start, length, options);
+    }
+
+    int String::WriteOneByte(Isolate* isolate, uint8_t* buffer, int start, int length, int options) const {
         return reinterpret_cast<const GraalString*> (this)->WriteOneByte(buffer, start, length, options);
     }
 
@@ -1449,7 +1477,15 @@ namespace v8 {
         return reinterpret_cast<const GraalString*> (this)->Write(buffer, start, length, options);
     }
 
+    int String::Write(Isolate* isolate, uint16_t* buffer, int start, int length, int options) const {
+        return reinterpret_cast<const GraalString*> (this)->Write(buffer, start, length, options);
+    }
+
     int String::WriteUtf8(char* buffer, int length, int* nchars_ref, int options) const {
+        return reinterpret_cast<const GraalString*> (this)->WriteUtf8(buffer, length, nchars_ref, options);
+    }
+
+    int String::WriteUtf8(Isolate* isolate, char* buffer, int length, int* nchars_ref, int options) const {
         return reinterpret_cast<const GraalString*> (this)->WriteUtf8(buffer, length, nchars_ref, options);
     }
 
@@ -2546,6 +2582,16 @@ namespace v8 {
         TRACE
     }
 
+    void v8::platform::tracing::TraceObject::Initialize(
+            char phase, const uint8_t* category_enabled_flag, const char* name,
+            const char* scope, uint64_t id, uint64_t bind_id, int num_args,
+            const char** arg_names, const uint8_t* arg_types,
+            const uint64_t* arg_values,
+            std::unique_ptr<v8::ConvertableToTraceFormat>* arg_convertables,
+            unsigned int flags, int64_t timestamp, int64_t cpu_timestamp) {
+        TRACE
+    }
+
     v8::platform::tracing::TraceBufferChunk::TraceBufferChunk(uint32_t seq) {
         TRACE
     }
@@ -2898,6 +2944,21 @@ namespace v8 {
 
     MaybeLocal<Map> Map::Set(Local<Context> context, Local<Value> key, Local<Value> value) {
         return reinterpret_cast<GraalMap*> (this)->Set(context, key, value);
+    }
+
+    MaybeLocal<Function> ScriptCompiler::CompileFunctionInContext(
+            Local<Context> context, Source* source, size_t arguments_count,
+            Local<String> arguments[], size_t context_extension_count,
+            Local<Object> context_extensions[],
+            CompileOptions options,
+            NoCacheReason) {
+        TRACE
+        return MaybeLocal<Function>();
+    }
+
+    ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCacheForFunction(Local<Function> function) {
+        TRACE
+        return nullptr;
     }
 
     void Object::CheckCast(v8::Value* obj) {}

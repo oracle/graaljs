@@ -34,7 +34,7 @@ const {
   ERR_CRYPTO_FIPS_FORCED,
   ERR_CRYPTO_FIPS_UNAVAILABLE
 } = require('internal/errors').codes;
-const constants = process.binding('constants').crypto;
+const constants = internalBinding('constants').crypto;
 const {
   fipsMode,
   fipsForced
@@ -56,6 +56,10 @@ const {
   scrypt,
   scryptSync
 } = require('internal/crypto/scrypt');
+const {
+  generateKeyPair,
+  generateKeyPairSync
+} = require('internal/crypto/keygen');
 const {
   DiffieHellman,
   DiffieHellmanGroup,
@@ -157,6 +161,8 @@ module.exports = exports = {
   getHashes,
   pbkdf2,
   pbkdf2Sync,
+  generateKeyPair,
+  generateKeyPairSync,
   privateDecrypt,
   privateEncrypt,
   prng: randomBytes,

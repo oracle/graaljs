@@ -43,7 +43,7 @@
 .Op Ar arguments ...
 .
 .Nm node
-.Cm debug
+.Cm inspect
 .Op Fl e Ar string | Ar script.js | Fl | Ar <host>:<port>
 .Ar ...
 .
@@ -66,7 +66,7 @@ Alias for stdin, analogous to the use of - in other command-line utilities.
 The executed script is read from stdin, and remaining arguments are passed to the script.
 .
 .It Fl -
-Indicate the end of node options.
+Indicate the end of command-line options.
 Pass the rest of the arguments to the script.
 .Pp
 If no script filename or eval/print script is supplied prior to this, then
@@ -74,6 +74,9 @@ the next argument will be used as a script filename.
 .
 .It Fl -abort-on-uncaught-exception
 Aborting instead of exiting causes a core file to be generated for analysis.
+.
+.It Fl -completion-bash
+Print source-able bash completion script for Node.js.
 .
 .It Fl -enable-fips
 Enable FIPS-compliant crypto at startup.
@@ -123,6 +126,15 @@ Default is
 .Pp
 V8 Inspector integration allows attaching Chrome DevTools and IDEs to Node.js instances for debugging and profiling.
 It uses the Chrome DevTools Protocol.
+.
+.It Fl -loader Ns = Ns Ar file
+Specify the
+.Ar file
+as a custom loader, to load
+.Fl -experimental-modules .
+.
+.It Fl -max-http-header-size Ns = Ns Ar size
+Specify the maximum size of HTTP headers in bytes. Defaults to 8KB.
 .
 .It Fl -napi-modules
 This option is a no-op.
@@ -218,16 +230,6 @@ and
 .
 .It Fl -v8-options
 Print V8 command-line options.
-.Pp
-Note: V8 options allow words to be separated by both dashes
-.Sy ( - )
-or underscores
-.Sy ( _ ) .
-.Pp
-For example,
-.Fl -stack-trace-limit
-is equivalent to
-.Fl -stack_trace_limit .
 .
 .It Fl -v8-pool-size Ns = Ns Ar num
 Set V8's thread pool size which will be used to allocate background jobs.
@@ -247,7 +249,7 @@ Evaluate
 as JavaScript.
 .
 .It Fl h , Fl -help
-Print node command line options.
+Print command-line options.
 The output of this option is less detailed than this document.
 .
 .It Fl i , Fl -interactive
@@ -264,7 +266,7 @@ Preload the specified
 at startup.
 Follows `require()`'s module resolution rules.
 .Ar module
-may be either a path to a file, or a node module name.
+may be either a path to a file, or a Node.js module name.
 .
 .It Fl v , Fl -version
 Print node's version.
@@ -293,6 +295,9 @@ If
 is missing or misformatted, a message will be emitted once using
 .Sy process.emitWarning() ,
 but any errors are otherwise ignored.
+.Pp
+This environment variable is ignored when `node` runs as setuid root or
+has Linux file capabilities set.
 .
 .It Ev NODE_ICU_DATA Ar file
 Data path for ICU (Intl object) data.
@@ -307,7 +312,7 @@ process warnings are silenced.
 A space-separated list of command-line
 .Ar options ,
 which are interpreted as if they had been specified on the command-line before the actual command (so they can be overridden).
-Node will exit with an error if an option that is not allowed in the environment is used, such as
+Node.js will exit with an error if an option that is not allowed in the environment is used, such as
 .Fl -print
 or a script file.
 .
@@ -385,10 +390,6 @@ Documentation:
 .Pp
 GitHub repository & Issue Tracker:
 .Sy https://github.com/nodejs/node
-.
-.Pp
-Mailing list:
-.Sy http://groups.google.com/group/nodejs
 .
 .Pp
 IRC (general questions):

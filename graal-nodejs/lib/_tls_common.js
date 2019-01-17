@@ -34,7 +34,7 @@ const { SSL_OP_CIPHER_SERVER_PREFERENCE } = process.binding('constants').crypto;
 // Lazily loaded
 var crypto = null;
 
-const { SecureContext: NativeSecureContext } = process.binding('crypto');
+const { SecureContext: NativeSecureContext } = internalBinding('crypto');
 
 function SecureContext(secureProtocol, secureOptions, context) {
   if (!(this instanceof SecureContext)) {
@@ -67,16 +67,6 @@ function validateKeyCert(name, value) {
 }
 
 exports.SecureContext = SecureContext;
-
-
-function ecdhCurveWarning() {
-  if (ecdhCurveWarning.emitted) return;
-  process.emitWarning('{ ecdhCurve: false } is deprecated.',
-                      'DeprecationWarning',
-                      'DEP0083');
-  ecdhCurveWarning.emitted = true;
-}
-ecdhCurveWarning.emitted = false;
 
 
 exports.createSecureContext = function createSecureContext(options, context) {
@@ -154,8 +144,6 @@ exports.createSecureContext = function createSecureContext(options, context) {
     c.context.setECDHCurve(tls.DEFAULT_ECDH_CURVE);
   else if (options.ecdhCurve)
     c.context.setECDHCurve(options.ecdhCurve);
-  else
-    ecdhCurveWarning();
 
   if (options.dhparam) {
     const warning = c.context.setDHParam(options.dhparam);

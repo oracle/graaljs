@@ -52,7 +52,6 @@ const {
   isIdentifierChar
 } = require('internal/deps/acorn/dist/acorn');
 const internalUtil = require('internal/util');
-const { isTypedArray } = require('internal/util/types');
 const util = require('util');
 const utilBinding = process.binding('util');
 const { inherits } = util;
@@ -72,8 +71,17 @@ const {
   ERR_SCRIPT_EXECUTION_INTERRUPTED
 } = require('internal/errors').codes;
 const { sendInspectorCommand } = require('internal/util/inspector');
-const { experimentalREPLAwait } = process.binding('config');
+const experimentalREPLAwait = require('internal/options').getOptionValue(
+  '--experimental-repl-await'
+);
 const { isRecoverableError } = require('internal/repl/recoverable');
+const {
+  getOwnNonIndexProperties,
+  propertyFilter: {
+    ALL_PROPERTIES,
+    SKIP_SYMBOLS
+  }
+} = process.binding('util');
 
 // Lazy-loaded.
 let processTopLevelAwait;
@@ -99,7 +107,7 @@ const kContextId = Symbol('contextId');
 try {
   // Hack for require.resolve("./relative") to work properly.
   module.filename = path.resolve('repl');
-} catch (e) {
+} catch {
   // path.resolve('repl') fails when the current working directory has been
   // deleted.  Fall back to the directory name of the (absolute) executable
   // path.  It's not really correct but what are the alternatives?
@@ -117,8 +125,9 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-// Can overridden with custom print functions, such as `probe` or `eyes.js`.
-// This is the default "writer" value if none is passed in the REPL options.
+// This is the default "writer" value, if none is passed in the REPL options,
+// and it can be overridden by custom print functions, such as `probe` or
+// `eyes.js`.
 const writer = exports.writer = (obj) => util.inspect(obj, writer.options);
 writer.options =
     Object.assign({}, util.inspect.defaultOptions, { showProxy: true });
@@ -339,11 +348,6 @@ function REPLServer(prompt,
       } catch (e) {
         err = e;
 
-        if (err && err.code === 'ERR_SCRIPT_EXECUTION_INTERRUPTED') {
-          // The stack trace for this case is not very useful anyway.
-          Object.defineProperty(err, 'stack', { value: '' });
-        }
-
         if (process.domain) {
           debug('not recoverable, send to domain');
           process.domain.emit('error', err);
@@ -359,7 +363,11 @@ function REPLServer(prompt,
         if (self.breakEvalOnSigint) {
           const interrupt = new Promise((resolve, reject) => {
             sigintListener = () => {
-              reject(new ERR_SCRIPT_EXECUTION_INTERRUPTED());
+              const tmp = Error.stackTraceLimit;
+              Error.stackTraceLimit = 0;
+              const err = new ERR_SCRIPT_EXECUTION_INTERRUPTED();
+              Error.stackTraceLimit = tmp;
+              reject(err);
             };
             prioritizedSigintQueue.add(sigintListener);
           });
@@ -367,23 +375,8 @@ function REPLServer(prompt,
         }
 
         promise.then((result) => {
-          // Remove prioritized SIGINT listener if it was not called.
-          // TODO(TimothyGu): Use Promise.prototype.finally when it becomes
-          // available.
-          prioritizedSigintQueue.delete(sigintListener);
-
           finishExecution(undefined, result);
-          unpause();
         }, (err) => {
-          // Remove prioritized SIGINT listener if it was not called.
-          prioritizedSigintQueue.delete(sigintListener);
-
-          if (err.code === 'ERR_SCRIPT_EXECUTION_INTERRUPTED') {
-            // The stack trace for this case is not very useful anyway.
-            Object.defineProperty(err, 'stack', { value: '' });
-          }
-
-          unpause();
           if (err && process.domain) {
             debug('not recoverable, send to domain');
             process.domain.emit('error', err);
@@ -391,6 +384,10 @@ function REPLServer(prompt,
             return;
           }
           finishExecution(err);
+        }).finally(() => {
+          // Remove prioritized SIGINT listener if it was not called.
+          prioritizedSigintQueue.delete(sigintListener);
+          unpause();
         });
       }
     }
@@ -404,29 +401,50 @@ function REPLServer(prompt,
 
   self._domain.on('error', function debugDomainError(e) {
     debug('domain error');
-    const top = replMap.get(self);
-    const pstrace = Error.prepareStackTrace;
-    Error.prepareStackTrace = prepareStackTrace(pstrace);
-    if (typeof e === 'object')
+    let errStack = '';
+
+    if (typeof e === 'object' && e !== null) {
+      const pstrace = Error.prepareStackTrace;
+      Error.prepareStackTrace = prepareStackTrace(pstrace);
       internalUtil.decorateErrorStack(e);
-    Error.prepareStackTrace = pstrace;
-    const isError = internalUtil.isError(e);
-    if (!self.underscoreErrAssigned)
+      Error.prepareStackTrace = pstrace;
+
+      if (e.domainThrown) {
+        delete e.domain;
+        delete e.domainThrown;
+      }
+
+      if (internalUtil.isError(e)) {
+        if (e.stack) {
+          if (e.name === 'SyntaxError') {
+            // Remove stack trace.
+            e.stack = e.stack
+              .replace(/^repl:\d+\r?\n/, '')
+              .replace(/^\s+at\s.*\n?/gm, '');
+          } else if (self.replMode === exports.REPL_MODE_STRICT) {
+            e.stack = e.stack.replace(/(\s+at\s+repl:)(\d+)/,
+                                      (_, pre, line) => pre + (line - 1));
+          }
+        }
+        errStack = util.inspect(e);
+
+        // Remove one line error braces to keep the old style in place.
+        if (errStack[errStack.length - 1] === ']') {
+          errStack = errStack.slice(1, -1);
+        }
+      }
+    }
+
+    if (errStack === '') {
+      errStack = `Thrown: ${util.inspect(e)}`;
+    }
+
+    if (!self.underscoreErrAssigned) {
       self.lastError = e;
-    if (e instanceof SyntaxError && e.stack) {
-      // remove repl:line-number and stack trace
-      e.stack = e.stack
-        .replace(/^repl:\d+\r?\n/, '')
-        .replace(/^\s+at\s.*\n?/gm, '');
-    } else if (isError && self.replMode === exports.REPL_MODE_STRICT) {
-      e.stack = e.stack.replace(/(\s+at\s+repl:)(\d+)/,
-                                (_, pre, line) => pre + (line - 1));
     }
-    if (isError && e.stack) {
-      top.outputStream.write(`${e.stack}\n`);
-    } else {
-      top.outputStream.write(`Thrown: ${String(e)}\n`);
-    }
+
+    const top = replMap.get(self);
+    top.outputStream.write(`${errStack}\n`);
     top.clearBufferedCommand();
     top.lines.level = [];
     top.displayPrompt();
@@ -927,34 +945,10 @@ function isIdentifier(str) {
   return true;
 }
 
-const ARRAY_LENGTH_THRESHOLD = 1e6;
-
-function mayBeLargeObject(obj) {
-  if (Array.isArray(obj)) {
-    return obj.length > ARRAY_LENGTH_THRESHOLD ? ['length'] : null;
-  } else if (isTypedArray(obj)) {
-    return obj.length > ARRAY_LENGTH_THRESHOLD ? [] : null;
-  }
-
-  return null;
-}
-
 function filteredOwnPropertyNames(obj) {
   if (!obj) return [];
-  const fakeProperties = mayBeLargeObject(obj);
-  if (fakeProperties !== null) {
-    this.outputStream.write('\r\n');
-    process.emitWarning(
-      'The current array, Buffer or TypedArray has too many entries. ' +
-      'Certain properties may be missing from completion output.',
-      'REPLWarning',
-      undefined,
-      undefined,
-      true);
-
-    return fakeProperties;
-  }
-  return Object.getOwnPropertyNames(obj).filter(isIdentifier);
+  const filter = ALL_PROPERTIES | SKIP_SYMBOLS;
+  return getOwnNonIndexProperties(obj, filter).filter(isIdentifier);
 }
 
 function getGlobalLexicalScopeNames(contextId) {
@@ -1052,7 +1046,7 @@ function complete(line, callback) {
       dir = path.resolve(paths[i], subdir);
       try {
         files = fs.readdirSync(dir);
-      } catch (e) {
+      } catch {
         continue;
       }
       for (f = 0; f < files.length; f++) {
@@ -1066,14 +1060,14 @@ function complete(line, callback) {
         abs = path.resolve(dir, name);
         try {
           isDirectory = fs.statSync(abs).isDirectory();
-        } catch (e) {
+        } catch {
           continue;
         }
         if (isDirectory) {
           group.push(subdir + name + '/');
           try {
             subfiles = fs.readdirSync(abs);
-          } catch (e) {
+          } catch {
             continue;
           }
           for (s = 0; s < subfiles.length; s++) {
@@ -1155,13 +1149,13 @@ function complete(line, callback) {
           });
         }
       } else {
-        const evalExpr = `try { ${expr} } catch (e) {}`;
+        const evalExpr = `try { ${expr} } catch {}`;
         this.eval(evalExpr, this.context, 'repl', (e, obj) => {
           if (obj != null) {
             if (typeof obj === 'object' || typeof obj === 'function') {
               try {
                 memberGroups.push(filteredOwnPropertyNames.call(this, obj));
-              } catch (ex) {
+              } catch {
                 // Probably a Proxy object without `getOwnPropertyNames` trap.
                 // We simply ignore it here, as we don't want to break the
                 // autocompletion. Fixes the bug
@@ -1186,7 +1180,7 @@ function complete(line, callback) {
                   break;
                 }
               }
-            } catch (e) {}
+            } catch {}
           }
 
           if (memberGroups.length) {
@@ -1459,7 +1453,7 @@ function defineDefaultCommands(repl) {
       try {
         fs.writeFileSync(file, this.lines.join('\n') + '\n');
         this.outputStream.write('Session saved to: ' + file + '\n');
-      } catch (e) {
+      } catch {
         this.outputStream.write('Failed to save: ' + file + '\n');
       }
       this.displayPrompt();
@@ -1485,7 +1479,7 @@ function defineDefaultCommands(repl) {
           this.outputStream.write('Failed to load: ' + file +
                                   ' is not a valid file\n');
         }
-      } catch (e) {
+      } catch {
         this.outputStream.write('Failed to load: ' + file + '\n');
       }
       this.displayPrompt();

@@ -12,13 +12,14 @@ const {
   ERR_WORKER_UNSUPPORTED_EXTENSION,
 } = require('internal/errors').codes;
 
-const { internalBinding } = require('internal/bootstrap/loaders');
 const { MessagePort, MessageChannel } = internalBinding('messaging');
-const { handle_onclose } = internalBinding('symbols');
+const {
+  handle_onclose: handleOnCloseSymbol,
+  oninit: onInitSymbol
+} = internalBinding('symbols');
 const { clearAsyncIdStack } = require('internal/async_hooks');
 const { serializeError, deserializeError } = require('internal/error-serdes');
-
-util.inherits(MessagePort, EventEmitter);
+const { pathToFileURL } = require('url');
 
 const {
   Worker: WorkerImpl,
@@ -56,6 +57,23 @@ const messageTypes = {
   LOAD_SCRIPT: 'loadScript'
 };
 
+// We have to mess with the MessagePort prototype a bit, so that a) we can make
+// it inherit from EventEmitter, even though it is a C++ class, and b) we do
+// not provide methods that are not present in the Browser and not documented
+// on our side (e.g. hasRef).
+// Save a copy of the original set of methods as a shallow clone.
+const MessagePortPrototype = Object.create(
+  Object.getPrototypeOf(MessagePort.prototype),
+  Object.getOwnPropertyDescriptors(MessagePort.prototype));
+// Set up the new inheritance chain.
+Object.setPrototypeOf(MessagePort, EventEmitter);
+Object.setPrototypeOf(MessagePort.prototype, EventEmitter.prototype);
+// Finally, purge methods we don't want to be public.
+delete MessagePort.prototype.stop;
+delete MessagePort.prototype.drain;
+MessagePort.prototype.ref = MessagePortPrototype.ref;
+MessagePort.prototype.unref = MessagePortPrototype.unref;
+
 // A communication channel consisting of a handle (that wraps around an
 // uv_async_t) which can receive information from other threads and emits
 // .onmessage events, and a function used for sending data to a MessagePort
@@ -79,10 +97,10 @@ Object.defineProperty(MessagePort.prototype, 'onmessage', {
     this[kOnMessageListener] = value;
     if (typeof value === 'function') {
       this.ref();
-      this.start();
+      MessagePortPrototype.start.call(this);
     } else {
       this.unref();
-      this.stop();
+      MessagePortPrototype.stop.call(this);
     }
   }
 });
@@ -94,7 +112,7 @@ function oninit() {
   setupPortReferencing(this, this, 'message');
 }
 
-Object.defineProperty(MessagePort.prototype, 'oninit', {
+Object.defineProperty(MessagePort.prototype, onInitSymbol, {
   enumerable: true,
   writable: false,
   value: oninit
@@ -119,21 +137,38 @@ function onclose() {
   this.emit('close');
 }
 
-Object.defineProperty(MessagePort.prototype, handle_onclose, {
+Object.defineProperty(MessagePort.prototype, handleOnCloseSymbol, {
   enumerable: false,
   writable: false,
   value: onclose
 });
 
-const originalClose = MessagePort.prototype.close;
 MessagePort.prototype.close = function(cb) {
   if (typeof cb === 'function')
     this.once('close', cb);
-  originalClose.call(this);
+  MessagePortPrototype.close.call(this);
 };
 
-const drainMessagePort = MessagePort.prototype.drain;
-delete MessagePort.prototype.drain;
+Object.defineProperty(MessagePort.prototype, util.inspect.custom, {
+  enumerable: false,
+  writable: false,
+  value: function inspect() {  // eslint-disable-line func-name-matching
+    let ref;
+    try {
+      // This may throw when `this` does not refer to a native object,
+      // e.g. when accessing the prototype directly.
+      ref = MessagePortPrototype.hasRef.call(this);
+    } catch { return this; }
+    return Object.assign(Object.create(MessagePort.prototype),
+                         ref === undefined ? {
+                           active: false,
+                         } : {
+                           active: true,
+                           refed: ref
+                         },
+                         this);
+  }
+});
 
 function setupPortReferencing(port, eventEmitter, eventName) {
   // Keep track of whether there are any workerMessage listeners:
@@ -144,12 +179,12 @@ function setupPortReferencing(port, eventEmitter, eventName) {
   eventEmitter.on('newListener', (name) => {
     if (name === eventName && eventEmitter.listenerCount(eventName) === 0) {
       port.ref();
-      port.start();
+      MessagePortPrototype.start.call(port);
     }
   });
   eventEmitter.on('removeListener', (name) => {
     if (name === eventName && eventEmitter.listenerCount(eventName) === 0) {
-      port.stop();
+      MessagePortPrototype.stop.call(port);
       port.unref();
     }
   });
@@ -246,8 +281,9 @@ class Worker extends EventEmitter {
       }
     }
 
+    const url = options.eval ? null : pathToFileURL(filename);
     // Set up the C++ handle for the worker, as well as some internal wiring.
-    this[kHandle] = new WorkerImpl();
+    this[kHandle] = new WorkerImpl(url);
     this[kHandle].onexit = (code) => this[kOnExit](code);
     this[kPort] = this[kHandle].messagePort;
     this[kPort].on('message', (data) => this[kOnMessage](data));
@@ -290,7 +326,7 @@ class Worker extends EventEmitter {
 
   [kOnExit](code) {
     debug(`[${threadId}] hears end event for Worker ${this.threadId}`);
-    drainMessagePort.call(this[kPublicPort]);
+    MessagePortPrototype.drain.call(this[kPublicPort]);
     this[kDispose]();
     this.emit('exit', code);
     this.removeAllListeners();
@@ -421,7 +457,6 @@ function setupChild(evalScript) {
     if (message.type === messageTypes.LOAD_SCRIPT) {
       const { filename, doEval, workerData, publicPort, hasStdin } = message;
       publicWorker.parentPort = publicPort;
-      setupPortReferencing(publicPort, publicPort, 'message');
       publicWorker.workerData = workerData;
 
       if (!hasStdin)
@@ -511,7 +546,7 @@ module.exports = {
 // ##### Graal.js Java interop messages handling
 
 // Passed by Graal.js init phase during global module loading.
-const SharedMemMessagingInit = arguments.length === 5 ? arguments[4] : undefined;
+const SharedMemMessagingInit = arguments[arguments.length - 1];
 if (!SharedMemMessagingInit) {
   assert.fail(`Fatal: cannot initialize Worker`);
 }

@@ -78,7 +78,7 @@ public:
     bool SetPrototype(v8::Local<v8::Value> prototype);
     v8::Local<v8::String> GetConstructorName();
     v8::Local<v8::Array> GetOwnPropertyNames();
-    v8::Local<v8::Array> GetPropertyNames();
+    v8::MaybeLocal<v8::Array> GetPropertyNames(v8::Local<v8::Context> context, v8::KeyCollectionMode mode, v8::PropertyFilter property_filter, v8::IndexFilter index_filter, v8::KeyConversionMode key_conversion);
     v8::Local<v8::Context> CreationContext();
     v8::MaybeLocal<v8::Value> GetPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key);
     v8::Maybe<bool> SetPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key, v8::Local<v8::Value> value);
