@@ -565,17 +565,19 @@ namespace v8 {
     }
 
     Local<Array> Object::GetPropertyNames() {
-        return reinterpret_cast<GraalObject*> (this)->GetPropertyNames();
+        return GetPropertyNames(GetIsolate()->GetCurrentContext()).ToLocalChecked();
     }
 
     MaybeLocal<Array> Object::GetPropertyNames(Local<Context> context) {
-        return reinterpret_cast<GraalObject*> (this)->GetPropertyNames();
+        return GetPropertyNames(context, KeyCollectionMode::kIncludePrototypes,
+                static_cast<v8::PropertyFilter> (ONLY_ENUMERABLE | SKIP_SYMBOLS),
+                v8::IndexFilter::kIncludeIndices);
     }
 
     MaybeLocal<Array> Object::GetPropertyNames(Local<Context> context, KeyCollectionMode mode,
             PropertyFilter property_filter, IndexFilter index_filter,
             KeyConversionMode key_conversion) {
-        return reinterpret_cast<GraalObject*> (this)->GetPropertyNames();
+        return reinterpret_cast<GraalObject*> (this)->GetPropertyNames(context, mode, property_filter, index_filter, key_conversion);
     }
 
     Local<Value> Object::GetPrototype() {
