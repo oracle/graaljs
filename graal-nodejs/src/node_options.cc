@@ -322,6 +322,9 @@ PerProcessOptionsParser::PerProcessOptionsParser() {
 #endif
 #endif
 
+  AddOption("--jvm", "", V8Option{}, kAllowedInEnvironment);
+  AddOption("--native", "", V8Option{}, kAllowedInEnvironment);
+
   Insert(&PerIsolateOptionsParser::instance,
          &PerProcessOptions::get_per_isolate_options);
 }
