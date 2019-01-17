@@ -60,7 +60,20 @@ local common = import '../common.jsonnet';
   local buildAddons = {
     setup+: [
       ['mx', 'makeinnodeenv', 'build-addons'],
+    ],
+    timelimit: '30:00',
+  },
+
+  local buildNAPI = {
+    setup+: [
       ['mx', 'makeinnodeenv', 'build-addons-napi'],
+    ],
+    timelimit: '30:00',
+  },
+
+  local buildBench = {
+    setup+: [
+      ['mx', 'makeinnodeenv', 'bench-addons-build'],
     ],
     timelimit: '30:00',
   },
@@ -74,10 +87,10 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8 + gateGraalTip                                                                           + common.gate + common.linux + {name: 'nodejs-gate-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + gateSubstrateVmTip                                                                     + common.gate + common.linux + {name: 'nodejs-gate-substratevm-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip + buildAddons + {environment+: {SUITE: 'addons', PART: '-r0,1'}}      + common.gate + common.linux + {name: 'nodejs-gate-addons-graal-tip-jdk8-linux-amd64'},
-    graalNodeJs + common.jdk8 + testNodeGraalTip + buildAddons + {environment+: {SUITE: 'addons-napi', PART: '-r0,1'}} + common.gate + common.linux + {name: 'nodejs-gate-addons-napi-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8 + testNodeGraalTip + buildNAPI   + {environment+: {SUITE: 'addons-napi', PART: '-r0,1'}} + common.gate + common.linux + {name: 'nodejs-gate-addons-napi-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'async-hooks', PART: '-r0,1'}} + common.gate + common.linux + {name: 'nodejs-gate-async-hooks-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'es-module', PART: '-r0,1'}}   + common.gate + common.linux + {name: 'nodejs-gate-es-module-graal-tip-jdk8-linux-amd64'},
-    graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: 'sequential', PART: '-r0,1'}}  + common.gate + common.linux + {name: 'nodejs-gate-sequential-graal-tip-jdk8-linux-amd64'},
+    graalNodeJs + common.jdk8 + testNodeGraalTip + buildBench  + {environment+: {SUITE: 'sequential', PART: '-r0,1'}}  + common.gate + common.linux + {name: 'nodejs-gate-sequential-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: parallelNoHttp2, PART: '-r0,5'}} + common.gate + common.linux + {name: 'nodejs-gate-parallel-1-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: parallelNoHttp2, PART: '-r1,5'}} + common.gate + common.linux + {name: 'nodejs-gate-parallel-2-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8 + testNodeGraalTip               + {environment+: {SUITE: parallelNoHttp2, PART: '-r2,5'}} + common.gate + common.linux + {name: 'nodejs-gate-parallel-3-graal-tip-jdk8-linux-amd64'},
