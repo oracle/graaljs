@@ -216,17 +216,17 @@ public final class JSContextOptions {
 
     public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
     private static final OptionKey<Boolean> REGEX_DUMP_AUTOMATA = new OptionKey<>(false);
-    private static final String REGEX_DUMP_AUTOMATA_HELP = helpWithDefault("Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.", REGEX_DUMP_AUTOMATA);
+    private static final String REGEX_DUMP_AUTOMATA_HELP = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.";
     @CompilationFinal private boolean regexDumpAutomata;
 
     public static final String REGEX_STEP_EXECUTION_NAME = JS_OPTION_PREFIX + "regex.step-execution";
     private static final OptionKey<Boolean> REGEX_STEP_EXECUTION = new OptionKey<>(false);
-    private static final String REGEX_STEP_EXECUTION_HELP = helpWithDefault("Trace the execution of automata in JSON files.", REGEX_STEP_EXECUTION);
+    private static final String REGEX_STEP_EXECUTION_HELP = "Trace the execution of automata in JSON files.";
     @CompilationFinal private boolean regexStepExecution;
 
     public static final String REGEX_ALWAYS_EAGER_NAME = JS_OPTION_PREFIX + "regex.always-eager";
     private static final OptionKey<Boolean> REGEX_ALWAYS_EAGER = new OptionKey<>(false);
-    private static final String REGEX_ALWAYS_EAGER_HELP = helpWithDefault("Always match capture groups eagerly.", REGEX_ALWAYS_EAGER);
+    private static final String REGEX_ALWAYS_EAGER_HELP = "Always match capture groups eagerly.";
     @CompilationFinal private boolean regexAlwaysEager;
 
     public static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME = JS_OPTION_PREFIX + "script-engine-global-scope-import";
