@@ -90,7 +90,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFuncti
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSAdapterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSProxyNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaImporterNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaInteropWorkerNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructListFormatNodeGen;
@@ -150,7 +149,6 @@ import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -267,12 +265,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         // non-standard (Nashorn) extensions
         JSAdapter(1),
         JavaImporter(1) {
-            @Override
-            public boolean isEnabled() {
-                return !JSTruffleOptions.SubstrateVM;
-            }
-        },
-        JavaInteropWorker(1) {
             @Override
             public boolean isEnabled() {
                 return !JSTruffleOptions.SubstrateVM;
@@ -511,12 +503,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     switch (builtinEnum) {
                         case JavaImporter:
                             return ConstructJavaImporterNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
-                        case JavaInteropWorker:
-                            if (construct) {
-                                return ConstructJavaInteropWorkerNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                            } else {
-                                return createCallRequiresNew(context, builtin);
-                            }
                     }
                 }
         }
@@ -1839,20 +1825,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getMapConstructor().getPrototype();
         }
 
-    }
-
-    public abstract static class ConstructJavaInteropWorkerNode extends JSBuiltinNode {
-        public ConstructJavaInteropWorkerNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected DynamicObject constructWorker() {
-            JSContext context = getContext();
-            EcmaAgent agent = context.getJavaInteropWorkerFactory().createAgent(context.getMainWorker());
-            DynamicObject worker = JSObject.create(context, context.getJavaInteropWorkerObjectFactory(), agent);
-            return worker;
-        }
     }
 
     public abstract static class ConstructSetNode extends JSConstructIterableOperation {

@@ -479,9 +479,9 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
 
     // Graal.js access
     jclass access_class = findClassExtra(env, "com/oracle/truffle/trufflenode/GraalJSAccess");
-    jmethodID createID = env->GetStaticMethodID(access_class, "create", "([Ljava/lang/String;J)Ljava/lang/Object;");
+    jmethodID createID = env->GetStaticMethodID(access_class, "create", "([Ljava/lang/String;)Ljava/lang/Object;");
     if (createID == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.create(String[],long) method not found!\n")
-    jobject access = env->functions->CallStaticObjectMethod(env, access_class, createID, args, (jlong) uv_default_loop());
+    jobject access = env->functions->CallStaticObjectMethod(env, access_class, createID, args);
     if (access == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.create() failed!\n")
     access_class_ = (jclass) env->NewGlobalRef(access_class);
     access_ = env->NewGlobalRef(access);
