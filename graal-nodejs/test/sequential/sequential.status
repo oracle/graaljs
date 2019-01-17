@@ -10,9 +10,6 @@ test-gc-http-client: PASS,FLAKY
 
 ### Graal-specific start ###
 
-# Unstable, timing sensitive (fails randomly)
-test-readline-interface     : SKIP
-
 # suspicious memory-related test that does some conclusion based on rss
 # before and after some operation, this does not work on JVM (where heap
 # size does not decrease usually - despite there is no memory leak)
@@ -20,6 +17,9 @@ test-net-bytes-per-incoming-chunk-overhead : SKIP
 
 # unstable timing-sensitive test
 test-performance            : SKIP
+
+# GC-related callback not invoked
+test-gc-http-client         : SKIP
 
 [$system==solaris]
 

@@ -56,7 +56,6 @@ test-buffer-bindingobj-no-zerofill                                 : SKIP
 
 # tracing is not supported
 test-benchmark-misc                                                : SKIP
-test-trace-event-promises                                          : SKIP
 test-trace-events-all                                              : SKIP
 test-trace-events-async-hooks                                      : SKIP
 test-trace-events-binding                                          : SKIP
@@ -68,6 +67,7 @@ test-trace-events-metadata                                         : SKIP
 test-trace-events-none                                             : SKIP
 test-trace-events-perf                                             : SKIP
 test-trace-events-process-exit                                     : SKIP
+test-trace-events-promises                                         : SKIP
 test-trace-events-v8                                               : SKIP
 test-trace-events-vm                                               : SKIP
 test-trace-events-worker-metadata                                  : SKIP
@@ -81,6 +81,9 @@ test-heapdump-tls                                                  : FAIL
 test-heapdump-worker                                               : FAIL
 test-heapdump-zlib                                                 : FAIL
 
+# profiling is not supported
+test-tick-processor-arguments                                      : FAIL
+
 # WebAssembly is not supported
 test-util-types                                                    : FAIL
 test-vm-codegen                                                    : FAIL
@@ -92,11 +95,8 @@ test-vm-module-dynamic-import                                      : FAIL
 # import.meta is not supported
 test-vm-module-import-meta                                         : FAIL
 
-# some issue with instrumentation - works when while(1); is replaced by while(true);
-test-worker-nexttick-terminate                                     : SKIP
-
 # Larger stack (~7m) needed
-test-async-hooks-recursive-stack-runInAsyncScope                   : FAIL
+test-async-hooks-recursive-stack-runInAsyncScope                   : SKIP
 
 # Graal.js is unable to preview WeakMap and WeakSet entries
 test-util-inspect                                                  : FAIL
@@ -116,9 +116,30 @@ test-async-wrap-pop-id-during-load                                 : SKIP
 # Uses v8 extension (--expose_externalize_string flag that exposes two additional functions)
 test-fs-write                                                      : FAIL
 
+# different error message from proxy invariant check
+test-assert-deep                                                   : FAIL
+
+# different error message (Cannot set property origin of [object URL] which has only a getter x Cannot redefine property origin which has only a getter)
+test-whatwg-url-custom-properties                                  : FAIL
+
+# passes with --jvm.Dnode.buffer.nio=false (NIOBuffer genereates a different error)
+test-buffer-alloc                                                  : FAIL
+
+# Value::IntegerValue() should return Nothing() when exception occurs
+test-buffer-copy                                                   : FAIL
+
+# spawnsync input does not work when specified through DataView
+test-child-process-spawnsync-input                                 : FAIL
+
+# PromiseRejectionTracker does not support kPromiseRejectAfterResolved and kPromiseResolveAfterResolved
+test-promise-swallowed-event                                       : FAIL
+
+# vm.compileFunction/ScriptCompiler::CompileFunctionInContext() is not supported
+test-vm-basic                                                      : SKIP
+
 # unclassified
+test-async-hooks-async-await                                       : FAIL
 test-async-hooks-recursive-stack                                   : SKIP
-test-async-hooks-recursive-stack-runInAsyncScope                   : SKIP
 test-common-gc                                                     : FAIL
 test-crypto-fips                                                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-0                   : FAIL
@@ -133,11 +154,11 @@ test-domain-no-error-handler-abort-on-uncaught-8                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-9                   : FAIL
 test-domain-throw-error-then-throw-from-uncaught-exception-handler : FAIL
 test-domain-with-abort-on-uncaught-exception                       : FAIL
-test-gc-http-client                                                : SKIP
 test-gc-http-client-connaborted                                    : SKIP
 test-gc-http-client-onerror                                        : SKIP
 test-gc-http-client-timeout                                        : SKIP
 test-gc-net-timeout                                                : SKIP
+test-gc-tls-external-memory                                        : SKIP
 test-http2-response-splitting                                      : SKIP
 test-net-connect-memleak                                           : FAIL
 test-repl                                                          : FAIL
@@ -148,6 +169,7 @@ test-tls-connect-memleak                                           : FAIL
 test-vm-low-stack-space                                            : SKIP
 test-vm-new-script-new-context                                     : FAIL
 test-vm-syntax-error-stderr                                        : FAIL
+test-zlib-invalid-input-memory                                     : FAIL
 
 # fails randomly
 test-http2-server-rst-stream                                       : SKIP
