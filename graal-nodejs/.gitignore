@@ -105,6 +105,7 @@ deps/openssl/openssl.target.mk
 deps/zlib/zlib.target.mk
 
 !deps/npm/node_modules
+deps/npm/node_modules/**/*.pyc
 # not needed and causes issues for distro packagers
 deps/npm/node_modules/.bin/
 
