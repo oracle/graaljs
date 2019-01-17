@@ -156,14 +156,6 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     /**
-     * Check if this IdentNode is a future strict name
-     * @return true if this is a future strict name
-     */
-    public boolean isFutureStrictName() {
-        return tokenType().isFutureStrict();
-    }
-
-    /**
      * Helper function for local def analysis.
      * @return true if IdentNode is initialized on creation
      */
