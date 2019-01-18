@@ -343,7 +343,7 @@ public class Parser extends AbstractParser {
      */
     private void prepareLexer(final int startPos, final int len) {
         stream = new TokenStream();
-        lexer  = new Lexer(source, startPos, len, stream, scripting && env.syntaxExtensions, env.es6, shebang && env.syntaxExtensions, reparsedFunction != null);
+        lexer  = new Lexer(source, startPos, len, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions, reparsedFunction != null);
         lexer.line = lexer.pendingLine = lineOffset + 1;
         line = lineOffset;
     }
@@ -426,7 +426,7 @@ public class Parser extends AbstractParser {
     public void parseFormalParameterList() {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, env.es6, shebang && env.syntaxExtensions);
+            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions);
 
             scanFirstToken();
 
@@ -447,7 +447,7 @@ public class Parser extends AbstractParser {
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, env.es6, shebang && env.syntaxExtensions);
+            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions);
             final int functionLine = line;
 
             scanFirstToken();
@@ -731,15 +731,21 @@ loop:
     }
 
     private boolean useBlockScope() {
-        return env.es6;
+        return isES6();
     }
 
+    /**
+     * ES6 (a.k.a. ES2015) or newer.
+     */
     private boolean isES6() {
-        return env.es6;
+        return env.ecmaScriptVersion >= 6;
     }
 
-    private boolean isES8() {
-        return env.es8;
+    /**
+     * ES2017 or newer.
+     */
+    private boolean isES2017() {
+        return env.ecmaScriptVersion >= 8;
     }
 
     private static boolean isArguments(final String name) {
@@ -3469,7 +3475,7 @@ loop:
 
             isIdentifier = true;
             propertyName = new IdentNode(propertyToken, finish, getOrSet.getName()).setIsPropertyName();
-        } else if (type == ELLIPSIS && ES8_REST_SPREAD_PROPERTY && isES8() && !(generator || async)) {
+        } else if (type == ELLIPSIS && ES8_REST_SPREAD_PROPERTY && isES2017() && !(generator || async)) {
             long spreadToken = Token.recast(propertyToken, TokenType.SPREAD_OBJECT);
             next();
             Expression assignmentExpression = assignmentExpression(true, yield, await);
@@ -3699,7 +3705,7 @@ loop:
         Expression lhs = memberExpression(yield, await);
 
         if (type == LPAREN) {
-            boolean async = ES8_ASYNC_FUNCTION && isES8() && lhs.isTokenType(ASYNC);
+            boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC);
             final List<Expression> arguments = optimizeList(argumentList(yield, await, async));
 
             // Catch special functions.
@@ -4029,7 +4035,7 @@ loop:
             if (!first) {
                 expect(COMMARIGHT);
                 // Trailing comma.
-                if (ES8_TRAILING_COMMA && isES8() && type == RPAREN) {
+                if (ES8_TRAILING_COMMA && isES2017() && type == RPAREN) {
                     break;
                 }
             } else {
@@ -4334,7 +4340,7 @@ loop:
             if (!first) {
                 expect(COMMARIGHT);
                 // Trailing comma.
-                if (ES8_TRAILING_COMMA && isES8() && type == endType) {
+                if (ES8_TRAILING_COMMA && isES2017() && type == endType) {
                     break;
                 }
             } else {
@@ -4607,7 +4613,7 @@ loop:
         }
 
         stream.reset();
-        lexer = parserState.createLexer(source, lexer, stream, scripting && env.syntaxExtensions, env.es6, shebang);
+        lexer = parserState.createLexer(source, lexer, stream, scripting && env.syntaxExtensions, isES6(), shebang);
         line = parserState.line;
         linePosition = parserState.linePosition;
         // Doesn't really matter, but it's safe to treat it as if there were a semicolon before
@@ -4965,7 +4971,7 @@ loop:
                     next();
                     rhsRestParameter = true;
                 }
-            } else if (ES6_ARROW_FUNCTION && ES8_TRAILING_COMMA && isES8() && type == RPAREN && lookaheadIsArrow()) {
+            } else if (ES6_ARROW_FUNCTION && ES8_TRAILING_COMMA && isES2017() && type == RPAREN && lookaheadIsArrow()) {
                 // Trailing comma at end of arrow function parameter list
                 break;
             }
@@ -6117,11 +6123,11 @@ loop:
     }
 
     private boolean isAwait() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == AWAIT;
+        return ES8_ASYNC_FUNCTION && isES2017() && type == AWAIT;
     }
 
     private boolean isAsync() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == ASYNC;
+        return ES8_ASYNC_FUNCTION && isES2017() && type == ASYNC;
     }
 
     private boolean lookaheadIsAsyncArrowParameterListStart() {
