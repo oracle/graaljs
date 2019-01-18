@@ -1706,10 +1706,24 @@ loop:
                 break;
             }
 
-            if (ident.isFutureStrictName()) {
+            if (isFutureStrictName(ident)) {
                 throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
             }
         }
+    }
+
+    /**
+     * Check if this IdentNode is a future strict name
+     * @return true if this is a future strict name
+     */
+    private static boolean isFutureStrictName(final IdentNode ident) {
+        if (ident.tokenType().isFutureStrict()) {
+            return true;
+        } else if (isEscapedIdent(ident)) {
+            TokenType tokenType = TokenLookup.lookupKeyword(ident.getName().toCharArray(), 0, ident.getName().length());
+            return (tokenType != IDENT && tokenType.isFutureStrict());
+        }
+        return false;
     }
 
     /**

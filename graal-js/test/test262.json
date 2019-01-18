@@ -12046,42 +12046,6 @@
     "status" : "SKIP",
     "comment" : "ES7 tests"
   }, {
-    "filePath" : "language/future-reserved-words/implements-strict-escaped.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/future-reserved-words/interface-strict-escaped.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/future-reserved-words/let-strict-escaped.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/future-reserved-words/package-strict-escaped.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/future-reserved-words/private-strict-escaped.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/future-reserved-words/protected-strict-escaped.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/future-reserved-words/public-strict-escaped.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/future-reserved-words/static-strict-escaped.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/future-reserved-words/yield-strict-escaped.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
     "filePath" : "language/global-code/new.target-arrow.js",
     "status" : "FAIL"
   }, {
