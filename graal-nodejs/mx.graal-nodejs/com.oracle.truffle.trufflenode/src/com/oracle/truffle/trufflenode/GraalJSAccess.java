@@ -404,6 +404,11 @@ public final class GraalJSAccess {
         } else if (JSArrayBuffer.isJSDirectArrayBuffer(obj)) {
             return ARRAY_BUFFER_OBJECT;
         } else if (JSDataView.isJSDataView(obj)) {
+            if (useSharedBuffer) {
+                JSContext context = JSObject.getJSContext(obj);
+                sharedBuffer.putInt(arrayBufferViewByteLength(context, obj));
+                sharedBuffer.putInt(arrayBufferViewByteOffset(context, obj));
+            }
             return DATA_VIEW_OBJECT;
         } else if (JSMap.isJSMap(obj)) {
             return MAP_OBJECT;

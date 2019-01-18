@@ -128,9 +128,6 @@ test-buffer-alloc                                                  : FAIL
 # Value::IntegerValue() should return Nothing() when exception occurs
 test-buffer-copy                                                   : FAIL
 
-# spawnsync input does not work when specified through DataView
-test-child-process-spawnsync-input                                 : FAIL
-
 # PromiseRejectionTracker does not support kPromiseRejectAfterResolved and kPromiseResolveAfterResolved
 test-promise-swallowed-event                                       : FAIL
 
