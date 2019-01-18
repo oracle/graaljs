@@ -75,7 +75,7 @@ function v8ClearFunctionTypeFeedback() {
     return undefined;
 }
 
-function v8RunMicrotasks() {
+function v8PerformMicrotaskCheckpoint() {
     return TestV8.runMicrotasks();
 }
 
@@ -370,9 +370,8 @@ function v8CreatePrivateOwnSymbol(sym) {
     return Symbol(sym);
 }
 
-function v8ArrayBufferNeuter(arr) {
+function v8ArrayBufferDetach(arr) {
     TestV8.typedArrayDetachBuffer(arr);
-    return arr;
 }
 
 function v8GetScript(name) {
@@ -865,6 +864,12 @@ function v8WasmTierUpFunction() {
 }
 
 function v8HandleDebuggerStatement() {
+}
+
+// new mockups from 2019-01-15 update
+
+function v8IsThreadInWasm() {
+    return v8IgnoreResult;
 }
 
 function setTimeout(fn) {
