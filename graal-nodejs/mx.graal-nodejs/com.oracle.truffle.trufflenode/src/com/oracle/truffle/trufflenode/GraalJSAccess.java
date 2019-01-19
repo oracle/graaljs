@@ -2492,11 +2492,11 @@ public final class GraalJSAccess {
     public void isolateEnablePromiseRejectCallback(boolean enable) {
         PromiseRejectionTracker tracker = enable ? new PromiseRejectionTracker() {
             @Override
-            public void promiseRejected(DynamicObject promise) {
+            public void promiseRejected(DynamicObject promise, Object value) {
                 NativeAccess.notifyPromiseRejectionTracker(
                                 promise,
                                 0, // v8::PromiseRejectEvent::kPromiseRejectWithNoHandler
-                                promiseResult(promise));
+                                value);
             }
 
             @Override
@@ -2504,7 +2504,23 @@ public final class GraalJSAccess {
                 NativeAccess.notifyPromiseRejectionTracker(
                                 promise,
                                 1, // v8::PromiseRejectEvent::kPromiseHandlerAddedAfterReject
-                                promiseResult(promise));
+                                Undefined.instance);
+            }
+
+            @Override
+            public void promiseRejectedAfterResolved(DynamicObject promise, Object value) {
+                NativeAccess.notifyPromiseRejectionTracker(
+                                promise,
+                                2, // v8::PromiseRejectEvent::kPromiseRejectAfterResolved
+                                value);
+            }
+
+            @Override
+            public void promiseResolvedAfterResolved(DynamicObject promise, Object value) {
+                NativeAccess.notifyPromiseRejectionTracker(
+                                promise,
+                                3, // v8::PromiseRejectEvent::kPromiseResolveAfterResolved
+                                value);
             }
         } : null;
         mainJSContext.setPromiseRejectionTracker(tracker);

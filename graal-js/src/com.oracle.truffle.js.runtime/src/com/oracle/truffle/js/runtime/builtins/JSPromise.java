@@ -80,6 +80,9 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     // HostPromiseRejectionTracker operations
     public static final int REJECTION_TRACKER_OPERATION_REJECT = 0;
     public static final int REJECTION_TRACKER_OPERATION_HANDLE = 1;
+    // V8 extensions of HostPromiseRejectionTracker
+    public static final int REJECTION_TRACKER_OPERATION_REJECT_AFTER_RESOLVED = 2;
+    public static final int REJECTION_TRACKER_OPERATION_RESOLVE_AFTER_RESOLVED = 3;
 
     private JSPromise() {
     }

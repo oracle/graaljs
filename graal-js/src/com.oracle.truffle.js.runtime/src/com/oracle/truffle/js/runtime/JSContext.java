@@ -1309,25 +1309,45 @@ public class JSContext {
         }
     }
 
-    public void notifyPromiseRejectionTracker(DynamicObject promise, int operation) {
+    public void notifyPromiseRejectionTracker(DynamicObject promise, int operation, Object value) {
         if (!promiseRejectionTrackerNotUsedAssumption.isValid() && promiseRejectionTracker != null) {
-            if (operation == 0) {
-                invokePromiseRejected(promise);
-            } else {
-                assert (operation == 1) : "Unknown operation: " + operation;
-                invokePromiseRejectionHandled(promise);
+            switch (operation) {
+                case JSPromise.REJECTION_TRACKER_OPERATION_REJECT:
+                    invokePromiseRejected(promise, value);
+                    break;
+                case JSPromise.REJECTION_TRACKER_OPERATION_HANDLE:
+                    invokePromiseRejectionHandled(promise);
+                    break;
+                case JSPromise.REJECTION_TRACKER_OPERATION_REJECT_AFTER_RESOLVED:
+                    invokePromiseRejectedAfterResolved(promise, value);
+                    break;
+                case JSPromise.REJECTION_TRACKER_OPERATION_RESOLVE_AFTER_RESOLVED:
+                    invokePromiseResolvedAfterResolved(promise, value);
+                    break;
+                default:
+                    assert false : "Unknown operation: " + operation;
             }
         }
     }
 
     @TruffleBoundary
-    private void invokePromiseRejected(DynamicObject promise) {
-        promiseRejectionTracker.promiseRejected(promise);
+    private void invokePromiseRejected(DynamicObject promise, Object value) {
+        promiseRejectionTracker.promiseRejected(promise, value);
     }
 
     @TruffleBoundary
     private void invokePromiseRejectionHandled(DynamicObject promise) {
         promiseRejectionTracker.promiseRejectionHandled(promise);
+    }
+
+    @TruffleBoundary
+    private void invokePromiseRejectedAfterResolved(DynamicObject promise, Object value) {
+        promiseRejectionTracker.promiseRejectedAfterResolved(promise, value);
+    }
+
+    @TruffleBoundary
+    private void invokePromiseResolvedAfterResolved(DynamicObject promise, Object value) {
+        promiseRejectionTracker.promiseResolvedAfterResolved(promise, value);
     }
 
     public final void setPromiseHook(PromiseHook promiseHook) {
