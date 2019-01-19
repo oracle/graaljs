@@ -46,6 +46,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -118,6 +119,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Child private RejectPromiseNode rejectPromise;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
             private final ValueProfile typeProfile = ValueProfile.createClassProfile();
+            private final ConditionProfile alreadyResolvedProfile = ConditionProfile.createBinaryProfile();
 
             // PromiseResolveThenableJob
             @Child private PropertySetNode setPromise;
@@ -127,15 +129,16 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Override
             public Object execute(VirtualFrame frame) {
                 DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                DynamicObject promise = (DynamicObject) getPromise(functionObject);
+                Object resolution = resolutionNode.execute(frame);
                 AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolved.getValue(functionObject);
-                if (alreadyResolved.value) {
+                if (alreadyResolvedProfile.profile(alreadyResolved.value)) {
+                    context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_RESOLVE_AFTER_RESOLVED, resolution);
                     return Undefined.instance;
                 }
                 alreadyResolved.value = true;
-                DynamicObject promise = (DynamicObject) getPromise(functionObject);
                 context.notifyPromiseHook(PromiseHook.TYPE_RESOLVE, promise);
 
-                Object resolution = resolutionNode.execute(frame);
                 if (resolution == promise) {
                     enterErrorBranch();
                     return rejectPromise(promise, Errors.createTypeError("self resolution!"));
@@ -252,19 +255,21 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Child private PropertyGetNode getPromise;
             @Child private PropertyGetNode getAlreadyResolved = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
             @Child private RejectPromiseNode rejectPromise;
+            private final ConditionProfile alreadyResolvedProfile = ConditionProfile.createBinaryProfile();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 init();
                 DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                DynamicObject promise = (DynamicObject) getPromise.getValue(functionObject);
+                Object reason = reasonNode.execute(frame);
                 AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolved.getValue(functionObject);
-                if (alreadyResolved.value) {
+                if (alreadyResolvedProfile.profile(alreadyResolved.value)) {
+                    context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT_AFTER_RESOLVED, reason);
                     return Undefined.instance;
                 }
                 alreadyResolved.value = true;
-                DynamicObject promise = (DynamicObject) getPromise.getValue(functionObject);
 
-                Object reason = reasonNode.execute(frame);
                 return rejectPromise.execute(promise, reason);
             }
 

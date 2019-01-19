@@ -83,7 +83,7 @@ public class RejectPromiseNode extends JavaScriptBaseNode {
         setPromiseRejectReactions.setValue(promise, Undefined.instance);
         setPromiseState.setValueInt(promise, JSPromise.REJECTED);
         if (unhandledProf.profile(getPromiseIsHandled.getValue(promise) != Boolean.TRUE)) {
-            context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT);
+            context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT, reason);
         }
         return triggerPromiseReactions.execute(reactions, reason);
     }

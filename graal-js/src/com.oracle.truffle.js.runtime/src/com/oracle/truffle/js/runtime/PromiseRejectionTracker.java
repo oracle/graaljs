@@ -52,8 +52,9 @@ public interface PromiseRejectionTracker {
      * Invoked when a promise is rejected without any handler.
      * 
      * @param promise rejected promise.
+     * @param value reason of the rejection.
      */
-    void promiseRejected(DynamicObject promise);
+    void promiseRejected(DynamicObject promise, Object value);
 
     /**
      * Invoked when a handler is added to a rejected promise for the first time.
@@ -61,5 +62,21 @@ public interface PromiseRejectionTracker {
      * @param promise rejected promise.
      */
     void promiseRejectionHandled(DynamicObject promise);
+
+    /**
+     * Invoked when an already resolved promise is rejected.
+     * 
+     * @param promise rejected promise.
+     * @param value reason of the rejection.
+     */
+    void promiseRejectedAfterResolved(DynamicObject promise, Object value);
+
+    /**
+     * Invoked when an already resolved promise is resolved.
+     * 
+     * @param promise resolved promise.
+     * @param value promise resolution.
+     */
+    void promiseResolvedAfterResolved(DynamicObject promise, Object value);
 
 }

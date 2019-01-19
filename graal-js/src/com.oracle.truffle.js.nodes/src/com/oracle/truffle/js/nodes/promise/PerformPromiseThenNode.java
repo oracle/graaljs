@@ -106,7 +106,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
             assert promiseState == JSPromise.REJECTED;
             Object reason = getPromiseResult(promise);
             if (unhandledProf.profile(!getPromiseIsHandled(promise))) {
-                context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE);
+                context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance);
             }
             DynamicObject job = getPromiseReactionJob(rejectReaction, reason);
             context.promiseEnqueueJob(job);
