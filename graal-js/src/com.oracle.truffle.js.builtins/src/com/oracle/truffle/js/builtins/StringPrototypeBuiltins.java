@@ -57,7 +57,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
@@ -106,7 +105,6 @@ import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
-import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToRegExpNode;
@@ -2420,50 +2418,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             return sb.toString();
         }
-    }
-
-    /**
-     * Implementation of the MatchAllIterator abstract operation as specified by the
-     * String.prototype.matchAll draft proposal.
-     */
-    public static class MatchAllIteratorNode extends JavaScriptBaseNode {
-        private final JSContext context;
-
-        @Child private JSToStringNode toStringNodeForInput;
-        @Child private ArraySpeciesConstructorNode speciesConstructNode;
-        @Child private PropertyGetNode getFlagsNode;
-        @Child private JSToStringNode toStringNodeForFlags;
-        @Child private PropertyGetNode getLastIndexNode;
-        @Child private JSToLengthNode toLengthNode;
-        @Child private PropertySetNode setLastIndexNode;
-        @Child private CreateRegExpStringIteratorNode createRegExpStringIteratorNode;
-
-        public MatchAllIteratorNode(JSContext context) {
-            this.context = context;
-            this.toStringNodeForInput = JSToStringNode.create();
-            this.speciesConstructNode = ArraySpeciesConstructorNode.create(context, false);
-            this.getFlagsNode = PropertyGetNode.create(JSRegExp.FLAGS, context);
-            this.toStringNodeForFlags = JSToStringNode.create();
-            this.getLastIndexNode = PropertyGetNode.create(JSRegExp.LAST_INDEX, context);
-            this.toLengthNode = JSToLengthNode.create();
-            this.setLastIndexNode = PropertySetNode.create(JSRegExp.LAST_INDEX, false, context, true);
-            this.createRegExpStringIteratorNode = new CreateRegExpStringIteratorNode(context);
-        }
-
-        public DynamicObject createMatchAllIterator(VirtualFrame frame, Object regexObj, Object stringObj) {
-            String string = toStringNodeForInput.executeString(stringObj);
-            DynamicObject regex = (DynamicObject) regexObj;
-            DynamicObject regExpConstructor = context.getRealm().getRegExpConstructor().getFunctionObject();
-            DynamicObject constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
-            String flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(regex));
-            Object matcher = speciesConstructNode.construct(constructor, regex, flags);
-            long lastIndex = toLengthNode.executeLong(getLastIndexNode.getValue(regexObj));
-            setLastIndexNode.setValue(matcher, lastIndex);
-            boolean global = flags.indexOf("g") != -1;
-            boolean fullUnicode = flags.indexOf("u") != -1;
-            return createRegExpStringIteratorNode.createIterator(frame, matcher, string, global, fullUnicode);
-        }
-
     }
 
     /**
