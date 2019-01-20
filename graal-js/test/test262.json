@@ -1944,38 +1944,6 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/isregexp-called-once.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-constructor.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-regexp-get-global-throws.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/Symbol.matchAll/species-regexp-get-unicode-throws.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "built-ins/String/prototype/matchAll/regexp-is-undefined-or-null-invokes-matchAll.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "built-ins/String/prototype/matchAll/regexp-matchAll-is-undefined-or-null.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "built-ins/String/prototype/matchAll/regexp-prototype-has-no-matchAll.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "built-ins/String/prototype/matchAll/toString-this-val.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/Final_Sigma_U180E.js",
     "status" : "FAIL",
     "comment" : "String.toLowerCase() does not handle Final_Sigma special casing with respect to u180e correctly"

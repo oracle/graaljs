@@ -69,7 +69,6 @@ import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSpl
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpTestNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpToStringNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.RegExpFlagsGetterNodeGen;
-import com.oracle.truffle.js.builtins.StringPrototypeBuiltins.MatchAllIteratorNode;
 import com.oracle.truffle.js.builtins.helper.IsPristineObjectNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode;
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNode.JSRegExpExecBuiltinNode;
@@ -1529,8 +1528,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     /**
      * This implements the RegExp.prototype.[@@matchAll] method.
      */
+    @ImportStatic(JSRegExp.class)
     public abstract static class JSRegExpMatchAllNode extends JSBuiltinNode {
-        @Child private MatchAllIteratorNode matchAllIteratorNode;
 
         public JSRegExpMatchAllNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1538,8 +1537,33 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isObjectNode.executeBoolean(regex)", limit = "1")
         protected Object matchAll(VirtualFrame frame, DynamicObject regex, Object stringObj,
+                        @Cached("create()") JSToStringNode toStringNodeForInput,
+                        @Cached("createSpeciesConstructNode()") ArraySpeciesConstructorNode speciesConstructNode,
+                        @Cached("create(FLAGS, getContext())") PropertyGetNode getFlagsNode,
+                        @Cached("create()") JSToStringNode toStringNodeForFlags,
+                        @Cached("create(LAST_INDEX, getContext())") PropertyGetNode getLastIndexNode,
+                        @Cached("create()") JSToLengthNode toLengthNode,
+                        @Cached("create(LAST_INDEX, FALSE, getContext(), TRUE)") PropertySetNode setLastIndexNode,
+                        @Cached("createCreateRegExpStringIteratorNode()") StringPrototypeBuiltins.CreateRegExpStringIteratorNode createRegExpStringIteratorNode,
                         @Cached("create()") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
-            return getMatchAllIteratorNode().createMatchAllIterator(frame, regex, stringObj);
+            String string = toStringNodeForInput.executeString(stringObj);
+            DynamicObject regExpConstructor = getContext().getRealm().getRegExpConstructor().getFunctionObject();
+            DynamicObject constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
+            String flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(regex));
+            Object matcher = speciesConstructNode.construct(constructor, regex, flags);
+            long lastIndex = toLengthNode.executeLong(getLastIndexNode.getValue(regex));
+            setLastIndexNode.setValue(matcher, lastIndex);
+            boolean global = flags.indexOf("g") != -1;
+            boolean fullUnicode = flags.indexOf("u") != -1;
+            return createRegExpStringIteratorNode.createIterator(frame, matcher, string, global, fullUnicode);
+        }
+
+        ArraySpeciesConstructorNode createSpeciesConstructNode() {
+            return ArraySpeciesConstructorNode.create(getContext(), false);
+        }
+
+        StringPrototypeBuiltins.CreateRegExpStringIteratorNode createCreateRegExpStringIteratorNode() {
+            return new StringPrototypeBuiltins.CreateRegExpStringIteratorNode(getContext());
         }
 
         @Fallback
@@ -1547,13 +1571,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@matchAll", thisObj);
         }
 
-        private MatchAllIteratorNode getMatchAllIteratorNode() {
-            if (matchAllIteratorNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                matchAllIteratorNode = insert(new MatchAllIteratorNode(getContext()));
-            }
-            return matchAllIteratorNode;
-        }
     }
 
     public static final class RegExpPrototypeGetterBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpPrototypeGetterBuiltins.RegExpPrototypeGetters> {
