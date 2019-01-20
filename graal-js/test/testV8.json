@@ -1044,10 +1044,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "mjsunit/harmony/string-matchAll-deleted-matchAll.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "mjsunit/harmony/weakrefs/basics.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
