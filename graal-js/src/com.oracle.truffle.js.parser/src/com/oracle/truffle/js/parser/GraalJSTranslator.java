@@ -2045,7 +2045,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             String identNodeName = identNode.getName();
             if (context.isOptionNashornCompatibilityMode() && (identNodeName.equals("__LINE__") || identNodeName.equals("__FILE__") || identNodeName.equals("__DIR__"))) {
                 operand = GlobalPropertyNode.createPropertyNode(context, identNodeName);
-            } else if (!identNode.isThis() && !identNode.isNewTarget()) {
+            } else if (!identNode.isThis() && !identNode.isMetaProperty()) {
                 // typeof globalVar must not throw ReferenceError if globalVar does not exist
                 operand = findScopeVarCheckTDZ(identNodeName, false).withRequired(false).createReadNode();
             }
