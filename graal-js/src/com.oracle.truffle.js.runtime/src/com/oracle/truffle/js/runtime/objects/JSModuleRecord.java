@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 
 /**
  * Source Text Module Record.
@@ -78,6 +80,8 @@ public final class JSModuleRecord {
     private DynamicObject namespace;
     /** Lazily initialized frame ({@code [[Environment]]}). */
     private MaterializedFrame environment;
+    /** Lazily initialized import.meta object ({@code [[ImportMeta]]}). */
+    private DynamicObject importMeta;
 
     private Runnable finishTranslation;
 
@@ -199,6 +203,18 @@ public final class JSModuleRecord {
 
     public void setExecutionResult(Object executionResult) {
         this.executionResult = executionResult;
+    }
+
+    public DynamicObject getImportMeta() {
+        if (importMeta == null) {
+            importMeta = createMetaObject();
+        }
+        return importMeta;
+    }
+
+    @TruffleBoundary
+    private DynamicObject createMetaObject() {
+        return JSUserObject.createWithNullPrototype(context);
     }
 
     public void setUninstantiated() {

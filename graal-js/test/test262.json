@@ -11779,34 +11779,6 @@
     "filePath" : "language/expressions/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/import.meta/distinct-for-each-module.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/import.meta/import-meta-is-an-ordinary-object.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/import.meta/same-object-returned.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/import.meta/syntax/goal-module-nested-function.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/import.meta/syntax/goal-module.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/import.meta/syntax/invalid-assignment-target-assignment-expr.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/import.meta/syntax/invalid-assignment-target-update-expr.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "language/expressions/logical-and/tco-right.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests SKIPing due to StackOverflow"
