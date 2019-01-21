@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -53,6 +54,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
+@ReportPolymorphism
 @ImportStatic(JSRuntime.class)
 abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     static final int MAX_DEPTH = 2;

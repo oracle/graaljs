@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -50,6 +51,7 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 
 @ImportStatic(JSTruffleOptions.class)
+@ReportPolymorphism
 public abstract class CompileRegexNode extends JavaScriptBaseNode {
 
     @Child private Node executeCompilerNode = RegexCompilerInterface.createExecuteCompilerNode();

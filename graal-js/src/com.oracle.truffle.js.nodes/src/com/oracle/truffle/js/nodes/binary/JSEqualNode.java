@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -66,6 +67,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @NodeInfo(shortName = "==")
 @ImportStatic({JSRuntime.class, JSInteropUtil.class})
+@ReportPolymorphism
 public abstract class JSEqualNode extends JSCompareNode {
     protected static final int MAX_CLASSES = 3;
 

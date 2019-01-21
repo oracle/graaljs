@@ -452,6 +452,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         insert(newNode);
         newNode.nextNode = head;
         this.cacheNode = newNode;
+        if (head != null) {
+            reportPolymorphicSpecialize();
+        }
         return newNode;
     }
 
@@ -1290,7 +1293,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 RootNode root = ((RootCallTarget) callTarget).getRootNode();
                 if (root instanceof FunctionRootNode && ((FunctionRootNode) root).isInlineImmediately()) {
                     insert(callNode);
-                    callNode.cloneCallTarget();
+                    if (((FunctionRootNode) root).isSplitImmediately()) {
+                        callNode.cloneCallTarget();
+                    }
                     callNode.forceInlining();
                 }
             }

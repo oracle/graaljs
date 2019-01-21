@@ -111,6 +111,14 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
         return functionData.isBuiltin();
     }
 
+    public boolean isSplitImmediately() {
+        if (JSTruffleOptions.RestrictForceSplittingBuiltins) {
+            return false;
+        }
+        return functionData.isBuiltin();
+
+    }
+
     @Override
     public String getName() {
         if (functionData.isBuiltin() || (functionData.getName().isEmpty() && internalFunctionName != null)) {

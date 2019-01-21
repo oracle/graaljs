@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -53,6 +54,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
+@ReportPolymorphism
 public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
     protected static final int MAX_CACHED_ARRAY_TYPES = 4;
     protected final JSContext context;
