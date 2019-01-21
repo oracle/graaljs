@@ -1053,8 +1053,8 @@ public class NodeFactory {
         };
     }
 
-    public JavaScriptNode createCopyDataProperties(JavaScriptNode targetObj, JavaScriptNode source, JavaScriptNode excludedNames) {
-        return CopyDataPropertiesNode.create(targetObj, source, excludedNames);
+    public JavaScriptNode createCopyDataProperties(JSContext context, JavaScriptNode targetObj, JavaScriptNode source, JavaScriptNode excludedNames) {
+        return CopyDataPropertiesNode.create(context, targetObj, source, excludedNames);
     }
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {

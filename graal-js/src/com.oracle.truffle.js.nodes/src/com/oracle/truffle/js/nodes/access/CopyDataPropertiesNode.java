@@ -41,12 +41,14 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -56,15 +58,17 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode targetNode;
     @Child @Executed protected JavaScriptNode sourceNode;
     @Child protected JavaScriptNode excludedNode;
+    protected final JSContext context;
 
-    protected CopyDataPropertiesNode(JavaScriptNode targetNode, JavaScriptNode sourceNode, JavaScriptNode excludedNode) {
+    protected CopyDataPropertiesNode(JSContext context, JavaScriptNode targetNode, JavaScriptNode sourceNode, JavaScriptNode excludedNode) {
+        this.context = context;
         this.targetNode = targetNode;
         this.sourceNode = sourceNode;
         this.excludedNode = excludedNode;
     }
 
-    public static CopyDataPropertiesNode create(JavaScriptNode targetNode, JavaScriptNode sourceNode, JavaScriptNode excludedNode) {
-        return CopyDataPropertiesNodeGen.create(targetNode, sourceNode, excludedNode);
+    public static CopyDataPropertiesNode create(JSContext context, JavaScriptNode targetNode, JavaScriptNode sourceNode, JavaScriptNode excludedNode) {
+        return CopyDataPropertiesNodeGen.create(context, targetNode, sourceNode, excludedNode);
     }
 
     @SuppressWarnings("unused")
@@ -80,16 +84,17 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"isJSObject(value)", "excludedNode != null"})
-    protected final DynamicObject doObject(VirtualFrame frame, DynamicObject restObj, DynamicObject value) {
+    protected final DynamicObject doObjectWithExcluded(VirtualFrame frame, DynamicObject restObj, DynamicObject value) {
         Object[] excludedItems = JSArray.toArray((DynamicObject) excludedNode.execute(frame));
         copyDataProperties(restObj, value, excludedItems);
         return restObj;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"!isNullOrUndefined(value)", "!isJSObject(value)"})
-    protected final Object doOther(Object object, Object value) {
-        throw Errors.createTypeErrorNotAnObject(value, this);
+    @Specialization(guards = {"!isJSType(value)"})
+    protected final Object doOther(VirtualFrame frame, DynamicObject restObj, Object value,
+                    @Cached("createToObjectNoCheckNoForeign(context)") JSToObjectNode toObjectNode) {
+        DynamicObject objectValue = (DynamicObject) toObjectNode.executeTruffleObject(value);
+        return (excludedNode == null) ? doObject(restObj, objectValue) : doObjectWithExcluded(frame, restObj, objectValue);
     }
 
     @TruffleBoundary
@@ -119,6 +124,6 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(targetNode), cloneUninitialized(sourceNode), cloneUninitialized(excludedNode));
+        return create(context, cloneUninitialized(targetNode), cloneUninitialized(sourceNode), cloneUninitialized(excludedNode));
     }
 }
