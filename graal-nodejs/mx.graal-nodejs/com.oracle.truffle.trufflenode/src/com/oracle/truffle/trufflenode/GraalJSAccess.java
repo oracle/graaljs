@@ -1728,31 +1728,30 @@ public final class GraalJSAccess {
     private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
         String moduleName = node.getRootNode().getSourceSection().getSource().getName();
+        Object extraArgument;
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
-            Object[] extendedArgs = new Object[userArgs.length + 1];
-            System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-            extendedArgs[userArgs.length] = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(node) : Undefined.instance;
-            return extendedArgs;
+            extraArgument = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(node) : Undefined.instance;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
             JSContext context = node.getContext();
             CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(this));
             JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
             DynamicObject setBreakPoint = JSFunction.create(context.getRealm(), setBreakPointData);
-            Object[] extendedArgs = new Object[userArgs.length + 1];
-            System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-            extendedArgs[userArgs.length] = setBreakPoint;
-            return extendedArgs;
+            extraArgument = setBreakPoint;
         } else if ("internal/worker.js".equals(moduleName)) {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
-            Object[] extendedArgs = new Object[userArgs.length + 1];
-            System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-            extendedArgs[userArgs.length] = SharedMemMessagingBindings.createInitFunction(this, node);
-            return extendedArgs;
+            extraArgument = SharedMemMessagingBindings.createInitFunction(this, node);
+        } else if ("inspector.js".equals(moduleName)) {
+            TruffleObject inspector = lookupInstrument("inspect", TruffleObject.class);
+            extraArgument = (inspector == null) ? Undefined.instance : inspector;
         } else {
             return userArgs;
         }
+        Object[] extendedArgs = new Object[userArgs.length + 1];
+        System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
+        extendedArgs[userArgs.length] = extraArgument;
+        return extendedArgs;
     }
 
     public Object scriptGetUnboundScript(Object script) {
@@ -2219,7 +2218,7 @@ public final class GraalJSAccess {
     public <T> T lookupInstrument(String instrumentId, Class<T> instrumentClass) {
         TruffleLanguage.Env env = envForInstruments;
         InstrumentInfo info = env.getInstruments().get(instrumentId);
-        return env.lookup(info, instrumentClass);
+        return (info == null) ? null : env.lookup(info, instrumentClass);
     }
 
     private boolean createChildContext;

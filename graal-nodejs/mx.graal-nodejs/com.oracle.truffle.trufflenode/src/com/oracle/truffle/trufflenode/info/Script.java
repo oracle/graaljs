@@ -82,7 +82,7 @@ public final class Script {
 
     private static boolean isGraalInternalScript(Source source) {
         String name = source.getName();
-        return name.startsWith("graal/") || name.startsWith("internal/graal/") || name.equals("internal/worker.js");
+        return name.startsWith("graal/") || name.startsWith("internal/graal/") || name.equals("internal/worker.js") || name.equals("inspector.js");
     }
 
 }
