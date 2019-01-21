@@ -87,7 +87,6 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 @ImportStatic({JSTypeofIdenticalNode.Type.class, JSInteropUtil.class})
 public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     protected static final int MAX_CLASSES = 3;
-    private final BranchProfile proxyBranch = BranchProfile.create();
 
     public enum Type {
         Number,
@@ -179,7 +178,8 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     @Specialization(guards = {"isJSType(value)"})
-    protected final boolean doJSType(DynamicObject value) {
+    protected final boolean doJSType(DynamicObject value,
+                    @Cached("create()") BranchProfile proxyBranch) {
         if (type == Type.Number || type == Type.BigInt || type == Type.String || type == Type.Boolean || type == Type.Symbol || type == Type.False) {
             return false;
         } else if (type == Type.Object) {
