@@ -150,10 +150,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl/number-format/constructor-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "intl/number-format/format-currency.js",
     "status" : "FAIL"
   }, {

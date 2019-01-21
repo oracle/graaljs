@@ -505,7 +505,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         } else {
             state.numberFormat = NumberFormat.getInstance(state.javaLocale);
         }
-        state.numberFormat.setGroupingUsed(state.useGrouping);
     }
 
     public static NumberFormat getNumberFormatProperty(DynamicObject obj) {
@@ -675,6 +674,12 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             }
             super.fillResolvedOptions(context, result);
             JSObjectUtil.defineDataProperty(result, "useGrouping", useGrouping, JSAttributes.getDefault());
+        }
+
+        @TruffleBoundary
+        public void setGroupingUsed(boolean useGrouping) {
+            this.useGrouping = useGrouping;
+            this.numberFormat.setGroupingUsed(useGrouping);
         }
     }
 
