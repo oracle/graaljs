@@ -3407,18 +3407,6 @@
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/assignment/dstr/obj-rest-number.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/assignment/dstr/obj-rest-str-val.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/assignment/dstr/obj-rest-symbol-val.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
     "filePath" : "language/expressions/assignment/fn-name-lhs-cover.js",
     "status" : "FAIL"
   }, {
@@ -18960,18 +18948,6 @@
   }, {
     "filePath" : "language/statements/for-in/scope-head-lex-open.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/for-of/dstr/obj-rest-number.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/statements/for-of/dstr/obj-rest-str-val.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/statements/for-of/dstr/obj-rest-symbol-val.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
   }, {
     "filePath" : "language/statements/for-of/head-const-bound-names-fordecl-tdz.js",
     "status" : "FAIL"

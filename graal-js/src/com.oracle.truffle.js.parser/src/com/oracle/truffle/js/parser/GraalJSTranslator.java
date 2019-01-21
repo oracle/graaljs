@@ -2573,7 +2573,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     if (property.isRest()) {
                         JavaScriptNode restObj = factory.createObjectLiteral(context, new ArrayList<>());
                         JavaScriptNode excludedItemsArray = excludedKeys.length == 0 ? null : factory.createArrayLiteral(context, excludedKeys);
-                        rhsNode = factory.createCopyDataProperties(restObj, valueTempVar.createReadNode(), excludedItemsArray);
+                        rhsNode = factory.createCopyDataProperties(context, restObj, valueTempVar.createReadNode(), excludedItemsArray);
                     } else if (property.getKey() instanceof IdentNode && !property.isComputed()) {
                         String keyName = property.getKeyName();
                         if (hasRest) {
