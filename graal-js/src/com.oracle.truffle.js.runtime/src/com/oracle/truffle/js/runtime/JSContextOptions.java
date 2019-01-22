@@ -167,9 +167,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> JAVA_PACKAGE_GLOBALS = new OptionKey<>(true);
     private static final String JAVA_PACKAGE_GLOBALS_HELP = "provide Java package globals: Packages, java, javafx, javax, com, org, edu.";
 
+    public static final String GLOBAL_PROPERTY_NAME = JS_OPTION_PREFIX + "global-property";
+    public static final OptionKey<Boolean> GLOBAL_PROPERTY = new OptionKey<>(true);
+    private static final String GLOBAL_PROPERTY_HELP = "provide 'global' global property.";
     public static final String GLOBAL_THIS_NAME = JS_OPTION_PREFIX + "global-this";
-    public static final OptionKey<Boolean> GLOBAL_THIS = new OptionKey<>(true);
-    private static final String GLOBAL_THIS_HELP = "provide 'global' global property.";
+    private static final String GLOBAL_THIS_HELP = "provide 'global' global property. Deprecated option, use " + GLOBAL_PROPERTY_NAME + " instead.";
 
     public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
     public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
@@ -216,17 +218,17 @@ public final class JSContextOptions {
 
     public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
     private static final OptionKey<Boolean> REGEX_DUMP_AUTOMATA = new OptionKey<>(false);
-    private static final String REGEX_DUMP_AUTOMATA_HELP = helpWithDefault("Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.", REGEX_DUMP_AUTOMATA);
+    private static final String REGEX_DUMP_AUTOMATA_HELP = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.";
     @CompilationFinal private boolean regexDumpAutomata;
 
     public static final String REGEX_STEP_EXECUTION_NAME = JS_OPTION_PREFIX + "regex.step-execution";
     private static final OptionKey<Boolean> REGEX_STEP_EXECUTION = new OptionKey<>(false);
-    private static final String REGEX_STEP_EXECUTION_HELP = helpWithDefault("Trace the execution of automata in JSON files.", REGEX_STEP_EXECUTION);
+    private static final String REGEX_STEP_EXECUTION_HELP = "Trace the execution of automata in JSON files.";
     @CompilationFinal private boolean regexStepExecution;
 
     public static final String REGEX_ALWAYS_EAGER_NAME = JS_OPTION_PREFIX + "regex.always-eager";
     private static final OptionKey<Boolean> REGEX_ALWAYS_EAGER = new OptionKey<>(false);
-    private static final String REGEX_ALWAYS_EAGER_HELP = helpWithDefault("Always match capture groups eagerly.", REGEX_ALWAYS_EAGER);
+    private static final String REGEX_ALWAYS_EAGER_HELP = "Always match capture groups eagerly.";
     @CompilationFinal private boolean regexAlwaysEager;
 
     public static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME = JS_OPTION_PREFIX + "script-engine-global-scope-import";
@@ -362,7 +364,8 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, OptionCategory.USER, TIMER_RESOLUTION_HELP));
         options.add(newOptionDescriptor(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME, OptionCategory.DEBUG, AGENT_CAN_BLOCK_HELP));
         options.add(newOptionDescriptor(JAVA_PACKAGE_GLOBALS, JAVA_PACKAGE_GLOBALS_NAME, OptionCategory.USER, JAVA_PACKAGE_GLOBALS_HELP));
-        options.add(newOptionDescriptor(GLOBAL_THIS, GLOBAL_THIS_NAME, OptionCategory.USER, GLOBAL_THIS_HELP));
+        options.add(newOptionDescriptor(GLOBAL_PROPERTY, GLOBAL_PROPERTY_NAME, OptionCategory.USER, GLOBAL_PROPERTY_HELP));
+        options.add(newOptionDescriptor(GLOBAL_PROPERTY, GLOBAL_THIS_NAME, OptionCategory.USER, GLOBAL_THIS_HELP));
         options.add(newOptionDescriptor(CONSOLE, CONSOLE_NAME, OptionCategory.USER, CONSOLE_HELP));
         options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
         options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));

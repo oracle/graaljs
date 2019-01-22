@@ -66,6 +66,8 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
 public class JSLauncher extends AbstractLanguageLauncher {
+    static final String MODULE_MIME_TYPE = "application/javascript+module";
+
     public static void main(String[] args) {
         new JSLauncher().launch(args);
     }
@@ -438,7 +440,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 case EVAL:
                     return Source.newBuilder("js", src, "<eval_script>").buildLiteral();
                 case MODULE:
-                    return Source.newBuilder("js", new File(src)).name("module:" + src).build();
+                    return Source.newBuilder("js", new File(src)).mimeType(MODULE_MIME_TYPE).build();
                 default:
                     throw new IllegalStateException();
             }

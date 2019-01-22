@@ -159,8 +159,10 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 InputNodeTag.class,
 })
 
-@TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, mimeType = {JavaScriptLanguage.APPLICATION_MIME_TYPE,
-                JavaScriptLanguage.TEXT_MIME_TYPE}, contextPolicy = TruffleLanguage.ContextPolicy.REUSE, dependentLanguages = "regex")
+@TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, characterMimeTypes = {
+                JavaScriptLanguage.APPLICATION_MIME_TYPE,
+                JavaScriptLanguage.TEXT_MIME_TYPE,
+                JavaScriptLanguage.MODULE_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.REUSE, dependentLanguages = "regex")
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private static final int MAX_TOSTRING_DEPTH = 10;
 

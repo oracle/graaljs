@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.test.external.suite;
 
+import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.ID;
+import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_MIME_TYPE;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -48,8 +51,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.polyglot.Source;
-
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 
 public abstract class TestRunnable implements Runnable {
 
@@ -97,7 +98,7 @@ public abstract class TestRunnable implements Runnable {
         try {
             Source.Builder builder = Source.newBuilder("js", scriptFile);
             if (module) {
-                builder.name("module:" + scriptFile.getPath());
+                builder.mimeType(MODULE_MIME_TYPE);
             }
             return builder.build();
         } catch (IOException e) {
@@ -109,7 +110,7 @@ public abstract class TestRunnable implements Runnable {
         String harnessLocation = getConfig().getSuiteHarnessLoc();
         return HARNESS_SOURCES.computeIfAbsent(ecmaVersion, k -> Arrays.stream(suite.getPrequelFiles(k)).map(pfn -> {
             try {
-                return Source.newBuilder(AbstractJavaScriptLanguage.ID, Paths.get(harnessLocation, pfn).toFile()).build();
+                return Source.newBuilder(ID, Paths.get(harnessLocation, pfn).toFile()).build();
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new RuntimeException(e);

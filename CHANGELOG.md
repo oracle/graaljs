@@ -8,6 +8,8 @@ The main focus is on user-observable behavior of the engine.
   array-like non-JS objects (like `ProxyArray` or Java `List`) to `Array.prototype`.
   It is possible to use functions like `map` or `forEach` on these objects directly then.
 * Updated Node.js to version 10.15.0.
+* Added mime type `application/javascript+module` for ES module sources.
+* Changed the option name for the non-standard `global` property to `js.global-property`.
 
 ## Version 1.0.0 RC11
 * Graal.js only supports ECMAScript 5 (ES5) and newer, and enforces that rule.
