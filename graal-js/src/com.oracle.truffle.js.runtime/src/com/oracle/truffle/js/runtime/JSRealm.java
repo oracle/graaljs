@@ -994,7 +994,7 @@ public class JSRealm {
     /**
      * Is Java interop actually enabled.
      */
-    private boolean isJavaInteropEnabled() {
+    public boolean isJavaInteropEnabled() {
         assert isJavaInteropAvailable();
         return getEnv() != null && getEnv().isHostLookupAllowed();
     }
