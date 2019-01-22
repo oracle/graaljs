@@ -1721,8 +1721,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
         }
         if (!JSTruffleOptions.NashornJavaInterop) {
-            if (thisObj instanceof String && isMethod()) {
-                return new JavaStringMethodGetNode(createPrimitiveReceiverCheck(thisObj, depth));
+            if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
+                if (thisObj instanceof String && isMethod()) {
+                    return new JavaStringMethodGetNode(createPrimitiveReceiverCheck(thisObj, depth));
+                }
             }
             return null;
         }
