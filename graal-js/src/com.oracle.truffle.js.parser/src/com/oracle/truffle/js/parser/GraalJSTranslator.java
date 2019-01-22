@@ -1242,6 +1242,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         throw new UnsupportedOperationException();
     }
 
+    protected JavaScriptNode getModuleRecord() {
+        throw new UnsupportedOperationException();
+    }
+
     private JavaScriptNode prepareArguments(JavaScriptNode body) {
         VarRef argumentsVar = environment.findLocalVar(Environment.ARGUMENTS_NAME);
         boolean unmappedArgumentsObject = currentFunction().isStrictMode() || !currentFunction().hasSimpleParameterList();
@@ -1515,6 +1519,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             result = enterIdentNodeSuper(identNode);
         } else if (identNode.isNewTarget()) {
             result = environment.findNewTargetVar().createReadNode();
+        } else if (identNode.isImportMeta()) {
+            result = factory.createImportMeta(getModuleRecord());
         } else {
             String varName = identNode.getName();
             VarRef varRef = findScopeVarCheckTDZ(varName, false);
@@ -2045,7 +2051,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             String identNodeName = identNode.getName();
             if (context.isOptionNashornCompatibilityMode() && (identNodeName.equals("__LINE__") || identNodeName.equals("__FILE__") || identNodeName.equals("__DIR__"))) {
                 operand = GlobalPropertyNode.createPropertyNode(context, identNodeName);
-            } else if (!identNode.isThis() && !identNode.isNewTarget()) {
+            } else if (!identNode.isThis() && !identNode.isMetaProperty()) {
                 // typeof globalVar must not throw ReferenceError if globalVar does not exist
                 operand = findScopeVarCheckTDZ(identNodeName, false).withRequired(false).createReadNode();
             }

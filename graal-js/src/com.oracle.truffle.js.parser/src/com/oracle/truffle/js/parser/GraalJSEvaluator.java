@@ -628,7 +628,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     private static Object moduleExecution(JSRealm realm, JSModuleRecord moduleRecord) {
-        return JSFunction.call(JSFunction.create(realm, moduleRecord.getFunctionData()), Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+        return JSFunction.call(JSArguments.create(Undefined.instance, JSFunction.create(realm, moduleRecord.getFunctionData()), moduleRecord));
     }
 
     private static boolean occursExactlyOnce(JSModuleRecord moduleRecord, Collection<JSModuleRecord> stack) {

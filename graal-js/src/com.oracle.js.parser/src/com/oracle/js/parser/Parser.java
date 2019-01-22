@@ -182,6 +182,7 @@ public class Parser extends AbstractParser {
     private static final String CONSTRUCTOR_NAME = "constructor";
     private static final String PROTO_NAME = "__proto__";
     private static final String NEW_TARGET_NAME = "new.target";
+    private static final String IMPORT_META_NAME = "import.meta";
     private static final String PROTOTYPE_NAME = "prototype";
 
     /** EXEC name - special property used by $EXEC API. */
@@ -343,9 +344,23 @@ public class Parser extends AbstractParser {
      */
     private void prepareLexer(final int startPos, final int len) {
         stream = new TokenStream();
-        lexer  = new Lexer(source, startPos, len, stream, scripting && env.syntaxExtensions, env.es6, shebang && env.syntaxExtensions, reparsedFunction != null);
+        lexer  = new Lexer(source, startPos, len, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions, reparsedFunction != null);
         lexer.line = lexer.pendingLine = lineOffset + 1;
         line = lineOffset;
+    }
+
+    /**
+     * Peek ahead at the next token, skipping COMMENT and EOL tokens.
+     */
+    private TokenType lookahead() {
+        for (int i = 1;; i++) {
+            TokenType t = T(k + i);
+            if (t == EOL || t == COMMENT) {
+                continue;
+            } else {
+                return t;
+            }
+        }
     }
 
     /**
@@ -426,7 +441,7 @@ public class Parser extends AbstractParser {
     public void parseFormalParameterList() {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, env.es6, shebang && env.syntaxExtensions);
+            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions);
 
             scanFirstToken();
 
@@ -447,7 +462,7 @@ public class Parser extends AbstractParser {
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, env.es6, shebang && env.syntaxExtensions);
+            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions);
             final int functionLine = line;
 
             scanFirstToken();
@@ -731,15 +746,28 @@ loop:
     }
 
     private boolean useBlockScope() {
-        return env.es6;
+        return isES6();
     }
 
+    /**
+     * ES6 (a.k.a. ES2015) or newer.
+     */
     private boolean isES6() {
-        return env.es6;
+        return env.ecmaScriptVersion >= 6;
     }
 
-    private boolean isES8() {
-        return env.es8;
+    /**
+     * ES2017 or newer.
+     */
+    private boolean isES2017() {
+        return env.ecmaScriptVersion >= 8;
+    }
+
+    /**
+     * ES2019 or newer.
+     */
+    private boolean isES2019() {
+        return env.ecmaScriptVersion >= 10;
     }
 
     private static boolean isArguments(final String name) {
@@ -790,7 +818,7 @@ loop:
                 if (!checkIdentLValue(ident)) {
                     return referenceError(lhs, rhs, false);
                 }
-                if (ident.isNewTarget()) {
+                if (ident.isMetaProperty()) {
                     return referenceError(lhs, rhs, true);
                 }
                 verifyStrictIdent(ident, "assignment");
@@ -831,11 +859,10 @@ loop:
 
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
-                verifyStrictIdent(identNode, contextString);
-                if (!checkIdentLValue(identNode)) {
-                    referenceError(identNode, null, true);
-                    return false;
+                if (!checkIdentLValue(identNode) || identNode.isMetaProperty()) {
+                    throw error(AbstractParser.message("invalid.lvalue"), identNode.getToken());
                 }
+                verifyStrictIdent(identNode, contextString);
                 return false;
             }
 
@@ -2329,7 +2356,7 @@ loop:
             if (!checkIdentLValue(ident)) {
                 return false;
             }
-            if (ident.isNewTarget()) {
+            if (ident.isMetaProperty()) {
                 return false;
             }
             verifyStrictIdent(ident, contextString);
@@ -3469,7 +3496,7 @@ loop:
 
             isIdentifier = true;
             propertyName = new IdentNode(propertyToken, finish, getOrSet.getName()).setIsPropertyName();
-        } else if (type == ELLIPSIS && ES8_REST_SPREAD_PROPERTY && isES8() && !(generator || async)) {
+        } else if (type == ELLIPSIS && ES8_REST_SPREAD_PROPERTY && isES2017() && !(generator || async)) {
             long spreadToken = Token.recast(propertyToken, TokenType.SPREAD_OBJECT);
             next();
             Expression assignmentExpression = assignmentExpression(true, yield, await);
@@ -3699,7 +3726,7 @@ loop:
         Expression lhs = memberExpression(yield, await);
 
         if (type == LPAREN) {
-            boolean async = ES8_ASYNC_FUNCTION && isES8() && lhs.isTokenType(ASYNC);
+            boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC);
             final List<Expression> arguments = optimizeList(argumentList(yield, await, async));
 
             // Catch special functions.
@@ -3797,6 +3824,7 @@ loop:
     private Expression newExpression(boolean yield, boolean await) {
         final long newToken = token;
         // NEW is tested in caller.
+        assert type == TokenType.NEW;
         next();
 
         if (ES6_NEW_TARGET && type == PERIOD && isES6()) {
@@ -3929,6 +3957,13 @@ loop:
             }
             // fall through
 
+        case IMPORT:
+            if (isES2019() && type == IMPORT) {
+                lhs = importExpression();
+                break;
+            }
+            // fall through
+
         default:
             // Get primary expression.
             lhs = primaryExpression(yield, await);
@@ -3996,6 +4031,28 @@ loop:
         return lhs;
     }
 
+    private Expression importExpression() {
+        final long importToken = token;
+        assert type == IMPORT;
+        next();
+        if (type == PERIOD) {
+            next();
+            expectDontAdvance(IDENT);
+            String meta = (String) getValueNoEscape();
+            if ("meta".equals(meta)) {
+                if (!isModule) {
+                    throw error(AbstractParser.message("unexpected.import.meta"), importToken);
+                }
+                next();
+                return new IdentNode(importToken, finish, IMPORT_META_NAME).setIsImportMeta();
+            } else {
+                throw error(AbstractParser.message("unexpected.ident", meta), token);
+            }
+        } else {
+            throw error(AbstractParser.message("expected.operand", IMPORT.getName()), importToken);
+        }
+    }
+
     private ArrayList<Expression> argumentList(boolean yield, boolean await) {
         return argumentList(yield, await, false);
     }
@@ -4029,7 +4086,7 @@ loop:
             if (!first) {
                 expect(COMMARIGHT);
                 // Trailing comma.
-                if (ES8_TRAILING_COMMA && isES8() && type == RPAREN) {
+                if (ES8_TRAILING_COMMA && isES2017() && type == RPAREN) {
                     break;
                 }
             } else {
@@ -4334,7 +4391,7 @@ loop:
             if (!first) {
                 expect(COMMARIGHT);
                 // Trailing comma.
-                if (ES8_TRAILING_COMMA && isES8() && type == endType) {
+                if (ES8_TRAILING_COMMA && isES2017() && type == endType) {
                     break;
                 }
             } else {
@@ -4607,7 +4664,7 @@ loop:
         }
 
         stream.reset();
-        lexer = parserState.createLexer(source, lexer, stream, scripting && env.syntaxExtensions, env.es6, shebang);
+        lexer = parserState.createLexer(source, lexer, stream, scripting && env.syntaxExtensions, isES6(), shebang);
         line = parserState.line;
         linePosition = parserState.linePosition;
         // Doesn't really matter, but it's safe to treat it as if there were a semicolon before
@@ -4708,7 +4765,7 @@ loop:
             if (expr instanceof BaseNode || expr instanceof IdentNode) {
                 if (isStrictMode && expr instanceof IdentNode) {
                     IdentNode ident = (IdentNode) expr;
-                    if (!ident.isThis() && !ident.isNewTarget()) {
+                    if (!ident.isThis() && !ident.isMetaProperty()) {
                         throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
                     }
                 }
@@ -4793,7 +4850,7 @@ loop:
             if (!checkIdentLValue((IdentNode)lhs)) {
                 return referenceError(lhs, null, false);
             }
-            if (((IdentNode)lhs).isNewTarget()) {
+            if (((IdentNode)lhs).isMetaProperty()) {
                 return referenceError(lhs, null, true);
             }
             assert opType == TokenType.INCPREFIX || opType == TokenType.DECPREFIX;
@@ -4965,7 +5022,7 @@ loop:
                     next();
                     rhsRestParameter = true;
                 }
-            } else if (ES6_ARROW_FUNCTION && ES8_TRAILING_COMMA && isES8() && type == RPAREN && lookaheadIsArrow()) {
+            } else if (ES6_ARROW_FUNCTION && ES8_TRAILING_COMMA && isES2017() && type == RPAREN && lookaheadIsArrow()) {
                 // Trailing comma at end of arrow function parameter list
                 break;
             }
@@ -5645,12 +5702,16 @@ loop:
             switch (type) {
             case EOF:
                 break loop;
-            case IMPORT:
-                importDeclaration(module);
-                break;
             case EXPORT:
                 exportDeclaration(module);
                 break;
+            case IMPORT:
+                // Ensure we are parsing an import declaration and not import.meta.
+                if (lookahead() != PERIOD) {
+                    importDeclaration(module);
+                    break;
+                }
+                // fall through
             default:
                 // StatementListItem
                 statement(true, 0, false, false, false);
@@ -5658,7 +5719,6 @@ loop:
             }
         }
     }
-
 
     /**
      * Parse import declaration.
@@ -6117,11 +6177,11 @@ loop:
     }
 
     private boolean isAwait() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == AWAIT;
+        return ES8_ASYNC_FUNCTION && isES2017() && type == AWAIT;
     }
 
     private boolean isAsync() {
-        return ES8_ASYNC_FUNCTION && isES8() && type == ASYNC;
+        return ES8_ASYNC_FUNCTION && isES2017() && type == ASYNC;
     }
 
     private boolean lookaheadIsAsyncArrowParameterListStart() {

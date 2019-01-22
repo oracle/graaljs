@@ -161,8 +161,7 @@ public class GraalJSParserHelper {
     private static ScriptEnvironment makeScriptEnvironment(GraalJSParserOptions parserOptions) {
         ScriptEnvironment.Builder builder = ScriptEnvironment.builder();
         builder.strict(parserOptions.isStrict());
-        builder.es6(parserOptions.isES6());
-        builder.es8(parserOptions.isES8());
+        builder.ecmaScriptVersion(parserOptions.getEcmaScriptVersion());
         builder.emptyStatements(parserOptions.isEmptyStatements());
         builder.syntaxExtensions(parserOptions.isSyntaxExtensions());
         builder.scripting(parserOptions.isScripting());

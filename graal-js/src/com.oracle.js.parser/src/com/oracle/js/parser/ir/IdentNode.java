@@ -61,6 +61,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     private static final int DIRECT_SUPER      = 1 << 7;
     private static final int REST_PARAMETER    = 1 << 8;
     private static final int CATCH_PARAMETER   = 1 << 9;
+    private static final int IMPORT_META       = 1 << 10;
 
     /** Identifier. */
     private final String name;
@@ -256,5 +257,17 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     public IdentNode setIsNewTarget() {
         return new IdentNode(this, name, flags | NEW_TARGET);
+    }
+
+    public boolean isImportMeta() {
+        return (flags & IMPORT_META) != 0;
+    }
+
+    public IdentNode setIsImportMeta() {
+        return new IdentNode(this, name, flags | IMPORT_META);
+    }
+
+    public boolean isMetaProperty() {
+        return isNewTarget() || isImportMeta();
     }
 }

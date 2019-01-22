@@ -66,10 +66,16 @@ import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
 public final class JavaScriptTranslator extends GraalJSTranslator {
+    private final Module moduleNode;
     private JSModuleRecord moduleRecord;
 
-    private JavaScriptTranslator(NodeFactory factory, JSContext context, Source source, Environment environment, boolean isParentStrict) {
+    private JavaScriptTranslator(NodeFactory factory, JSContext context, Source source, Environment environment, boolean isParentStrict, Module moduleNode) {
         super(factory, context, source, environment, isParentStrict);
+        this.moduleNode = moduleNode;
+    }
+
+    private JavaScriptTranslator(NodeFactory factory, JSContext context, Source source, Environment environment, boolean isParentStrict) {
+        this(factory, context, source, environment, isParentStrict, null);
     }
 
     public static ScriptNode translateScript(NodeFactory factory, JSContext context, Source source, boolean isParentStrict) {
@@ -106,7 +112,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
 
     public static JSModuleRecord translateModule(NodeFactory factory, JSContext context, Source source, JSModuleLoader moduleLoader) {
         FunctionNode parsed = GraalJSParserHelper.parseModule(source, ((GraalJSParserOptions) context.getParserOptions()).putStrict(true));
-        JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, null, true);
+        JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, null, true, parsed.getModule());
         return translator.moduleRecord = new JSModuleRecord(parsed.getModule(), context, moduleLoader, source, () -> translator.translateModule(parsed));
     }
 
@@ -126,10 +132,9 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         final List<JavaScriptNode> declarations = new ArrayList<>();
 
         Block moduleBlock = functionNode.getBody();
-        Module module = (Module) moduleRecord.getModule();
         GraalJSEvaluator evaluator = (GraalJSEvaluator) context.getEvaluator();
         // Assert: all named exports from module are resolvable.
-        for (ImportEntry importEntry : module.getImportEntries()) {
+        for (ImportEntry importEntry : moduleNode.getImportEntries()) {
             JSModuleRecord importedModule = evaluator.hostResolveImportedModule(moduleRecord, importEntry.getModuleRequest());
             if (importEntry.getImportName().equals(Module.STAR_NAME)) {
                 Symbol symbol = new Symbol(importEntry.getLocalName(), Symbol.IS_CONST | Symbol.HAS_BEEN_DECLARED);
@@ -155,20 +160,19 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         // Check for duplicate exports
         verifyModuleExportedNames();
 
-        declarations.add(factory.createSetModuleEnvironment(moduleRecord));
+        declarations.add(factory.createSetModuleEnvironment(getModuleRecord()));
         return declarations;
     }
 
     private void verifyModuleExportedNames() {
-        Module module = (Module) moduleRecord.getModule();
         Set<String> exportedNames = new HashSet<>();
-        for (ExportEntry exportEntry : module.getLocalExportEntries()) {
+        for (ExportEntry exportEntry : moduleNode.getLocalExportEntries()) {
             // Assert: module provides the direct binding for this export.
             if (!exportedNames.add(exportEntry.getExportName())) {
                 throw Errors.createSyntaxError("Duplicate export");
             }
         }
-        for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
+        for (ExportEntry exportEntry : moduleNode.getIndirectExportEntries()) {
             // Assert: module imports a specific binding for this export.
             if (!exportedNames.add(exportEntry.getExportName())) {
                 throw Errors.createSyntaxError("Duplicate export");
@@ -178,8 +182,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
 
     @Override
     protected void verifyModuleLocalExports(Block bodyBlock) {
-        Module module = (Module) moduleRecord.getModule();
-        for (ExportEntry exportEntry : module.getLocalExportEntries()) {
+        for (ExportEntry exportEntry : moduleNode.getLocalExportEntries()) {
             if (!bodyBlock.hasSymbol(exportEntry.getLocalName())) {
                 throw Errors.createSyntaxError(String.format("Export specifies undeclared identifier: '%s'", exportEntry.getLocalName()));
             }
@@ -187,7 +190,14 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     @Override
+    protected JavaScriptNode getModuleRecord() {
+        return factory.createConstant(moduleRecord);
+    }
+
+    @Override
     protected GraalJSTranslator newTranslator(Environment env) {
-        return new JavaScriptTranslator(factory, context, source, env, false);
+        JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, env, false, moduleNode);
+        translator.moduleRecord = this.moduleRecord;
+        return translator;
     }
 }

@@ -65,11 +65,8 @@ public final class ScriptEnvironment {
     /** Empty statements should be preserved in the AST */
     final boolean emptyStatements;
 
-    /** Enable ECMAScript 6 features. */
-    final boolean es6;
-
-    /** Enable ECMAScript 8 (2017) features. */
-    final boolean es8;
+    /** ECMAScript language version. */
+    final int ecmaScriptVersion;
 
     /**
      * Behavior when encountering a function declaration in a lexical context where only statements
@@ -110,7 +107,7 @@ public final class ScriptEnvironment {
     /** is this environment in strict mode? */
     final boolean strict;
 
-    private ScriptEnvironment(boolean strict, boolean es6, boolean es8, boolean earlyLvalueError, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
+    private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean earlyLvalueError, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
                     boolean constAsVar, FunctionStatementBehavior functionStatementBehavior, PrintWriter dumpOnError) {
         this.namespace = new Namespace();
         this.err = dumpOnError;
@@ -124,8 +121,7 @@ public final class ScriptEnvironment {
         this.strict = strict;
         this.scripting = scripting;
         this.shebang = shebang;
-        this.es6 = es6;
-        this.es8 = es8;
+        this.ecmaScriptVersion = ecmaScriptVersion;
     }
 
     /**
@@ -156,11 +152,10 @@ public final class ScriptEnvironment {
 
     @SuppressWarnings("hiding")
     public static final class Builder {
+        private int ecmaScriptVersion;
         private boolean constAsVar;
         private boolean earlyLvalueError = true;
         private boolean emptyStatements;
-        private boolean es6 = true;
-        private boolean es8 = true;
         private boolean syntaxExtensions = true;
         private boolean scripting;
         private boolean shebang;
@@ -169,6 +164,11 @@ public final class ScriptEnvironment {
         private PrintWriter dumpOnError;
 
         private Builder() {
+        }
+
+        public Builder ecmaScriptVersion(int ecmaScriptVersion) {
+            this.ecmaScriptVersion = ecmaScriptVersion;
+            return this;
         }
 
         public Builder constAsVar(boolean constAsVar) {
@@ -183,16 +183,6 @@ public final class ScriptEnvironment {
 
         public Builder emptyStatements(boolean emptyStatements) {
             this.emptyStatements = emptyStatements;
-            return this;
-        }
-
-        public Builder es6(boolean es6) {
-            this.es6 = es6;
-            return this;
-        }
-
-        public Builder es8(boolean es8) {
-            this.es8 = es8;
             return this;
         }
 
@@ -227,7 +217,7 @@ public final class ScriptEnvironment {
         }
 
         public ScriptEnvironment build() {
-            return new ScriptEnvironment(strict, es6, es8, earlyLvalueError, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar,
+            return new ScriptEnvironment(strict, ecmaScriptVersion, earlyLvalueError, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar,
                             functionStatementBehavior, dumpOnError);
         }
     }

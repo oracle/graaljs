@@ -1004,12 +1004,13 @@ public class NodeFactory {
         return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, slot);
     }
 
-    public JavaScriptNode createSetModuleEnvironment(JSModuleRecord moduleRecord) {
+    public JavaScriptNode createSetModuleEnvironment(JavaScriptNode moduleRecordNode) {
         return new StatementNode() {
-            private final JSModuleRecord module = moduleRecord;
+            @Child private JavaScriptNode moduleNode = moduleRecordNode;
 
             @Override
             public Object execute(VirtualFrame frame) {
+                JSModuleRecord module = (JSModuleRecord) moduleNode.execute(frame);
                 module.setEnvironment(frame.materialize());
                 return EMPTY;
             }
@@ -1044,6 +1045,23 @@ public class NodeFactory {
                 FrameSlot frameSlot = environment.getFrameDescriptor().findFrameSlot(bindingName);
                 assert frameSlot != null;
                 return replace(JSReadFrameSlotNode.create(frameSlot, new ModuleEnvFrameNode(module), JSFrameUtil.hasTemporalDeadZone(frameSlot))).execute(frame);
+            }
+
+            @Override
+            protected JavaScriptNode copyUninitialized() {
+                return copy();
+            }
+        };
+    }
+
+    public JavaScriptNode createImportMeta(JavaScriptNode moduleRecordNode) {
+        return new StatementNode() {
+            @Child private JavaScriptNode moduleNode = moduleRecordNode;
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                JSModuleRecord module = (JSModuleRecord) moduleNode.execute(frame);
+                return module.getImportMeta();
             }
 
             @Override
