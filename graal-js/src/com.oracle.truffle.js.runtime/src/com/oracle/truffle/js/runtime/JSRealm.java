@@ -1462,9 +1462,6 @@ public class JSRealm {
                     String path = source.getPath();
                     if (path == null) {
                         path = source.getName();
-                        if (path.startsWith("module:")) {
-                            path = path.substring("module:".length());
-                        }
                     }
                     return path;
                 }
