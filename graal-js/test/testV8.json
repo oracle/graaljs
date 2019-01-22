@@ -766,10 +766,6 @@
     "status" : "FAIL",
     "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode (lines 51-52)."
   }, {
-    "filePath" : "mjsunit/es6/unscopables.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "mjsunit/es7/exponentiation-operator.js",
     "status" : "SKIP",
     "comment" : "test should fail (V8 should report Early Error as we do)"

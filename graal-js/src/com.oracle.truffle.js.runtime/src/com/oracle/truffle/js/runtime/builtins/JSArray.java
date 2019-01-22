@@ -45,6 +45,9 @@ import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putDataProperty
 import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFromContainer;
 import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putProxyProperty;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -55,6 +58,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -86,8 +90,6 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     static final Property ARRAY_LENGTH_PROXY_PROPERTY = makeArrayLengthProxyProperty();
 
     public static final HiddenKey ARRAY_ITERATION_KIND_ID = new HiddenKey("ArrayIterationKind");
-
-    private static final String[] ARRAY_PROTOTYPE_UNSCOPABLES = new String[]{"copyWithin", "entries", "fill", "find", "findIndex", "includes", "keys", "values"};
 
     private JSArray() {
     }
@@ -203,12 +205,31 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             // The initial value of the @@iterator property is the same function object as the
             // initial value of the Array.prototype.values property.
             putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_ITERATOR, arrayPrototype.get("values"), JSAttributes.getDefaultNotEnumerable());
-            putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_UNSCOPABLES, createUnscopables(ctx, ARRAY_PROTOTYPE_UNSCOPABLES), JSAttributes.configurableNotEnumerableNotWritable());
+            putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_UNSCOPABLES, createUnscopables(ctx, unscopableNameList(ctx)), JSAttributes.configurableNotEnumerableNotWritable());
         }
         return arrayPrototype;
     }
 
-    private static DynamicObject createUnscopables(JSContext context, String[] unscopableNames) {
+    private static List<String> unscopableNameList(JSContext context) {
+        List<String> names = new ArrayList<>();
+        names.add("copyWithin");
+        names.add("entries");
+        names.add("fill");
+        names.add("find");
+        names.add("findIndex");
+        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
+            names.add("flat");
+            names.add("flatMap");
+        }
+        if (context.getEcmaScriptVersion() >= 7) {
+            names.add("includes");
+        }
+        names.add("keys");
+        names.add("values");
+        return names;
+    }
+
+    private static DynamicObject createUnscopables(JSContext context, List<String> unscopableNames) {
         DynamicObject unscopables = JSObject.createInit(context.getEmptyShapeNullPrototype());
         for (String name : unscopableNames) {
             putDataProperty(unscopables, name, true, JSAttributes.getDefault());
