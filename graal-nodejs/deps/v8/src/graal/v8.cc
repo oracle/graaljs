@@ -1219,8 +1219,46 @@ namespace v8 {
         }
     }
 
-    void V8::SetFlagsFromString(char const*, int) {
-        TRACE
+    static char* SkipWhiteSpace(char* p) {
+        while (*p != '\0' && isspace(*p) != 0) p++;
+        return p;
+    }
+
+    static char* SkipBlackSpace(char* p) {
+        while (*p != '\0' && isspace(*p) == 0) p++;
+        return p;
+    }
+
+    void V8::SetFlagsFromString(const char* str, int length) {
+        // ensure 0-termination
+        char* args = new char[length + 1];
+        memcpy(args, str, length);
+        args[length] = 0;
+
+        // count arguments
+        char* p = SkipWhiteSpace(args);
+        int argc = 1;
+        while (*p != '\0') {
+            p = SkipBlackSpace(p);
+            p = SkipWhiteSpace(p);
+            argc++;
+        }
+
+        // fill arguments
+        char** argv = new char*[argc];
+        p = SkipWhiteSpace(args);
+        argc = 1;
+        while (*p != '\0') {
+            argv[argc] = p;
+            p = SkipBlackSpace(p);
+            if (*p != '\0') *p++ = '\0'; // 0-terminate argument
+            p = SkipWhiteSpace(p);
+            argc++;
+        }
+        SetFlagsFromCommandLine(&argc, argv, false);
+
+        delete[] argv;
+        delete[] args;
     }
 
     void V8::ToLocalEmpty() {
