@@ -189,4 +189,31 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
         }).exit(assertReturnValue(43));
 
     }
+
+    @Test
+    public void desugaredSwitchNoBreak() {
+        String src = "var a = 42;" +
+                        "switch (a) {" +
+                        "  case 1:" +
+                        "    ;" +
+                        "  case 2:" +
+                        "    ;" +
+                        "  default:" +
+                        "    42;" +
+                        "}";
+
+        evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class
+        }, new Class[]{/* no input events */});
+
+        // first 'case' a == 1 is false
+        enter(ControlFlowRootTag.class, (e, r) -> {
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+        }).exit();
+        // second 'case' a == 2 is false
+        enter(ControlFlowRootTag.class, (e, r) -> {
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+        }).exit();
+    }
 }
