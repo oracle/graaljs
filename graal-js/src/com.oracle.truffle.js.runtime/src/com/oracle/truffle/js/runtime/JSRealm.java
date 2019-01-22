@@ -863,7 +863,7 @@ public class JSRealm {
         if (context.isOptionAtomics()) {
             putGlobalProperty(global, ATOMICS_CLASS_NAME, createAtomics());
         }
-        if (getEnv() != null && JSContextOptions.GLOBAL_THIS.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityMode()) {
+        if (getEnv() != null && JSContextOptions.GLOBAL_PROPERTY.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityMode()) {
             putGlobalProperty(global, "global", global);
         }
         if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
