@@ -1343,7 +1343,13 @@ namespace v8 {
     }
 
     Maybe<int32_t> Value::Int32Value(Local<Context> context) const {
-        return Just<int32_t>(reinterpret_cast<const GraalValue*> (this)->Int32Value());
+        const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        int32_t result = graal_value->Int32Value();
+        if (graal_value->Isolate()->GetJNIEnv()->ExceptionCheck()) {
+            return Nothing<int32_t>();
+        } else {
+            return Just<int32_t>(result);
+        }
     }
 
     uint32_t Value::Uint32Value() const {
@@ -1351,7 +1357,13 @@ namespace v8 {
     }
 
     Maybe<uint32_t> Value::Uint32Value(Local<Context> context) const {
-        return Just<uint32_t>(reinterpret_cast<const GraalValue*> (this)->Uint32Value());
+        const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        uint32_t result = graal_value->Uint32Value();
+        if (graal_value->Isolate()->GetJNIEnv()->ExceptionCheck()) {
+            return Nothing<uint32_t>();
+        } else {
+            return Just<uint32_t>(result);
+        }
     }
 
     int64_t Value::IntegerValue() const {
@@ -1375,7 +1387,13 @@ namespace v8 {
     }
 
     Maybe<double> Value::NumberValue(Local<Context> context) const {
-        return Just<double>(reinterpret_cast<const GraalValue*> (this)->NumberValue());
+        const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        double result = graal_value->NumberValue();
+        if (graal_value->Isolate()->GetJNIEnv()->ExceptionCheck()) {
+            return Nothing<double>();
+        } else {
+            return Just<double>(result);
+        }
     }
 
     void* External::Value() const {
