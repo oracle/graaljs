@@ -1344,10 +1344,14 @@ namespace v8 {
 
     Maybe<int32_t> Value::Int32Value(Local<Context> context) const {
         const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        JNIEnv* env = graal_value->Isolate()->GetJNIEnv();
+        jthrowable pending = env->ExceptionOccurred();
+        if (pending) env->ExceptionClear();
         int32_t result = graal_value->Int32Value();
-        if (graal_value->Isolate()->GetJNIEnv()->ExceptionCheck()) {
+        if (env->ExceptionCheck()) {
             return Nothing<int32_t>();
         } else {
+            if (pending) env->Throw(pending);
             return Just<int32_t>(result);
         }
     }
@@ -1358,10 +1362,14 @@ namespace v8 {
 
     Maybe<uint32_t> Value::Uint32Value(Local<Context> context) const {
         const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        JNIEnv* env = graal_value->Isolate()->GetJNIEnv();
+        jthrowable pending = env->ExceptionOccurred();
+        if (pending) env->ExceptionClear();
         uint32_t result = graal_value->Uint32Value();
-        if (graal_value->Isolate()->GetJNIEnv()->ExceptionCheck()) {
+        if (env->ExceptionCheck()) {
             return Nothing<uint32_t>();
         } else {
+            if (pending) env->Throw(pending);
             return Just<uint32_t>(result);
         }
     }
@@ -1388,10 +1396,14 @@ namespace v8 {
 
     Maybe<double> Value::NumberValue(Local<Context> context) const {
         const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        JNIEnv* env = graal_value->Isolate()->GetJNIEnv();
+        jthrowable pending = env->ExceptionOccurred();
+        if (pending) env->ExceptionClear();
         double result = graal_value->NumberValue();
-        if (graal_value->Isolate()->GetJNIEnv()->ExceptionCheck()) {
+        if (env->ExceptionCheck()) {
             return Nothing<double>();
         } else {
+            if (pending) env->Throw(pending);
             return Just<double>(result);
         }
     }

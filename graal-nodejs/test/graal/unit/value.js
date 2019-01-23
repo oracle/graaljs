@@ -587,6 +587,11 @@ describe('Value - *Value()', function () {
             var o = { [Symbol.toPrimitive]: function() { throw new Error(); } };
             assert.strictEqual(module.Value_IntegerValueContext(o), undefined);
         });
+        it('should return the correct value when called with a pending exception', function () {
+            assert.strictEqual(module.Value_IntegerValueContextPendingException("1234"), 1234n);
+            assert.strictEqual(module.Value_IntegerValueContextPendingException(null), 0n);
+            assert.strictEqual(module.Value_IntegerValueContextPendingException(true), 1n);
+        });
     });
     describe('NumberValue', function () {
         it('should return NaN for undefined', function () {
@@ -650,6 +655,11 @@ describe('Value - *Value()', function () {
         it('should return Nothing when exception is thrown', function () {
             var o = { [Symbol.toPrimitive]: function() { throw new Error(); } };
             assert.strictEqual(module.Value_NumberValueContext(o), undefined);
+        });
+        it('should return the correct value when called with a pending exception', function () {
+            assert.strictEqual(module.Value_NumberValueContextPendingException("1234"), 1234);
+            assert.strictEqual(module.Value_NumberValueContextPendingException(null), 0);
+            assert.strictEqual(module.Value_NumberValueContextPendingException(true), 1);
         });
     });
     describe('BooleanValue', function () {
@@ -787,6 +797,11 @@ describe('Value - *Value()', function () {
             var o = { [Symbol.toPrimitive]: function() { throw new Error(); } };
             assert.strictEqual(module.Value_Int32ValueContext(o), undefined);
         });
+        it('should return the correct value when called with a pending exception', function () {
+            assert.strictEqual(module.Value_Int32ValueContextPendingException("1234"), 1234);
+            assert.strictEqual(module.Value_Int32ValueContextPendingException(null), 0);
+            assert.strictEqual(module.Value_Int32ValueContextPendingException(true), 1);
+        });
     });
     describe('Uint32Value', function () {
         it('should return 0 for undefined', function () {
@@ -864,6 +879,11 @@ describe('Value - *Value()', function () {
         it('should return Nothing when exception is thrown', function () {
             var o = { [Symbol.toPrimitive]: function() { throw new Error(); } };
             assert.strictEqual(module.Value_Uint32ValueContext(o), undefined);
+        });
+        it('should return the correct value when called with a pending exception', function () {
+            assert.strictEqual(module.Value_Uint32ValueContextPendingException("1234"), 1234);
+            assert.strictEqual(module.Value_Uint32ValueContextPendingException(null), 0);
+            assert.strictEqual(module.Value_Uint32ValueContextPendingException(true), 1);
         });
     });
 });

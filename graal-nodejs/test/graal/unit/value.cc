@@ -336,6 +336,17 @@ EXPORT_TO_JS(IntegerValueContext) {
     }
 }
 
+EXPORT_TO_JS(IntegerValueContextPendingException) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    isolate->ThrowException(Undefined(isolate));
+    Maybe<int64_t> result = args[0]->IntegerValue(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(BigInt::New(isolate, result.FromJust()));
+    }
+}
+
 EXPORT_TO_JS(BooleanValue) {
     args.GetReturnValue().Set(args[0]->BooleanValue());
 }
@@ -364,6 +375,17 @@ EXPORT_TO_JS(NumberValueContext) {
     }
 }
 
+EXPORT_TO_JS(NumberValueContextPendingException) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    isolate->ThrowException(Undefined(isolate));
+    Maybe<double> result = args[0]->NumberValue(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
+}
+
 EXPORT_TO_JS(Int32Value) {
     args.GetReturnValue().Set(args[0]->Int32Value());
 }
@@ -378,6 +400,17 @@ EXPORT_TO_JS(Int32ValueContext) {
     }
 }
 
+EXPORT_TO_JS(Int32ValueContextPendingException) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    isolate->ThrowException(Undefined(isolate));
+    Maybe<int32_t> result = args[0]->Int32Value(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
+}
+
 EXPORT_TO_JS(Uint32Value) {
     args.GetReturnValue().Set(args[0]->Uint32Value());
 }
@@ -386,6 +419,17 @@ EXPORT_TO_JS(Uint32ValueContext) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     TryCatch tryCatch(isolate);
+    Maybe<uint32_t> result = args[0]->Uint32Value(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
+}
+
+EXPORT_TO_JS(Uint32ValueContextPendingException) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    isolate->ThrowException(Undefined(isolate));
     Maybe<uint32_t> result = args[0]->Uint32Value(context);
     if (result.IsJust()) {
         args.GetReturnValue().Set(result.FromJust());
