@@ -329,8 +329,11 @@ EXPORT_TO_JS(IntegerValue) {
 EXPORT_TO_JS(IntegerValueContext) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
-    int64_t result = args[0]->IntegerValue(context).FromJust();
-    args.GetReturnValue().Set(BigInt::New(isolate, result));
+    TryCatch tryCatch(isolate);
+    Maybe<int64_t> result = args[0]->IntegerValue(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(BigInt::New(isolate, result.FromJust()));
+    }
 }
 
 EXPORT_TO_JS(BooleanValue) {

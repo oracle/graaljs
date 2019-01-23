@@ -122,9 +122,6 @@ test-assert-deep                                                   : FAIL
 # different error message (Cannot set property origin of [object URL] which has only a getter x Cannot redefine property origin which has only a getter)
 test-whatwg-url-custom-properties                                  : FAIL
 
-# Value::IntegerValue() should return Nothing() when exception occurs
-test-buffer-copy                                                   : FAIL
-
 # vm.compileFunction/ScriptCompiler::CompileFunctionInContext() is not supported
 test-vm-basic                                                      : SKIP
 

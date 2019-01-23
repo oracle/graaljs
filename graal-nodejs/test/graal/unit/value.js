@@ -583,6 +583,10 @@ describe('Value - *Value()', function () {
         it('should return 0 for NaN', function () {
             assert.strictEqual(module.Value_IntegerValueContext(NaN), 0n);
         });
+        it('should return Nothing when exception is thrown', function () {
+            var o = { [Symbol.toPrimitive]: function() { throw new Error(); } };
+            assert.strictEqual(module.Value_IntegerValueContext(o), undefined);
+        });
     });
     describe('NumberValue', function () {
         it('should return NaN for undefined', function () {
