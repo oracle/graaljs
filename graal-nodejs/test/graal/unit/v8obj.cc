@@ -66,14 +66,6 @@ EXPORT_TO_JS(Dispose) {
     args.GetReturnValue().Set(V8::Dispose());
 }
 
-// V8::SetFlagsFromString
-
-EXPORT_TO_JS(SetFlagsFromString) {
-    const char* str = "hello";
-    V8::SetFlagsFromString(str, strlen(str));
-    args.GetReturnValue().Set(true);
-}
-
 // V8::GetVersion
 
 EXPORT_TO_JS(GetVersion) {
