@@ -174,9 +174,7 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new DebugBuiltins());
         defineBuiltins(new PerformanceBuiltins());
         defineBuiltins(new RealmFunctionBuiltins());
-        if (!JSTruffleOptions.SubstrateVM) {
-            defineJavaInterop();
-        }
+        defineJavaInterop();
         if (JSTruffleOptions.ProfileTime) {
             System.out.println("JSDefaultBuiltinLookup: " + (System.nanoTime() - time) / 1000000);
         }
@@ -214,7 +212,6 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new IntlBuiltins());
     }
 
-    /* In a separate method for Substrate VM support. */
     private void defineJavaInterop() {
         defineBuiltins(new JavaBuiltins());
         defineBuiltins(new JavaNashornCompatBuiltins());

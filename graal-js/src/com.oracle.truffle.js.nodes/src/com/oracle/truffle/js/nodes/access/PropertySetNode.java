@@ -1443,7 +1443,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         return createJavaPropertyNodeMaybe0(thisObj);
     }
 
-    /* In a separate method for Substrate VM support. */
     private SetCacheNode createJavaPropertyNodeMaybe0(Object thisObj) {
         if (!(JSObject.isDynamicObject(thisObj))) {
             if (hasSettableField(thisObj) && key instanceof String) {

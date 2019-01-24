@@ -1705,20 +1705,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @Override
     protected GetCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth) {
+        if (JavaPackage.isJavaPackage(thisObj)) {
+            return new JavaPackagePropertyGetNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+        } else if (JavaImporter.isJavaImporter(thisObj)) {
+            return new UnspecializedPropertyGetNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+        }
         if (JSTruffleOptions.SubstrateVM) {
             return null;
-        }
-        return createJavaPropertyNodeMaybe0(thisObj, depth);
-    }
-
-    /* In a separate method for Substrate VM support. */
-    private GetCacheNode createJavaPropertyNodeMaybe0(Object thisObj, int depth) {
-        if (JSObject.isDynamicObject(thisObj)) {
-            if (JavaPackage.isJavaPackage(thisObj)) {
-                return new JavaPackagePropertyGetNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
-            } else if (JavaImporter.isJavaImporter(thisObj)) {
-                return new UnspecializedPropertyGetNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
-            }
         }
         if (!JSTruffleOptions.NashornJavaInterop) {
             if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {

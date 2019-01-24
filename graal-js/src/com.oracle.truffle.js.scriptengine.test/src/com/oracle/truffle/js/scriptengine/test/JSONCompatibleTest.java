@@ -43,6 +43,7 @@ package com.oracle.truffle.js.scriptengine.test;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.Arrays;
 import java.util.List;
@@ -52,7 +53,10 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
+import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 public class JSONCompatibleTest {
 
@@ -60,6 +64,11 @@ public class JSONCompatibleTest {
 
     private ScriptEngine getEngine() {
         return manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
+    }
+
+    @Before
+    public void before() {
+        assumeTrue(JSTruffleOptions.NashornJavaInterop);
     }
 
     /**

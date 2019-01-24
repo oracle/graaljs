@@ -2722,7 +2722,7 @@ public final class JSRuntime {
             return value;
         }
         TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
-        if (value instanceof JavaClass) {
+        if (JSTruffleOptions.NashornJavaInterop && value instanceof JavaClass) {
             return env.asGuestValue(((JavaClass) value).getType());
         }
         return env.asGuestValue(value);

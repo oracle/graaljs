@@ -135,11 +135,20 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         isJavaObject(1),
         isType(1),
         typeName(1),
-        synchronized_(2),
         addToClasspath(1),
 
-        extend(1),
-        super_(1),
+        extend(1) {
+            @Override
+            public boolean isAOTSupported() {
+                return false;
+            }
+        },
+        super_(1) {
+            @Override
+            public boolean isAOTSupported() {
+                return false;
+            }
+        },
 
         // Nashorn Java Interop only
         asJSONCompatible(1);
@@ -171,22 +180,27 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 return JavaTypeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case typeName:
                 return JavaTypeNameNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case extend:
-                return JavaExtendNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
             case from:
                 return JavaFromNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case to:
                 return JavaToNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-            case super_:
-                return JavaSuperNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case isType:
                 return JavaIsTypeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case isJavaObject:
                 return JavaIsJavaObjectNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case synchronized_:
-                return JavaSynchronizedNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case addToClasspath:
                 return JavaAddToClasspathNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+
+            case extend:
+                if (!JSTruffleOptions.SubstrateVM) {
+                    return JavaExtendNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                }
+                break;
+            case super_:
+                if (!JSTruffleOptions.SubstrateVM) {
+                    return JavaSuperNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                }
+                break;
             case asJSONCompatible:
                 return JavaAsJSONCompatibleNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
@@ -202,7 +216,14 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             isJavaMethod(1),
             isJavaFunction(1),
             isScriptFunction(1),
-            isScriptObject(1);
+            isScriptObject(1),
+
+            synchronized_(2) {
+                @Override
+                public boolean isAOTSupported() {
+                    return false;
+                }
+            };
 
             private final int length;
 
@@ -227,6 +248,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                     return JavaIsScriptFunctionNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case isScriptObject:
                     return JavaIsScriptObjectNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case synchronized_:
+                    if (!JSTruffleOptions.SubstrateVM) {
+                        return JavaSynchronizedNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                    }
+                    break;
             }
             return null;
         }
@@ -350,7 +376,10 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
-        protected Object extend(Object... arguments) {
+        protected Object extend(Object[] arguments) {
+            if (JSTruffleOptions.SubstrateVM) {
+                throw Errors.unsupported("JavaAdapter");
+            }
             if (arguments.length == 0) {
                 errorBranch.enter();
                 throw Errors.createTypeError("Java.extend needs at least one argument.");
@@ -799,7 +828,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             if (getContext().isOptionNashornCompatibilityMode()) {
                 return env.isHostFunction(obj);
             }
-            return obj instanceof JavaMethod;
+            return JSTruffleOptions.NashornJavaInterop && obj instanceof JavaMethod;
         }
     }
 

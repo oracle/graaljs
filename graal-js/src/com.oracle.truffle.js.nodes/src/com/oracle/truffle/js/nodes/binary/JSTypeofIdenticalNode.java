@@ -265,6 +265,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     private static boolean nonPrimitiveJavaObj(Object obj) {
+        assert JSTruffleOptions.NashornJavaInterop;
         return !(JSObject.isDynamicObject(obj) || obj instanceof Number || obj instanceof Boolean || obj instanceof Symbol || JSRuntime.isString(obj) || obj instanceof JavaClass ||
                         obj instanceof JavaMethod);
     }
