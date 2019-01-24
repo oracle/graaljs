@@ -122,8 +122,9 @@ test-assert-deep                                                   : FAIL
 # different error message (Cannot set property origin of [object URL] which has only a getter x Cannot redefine property origin which has only a getter)
 test-whatwg-url-custom-properties                                  : FAIL
 
-# vm.compileFunction/ScriptCompiler::CompileFunctionInContext() is not supported
-test-vm-basic                                                      : SKIP
+# different error message (Unexpected token } x Expected eof but found })
+# missing support for lineOffset and columnOffset in ScriptOrigin
+test-vm-basic                                                      : FAIL
 
 # unclassified
 test-async-hooks-async-await                                       : FAIL
