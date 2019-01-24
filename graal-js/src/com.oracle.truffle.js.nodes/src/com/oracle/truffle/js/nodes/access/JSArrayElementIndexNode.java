@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -58,14 +59,14 @@ import com.oracle.truffle.js.runtime.objects.Null;
 public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
     protected static final int MAX_CACHED_ARRAY_TYPES = 4;
     protected final JSContext context;
-    @Child private IsArrayNode isArrayNode = IsArrayNode.createIsFastOrTypedArray();
+    @Child private IsArrayNode isArrayNode;
 
     protected JSArrayElementIndexNode(JSContext context) {
         this.context = context;
     }
 
-    protected static boolean hasHoles(DynamicObject object) {
-        return JSObject.getArray(object).hasHoles(object);
+    protected static boolean hasHoles(DynamicObject object, boolean isArray) {
+        return JSObject.getArray(object).hasHoles(object, isArray);
     }
 
     protected static ScriptArray getArrayType(DynamicObject object, boolean arrayCondition) {
@@ -95,6 +96,10 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
     }
 
     protected final boolean isArray(TruffleObject obj) {
+        if (isArrayNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            isArrayNode = insert(IsArrayNode.createIsFastOrTypedArray());
+        }
         return isArrayNode.execute(obj);
     }
 
