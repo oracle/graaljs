@@ -329,28 +329,111 @@ EXPORT_TO_JS(IntegerValue) {
 EXPORT_TO_JS(IntegerValueContext) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
-    int64_t result = args[0]->IntegerValue(context).FromJust();
-    args.GetReturnValue().Set(BigInt::New(isolate, result));
+    TryCatch tryCatch(isolate);
+    Maybe<int64_t> result = args[0]->IntegerValue(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(BigInt::New(isolate, result.FromJust()));
+    }
+}
+
+EXPORT_TO_JS(IntegerValueContextPendingException) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    isolate->ThrowException(Undefined(isolate));
+    Maybe<int64_t> result = args[0]->IntegerValue(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(BigInt::New(isolate, result.FromJust()));
+    }
 }
 
 EXPORT_TO_JS(BooleanValue) {
+    args.GetReturnValue().Set(args[0]->BooleanValue());
+}
+
+EXPORT_TO_JS(BooleanValueContext) {
     Isolate* isolate = args.GetIsolate();
-    args.GetReturnValue().Set(Boolean::New(isolate, args[0]->BooleanValue()));
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    Maybe<bool> result = args[0]->BooleanValue(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
 }
 
 EXPORT_TO_JS(NumberValue) {
+    args.GetReturnValue().Set(args[0]->NumberValue());
+}
+
+EXPORT_TO_JS(NumberValueContext) {
     Isolate* isolate = args.GetIsolate();
-    args.GetReturnValue().Set(Number::New(isolate, args[0]->NumberValue()));
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    Maybe<double> result = args[0]->NumberValue(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
+}
+
+EXPORT_TO_JS(NumberValueContextPendingException) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    isolate->ThrowException(Undefined(isolate));
+    Maybe<double> result = args[0]->NumberValue(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
 }
 
 EXPORT_TO_JS(Int32Value) {
+    args.GetReturnValue().Set(args[0]->Int32Value());
+}
+
+EXPORT_TO_JS(Int32ValueContext) {
     Isolate* isolate = args.GetIsolate();
-    args.GetReturnValue().Set(Int32::New(isolate, args[0]->Int32Value()));
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    Maybe<int32_t> result = args[0]->Int32Value(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
+}
+
+EXPORT_TO_JS(Int32ValueContextPendingException) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    isolate->ThrowException(Undefined(isolate));
+    Maybe<int32_t> result = args[0]->Int32Value(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
 }
 
 EXPORT_TO_JS(Uint32Value) {
+    args.GetReturnValue().Set(args[0]->Uint32Value());
+}
+
+EXPORT_TO_JS(Uint32ValueContext) {
     Isolate* isolate = args.GetIsolate();
-    args.GetReturnValue().Set(Uint32::NewFromUnsigned(isolate, args[0]->Uint32Value()));
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    Maybe<uint32_t> result = args[0]->Uint32Value(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
+}
+
+EXPORT_TO_JS(Uint32ValueContextPendingException) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    TryCatch tryCatch(isolate);
+    isolate->ThrowException(Undefined(isolate));
+    Maybe<uint32_t> result = args[0]->Uint32Value(context);
+    if (result.IsJust()) {
+        args.GetReturnValue().Set(result.FromJust());
+    }
 }
 
 // Value::To*

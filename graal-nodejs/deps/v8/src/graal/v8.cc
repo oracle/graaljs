@@ -1343,7 +1343,17 @@ namespace v8 {
     }
 
     Maybe<int32_t> Value::Int32Value(Local<Context> context) const {
-        return Just<int32_t>(reinterpret_cast<const GraalValue*> (this)->Int32Value());
+        const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        JNIEnv* env = graal_value->Isolate()->GetJNIEnv();
+        jthrowable pending = env->ExceptionOccurred();
+        if (pending) env->ExceptionClear();
+        int32_t result = graal_value->Int32Value();
+        if (env->ExceptionCheck()) {
+            return Nothing<int32_t>();
+        } else {
+            if (pending) env->Throw(pending);
+            return Just<int32_t>(result);
+        }
     }
 
     uint32_t Value::Uint32Value() const {
@@ -1351,7 +1361,17 @@ namespace v8 {
     }
 
     Maybe<uint32_t> Value::Uint32Value(Local<Context> context) const {
-        return Just<uint32_t>(reinterpret_cast<const GraalValue*> (this)->Uint32Value());
+        const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        JNIEnv* env = graal_value->Isolate()->GetJNIEnv();
+        jthrowable pending = env->ExceptionOccurred();
+        if (pending) env->ExceptionClear();
+        uint32_t result = graal_value->Uint32Value();
+        if (env->ExceptionCheck()) {
+            return Nothing<uint32_t>();
+        } else {
+            if (pending) env->Throw(pending);
+            return Just<uint32_t>(result);
+        }
     }
 
     int64_t Value::IntegerValue() const {
@@ -1375,7 +1395,17 @@ namespace v8 {
     }
 
     Maybe<double> Value::NumberValue(Local<Context> context) const {
-        return Just<double>(reinterpret_cast<const GraalValue*> (this)->NumberValue());
+        const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        JNIEnv* env = graal_value->Isolate()->GetJNIEnv();
+        jthrowable pending = env->ExceptionOccurred();
+        if (pending) env->ExceptionClear();
+        double result = graal_value->NumberValue();
+        if (env->ExceptionCheck()) {
+            return Nothing<double>();
+        } else {
+            if (pending) env->Throw(pending);
+            return Just<double>(result);
+        }
     }
 
     void* External::Value() const {

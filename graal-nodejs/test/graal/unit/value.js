@@ -583,6 +583,15 @@ describe('Value - *Value()', function () {
         it('should return 0 for NaN', function () {
             assert.strictEqual(module.Value_IntegerValueContext(NaN), 0n);
         });
+        it('should return Nothing when exception is thrown', function () {
+            var o = { [Symbol.toPrimitive]: function() { throw new Error(); } };
+            assert.strictEqual(module.Value_IntegerValueContext(o), undefined);
+        });
+        it('should return the correct value when called with a pending exception', function () {
+            assert.strictEqual(module.Value_IntegerValueContextPendingException("1234"), 1234n);
+            assert.strictEqual(module.Value_IntegerValueContextPendingException(null), 0n);
+            assert.strictEqual(module.Value_IntegerValueContextPendingException(true), 1n);
+        });
     });
     describe('NumberValue', function () {
         it('should return NaN for undefined', function () {
@@ -614,6 +623,45 @@ describe('Value - *Value()', function () {
             assert.strictEqual(module.Value_NumberValue(date), date.valueOf());
         });
     });
+    describe('NumberValue(Context)', function () {
+        it('should return NaN for undefined', function () {
+            assert.strictEqual(isNaN(module.Value_NumberValueContext(undefined)), true);
+        });
+        it('should return 0 for null', function () {
+            assert.strictEqual(module.Value_NumberValueContext(null), 0);
+        });
+        it('should return 1234 for "1234"', function () {
+            assert.strictEqual(module.Value_NumberValueContext("1234"), 1234);
+        });
+        it('should return 1 for true', function () {
+            assert.strictEqual(module.Value_NumberValueContext(true), 1);
+        });
+        it('should return 0 for false', function () {
+            assert.strictEqual(module.Value_NumberValueContext(false), 0);
+        });
+        it('should return NaN for {}', function () {
+            assert.strictEqual(isNaN(module.Value_NumberValueContext({})), true);
+        });
+        it('should return 1234.5 for "1234.5"', function () {
+            assert.strictEqual(module.Value_NumberValueContext("1234.5"), 1234.5);
+        });
+        it('should return 3.1415 for 3.1415', function () {
+            assert.strictEqual(module.Value_NumberValueContext(3.1415), 3.1415);
+        });
+        it('should return milliseconds for date', function () {
+            var date = new Date();
+            assert.strictEqual(module.Value_NumberValueContext(date), date.valueOf());
+        });
+        it('should return Nothing when exception is thrown', function () {
+            var o = { [Symbol.toPrimitive]: function() { throw new Error(); } };
+            assert.strictEqual(module.Value_NumberValueContext(o), undefined);
+        });
+        it('should return the correct value when called with a pending exception', function () {
+            assert.strictEqual(module.Value_NumberValueContextPendingException("1234"), 1234);
+            assert.strictEqual(module.Value_NumberValueContextPendingException(null), 0);
+            assert.strictEqual(module.Value_NumberValueContextPendingException(true), 1);
+        });
+    });
     describe('BooleanValue', function () {
         it('should return false for undefined', function () {
             assert.strictEqual(module.Value_BooleanValue(undefined), false);
@@ -641,6 +689,35 @@ describe('Value - *Value()', function () {
         });
         it('should return true for 3.1415', function () {
             assert.strictEqual(module.Value_BooleanValue(3.1415), true);
+        });
+    });
+    describe('BooleanValue(Context)', function () {
+        it('should return false for undefined', function () {
+            assert.strictEqual(module.Value_BooleanValueContext(undefined), false);
+        });
+        it('should return false for null', function () {
+            assert.strictEqual(module.Value_BooleanValueContext(null), false);
+        });
+        it('should return true for "1234"', function () {
+            assert.strictEqual(module.Value_BooleanValueContext("1234"), true);
+        });
+        it('should return true for true', function () {
+            assert.strictEqual(module.Value_BooleanValueContext(true), true);
+        });
+        it('should return false for false', function () {
+            assert.strictEqual(module.Value_BooleanValue(false), false);
+        });
+        it('should return false for {}', function () {
+            assert.strictEqual(isNaN(module.Value_BooleanValueContext({})), false);
+        });
+        it('should return true for "1234.5"', function () {
+            assert.strictEqual(module.Value_BooleanValueContext("1234.5"), true);
+        });
+        it('should return false for 0', function () {
+            assert.strictEqual(module.Value_BooleanValueContext(0), false);
+        });
+        it('should return true for 3.1415', function () {
+            assert.strictEqual(module.Value_BooleanValueContext(3.1415), true);
         });
     });
     describe('Int32Value', function () {
@@ -680,6 +757,52 @@ describe('Value - *Value()', function () {
             assert.strictEqual(module.Value_Int32Value(maxVal), -maxVal);
         });
     });
+    describe('Int32Value(Context)', function () {
+        it('should return 0 for undefined', function () {
+            assert.strictEqual(module.Value_Int32ValueContext(undefined), 0);
+        });
+        it('should return 0 for null', function () {
+            assert.strictEqual(module.Value_Int32ValueContext(null), 0);
+        });
+        it('should return 1234 for "1234"', function () {
+            assert.strictEqual(module.Value_Int32ValueContext("1234"), 1234);
+        });
+        it('should return 1 for true', function () {
+            assert.strictEqual(module.Value_Int32ValueContext(true), 1);
+        });
+        it('should return 0 for false', function () {
+            assert.strictEqual(module.Value_Int32ValueContext(false), 0);
+        });
+        it('should return 0 for {}', function () {
+            assert.strictEqual(module.Value_Int32ValueContext({}), 0);
+        });
+        it('should return 1234 for "1234.5"', function () {
+            assert.strictEqual(module.Value_Int32ValueContext("1234.5"), 1234);
+        });
+        it('should return 0 for 0', function () {
+            assert.strictEqual(module.Value_Int32ValueContext(0), 0);
+        });
+        it('should return 3 for 3.1415', function () {
+            assert.strictEqual(module.Value_Int32ValueContext(3.1415), 3);
+        });
+        it('should return Math.pow(2,31)-1 for Math.pow(2,31)-1', function () {
+            var maxVal = Math.pow(2, 31) - 1;
+            assert.strictEqual(module.Value_Int32ValueContext(maxVal), maxVal);
+        });
+        it('should return -Math.pow(2,31) for Math.pow(2,31)', function () {
+            var maxVal = Math.pow(2, 31);
+            assert.strictEqual(module.Value_Int32ValueContext(maxVal), -maxVal);
+        });
+        it('should return Nothing when exception is thrown', function () {
+            var o = { [Symbol.toPrimitive]: function() { throw new Error(); } };
+            assert.strictEqual(module.Value_Int32ValueContext(o), undefined);
+        });
+        it('should return the correct value when called with a pending exception', function () {
+            assert.strictEqual(module.Value_Int32ValueContextPendingException("1234"), 1234);
+            assert.strictEqual(module.Value_Int32ValueContextPendingException(null), 0);
+            assert.strictEqual(module.Value_Int32ValueContextPendingException(true), 1);
+        });
+    });
     describe('Uint32Value', function () {
         it('should return 0 for undefined', function () {
             assert.strictEqual(module.Value_Uint32Value(undefined), 0);
@@ -715,6 +838,52 @@ describe('Value - *Value()', function () {
         it('should return 0 for Math.pow(2,32)', function () {
             var maxVal = Math.pow(2, 32);
             assert.strictEqual(module.Value_Uint32Value(maxVal), 0);
+        });
+    });
+    describe('Uint32Value(Context)', function () {
+        it('should return 0 for undefined', function () {
+            assert.strictEqual(module.Value_Uint32ValueContext(undefined), 0);
+        });
+        it('should return 0 for null', function () {
+            assert.strictEqual(module.Value_Uint32ValueContext(null), 0);
+        });
+        it('should return 1234 for "1234"', function () {
+            assert.strictEqual(module.Value_Uint32ValueContext("1234"), 1234);
+        });
+        it('should return 1 for true', function () {
+            assert.strictEqual(module.Value_Uint32ValueContext(true), 1);
+        });
+        it('should return 0 for false', function () {
+            assert.strictEqual(module.Value_Uint32ValueContext(false), 0);
+        });
+        it('should return 0 for {}', function () {
+            assert.strictEqual(module.Value_Uint32ValueContext({}), 0);
+        });
+        it('should return 1234 for "1234.5"', function () {
+            assert.strictEqual(module.Value_Uint32ValueContext("1234.5"), 1234);
+        });
+        it('should return 0 for 0', function () {
+            assert.strictEqual(module.Value_Uint32ValueContext(0), 0);
+        });
+        it('should return 3 for 3.1415', function () {
+            assert.strictEqual(module.Value_Uint32ValueContext(3.1415), 3);
+        });
+        it('should return Math.pow(2,32)-1 for Math.pow(2,32)-1', function () {
+            var maxVal = Math.pow(2, 32) - 1;
+            assert.strictEqual(module.Value_Uint32ValueContext(maxVal), maxVal);
+        });
+        it('should return 0 for Math.pow(2,32)', function () {
+            var maxVal = Math.pow(2, 32);
+            assert.strictEqual(module.Value_Uint32ValueContext(maxVal), 0);
+        });
+        it('should return Nothing when exception is thrown', function () {
+            var o = { [Symbol.toPrimitive]: function() { throw new Error(); } };
+            assert.strictEqual(module.Value_Uint32ValueContext(o), undefined);
+        });
+        it('should return the correct value when called with a pending exception', function () {
+            assert.strictEqual(module.Value_Uint32ValueContextPendingException("1234"), 1234);
+            assert.strictEqual(module.Value_Uint32ValueContextPendingException(null), 0);
+            assert.strictEqual(module.Value_Uint32ValueContextPendingException(true), 1);
         });
     });
 });
