@@ -755,6 +755,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_is_external, "sharedArrayBufferIsExternal", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_get_contents, "sharedArrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_externalize, "sharedArrayBufferExternalize", "(Ljava/lang/Object;J)V")
+    ACCESS_METHOD(GraalAccessMethod::script_compiler_compile_function_in_context, "scriptCompilerCompileFunctionInContext", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;[Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiPointerSize;
     slot[v8::internal::Internals::kExternalMemoryOffset / v8::internal::kApiPointerSize] = (void*) 0;

@@ -3028,9 +3028,41 @@ namespace v8 {
             Local<String> arguments[], size_t context_extension_count,
             Local<Object> context_extensions[],
             CompileOptions options,
-            NoCacheReason) {
-        TRACE
-        return MaybeLocal<Function>();
+            NoCacheReason no_cache_reason) {
+
+        Isolate* isolate = context->GetIsolate();
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+
+        jobject java_context = reinterpret_cast<GraalContext*> (*context)->GetJavaObject();
+
+        Local<Value> resource_name = source->resource_name;
+        Local<String> file_name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(isolate);
+        jobject java_source_name = file_name.IsEmpty() ? nullptr : reinterpret_cast<GraalString*> (*file_name)->GetJavaObject();
+
+        jobject java_body = reinterpret_cast<GraalString*> (*source->source_string)->GetJavaObject();
+
+        jobjectArray java_arguments = env->NewObjectArray(arguments_count, graal_isolate->GetObjectClass(), nullptr);
+        for (size_t i = 0; i < arguments_count; i++) {
+            jobject java_argument = reinterpret_cast<GraalString*> (*arguments[i])->GetJavaObject();
+            env->SetObjectArrayElement(java_arguments, i, java_argument);
+        }
+
+        jobjectArray java_context_extensions = env->NewObjectArray(context_extension_count, graal_isolate->GetObjectClass(), nullptr);
+        for (size_t i = 0; i < context_extension_count; i++) {
+            jobject java_context_extension = reinterpret_cast<GraalObject*> (*context_extensions[i])->GetJavaObject();
+            env->SetObjectArrayElement(java_context_extensions, i, java_context_extension);
+        }
+
+        JNI_CALL(jobject, java_function, graal_isolate, GraalAccessMethod::script_compiler_compile_function_in_context, Object, java_context, java_source_name, java_body, java_arguments, java_context_extensions);
+
+        if (java_function == nullptr) {
+            return MaybeLocal<Function>();
+        } else {
+            GraalFunction* graal_function = new GraalFunction(graal_isolate, java_function);
+            Local<Function> v8_function = reinterpret_cast<Function*> (graal_function);
+            return v8_function;
+        }
     }
 
     ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCacheForFunction(Local<Function> function) {

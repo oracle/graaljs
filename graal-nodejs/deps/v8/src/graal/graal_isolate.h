@@ -326,6 +326,7 @@ enum GraalAccessMethod {
     shared_array_buffer_is_external,
     shared_array_buffer_get_contents,
     shared_array_buffer_externalize,
+    script_compiler_compile_function_in_context,
 
     count // Should be the last item of GraalAccessMethod
 };

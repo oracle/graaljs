@@ -122,6 +122,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
@@ -1675,6 +1676,53 @@ public final class GraalJSAccess {
         ObjectTemplate template = (ObjectTemplate) templateObj;
         FunctionTemplate functionHandler = (FunctionTemplate) functionTemplateNew(id, functionPointer, additionalData, null, true);
         template.setFunctionHandler(functionHandler);
+    }
+
+    public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] extensions) {
+        JSRealm realm = (JSRealm) context;
+        JSContext jsContext = realm.getContext();
+        NodeEvaluator nodeEvaluator = (NodeEvaluator) jsContext.getEvaluator();
+
+        StringBuilder params = new StringBuilder();
+        for (int i = 0; i < arguments.length; i++) {
+            if (i != 0) {
+                params.append(", ");
+            }
+            params.append(arguments[i]);
+        }
+        String parameterList = params.toString();
+
+        try {
+            GraalJSParserHelper.checkFunctionSyntax((GraalJSParserOptions) jsContext.getParserOptions(), parameterList, body, false, false);
+        } catch (com.oracle.js.parser.ParserException ex) {
+            // throw the correct JS error
+            nodeEvaluator.parseFunction(jsContext, parameterList, body, false, false, sourceName);
+        }
+
+        StringBuilder code = new StringBuilder();
+
+        code.append("(function () {");
+
+        for (int i = 0; i < extensions.length; i++) {
+            code.append("with (arguments[").append(i).append("]) {");
+        }
+
+        code.append("return ");
+
+        code.append("(function (");
+        code.append(parameterList);
+        code.append(") {\n");
+        code.append(body);
+        code.append("\n})");
+
+        for (int i = 0; i < extensions.length; i++) {
+            code.append("}"); // with (arguments[i]) {
+        }
+
+        code.append(";})");
+        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, code.toString(), sourceName).build();
+        DynamicObject wrapper = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
+        return JSFunction.call(wrapper, Undefined.instance, extensions);
     }
 
     public Object scriptCompile(Object context, Object sourceCode, Object fileName) {
