@@ -208,6 +208,7 @@ public final class JSModuleRecord {
     public DynamicObject getImportMeta() {
         if (importMeta == null) {
             importMeta = createMetaObject();
+            context.notifyImportMetaInitializer(importMeta, this);
         }
         return importMeta;
     }

@@ -123,6 +123,7 @@ import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -208,6 +209,9 @@ public class JSContext {
 
     private PromiseHook promiseHook;
     private final Assumption promiseHookNotUsedAssumption;
+
+    private ImportMetaInitializer importMetaInitializer;
+    private final Assumption importMetaInitializerNotUsedAssumption;
 
     private final CallTarget emptyFunctionCallTarget;
     private final CallTarget speciesGetterFunctionCallTarget;
@@ -405,6 +409,7 @@ public class JSContext {
 
         this.promiseHookNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseHookNotUsedAssumption");
         this.promiseRejectionTrackerNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseRejectionTrackerNotUsedAssumption");
+        this.importMetaInitializerNotUsedAssumption = Truffle.getRuntime().createAssumption("importMetaInitializerNotUsedAssumption");
 
         this.emptyFunctionCallTarget = createEmptyFunctionCallTarget(lang);
         this.speciesGetterFunctionCallTarget = createSpeciesGetterFunctionCallTarget(lang);
@@ -1394,6 +1399,24 @@ public class JSContext {
     @TruffleBoundary
     private void notifyPromiseHookImpl(int changeType, DynamicObject promise, DynamicObject parent) {
         promiseHook.promiseChanged(changeType, promise, parent);
+    }
+
+    public final void setImportMetaInitializer(ImportMetaInitializer importMetaInitializer) {
+        invalidateImportMetaInitializerNotUsedAssumption();
+        this.importMetaInitializer = importMetaInitializer;
+    }
+
+    private void invalidateImportMetaInitializerNotUsedAssumption() {
+        if (importMetaInitializerNotUsedAssumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            importMetaInitializerNotUsedAssumption.invalidate("ImportMetaInitializer unused");
+        }
+    }
+
+    public final void notifyImportMetaInitializer(DynamicObject importMeta, JSModuleRecord module) {
+        if (!importMetaInitializerNotUsedAssumption.isValid() && importMetaInitializer != null) {
+            importMetaInitializer.initializeImportMeta(importMeta, module);
+        }
     }
 
     public final JSFunctionData getOrCreateBuiltinFunctionData(BuiltinFunctionKey key, Function<JSContext, JSFunctionData> factory) {
