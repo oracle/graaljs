@@ -92,9 +92,6 @@ test-wasm-simple                                                   : FAIL
 # dynamic import is not supported
 test-vm-module-dynamic-import                                      : FAIL
 
-# import.meta is not supported
-test-vm-module-import-meta                                         : FAIL
-
 # Larger stack (~7m) needed
 test-async-hooks-recursive-stack-runInAsyncScope                   : SKIP
 
