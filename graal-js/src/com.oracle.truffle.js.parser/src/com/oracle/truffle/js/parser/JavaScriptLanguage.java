@@ -108,6 +108,7 @@ import com.oracle.truffle.js.parser.foreign.InteropBoundFunctionForeign;
 import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.parser.foreign.JSMetaObject;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -118,6 +119,7 @@ import com.oracle.truffle.js.runtime.JSInteropRuntime;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -180,7 +182,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     public boolean isObjectOfLanguage(Object o) {
-        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof JSLazyString || o instanceof InteropBoundFunction || o instanceof JSMetaObject;
+        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof BigInt || o instanceof JSLazyString || o instanceof LargeInteger || o instanceof InteropBoundFunction ||
+                        o instanceof JSMetaObject;
     }
 
     @TruffleBoundary
@@ -567,13 +570,13 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             } else if (JSUserObject.isJSUserObject(obj)) {
                 description = className;
             }
-        } else if (value instanceof TruffleObject && !(value instanceof Symbol) && !(value instanceof JSLazyString)) {
+        } else if (value instanceof InteropBoundFunction) {
+            return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());
+        } else if (JSRuntime.isForeignObject(value)) {
             assert !JSObject.isJSObject(value);
             TruffleObject truffleObject = (TruffleObject) value;
             if (JSInteropNodeUtil.isBoxed(truffleObject)) {
                 return findMetaObject(realm, JSInteropNodeUtil.unbox(truffleObject));
-            } else if (value instanceof InteropBoundFunction) {
-                return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());
             }
             type = "object";
             className = "Foreign";
