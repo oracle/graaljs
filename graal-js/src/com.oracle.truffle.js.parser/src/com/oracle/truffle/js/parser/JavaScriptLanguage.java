@@ -570,13 +570,13 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             } else if (JSUserObject.isJSUserObject(obj)) {
                 description = className;
             }
-        } else if (value instanceof TruffleObject && !(value instanceof Symbol) && !(value instanceof JSLazyString)) {
+        } else if (value instanceof InteropBoundFunction) {
+            return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());
+        } else if (JSRuntime.isForeignObject(value)) {
             assert !JSObject.isJSObject(value);
             TruffleObject truffleObject = (TruffleObject) value;
             if (JSInteropNodeUtil.isBoxed(truffleObject)) {
                 return findMetaObject(realm, JSInteropNodeUtil.unbox(truffleObject));
-            } else if (value instanceof InteropBoundFunction) {
-                return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());
             }
             type = "object";
             className = "Foreign";
