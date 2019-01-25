@@ -87,8 +87,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.interop.JavaAccess;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -216,26 +214,9 @@ public abstract class JSNewNode extends JavaScriptNode {
         throw Errors.createTypeErrorClassNotFound(JavaPackage.getPackageName(target));
     }
 
-    @Specialization
-    public Object doNewJavaObject(VirtualFrame frame, JavaClass target) {
-        if (!target.isPublic()) {
-            throwCannotExtendError(target.getType());
-        }
-        Object[] args = JSArguments.createInitial(target, target, arguments.getCount(frame));
-        args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
-        return getCallNew().executeCall(args);
-    }
-
     @TruffleBoundary
     private static void throwCannotExtendError(Class<?> target) {
         throw Errors.createTypeError("new cannot be used with non-public java type " + target.getTypeName() + ".");
-    }
-
-    @Specialization(guards = "isJavaConstructor(target)")
-    public Object doNewJavaObjectSpecialConstructor(VirtualFrame frame, JavaMethod target) {
-        Object[] args = JSArguments.createInitial(target, target, arguments.getCount(frame));
-        args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
-        return getCallNew().executeCall(args);
     }
 
     @Specialization(guards = {"isForeignObject(target)"})
@@ -284,8 +265,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    @Specialization(guards = {"!isJSFunction(target)", "!isJavaClass(target)", "!isJSAdapter(target)", "!isProxy(target)", "!isJavaPackage(target)", "!isJavaConstructor(target)",
-                    "!isForeignObject(target)"})
+    @Specialization(guards = {"!isJSFunction(target)", "!isJSAdapter(target)", "!isProxy(target)", "!isJavaPackage(target)", "!isForeignObject(target)"})
     public Object createFunctionTypeError(Object target) {
         String targetStr = getTarget().expressionToString();
         Object targetForError = targetStr == null ? target : targetStr;

@@ -57,7 +57,6 @@ import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -68,8 +67,6 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -230,7 +227,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     @Specialization(guards = {"!isTruffleObject(value)"}, replaces = "doCached")
     protected boolean doUncached(Object value) {
         if (type == Type.Number) {
-            return JSTruffleOptions.NashornJavaInterop ? value instanceof Number : JSRuntime.isNumber(value);
+            return value instanceof Number;
         } else if (type == Type.BigInt) {
             return JSRuntime.isBigInt(value);
         } else if (type == Type.String) {
@@ -238,17 +235,13 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         } else if (type == Type.Boolean) {
             return value instanceof Boolean;
         } else if (type == Type.Object) {
-            return JSTruffleOptions.NashornJavaInterop && nonPrimitiveJavaObj(value);
+            return false;
         } else if (type == Type.Undefined) {
             return false;
         } else if (type == Type.Symbol) {
             return false;
         } else if (type == Type.Function) {
-            if (JSTruffleOptions.NashornJavaInterop) {
-                return value instanceof JavaClass || value instanceof JavaMethod;
-            } else {
-                return false;
-            }
+            return false;
         } else if (type == Type.False) {
             return false;
         }
@@ -262,12 +255,6 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         } else {
             return (JSObject.isJSObject(obj) && !JSFunction.isJSFunction(obj)) || (JSRuntime.isForeignObject(obj) && !JSRuntime.isCallableForeign(obj) && !JSRuntime.isConstructorForeign(obj));
         }
-    }
-
-    private static boolean nonPrimitiveJavaObj(Object obj) {
-        assert JSTruffleOptions.NashornJavaInterop;
-        return !(JSObject.isDynamicObject(obj) || obj instanceof Number || obj instanceof Boolean || obj instanceof Symbol || JSRuntime.isString(obj) || obj instanceof JavaClass ||
-                        obj instanceof JavaMethod);
     }
 
     @Override

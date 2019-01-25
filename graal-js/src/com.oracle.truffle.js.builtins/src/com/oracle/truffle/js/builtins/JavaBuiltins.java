@@ -40,20 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.lang.reflect.Array;
-import java.util.AbstractList;
-import java.util.AbstractMap;
-import java.util.AbstractSet;
-import java.util.Deque;
-import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.Set;
-
-import javax.script.Bindings;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -75,9 +62,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaAddToClasspathNodeGen;
-import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaAsJSONCompatibleNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaExtendNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaFromNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaIsJavaFunctionNodeGen;
@@ -98,7 +83,6 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
-import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -108,16 +92,11 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.interop.Converters;
 import com.oracle.truffle.js.runtime.interop.JavaAccess;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -148,10 +127,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             public boolean isAOTSupported() {
                 return false;
             }
-        },
-
-        // Nashorn Java Interop only
-        asJSONCompatible(1);
+        };
 
         private final int length;
 
@@ -162,14 +138,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Override
         public int getLength() {
             return length;
-        }
-
-        @Override
-        public boolean isEnabled() {
-            if (JSTruffleOptions.NashornJavaInterop) {
-                return true;
-            }
-            return asJSONCompatible != this;
         }
     }
 
@@ -201,8 +169,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                     return JavaSuperNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 }
                 break;
-            case asJSONCompatible:
-                return JavaAsJSONCompatibleNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -272,9 +238,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             if (javaType == null) {
                 throw Errors.createTypeErrorClassNotFound(name);
             }
-            if (JSTruffleOptions.NashornJavaInterop) {
-                return JavaClass.forClass(asJavaClass(javaType, env));
-            }
             return javaType;
         }
 
@@ -337,16 +300,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         JavaTypeNameNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-        }
-
-        @Specialization
-        protected String typeName(JavaClass type) {
-            return type.getType().getName();
-        }
-
-        @Specialization(guards = "isClass(type)")
-        protected String typeName(Object type) {
-            return ((Class<?>) type).getName();
         }
 
         @Specialization(guards = "isJavaInteropClass(type)")
@@ -421,14 +374,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         protected static boolean isType(Object obj, TruffleLanguage.Env env) {
-            return (env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>) || (JSTruffleOptions.NashornJavaInterop && obj instanceof JavaClass);
+            return env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>;
         }
 
         protected static Class<?> toHostClass(Object type, TruffleLanguage.Env env) {
             assert isType(type, env);
-            if (JSTruffleOptions.NashornJavaInterop && type instanceof JavaClass) {
-                return ((JavaClass) type).getType();
-            }
             return (Class<?>) env.asHostObject(type);
         }
     }
@@ -438,10 +388,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             super(context, builtin);
         }
 
-        private final BranchProfile objectArrayBranch = BranchProfile.create();
         private final BranchProfile objectListBranch = BranchProfile.create();
-        private final BranchProfile longArrayBranch = BranchProfile.create();
-        private final BranchProfile intArrayBranch = BranchProfile.create();
         private final BranchProfile needErrorBranches = BranchProfile.create();
 
         @Child private WriteElementNode writeNode;
@@ -483,26 +430,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         protected DynamicObject from(Object javaObj) {
-            if (JSTruffleOptions.NashornJavaInterop) {
-                if (javaObj.getClass().isArray()) {
-                    int len = Array.getLength(javaObj);
-                    DynamicObject jsArrayObj = JSArray.createEmptyChecked(getContext(), len);
-                    if (javaObj instanceof long[]) {
-                        fromLong(javaObj, len, jsArrayObj);
-                    } else if (javaObj instanceof int[]) {
-                        fromInt(javaObj, len, jsArrayObj);
-                    } else {
-                        fromObject(javaObj, len, jsArrayObj);
-                    }
-                    return jsArrayObj;
-                } else if (javaObj instanceof List) {
-                    List<?> javaList = (List<?>) javaObj;
-                    int len = Boundaries.listSize(javaList);
-                    DynamicObject jsArrayObj = JSArray.createEmptyChecked(getContext(), len);
-                    fromList(javaList, len, jsArrayObj);
-                    return jsArrayObj;
-                }
-            }
             if (javaObj instanceof TruffleObject) {
                 TruffleLanguage.Env env = getContext().getRealm().getEnv();
                 TruffleObject javaArray = (TruffleObject) javaObj;
@@ -541,29 +468,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             }
         }
 
-        private void fromObject(Object javaObj, int len, DynamicObject jsArrayObj) {
-            objectArrayBranch.enter();
-            for (int i = 0; i < len; i++) {
-                write(jsArrayObj, i, convertValue(Array.get(javaObj, i)));
-            }
-        }
-
-        private void fromInt(Object javaObj, int len, DynamicObject jsArrayObj) {
-            intArrayBranch.enter();
-            int[] javaArray = (int[]) javaObj;
-            for (int i = 0; i < len; i++) {
-                write(jsArrayObj, i, javaArray[i]);
-            }
-        }
-
-        private void fromLong(Object javaObj, int len, DynamicObject jsArrayObj) {
-            longArrayBranch.enter();
-            long[] javaArray = (long[]) javaObj;
-            for (int i = 0; i < len; i++) {
-                write(jsArrayObj, i, (double) javaArray[i]);
-            }
-        }
-
         private static Object convertValue(Object object) {
             if (object instanceof Long) {
                 return ((Long) object).doubleValue();
@@ -582,17 +486,14 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
     abstract static class JavaToNode extends JSBuiltinNode {
 
-        JavaToNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        private final ConditionProfile isArrayCondition = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isListCondition = ConditionProfile.createBinaryProfile();
-
         @Child private JSToStringNode toStringNode;
         @Child private JSToObjectArrayNode toObjectArrayNode;
         @Child private Node newNode;
         @Child private Node writeNode;
+
+        JavaToNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
 
         private String toString(Object target) {
             if (toStringNode == null) {
@@ -612,7 +513,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         protected Object to(TruffleObject jsObj, Object toType) {
-            Class<?> targetType;
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
             if (toType instanceof TruffleObject && env.isHostObject(toType)) {
                 if (isJavaArrayClass(toType, env)) {
@@ -621,31 +521,15 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                     throw Errors.createTypeErrorFormat("Unsupported type: %s", toType);
                 }
             } else if (toType == Undefined.instance) {
-                if (JSTruffleOptions.NashornJavaInterop) {
-                    return toArray(jsObj, Object[].class);
-                } else {
-                    return toArray(jsObj, (TruffleObject) env.asGuestValue(Object[].class), env);
-                }
-            } else if (JSTruffleOptions.NashornJavaInterop && toType instanceof JavaClass) {
-                targetType = ((JavaClass) toType).getType();
+                return toArray(jsObj, (TruffleObject) env.asGuestValue(Object[].class), env);
             } else {
                 String className = toString(toType);
                 Object javaType = JavaTypeNode.lookupJavaType(className, env);
-                if (JSTruffleOptions.NashornJavaInterop) {
-                    targetType = JavaTypeNode.asJavaClass(javaType, env);
-                } else if (isJavaArrayClass(javaType, env)) {
+                if (isJavaArrayClass(javaType, env)) {
                     return toArray(jsObj, (TruffleObject) javaType, env);
                 } else {
                     throw Errors.createTypeErrorFormat("Unsupported type: %s", className);
                 }
-            }
-            assert JSTruffleOptions.NashornJavaInterop;
-            if (isArrayCondition.profile(targetType.isArray())) {
-                return toArray(jsObj, targetType);
-            } else if (isListCondition.profile(targetType == List.class)) {
-                return toList(jsObj);
-            } else {
-                throw Errors.createTypeErrorFormat("Unsupported type: %s", targetType);
             }
         }
 
@@ -683,25 +567,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 return result;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
                 throw Errors.createTypeError(Boundaries.javaToString(e));
-            }
-        }
-
-        private Object toArray(TruffleObject jsObj, Class<?> arrayType) {
-            assert JSTruffleOptions.NashornJavaInterop;
-            Object[] arr = toObjectArray(jsObj);
-            if (arrayType == Object[].class) {
-                Object[] result = new Object[arr.length];
-                for (int i = 0; i < arr.length; i++) {
-                    result[i] = toJava(arr[i]);
-                }
-                return result;
-            } else {
-                Class<?> componentType = arrayType.getComponentType();
-                Object result = Array.newInstance(componentType, arr.length);
-                for (int i = 0; i < arr.length; i++) {
-                    Array.set(result, i, convertElement(arr[i], componentType));
-                }
-                return result;
             }
         }
 
@@ -754,16 +619,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             return element == Null.instance || element == Undefined.instance;
         }
 
-        @TruffleBoundary
-        private static Object toList(TruffleObject jsObj) {
-            assert JSTruffleOptions.NashornJavaInterop;
-            if (JSArray.isJSArray(jsObj)) {
-                return new JSArrayListWrapper((DynamicObject) jsObj);
-            } else {
-                return new JSObjectListWrapper((DynamicObject) jsObj);
-            }
-        }
-
         private static Character toChar(Object value) {
             if (value instanceof Number) {
                 final int intValue = ((Number) value).intValue();
@@ -800,7 +655,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization
         protected final boolean isType(Object obj) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
-            return (env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>) || (JSTruffleOptions.NashornJavaInterop && obj instanceof JavaClass);
+            return env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>;
         }
     }
 
@@ -813,7 +668,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization
         protected final boolean isJavaObject(Object obj) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
-            return env.isHostObject(obj) || env.isHostFunction(obj) || (JSTruffleOptions.NashornJavaInterop && !(obj instanceof TruffleObject) && !JSRuntime.isJSPrimitive(obj));
+            return env.isHostObject(obj) || env.isHostFunction(obj);
         }
     }
 
@@ -825,10 +680,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization
         protected boolean isJavaMethod(Object obj) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
-            if (getContext().isOptionNashornCompatibilityMode()) {
-                return env.isHostFunction(obj);
-            }
-            return JSTruffleOptions.NashornJavaInterop && obj instanceof JavaMethod;
+            return env.isHostFunction(obj);
         }
     }
 
@@ -838,13 +690,9 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization
-        protected boolean isJavaFunction(Object obj,
-                        @Cached("create()") TypeOfNode typeofNode) {
+        protected boolean isJavaFunction(Object obj) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
-            if (getContext().isOptionNashornCompatibilityMode()) {
-                return env.isHostFunction(obj) || (env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>);
-            }
-            return typeofNode.executeString(obj).equals("function") && !JSFunction.isJSFunction(obj);
+            return env.isHostFunction(obj) || (env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>);
         }
     }
 
@@ -951,418 +799,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         protected Object doObject(Object fileName,
                         @Cached("create()") JSToStringNode toStringNode) {
             return doString(toStringNode.executeString(fileName));
-        }
-    }
-
-    abstract static class JavaAsJSONCompatibleNode extends JSBuiltinNode {
-        JavaAsJSONCompatibleNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @TruffleBoundary
-        @Specialization
-        protected static Object asJSONCompatible(Object obj) {
-            if (JSArray.isJSArray(obj)) {
-                return new JSONListWrapper((DynamicObject) obj);
-            } else if (JSObject.isJSObject(obj) && JSRuntime.isObject(obj)) {
-                return new JSONMapWrapper((DynamicObject) obj);
-            } else {
-                return obj;
-            }
-        }
-
-    }
-
-    static Object asJSONCompatible(Object obj) {
-        return JavaAsJSONCompatibleNode.asJSONCompatible(obj);
-    }
-
-    static Object toJava(Object element) {
-        return Converters.JS_TO_JAVA_CONVERTER.convert(element);
-    }
-
-    static Object fromJava(Object element) {
-        if (element instanceof JSONListWrapper) {
-            return ((JSONListWrapper) element).jsObj;
-        } else if (element instanceof JSONMapWrapper) {
-            return ((JSONMapWrapper) element).jsObj;
-        }
-        return Converters.JAVA_TO_JS_CONVERTER.convert(element);
-    }
-
-    abstract static class ListWrapper extends AbstractList<Object> implements Deque<Object> {
-        protected final DynamicObject jsObj;
-
-        ListWrapper(DynamicObject jsObj) {
-            assert jsObj != null;
-            this.jsObj = jsObj;
-        }
-
-        @Override
-        public void addFirst(Object o) {
-            add(0, o);
-        }
-
-        @Override
-        public void addLast(Object o) {
-            add(size(), o);
-        }
-
-        @Override
-        public boolean offerFirst(Object o) {
-            addFirst(o);
-            return true;
-        }
-
-        @Override
-        public boolean offerLast(Object o) {
-            addLast(o);
-            return true;
-        }
-
-        @Override
-        public Object removeFirst() {
-            checkEmpty();
-            return pollFirst();
-        }
-
-        @Override
-        public Object removeLast() {
-            checkEmpty();
-            return pollLast();
-        }
-
-        @Override
-        public Object pollFirst() {
-            if (isEmpty()) {
-                return null;
-            }
-            return remove(0);
-        }
-
-        @Override
-        public Object pollLast() {
-            if (isEmpty()) {
-                return null;
-            }
-            return remove(size() - 1);
-        }
-
-        @Override
-        public Object getFirst() {
-            checkEmpty();
-            return peekFirst();
-        }
-
-        @Override
-        public Object getLast() {
-            checkEmpty();
-            return peekLast();
-        }
-
-        @Override
-        public Object peekFirst() {
-            if (isEmpty()) {
-                return null;
-            }
-            return get(0);
-        }
-
-        @Override
-        public Object peekLast() {
-            if (isEmpty()) {
-                return null;
-            }
-            return get(size() - 1);
-        }
-
-        @Override
-        public boolean removeFirstOccurrence(Object o) {
-            return removeFirstOccurrence(iterator(), o);
-        }
-
-        @Override
-        public boolean removeLastOccurrence(Object o) {
-            return removeFirstOccurrence(descendingIterator(), o);
-        }
-
-        @Override
-        public boolean offer(Object o) {
-            addLast(o);
-            return true;
-        }
-
-        @Override
-        public Object remove() {
-            return removeFirst();
-        }
-
-        @Override
-        public Object poll() {
-            return pollFirst();
-        }
-
-        @Override
-        public Object element() {
-            return getFirst();
-        }
-
-        @Override
-        public Object peek() {
-            return peekFirst();
-        }
-
-        @Override
-        public void push(Object o) {
-            addFirst(o);
-        }
-
-        @Override
-        public Object pop() {
-            return removeFirst();
-        }
-
-        @Override
-        public Iterator<Object> descendingIterator() {
-            final ListIterator<Object> listIterator = listIterator(size());
-            return new Iterator<Object>() {
-                @Override
-                public boolean hasNext() {
-                    return listIterator.hasPrevious();
-                }
-
-                @Override
-                public Object next() {
-                    return listIterator.previous();
-                }
-
-                @Override
-                public void remove() {
-                    listIterator.remove();
-                }
-            };
-        }
-
-        private void checkEmpty() {
-            if (isEmpty()) {
-                throw new NoSuchElementException();
-            }
-        }
-
-        private static boolean removeFirstOccurrence(Iterator<Object> iterator, Object o) {
-            while (iterator.hasNext()) {
-                if (Objects.equals(o, iterator.next())) {
-                    iterator.remove();
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        static void checkRange(int index, int upperRange) {
-            if (index < 0 || index > upperRange) {
-                throw new IndexOutOfBoundsException("index " + index + " is < 0 or > " + upperRange);
-            }
-        }
-    }
-
-    static class JSArrayListWrapper extends ListWrapper {
-
-        JSArrayListWrapper(DynamicObject jsObj) {
-            super(jsObj);
-            assert JSArray.isJSArray(jsObj);
-        }
-
-        private ScriptArray getArray() {
-            return JSObject.getArray(jsObj);
-        }
-
-        protected Object convertToJava(Object element) {
-            return toJava(element);
-        }
-
-        @Override
-        public Object get(int index) {
-            checkRange(index, size() - 1);
-            Object element = getArray().getElement(jsObj, index);
-            return convertToJava(element);
-        }
-
-        @Override
-        public void add(int index, Object o) {
-            int size = size();
-            checkRange(index, size);
-            try {
-                JSAbstractArray.arraySetArrayType(jsObj, getArray().addRange(jsObj, index, 1));
-            } catch (ArrayIndexOutOfBoundsException ex) {
-                throw new IndexOutOfBoundsException(ex.getMessage());
-            }
-            JSAbstractArray.arraySetArrayType(jsObj, getArray().setElement(jsObj, index, fromJava(o), false));
-            JSAbstractArray.arraySetLength(jsObj, size + 1);
-        }
-
-        @Override
-        public Object set(int index, Object o) {
-            checkRange(index, size() - 1);
-            Object element = get(index);
-            JSAbstractArray.arraySetArrayType(jsObj, getArray().setElement(jsObj, index, fromJava(o), false));
-            return convertToJava(element);
-        }
-
-        @Override
-        public Object remove(int index) {
-            int size = size();
-            checkRange(index, size - 1);
-            Object element = get(index);
-            try {
-                JSAbstractArray.arraySetArrayType(jsObj, getArray().removeRange(jsObj, index, index + 1));
-            } catch (ArrayIndexOutOfBoundsException ex) {
-                throw new IndexOutOfBoundsException(ex.getMessage());
-            }
-            JSAbstractArray.arraySetLength(jsObj, size - 1);
-            return convertToJava(element);
-        }
-
-        @Override
-        public int size() {
-            return getArray().lengthInt(jsObj);
-        }
-    }
-
-    static class JSObjectListWrapper extends ListWrapper {
-        JSObjectListWrapper(DynamicObject array) {
-            super(array);
-            assert JSArray.isJSArray(array);
-        }
-
-        @Override
-        public Object get(int index) {
-            return toJava(JSObject.get(jsObj, index));
-        }
-
-        @Override
-        public Object set(int index, Object o) {
-            checkRange(index, size() - 1);
-            Object element = get(index);
-            JSObject.set(jsObj, index, fromJava(o));
-            return toJava(element);
-        }
-
-        @Override
-        public int size() {
-            return JSRuntime.toInt32(JSObject.get(jsObj, JSAbstractArray.LENGTH));
-        }
-    }
-
-    static class JSONListWrapper extends JSArrayListWrapper {
-        JSONListWrapper(DynamicObject array) {
-            super(array);
-            assert JSArray.isJSArray(array);
-        }
-
-        @Override
-        protected Object convertToJava(Object element) {
-            return asJSONCompatible(super.convertToJava(element));
-        }
-    }
-
-    static class JSONMapWrapper extends AbstractMap<String, Object> implements Bindings {
-        final DynamicObject jsObj;
-
-        JSONMapWrapper(DynamicObject object) {
-            this.jsObj = object;
-        }
-
-        private static Object convertToJava(final Object element) {
-            return asJSONCompatible(toJava(element));
-        }
-
-        final List<String> keyList() {
-            return JSObject.enumerableOwnNames(jsObj);
-        }
-
-        @Override
-        public int size() {
-            return keyList().size();
-        }
-
-        @Override
-        public boolean isEmpty() {
-            return size() == 0;
-        }
-
-        @Override
-        public boolean containsKey(Object key) {
-            return JSObject.hasProperty(jsObj, key);
-        }
-
-        @Override
-        public Object get(Object key) {
-            return convertToJava(JSObject.get(jsObj, key));
-        }
-
-        @Override
-        public Object put(String key, Object value) {
-            final Object oldValue = get(key);
-            JSObject.set(jsObj, key, fromJava(value));
-            return convertToJava(oldValue);
-        }
-
-        @Override
-        public Object remove(Object key) {
-            final Object oldValue = get(key);
-            JSObject.delete(jsObj, key);
-            return convertToJava(oldValue);
-        }
-
-        @Override
-        public void clear() {
-            for (String key : keyList()) {
-                JSObject.delete(jsObj, key);
-            }
-        }
-
-        @Override
-        public Set<Map.Entry<String, Object>> entrySet() {
-            return new AbstractSet<Map.Entry<String, Object>>() {
-                @Override
-                public Iterator<Map.Entry<String, Object>> iterator() {
-                    return new Iterator<Map.Entry<String, Object>>() {
-                        Iterator<String> keysIterator = keyList().iterator();
-
-                        @Override
-                        public Entry<String, Object> next() {
-                            String key = keysIterator.next();
-                            return new Map.Entry<String, Object>() {
-                                @Override
-                                public String getKey() {
-                                    return key;
-                                }
-
-                                @Override
-                                public Object getValue() {
-                                    return get(key);
-                                }
-
-                                @Override
-                                public Object setValue(Object value) {
-                                    return put(key, value);
-                                }
-                            };
-                        }
-
-                        @Override
-                        public boolean hasNext() {
-                            return keysIterator.hasNext();
-                        }
-                    };
-                }
-
-                @Override
-                public int size() {
-                    return JSONMapWrapper.this.size();
-                }
-            };
         }
     }
 }

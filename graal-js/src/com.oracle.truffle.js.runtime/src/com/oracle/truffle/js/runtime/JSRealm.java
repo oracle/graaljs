@@ -400,7 +400,7 @@ public class JSRealm {
         this.asyncGeneratorFunctionConstructor = es9 ? JSFunction.createAsyncGeneratorFunctionConstructor(this) : null;
         this.asyncGeneratorObjectPrototype = es9 ? (DynamicObject) asyncGeneratorFunctionConstructor.getPrototype().get(JSObject.PROTOTYPE, null) : null;
 
-        boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode || JSTruffleOptions.NashornJavaInterop;
+        boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
         this.jsAdapterConstructor = nashornCompat ? JSAdapter.createConstructor(this) : null;
         this.javaImporterConstructor = nashornCompat ? JavaImporter.createConstructor(this) : null;
 
@@ -992,7 +992,7 @@ public class JSRealm {
         DynamicObject java = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, java, Symbol.SYMBOL_TO_STRING_TAG, JAVA_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME);
-        if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
+        if (context.isOptionNashornCompatibilityMode()) {
             JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME_NASHORN_COMPAT);
         }
         putGlobalProperty(global, JAVA_CLASS_NAME, java);
@@ -1008,7 +1008,7 @@ public class JSRealm {
                 putGlobalProperty(global, "edu", JavaPackage.createInit(this, "edu"));
             }
 
-            if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
+            if (context.isOptionNashornCompatibilityMode()) {
                 putGlobalProperty(global, JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
             }
         }

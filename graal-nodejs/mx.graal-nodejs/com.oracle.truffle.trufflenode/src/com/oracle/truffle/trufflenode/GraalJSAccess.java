@@ -367,9 +367,6 @@ public final class GraalJSAccess {
         } else if (value instanceof Boolean) {
             return ((Boolean) value).booleanValue() ? BOOLEAN_VALUE_TRUE : BOOLEAN_VALUE_FALSE;
         }
-        if (JSTruffleOptions.NashornJavaInterop) {
-            return ORDINARY_OBJECT;
-        }
         if (value instanceof Throwable) {
             valueTypeError(value);
         }

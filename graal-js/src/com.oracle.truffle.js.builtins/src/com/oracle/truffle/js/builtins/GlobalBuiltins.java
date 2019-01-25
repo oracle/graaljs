@@ -1414,8 +1414,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 path = arg.toString();
             } else if (env.isHostObject(arg) && env.asHostObject(arg) instanceof File) {
                 return verifyFile((File) env.asHostObject(arg));
-            } else if (JSTruffleOptions.NashornJavaInterop && arg instanceof File) {
-                return verifyFile((File) arg);
             } else {
                 path = JSRuntime.toString(arg);
             }

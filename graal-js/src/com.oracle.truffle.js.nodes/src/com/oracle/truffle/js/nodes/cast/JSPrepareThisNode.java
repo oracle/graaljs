@@ -58,8 +58,6 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -133,16 +131,6 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
     @Specialization
     protected DynamicObject doSymbol(Symbol value) {
         return JSSymbol.create(context, value);
-    }
-
-    @Specialization
-    protected JavaClass doJava(JavaClass value) {
-        return value;
-    }
-
-    @Specialization
-    protected JavaMethod doJava(JavaMethod value) {
-        return value;
     }
 
     @Specialization(guards = {"object != null", "cachedClass != null", "object.getClass() == cachedClass"}, limit = "MAX_CLASSES")

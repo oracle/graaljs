@@ -115,7 +115,6 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
@@ -196,7 +195,6 @@ public class JSContext {
     private final TimeProfiler timeProfiler;
 
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
-    private final JSObjectFactory.BoundProto javaWrapperFactory;
 
     /** The RegExp engine, as obtained from RegexLanguage. */
     private TruffleObject regexEngine;
@@ -406,7 +404,6 @@ public class JSContext {
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
         this.timeProfiler = JSTruffleOptions.ProfileTime ? new TimeProfiler() : null;
-        this.javaWrapperFactory = JSTruffleOptions.NashornJavaInterop ? JSObjectFactory.createBound(this, Null.instance, JSJavaWrapper.makeShape(this).createFactory()) : null;
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
@@ -502,7 +499,7 @@ public class JSContext {
         this.listFormatFactory = intl402 ? builder.create(JSListFormat.INSTANCE) : null;
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
-        boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode || JSTruffleOptions.NashornJavaInterop;
+        boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
 
@@ -898,10 +895,6 @@ public class JSContext {
 
     public final JSObjectFactory getJavaPackageFactory() {
         return javaPackageFactory;
-    }
-
-    public final JSObjectFactory.BoundProto getJavaWrapperFactory() {
-        return javaWrapperFactory;
     }
 
     public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {

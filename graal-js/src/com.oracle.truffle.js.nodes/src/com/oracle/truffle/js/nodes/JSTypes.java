@@ -48,10 +48,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSLazyStringFlattened;
 import com.oracle.truffle.js.runtime.objects.JSLazyStringRaw;
@@ -138,15 +135,5 @@ public class JSTypes {
     @ImplicitCast
     public static CharSequence castCharSequence(PropertyReference value) {
         return value;
-    }
-
-    @TypeCheck(JavaClass.class)
-    public static boolean isJavaClass(Object value) {
-        return JSTruffleOptions.NashornJavaInterop ? value instanceof JavaClass : false;
-    }
-
-    @TypeCheck(JavaMethod.class)
-    public static boolean isJavaMethod(Object value) {
-        return JSTruffleOptions.NashornJavaInterop ? value instanceof JavaMethod : false;
     }
 }

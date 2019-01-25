@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.lang.reflect.Array;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -56,11 +53,9 @@ import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
@@ -100,18 +95,6 @@ abstract class GetLengthHelperNode extends JavaScriptBaseNode {
     public double getArrayLength(DynamicObject target, boolean isArray,
                     @Cached("create()") ArrayLengthReadNode arrayLengthReadNode) {
         return arrayLengthReadNode.executeDouble(target, isArray);
-    }
-
-    @Specialization(guards = "isJSJavaWrapper(target)")
-    public int getJavaWrapperLength(DynamicObject target, @SuppressWarnings("unused") boolean isArray) {
-        Object wrapped = JSJavaWrapper.getWrapped(target);
-        if (wrapped.getClass().isArray()) {
-            return Array.getLength(wrapped);
-        } else if (wrapped instanceof List) {
-            return Boundaries.listSize((List<?>) wrapped);
-        } else {
-            return 0;
-        }
     }
 
     @Specialization(guards = "!isArray")

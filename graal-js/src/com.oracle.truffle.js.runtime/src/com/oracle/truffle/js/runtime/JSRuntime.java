@@ -76,10 +76,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.doubleconv.DoubleConversion;
 import com.oracle.truffle.js.runtime.external.DToA;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
-import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -226,12 +222,6 @@ public final class JSRuntime {
                 return JSFunction.TYPE_NAME;
             }
             return JSUserObject.TYPE_NAME;
-        } else if (JSTruffleOptions.NashornJavaInterop && value instanceof JavaPackage) {
-            return JavaPackage.TYPE_NAME;
-        } else if (JSTruffleOptions.NashornJavaInterop && value instanceof JavaClass) {
-            return JavaClass.TYPE_NAME;
-        } else if (JSTruffleOptions.NashornJavaInterop && value instanceof JavaMethod) {
-            return JavaMethod.TYPE_NAME;
         } else if (value instanceof TruffleObject) {
             assert !(value instanceof Symbol);
             TruffleObject object = (TruffleObject) value;
@@ -406,7 +396,7 @@ public final class JSRuntime {
             return stringToNumber(value.toString());
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
-        } else if (JSTruffleOptions.NashornJavaInterop && value instanceof Number) {
+        } else if (value instanceof Number) {
             return (Number) value; // BigDecimal, BigInteger
         }
         assert false : "coerceToNumber: should never reach here, type " + value.getClass().getSimpleName() + " not handled.";
@@ -843,8 +833,6 @@ public final class JSRuntime {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
         } else if (JSObject.isJSObject(value)) {
             return toString(JSObject.toPrimitive((DynamicObject) value, HINT_STRING));
-        } else if (JSTruffleOptions.NashornJavaInterop && (value instanceof JavaClass || value instanceof JavaPackage || value instanceof JavaMethod)) {
-            return value.toString();
         } else if (value instanceof TruffleObject) {
             assert !(value instanceof Symbol);
             return value.toString();
@@ -1302,9 +1290,9 @@ public final class JSRuntime {
         } else if (value instanceof Symbol) {
             return JSSymbol.create(ctx, (Symbol) value);
         } else {
+            assert !isJSNative(value) && isJavaPrimitive(value) : value;
             if (useJavaWrapper) {
-                assert !isJSNative(value);
-                return JSJavaWrapper.create(ctx, value);
+                return (TruffleObject) ctx.getRealm().getEnv().asBoxedGuestValue(value);
             } else {
                 return null;
             }
@@ -2721,9 +2709,6 @@ public final class JSRuntime {
             return value;
         }
         TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
-        if (JSTruffleOptions.NashornJavaInterop && value instanceof JavaClass) {
-            return env.asGuestValue(((JavaClass) value).getType());
-        }
         return env.asGuestValue(value);
     }
 

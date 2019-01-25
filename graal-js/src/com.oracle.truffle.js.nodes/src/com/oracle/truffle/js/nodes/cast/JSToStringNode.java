@@ -60,8 +60,6 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -182,18 +180,6 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     protected String doTruffleObject(TruffleObject object,
                     @Cached("create()") JSUnboxOrGetNode interopUnboxNode) {
         return getToStringNode().executeString(interopUnboxNode.executeWithTarget(object));
-    }
-
-    @TruffleBoundary
-    @Specialization
-    protected String doJavaClass(JavaClass value) {
-        return value.toString();
-    }
-
-    @TruffleBoundary
-    @Specialization
-    protected String doJavaMethod(JavaMethod value) {
-        return value.toString();
     }
 
     @Specialization(guards = {"cachedClass != null", "object.getClass() == cachedClass"}, limit = "MAX_CLASSES")

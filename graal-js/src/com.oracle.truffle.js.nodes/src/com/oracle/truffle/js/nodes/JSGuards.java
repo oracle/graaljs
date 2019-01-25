@@ -51,7 +51,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
@@ -81,9 +80,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -374,14 +370,6 @@ public final class JSGuards {
         return JSArrayBufferView.isJSArrayBufferView(thisObj);
     }
 
-    public static boolean isJSJavaWrapper(Object value) {
-        return JSJavaWrapper.isJSJavaWrapper(value);
-    }
-
-    public static boolean isJSJavaWrapper(DynamicObject value) {
-        return JSJavaWrapper.isJSJavaWrapper(value);
-    }
-
     public static boolean isJSFastArray(DynamicObject value) {
         return JSArray.isJSFastArray(value);
     }
@@ -472,18 +460,6 @@ public final class JSGuards {
 
     public static boolean isBindings(Object value) {
         return value instanceof Bindings;
-    }
-
-    public static boolean isJavaClass(Object target) {
-        return JSTruffleOptions.NashornJavaInterop && target instanceof JavaClass;
-    }
-
-    public static boolean isJavaMethod(Object target) {
-        return JSTruffleOptions.NashornJavaInterop && target instanceof JavaMethod;
-    }
-
-    public static boolean isJavaConstructor(Object target) {
-        return JSTruffleOptions.NashornJavaInterop && target instanceof JavaMethod && ((JavaMethod) target).isConstructor();
     }
 
     public static boolean isJavaPackage(Object target) {

@@ -49,7 +49,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
@@ -116,7 +115,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
         if (name instanceof String) {
             DynamicObject[] packages = getPackages(store);
             for (DynamicObject pkg : packages) {
-                Object found = JavaPackage.getClass(pkg, (String) name, JSTruffleOptions.NashornJavaInterop ? JavaClass.class : Object.class);
+                Object found = JavaPackage.getClass(pkg, (String) name, Object.class);
                 if (found != null) {
                     return found;
                 }

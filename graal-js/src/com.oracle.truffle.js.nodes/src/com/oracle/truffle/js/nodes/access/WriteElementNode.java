@@ -119,7 +119,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -423,7 +422,7 @@ public class WriteElementNode extends JSTargetableNode {
                 assert JSRuntime.isForeignObject(target);
                 return new TruffleObjectWriteElementTypeCacheNode(context, isStrict, (Class<? extends TruffleObject>) target.getClass(), writeOwn);
             } else {
-                assert JSTruffleOptions.NashornJavaInterop : target;
+                assert JSRuntime.isJavaPrimitive(target);
                 return new JavaObjectWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
             }
         }
@@ -566,12 +565,10 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
-            JSObject.set(JSJavaWrapper.create(context, target), index, value, isStrict);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
-            JSObject.set(JSJavaWrapper.create(context, target), index, value, isStrict);
         }
 
         @Override
