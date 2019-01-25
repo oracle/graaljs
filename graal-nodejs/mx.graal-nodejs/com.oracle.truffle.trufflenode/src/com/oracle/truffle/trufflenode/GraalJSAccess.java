@@ -138,6 +138,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.ImportMetaInitializer;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -2572,6 +2573,16 @@ public final class GraalJSAccess {
             }
         } : null;
         mainJSContext.setPromiseRejectionTracker(tracker);
+    }
+
+    public void isolateEnableImportMetaInitializer(boolean enable) {
+        ImportMetaInitializer initializer = enable ? new ImportMetaInitializer() {
+            @Override
+            public void initializeImportMeta(DynamicObject importMeta, JSModuleRecord module) {
+                NativeAccess.notifyImportMetaInitializer(importMeta, module);
+            }
+        } : null;
+        mainJSContext.setImportMetaInitializer(initializer);
     }
 
     private void exit(int status) {

@@ -90,6 +90,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("sendAsyncHandle", "(J)V", &GraalSendAsyncHandle),
     CALLBACK("notifyPromiseHook", "(ILjava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyPromiseHook),
     CALLBACK("notifyPromiseRejectionTracker", "(Ljava/lang/Object;ILjava/lang/Object;)V", &GraalNotifyPromiseRejectionTracker),
+    CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
     CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
     CALLBACK("writeHostObject", "(JLjava/lang/Object;)V", &GraalWriteHostObject),
     CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
@@ -655,6 +656,15 @@ void GraalNotifyPromiseRejectionTracker(JNIEnv* env, jclass nativeAccess, jobjec
     v8::PromiseRejectEvent event = static_cast<v8::PromiseRejectEvent> (operation);
     v8::Local<v8::Value> v8_value = reinterpret_cast<v8::Value*> (graal_value);
     graal_isolate->NotifyPromiseRejectCallback(v8::PromiseRejectMessage(v8_promise, event, v8_value, v8::Local<v8::StackTrace>()));
+}
+
+void GraalNotifyImportMetaInitializer(JNIEnv* env, jclass nativeAccess, jobject java_import_meta, jobject java_module) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    GraalObject* graal_import_meta = new GraalObject(graal_isolate, java_import_meta);
+    GraalModule* graal_module = new GraalModule(graal_isolate, java_module);
+    v8::Local<v8::Object> import_meta = reinterpret_cast<v8::Object*> (graal_import_meta);
+    v8::Local<v8::Module> module = reinterpret_cast<v8::Module*> (graal_module);
+    graal_isolate->NotifyImportMetaInitializer(import_meta, module);
 }
 
 jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jstring java_specifier, jobject java_referrer) {

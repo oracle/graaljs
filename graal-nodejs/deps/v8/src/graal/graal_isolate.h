@@ -193,6 +193,7 @@ enum GraalAccessMethod {
     isolate_perform_gc,
     isolate_enable_promise_hook,
     isolate_enable_promise_reject_callback,
+    isolate_enable_import_meta_initializer,
     isolate_enter,
     isolate_exit,
     template_set,
@@ -361,6 +362,8 @@ public:
     void NotifyPromiseHook(v8::PromiseHookType, v8::Local<v8::Promise> promise, v8::Local<v8::Value> parent);
     void SetPromiseRejectCallback(v8::PromiseRejectCallback callback);
     void NotifyPromiseRejectCallback(v8::PromiseRejectMessage message);
+    void SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback);
+    void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
     void RunMicrotasks();
     void Enter();
@@ -641,6 +644,7 @@ private:
 
     v8::PromiseHook promise_hook_;
     v8::PromiseRejectCallback promise_reject_callback_;
+    v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
 };
 
 #endif /* GRAAL_ISOLATE_H_ */

@@ -622,6 +622,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::isolate_perform_gc, "isolatePerformGC", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_hook, "isolateEnablePromiseHook", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_reject_callback, "isolateEnablePromiseRejectCallback", "(Z)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_enable_import_meta_initializer, "isolateEnableImportMetaInitializer", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enter, "isolateEnter", "(J)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_exit, "isolateExit", "(J)J")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
@@ -1227,6 +1228,22 @@ void GraalIsolate::SetPromiseRejectCallback(v8::PromiseRejectCallback callback) 
 void GraalIsolate::NotifyPromiseRejectCallback(v8::PromiseRejectMessage message) {
     if (promise_reject_callback_ != nullptr) {
         promise_reject_callback_(message);
+    }
+}
+
+void GraalIsolate::SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback) {
+    bool wasNull = import_meta_initializer == nullptr;
+    bool isNull = callback == nullptr;
+    if (wasNull != isNull) {
+        // turn the notification on/off
+        JNI_CALL_VOID(this, GraalAccessMethod::isolate_enable_import_meta_initializer, (jboolean) !isNull);
+    }
+    import_meta_initializer = callback;
+}
+
+void GraalIsolate::NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module) {
+    if (import_meta_initializer != nullptr) {
+        import_meta_initializer(GetCurrentContext(), module, import_meta);
     }
 }
 

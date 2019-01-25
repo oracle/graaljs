@@ -2840,7 +2840,7 @@ namespace v8 {
     }
 
     void Isolate::SetHostInitializeImportMetaObjectCallback(HostInitializeImportMetaObjectCallback callback) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->SetImportMetaInitializer(callback);
     }
 
     Local<Value> ScriptOrModule::GetResourceName() {
