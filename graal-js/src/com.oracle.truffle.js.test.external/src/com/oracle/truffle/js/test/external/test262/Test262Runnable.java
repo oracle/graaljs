@@ -259,7 +259,7 @@ public class Test262Runnable extends TestRunnable {
     }
 
     private static Source createSource(File testFile, String code, boolean module) {
-        Source.Builder builder = Source.newBuilder("js", code, testFile.getPath());
+        Source.Builder builder = Source.newBuilder("js", testFile).content(code);
         if (module) {
             builder.mimeType(MODULE_MIME_TYPE);
         }
