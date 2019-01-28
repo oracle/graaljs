@@ -229,11 +229,6 @@ shared_optgroup.add_option('--shared-graalvm',
     dest='shared_graalvm',
     help='a directory where GraalVM is installed')
 
-shared_optgroup.add_option('--shared-trufflejs',
-    action='store',
-    dest='shared_trufflejs',
-    help='JAR file with trufflejs.jar implementation. By default derived from --shared-graalvm setting')
-
 shared_optgroup.add_option('--enable-shared-library',
     action='store_true',
     dest='enable_shared_library',
@@ -1079,15 +1074,7 @@ def configure_node(o):
   if not options.shared_graalvm:
     raise Exception('provide path to GraalVM via --shared-graalvm=path_to_the_vm')
 
-  trufflejs = options.shared_trufflejs
-  if not trufflejs:
-    trufflejs = options.shared_graalvm + '/jre/language/js/trufflejs.jar'
-
-  if not os.path.exists(trufflejs):
-    raise Exception('cannot find ' + trufflejs + ' is ' + options.shared_graalvm + ' correct path?')
-
   o['variables']['graalvm'] = options.shared_graalvm
-  o['variables']['trufflejs'] = trufflejs
 
   # production build
   if options.build_production:
