@@ -83,7 +83,7 @@ def _build(args, debug, shared_library, threading, parallelism, debug_mode, outp
             '--build-only-native',
             '--without-dtrace',
             '--without-snapshot',
-            '--shared-graalvm', _getJdkHome()
+            '--java-home', _getJdkHome()
         ] + debug + shared_library + threading,
         cwd=_suite.dir, verbose=True)
 
