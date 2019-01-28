@@ -955,6 +955,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Child private Node getterKeyInfo;
         @Child private Node getterInvoke;
         @Child private JSForeignToJSTypeNode toJSType;
+        @Child private PropertyGetNode getFromArrayPrototypeNode;
         private final boolean isLength;
         private final boolean isMethod;
         private final boolean isGlobal;
@@ -987,7 +988,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     if (context.isOptionNashornCompatibilityMode() && key instanceof String) {
                         foreignResult = tryInvokeGetter(thisObj, root);
                     } else {
-                        return Undefined.instance;
+                        return maybeGetFromPrototype(thisObj, key);
                     }
                 } catch (UnsupportedMessageException e) {
                     return Undefined.instance;
@@ -1006,10 +1007,23 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 } else if (context.isOptionNashornCompatibilityMode() && key instanceof String) {
                     foreignResult = tryInvokeGetter(thisObj, root);
                 } else {
-                    return Undefined.instance;
+                    return maybeGetFromPrototype(thisObj, key);
                 }
             }
             return toJSType.executeWithTarget(foreignResult);
+        }
+
+        private Object maybeGetFromPrototype(TruffleObject thisObj, Object key) {
+            if (context.getContextOptions().isArrayLikePrototype() && hasSizeProperty(thisObj)) {
+                // Array-like foreign object => use Array.prototype
+                if (getFromArrayPrototypeNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getFromArrayPrototypeNode = insert(PropertyGetNode.create(key, context));
+                }
+                assert key.equals(getFromArrayPrototypeNode.getKey());
+                return getFromArrayPrototypeNode.getValue(context.getRealm().getArrayConstructor().getPrototype());
+            }
+            return Undefined.instance;
         }
 
         // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()`.
@@ -1026,7 +1040,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return result;
                 }
             }
-            return Undefined.instance;
+            return maybeGetFromPrototype(thisObj, root.getKey());
         }
 
         private Object tryGetResult(TruffleObject thisObj, String prefix, PropertyGetNode root) {
@@ -1086,6 +1100,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             return foreignGet(thisObj, root);
         }
+
     }
 
     @NodeInfo(cost = NodeCost.MEGAMORPHIC)
@@ -1706,8 +1721,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
         }
         if (!JSTruffleOptions.NashornJavaInterop) {
-            if (thisObj instanceof String && isMethod()) {
-                return new JavaStringMethodGetNode(createPrimitiveReceiverCheck(thisObj, depth));
+            if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
+                if (thisObj instanceof String && isMethod()) {
+                    return new JavaStringMethodGetNode(createPrimitiveReceiverCheck(thisObj, depth));
+                }
             }
             return null;
         }

@@ -44,6 +44,7 @@ package com.oracle.js.parser.ir;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.js.parser.Token;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
@@ -80,7 +81,27 @@ public final class CallNode extends LexicalContextExpression {
      * @param isNew      true if this is a constructor call with the "new" keyword
      */
     public CallNode(final int lineNumber, final long token, final int finish, final Expression function, final List<Expression> args, final boolean isNew) {
-        super(token, finish);
+        super(Token.withDelimiter(token), finish);
+
+        this.function       = function;
+        this.args           = args;
+        this.flags          = isNew ? IS_NEW : 0;
+        this.lineNumber     = lineNumber;
+    }
+
+    /**
+     * Constructors
+     *
+     * @param lineNumber line number
+     * @param token      token
+     * @param start      start
+     * @param finish     finish
+     * @param function   the function to call
+     * @param args       args to the call
+     * @param isNew      true if this is a constructor call with the "new" keyword
+     */
+    public CallNode(final int lineNumber, final long token, final int start,  final int finish, final Expression function, final List<Expression> args, final boolean isNew) {
+        super(token, start, finish);
 
         this.function       = function;
         this.args           = args;

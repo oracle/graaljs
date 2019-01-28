@@ -68,8 +68,8 @@ function processTopLevelAwait(src) {
   const wrappedArray = wrapped.split('');
   let root;
   try {
-    root = acorn.parse(wrapped, { ecmaVersion: 8 });
-  } catch (err) {
+    root = acorn.parse(wrapped, { ecmaVersion: 10 });
+  } catch {
     return null;
   }
   const body = root.body[0].expression.callee.body;

@@ -120,7 +120,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
 
             String optCurrency = getCurrencyOption.executeValue(options);
             String optCurrencyDisplay = getCurrencyDisplayOption.executeValue(options);
-            Boolean optUseGrouping = getUseGroupingOption.executeValue(options);
 
             state.initialized = true;
 
@@ -151,12 +150,10 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
                     mxfdDefault = 3;
                 }
             }
-            state.useGrouping = optUseGrouping;
-
             JSNumberFormat.setupInternalNumberFormat(state);
-
             setNumberFormatDigitOptions(state, options, mnfdDefault, mxfdDefault);
 
+            state.setGroupingUsed(getUseGroupingOption.executeValue(options));
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
         }

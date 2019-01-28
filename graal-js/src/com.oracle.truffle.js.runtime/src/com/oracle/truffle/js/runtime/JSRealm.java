@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
@@ -58,11 +59,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -83,6 +86,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSIntl;
 import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
+import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -110,6 +114,8 @@ import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -165,6 +171,7 @@ public class JSRealm {
     private final JSConstructor collatorConstructor;
     private final JSConstructor numberFormatConstructor;
     private final JSConstructor pluralRulesConstructor;
+    private final JSConstructor listFormatConstructor;
     private final JSConstructor dateTimeFormatConstructor;
     private final JSConstructor dateConstructor;
     @CompilationFinal(dimensions = 1) private final JSConstructor[] errorConstructors;
@@ -271,6 +278,7 @@ public class JSRealm {
     private PrintWriterWrapper errorWriter;
 
     @CompilationFinal private JSConsoleUtil consoleUtil;
+    private JSModuleLoader moduleLoader;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -358,11 +366,13 @@ public class JSRealm {
             this.numberFormatConstructor = JSNumberFormat.createConstructor(this);
             this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
             this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
+            this.listFormatConstructor = JSListFormat.createConstructor(this);
         } else {
             this.collatorConstructor = null;
             this.numberFormatConstructor = null;
             this.dateTimeFormatConstructor = null;
             this.pluralRulesConstructor = null;
+            this.listFormatConstructor = null;
         }
 
         boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
@@ -517,6 +527,10 @@ public class JSRealm {
 
     public final JSConstructor getPluralRulesConstructor() {
         return pluralRulesConstructor;
+    }
+
+    public final JSConstructor getListFormatConstructor() {
+        return listFormatConstructor;
     }
 
     public final JSConstructor getDateTimeFormatConstructor() {
@@ -756,10 +770,12 @@ public class JSRealm {
             DynamicObject numberFormatFn = getNumberFormatConstructor().getFunctionObject();
             DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor().getFunctionObject();
             DynamicObject pluralRulesFn = getPluralRulesConstructor().getFunctionObject();
+            DynamicObject listFormatFn = getListFormatConstructor().getFunctionObject();
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
             putGlobalProperty(global, JSIntl.CLASS_NAME, intlObject);
         }
 
@@ -847,7 +863,7 @@ public class JSRealm {
         if (context.isOptionAtomics()) {
             putGlobalProperty(global, ATOMICS_CLASS_NAME, createAtomics());
         }
-        if (getEnv() != null && JSContextOptions.GLOBAL_THIS.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityMode()) {
+        if (getEnv() != null && JSContextOptions.GLOBAL_PROPERTY.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityMode()) {
             putGlobalProperty(global, "global", global);
         }
         if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
@@ -978,7 +994,7 @@ public class JSRealm {
     /**
      * Is Java interop actually enabled.
      */
-    private boolean isJavaInteropEnabled() {
+    public boolean isJavaInteropEnabled() {
         assert isJavaInteropAvailable();
         return getEnv() != null && getEnv().isHostLookupAllowed();
     }
@@ -1408,5 +1424,63 @@ public class JSRealm {
             consoleUtil = new JSConsoleUtil();
         }
         return consoleUtil;
+    }
+
+    public JSModuleLoader getModuleLoader() {
+        if (moduleLoader == null) {
+            createModuleLoader();
+        }
+        return moduleLoader;
+    }
+
+    @TruffleBoundary
+    private synchronized void createModuleLoader() {
+        if (moduleLoader == null) {
+            moduleLoader = new JSModuleLoader() {
+                private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
+
+                @Override
+                public JSModuleRecord resolveImportedModule(JSModuleRecord referencingModule, String specifier) {
+                    try {
+                        TruffleFile refFile = getEnv().getTruffleFile(getPath(referencingModule.getSource())).getCanonicalFile();
+                        TruffleFile moduleFile = refFile.resolveSibling(specifier);
+                        String canonicalPath = moduleFile.getCanonicalFile().getPath();
+                        JSModuleRecord existingModule = moduleMap.get(canonicalPath);
+                        if (existingModule != null) {
+                            return existingModule;
+                        }
+                        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, moduleFile).name(specifier).build();
+                        JSModuleRecord newModule = getContext().getEvaluator().parseModule(getContext(), source, this);
+                        moduleMap.put(canonicalPath, newModule);
+                        return newModule;
+                    } catch (IOException | SecurityException e) {
+                        throw Errors.createErrorFromException(e);
+                    }
+                }
+
+                private String getPath(Source source) {
+                    String path = source.getPath();
+                    if (path == null) {
+                        path = source.getName();
+                    }
+                    return path;
+                }
+
+                @Override
+                public JSModuleRecord loadModule(Source source) {
+                    String path = getPath(source);
+                    String canoncialPath = path;
+                    try {
+                        TruffleFile moduleFile = getEnv().getTruffleFile(path);
+                        canoncialPath = moduleFile.getCanonicalFile().getPath();
+                    } catch (IOException e) {
+                        throw Errors.createErrorFromException(e);
+                    } catch (SecurityException e) {
+                        // ignore: might be a literal source that does not exist on the file system.
+                    }
+                    return moduleMap.computeIfAbsent(canoncialPath, (key) -> getContext().getEvaluator().parseModule(getContext(), source, this));
+                }
+            };
+        }
     }
 }

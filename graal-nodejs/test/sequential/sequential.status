@@ -5,14 +5,10 @@ prefix sequential
 # sample-test                       : PASS,FLAKY
 
 [true] # This section applies to all platforms
-# This test will be flaky until https://github.com/libuv/libuv/pull/1742 lands
-# on Node.js.
-test-fs-readfile-tostring-fail: PASS, FLAKY
+# https://github.com/nodejs/node/issues/22336
+test-gc-http-client: PASS,FLAKY
 
 ### Graal-specific start ###
-
-# Unstable, timing sensitive (fails randomly)
-test-readline-interface     : SKIP
 
 # suspicious memory-related test that does some conclusion based on rss
 # before and after some operation, this does not work on JVM (where heap
@@ -21,6 +17,9 @@ test-net-bytes-per-incoming-chunk-overhead : SKIP
 
 # unstable timing-sensitive test
 test-performance            : SKIP
+
+# GC-related callback not invoked
+test-gc-http-client         : SKIP
 
 [$system==solaris]
 
@@ -35,6 +34,8 @@ test-timers-blocking-callback : SKIP
 ### Graal-specific end ###
 
 [$system==win32]
+# https://github.com/nodejs/node/issues/22327
+test-http2-large-file: PASS, FLAKY
 
 [$system==linux]
 
@@ -45,3 +46,7 @@ test-timers-blocking-callback : SKIP
 [$system==freebsd]
 
 [$system==aix]
+
+[$arch==arm]
+# https://github.com/nodejs/node/issues/20628
+test-http2-session-timeout: PASS,FLAKY

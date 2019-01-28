@@ -80,4 +80,73 @@ public class ExpressionTest extends SourceSectionInstrumentationTest {
         });
     }
 
+    @Test
+    public void callExpressionComment() {
+        evalExpressions("String('bla'); // this is a comment");
+
+        assertSourceSections(new String[]{
+                        "String",
+                        "'bla'",
+                        "String('bla')",
+        });
+    }
+
+    @Test
+    public void callExpressionNewLine() {
+        evalExpressions("String('bla'   )   " + '\n' +
+                        ", 42;");
+
+        assertSourceSections(new String[]{
+                        "String",
+                        "'bla'",
+                        "String('bla'   )",
+                        "42",
+                        "String('bla'   )   " + '\n' + ", 42"
+        });
+    }
+
+    @Test
+    public void callExpressionCommentNewLine() {
+        evalExpressions("String('bla'    )   // this is a comment   " + '\n' +
+                        ", 42;");
+
+        assertSourceSections(new String[]{
+                        "String",
+                        "'bla'",
+                        "String('bla'    )",
+                        "42",
+                        "String('bla'    )   // this is a comment   " + '\n' + ", 42"
+        });
+    }
+
+    @Test
+    public void strLitCallExpression() {
+        evalExpressions("'bar'.replace(/bar/, 'baz');");
+
+        assertSourceSections(new String[]{
+                        "'bar'",
+                        "'bar'.replace",
+                        "/bar/",
+                        "'baz'",
+                        "'bar'.replace(/bar/, 'baz')",
+        });
+    }
+
+    @Test
+    public void chainedCallExpressions() {
+        evalExpressions("'foobar'.replace(/bar/, 'baz').replace(/foo/, 'boo');");
+
+        assertSourceSections(new String[]{
+                        "'foobar'",
+                        "'foobar'.replace",
+                        "/bar/",
+                        "'baz'",
+                        "'foobar'.replace(/bar/, 'baz')",
+                        "'foobar'.replace(/bar/, 'baz').replace",
+                        "/foo/",
+                        "'boo'",
+                        "'foobar'.replace(/bar/, 'baz').replace(/foo/, 'boo')",
+        });
+    }
+
 }

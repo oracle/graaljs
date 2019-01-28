@@ -42,9 +42,8 @@ const {
 // that test/parallel/test-buffer-bindingobj-no-zerofill.js is written.
 let isAnyArrayBuffer;
 try {
-  const { internalBinding } = require('internal/bootstrap/loaders');
   isAnyArrayBuffer = internalBinding('types').isAnyArrayBuffer;
-} catch (e) {
+} catch {
   isAnyArrayBuffer = require('util').types.isAnyArrayBuffer;
 }
 const {
@@ -773,7 +772,7 @@ function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
   } else if (isUint8Array(val)) {
     return indexOfBuffer(buffer, val, byteOffset, encoding, dir);
   } else if (typeof val === 'number') {
-    return indexOfNumber(buffer, val, byteOffset, dir);
+    return indexOfNumber(buffer, val >>> 0, byteOffset, dir);
   }
 
   throw new ERR_INVALID_ARG_TYPE(

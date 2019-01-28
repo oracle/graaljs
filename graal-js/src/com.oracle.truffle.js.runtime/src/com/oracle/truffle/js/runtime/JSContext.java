@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -63,7 +60,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -100,6 +96,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
+import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -126,7 +123,6 @@ import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
-import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
@@ -208,13 +204,14 @@ public class JSContext {
     /** The RegExp engine, as obtained from RegexLanguage. */
     private TruffleObject regexEngine;
 
-    private JSModuleLoader moduleLoader;
-
     private PromiseRejectionTracker promiseRejectionTracker;
     private final Assumption promiseRejectionTrackerNotUsedAssumption;
 
     private PromiseHook promiseHook;
     private final Assumption promiseHookNotUsedAssumption;
+
+    private ImportMetaInitializer importMetaInitializer;
+    private final Assumption importMetaInitializerNotUsedAssumption;
 
     private final CallTarget emptyFunctionCallTarget;
     private final CallTarget speciesGetterFunctionCallTarget;
@@ -368,6 +365,7 @@ public class JSContext {
     private final JSObjectFactory numberFormatFactory;
     private final JSObjectFactory pluralRulesFactory;
     private final JSObjectFactory dateTimeFormatFactory;
+    private final JSObjectFactory listFormatFactory;
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
@@ -411,6 +409,7 @@ public class JSContext {
 
         this.promiseHookNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseHookNotUsedAssumption");
         this.promiseRejectionTrackerNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseRejectionTrackerNotUsedAssumption");
+        this.importMetaInitializerNotUsedAssumption = Truffle.getRuntime().createAssumption("importMetaInitializerNotUsedAssumption");
 
         this.emptyFunctionCallTarget = createEmptyFunctionCallTarget(lang);
         this.speciesGetterFunctionCallTarget = createSpeciesGetterFunctionCallTarget(lang);
@@ -511,6 +510,7 @@ public class JSContext {
         this.numberFormatFactory = intl402 ? builder.create(JSNumberFormat.INSTANCE) : null;
         this.dateTimeFormatFactory = intl402 ? builder.create(JSDateTimeFormat.INSTANCE) : null;
         this.pluralRulesFactory = intl402 ? builder.create(JSPluralRules.INSTANCE) : null;
+        this.listFormatFactory = intl402 ? builder.create(JSListFormat.INSTANCE) : null;
 
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
         boolean nashornJavaInterop = JSRealm.isJavaInteropAvailable() && (isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
@@ -898,6 +898,10 @@ public class JSContext {
         return pluralRulesFactory;
     }
 
+    public final JSObjectFactory getListFormatFactory() {
+        return listFormatFactory;
+    }
+
     public final JSObjectFactory getDateTimeFormatFactory() {
         return dateTimeFormatFactory;
     }
@@ -974,63 +978,6 @@ public class JSContext {
             }
         }
         return regexEngine;
-    }
-
-    public JSModuleLoader getModuleLoader() {
-        if (moduleLoader == null) {
-            createModuleLoader();
-        }
-        return moduleLoader;
-    }
-
-    @TruffleBoundary
-    private synchronized void createModuleLoader() {
-        if (moduleLoader == null) {
-            moduleLoader = new JSModuleLoader() {
-                private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
-
-                @Override
-                public JSModuleRecord resolveImportedModule(JSModuleRecord referencingModule, String specifier) {
-                    try {
-                        String path = getPath(referencingModule.getSource());
-                        File moduleFile = Paths.get(path).resolveSibling(specifier).toFile();
-                        String canonicalPath = moduleFile.getCanonicalPath();
-                        JSModuleRecord existingModule = moduleMap.get(canonicalPath);
-                        if (existingModule != null) {
-                            return existingModule;
-                        }
-                        TruffleFile truffleFile = getRealm().getEnv().getTruffleFile(moduleFile.getPath());
-                        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, truffleFile).name(specifier).build();
-                        JSModuleRecord newModule = getEvaluator().parseModule(JSContext.this, source, this);
-                        moduleMap.put(canonicalPath, newModule);
-                        return newModule;
-                    } catch (IOException | SecurityException e) {
-                        throw Errors.createErrorFromException(e);
-                    }
-                }
-
-                String getPath(Source source) {
-                    String path = source.getPath();
-                    if (path == null) {
-                        path = source.getName();
-                        if (path.startsWith("module:")) {
-                            path = path.substring("module:".length());
-                        }
-                    }
-                    try {
-                        return Paths.get(path).toFile().getCanonicalPath();
-                    } catch (IOException e) {
-                        throw Errors.createError(e.getMessage());
-                    }
-                }
-
-                @Override
-                public JSModuleRecord loadModule(Source source) {
-                    String path = getPath(source);
-                    return moduleMap.computeIfAbsent(path, (key) -> getEvaluator().parseModule(JSContext.this, source, this));
-                }
-            };
-        }
     }
 
     private static class LocalTimeZoneHolder {
@@ -1367,25 +1314,45 @@ public class JSContext {
         }
     }
 
-    public void notifyPromiseRejectionTracker(DynamicObject promise, int operation) {
+    public void notifyPromiseRejectionTracker(DynamicObject promise, int operation, Object value) {
         if (!promiseRejectionTrackerNotUsedAssumption.isValid() && promiseRejectionTracker != null) {
-            if (operation == 0) {
-                invokePromiseRejected(promise);
-            } else {
-                assert (operation == 1) : "Unknown operation: " + operation;
-                invokePromiseRejectionHandled(promise);
+            switch (operation) {
+                case JSPromise.REJECTION_TRACKER_OPERATION_REJECT:
+                    invokePromiseRejected(promise, value);
+                    break;
+                case JSPromise.REJECTION_TRACKER_OPERATION_HANDLE:
+                    invokePromiseRejectionHandled(promise);
+                    break;
+                case JSPromise.REJECTION_TRACKER_OPERATION_REJECT_AFTER_RESOLVED:
+                    invokePromiseRejectedAfterResolved(promise, value);
+                    break;
+                case JSPromise.REJECTION_TRACKER_OPERATION_RESOLVE_AFTER_RESOLVED:
+                    invokePromiseResolvedAfterResolved(promise, value);
+                    break;
+                default:
+                    assert false : "Unknown operation: " + operation;
             }
         }
     }
 
     @TruffleBoundary
-    private void invokePromiseRejected(DynamicObject promise) {
-        promiseRejectionTracker.promiseRejected(promise);
+    private void invokePromiseRejected(DynamicObject promise, Object value) {
+        promiseRejectionTracker.promiseRejected(promise, value);
     }
 
     @TruffleBoundary
     private void invokePromiseRejectionHandled(DynamicObject promise) {
         promiseRejectionTracker.promiseRejectionHandled(promise);
+    }
+
+    @TruffleBoundary
+    private void invokePromiseRejectedAfterResolved(DynamicObject promise, Object value) {
+        promiseRejectionTracker.promiseRejectedAfterResolved(promise, value);
+    }
+
+    @TruffleBoundary
+    private void invokePromiseResolvedAfterResolved(DynamicObject promise, Object value) {
+        promiseRejectionTracker.promiseResolvedAfterResolved(promise, value);
     }
 
     public final void setPromiseHook(PromiseHook promiseHook) {
@@ -1432,6 +1399,24 @@ public class JSContext {
     @TruffleBoundary
     private void notifyPromiseHookImpl(int changeType, DynamicObject promise, DynamicObject parent) {
         promiseHook.promiseChanged(changeType, promise, parent);
+    }
+
+    public final void setImportMetaInitializer(ImportMetaInitializer importMetaInitializer) {
+        invalidateImportMetaInitializerNotUsedAssumption();
+        this.importMetaInitializer = importMetaInitializer;
+    }
+
+    private void invalidateImportMetaInitializerNotUsedAssumption() {
+        if (importMetaInitializerNotUsedAssumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            importMetaInitializerNotUsedAssumption.invalidate("ImportMetaInitializer unused");
+        }
+    }
+
+    public final void notifyImportMetaInitializer(DynamicObject importMeta, JSModuleRecord module) {
+        if (!importMetaInitializerNotUsedAssumption.isValid() && importMetaInitializer != null) {
+            importMetaInitializer.initializeImportMeta(importMeta, module);
+        }
     }
 
     public final JSFunctionData getOrCreateBuiltinFunctionData(BuiltinFunctionKey key, Function<JSContext, JSFunctionData> factory) {

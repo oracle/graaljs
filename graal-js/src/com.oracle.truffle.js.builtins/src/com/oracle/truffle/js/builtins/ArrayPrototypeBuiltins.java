@@ -107,6 +107,7 @@ import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
+import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode.IsArrayWrappedNode;
 import com.oracle.truffle.js.nodes.access.JSArrayFirstElementIndexNode;
 import com.oracle.truffle.js.nodes.access.JSArrayLastElementIndexNode;
@@ -717,8 +718,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return previousElementIndexNode.executeLong(target, currentIndex);
         }
 
-        protected boolean isArrayWithHoles(DynamicObject thisObj, ValueProfile arrayTypeProfile) {
-            return arrayTypeProfile.profile(arrayGetArrayType(thisObj)).hasHoles(thisObj);
+        protected boolean isArrayWithHoles(DynamicObject thisObj, ValueProfile arrayTypeProfile, boolean isArray) {
+            return arrayTypeProfile.profile(arrayGetArrayType(thisObj, isArray)).hasHoles(thisObj, isArray);
         }
 
         protected static final void throwLengthError() {
@@ -997,27 +998,32 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private final ConditionProfile lengthIsZero = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile lengthLargerOne = ConditionProfile.createBinaryProfile();
         protected final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
+        @Child IsArrayNode isArrayNode = IsArrayNode.createIsArray();
 
-        protected static boolean isSparseArray(DynamicObject thisObj) {
-            return arrayGetArrayType(thisObj) instanceof SparseArray;
+        protected static boolean isSparseArray(DynamicObject thisObj, boolean isArray) {
+            return arrayGetArrayType(thisObj, isArray) instanceof SparseArray;
         }
 
-        @Specialization(guards = {"isJSArray(thisObj)", "!isSparseArray(thisObj)", "!isArrayWithHoles(thisObj, arrayTypeProfile)"})
+        @Specialization(guards = {"isArrayNode.execute(thisObj)", "!isArrayWithHoles(thisObj, arrayTypeProfile, isArrayNode.execute(thisObj))"})
         protected Object shift(DynamicObject thisObj) {
             long len = getLength(thisObj);
-            if (lengthIsZero.profile(len > 0)) {
+
+            if (lengthIsZero.profile(len == 0)) {
+                return Undefined.instance;
+            } else {
                 Object firstElement = read(thisObj, 0);
-                ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(thisObj));
-                arraySetArrayType(thisObj, array.removeRange(thisObj, 0, 1, errorBranch));
+                if (lengthLargerOne.profile(len > 1)) {
+                    ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(thisObj));
+                    arraySetArrayType(thisObj, array.removeRange(thisObj, 0, 1, errorBranch));
+                }
                 setLength(thisObj, len - 1);
                 return firstElement;
-            } else {
-                return Undefined.instance;
             }
         }
 
-        @Specialization(guards = {"isJSArray(thisObj)", "!isSparseArray(thisObj)", "isArrayWithHoles(thisObj, arrayTypeProfile)"})
+        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isArrayWithHoles(thisObj, arrayTypeProfile, isArrayNode.execute(thisObj))", "!isSparseArray(thisObj, isArrayNode.execute(thisObj))"})
         protected Object shiftWithHoles(DynamicObject thisObj,
                         @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode) {
             long len = getLength(thisObj);
@@ -1038,7 +1044,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"isJSArray(thisObj)", "isSparseArray(thisObj)"})
+        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj, isArrayNode.execute(thisObj))"})
         protected Object shiftSparse(DynamicObject thisObj,
                         @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
                         @Cached("create(getContext())") JSArrayFirstElementIndexNode firstElementIndexNode,
@@ -1063,7 +1069,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "!isJSArray(thisObj)")
         protected Object shift(Object thisObj,
-                        @Cached("createNonStrict(getContext())") DeletePropertyNode deleteNode) {
+                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deleteNode) {
             TruffleObject thisJSObj = toObject(thisObj);
             long len = getLength(thisJSObj);
 
@@ -1092,9 +1098,18 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
+        @Child protected IsArrayNode isArrayNode = IsArrayNode.createIsArray();
 
         protected boolean isFastPath(Object thisObj) {
-            return JSArray.isJSArray(thisObj) && !isArrayWithHoles((DynamicObject) thisObj, arrayTypeProfile);
+            if (thisObj instanceof TruffleObject) {
+                return isFastPath((TruffleObject) thisObj);
+            }
+            return false;
+        }
+
+        protected boolean isFastPath(TruffleObject thisObj) {
+            boolean isArray = isArrayNode.execute(thisObj);
+            return isArray && !isArrayWithHoles((DynamicObject) thisObj, arrayTypeProfile, isArray);
         }
 
         @Specialization(guards = "isFastPath(thisObj)")
@@ -1198,6 +1213,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSArrayFirstElementIndexNode firstElementIndexNode;
         @Child private JSArrayLastElementIndexNode lastElementIndexNode;
         @Child private PropertyGetNode getSpreadableNode;
+        @Child private JSIsArrayNode isArrayNode;
 
         private final ConditionProfile isFirstSpreadable = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasFirstElements = ConditionProfile.createBinaryProfile();
@@ -1206,7 +1222,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final ConditionProfile lengthErrorProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasMultipleArgs = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasOneArg = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isProxy = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile optimizationsObservable = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasFirstOneElement = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasSecondOneElement = ConditionProfile.createBinaryProfile();
 
@@ -1254,7 +1270,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private long concatElementIntl(DynamicObject retObj, Object el, final long n, final ConditionProfile isSpreadable, final ConditionProfile hasElements,
                         final ConditionProfile hasOneElement) {
             if (isSpreadable.profile(isConcatSpreadable(el))) {
-                DynamicObject elObj = (DynamicObject) el;
+                TruffleObject elObj = (TruffleObject) el;
                 long len2 = getLength(elObj);
                 if (hasElements.profile(len2 > 0)) {
                     return concatSpreadable(retObj, n, elObj, len2, hasOneElement);
@@ -1270,17 +1286,16 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return n;
         }
 
-        private long concatSpreadable(DynamicObject retObj, long n, DynamicObject elObj, long len2, final ConditionProfile hasOneElement) {
+        private long concatSpreadable(DynamicObject retObj, long n, TruffleObject elObj, long len2, final ConditionProfile hasOneElement) {
             if (lengthErrorProfile.profile((n + len2) > JSRuntime.MAX_SAFE_INTEGER)) {
                 errorBranch.enter();
                 throwLengthError();
             }
-            if (isProxy.profile(JSProxy.isProxy(elObj))) {
+            if (optimizationsObservable.profile(JSProxy.isProxy(elObj) || !JSObject.isJSObject(elObj))) {
                 // strictly to the standard implementation; traps could expose optimizations!
                 for (long k = 0; k < len2; k++) {
-                    String kStr = toString((int) k);
-                    if (hasProperty(elObj, kStr)) {
-                        writeOwn(retObj, toString((int) (n + k)), readAny(elObj, kStr));
+                    if (hasProperty(elObj, k)) {
+                        writeOwn(retObj, n + k, readAny(elObj, k));
                     }
                 }
             } else if (hasOneElement.profile(len2 == 1)) {
@@ -1289,8 +1304,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     writeOwn(retObj, n, read(elObj, 0));
                 }
             } else {
-                long k = firstElementIndex(elObj, len2);
-                long lastI = lastElementIndex(elObj, len2);
+                long k = firstElementIndex((DynamicObject) elObj, len2);
+                long lastI = lastElementIndex((DynamicObject) elObj, len2);
                 for (; k <= lastI; k = nextElementIndex(elObj, k, len2)) {
                     writeOwn(retObj, n + k, read(elObj, k));
                 }
@@ -1300,15 +1315,25 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         // ES2015, 22.1.3.1.1
         private boolean isConcatSpreadable(Object el) {
-            if (!JSObject.isJSObject(el) || el == Undefined.instance || el == Null.instance) {
+            if (el == Undefined.instance || el == Null.instance) {
                 return false;
             }
-            DynamicObject obj = (DynamicObject) el;
-            Object spreadable = getSpreadableProperty(obj);
-            if (spreadable != Undefined.instance) {
-                return toBoolean(spreadable);
+            if (JSObject.isJSObject(el)) {
+                DynamicObject obj = (DynamicObject) el;
+                Object spreadable = getSpreadableProperty(obj);
+                if (spreadable != Undefined.instance) {
+                    return toBoolean(spreadable);
+                }
             }
-            return getArraySpeciesConstructorNode().isArray(obj);
+            return isArray(el);
+        }
+
+        private boolean isArray(Object object) {
+            if (isArrayNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isArrayNode = insert(JSIsArrayNode.createIsArrayLike());
+            }
+            return isArrayNode.execute(object);
         }
 
         private Object getSpreadableProperty(Object obj) {

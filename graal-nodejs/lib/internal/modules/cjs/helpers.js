@@ -9,6 +9,8 @@ const {
   CHAR_HASH,
 } = require('internal/constants');
 
+const { getOptionValue } = require('internal/options');
+
 // Invoke with makeRequireFunction(module) where |module| is the Module object
 // to use as the context for the require() function.
 function makeRequireFunction(mod) {
@@ -105,7 +107,7 @@ const builtinLibs = [
   'v8', 'vm', 'zlib'
 ];
 
-if (process.binding('config').experimentalWorker) {
+if (getOptionValue('--experimental-worker')) {
   builtinLibs.push('worker_threads');
   builtinLibs.sort();
 }

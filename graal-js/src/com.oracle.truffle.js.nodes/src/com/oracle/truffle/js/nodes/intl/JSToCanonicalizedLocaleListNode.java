@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -111,13 +112,18 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
         return doRawString(s);
     }
 
+    @Specialization(guards = {"isJSNull(object)"})
+    protected String[] doNull(DynamicObject object) {
+        throw Errors.createTypeErrorNotObjectCoercible(object, this);
+    }
+
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isJSString(object)", "isUndefined(object)"})
+    @Specialization(guards = {"isUndefined(object)"})
     protected String[] doUndefined(DynamicObject object) {
         return new String[]{};
     }
 
-    @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isJSString(object)", "!isUndefined(object)"})
+    @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isJSString(object)", "!isUndefined(object)", "!isJSNull(object)"})
     protected String[] doOtherType(Object object) {
 
         List<String> result = new ArrayList<>();
@@ -129,7 +135,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
             if (JSObject.hasProperty(localeObj, pk)) {
                 Object kValue = JSObject.get(localeObj, pk);
                 String typeOfKValue = typeOf(kValue);
-                if (!typeOfKValue.equals("string") && !typeOfKValue.equals("object")) {
+                if (JSRuntime.isNullOrUndefined(kValue) || ((!typeOfKValue.equals("string") && !typeOfKValue.equals("object")))) {
                     throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                 }
                 String lt = toStringVal(kValue);

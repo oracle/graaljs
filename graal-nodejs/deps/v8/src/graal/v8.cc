@@ -197,6 +197,10 @@ namespace v8 {
         return reinterpret_cast<GraalContext*> (this)->SlowGetEmbedderData(index);
     }
 
+    uint32_t Context::GetNumberOfEmbedderDataFields() {
+        return 64;
+    }
+
     void CpuProfiler::SetIdle(bool) {
         TRACE
     }
@@ -561,11 +565,19 @@ namespace v8 {
     }
 
     Local<Array> Object::GetPropertyNames() {
-        return reinterpret_cast<GraalObject*> (this)->GetPropertyNames();
+        return GetPropertyNames(GetIsolate()->GetCurrentContext()).ToLocalChecked();
     }
 
     MaybeLocal<Array> Object::GetPropertyNames(Local<Context> context) {
-        return reinterpret_cast<GraalObject*> (this)->GetPropertyNames();
+        return GetPropertyNames(context, KeyCollectionMode::kIncludePrototypes,
+                static_cast<v8::PropertyFilter> (ONLY_ENUMERABLE | SKIP_SYMBOLS),
+                v8::IndexFilter::kIncludeIndices);
+    }
+
+    MaybeLocal<Array> Object::GetPropertyNames(Local<Context> context, KeyCollectionMode mode,
+            PropertyFilter property_filter, IndexFilter index_filter,
+            KeyConversionMode key_conversion) {
+        return reinterpret_cast<GraalObject*> (this)->GetPropertyNames(context, mode, property_filter, index_filter, key_conversion);
     }
 
     Local<Value> Object::GetPrototype() {
@@ -810,6 +822,10 @@ namespace v8 {
         GraalString* graal_concat = new GraalString(isolate, env->NewString(str, length));
         delete[] str;
         return reinterpret_cast<String*> (graal_concat);
+    }
+
+    Local<String> String::Concat(Isolate* isolate, Local<String> left, Local<String> right) {
+        return Concat(left, right);
     }
 
     const String::ExternalOneByteStringResource* String::GetExternalOneByteStringResource() const {
@@ -1128,6 +1144,7 @@ namespace v8 {
     }
 
     void V8::SetFlagsFromCommandLine(int* argc, char** argv, bool remove_flags) {
+        bool show_help = false;
         bool use_jvm = false;
         bool use_native = false;
         std::string vm_args;
@@ -1172,6 +1189,9 @@ namespace v8 {
             } else if (!strcmp(arg, "--use-classpath-env-var")) {
                 GraalIsolate::use_classpath_env_var = true;
             } else {
+                if (!strcmp(arg, "--help")) {
+                    show_help = true;
+                }
                 argv[++unprocessed] = arg;
             }
             if (classpath != nullptr) {
@@ -1201,10 +1221,53 @@ namespace v8 {
             // (we have termined already if we encountered an unknown option)
             *argc = 1;
         }
+        if (show_help) {
+            // show help and terminate
+            v8::Isolate::CreateParams params;
+            GraalIsolate::New(params);
+        }
     }
 
-    void V8::SetFlagsFromString(char const*, int) {
-        TRACE
+    static char* SkipWhiteSpace(char* p) {
+        while (*p != '\0' && isspace(*p) != 0) p++;
+        return p;
+    }
+
+    static char* SkipBlackSpace(char* p) {
+        while (*p != '\0' && isspace(*p) == 0) p++;
+        return p;
+    }
+
+    void V8::SetFlagsFromString(const char* str, int length) {
+        // ensure 0-termination
+        char* args = new char[length + 1];
+        memcpy(args, str, length);
+        args[length] = 0;
+
+        // count arguments
+        char* p = SkipWhiteSpace(args);
+        int argc = 1;
+        while (*p != '\0') {
+            p = SkipBlackSpace(p);
+            p = SkipWhiteSpace(p);
+            argc++;
+        }
+
+        // fill arguments
+        char** argv = new char*[argc];
+        p = SkipWhiteSpace(args);
+        argc = 1;
+        while (*p != '\0') {
+            argv[argc] = p;
+            p = SkipBlackSpace(p);
+            if (*p != '\0') *p++ = '\0'; // 0-terminate argument
+            p = SkipWhiteSpace(p);
+            argc++;
+        }
+        SetFlagsFromCommandLine(&argc, argv, false);
+
+        delete[] argv;
+        delete[] args;
     }
 
     void V8::ToLocalEmpty() {
@@ -1280,7 +1343,17 @@ namespace v8 {
     }
 
     Maybe<int32_t> Value::Int32Value(Local<Context> context) const {
-        return Just<int32_t>(reinterpret_cast<const GraalValue*> (this)->Int32Value());
+        const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        JNIEnv* env = graal_value->Isolate()->GetJNIEnv();
+        jthrowable pending = env->ExceptionOccurred();
+        if (pending) env->ExceptionClear();
+        int32_t result = graal_value->Int32Value();
+        if (env->ExceptionCheck()) {
+            return Nothing<int32_t>();
+        } else {
+            if (pending) env->Throw(pending);
+            return Just<int32_t>(result);
+        }
     }
 
     uint32_t Value::Uint32Value() const {
@@ -1288,7 +1361,17 @@ namespace v8 {
     }
 
     Maybe<uint32_t> Value::Uint32Value(Local<Context> context) const {
-        return Just<uint32_t>(reinterpret_cast<const GraalValue*> (this)->Uint32Value());
+        const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        JNIEnv* env = graal_value->Isolate()->GetJNIEnv();
+        jthrowable pending = env->ExceptionOccurred();
+        if (pending) env->ExceptionClear();
+        uint32_t result = graal_value->Uint32Value();
+        if (env->ExceptionCheck()) {
+            return Nothing<uint32_t>();
+        } else {
+            if (pending) env->Throw(pending);
+            return Just<uint32_t>(result);
+        }
     }
 
     int64_t Value::IntegerValue() const {
@@ -1312,7 +1395,17 @@ namespace v8 {
     }
 
     Maybe<double> Value::NumberValue(Local<Context> context) const {
-        return Just<double>(reinterpret_cast<const GraalValue*> (this)->NumberValue());
+        const GraalValue* graal_value = reinterpret_cast<const GraalValue*> (this);
+        JNIEnv* env = graal_value->Isolate()->GetJNIEnv();
+        jthrowable pending = env->ExceptionOccurred();
+        if (pending) env->ExceptionClear();
+        double result = graal_value->NumberValue();
+        if (env->ExceptionCheck()) {
+            return Nothing<double>();
+        } else {
+            if (pending) env->Throw(pending);
+            return Just<double>(result);
+        }
     }
 
     void* External::Value() const {
@@ -1415,6 +1508,10 @@ namespace v8 {
         return reinterpret_cast<const GraalStackTrace*> (this)->GetFrame(index);
     }
 
+    Local<StackFrame> StackTrace::GetFrame(Isolate* isolate, uint32_t index) const {
+        return reinterpret_cast<const GraalStackTrace*> (this)->GetFrame(index);
+    }
+
     bool String::IsExternal() const {
         TRACE
         return false;
@@ -1441,7 +1538,15 @@ namespace v8 {
         return reinterpret_cast<const GraalString*> (this)->Utf8Length();
     }
 
+    int String::Utf8Length(Isolate* isolate) const {
+        return reinterpret_cast<const GraalString*> (this)->Utf8Length();
+    }
+
     int String::WriteOneByte(uint8_t* buffer, int start, int length, int options) const {
+        return reinterpret_cast<const GraalString*> (this)->WriteOneByte(buffer, start, length, options);
+    }
+
+    int String::WriteOneByte(Isolate* isolate, uint8_t* buffer, int start, int length, int options) const {
         return reinterpret_cast<const GraalString*> (this)->WriteOneByte(buffer, start, length, options);
     }
 
@@ -1449,7 +1554,15 @@ namespace v8 {
         return reinterpret_cast<const GraalString*> (this)->Write(buffer, start, length, options);
     }
 
+    int String::Write(Isolate* isolate, uint16_t* buffer, int start, int length, int options) const {
+        return reinterpret_cast<const GraalString*> (this)->Write(buffer, start, length, options);
+    }
+
     int String::WriteUtf8(char* buffer, int length, int* nchars_ref, int options) const {
+        return reinterpret_cast<const GraalString*> (this)->WriteUtf8(buffer, length, nchars_ref, options);
+    }
+
+    int String::WriteUtf8(Isolate* isolate, char* buffer, int length, int* nchars_ref, int options) const {
         return reinterpret_cast<const GraalString*> (this)->WriteUtf8(buffer, length, nchars_ref, options);
     }
 
@@ -2546,6 +2659,16 @@ namespace v8 {
         TRACE
     }
 
+    void v8::platform::tracing::TraceObject::Initialize(
+            char phase, const uint8_t* category_enabled_flag, const char* name,
+            const char* scope, uint64_t id, uint64_t bind_id, int num_args,
+            const char** arg_names, const uint8_t* arg_types,
+            const uint64_t* arg_values,
+            std::unique_ptr<v8::ConvertableToTraceFormat>* arg_convertables,
+            unsigned int flags, int64_t timestamp, int64_t cpu_timestamp) {
+        TRACE
+    }
+
     v8::platform::tracing::TraceBufferChunk::TraceBufferChunk(uint32_t seq) {
         TRACE
     }
@@ -2717,7 +2840,7 @@ namespace v8 {
     }
 
     void Isolate::SetHostInitializeImportMetaObjectCallback(HostInitializeImportMetaObjectCallback callback) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->SetImportMetaInitializer(callback);
     }
 
     Local<Value> ScriptOrModule::GetResourceName() {
@@ -2898,6 +3021,53 @@ namespace v8 {
 
     MaybeLocal<Map> Map::Set(Local<Context> context, Local<Value> key, Local<Value> value) {
         return reinterpret_cast<GraalMap*> (this)->Set(context, key, value);
+    }
+
+    MaybeLocal<Function> ScriptCompiler::CompileFunctionInContext(
+            Local<Context> context, Source* source, size_t arguments_count,
+            Local<String> arguments[], size_t context_extension_count,
+            Local<Object> context_extensions[],
+            CompileOptions options,
+            NoCacheReason no_cache_reason) {
+
+        Isolate* isolate = context->GetIsolate();
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+
+        jobject java_context = reinterpret_cast<GraalContext*> (*context)->GetJavaObject();
+
+        Local<Value> resource_name = source->resource_name;
+        Local<String> file_name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(isolate);
+        jobject java_source_name = file_name.IsEmpty() ? nullptr : reinterpret_cast<GraalString*> (*file_name)->GetJavaObject();
+
+        jobject java_body = reinterpret_cast<GraalString*> (*source->source_string)->GetJavaObject();
+
+        jobjectArray java_arguments = env->NewObjectArray(arguments_count, graal_isolate->GetObjectClass(), nullptr);
+        for (size_t i = 0; i < arguments_count; i++) {
+            jobject java_argument = reinterpret_cast<GraalString*> (*arguments[i])->GetJavaObject();
+            env->SetObjectArrayElement(java_arguments, i, java_argument);
+        }
+
+        jobjectArray java_context_extensions = env->NewObjectArray(context_extension_count, graal_isolate->GetObjectClass(), nullptr);
+        for (size_t i = 0; i < context_extension_count; i++) {
+            jobject java_context_extension = reinterpret_cast<GraalObject*> (*context_extensions[i])->GetJavaObject();
+            env->SetObjectArrayElement(java_context_extensions, i, java_context_extension);
+        }
+
+        JNI_CALL(jobject, java_function, graal_isolate, GraalAccessMethod::script_compiler_compile_function_in_context, Object, java_context, java_source_name, java_body, java_arguments, java_context_extensions);
+
+        if (java_function == nullptr) {
+            return MaybeLocal<Function>();
+        } else {
+            GraalFunction* graal_function = new GraalFunction(graal_isolate, java_function);
+            Local<Function> v8_function = reinterpret_cast<Function*> (graal_function);
+            return v8_function;
+        }
+    }
+
+    ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCacheForFunction(Local<Function> function) {
+        TRACE
+        return nullptr;
     }
 
     void Object::CheckCast(v8::Value* obj) {}

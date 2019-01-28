@@ -394,7 +394,15 @@ public class WriteElementNode extends JSTargetableNode {
 
             CachedWriteElementTypeCacheNode specialized = makeTypeCacheNode(target);
             this.replace(specialized);
+            checkForPolymorphicSpecialize();
             specialized.executeWithTargetAndIndexAndValue(target, index, value);
+        }
+
+        private void checkForPolymorphicSpecialize() {
+            Node parent = getParent();
+            if (parent != null && parent instanceof CachedWriteElementTypeCacheNode) {
+                reportPolymorphicSpecialize();
+            }
         }
 
         @SuppressWarnings("unchecked")
@@ -606,10 +614,18 @@ public class WriteElementNode extends JSTargetableNode {
                 lock.lock();
                 purgeStaleCacheEntries(target);
                 this.replace(selection);
+                checkForPolymorphicSpecialize();
             } finally {
                 lock.unlock();
             }
             selection.executeWithTargetAndArrayAndIndexAndValue(target, array, index, value, false);
+        }
+
+        private void checkForPolymorphicSpecialize() {
+            Node parent = getParent();
+            if (parent != null && parent instanceof WriteElementCacheNode) {
+                reportPolymorphicSpecialize();
+            }
         }
 
         private ArrayWriteElementCacheNode getSelection(ScriptArray array) {

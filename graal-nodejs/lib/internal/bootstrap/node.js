@@ -28,13 +28,6 @@
   const isMainThread = internalBinding('worker').threadId === 0;
 
   function startup() {
-    const EventEmitter = NativeModule.require('events');
-
-    const origProcProto = Object.getPrototypeOf(process);
-    Object.setPrototypeOf(origProcProto, EventEmitter.prototype);
-
-    EventEmitter.call(process);
-
     setupProcessObject();
 
     // graal-node.js patch start
@@ -119,6 +112,12 @@
     if (global.__coverage__)
       NativeModule.require('internal/process/write-coverage').setup();
 
+    if (process.env.NODE_V8_COVERAGE) {
+      const { resolve } = NativeModule.require('path');
+      process.env.NODE_V8_COVERAGE = resolve(process.env.NODE_V8_COVERAGE);
+      NativeModule.require('internal/process/coverage').setup();
+    }
+
 
     {
       const traceEvents = process.binding('trace_events');
@@ -135,20 +134,37 @@
       NativeModule.require('internal/inspector_async_hook').setup();
     }
 
+    const { getOptionValue } = NativeModule.require('internal/options');
+    const helpOption = getOptionValue('--help');
+    const completionBashOption = getOptionValue('--completion-bash');
+    const experimentalModulesOption = getOptionValue('--experimental-modules');
+    const experimentalVMModulesOption =
+      getOptionValue('--experimental-vm-modules');
+    const experimentalWorkerOption = getOptionValue('--experimental-worker');
+    if (helpOption) {
+      NativeModule.require('internal/print_help').print(process.stdout);
+      return;
+    }
+
+    if (completionBashOption) {
+      NativeModule.require('internal/bash_completion').print(process.stdout);
+      return;
+    }
+
     if (isMainThread) {
       mainThreadSetup.setupChildProcessIpcChannel();
     }
 
     const browserGlobals = !process._noBrowserGlobals;
     if (browserGlobals) {
-      // we are setting this here to foward it to the inspector later
+      // we are setting this here to forward it to the inspector later
       perThreadSetup.originalConsole = global.console;
       setupGlobalTimeouts();
       setupGlobalConsole();
       setupGlobalURL();
     }
 
-    if (process.binding('config').experimentalWorker) {
+    if (experimentalWorkerOption) {
       setupDOMException();
     }
 
@@ -180,9 +196,8 @@
         'DeprecationWarning', 'DEP0062', startup, true);
     }
 
-    if (process.binding('config').experimentalModules ||
-        process.binding('config').experimentalVMModules) {
-      if (process.binding('config').experimentalModules) {
+    if (experimentalModulesOption || experimentalVMModulesOption) {
+      if (experimentalModulesOption) {
         process.emitWarning(
           'The ESM module loader is experimental.',
           'ExperimentalWarning', undefined);
@@ -214,6 +229,8 @@
     }
 
     perf.markMilestone(NODE_PERFORMANCE_MILESTONE_BOOTSTRAP_COMPLETE);
+
+    setupAllowedFlags();
 
     // There are various modes that Node can run in. The most common two
     // are running from a script and running the REPL - but there are a few
@@ -341,6 +358,11 @@
   }
 
   function setupProcessObject() {
+    const EventEmitter = NativeModule.require('events');
+    const origProcProto = Object.getPrototypeOf(process);
+    Object.setPrototypeOf(origProcProto, EventEmitter.prototype);
+    EventEmitter.call(process);
+
     _setupProcessObject(pushValueToArray);
 
     function pushValueToArray() {
@@ -514,7 +536,9 @@
           const { kExpandStackSymbol } = NativeModule.require('internal/util');
           if (typeof er[kExpandStackSymbol] === 'function')
             er[kExpandStackSymbol]();
-        } catch (er) {}
+        } catch {
+          // Nothing to be done about it at this point.
+        }
         return false;
       }
 
@@ -558,7 +582,7 @@
   function tryGetCwd(path) {
     try {
       return process.cwd();
-    } catch (ex) {
+    } catch {
       // getcwd(3) can fail if the current working directory has been deleted.
       // Fall back to the directory name of the (absolute) executable path.
       // It's not really correct but what are the alternatives?
@@ -620,6 +644,129 @@
     source = CJSModule.wrap(source);
     // Compile the script, this will throw if it fails.
     new vm.Script(source, { displayErrors: true, filename });
+  }
+
+  function setupAllowedFlags() {
+    // This builds process.allowedNodeEnvironmentFlags
+    // from data in the config binding
+
+    const replaceUnderscoresRegex = /_/g;
+    const leadingDashesRegex = /^--?/;
+    const trailingValuesRegex = /=.*$/;
+
+    // Save references so user code does not interfere
+    const replace = Function.call.bind(String.prototype.replace);
+    const has = Function.call.bind(Set.prototype.has);
+    const test = Function.call.bind(RegExp.prototype.test);
+
+    const get = () => {
+      const {
+        envSettings: { kAllowedInEnvironment }
+      } = internalBinding('options');
+      const { options, aliases } = NativeModule.require('internal/options');
+
+      const allowedNodeEnvironmentFlags = [];
+      for (const [name, info] of options) {
+        if (info.envVarSettings === kAllowedInEnvironment) {
+          allowedNodeEnvironmentFlags.push(name);
+        }
+      }
+
+      for (const [ from, expansion ] of aliases) {
+        let isAccepted = true;
+        for (const to of expansion) {
+          if (!to.startsWith('-') || to === '--') continue;
+          const recursiveExpansion = aliases.get(to);
+          if (recursiveExpansion) {
+            if (recursiveExpansion[0] === to)
+              recursiveExpansion.splice(0, 1);
+            expansion.push(...recursiveExpansion);
+            continue;
+          }
+          isAccepted = options.get(to).envVarSettings === kAllowedInEnvironment;
+          if (!isAccepted) break;
+        }
+        if (isAccepted) {
+          let canonical = from;
+          if (canonical.endsWith('='))
+            canonical = canonical.substr(0, canonical.length - 1);
+          if (canonical.endsWith(' <arg>'))
+            canonical = canonical.substr(0, canonical.length - 4);
+          allowedNodeEnvironmentFlags.push(canonical);
+        }
+      }
+
+      const trimLeadingDashes = (flag) => replace(flag, leadingDashesRegex, '');
+
+      // Save these for comparison against flags provided to
+      // process.allowedNodeEnvironmentFlags.has() which lack leading dashes.
+      // Avoid interference w/ user code by flattening `Set.prototype` into
+      // each object.
+      const nodeFlags = Object.defineProperties(
+        new Set(allowedNodeEnvironmentFlags.map(trimLeadingDashes)),
+        Object.getOwnPropertyDescriptors(Set.prototype)
+      );
+
+      class NodeEnvironmentFlagsSet extends Set {
+        constructor(...args) {
+          super(...args);
+
+          // the super constructor consumes `add`, but
+          // disallow any future adds.
+          this.add = () => this;
+        }
+
+        delete() {
+          // noop, `Set` API compatible
+          return false;
+        }
+
+        clear() {
+          // noop
+        }
+
+        has(key) {
+          // This will return `true` based on various possible
+          // permutations of a flag, including present/missing leading
+          // dash(es) and/or underscores-for-dashes.
+          // Strips any values after `=`, inclusive.
+          // TODO(addaleax): It might be more flexible to run the option parser
+          // on a dummy option set and see whether it rejects the argument or
+          // not.
+          if (typeof key === 'string') {
+            key = replace(key, replaceUnderscoresRegex, '-');
+            if (test(leadingDashesRegex, key)) {
+              key = replace(key, trailingValuesRegex, '');
+              return has(this, key);
+            }
+            return has(nodeFlags, key);
+          }
+          return false;
+        }
+      }
+
+      Object.freeze(NodeEnvironmentFlagsSet.prototype.constructor);
+      Object.freeze(NodeEnvironmentFlagsSet.prototype);
+
+      return process.allowedNodeEnvironmentFlags = Object.freeze(
+        new NodeEnvironmentFlagsSet(
+          allowedNodeEnvironmentFlags
+        ));
+    };
+
+    Object.defineProperty(process, 'allowedNodeEnvironmentFlags', {
+      get,
+      set(value) {
+        Object.defineProperty(this, 'allowedNodeEnvironmentFlags', {
+          value,
+          configurable: true,
+          enumerable: true,
+          writable: true
+        });
+      },
+      enumerable: true,
+      configurable: true
+    });
   }
 
   startup();

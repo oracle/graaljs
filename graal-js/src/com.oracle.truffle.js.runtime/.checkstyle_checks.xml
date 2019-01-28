@@ -10,6 +10,9 @@
 -->
 <module name="Checker">
   <property name="severity" value="warning"/>
+  <module name="BeforeExecutionExclusionFileFilter">
+    <property name="fileNamePattern" value="com.oracle.truffle.js.runtime/src/com/oracle/truffle/js/runtime/external/DToA.java"/>
+  </module>
   <module name="TreeWalker">
     <property name="tabWidth" value="4"/>
     <module name="JavadocStyle">

@@ -8,7 +8,12 @@ const assert = require('assert');
 const { NodeInstance } = require('../common/inspector-helper.js');
 
 function checkListResponse(response) {
-  assert.strictEqual(1, response.length);
+  const expectedLength = 1;
+  assert.strictEqual(
+    response.length,
+    expectedLength,
+    `Expected response length ${response.length} to be ${expectedLength}.`
+  );
   assert.ok(response[0].devtoolsFrontendUrl);
   assert.ok(
     /ws:\/\/localhost:\d+\/[0-9A-Fa-f]{8}-/
@@ -33,8 +38,7 @@ function checkBadPath(err) {
 }
 
 function checkException(message) {
-  assert.strictEqual(message.exceptionDetails, undefined,
-                     'An exception occurred during execution');
+  assert.strictEqual(message.exceptionDetails, undefined);
 }
 
 function assertScopeValues({ result }, expected) {
@@ -42,7 +46,11 @@ function assertScopeValues({ result }, expected) {
   for (const actual of result) {
     const value = expected[actual.name];
     if (value) {
-      assert.strictEqual(value, actual.value.value);
+      assert.strictEqual(
+        actual.value.value,
+        value,
+        `Expected scope values to be ${actual.value.value} instead of ${value}.`
+      );
       unmatched.delete(actual.name);
     }
   }
@@ -69,7 +77,7 @@ async function testBreakpointOnStart(session) {
   ];
 
   await session.send(commands);
-  await session.waitForBreakOnLine(0, session.scriptPath());
+  await session.waitForBreakOnLine(0, session.scriptURL());
 }
 
 async function testBreakpoint(session) {
@@ -77,7 +85,7 @@ async function testBreakpoint(session) {
   const commands = [
     { 'method': 'Debugger.setBreakpointByUrl',
       'params': { 'lineNumber': 5,
-                  'url': session.scriptPath(),
+                  'url': session.scriptURL(),
                   'columnNumber': 0,
                   'condition': ''
       }
@@ -92,7 +100,7 @@ async function testBreakpoint(session) {
          `Script source is wrong: ${scriptSource}`);
 
   await session.waitForConsoleOutput('log', ['A message', 5]);
-  const paused = await session.waitForBreakOnLine(5, session.scriptPath());
+  const paused = await session.waitForBreakOnLine(5, session.scriptURL());
   const scopeId = paused.params.callFrames[0].scopeChain[0].object.objectId;
 
   console.log('[test]', 'Verify we can read current application state');
@@ -118,15 +126,24 @@ async function testBreakpoint(session) {
       'generatePreview': true
     }
   });
-
-  assert.strictEqual(1002, result.value);
+  const expectedEvaluation = 1002;
+  assert.strictEqual(
+    result.value,
+    expectedEvaluation,
+    `Expected evaluation to be ${expectedEvaluation}, got ${result.value}.`
+  );
 
   result = (await session.send({
     'method': 'Runtime.evaluate', 'params': {
       'expression': '5 * 5'
     }
   })).result;
-  assert.strictEqual(25, result.value);
+  const expectedResult = 25;
+  assert.strictEqual(
+    result.value,
+    expectedResult,
+    `Expected Runtime.evaluate to be ${expectedResult}, got ${result.value}.`
+  );
 }
 
 async function testI18NCharacters(session) {
@@ -289,7 +306,13 @@ async function runTest() {
   await testI18NCharacters(session);
   await testCommandLineAPI(session);
   await session.runToCompletion();
-  assert.strictEqual(55, (await child.expectShutdown()).exitCode);
+  const expectedExitCode = 55;
+  const { exitCode } = await child.expectShutdown();
+  assert.strictEqual(
+    exitCode,
+    expectedExitCode,
+    `Expected exit code to be ${expectedExitCode} but got ${expectedExitCode}.`
+  );
 }
 
 runTest();

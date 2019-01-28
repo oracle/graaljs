@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -136,7 +135,6 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
     }
 
     public static PluralRules getPluralRulesProperty(DynamicObject obj) {
-        ensureIsPluralRules(obj);
         return getInternalState(obj).pluralRules;
     }
 
@@ -175,19 +173,12 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
 
     @TruffleBoundary
     public static DynamicObject resolvedOptions(JSContext context, DynamicObject pluralRulesObj) {
-        ensureIsPluralRules(pluralRulesObj);
         InternalState state = getInternalState(pluralRulesObj);
         return state.toResolvedOptionsObject(context);
     }
 
     public static InternalState getInternalState(DynamicObject pluralRulesObj) {
         return (InternalState) INTERNAL_STATE_PROPERTY.get(pluralRulesObj, isJSPluralRules(pluralRulesObj));
-    }
-
-    private static void ensureIsPluralRules(Object obj) {
-        if (!isJSPluralRules(obj)) {
-            throw Errors.createTypeError("PluralRules method called on a non-object or on a wrong type of object (uninitialized PluralRules?).");
-        }
     }
 
     @Override

@@ -159,6 +159,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorListFormatExpected() {
+        return createTypeError("ListFormat object expected.");
+    }
+
+    @TruffleBoundary
     public static JSException createSyntaxError(String message, Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.SyntaxError, message, cause, originatingNode);
     }

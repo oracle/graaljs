@@ -58,11 +58,6 @@ describe('V8', function () {
             assert.strictEqual(module.V8Obj_SetEntropySource(), true);
         });
     });
-    describe('SetFlagsFromString', function () {
-        it('setting simple flag', function () {
-            assert.strictEqual(module.V8Obj_SetFlagsFromString(), true);
-        });
-    });
     describe('GetVersion', function () {
         it('can read a version string', function () {
             var version = module.V8Obj_GetVersion();

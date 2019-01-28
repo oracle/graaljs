@@ -1004,12 +1004,13 @@ public class NodeFactory {
         return JSGuardDisconnectedArgumentWrite.create(index, argumentsArrayAccess, argumentsArray, rhs, slot);
     }
 
-    public JavaScriptNode createSetModuleEnvironment(JSModuleRecord moduleRecord) {
+    public JavaScriptNode createSetModuleEnvironment(JavaScriptNode moduleRecordNode) {
         return new StatementNode() {
-            private final JSModuleRecord module = moduleRecord;
+            @Child private JavaScriptNode moduleNode = moduleRecordNode;
 
             @Override
             public Object execute(VirtualFrame frame) {
+                JSModuleRecord module = (JSModuleRecord) moduleNode.execute(frame);
                 module.setEnvironment(frame.materialize());
                 return EMPTY;
             }
@@ -1053,8 +1054,25 @@ public class NodeFactory {
         };
     }
 
-    public JavaScriptNode createCopyDataProperties(JavaScriptNode targetObj, JavaScriptNode source, JavaScriptNode excludedNames) {
-        return CopyDataPropertiesNode.create(targetObj, source, excludedNames);
+    public JavaScriptNode createImportMeta(JavaScriptNode moduleRecordNode) {
+        return new StatementNode() {
+            @Child private JavaScriptNode moduleNode = moduleRecordNode;
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                JSModuleRecord module = (JSModuleRecord) moduleNode.execute(frame);
+                return module.getImportMeta();
+            }
+
+            @Override
+            protected JavaScriptNode copyUninitialized() {
+                return copy();
+            }
+        };
+    }
+
+    public JavaScriptNode createCopyDataProperties(JSContext context, JavaScriptNode targetObj, JavaScriptNode source, JavaScriptNode excludedNames) {
+        return CopyDataPropertiesNode.create(context, targetObj, source, excludedNames);
     }
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {

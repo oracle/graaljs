@@ -148,6 +148,8 @@ public final class NativeAccess {
 
     public static native void notifyPromiseRejectionTracker(Object promise, int operation, Object value);
 
+    public static native void notifyImportMetaInitializer(Object importMeta, Object module);
+
     public static native Object executeResolveCallback(long callback, Object context, String specifier, Object referrer);
 
     public static native void writeHostObject(long delegate, Object object);

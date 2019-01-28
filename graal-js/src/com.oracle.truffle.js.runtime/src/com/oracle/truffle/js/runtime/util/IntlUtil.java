@@ -45,10 +45,13 @@ import com.ibm.icu.text.CaseMap.Lower;
 import com.ibm.icu.text.CaseMap.Upper;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -283,5 +286,12 @@ public class IntlUtil {
                 }
             }
         }
+    }
+
+    public static Object makePart(JSContext context, String type, String value) {
+        DynamicObject p = JSUserObject.create(context);
+        JSObject.set(p, "type", type);
+        JSObject.set(p, "value", value);
+        return p;
     }
 }

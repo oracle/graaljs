@@ -91,4 +91,8 @@ describe('Other', function () {
         assert.notStrictEqual(caught, null, "Error not thrown");
         assert.strictEqual(caught.name, "SyntaxError");
     });
+    it('should be possible to use vm.compileFunction()', function () {
+        var fn = vm.compileFunction('return a + b + c + d;', ['a', 'b'], {contextExtensions: [{c: 42}, {d: 211}]});
+        assert.strictEqual(fn(1000, 20000), 21253);
+    });
 });

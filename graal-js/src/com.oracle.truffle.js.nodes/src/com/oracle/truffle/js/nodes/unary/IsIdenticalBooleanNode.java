@@ -44,12 +44,12 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 
-public abstract class IsIdenticalBooleanNode extends JSUnaryNode {
+public abstract class IsIdenticalBooleanNode extends IsIdenticalBaseNode {
 
     private final boolean bool;
 
-    protected IsIdenticalBooleanNode(JavaScriptNode operand, boolean bool) {
-        super(operand);
+    protected IsIdenticalBooleanNode(JavaScriptNode operand, boolean bool, boolean leftConstant) {
+        super(operand, leftConstant);
         this.bool = bool;
     }
 
@@ -63,12 +63,17 @@ public abstract class IsIdenticalBooleanNode extends JSUnaryNode {
         return false;
     }
 
-    public static IsIdenticalBooleanNode create(boolean bool, JavaScriptNode operand) {
-        return IsIdenticalBooleanNodeGen.create(operand, bool);
+    public static IsIdenticalBooleanNode create(boolean bool, JavaScriptNode operand, boolean leftConstant) {
+        return IsIdenticalBooleanNodeGen.create(operand, bool, leftConstant);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return IsIdenticalBooleanNode.create(bool, cloneUninitialized(getOperand()));
+        return IsIdenticalBooleanNode.create(bool, cloneUninitialized(getOperand()), leftConstant);
+    }
+
+    @Override
+    protected Object getConstantValue() {
+        return bool;
     }
 }

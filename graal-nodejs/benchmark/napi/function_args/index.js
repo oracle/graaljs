@@ -11,17 +11,15 @@ let napi;
 
 try {
   v8 = require('./build/Release/binding');
-} catch (err) {
-  // eslint-disable-next-line no-path-concat
-  console.error(__filename + ': V8 Binding failed to load');
+} catch {
+  console.error(`${__filename}: V8 Binding failed to load`);
   process.exit(0);
 }
 
 try {
   napi = require('./build/Release/napi_binding');
-} catch (err) {
-  // eslint-disable-next-line no-path-concat
-  console.error(__filename + ': NAPI-Binding failed to load');
+} catch {
+  console.error(`${__filename}: NAPI-Binding failed to load`);
   process.exit(0);
 }
 

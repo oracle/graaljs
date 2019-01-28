@@ -565,7 +565,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::object_get_prototype, "objectGetPrototype", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_set_prototype, "objectSetPrototype", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_get_constructor_name, "objectGetConstructorName", "(Ljava/lang/Object;)Ljava/lang/String;")
-    ACCESS_METHOD(GraalAccessMethod::object_get_property_names, "objectGetPropertyNames", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::object_get_property_names, "objectGetPropertyNames", "(Ljava/lang/Object;ZZZZZZZZ)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_get_own_property_names, "objectGetOwnPropertyNames", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_creation_context, "objectCreationContext", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_define_property, "objectDefineProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;ZZZZZZ)Z")
@@ -622,6 +622,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::isolate_perform_gc, "isolatePerformGC", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_hook, "isolateEnablePromiseHook", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_reject_callback, "isolateEnablePromiseRejectCallback", "(Z)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_enable_import_meta_initializer, "isolateEnableImportMetaInitializer", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enter, "isolateEnter", "(J)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_exit, "isolateExit", "(J)J")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
@@ -755,6 +756,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_is_external, "sharedArrayBufferIsExternal", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_get_contents, "sharedArrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_externalize, "sharedArrayBufferExternalize", "(Ljava/lang/Object;J)V")
+    ACCESS_METHOD(GraalAccessMethod::script_compiler_compile_function_in_context, "scriptCompilerCompileFunctionInContext", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;[Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiPointerSize;
     slot[v8::internal::Internals::kExternalMemoryOffset / v8::internal::kApiPointerSize] = (void*) 0;
@@ -1226,6 +1228,22 @@ void GraalIsolate::SetPromiseRejectCallback(v8::PromiseRejectCallback callback) 
 void GraalIsolate::NotifyPromiseRejectCallback(v8::PromiseRejectMessage message) {
     if (promise_reject_callback_ != nullptr) {
         promise_reject_callback_(message);
+    }
+}
+
+void GraalIsolate::SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback) {
+    bool wasNull = import_meta_initializer == nullptr;
+    bool isNull = callback == nullptr;
+    if (wasNull != isNull) {
+        // turn the notification on/off
+        JNI_CALL_VOID(this, GraalAccessMethod::isolate_enable_import_meta_initializer, (jboolean) !isNull);
+    }
+    import_meta_initializer = callback;
+}
+
+void GraalIsolate::NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module) {
+    if (import_meta_initializer != nullptr) {
+        import_meta_initializer(GetCurrentContext(), module, import_meta);
     }
 }
 

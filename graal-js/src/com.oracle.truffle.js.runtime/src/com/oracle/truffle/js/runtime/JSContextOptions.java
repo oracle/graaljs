@@ -167,9 +167,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> JAVA_PACKAGE_GLOBALS = new OptionKey<>(true);
     private static final String JAVA_PACKAGE_GLOBALS_HELP = "provide Java package globals: Packages, java, javafx, javax, com, org, edu.";
 
+    public static final String GLOBAL_PROPERTY_NAME = JS_OPTION_PREFIX + "global-property";
+    public static final OptionKey<Boolean> GLOBAL_PROPERTY = new OptionKey<>(true);
+    private static final String GLOBAL_PROPERTY_HELP = "provide 'global' global property.";
     public static final String GLOBAL_THIS_NAME = JS_OPTION_PREFIX + "global-this";
-    public static final OptionKey<Boolean> GLOBAL_THIS = new OptionKey<>(true);
-    private static final String GLOBAL_THIS_HELP = "provide 'global' global property.";
+    private static final String GLOBAL_THIS_HELP = "provide 'global' global property. Deprecated option, use " + GLOBAL_PROPERTY_NAME + " instead.";
 
     public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
     public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
@@ -216,23 +218,28 @@ public final class JSContextOptions {
 
     public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
     private static final OptionKey<Boolean> REGEX_DUMP_AUTOMATA = new OptionKey<>(false);
-    private static final String REGEX_DUMP_AUTOMATA_HELP = helpWithDefault("Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.", REGEX_DUMP_AUTOMATA);
+    private static final String REGEX_DUMP_AUTOMATA_HELP = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.";
     @CompilationFinal private boolean regexDumpAutomata;
 
     public static final String REGEX_STEP_EXECUTION_NAME = JS_OPTION_PREFIX + "regex.step-execution";
     private static final OptionKey<Boolean> REGEX_STEP_EXECUTION = new OptionKey<>(false);
-    private static final String REGEX_STEP_EXECUTION_HELP = helpWithDefault("Trace the execution of automata in JSON files.", REGEX_STEP_EXECUTION);
+    private static final String REGEX_STEP_EXECUTION_HELP = "Trace the execution of automata in JSON files.";
     @CompilationFinal private boolean regexStepExecution;
 
     public static final String REGEX_ALWAYS_EAGER_NAME = JS_OPTION_PREFIX + "regex.always-eager";
     private static final OptionKey<Boolean> REGEX_ALWAYS_EAGER = new OptionKey<>(false);
-    private static final String REGEX_ALWAYS_EAGER_HELP = helpWithDefault("Always match capture groups eagerly.", REGEX_ALWAYS_EAGER);
+    private static final String REGEX_ALWAYS_EAGER_HELP = "Always match capture groups eagerly.";
     @CompilationFinal private boolean regexAlwaysEager;
 
     public static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME = JS_OPTION_PREFIX + "script-engine-global-scope-import";
     public static final OptionKey<Boolean> SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT = new OptionKey<>(false);
     private static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP = "Enable ScriptEngine-specific global scope import function.";
     @CompilationFinal private boolean scriptEngineGlobalScopeImport;
+
+    public static final String ARRAY_LIKE_PROTOTYPE_NAME = JS_OPTION_PREFIX + "experimental-array-prototype";
+    public static final OptionKey<Boolean> ARRAY_LIKE_PROTOTYPE = new OptionKey<>(false);
+    private static final String ARRAY_LIKE_PROTOTYPE_HELP = "Non-JS array-like objects (like ProxyArray or java.util.List) have prototype set to Array.prototype.";
+    @CompilationFinal private boolean arrayLikePrototype;
 
     /**
      * Options which can be patched without throwing away the pre-initialized context.
@@ -287,6 +294,7 @@ public final class JSContextOptions {
         this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME);
         this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME);
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
+        this.arrayLikePrototype = readBooleanOption(ARRAY_LIKE_PROTOTYPE, ARRAY_LIKE_PROTOTYPE_NAME);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
@@ -356,7 +364,8 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, OptionCategory.USER, TIMER_RESOLUTION_HELP));
         options.add(newOptionDescriptor(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME, OptionCategory.DEBUG, AGENT_CAN_BLOCK_HELP));
         options.add(newOptionDescriptor(JAVA_PACKAGE_GLOBALS, JAVA_PACKAGE_GLOBALS_NAME, OptionCategory.USER, JAVA_PACKAGE_GLOBALS_HELP));
-        options.add(newOptionDescriptor(GLOBAL_THIS, GLOBAL_THIS_NAME, OptionCategory.USER, GLOBAL_THIS_HELP));
+        options.add(newOptionDescriptor(GLOBAL_PROPERTY, GLOBAL_PROPERTY_NAME, OptionCategory.USER, GLOBAL_PROPERTY_HELP));
+        options.add(newOptionDescriptor(GLOBAL_PROPERTY, GLOBAL_THIS_NAME, OptionCategory.USER, GLOBAL_THIS_HELP));
         options.add(newOptionDescriptor(CONSOLE, CONSOLE_NAME, OptionCategory.USER, CONSOLE_HELP));
         options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
         options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
@@ -371,6 +380,7 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME, OptionCategory.DEBUG, REGEX_STEP_EXECUTION_HELP));
         options.add(newOptionDescriptor(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME, OptionCategory.DEBUG, REGEX_ALWAYS_EAGER_HELP));
         options.add(newOptionDescriptor(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, OptionCategory.EXPERT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP));
+        options.add(newOptionDescriptor(ARRAY_LIKE_PROTOTYPE, ARRAY_LIKE_PROTOTYPE_NAME, OptionCategory.EXPERT, ARRAY_LIKE_PROTOTYPE_HELP));
     }
 
     /**
@@ -496,6 +506,10 @@ public final class JSContextOptions {
         return scriptEngineGlobalScopeImport;
     }
 
+    public boolean isArrayLikePrototype() {
+        return arrayLikePrototype;
+    }
+
     public boolean isConsole() {
         return CONSOLE.getValue(optionValues);
     }
@@ -550,6 +564,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.regexStepExecution ? 1 : 0);
         hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
         hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
+        hash = 53 * hash + (this.arrayLikePrototype ? 1 : 0);
         return hash;
     }
 
@@ -629,6 +644,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.scriptEngineGlobalScopeImport != other.scriptEngineGlobalScopeImport) {
+            return false;
+        }
+        if (this.arrayLikePrototype != other.arrayLikePrototype) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

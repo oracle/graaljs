@@ -1933,6 +1933,14 @@ buf2.swap16();
 // Throws ERR_INVALID_BUFFER_SIZE
 ```
 
+One convenient use of `buf.swap16()` is to perform a fast in-place conversion
+between UTF-16 little-endian and UTF-16 big-endian:
+
+```js
+const buf = Buffer.from('This is little-endian UTF-16', 'utf16le');
+buf.swap16(); // Convert to big-endian UTF-16 text.
+```
+
 ### buf.swap32()
 <!-- YAML
 added: v5.10.0
@@ -2145,15 +2153,15 @@ endian). `value` *should* be a valid 64-bit double. Behavior is undefined when
 ```js
 const buf = Buffer.allocUnsafe(8);
 
-buf.writeDoubleBE(0xdeadbeefcafebabe, 0);
+buf.writeDoubleBE(123.456, 0);
 
 console.log(buf);
-// Prints: <Buffer 43 eb d5 b7 dd f9 5f d7>
+// Prints: <Buffer 40 5e dd 2f 1a 9f be 77>
 
-buf.writeDoubleLE(0xdeadbeefcafebabe, 0);
+buf.writeDoubleLE(123.456, 0);
 
 console.log(buf);
-// Prints: <Buffer d7 5f f9 dd b7 d5 eb 43>
+// Prints: <Buffer 77 be 9f 1a 2f dd 5e 40>
 ```
 
 ### buf.writeFloatBE(value, offset)

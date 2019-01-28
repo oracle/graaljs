@@ -44,10 +44,8 @@ class TCPWrap : public ConnectionWrap<TCPWrap, uv_tcp_t> {
                          v8::Local<v8::Value> unused,
                          v8::Local<v8::Context> context);
 
-  void MemoryInfo(MemoryTracker* tracker) const override {
-    tracker->TrackThis(this);
-  }
-
+  SET_NO_MEMORY_INFO()
+  SET_SELF_SIZE(TCPWrap)
   std::string MemoryInfoName() const override {
     switch (provider_type()) {
       case ProviderType::PROVIDER_TCPWRAP:
@@ -77,6 +75,9 @@ class TCPWrap : public ConnectionWrap<TCPWrap, uv_tcp_t> {
   static void Listen(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Connect(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Connect6(const v8::FunctionCallbackInfo<v8::Value>& args);
+  template <typename T>
+  static void Connect(const v8::FunctionCallbackInfo<v8::Value>& args,
+      std::function<int(const char* ip_address, T* addr)> uv_ip_addr);
   static void Open(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 #ifdef _WIN32

@@ -203,6 +203,8 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new CollatorPrototypeBuiltins());
         defineBuiltins(new CollatorFunctionBuiltins());
 
+        defineBuiltins(new ListFormatPrototypeBuiltins());
+        defineBuiltins(new ListFormatFunctionBuiltins());
         defineBuiltins(new NumberFormatPrototypeBuiltins());
         defineBuiltins(new NumberFormatFunctionBuiltins());
         defineBuiltins(new DateTimeFormatPrototypeBuiltins());

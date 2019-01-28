@@ -59,13 +59,7 @@ TLSWrap::TLSWrap(Environment* env,
                 AsyncWrap::PROVIDER_TLSWRAP),
       SSLWrap<TLSWrap>(env, sc, kind),
       StreamBase(env),
-      sc_(sc),
-      write_size_(0),
-      started_(false),
-      established_(false),
-      shutdown_(false),
-      cycle_depth_(0),
-      eof_(false) {
+      sc_(sc) {
   MakeWeak();
 
   // sc comes from an Unwrap. Make sure it was assigned.
@@ -861,7 +855,6 @@ void TLSWrap::GetWriteQueueSize(const FunctionCallbackInfo<Value>& info) {
 
 
 void TLSWrap::MemoryInfo(MemoryTracker* tracker) const {
-  tracker->TrackThis(this);
   tracker->TrackField("error", error_);
   tracker->TrackField("pending_cleartext_input", pending_cleartext_input_);
   if (enc_in_ != nullptr)
@@ -894,7 +887,7 @@ void TLSWrap::Initialize(Local<Object> target,
       Local<FunctionTemplate>(),
       static_cast<PropertyAttribute>(ReadOnly | DontDelete));
 
-  AsyncWrap::AddWrapMethods(env, t, AsyncWrap::kFlagHasReset);
+  t->Inherit(AsyncWrap::GetConstructorTemplate(env));
   env->SetProtoMethod(t, "receive", Receive);
   env->SetProtoMethod(t, "start", Start);
   env->SetProtoMethod(t, "setVerifyMode", SetVerifyMode);
@@ -908,9 +901,10 @@ void TLSWrap::Initialize(Local<Object> target,
   env->SetProtoMethod(t, "getServername", GetServername);
   env->SetProtoMethod(t, "setServername", SetServername);
 
-  env->set_tls_wrap_constructor_function(t->GetFunction());
+  env->set_tls_wrap_constructor_function(
+      t->GetFunction(env->context()).ToLocalChecked());
 
-  target->Set(tlsWrapString, t->GetFunction());
+  target->Set(tlsWrapString, t->GetFunction(env->context()).ToLocalChecked());
 }
 
 }  // namespace node

@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.test.external.test262;
 
+import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_MIME_TYPE;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -257,7 +259,11 @@ public class Test262Runnable extends TestRunnable {
     }
 
     private static Source createSource(File testFile, String code, boolean module) {
-        return Source.newBuilder("js", code, (module ? "module:" : "") + testFile.getPath()).buildLiteral();
+        Source.Builder builder = Source.newBuilder("js", code, testFile.getPath());
+        if (module) {
+            builder.mimeType(MODULE_MIME_TYPE);
+        }
+        return builder.buildLiteral();
     }
 
     private static String getNegativeMessage(List<String> scriptCode) {

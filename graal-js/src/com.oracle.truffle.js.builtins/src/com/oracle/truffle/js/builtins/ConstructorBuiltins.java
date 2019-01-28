@@ -93,6 +93,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaIm
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaInteropWorkerNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberFormatNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructListFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructObjectNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructPluralRulesNodeGen;
@@ -143,6 +144,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
+import com.oracle.truffle.js.nodes.intl.InitializeListFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
@@ -176,6 +178,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
@@ -220,6 +223,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         ArrayBuffer(1),
         Collator(0),
         NumberFormat(0),
+        ListFormat(0),
         PluralRules(0),
         DateTimeFormat(0),
 
@@ -342,6 +346,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructCollatorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
                                 : ConstructCollatorNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
                                 : CallCollatorNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case ListFormat:
+                return construct ? (newTarget
+                                ? ConstructListFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                : ConstructListFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                                : createCallRequiresNew(context, builtin);
             case NumberFormat:
                 return construct ? (newTarget
                                 ? ConstructNumberFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
@@ -1053,6 +1062,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getCollatorConstructor().getPrototype();
         }
 
+    }
+
+    public abstract static class ConstructListFormatNode extends ConstructWithNewTargetNode {
+
+        @Child InitializeListFormatNode initializeListFormatNode;
+
+        public ConstructListFormatNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+            initializeListFormatNode = InitializeListFormatNode.createInitalizeListFormatNode(context);
+        }
+
+        @Specialization
+        protected DynamicObject constructListFormat(DynamicObject newTarget, Object locales, Object options) {
+            DynamicObject listFormat = swapPrototype(JSListFormat.create(getContext()), newTarget);
+            return initializeListFormatNode.executeInit(listFormat, locales, options);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getListFormatConstructor().getPrototype();
+        }
     }
 
     public abstract static class CallNumberFormatNode extends JSBuiltinNode {

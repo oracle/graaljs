@@ -6,7 +6,7 @@ const http = require('http');
 const fixtures = require('../common/fixtures');
 const { spawn } = require('child_process');
 const { parse: parseURL } = require('url');
-const { getURLFromFilePath } = require('internal/url');
+const { pathToFileURL } = require('internal/url');
 const { EventEmitter } = require('events');
 
 const _MAINSCRIPT = fixtures.path('loop.js');
@@ -63,7 +63,7 @@ function parseWSFrame(buffer) {
   if (buffer[0] === 0x88 && buffer[1] === 0x00) {
     return { length: 2, message, closed: true };
   }
-  assert.strictEqual(0x81, buffer[0]);
+  assert.strictEqual(buffer[0], 0x81);
   let dataLen = 0x7F & buffer[1];
   let bodyOffset = 2;
   if (buffer.length < bodyOffset + dataLen)
@@ -174,7 +174,7 @@ class InspectorSession {
         const { scriptId, url } = message.params;
         this._scriptsIdsByUrl.set(scriptId, url);
         const fileUrl = url.startsWith('file:') ?
-          url : getURLFromFilePath(url).toString();
+          url : pathToFileURL(url).toString();
         if (fileUrl === this.scriptURL().toString()) {
           this.mainScriptId = scriptId;
         }
@@ -251,7 +251,7 @@ class InspectorSession {
       assert.strictEqual(scriptPath.toString(),
                          expectedScriptPath.toString(),
                          `${scriptPath} !== ${expectedScriptPath}`);
-      assert.strictEqual(line, location.lineNumber);
+      assert.strictEqual(location.lineNumber, line);
       return true;
     }
   }
@@ -309,7 +309,7 @@ class InspectorSession {
   }
 
   scriptURL() {
-    return getURLFromFilePath(this.scriptPath());
+    return pathToFileURL(this.scriptPath());
   }
 }
 

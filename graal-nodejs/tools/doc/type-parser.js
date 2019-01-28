@@ -16,7 +16,7 @@ const jsPrimitives = {
 const jsGlobalObjectsUrl = `${jsDocPrefix}Reference/Global_Objects/`;
 const jsGlobalTypes = [
   'Array', 'ArrayBuffer', 'DataView', 'Date', 'Error', 'EvalError', 'Function',
-  'Object', 'Promise', 'RangeError', 'ReferenceError', 'RegExp',
+  'Object', 'Promise', 'RangeError', 'ReferenceError', 'RegExp', 'Set',
   'SharedArrayBuffer', 'SyntaxError', 'TypeError', 'TypedArray', 'URIError',
   'Uint8Array',
 ];
@@ -36,6 +36,7 @@ const customTypesMap = {
     `${jsDocPrefix}Reference/Iteration_protocols#The_iterator_protocol`,
 
   'AsyncHook': 'async_hooks.html#async_hooks_async_hooks_createhook_callbacks',
+  'AsyncResource': 'async_hooks.html#async_hooks_class_asyncresource',
 
   'Buffer': 'buffer.html#buffer_class_buffer',
 
@@ -45,6 +46,8 @@ const customTypesMap = {
 
   'Cipher': 'crypto.html#crypto_class_cipher',
   'Decipher': 'crypto.html#crypto_class_decipher',
+  'DiffieHellman': 'crypto.html#crypto_class_diffiehellman',
+  'ECDH': 'crypto.html#crypto_class_ecdh',
   'Hash': 'crypto.html#crypto_class_hash',
   'Hmac': 'crypto.html#crypto_class_hmac',
   'Sign': 'crypto.html#crypto_class_sign',
@@ -58,6 +61,7 @@ const customTypesMap = {
   'EventEmitter': 'events.html#events_class_eventemitter',
 
   'FileHandle': 'fs.html#fs_class_filehandle',
+  'fs.Dirent': 'fs.html#fs_class_fs_dirent',
   'fs.FSWatcher': 'fs.html#fs_class_fs_fswatcher',
   'fs.ReadStream': 'fs.html#fs_class_fs_readstream',
   'fs.Stats': 'fs.html#fs_class_fs_stats',
@@ -82,6 +86,8 @@ const customTypesMap = {
   'Http2Stream': 'http2.html#http2_class_http2stream',
   'ServerHttp2Stream': 'http2.html#http2_class_serverhttp2stream',
 
+  'https.Server': 'https.html#https_class_https_server',
+
   'module': 'modules.html#modules_the_module_object',
 
   'Handle': 'net.html#net_server_listen_handle_backlog_callback',
@@ -99,6 +105,8 @@ const customTypesMap = {
     'perf_hooks.html#perf_hooks_class_performanceobserverentrylist',
 
   'readline.Interface': 'readline.html#readline_class_interface',
+
+  'repl.REPLServer': 'repl.html#repl_class_replserver',
 
   'Stream': 'stream.html#stream_stream',
   'stream.Duplex': 'stream.html#stream_class_stream_duplex',

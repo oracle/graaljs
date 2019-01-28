@@ -3,10 +3,9 @@
 
 const common = require('../common');
 
-if (!common.hasTracing)
+if (!process.binding('config').hasTracing)
   common.skip('missing trace events');
-if (!common.isMainThread)
-  common.skip('process.chdir is not available in Workers');
+common.skipIfWorker(); // https://github.com/nodejs/node/issues/22767
 
 const assert = require('assert');
 const cp = require('child_process');

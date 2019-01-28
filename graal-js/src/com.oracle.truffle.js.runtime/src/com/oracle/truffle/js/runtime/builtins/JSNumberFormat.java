@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -504,7 +505,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         } else {
             state.numberFormat = NumberFormat.getInstance(state.javaLocale);
         }
-        state.numberFormat.setGroupingUsed(state.useGrouping);
     }
 
     public static NumberFormat getNumberFormatProperty(DynamicObject obj) {
@@ -532,7 +532,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     @TruffleBoundary
     public static DynamicObject formatToParts(JSContext context, DynamicObject numberFormatObj, Object n) {
 
-        ensureIsNumberFormat(numberFormatObj);
         NumberFormat numberFormat = getNumberFormatProperty(numberFormatObj);
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
 
@@ -564,7 +563,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                             type = fieldToType.get(a);
                             assert type != null;
                         }
-                        resultParts.add(makePart(context, type, value));
+                        resultParts.add(IntlUtil.makePart(context, type, value));
                         i = fit.getRunLimit();
                         break;
                     } else {
@@ -573,7 +572,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 }
             } else {
                 String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
-                resultParts.add(makePart(context, "literal", value));
+                resultParts.add(IntlUtil.makePart(context, "literal", value));
                 i = fit.getRunLimit();
             }
         }
@@ -594,13 +593,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         } else {
             throw Errors.shouldNotReachHere();
         }
-    }
-
-    private static Object makePart(JSContext context, String type, String value) {
-        DynamicObject p = JSUserObject.create(context);
-        JSObject.set(p, "type", type);
-        JSObject.set(p, "value", value);
-        return p;
     }
 
     public static class BasicInternalState {
@@ -683,11 +675,16 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             super.fillResolvedOptions(context, result);
             JSObjectUtil.defineDataProperty(result, "useGrouping", useGrouping, JSAttributes.getDefault());
         }
+
+        @TruffleBoundary
+        public void setGroupingUsed(boolean useGrouping) {
+            this.useGrouping = useGrouping;
+            this.numberFormat.setGroupingUsed(useGrouping);
+        }
     }
 
     @TruffleBoundary
     public static DynamicObject resolvedOptions(JSContext context, DynamicObject numberFormatObj) {
-        ensureIsNumberFormat(numberFormatObj);
         InternalState state = getInternalState(numberFormatObj);
         return state.toResolvedOptionsObject(context);
     }
@@ -698,6 +695,8 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     private static CallTarget createGetFormatCallTarget(JSRealm realm, JSContext context) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
+            private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -710,13 +709,14 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                     InternalState state = getInternalState((DynamicObject) numberFormatObj);
 
                     if (state == null || !state.initialized) {
-                        throw Errors.createTypeError("Method format called on a non-object or on a wrong type of object (uninitialized NumberFormat?).");
+                        throw Errors.createTypeError("Method format called on a non-object or on a wrong type of object.");
                     }
 
                     if (state.boundFormatFunction == null) {
                         JSFunctionData formatFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.NumberFormatFormat, c -> createFormatFunctionData(c));
                         DynamicObject formatFn = JSFunction.create(realm, formatFunctionData);
-                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn), true);
+                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn), true, isAsyncProfile,
+                                        setProtoProfile);
                         state.boundFormatFunction = boundFn;
                     }
 
@@ -725,12 +725,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 throw Errors.createTypeError("expected NumberFormat object");
             }
         });
-    }
-
-    private static void ensureIsNumberFormat(Object obj) {
-        if (!isJSNumberFormat(obj)) {
-            throw Errors.createTypeError("NumberFormat method called on a non-object or on a wrong type of object (uninitialized NumberFormat?).");
-        }
     }
 
     private static JSFunctionData createFormatFunctionData(JSContext context) {

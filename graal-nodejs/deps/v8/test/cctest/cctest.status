@@ -75,6 +75,7 @@
   # BUG(5193). The cpu profiler tests are notoriously flaky.
   'test-profile-generator/RecordStackTraceAtStartProfiling': [SKIP],
   'test-cpu-profiler/CollectCpuProfile': [SKIP],
+  'test-cpu-profiler/CollectCpuProfileCallerLineNumbers': [FAIL, PASS],
   'test-cpu-profiler/CollectCpuProfileSamples': [SKIP],
   'test-cpu-profiler/CollectDeoptEvents': [SKIP],
   'test-cpu-profiler/CpuProfileDeepStack': [SKIP],
@@ -389,6 +390,7 @@
   # TODO(ppc): Implement load/store reverse byte instructions
   'test-run-wasm-simd/RunWasmCompiled_SimdLoadStoreLoad': [SKIP],
   'test-run-wasm-simd/RunWasm_SimdLoadStoreLoad': [SKIP],
+  'test-run-wasm-simd/RunWasm_SimdLoadStoreLoad_turbofan': [SKIP],
 
 }],  # 'system == aix or (arch == ppc64 and byteorder == big)'
 

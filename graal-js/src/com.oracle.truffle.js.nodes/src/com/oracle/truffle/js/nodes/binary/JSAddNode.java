@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -68,6 +69,7 @@ import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 @NodeInfo(shortName = "+")
+@ReportPolymorphism
 public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
 
     @CompilationFinal boolean truncate;

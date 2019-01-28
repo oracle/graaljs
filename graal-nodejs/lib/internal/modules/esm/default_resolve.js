@@ -3,11 +3,12 @@
 const { URL } = require('url');
 const CJSmodule = require('internal/modules/cjs/loader');
 const internalFS = require('internal/fs/utils');
-const { NativeModule, internalBinding } = require('internal/bootstrap/loaders');
+const { NativeModule } = require('internal/bootstrap/loaders');
 const { extname } = require('path');
 const { realpathSync } = require('fs');
-const preserveSymlinks = !!process.binding('config').preserveSymlinks;
-const preserveSymlinksMain = !!process.binding('config').preserveSymlinksMain;
+const { getOptionValue } = require('internal/options');
+const preserveSymlinks = getOptionValue('--preserve-symlinks');
+const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
 const {
   ERR_MISSING_MODULE,
   ERR_MODULE_RESOLUTION_LEGACY,
@@ -15,7 +16,7 @@ const {
 } = require('internal/errors').codes;
 const { resolve: moduleWrapResolve } = internalBinding('module_wrap');
 const StringStartsWith = Function.call.bind(String.prototype.startsWith);
-const { getURLFromFilePath, getPathFromURL } = require('internal/url');
+const { pathToFileURL, fileURLToPath } = require('internal/url');
 
 const realpathCache = new Map();
 
@@ -36,7 +37,7 @@ function search(target, base) {
         new URL('./', questionedBase).pathname);
       const found = CJSmodule._resolveFilename(target, tmpMod);
       error = new ERR_MODULE_RESOLUTION_LEGACY(target, base, found);
-    } catch (problemChecking) {
+    } catch {
       // ignore
     }
     throw error;
@@ -62,7 +63,7 @@ function resolve(specifier, parentURL) {
   let url;
   try {
     url = search(specifier,
-                 parentURL || getURLFromFilePath(`${process.cwd()}/`).href);
+                 parentURL || pathToFileURL(`${process.cwd()}/`).href);
   } catch (e) {
     if (typeof e.message === 'string' &&
         StringStartsWith(e.message, 'Cannot find module'))
@@ -73,11 +74,11 @@ function resolve(specifier, parentURL) {
   const isMain = parentURL === undefined;
 
   if (isMain ? !preserveSymlinksMain : !preserveSymlinks) {
-    const real = realpathSync(getPathFromURL(url), {
+    const real = realpathSync(fileURLToPath(url), {
       [internalFS.realpathCacheKey]: realpathCache
     });
     const old = url;
-    url = getURLFromFilePath(real);
+    url = pathToFileURL(real);
     url.search = old.search;
     url.hash = old.hash;
   }

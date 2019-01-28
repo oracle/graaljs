@@ -219,9 +219,10 @@ public abstract class AbstractParser {
             // Set up next token.
             k++;
             final long lastToken = token;
+            final boolean comment = type == COMMENT;
             // Capture last token type, but ignore comments (which are irrelevant for the purpose of
             // newline detection).
-            if (type != COMMENT) {
+            if (!comment) {
                 last = type;
                 previousToken = token;
             }
@@ -229,7 +230,7 @@ public abstract class AbstractParser {
             type = Token.descType(token);
 
             // do this before the start is changed below
-            if (last != EOL) {
+            if (!comment && last != EOL) {
                 finish = start + Token.descLength(lastToken);
             }
 

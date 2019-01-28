@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.js.nodes;
 
+import java.nio.ByteBuffer;
+import java.util.List;
+
+import javax.script.Bindings;
+
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -56,10 +61,15 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
@@ -79,11 +89,11 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import javax.script.Bindings;
-import java.nio.ByteBuffer;
-import java.util.List;
-
 public final class JSGuards {
+    /** {@code false} constant for use in DSL. */
+    public static final boolean FALSE = false;
+    /** {@code true} constant for use in DSL. */
+    public static final boolean TRUE = true;
 
     private JSGuards() {
         // this class should not be instantiated
@@ -253,6 +263,46 @@ public final class JSGuards {
 
     public static boolean isJSUserObject(Object value) {
         return JSUserObject.isJSUserObject(value);
+    }
+
+    public static boolean isJSDateTimeFormat(DynamicObject value) {
+        return JSDateTimeFormat.isJSDateTimeFormat(value);
+    }
+
+    public static boolean isJSDateTimeFormat(Object value) {
+        return JSDateTimeFormat.isJSDateTimeFormat(value);
+    }
+
+    public static boolean isJSCollator(DynamicObject value) {
+        return JSCollator.isJSCollator(value);
+    }
+
+    public static boolean isJSCollator(Object value) {
+        return JSCollator.isJSCollator(value);
+    }
+
+    public static boolean isJSListFormat(DynamicObject value) {
+        return JSListFormat.isJSListFormat(value);
+    }
+
+    public static boolean isJSListFormat(Object value) {
+        return JSListFormat.isJSListFormat(value);
+    }
+
+    public static boolean isJSNumberFormat(DynamicObject value) {
+        return JSNumberFormat.isJSNumberFormat(value);
+    }
+
+    public static boolean isJSNumberFormat(Object value) {
+        return JSNumberFormat.isJSNumberFormat(value);
+    }
+
+    public static boolean isJSPluralRules(DynamicObject value) {
+        return JSPluralRules.isJSPluralRules(value);
+    }
+
+    public static boolean isJSPluralRules(Object value) {
+        return JSPluralRules.isJSPluralRules(value);
     }
 
     public static boolean isNumber(Object operand) {

@@ -322,7 +322,15 @@ v8::Maybe<int64_t> GraalValue::IntegerValue(v8::Local<v8::Context> context) cons
             result = static_cast<int64_t> (d);
         }
     } else {
-        JNI_CALL(jlong, java_result, Isolate(), GraalAccessMethod::value_integer_value, Long, GetJavaObject());
+        GraalIsolate* graal_isolate = Isolate();
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        jthrowable pending = env->ExceptionOccurred();
+        if (pending) env->ExceptionClear();
+        JNI_CALL(jlong, java_result, graal_isolate, GraalAccessMethod::value_integer_value, Long, GetJavaObject());
+        if (env->ExceptionCheck()) {
+            return v8::Nothing<int64_t>();
+        }
+        if (pending) env->Throw(pending);
         result = java_result;
     }
     return v8::Just<int64_t>(result);

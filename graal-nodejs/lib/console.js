@@ -29,7 +29,7 @@ const {
     ERR_INVALID_ARG_VALUE,
   },
 } = require('internal/errors');
-const { previewEntries } = process.binding('util');
+const { previewEntries } = internalBinding('util');
 const { Buffer: { isBuffer } } = require('buffer');
 const util = require('util');
 const {
@@ -341,7 +341,7 @@ Console.prototype.table = function(tabularData, properties) {
   if (properties !== undefined && !ArrayIsArray(properties))
     throw new ERR_INVALID_ARG_TYPE('properties', 'Array', properties);
 
-  if (tabularData == null || typeof tabularData !== 'object')
+  if (tabularData === null || typeof tabularData !== 'object')
     return this.log(tabularData);
 
   if (cliTable === undefined) cliTable = require('internal/cli_table');

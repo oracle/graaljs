@@ -62,13 +62,9 @@ class UDPWrap: public HandleWrap {
   static v8::Local<v8::Object> Instantiate(Environment* env,
                                            AsyncWrap* parent,
                                            SocketType type);
-  uv_udp_t* UVHandle();
-
-  void MemoryInfo(MemoryTracker* tracker) const override {
-    tracker->TrackThis(this);
-  }
-
-  ADD_MEMORY_INFO_NAME(UDPWrap)
+  SET_NO_MEMORY_INFO()
+  SET_MEMORY_INFO_NAME(UDPWrap)
+  SET_SELF_SIZE(UDPWrap)
 
  private:
   typedef uv_udp_t HandleType;

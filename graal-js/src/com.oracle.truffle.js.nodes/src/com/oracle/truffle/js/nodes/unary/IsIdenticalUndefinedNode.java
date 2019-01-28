@@ -44,10 +44,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public abstract class IsIdenticalUndefinedNode extends JSUnaryNode {
+public abstract class IsIdenticalUndefinedNode extends IsIdenticalBaseNode {
 
-    protected IsIdenticalUndefinedNode(JavaScriptNode operand) {
-        super(operand);
+    protected IsIdenticalUndefinedNode(JavaScriptNode operand, boolean leftConstant) {
+        super(operand, leftConstant);
     }
 
     @Specialization
@@ -55,12 +55,17 @@ public abstract class IsIdenticalUndefinedNode extends JSUnaryNode {
         return a == Undefined.instance;
     }
 
-    public static IsIdenticalUndefinedNode create(JavaScriptNode operand) {
-        return IsIdenticalUndefinedNodeGen.create(operand);
+    public static IsIdenticalUndefinedNode create(JavaScriptNode operand, boolean leftConstant) {
+        return IsIdenticalUndefinedNodeGen.create(operand, leftConstant);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(getOperand()));
+        return create(cloneUninitialized(getOperand()), leftConstant);
+    }
+
+    @Override
+    protected Object getConstantValue() {
+        return Undefined.instance;
     }
 }

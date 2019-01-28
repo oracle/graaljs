@@ -260,7 +260,10 @@ not capture any frames.
 * {string}
 
 The `error.code` property is a string label that identifies the kind of error.
-See [Node.js Error Codes][] for details about specific codes.
+`error.code` is the most stable way to identify an error. It will only change
+between major versions of Node.js. In contrast, `error.message` strings may
+change between any versions of Node.js. See [Node.js Error Codes][] for details
+about specific codes.
 
 ### error.message
 
@@ -441,53 +444,83 @@ checks or `abort()` calls in the C++ layer.
 
 ## System Errors
 
-System errors are generated when exceptions occur within the Node.js
-runtime environment. Typically, these are operational errors that occur
-when an application violates an operating system constraint such as attempting
-to read a file that does not exist or when the user does not have sufficient
-permissions.
+Node.js generates system errors when exceptions occur within its runtime
+environment. These usually occur when an application violates an operating
+system constraint. For example, a system error will occur if an application
+attempts to read a file that does not exist.
 
-System errors are typically generated at the syscall level: an exhaustive list
-of error codes and their meanings is available by running `man 2 intro` or
-`man 3 errno` on most Unices; or [online][].
+System errors are usually generated at the syscall level. For a comprehensive
+list, see the [`errno`(3) man page][].
 
-In Node.js, system errors are represented as augmented `Error` objects with
-added properties.
+In Node.js, system errors are `Error` objects with extra properties.
 
 ### Class: SystemError
 
-#### error.info
-
-`SystemError` instances may have an additional `info` property whose
-value is an object with additional details about the error conditions.
-
-The following properties are provided:
-
+* `address` {string} If present, the address to which a network connection
+  failed
 * `code` {string} The string error code
-* `errno` {number} The system-provided error number
-* `message` {string} A system-provided human readable description of the error
+* `dest` {string} If present, the file path destination when reporting a file
+  system error
+* `errno` {number|string} The system-provided error number
+* `info` {Object} If present, extra details about the error condition
+* `message` {string} A system-provided human-readable description of the error
+* `path` {string} If present, the file path when reporting a file system error
+* `port` {number} If present, the network connection port that is not available
 * `syscall` {string} The name of the system call that triggered the error
-* `path` {Buffer} When reporting a file system error, the `path` will identify
-  the file path.
-* `dest` {Buffer} When reporting a file system error, the `dest` will identify
-  the file path destination (if any).
+
+#### error.address
+
+* {string}
+
+If present, `error.address` is a string describing the address to which a
+network connection failed.
 
 #### error.code
 
 * {string}
 
-The `error.code` property is a string representing the error code, which is
-typically `E` followed by a sequence of capital letters.
+The `error.code` property is a string representing the error code.
+
+#### error.dest
+
+* {string}
+
+If present, `error.dest` is the file path destination when reporting a file
+system error.
 
 #### error.errno
 
 * {string|number}
 
-The `error.errno` property is a number or a string.
-The number is a **negative** value which corresponds to the error code defined
-in [`libuv Error handling`]. See `uv-errno.h` header file
-(`deps/uv/include/uv-errno.h` in the Node.js source tree) for details. In case
+The `error.errno` property is a number or a string. If it is a number, it is a
+negative value which corresponds to the error code defined in
+[`libuv Error handling`]. See the libuv `errno.h` header file
+(`deps/uv/include/uv/errno.h` in the Node.js source tree) for details. In case
 of a string, it is the same as `error.code`.
+
+#### error.info
+
+* {Object}
+
+If present, `error.info` is an object with details about the error condition.
+
+#### error.message
+
+* {string}
+
+`error.message` is a system-provided human-readable description of the error.
+
+#### error.path
+
+* {string}
+
+If present, `error.path` is a string containing a relevant invalid pathname.
+
+#### error.port
+
+* {number}
+
+If present, `error.port` is the network connection port that is not available.
 
 #### error.syscall
 
@@ -495,32 +528,10 @@ of a string, it is the same as `error.code`.
 
 The `error.syscall` property is a string describing the [syscall][] that failed.
 
-#### error.path
-
-* {string}
-
-When present (e.g. in `fs` or `child_process`), the `error.path` property is a
-string containing a relevant invalid pathname.
-
-#### error.address
-
-* {string}
-
-When present (e.g. in `net` or `dgram`), the `error.address` property is a
-string describing the address to which the connection failed.
-
-#### error.port
-
-* {number}
-
-When present (e.g. in `net` or `dgram`), the `error.port` property is a number
-representing the connection's port that is not available.
-
 ### Common System Errors
 
-This list is **not exhaustive**, but enumerates many of the common system
-errors encountered when writing a Node.js program. An exhaustive list may be
-found [here][online].
+This is a list of system errors commonly-encountered when writing a Node.js
+program. For a comprehensive list, see the [`errno`(3) man page][].
 
 - `EACCES` (Permission denied): An attempt was made to access a file in a way
   forbidden by its file access permissions.
@@ -581,10 +592,12 @@ found [here][online].
 <a id="ERR_AMBIGUOUS_ARGUMENT"></a>
 ### ERR_AMBIGUOUS_ARGUMENT
 
-This is triggered by the `assert` module in case e.g.,
-`assert.throws(fn, message)` is used in a way that the message is the thrown
-error message. This is ambiguous because the message is not verifying the error
-message and will only be thrown in case no error is thrown.
+A function argument is being used in a way that suggests that the function
+signature may be misunderstood. This is thrown by the `assert` module when the
+`message` parameter in `assert.throws(block, message)` matches the error message
+thrown by `block` because that usage suggests that the user believes `message`
+is the expected message rather than the message the `AssertionError` will
+display if `block` does not throw.
 
 <a id="ERR_ARG_NOT_ITERABLE"></a>
 ### ERR_ARG_NOT_ITERABLE
@@ -726,6 +739,11 @@ be called no more than one time per instance of a `Hash` object.
 ### ERR_CRYPTO_HASH_UPDATE_FAILED
 
 [`hash.update()`][] failed for any reason. This should rarely, if ever, happen.
+
+<a id="ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS"></a>
+### ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS
+
+The selected public or private key encoding is incompatible with other options.
 
 <a id="ERR_CRYPTO_INVALID_DIGEST"></a>
 ### ERR_CRYPTO_INVALID_DIGEST
@@ -918,6 +936,11 @@ An invalid HTTP/2 header value was specified.
 An invalid HTTP informational status code has been specified. Informational
 status codes must be an integer between `100` and `199` (inclusive).
 
+<a id="ERR_HTTP2_INVALID_ORIGIN"></a>
+### ERR_HTTP2_INVALID_ORIGIN
+
+HTTP/2 `ORIGIN` frames require a valid origin.
+
 <a id="ERR_HTTP2_INVALID_PACKED_SETTINGS_LENGTH"></a>
 ### ERR_HTTP2_INVALID_PACKED_SETTINGS_LENGTH
 
@@ -967,6 +990,11 @@ Nested push streams are not permitted.
 
 An attempt was made to directly manipulate (read, write, pause, resume, etc.) a
 socket attached to an `Http2Session`.
+
+<a id="ERR_HTTP2_ORIGIN_LENGTH"></a>
+### ERR_HTTP2_ORIGIN_LENGTH
+
+HTTP/2 `ORIGIN` frames are limited to a length of 16382 bytes.
 
 <a id="ERR_HTTP2_OUT_OF_STREAMS"></a>
 ### ERR_HTTP2_OUT_OF_STREAMS
@@ -1030,6 +1058,12 @@ The `Http2Session` settings canceled.
 
 An attempt was made to connect a `Http2Session` object to a `net.Socket` or
 `tls.TLSSocket` that had already been bound to another `Http2Session` object.
+
+<a id="ERR_HTTP2_SOCKET_UNBOUND"></a>
+### ERR_HTTP2_SOCKET_UNBOUND
+
+An attempt was made to use the `socket` property of an `Http2Session` that
+has already been closed.
 
 <a id="ERR_HTTP2_STATUS_101"></a>
 ### ERR_HTTP2_STATUS_101
@@ -1245,22 +1279,19 @@ type for one of its returned object properties on execution.
 ### ERR_INVALID_RETURN_VALUE
 
 Thrown in case a function option does not return an expected value
-type on execution.
-For example when a function is expected to return a promise.
+type on execution, such as when a function is expected to return a promise.
 
 <a id="ERR_INVALID_SYNC_FORK_INPUT"></a>
 ### ERR_INVALID_SYNC_FORK_INPUT
 
-A `Buffer`, `Uint8Array` or `string` was provided as stdio input to a
-synchronous fork. See the documentation for the [`child_process`][] module
+A `Buffer`, `TypedArray`, `DataView` or `string` was provided as stdio input to
+an asynchronous fork. See the documentation for the [`child_process`][] module
 for more information.
 
 <a id="ERR_INVALID_THIS"></a>
 ### ERR_INVALID_THIS
 
 A Node.js API function was called with an incompatible `this` value.
-
-Example:
 
 ```js
 const urlSearchParams = new URLSearchParams('foo=bar&baz=new');
@@ -1506,7 +1537,7 @@ An invalid (negative) size was passed for either the `recvBufferSize` or
 <a id="ERR_SOCKET_BAD_PORT"></a>
 ### ERR_SOCKET_BAD_PORT
 
-An API function expecting a port > 0 and < 65536 received an invalid value.
+An API function expecting a port >= 0 and < 65536 received an invalid value.
 
 <a id="ERR_SOCKET_BAD_TYPE"></a>
 ### ERR_SOCKET_BAD_TYPE
@@ -1534,18 +1565,6 @@ An attempt was made to operate on an already closed socket.
 ### ERR_SOCKET_DGRAM_NOT_RUNNING
 
 A call was made and the UDP subsystem was not running.
-
-<a id="ERR_STDERR_CLOSE"></a>
-### ERR_STDERR_CLOSE
-
-An attempt was made to close the `process.stderr` stream. By design, Node.js
-does not allow `stdout` or `stderr` streams to be closed by user code.
-
-<a id="ERR_STDOUT_CLOSE"></a>
-### ERR_STDOUT_CLOSE
-
-An attempt was made to close the `process.stdout` stream. By design, Node.js
-does not allow `stdout` or `stderr` streams to be closed by user code.
 
 <a id="ERR_STREAM_CANNOT_PIPE"></a>
 ### ERR_STREAM_CANNOT_PIPE
@@ -1587,7 +1606,6 @@ emitted.
 Prevents an abort if a string decoder was set on the Socket or if the decoder
 is in `objectMode`.
 
-Example
 ```js
 const Socket = require('net').Socket;
 const instance = new Socket();
@@ -1836,11 +1854,254 @@ unknown file extension.
 
 Creation of a [`zlib`][] object failed due to incorrect configuration.
 
+<a id="HPE_HEADER_OVERFLOW"></a>
+### HPE_HEADER_OVERFLOW
+<!-- YAML
+changes:
+  - version: v10.15.0
+    pr-url: https://github.com/nodejs/node/commit/186035243fad247e3955f
+    description: Max header size in `http_parser` was set to 8KB.
+-->
+
+Too much HTTP header data was received. In order to protect against malicious or
+malconfigured clients, if more than 8KB of HTTP header data is received then
+HTTP parsing will abort without a request or response object being created, and
+an `Error` with this code will be emitted.
+
 <a id="MODULE_NOT_FOUND"></a>
 ### MODULE_NOT_FOUND
 
 A module file could not be resolved while attempting a [`require()`][] or
 `import` operation.
+
+## Legacy Node.js Error Codes
+
+> Stability: 0 - Deprecated. These error codes are either inconsistent, or have
+> been removed.
+
+<a id="ERR_HTTP2_FRAME_ERROR"></a>
+### ERR_HTTP2_FRAME_ERROR
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used when a failure occurs sending an individual frame on the HTTP/2
+session.
+
+<a id="ERR_HTTP2_HEADERS_OBJECT"></a>
+### ERR_HTTP2_HEADERS_OBJECT
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used when an HTTP/2 Headers Object is expected.
+
+<a id="ERR_HTTP2_HEADER_REQUIRED"></a>
+### ERR_HTTP2_HEADER_REQUIRED
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used when a required header is missing in an HTTP/2 message.
+
+<a id="ERR_HTTP2_INFO_HEADERS_AFTER_RESPOND"></a>
+### ERR_HTTP2_INFO_HEADERS_AFTER_RESPOND
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+HTTP/2 informational headers must only be sent *prior* to calling the
+`Http2Stream.prototype.respond()` method.
+
+<a id="ERR_HTTP2_STREAM_CLOSED"></a>
+### ERR_HTTP2_STREAM_CLOSED
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used when an action has been performed on an HTTP/2 Stream that has already
+been closed.
+
+<a id="ERR_HTTP_INVALID_CHAR"></a>
+### ERR_HTTP_INVALID_CHAR
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used when an invalid character is found in an HTTP response status message
+(reason phrase).
+
+<a id="ERR_NAPI_CONS_PROTOTYPE_OBJECT"></a>
+### ERR_NAPI_CONS_PROTOTYPE_OBJECT
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used by the `N-API` when `Constructor.prototype` is not an object.
+
+<a id="ERR_OUTOFMEMORY"></a>
+### ERR_OUTOFMEMORY
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used generically to identify that an operation caused an out of memory
+condition.
+
+<a id="ERR_PARSE_HISTORY_DATA"></a>
+### ERR_PARSE_HISTORY_DATA
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+The `repl` module was unable to parse data from the REPL history file.
+
+
+<a id="ERR_STDERR_CLOSE"></a>
+### ERR_STDERR_CLOSE
+<!-- YAML
+removed: v10.12.0
+changes:
+  - version: v10.12.0
+    pr-url: https://github.com/nodejs/node/pull/23053
+    description: Rather than emitting an error, `process.stderr.end()` now
+                 only closes the stream side but not the underlying resource,
+                 making this error obsolete.
+-->
+
+An attempt was made to close the `process.stderr` stream. By design, Node.js
+does not allow `stdout` or `stderr` streams to be closed by user code.
+
+<a id="ERR_STDOUT_CLOSE"></a>
+### ERR_STDOUT_CLOSE
+<!-- YAML
+removed: v10.12.0
+changes:
+  - version: v10.12.0
+    pr-url: https://github.com/nodejs/node/pull/23053
+    description: Rather than emitting an error, `process.stderr.end()` now
+                 only closes the stream side but not the underlying resource,
+                 making this error obsolete.
+-->
+
+An attempt was made to close the `process.stdout` stream. By design, Node.js
+does not allow `stdout` or `stderr` streams to be closed by user code.
+
+<a id="ERR_STREAM_READ_NOT_IMPLEMENTED"></a>
+### ERR_STREAM_READ_NOT_IMPLEMENTED
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used when an attempt is made to use a readable stream that has not implemented
+[`readable._read()`][].
+
+<a id="ERR_TLS_RENEGOTIATION_FAILED"></a>
+### ERR_TLS_RENEGOTIATION_FAILED
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used when a TLS renegotiation request has failed in a non-specific way.
+
+<a id="ERR_UNKNOWN_BUILTIN_MODULE"></a>
+### ERR_UNKNOWN_BUILTIN_MODULE
+<!-- YAML
+added: v8.0.0
+removed: v9.0.0
+-->
+
+The `'ERR_UNKNOWN_BUILTIN_MODULE'` error code is used to identify a specific
+kind of internal Node.js error that should not typically be triggered by user
+code. Instances of this error point to an internal bug within the Node.js
+binary itself.
+
+<a id="ERR_VALUE_OUT_OF_RANGE"></a>
+### ERR_VALUE_OUT_OF_RANGE
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used when a given value is out of the accepted range.
+
+<a id="ERR_ZLIB_BINDING_CLOSED"></a>
+### ERR_ZLIB_BINDING_CLOSED
+<!-- YAML
+added: v9.0.0
+removed: v10.0.0
+-->
+
+Used when an attempt is made to use a `zlib` object after it has already been
+closed.
+
+### Other error codes
+
+These errors have never been released, but had been present on master between
+releases.
+
+<a id="ERR_FS_WATCHER_ALREADY_STARTED"></a>
+#### ERR_FS_WATCHER_ALREADY_STARTED
+
+An attempt was made to start a watcher returned by `fs.watch()` that has
+already been started.
+
+<a id="ERR_FS_WATCHER_NOT_STARTED"></a>
+#### ERR_FS_WATCHER_NOT_STARTED
+
+An attempt was made to initiate operations on a watcher returned by
+`fs.watch()` that has not yet been started.
+
+<a id="ERR_HTTP2_ALREADY_SHUTDOWN"></a>
+#### ERR_HTTP2_ALREADY_SHUTDOWN
+
+Occurs with multiple attempts to shutdown an HTTP/2 session.
+
+<a id="ERR_HTTP2_ERROR"></a>
+#### ERR_HTTP2_ERROR
+
+A non-specific HTTP/2 error has occurred.
+
+<a id="ERR_INVALID_REPL_HISTORY"></a>
+#### ERR_INVALID_REPL_HISTORY
+
+Used in the `repl` in case the old history file is used and an error occurred
+while trying to read and parse it.
+
+<a id="ERR_MISSING_DYNAMIC_INSTANTIATE_HOOK"></a>
+#### ERR_MISSING_DYNAMIC_INSTANTIATE_HOOK
+
+Used when an [ES6 module][] loader hook specifies `format: 'dynamic'` but does
+not provide a `dynamicInstantiate` hook.
+
+<a id="ERR_STREAM_HAS_STRINGDECODER"></a>
+#### ERR_STREAM_HAS_STRINGDECODER
+
+Used to prevent an abort if a string decoder was set on the Socket.
+
+```js
+const Socket = require('net').Socket;
+const instance = new Socket();
+
+instance.setEncoding('utf8');
+```
+
+<a id="ERR_STRING_TOO_LARGE"></a>
+#### ERR_STRING_TOO_LARGE
+
+An attempt has been made to create a string larger than the maximum allowed
+size.
 
 [`--force-fips`]: cli.html#cli_force_fips
 [`'uncaughtException'`]: process.html#process_event_uncaughtexception
@@ -1854,8 +2115,9 @@ A module file could not be resolved while attempting a [`require()`][] or
 [`ERR_INVALID_ARG_TYPE`]: #ERR_INVALID_ARG_TYPE
 [`EventEmitter`]: events.html#events_class_eventemitter
 [`fs`]: fs.html
-[`fs.readdir`]: fs.html#fs_fs_readdir_path_options_callback
+[`errno`(3) man page]: http://man7.org/linux/man-pages/man3/errno.3.html
 [`fs.readFileSync`]: fs.html#fs_fs_readfilesync_path_options
+[`fs.readdir`]: fs.html#fs_fs_readdir_path_options_callback
 [`fs.symlink()`]: fs.html#fs_fs_symlink_target_path_type_callback
 [`fs.symlinkSync()`]: fs.html#fs_fs_symlinksync_target_path_type
 [`fs.unlink`]: fs.html#fs_fs_unlink_path_callback
@@ -1869,6 +2131,7 @@ A module file could not be resolved while attempting a [`require()`][] or
 [`new URLSearchParams(iterable)`]: url.html#url_constructor_new_urlsearchparams_iterable
 [`process.send()`]: process.html#process_process_send_message_sendhandle_options_callback
 [`process.setUncaughtExceptionCaptureCallback()`]: process.html#process_process_setuncaughtexceptioncapturecallback_fn
+[`readable._read()`]: stream.html#stream_readable_read_size_1
 [`require()`]: modules.html#modules_require
 [`require('crypto').setEngine()`]: crypto.html#crypto_crypto_setengine_engine_flags
 [`server.listen()`]: net.html#net_server_listen
@@ -1890,8 +2153,6 @@ A module file could not be resolved while attempting a [`require()`][] or
 [domains]: domain.html
 [event emitter-based]: events.html#events_class_eventemitter
 [file descriptors]: https://en.wikipedia.org/wiki/File_descriptor
-[ICU]: intl.html#intl_internationalization_support
-[online]: http://man7.org/linux/man-pages/man3/errno.3.html
 [stream-based]: stream.html
 [syscall]: http://man7.org/linux/man-pages/man2/syscalls.2.html
 [try-catch]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch

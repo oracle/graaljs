@@ -25,16 +25,16 @@ const util = require('util');
 const {
   deprecate, convertToValidSignal, getSystemErrorName
 } = require('internal/util');
-const { isUint8Array } = require('internal/util/types');
+const { isArrayBufferView } = require('internal/util/types');
 const debug = util.debuglog('child_process');
 const { Buffer } = require('buffer');
 if (process.__node_cluster_threading) {
   var vPipe = require('internal/graal/thread_pipe_wrap').Pipe;
 } else {
-  var vPipe = process.binding('pipe_wrap').Pipe;
+  var vPipe = internalBinding('pipe_wrap').Pipe;
 }
 const Pipe = vPipe;
-const { constants: PipeConstants } = process.binding('pipe_wrap');
+const { constants: PipeConstants } = internalBinding('pipe_wrap');
 
 const {
   ERR_INVALID_ARG_VALUE,
@@ -44,7 +44,7 @@ const {
   ERR_INVALID_OPT_VALUE,
   ERR_OUT_OF_RANGE
 } = require('internal/errors').codes;
-const { validateString } = require('internal/validators');
+const { validateString, isInt32 } = require('internal/validators');
 const child_process = require('internal/child_process');
 const {
   _validateStdio,
@@ -74,6 +74,11 @@ exports.fork = function fork(modulePath /* , args, options */) {
   var pos = 1;
   if (pos < arguments.length && Array.isArray(arguments[pos])) {
     args = arguments[pos++];
+  }
+
+  if (pos < arguments.length &&
+      (arguments[pos] === undefined || arguments[pos] === null)) {
+    pos++;
   }
 
   if (pos < arguments.length && arguments[pos] != null) {
@@ -149,8 +154,8 @@ function normalizeExecArgs(command, options, callback) {
 }
 
 
-exports.exec = function exec(command /* , options, callback */) {
-  var opts = normalizeExecArgs.apply(null, arguments);
+exports.exec = function exec(/* command , options, callback */) {
+  const opts = normalizeExecArgs.apply(null, arguments);
   return exports.execFile(opts.file,
                           opts.options,
                           opts.callback);
@@ -432,13 +437,13 @@ function normalizeSpawnArguments(file, args, options) {
   }
 
   // Validate the uid, if present.
-  if (options.uid != null && !Number.isInteger(options.uid)) {
-    throw new ERR_INVALID_ARG_TYPE('options.uid', 'integer', options.uid);
+  if (options.uid != null && !isInt32(options.uid)) {
+    throw new ERR_INVALID_ARG_TYPE('options.uid', 'int32', options.uid);
   }
 
   // Validate the gid, if present.
-  if (options.gid != null && !Number.isInteger(options.gid)) {
-    throw new ERR_INVALID_ARG_TYPE('options.gid', 'integer', options.gid);
+  if (options.gid != null && !isInt32(options.gid)) {
+    throw new ERR_INVALID_ARG_TYPE('options.gid', 'int32', options.gid);
   }
 
   // Validate the shell, if present.
@@ -502,6 +507,14 @@ function normalizeSpawnArguments(file, args, options) {
 
   var env = options.env || process.env;
   var envPairs = [];
+
+  // process.env.NODE_V8_COVERAGE always propagates, making it possible to
+  // collect coverage for programs that spawn with white-listed environment.
+  if (process.env.NODE_V8_COVERAGE &&
+      !Object.prototype.hasOwnProperty.call(options.env || {},
+                                            'NODE_V8_COVERAGE')) {
+    env.NODE_V8_COVERAGE = process.env.NODE_V8_COVERAGE;
+  }
 
   // Prototype values are intentionally included.
   for (var key in env) {
@@ -587,13 +600,16 @@ function spawnSync(/* file, args, options */) {
     var input = options.stdio[i] && options.stdio[i].input;
     if (input != null) {
       var pipe = options.stdio[i] = util._extend({}, options.stdio[i]);
-      if (isUint8Array(input)) {
+      if (isArrayBufferView(input)) {
         pipe.input = input;
       } else if (typeof input === 'string') {
         pipe.input = Buffer.from(input, options.encoding);
       } else {
         throw new ERR_INVALID_ARG_TYPE(`options.stdio[${i}]`,
-                                       ['Buffer', 'Uint8Array', 'string'],
+                                       ['Buffer',
+                                        'TypedArray',
+                                        'DataView',
+                                        'string'],
                                        input);
       }
     }

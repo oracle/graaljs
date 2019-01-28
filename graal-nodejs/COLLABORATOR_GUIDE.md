@@ -21,13 +21,14 @@
     - [When Breaking Changes Actually Break Things](#when-breaking-changes-actually-break-things)
       - [Reverting commits](#reverting-commits)
   - [Introducing New Modules](#introducing-new-modules)
+  - [Additions to N-API](#additions-to-n-api)
   - [Deprecations](#deprecations)
   - [Involving the TSC](#involving-the-tsc)
 * [Landing Pull Requests](#landing-pull-requests)
   - [Using `git-node`](#using-git-node)
   - [Technical HOWTO](#technical-howto)
   - [Troubleshooting](#troubleshooting)
-  - [I Just Made a Mistake](#i-just-made-a-mistake)
+  - [I Made a Mistake](#i-made-a-mistake)
   - [Long Term Support](#long-term-support)
     - [What is LTS?](#what-is-lts)
     - [How does LTS work?](#how-does-lts-work)
@@ -37,13 +38,10 @@
     - [How is an LTS release cut?](#how-is-an-lts-release-cut)
 * [Who to CC in the issue tracker](#who-to-cc-in-the-issue-tracker)
 
-This document contains information for Collaborators of the Node.js
-project regarding managing the project's code, documentation, and issue tracker.
-
-Collaborators should be familiar with the guidelines for new
-contributors in [CONTRIBUTING.md](./CONTRIBUTING.md) and also
-understand the project governance model as outlined in
-[GOVERNANCE.md](./GOVERNANCE.md).
+This document explains how Collaborators manage the Node.js project.
+Collaborators should understand the
+[guidelines for new contributors](CONTRIBUTING.md) and the
+[project governance model](GOVERNANCE.md).
 
 ## Issues and Pull Requests
 
@@ -65,9 +63,9 @@ badge.
 
 For first-time contributors, check if the commit author is the same as the
 pull request author, and ask if they have configured their git
-username and email to their liking as per [this guide][git-username].
-This is to make sure they would be promoted to "contributor" once
-their pull request lands.
+[username][git-username] and [email][git-email] to their liking.
+This is to make sure they would be promoted to "contributor" once their
+pull request lands.
 
 ### Closing Issues and Pull Requests
 
@@ -82,10 +80,11 @@ necessary.
 ### Author ready pull requests
 
 A pull request that is still awaiting the minimum review time is considered
-_author ready_ as soon as the CI has been started, it has at least one approval,
-and it has no outstanding review comments. Please always make sure to add the
-`author ready` label to the PR in that case and remove it again as soon as that
-condition is not met anymore.
+_author ready_ as soon as the CI has been started, it has at least two approvals
+(one Collaborator approval is enough if the pull request has been open for more
+than 7 days), and it has no outstanding review comments. Please always make sure
+to add the `author ready` label to the PR in that case and remove it again as
+soon as that condition is not met anymore.
 
 ### Handling own pull requests
 
@@ -98,7 +97,8 @@ As soon as the PR is ready to land, please do so. Landing your own pull requests
 allows other Collaborators to focus on other pull requests. If your pull request
 is still awaiting the [minimum time to land](#waiting-for-approvals), add the
 `author ready` label so other Collaborators know it can land as soon as the time
-ends.
+ends. If instead you wish to land the PR yourself, indicate this intent by using
+the "assign yourself" button, to self-assign the PR.
 
 ## Accepting Modifications
 
@@ -111,10 +111,11 @@ comment that explains why the PR does not require a CI run.
 
 ### Code Reviews
 
-All pull requests must be reviewed and accepted by a Collaborator with
-sufficient expertise who is able to take full responsibility for the
-change. In the case of pull requests proposed by an existing
-Collaborator, an additional Collaborator is required for sign-off.
+At least two Collaborators must approve a pull request before the pull request
+lands. (One Collaborator approval is enough if the pull request has been open
+for more than 7 days.) Approving a pull request indicates that the Collaborator
+accepts responsibility for the change. Approval must be from Collaborators who
+are not authors of the change.
 
 In some cases, it may be necessary to summon a GitHub team to a pull request for
 review by @-mention.
@@ -136,30 +137,26 @@ the CI outcome.
 
 ### Consensus Seeking
 
-If there is no disagreement amongst Collaborators, a pull request should be
-landed given appropriate review, a green CI, and the minimum
-[waiting time](#waiting-for-approvals) for a PR. If it is still awaiting the
-[minimum time to land](#waiting-for-approvals), please add the `author ready`
-label to it so it is obvious that the PR can land as soon as the time ends.
+If there are no objecting Collaborators, a pull request may land if it has the
+needed [approvals](#code-reviews), [CI](#testing-and-ci), and
+[wait time](#waiting-for-approvals). If a pull request meets all requirements
+except the [wait time](#waiting-for-approvals), please add the
+[`author ready`](#author-ready-pull-requests) label.
 
-Where there is discussion amongst Collaborators, consensus should be sought if
-possible. The lack of consensus may indicate the need to elevate discussion to
-the TSC for resolution.
+Where there is disagreement among Collaborators, consensus should be sought if
+possible. If reaching consensus is not possible, a Collaborator may escalate the
+issue to the TSC.
 
-If any Collaborator objects to a change *without giving any additional
-explanation or context*, and the objecting Collaborator fails to respond to
-explicit requests for explanation or context within a reasonable period of
-time, the objection may be dismissed. Note that this does not apply to
-objections that are explained.
+Collaborators should not block a pull request without providing a reason.
+Another Collaborator may ask an objecting Collaborator to explain their
+objection. If the objector is unresponsive, another Collaborator may dismiss the
+objection.
 
-Note that breaking changes (that is, pull requests that require an increase in
-the major version number, known as `semver-major` changes) must be [elevated for
-review by the TSC](#involving-the-tsc). This does not necessarily mean that the
-PR must be put onto the TSC meeting agenda. If multiple TSC members approve
-(`LGTM`) the PR and no Collaborators oppose the PR, it should be landed. Where
-there is disagreement among TSC members or objections from one or more
-Collaborators, `semver-major` pull requests may be put on the TSC meeting
-agenda.
+[Breaking changes](#breaking-changes) must receive
+[TSC review](#involving-the-tsc). If two TSC members approve the pull request
+and no Collaborators object, then it may land. If there are objections, a
+Collaborator may apply the `tsc-agenda` label. That will put the pull request on
+the TSC meeting agenda.
 
 #### Helpful resources
 
@@ -169,10 +166,10 @@ agenda.
 ### Waiting for Approvals
 
 Before landing pull requests, sufficient time should be left for input
-from other Collaborators. In general, leave at least 48 hours during the
-week and 72 hours over weekends to account for international time
-differences and work schedules. However, certain types of pull requests
-can be fast-tracked and may be landed after a shorter delay. For example:
+from other Collaborators. In general, leave at least 48 hours to account for
+international time differences and work schedules. However, certain types of
+pull requests can be fast-tracked and may be landed after a shorter delay. For
+example:
 
 * Focused changes that affect only documentation and/or the test suite:
   * `code-and-learn` tasks typically fall into this category.
@@ -182,9 +179,14 @@ can be fast-tracked and may be landed after a shorter delay. For example:
   * Regressions that happen right before a release, or reported soon after.
 
 When a pull request is deemed suitable to be fast-tracked, label it with
-`fast-track`. The pull request can be landed once 2 or more Collaborators
-approve both the pull request and the fast-tracking request, and the necessary
-CI testing is done.
+`fast-track` and add a comment that collaborators may upvote. Please mention any
+Collaborators that previously approved the pull request. If someone disagrees
+with the fast-tracking request, remove the label and leave a comment indicating
+why the pull request should not be fast-tracked. The pull request can be landed
+once two or more Collaborators approve both the pull request and the
+fast-tracking request, and the necessary CI testing is done. A request to
+fast-track a PR made by a different Collaborator than the pull-request author
+counts as a fast-track approval.
 
 ### Testing and CI
 
@@ -407,9 +409,17 @@ Pull requests introducing new core modules:
 New core modules must be landed with a [Stability Index][] of Experimental,
 and must remain Experimental until a semver-major release.
 
-For new modules that involve significant effort, non-trivial additions to
-Node.js or significant new capabilities, an [Enhancement Proposal][] is
-recommended but not required.
+### Additions to N-API
+
+N-API provides an ABI stable API that we will have to support in future
+versions without the usual option to modify or remove existing APIs on
+SemVer boundaries. Therefore, additions need to be managed carefully.
+
+This
+[guide](https://github.com/nodejs/node/blob/master/doc/guides/adding-new-napi-api.md)
+outlines the requirements and principles that we should follow when
+approving and landing new N-API APIs (any additions to `node_api.h` and
+`node_api_types.h`).
 
 ### Deprecations
 
@@ -473,9 +483,8 @@ level.
 
 ### Involving the TSC
 
-Collaborators may opt to elevate pull requests or issues to the [TSC][] for
-discussion by assigning the `tsc-review` label or @-mentioning the
-`@nodejs/tsc` GitHub team. This should be done where a pull request:
+Collaborators may opt to elevate pull requests or issues to the [TSC][].
+This should be done where a pull request:
 
 - is labeled `semver-major`, or
 - has a significant impact on the codebase, or
@@ -483,16 +492,25 @@ discussion by assigning the `tsc-review` label or @-mentioning the
 - has failed to reach consensus amongst the Collaborators who are
   actively participating in the discussion.
 
+Assign the `tsc-review` label or @-mention the
+`@nodejs/tsc` GitHub team if you want to elevate an issue to the [TSC][].
+Do not use the GitHub UI on the right-hand side to assign to
+`@nodejs/tsc` or request a review from `@nodejs/tsc`.
+
 The TSC should serve as the final arbiter where required.
 
 ## Landing Pull Requests
 
+1. Avoid landing PRs that are assigned to someone else. Authors who wish to land
+   their own PRs will self-assign them, or delegate to someone else. If in
+   doubt, ask the assignee whether it is okay to land.
 1. Never use GitHub's green ["Merge Pull Request"][] button. Reasons for not
    using the web interface button:
-   * The merge method will add an unnecessary merge commit.
-   * The squash & merge method can add metadata (the PR #) to the commit title.
-   * If more than one author has contributed to the PR, keep the most recent
-     author when squashing.
+   * The "Create a merge commit" method will add an unnecessary merge commit.
+   * The "Squash and merge" method will add metadata (the PR #) to the commit
+     title. If more than one author has contributed to the PR, squashing will
+     only keep the most recent author.
+   * The "Rebase and merge" method has no way of adding metadata to the commit.
 1. Make sure the CI is done and the result is green. If the CI is not green,
    check for flaky tests and infrastructure failures. Please check if those were
    already reported in the appropriate repository ([node][flaky tests] and
@@ -503,13 +521,12 @@ The TSC should serve as the final arbiter where required.
    present.
 1. Review the commit message to ensure that it adheres to the guidelines
    outlined in the [contributing][] guide.
-1. Add all necessary [metadata](#metadata) to commit messages before landing.
-   See the commit log for examples such as [this
-   one](https://github.com/nodejs/node/commit/b636ba8186) if unsure exactly how
-   to format your commit messages.
+1. Add all necessary [metadata](#metadata) to commit messages before landing. If
+   you are unsure exactly how to format the commit messages, use the commit log
+   as a reference. See [this commit][commit-example] as an example.
 
-Check PRs from new contributors to make sure the person's name and email address
-are correct before merging.
+For PRs from first-time contributors, be [welcoming](#welcoming-first-time-contributors).
+Also, verify that their git settings are to their liking.
 
 All commits should be self-contained, meaning every commit should pass all
 tests. This makes it much easier when bisecting to find a breaking change.
@@ -682,9 +699,12 @@ $ git rev-list upstream/master...HEAD | xargs core-validate-commit
 Optional: When landing your own commits, force push the amended commit to the
 branch you used to open the pull request. If your branch is called `bugfix`,
 then the command would be `git push --force-with-lease origin master:bugfix`.
-When the pull request is closed, this will cause the pull request to
-show the purple merged status rather than the red closed status that is
-usually used for pull requests that weren't merged.
+Don't manually close the PR, GitHub will close it automatically later after you
+push it upstream, and will mark it with the purple merged status rather than the
+red closed status. If you close the PR before GitHub adjusts its status, it will
+show up as a 0 commit PR and the changed file history will be empty. Also if you
+push upstream before you push to your branch, GitHub will close the issue with
+red status so the order of operations is important.
 
 Time to push it:
 
@@ -724,7 +744,7 @@ make -j4 test
 git push upstream master
 ```
 
-### I Just Made a Mistake
+### I Made a Mistake
 
 * Ping a TSC member.
 * `#node-dev` on freenode
@@ -833,7 +853,7 @@ LTS working group and the Release team.
 | ---                                      | ---                                                                   |
 | `benchmark/*`                            | @nodejs/benchmarking, @mscdex                                         |
 | `doc/*`, `*.md`                          | @nodejs/documentation                                                 |
-| `lib/assert`                             | @nodejs/testing                                                       |
+| `lib/assert`                             | @nodejs/assert                                                        |
 | `lib/async_hooks`                        | @nodejs/async\_hooks for bugs/reviews (+ @nodejs/diagnostics for API) |
 | `lib/buffer`                             | @nodejs/buffer                                                        |
 | `lib/child_process`                      | @nodejs/child\_process                                                |
@@ -876,7 +896,6 @@ When things need extra attention, are controversial, or `semver-major`:
 If you cannot find who to cc for a file, `git shortlog -n -s <file>` may help.
 
 ["Merge Pull Request"]: https://help.github.com/articles/merging-a-pull-request/#merging-a-pull-request-on-github
-[Enhancement Proposal]: https://github.com/nodejs/node-eps
 [Stability Index]: doc/api/documentation.md#stability-index
 [TSC]: https://github.com/nodejs/TSC
 [_Deprecation_]: https://en.wikipedia.org/wiki/Deprecation
@@ -885,9 +904,11 @@ If you cannot find who to cc for a file, `git shortlog -n -s <file>` may help.
 [`node-core-utils`]: https://github.com/nodejs/node-core-utils
 [backporting guide]: doc/guides/backporting-to-release-lines.md
 [contributing]: ./doc/guides/contributing/pull-requests.md#commit-message-guidelines
+[commit-example]: https://github.com/nodejs/node/commit/b636ba8186
 [flaky tests]: https://github.com/nodejs/node/issues?q=is%3Aopen+is%3Aissue+label%3A%22CI+%2F+flaky+test%22y
 [git-node]: https://github.com/nodejs/node-core-utils/blob/master/docs/git-node.md
 [git-node-metadata]: https://github.com/nodejs/node-core-utils/blob/master/docs/git-node.md#git-node-metadata
 [git-username]: https://help.github.com/articles/setting-your-username-in-git/
+[git-email]: https://help.github.com/articles/setting-your-commit-email-address-in-git/
 [node-core-utils-credentials]: https://github.com/nodejs/node-core-utils#setting-up-credentials
 [node-core-utils-issues]: https://github.com/nodejs/node-core-utils/issues

@@ -57,10 +57,17 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -78,6 +85,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
@@ -97,6 +105,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSNoSuchMethodAdapter;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptFunctionCallNode;
 import com.oracle.truffle.js.runtime.UserScriptException;
@@ -443,6 +452,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         insert(newNode);
         newNode.nextNode = head;
         this.cacheNode = newNode;
+        if (head != null) {
+            reportPolymorphicSpecialize();
+        }
         return newNode;
     }
 
@@ -1281,7 +1293,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 RootNode root = ((RootCallTarget) callTarget).getRootNode();
                 if (root instanceof FunctionRootNode && ((FunctionRootNode) root).isInlineImmediately()) {
                     insert(callNode);
-                    callNode.cloneCallTarget();
+                    if (((FunctionRootNode) root).isSplitImmediately()) {
+                        callNode.cloneCallTarget();
+                    }
                     callNode.forceInlining();
                 }
             }
@@ -1424,10 +1438,16 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         private final String functionName;
         private final ValueProfile thisClassProfile = ValueProfile.createClassProfile();
         @Child protected Node invokeNode;
+        @Child protected Node hasSizeNode;
+        @Child protected JSFunctionCallNode callOnPrototypeNode;
+        @Child protected PropertyGetNode getFunctionNode;
+        private final TruffleLanguage.ContextReference<JSRealm> contextRef;
 
         ForeignInvokeNode(AbstractJavaScriptLanguage language, String functionName, int expectedArgumentCount) {
             super(language, expectedArgumentCount);
             this.functionName = functionName;
+            this.callOnPrototypeNode = JSFunctionCallNode.createCall();
+            contextRef = language.getContextReference();
         }
 
         @Override
@@ -1441,7 +1461,22 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
              */
             if (JSGuards.isForeignObject(receiver)) {
                 assert getForeignFunction(arguments) == receiver;
-                callReturn = JSInteropNodeUtil.invoke((TruffleObject) receiver, functionName, callArguments, invokeNode());
+                TruffleObject truffleReceiver = (TruffleObject) receiver;
+                try {
+                    callReturn = ForeignAccess.sendInvoke(invokeNode(), truffleReceiver, functionName, callArguments);
+                } catch (UnknownIdentifierException uiex) {
+                    JSRealm realm = contextRef.get();
+                    if (realm.getContext().getContextOptions().isArrayLikePrototype() && ForeignAccess.sendHasSize(hasSizeNode(), truffleReceiver)) {
+                        // Array-like foreign object => use Array.prototype
+                        DynamicObject arrayPrototype = realm.getArrayConstructor().getPrototype();
+                        Object function = getFunction(arrayPrototype);
+                        callReturn = callOnPrototypeNode.executeCall(JSArguments.create(receiver, function, JSArguments.extractUserArguments(arguments)));
+                    } else {
+                        throw Errors.createTypeErrorInteropException(truffleReceiver, uiex, Message.INVOKE, null);
+                    }
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    throw Errors.createTypeErrorInteropException(truffleReceiver, e, Message.INVOKE, null);
+                }
             } else {
                 TruffleObject function = getForeignFunction(arguments);
                 callReturn = JSInteropNodeUtil.call(function, callArguments, callNode());
@@ -1455,6 +1490,22 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 invokeNode = insert(JSInteropUtil.createInvoke());
             }
             return invokeNode;
+        }
+
+        private Node hasSizeNode() {
+            if (hasSizeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                hasSizeNode = insert(JSInteropUtil.createHasSize());
+            }
+            return hasSizeNode;
+        }
+
+        private Object getFunction(Object object) {
+            if (getFunctionNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getFunctionNode = insert(PropertyGetNode.create(functionName, contextRef.get().getContext()));
+            }
+            return getFunctionNode.getValue(object);
         }
     }
 

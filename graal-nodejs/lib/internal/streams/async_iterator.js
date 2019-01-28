@@ -1,5 +1,7 @@
 'use strict';
 
+const finished = require('internal/streams/end-of-stream');
+
 const kLastResolve = Symbol('lastResolve');
 const kLastReject = Symbol('lastReject');
 const kError = Symbol('error');
@@ -8,12 +10,9 @@ const kLastPromise = Symbol('lastPromise');
 const kHandlePromise = Symbol('handlePromise');
 const kStream = Symbol('stream');
 
-const AsyncIteratorRecord = class AsyncIteratorRecord {
-  constructor(value, done) {
-    this.done = done;
-    this.value = value;
-  }
-};
+function createIterResult(value, done) {
+  return { value, done };
+}
 
 function readAndResolve(iter) {
   const resolve = iter[kLastResolve];
@@ -26,7 +25,7 @@ function readAndResolve(iter) {
       iter[kLastPromise] = null;
       iter[kLastResolve] = null;
       iter[kLastReject] = null;
-      resolve(new AsyncIteratorRecord(data, false));
+      resolve(createIterResult(data, false));
     }
   }
 }
@@ -37,30 +36,6 @@ function onReadable(iter) {
   process.nextTick(readAndResolve, iter);
 }
 
-function onEnd(iter) {
-  const resolve = iter[kLastResolve];
-  if (resolve !== null) {
-    iter[kLastPromise] = null;
-    iter[kLastResolve] = null;
-    iter[kLastReject] = null;
-    resolve(new AsyncIteratorRecord(null, true));
-  }
-  iter[kEnded] = true;
-}
-
-function onError(iter, err) {
-  const reject = iter[kLastReject];
-  // reject if we are waiting for data in the Promise
-  // returned by next() and store the error
-  if (reject !== null) {
-    iter[kLastPromise] = null;
-    iter[kLastResolve] = null;
-    iter[kLastReject] = null;
-    reject(err);
-  }
-  iter[kError] = err;
-}
-
 function wrapForNext(lastPromise, iter) {
   return function(resolve, reject) {
     lastPromise.then(function() {
@@ -69,39 +44,13 @@ function wrapForNext(lastPromise, iter) {
   };
 }
 
-const ReadableAsyncIterator = class ReadableAsyncIterator {
-  constructor(stream) {
-    this[kStream] = stream;
-    this[kLastResolve] = null;
-    this[kLastReject] = null;
-    this[kError] = null;
-    this[kEnded] = false;
-    this[kLastPromise] = null;
+const AsyncIteratorPrototype = Object.getPrototypeOf(
+  Object.getPrototypeOf(async function* () {}).prototype);
 
-    stream.on('readable', onReadable.bind(null, this));
-    stream.on('end', onEnd.bind(null, this));
-    stream.on('error', onError.bind(null, this));
-
-    // the function passed to new Promise
-    // is cached so we avoid allocating a new
-    // closure at every run
-    this[kHandlePromise] = (resolve, reject) => {
-      const data = this[kStream].read();
-      if (data) {
-        this[kLastPromise] = null;
-        this[kLastResolve] = null;
-        this[kLastReject] = null;
-        resolve(new AsyncIteratorRecord(data, false));
-      } else {
-        this[kLastResolve] = resolve;
-        this[kLastReject] = reject;
-      }
-    };
-  }
-
+const ReadableStreamAsyncIteratorPrototype = Object.setPrototypeOf({
   get stream() {
     return this[kStream];
-  }
+  },
 
   next() {
     // if we have detected an error in the meanwhile
@@ -112,7 +61,23 @@ const ReadableAsyncIterator = class ReadableAsyncIterator {
     }
 
     if (this[kEnded]) {
-      return Promise.resolve(new AsyncIteratorRecord(null, true));
+      return Promise.resolve(createIterResult(null, true));
+    }
+
+    if (this[kStream].destroyed) {
+      // We need to defer via nextTick because if .destroy(err) is
+      // called, the error will be emitted via nextTick, and
+      // we cannot guarantee that there is no error lingering around
+      // waiting to be emitted.
+      return new Promise((resolve, reject) => {
+        process.nextTick(() => {
+          if (this[kError]) {
+            reject(this[kError]);
+          } else {
+            resolve(createIterResult(null, true));
+          }
+        });
+      });
     }
 
     // if we have multiple next() calls
@@ -129,7 +94,7 @@ const ReadableAsyncIterator = class ReadableAsyncIterator {
       // without triggering the next() queue
       const data = this[kStream].read();
       if (data !== null) {
-        return Promise.resolve(new AsyncIteratorRecord(data, false));
+        return Promise.resolve(createIterResult(data, false));
       }
 
       promise = new Promise(this[kHandlePromise]);
@@ -138,7 +103,7 @@ const ReadableAsyncIterator = class ReadableAsyncIterator {
     this[kLastPromise] = promise;
 
     return promise;
-  }
+  },
 
   return() {
     // destroy(err, cb) is a private API
@@ -150,10 +115,71 @@ const ReadableAsyncIterator = class ReadableAsyncIterator {
           reject(err);
           return;
         }
-        resolve(new AsyncIteratorRecord(null, true));
+        resolve(createIterResult(null, true));
       });
     });
-  }
+  },
+}, AsyncIteratorPrototype);
+
+const createReadableStreamAsyncIterator = (stream) => {
+  const iterator = Object.create(ReadableStreamAsyncIteratorPrototype, {
+    [kStream]: { value: stream, writable: true },
+    [kLastResolve]: { value: null, writable: true },
+    [kLastReject]: { value: null, writable: true },
+    [kError]: { value: null, writable: true },
+    [kEnded]: {
+      value: stream._readableState.endEmitted,
+      writable: true
+    },
+    [kLastPromise]: { value: null, writable: true },
+    // the function passed to new Promise
+    // is cached so we avoid allocating a new
+    // closure at every run
+    [kHandlePromise]: {
+      value: (resolve, reject) => {
+        const data = iterator[kStream].read();
+        if (data) {
+          iterator[kLastPromise] = null;
+          iterator[kLastResolve] = null;
+          iterator[kLastReject] = null;
+          resolve(createIterResult(data, false));
+        } else {
+          iterator[kLastResolve] = resolve;
+          iterator[kLastReject] = reject;
+        }
+      },
+      writable: true,
+    },
+  });
+
+  finished(stream, (err) => {
+    if (err && err.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
+      const reject = iterator[kLastReject];
+      // reject if we are waiting for data in the Promise
+      // returned by next() and store the error
+      if (reject !== null) {
+        iterator[kLastPromise] = null;
+        iterator[kLastResolve] = null;
+        iterator[kLastReject] = null;
+        reject(err);
+      }
+      iterator[kError] = err;
+      return;
+    }
+
+    const resolve = iterator[kLastResolve];
+    if (resolve !== null) {
+      iterator[kLastPromise] = null;
+      iterator[kLastResolve] = null;
+      iterator[kLastReject] = null;
+      resolve(createIterResult(null, true));
+    }
+    iterator[kEnded] = true;
+  });
+
+  stream.on('readable', onReadable.bind(null, iterator));
+
+  return iterator;
 };
 
-module.exports = ReadableAsyncIterator;
+module.exports = createReadableStreamAsyncIterator;

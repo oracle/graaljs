@@ -64,6 +64,7 @@ import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
@@ -364,7 +365,7 @@ public final class JSFunction extends JSBuiltinObject {
         assert JSFunction.isJSFunction(thisFnObj);
         JSContext context = realm.getContext();
         DynamicObject proto = JSObject.getPrototype(thisFnObj);
-        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, false);
+        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, false, null, null);
 
         int length = 0;
         boolean targetHasLength = JSObject.hasOwnProperty(thisFnObj, JSFunction.LENGTH);
@@ -390,14 +391,15 @@ public final class JSFunction extends JSBuiltinObject {
         return boundFunction;
     }
 
-    public static DynamicObject boundFunctionCreate(JSContext context, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto, boolean isAnonymous) {
+    public static DynamicObject boundFunctionCreate(JSContext context, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto, boolean isAnonymous,
+                    ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile) {
         assert JSFunction.isJSFunction(boundTargetFunction);
         CompilerAsserts.partialEvaluationConstant(context);
 
         boolean constructor = JSFunction.isConstructor(boundTargetFunction);
         JSFunctionData functionData = context.getBoundFunctionData(constructor);
         boolean isAsync = JSFunction.getFunctionData(boundTargetFunction).isAsync();
-        if (isAsync) {
+        if ((isAsyncProfile == null ? isAsync : isAsyncProfile.profile(isAsync))) {
             int length = Math.max(0, JSFunction.getLength(boundTargetFunction) - boundArguments.length);
             functionData = makeBoundFunctionData(context, length, constructor, isAsync);
         }
@@ -410,7 +412,8 @@ public final class JSFunction extends JSBuiltinObject {
             realm = JSFunction.getRealm(boundTargetFunction);
         }
         DynamicObject boundFunction = JSFunction.createBound(context, realm, functionData, boundTargetFunction, boundThis, boundArguments, isAnonymous);
-        if (proto != realm.getFunctionPrototype()) {
+        boolean needSetProto = proto != realm.getFunctionPrototype();
+        if ((setProtoProfile == null ? needSetProto : setProtoProfile.profile(needSetProto))) {
             JSObject.setPrototype(boundFunction, proto);
         }
         assert JSObject.getPrototype(boundFunction) == proto;

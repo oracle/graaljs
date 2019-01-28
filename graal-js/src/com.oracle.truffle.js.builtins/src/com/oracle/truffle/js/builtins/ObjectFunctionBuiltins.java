@@ -208,6 +208,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         return null;
     }
 
+    @ImportStatic(value = {JSInteropUtil.class})
     public abstract static class ObjectGetPrototypeOfNode extends ObjectOperation {
 
         public ObjectGetPrototypeOfNode(JSContext context, JSBuiltin builtin) {
@@ -215,7 +216,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "!isJSObject(object)")
-        protected DynamicObject getPrototypeOf(Object object) {
+        protected DynamicObject getPrototypeOf(Object object,
+                        @Cached("createHasSize()") Node hasSizeNode) {
             if (getContext().getEcmaScriptVersion() < 6) {
                 if (JSRuntime.isJSPrimitive(object)) {
                     throw Errors.createTypeErrorNotAnObject(object);
@@ -227,7 +229,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 if (JSObject.isJSObject(tobject)) {
                     return getPrototypeOf((DynamicObject) tobject);
                 } else {
-                    return Null.instance;
+                    if (getContext().getContextOptions().isArrayLikePrototype() && JSInteropNodeUtil.hasSize(tobject, hasSizeNode)) {
+                        return getContext().getRealm().getArrayConstructor().getPrototype();
+                    } else {
+                        return Null.instance;
+                    }
                 }
             }
         }

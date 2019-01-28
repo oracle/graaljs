@@ -263,10 +263,20 @@ v8::Local<v8::Array> GraalObject::GetOwnPropertyNames() {
     return reinterpret_cast<v8::Array*> (graal_names);
 }
 
-v8::Local<v8::Array> GraalObject::GetPropertyNames() {
-    JNI_CALL(jobject, java_names, Isolate(), GraalAccessMethod::object_get_property_names, Object, GetJavaObject());
+v8::MaybeLocal<v8::Array> GraalObject::GetPropertyNames(v8::Local<v8::Context> context, v8::KeyCollectionMode mode, v8::PropertyFilter property_filter, v8::IndexFilter index_filter, v8::KeyConversionMode key_conversion) {
+    jboolean ownOnly = mode == v8::KeyCollectionMode::kOwnOnly;
+    jboolean enumerableOnly = (property_filter & v8::PropertyFilter::ONLY_ENUMERABLE) != 0;
+    jboolean configurableOnly = (property_filter & v8::PropertyFilter::ONLY_CONFIGURABLE) != 0;
+    jboolean writableOnly = (property_filter & v8::PropertyFilter::ONLY_WRITABLE) != 0;
+    jboolean skipIndices = index_filter == v8::IndexFilter::kSkipIndices;
+    jboolean skipSymbols = (property_filter & v8::PropertyFilter::SKIP_SYMBOLS) != 0;
+    jboolean skipStrings = (property_filter & v8::PropertyFilter::SKIP_STRINGS) != 0;
+    jboolean keepNumbers = key_conversion == v8::KeyConversionMode::kKeepNumbers;
+    JNI_CALL(jobject, java_names, Isolate(), GraalAccessMethod::object_get_property_names, Object, GetJavaObject(),
+            ownOnly, enumerableOnly, configurableOnly, writableOnly, skipIndices, skipSymbols, skipStrings, keepNumbers);
     GraalArray* graal_names = new GraalArray(Isolate(), java_names);
-    return reinterpret_cast<v8::Array*> (graal_names);
+    v8::Local<v8::Array> v8_names = reinterpret_cast<v8::Array*> (graal_names);
+    return v8_names;
 }
 
 v8::Local<v8::Context> GraalObject::CreationContext() {

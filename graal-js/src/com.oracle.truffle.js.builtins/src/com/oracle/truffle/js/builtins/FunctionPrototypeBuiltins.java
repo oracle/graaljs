@@ -182,6 +182,8 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         private final ConditionProfile mustSetLengthProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile setNameProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasFunctionLengthProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
 
         public JSBindNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -196,7 +198,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected DynamicObject bind(DynamicObject thisFnObj, Object thisArg, Object[] args) {
             DynamicObject proto = getPrototypeNode.executeJSObject(thisFnObj);
 
-            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto, false);
+            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto, false, isAsyncProfile, setProtoProfile);
 
             int length = 0;
             boolean mustSetLength = true;
@@ -254,7 +256,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
             assert JSFunction.isJSFunction(innerFunction);
 
-            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (DynamicObject) innerFunction, thisArg, args, proto, false);
+            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (DynamicObject) innerFunction, thisArg, args, proto, false, isAsyncProfile, setProtoProfile);
 
             int length = 0;
             boolean targetHasLength = JSObject.hasOwnProperty(thisObj, JSFunction.LENGTH);

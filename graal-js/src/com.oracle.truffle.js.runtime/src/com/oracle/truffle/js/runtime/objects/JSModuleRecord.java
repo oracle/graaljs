@@ -40,25 +40,39 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 
 /**
  * Source Text Module Record.
  */
 public final class JSModuleRecord {
+    public enum Status {
+        Uninstantiated,
+        Instantiating,
+        Instantiated,
+        Evaluating,
+        Evaluated,
+    }
+
+    /** Module parse node. */
     private final Object module;
     private final JSContext context;
     private final JSModuleLoader moduleLoader;
     private final Source source;
 
-    /** Resolved is true after ModuleDeclarationInstantiation(). */
-    private boolean resolved;
-    /** Evaluated is true after ModuleEvaluation(). */
-    private boolean evaluated;
+    /** Module's instantiation/evaluation status. */
+    private Status status;
+
+    /** Exception that occurred during evaluation. */
+    private Throwable evaluationError;
+    /** Implementation-specific: The result of ModuleExecution if no exception occurred. */
+    private Object executionResult;
 
     private JSFunctionData functionData;
 
@@ -66,8 +80,23 @@ public final class JSModuleRecord {
     private DynamicObject namespace;
     /** Lazily initialized frame ({@code [[Environment]]}). */
     private MaterializedFrame environment;
+    /** Lazily initialized import.meta object ({@code [[ImportMeta]]}). */
+    private DynamicObject importMeta;
 
     private Runnable finishTranslation;
+
+    /**
+     * Auxiliary field used during Instantiate and Evaluate only. If [[Status]] is "instantiating"
+     * or "evaluating", this nonnegative number records the point at which the module was first
+     * visited during the ongoing depth-first traversal of the dependency graph.
+     */
+    private int dfsIndex;
+    /**
+     * Auxiliary field used during Instantiate and Evaluate only. If [[Status]] is "instantiating"
+     * or "evaluating", this is either the module's own [[DFSIndex]] or that of an "earlier" module
+     * in the same strongly connected component.
+     */
+    private int dfsAncestorIndex;
 
     public JSModuleRecord(Object module, JSContext context, JSModuleLoader moduleLoader, Source source, Runnable finishTranslation) {
         this.module = module;
@@ -75,6 +104,7 @@ public final class JSModuleRecord {
         this.moduleLoader = moduleLoader;
         this.source = source;
         this.finishTranslation = finishTranslation;
+        setUninstantiated();
     }
 
     public Object getModule() {
@@ -103,20 +133,26 @@ public final class JSModuleRecord {
         this.functionData = functionData;
     }
 
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
     public boolean isEvaluated() {
-        return evaluated;
+        return getStatus() == Status.Evaluated;
     }
 
-    public void setEvaluated(boolean evaluated) {
-        this.evaluated = evaluated;
+    public Throwable getEvaluationError() {
+        assert isEvaluated();
+        return evaluationError;
     }
 
-    public boolean isResolved() {
-        return resolved;
-    }
-
-    public void setResolved(boolean resolved) {
-        this.resolved = resolved;
+    public void setEvaluationError(Throwable evaluationError) {
+        assert isEvaluated();
+        this.evaluationError = evaluationError;
     }
 
     public DynamicObject getNamespace() {
@@ -138,8 +174,54 @@ public final class JSModuleRecord {
     }
 
     public void finishTranslation() {
-        assert isResolved();
+        assert getStatus() == Status.Instantiating;
         finishTranslation.run();
         finishTranslation = null;
+    }
+
+    public int getDFSIndex() {
+        assert dfsIndex >= 0;
+        return dfsIndex;
+    }
+
+    public void setDFSIndex(int dfsIndex) {
+        this.dfsIndex = dfsIndex;
+    }
+
+    public int getDFSAncestorIndex() {
+        assert dfsAncestorIndex >= 0;
+        return dfsAncestorIndex;
+    }
+
+    public void setDFSAncestorIndex(int dfsAncestorIndex) {
+        this.dfsAncestorIndex = dfsAncestorIndex;
+    }
+
+    public Object getExecutionResult() {
+        return executionResult;
+    }
+
+    public void setExecutionResult(Object executionResult) {
+        this.executionResult = executionResult;
+    }
+
+    public DynamicObject getImportMeta() {
+        if (importMeta == null) {
+            importMeta = createMetaObject();
+            context.notifyImportMetaInitializer(importMeta, this);
+        }
+        return importMeta;
+    }
+
+    @TruffleBoundary
+    private DynamicObject createMetaObject() {
+        return JSUserObject.createWithNullPrototype(context);
+    }
+
+    public void setUninstantiated() {
+        setStatus(Status.Uninstantiated);
+        this.environment = null;
+        this.dfsIndex = -1;
+        this.dfsAncestorIndex = -1;
     }
 }

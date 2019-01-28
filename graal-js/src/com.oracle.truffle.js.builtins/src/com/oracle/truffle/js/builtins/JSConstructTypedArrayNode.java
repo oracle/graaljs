@@ -392,7 +392,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         IteratorRecord iterator = GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, origin);
         while (true) {
             Object next = iteratorStepNode.execute(iterator);
-            if (next instanceof Boolean && ((Boolean) next) == Boolean.FALSE) {
+            if (next == Boolean.FALSE) {
                 break;
             }
             Object nextValue = getIteratorValueNode.execute((DynamicObject) next);

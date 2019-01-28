@@ -10,6 +10,11 @@ have created these.
 The following software may be included in this product:
 
 
+           DtoA.java
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
            Dtoa.c
 /****************************************************************
  *
@@ -169,7 +174,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ------------------------------------------------------------------------------
 
            Node.js
-Node JS 10.9.0
+Node JS 10.15.0
 
 Node.js is licensed for use as follows:
 

@@ -43,9 +43,9 @@ package com.oracle.truffle.trufflenode;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.BIGINT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_FALSE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_TRUE;
 import static com.oracle.truffle.trufflenode.ValueType.DATA_VIEW_OBJECT;
@@ -122,6 +122,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
@@ -137,6 +138,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.ImportMetaInitializer;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -162,6 +164,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -209,8 +212,8 @@ import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
 import com.oracle.truffle.trufflenode.serialization.Deserializer;
 import com.oracle.truffle.trufflenode.serialization.Serializer;
-import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBindings;
 import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
+import com.oracle.truffle.trufflenode.threading.SharedMemMessagingBindings;
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
 
 /**
@@ -403,6 +406,11 @@ public final class GraalJSAccess {
         } else if (JSArrayBuffer.isJSDirectArrayBuffer(obj)) {
             return ARRAY_BUFFER_OBJECT;
         } else if (JSDataView.isJSDataView(obj)) {
+            if (useSharedBuffer) {
+                JSContext context = JSObject.getJSContext(obj);
+                sharedBuffer.putInt(arrayBufferViewByteLength(context, obj));
+                sharedBuffer.putInt(arrayBufferViewByteOffset(context, obj));
+            }
             return DATA_VIEW_OBJECT;
         } else if (JSMap.isJSMap(obj)) {
             return MAP_OBJECT;
@@ -861,18 +869,48 @@ public final class GraalJSAccess {
         return JSArray.createConstantObjectArray(context, namesArray);
     }
 
-    public Object objectGetPropertyNames(Object object) {
-        List<Object> names = new ArrayList<>();
+    public Object objectGetPropertyNames(Object object, boolean ownOnly,
+                    boolean enumerableOnly, boolean configurableOnly, boolean writableOnly,
+                    boolean skipIndices, boolean skipSymbols, boolean skipStrings,
+                    boolean keepNumbers) {
+        List<Object> keys = new ArrayList<>();
         DynamicObject dynamicObject = (DynamicObject) object;
         JSContext context = JSObject.getJSContext(dynamicObject);
-        while (dynamicObject != Null.instance) {
-            List<String> newNames = JSObject.enumerableOwnNames(dynamicObject);
-            names.addAll(newNames);
+        do {
+            JSClass jsclass = JSObject.getJSClass(dynamicObject);
+            Iterable<Object> ownKeys = jsclass.ownPropertyKeys(dynamicObject);
+            for (Object key : ownKeys) {
+                Object keyToStore = key;
+                if (key instanceof String) {
+                    boolean index = JSRuntime.isArrayIndex((String) key);
+                    if (index) {
+                        if (skipIndices) {
+                            continue;
+                        }
+                        if (keepNumbers) {
+                            keyToStore = JSRuntime.stringToNumber((String) key);
+                        }
+                    } else {
+                        if (skipStrings) {
+                            continue;
+                        }
+                    }
+                } else {
+                    assert key instanceof Symbol;
+                    if (skipSymbols) {
+                        continue;
+                    }
+                }
+                PropertyDescriptor desc = jsclass.getOwnProperty(dynamicObject, key);
+                if ((enumerableOnly && (desc == null || !desc.getEnumerable())) || (configurableOnly && (desc == null || !desc.getConfigurable())) ||
+                                (writableOnly && (desc == null || !desc.getWritable()))) {
+                    continue;
+                }
+                keys.add(keyToStore);
+            }
             dynamicObject = JSObject.getPrototype(dynamicObject);
-        }
-        Object[] namesArray = names.toArray();
-        convertArrayIndicesToNumbers(namesArray);
-        return JSArray.createConstantObjectArray(context, namesArray);
+        } while (!ownOnly && dynamicObject != Null.instance);
+        return JSArray.createConstantObjectArray(context, keys.toArray());
     }
 
     private void convertArrayIndicesToNumbers(Object[] namesArray) {
@@ -1641,6 +1679,53 @@ public final class GraalJSAccess {
         template.setFunctionHandler(functionHandler);
     }
 
+    public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] extensions) {
+        JSRealm realm = (JSRealm) context;
+        JSContext jsContext = realm.getContext();
+        NodeEvaluator nodeEvaluator = (NodeEvaluator) jsContext.getEvaluator();
+
+        StringBuilder params = new StringBuilder();
+        for (int i = 0; i < arguments.length; i++) {
+            if (i != 0) {
+                params.append(", ");
+            }
+            params.append(arguments[i]);
+        }
+        String parameterList = params.toString();
+
+        try {
+            GraalJSParserHelper.checkFunctionSyntax((GraalJSParserOptions) jsContext.getParserOptions(), parameterList, body, false, false);
+        } catch (com.oracle.js.parser.ParserException ex) {
+            // throw the correct JS error
+            nodeEvaluator.parseFunction(jsContext, parameterList, body, false, false, sourceName);
+        }
+
+        StringBuilder code = new StringBuilder();
+
+        code.append("(function () {");
+
+        for (int i = 0; i < extensions.length; i++) {
+            code.append("with (arguments[").append(i).append("]) {");
+        }
+
+        code.append("return ");
+
+        code.append("(function (");
+        code.append(parameterList);
+        code.append(") {\n");
+        code.append(body);
+        code.append("\n})");
+
+        for (int i = 0; i < extensions.length; i++) {
+            code.append("}"); // with (arguments[i]) {
+        }
+
+        code.append(";})");
+        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, code.toString(), sourceName).build();
+        DynamicObject wrapper = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
+        return JSFunction.call(wrapper, Undefined.instance, extensions);
+    }
+
     public Object scriptCompile(Object context, Object sourceCode, Object fileName) {
         UnboundScript unboundScript = (UnboundScript) unboundScriptCompile(sourceCode, fileName);
         return unboundScriptBindToContext(context, unboundScript);
@@ -1692,12 +1777,12 @@ public final class GraalJSAccess {
     private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
         String moduleName = node.getRootNode().getSourceSection().getSource().getName();
-        if (USE_NIO_BUFFER && NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
+        if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
             Object[] extendedArgs = new Object[userArgs.length + 1];
             System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-            extendedArgs[userArgs.length] = NIOBufferObject.createInitFunction(node);
+            extendedArgs[userArgs.length] = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(node) : Undefined.instance;
             return extendedArgs;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
             JSContext context = node.getContext();
@@ -2456,11 +2541,11 @@ public final class GraalJSAccess {
     public void isolateEnablePromiseRejectCallback(boolean enable) {
         PromiseRejectionTracker tracker = enable ? new PromiseRejectionTracker() {
             @Override
-            public void promiseRejected(DynamicObject promise) {
+            public void promiseRejected(DynamicObject promise, Object value) {
                 NativeAccess.notifyPromiseRejectionTracker(
                                 promise,
                                 0, // v8::PromiseRejectEvent::kPromiseRejectWithNoHandler
-                                promiseResult(promise));
+                                value);
             }
 
             @Override
@@ -2468,10 +2553,36 @@ public final class GraalJSAccess {
                 NativeAccess.notifyPromiseRejectionTracker(
                                 promise,
                                 1, // v8::PromiseRejectEvent::kPromiseHandlerAddedAfterReject
-                                promiseResult(promise));
+                                Undefined.instance);
+            }
+
+            @Override
+            public void promiseRejectedAfterResolved(DynamicObject promise, Object value) {
+                NativeAccess.notifyPromiseRejectionTracker(
+                                promise,
+                                2, // v8::PromiseRejectEvent::kPromiseRejectAfterResolved
+                                value);
+            }
+
+            @Override
+            public void promiseResolvedAfterResolved(DynamicObject promise, Object value) {
+                NativeAccess.notifyPromiseRejectionTracker(
+                                promise,
+                                3, // v8::PromiseRejectEvent::kPromiseResolveAfterResolved
+                                value);
             }
         } : null;
         mainJSContext.setPromiseRejectionTracker(tracker);
+    }
+
+    public void isolateEnableImportMetaInitializer(boolean enable) {
+        ImportMetaInitializer initializer = enable ? new ImportMetaInitializer() {
+            @Override
+            public void initializeImportMeta(DynamicObject importMeta, JSModuleRecord module) {
+                NativeAccess.notifyImportMetaInitializer(importMeta, module);
+            }
+        } : null;
+        mainJSContext.setImportMetaInitializer(initializer);
     }
 
     private void exit(int status) {
@@ -2758,14 +2869,12 @@ public final class GraalJSAccess {
         return JavaScriptTranslator.translateModule(factory, jsContext, source, getModuleLoader());
     }
 
-    private Map<JSModuleRecord, Object> moduleErrorMap = new WeakHashMap<>();
-
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
         ESModuleLoader loader = getModuleLoader();
         loader.setResolver(resolveCallback);
         JSContext jsContext = ((JSRealm) context).getContext();
         try {
-            jsContext.getEvaluator().moduleDeclarationInstantiation((JSModuleRecord) module);
+            jsContext.getEvaluator().moduleInstantiation((JSModuleRecord) module);
         } finally {
             loader.setResolver(0);
         }
@@ -2775,39 +2884,38 @@ public final class GraalJSAccess {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
-        if (moduleRecord.isEvaluated()) {
-            Object errorObject = moduleErrorMap.get(moduleRecord);
-            if (errorObject != null) {
-                throw exceptionObjectToException(errorObject);
-            }
+        if (moduleRecord.isEvaluated() && moduleRecord.getEvaluationError() == null) {
+            return Undefined.instance;
         }
-        try {
-            return jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
-        } catch (GraalJSException ex) {
-            moduleErrorMap.put(moduleRecord, ex.getErrorObjectEager(jsContext));
-            throw ex;
-        }
+        return jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
     }
 
     public int moduleGetStatus(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
-        if (moduleErrorMap.containsKey(record)) {
-            return 5; // v8::Module::Status::kErrored
-        }
-        if (record.isResolved()) {
-            if (record.isEvaluated()) {
-                return 4; // v8::Module::Status::kEvaluated
-            } else {
+        switch (record.getStatus()) {
+            case Uninstantiated:
+                return 0; // v8::Module::Status::kUninstantiated
+            case Instantiating:
+                return 1; // v8::Module::Status::kInstantiating
+            case Instantiated:
                 return 2; // v8::Module::Status::kInstantiated
-            }
-        } else {
-            return 0; // v8::Module::Status::kUninstantiated
+            case Evaluating:
+                return 3; // v8::Module::Status::Evaluating
+            case Evaluated:
+            default:
+                assert record.getStatus() == JSModuleRecord.Status.Evaluated;
+                if (record.getEvaluationError() == null) {
+                    return 4; // v8::Module::Status::kEvaluated
+                } else {
+                    return 5; // v8::Module::Status::kErrored
+                }
         }
     }
 
     public Object moduleGetException(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
-        return moduleErrorMap.get(record);
+        TruffleException evaluationError = (TruffleException) record.getEvaluationError();
+        return evaluationError.getExceptionObject();
     }
 
     public int moduleGetRequestsLength(Object module) {

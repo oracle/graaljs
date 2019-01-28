@@ -28,6 +28,7 @@ This class is a subclass of `tls.Server` and emits events same as
 added: v0.1.90
 -->
 * `callback` {Function}
+* Returns: {https.Server}
 
 See [`server.close()`][`http.close()`] from the HTTP module for details.
 
@@ -43,12 +44,19 @@ This method is identical to [`server.listen()`][] from [`net.Server`][].
 
 See [`http.Server#maxHeadersCount`][].
 
+### server.headersTimeout
+
+- {number} **Default:** `40000`
+
+See [`http.Server#headersTimeout`][].
+
 ### server.setTimeout([msecs][, callback])
 <!-- YAML
 added: v0.11.2
 -->
 * `msecs` {number} **Default:** `120000` (2 minutes)
 * `callback` {Function}
+* Returns: {https.Server}
 
 See [`http.Server#setTimeout()`][].
 
@@ -75,8 +83,7 @@ added: v0.3.4
 * `options` {Object} Accepts `options` from [`tls.createServer()`][],
  [`tls.createSecureContext()`][] and [`http.createServer()`][].
 * `requestListener` {Function} A listener to be added to the `'request'` event.
-
-Example:
+* Returns: {https.Server}
 
 ```js
 // curl -k https://localhost:8000/
@@ -118,7 +125,8 @@ added: v0.3.6
 changes:
   - version: v10.9.0
     pr-url: https://github.com/nodejs/node/pull/21616
-    description: allow both url and options to be passed to `https.get()`
+    description: The `url` parameter can now be passed along with a separate
+                 `options` object.
   - version: v7.5.0
     pr-url: https://github.com/nodejs/node/pull/10638
     description: The `options` parameter can be a WHATWG `URL` object.
@@ -133,8 +141,6 @@ Like [`http.get()`][] but for HTTPS.
 `options` can be an object, a string, or a [`URL`][] object. If `options` is a
 string, it is automatically parsed with [`url.parse()`][]. If it is a [`URL`][]
 object, it will be automatically converted to an ordinary `options` object.
-
-Example:
 
 ```js
 const https = require('https');
@@ -166,7 +172,8 @@ added: v0.3.6
 changes:
   - version: v10.9.0
     pr-url: https://github.com/nodejs/node/pull/21616
-    description: allow both url and options to be passed to `https.request()`
+    description: The `url` parameter can now be passed along with a separate
+                 `options` object.
   - version: v9.3.0
     pr-url: https://github.com/nodejs/node/pull/14903
     description: The `options` parameter can now include `clientCertEngine`.
@@ -192,8 +199,6 @@ The following additional `options` from [`tls.connect()`][] are also accepted:
 `options` can be an object, a string, or a [`URL`][] object. If `options` is a
 string, it is automatically parsed with [`url.parse()`][]. If it is a [`URL`][]
 object, it will be automatically converted to an ordinary `options` object.
-
-Example:
 
 ```js
 const https = require('https');
@@ -238,8 +243,6 @@ const req = https.request(options, (res) => {
 ```
 
 Alternatively, opt out of connection pooling by not using an [`Agent`][].
-
-Example:
 
 ```js
 const options = {
@@ -366,6 +369,7 @@ headers: max-age=0; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; p
 [`http.Agent`]: http.html#http_class_http_agent
 [`http.Server#keepAliveTimeout`]: http.html#http_server_keepalivetimeout
 [`http.Server#maxHeadersCount`]: http.html#http_server_maxheaderscount
+[`http.Server#headersTimeout`]: http.html#http_server_headerstimeout
 [`http.Server#setTimeout()`]: http.html#http_server_settimeout_msecs_callback
 [`http.Server#timeout`]: http.html#http_server_timeout
 [`http.Server`]: http.html#http_class_http_server

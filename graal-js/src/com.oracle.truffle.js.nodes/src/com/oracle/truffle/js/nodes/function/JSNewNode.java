@@ -50,6 +50,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -99,6 +100,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
  * 11.2.2 The new Operator.
  */
 @ImportStatic(value = {JSProxy.class})
+@ReportPolymorphism
 public abstract class JSNewNode extends JavaScriptNode {
 
     @Child @Executed protected JavaScriptNode targetNode;
@@ -400,6 +402,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     }
 
     @ImportStatic(JSTruffleOptions.class)
+    @ReportPolymorphism
     protected abstract static class CachedPrototypeShapeNode extends JavaScriptBaseNode {
         protected final JSContext context;
         @Child private JSTargetableNode getPrototype;

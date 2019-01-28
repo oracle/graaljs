@@ -47,6 +47,7 @@
 #include "include/v8.h"
 #include "jni.h"
 #include <pthread.h>
+#include <string.h>
 #include <vector>
 
 #define JNI_CALL_HELPER(semicolon, equals, return_type, variable, isolate, id, type, ...) \
@@ -192,6 +193,7 @@ enum GraalAccessMethod {
     isolate_perform_gc,
     isolate_enable_promise_hook,
     isolate_enable_promise_reject_callback,
+    isolate_enable_import_meta_initializer,
     isolate_enter,
     isolate_exit,
     template_set,
@@ -325,6 +327,7 @@ enum GraalAccessMethod {
     shared_array_buffer_is_external,
     shared_array_buffer_get_contents,
     shared_array_buffer_externalize,
+    script_compiler_compile_function_in_context,
 
     count // Should be the last item of GraalAccessMethod
 };
@@ -359,6 +362,8 @@ public:
     void NotifyPromiseHook(v8::PromiseHookType, v8::Local<v8::Promise> promise, v8::Local<v8::Value> parent);
     void SetPromiseRejectCallback(v8::PromiseRejectCallback callback);
     void NotifyPromiseRejectCallback(v8::PromiseRejectMessage message);
+    void SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback);
+    void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
     void RunMicrotasks();
     void Enter();
@@ -534,8 +539,19 @@ public:
     void Externalize(jobject java_buffer);
 
     static void SetFlags(int argc, char** argv) {
+        if (GraalIsolate::argv != nullptr) {
+            for (int i = 0; i < GraalIsolate::argc; i++) {
+                delete[] GraalIsolate::argv[i];
+            }
+            delete[] GraalIsolate::argv;
+        }
         GraalIsolate::argc = argc;
-        GraalIsolate::argv = argv;
+        GraalIsolate::argv = new char*[argc];
+        for (int i = 0; i < argc; i++) {
+            int len = strlen(argv[i]) + 1;
+            GraalIsolate::argv[i] = new char[len];
+            strncpy(GraalIsolate::argv[i], argv[i], len);
+        }
     }
 
     static void SetMode(int mode) {
@@ -628,6 +644,7 @@ private:
 
     v8::PromiseHook promise_hook_;
     v8::PromiseRejectCallback promise_reject_callback_;
+    v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
 };
 
 #endif /* GRAAL_ISOLATE_H_ */

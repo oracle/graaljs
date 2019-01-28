@@ -2481,10 +2481,10 @@ public final class JSRuntime {
         if (isString1 && isString2) {
             String str1 = (String) key1;
             String str2 = (String) key2;
-            long index1 = JSRuntime.propertyNameToIntegerIndex(str1);
-            long index2 = JSRuntime.propertyNameToIntegerIndex(str2);
-            boolean isIndex1 = isIntegerIndex(index1);
-            boolean isIndex2 = isIntegerIndex(index2);
+            long index1 = JSRuntime.propertyNameToArrayIndex(str1);
+            long index2 = JSRuntime.propertyNameToArrayIndex(str2);
+            boolean isIndex1 = isArrayIndex(index1);
+            boolean isIndex2 = isArrayIndex(index2);
             if (isIndex1 && isIndex2) {
                 return Long.compare(index1, index2);
             } else if (isIndex1) {
@@ -2794,5 +2794,10 @@ public final class JSRuntime {
                         value instanceof Float ||
                         value instanceof Double ||
                         value instanceof Character;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
     }
 }

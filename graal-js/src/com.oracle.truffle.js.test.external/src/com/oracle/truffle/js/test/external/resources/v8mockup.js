@@ -75,7 +75,7 @@ function v8ClearFunctionTypeFeedback() {
     return undefined;
 }
 
-function v8RunMicrotasks() {
+function v8PerformMicrotaskCheckpoint() {
     return TestV8.runMicrotasks();
 }
 
@@ -339,7 +339,7 @@ function v8MakeReferenceError(message) {
 
 function v8AbortJS(message) {
     printErr(message);
-    exit(1);
+    quit(1);
 }
 
 function v8HomeObjectSymbol() {
@@ -370,9 +370,8 @@ function v8CreatePrivateOwnSymbol(sym) {
     return Symbol(sym);
 }
 
-function v8ArrayBufferNeuter(arr) {
+function v8ArrayBufferDetach(arr) {
     TestV8.typedArrayDetachBuffer(arr);
-    return arr;
 }
 
 function v8GetScript(name) {
@@ -867,6 +866,42 @@ function v8WasmTierUpFunction() {
 function v8HandleDebuggerStatement() {
 }
 
-function setTimeout(fn) {
-    return TestV8.setTimeout(fn);
+// new mockups from 2019-01-15 update
+
+function v8IsThreadInWasm() {
+    return v8IgnoreResult;
 }
+
+function setTimeout(fn) {
+    // d8 invokes the callback when the promise job queue is empty,
+    // graal.js does not have this type of callbacks => mimicking that
+    // by inserting the callback far into the promise job queue
+    var lateJob = function (n) {
+        if (n === 0) {
+            return fn;
+        } else {
+            return function () {
+                TestV8.enqueueJob(lateJob(n - 1));
+            };
+        }
+    };
+    return lateJob(10)();
+}
+
+var testRunner = (function() {
+    var _done;
+    var _waitUntilDone = function() {
+        if (!_done) {
+            TestV8.enqueueJob(_waitUntilDone);
+        }
+    };
+    return {
+        notifyDone() {
+            _done = true;
+        },
+        waitUntilDone() {
+            _done = false;
+            _waitUntilDone();
+        }
+    };
+})();
