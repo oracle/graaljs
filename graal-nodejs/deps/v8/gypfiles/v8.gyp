@@ -425,24 +425,24 @@
       'include_dirs': [
         '..',
         '../../uv/include',
-        '<(graalvm)/include/',
+        '<(java_home)/include/',
         '<(DEPTH)',
         '<(SHARED_INTERMEDIATE_DIR)'
       ],
       'conditions': [
         ['OS=="linux"', {
           'include_dirs+': [
-            '<(graalvm)/include/linux/',
+            '<(java_home)/include/linux/',
           ],
         }],
         ['OS=="solaris"', {
           'include_dirs+': [
-            '<(graalvm)/include/solaris/',
+            '<(java_home)/include/solaris/',
           ],
         }],
         ['OS=="mac"', {
           'include_dirs+': [
-            '<(graalvm)/include/darwin/',
+            '<(java_home)/include/darwin/',
           ],
         }],
       ],
@@ -457,21 +457,21 @@
           }],
           ['OS=="linux" and target_arch=="x64"', {
             'libraries': [
-              '-L<(graalvm)/jre/lib/amd64/server -L<(graalvm)/jre/lib/amd64',
+              '-L<(java_home)/jre/lib/amd64/server -L<(java_home)/jre/lib/amd64',
               "-Wl,-rpath='$$ORIGIN/../../../../lib/amd64/'",
               "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/amd64/'",
             ],
           }],
           ['OS=="solaris" or (OS=="linux" and target_arch=="sparcv9")', {
             'libraries': [
-              '-L<(graalvm)/jre/lib/sparcv9/server -L<(graalvm)/jre/lib/sparcv9',
+              '-L<(java_home)/jre/lib/sparcv9/server -L<(java_home)/jre/lib/sparcv9',
               "-Wl,-rpath='$$ORIGIN/../../../../lib/sparcv9/'",
               "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/sparcv9/'",
             ],
           }],
           ['OS=="mac"', {
             'libraries': [
-              '-L<(graalvm)/jre/lib/server -L<(graalvm)/jre/lib',
+              '-L<(java_home)/jre/lib/server -L<(java_home)/jre/lib',
               "-Wl,-rpath,'@loader_path/../../../../lib/'",
               "-Wl,-rpath,'@loader_path/../../../../jre/lib/'",
               "-Wl,-rpath,'@loader_path/../../../../jre/languages/R/lib/'",

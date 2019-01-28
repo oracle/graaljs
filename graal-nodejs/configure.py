@@ -224,15 +224,10 @@ shared_optgroup.add_option('--shared-libuv-libpath',
     dest='shared_libuv_libpath',
     help='a directory to search for the shared libuv DLL')
 
-shared_optgroup.add_option('--shared-graalvm',
+shared_optgroup.add_option('--java-home',
     action='store',
-    dest='shared_graalvm',
-    help='a directory where GraalVM is installed')
-
-shared_optgroup.add_option('--shared-trufflejs',
-    action='store',
-    dest='shared_trufflejs',
-    help='JAR file with trufflejs.jar implementation. By default derived from --shared-graalvm setting')
+    dest='java_home',
+    help='a directory where JDK is installed')
 
 shared_optgroup.add_option('--enable-shared-library',
     action='store_true',
@@ -1075,19 +1070,11 @@ def configure_node(o):
   if options.no_ifaddrs:
     o['defines'] += ['SUNOS_NO_IFADDRS']
 
-  # graalvm check
-  if not options.shared_graalvm:
-    raise Exception('provide path to GraalVM via --shared-graalvm=path_to_the_vm')
+  # java-home check
+  if not options.java_home:
+    raise Exception('provide path to JDK via --java-home path_to_jdk')
 
-  trufflejs = options.shared_trufflejs
-  if not trufflejs:
-    trufflejs = options.shared_graalvm + '/jre/language/js/trufflejs.jar'
-
-  if not os.path.exists(trufflejs):
-    raise Exception('cannot find ' + trufflejs + ' is ' + options.shared_graalvm + ' correct path?')
-
-  o['variables']['graalvm'] = options.shared_graalvm
-  o['variables']['trufflejs'] = trufflejs
+  o['variables']['java_home'] = options.java_home
 
   # production build
   if options.build_production:
@@ -1098,7 +1085,7 @@ def configure_node(o):
     o['variables']['node_target_type'] = 'shared_library'
     o['cflags'] += ['-fPIC']
 
-  jniroot = options.shared_graalvm + '/include'
+  jniroot = options.java_home + '/include'
   # threading support via JNI
   if options.enable_threading:
     if flavor == 'mac':
