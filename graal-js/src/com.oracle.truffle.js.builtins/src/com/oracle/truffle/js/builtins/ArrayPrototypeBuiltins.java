@@ -107,6 +107,7 @@ import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
+import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode.IsArrayWrappedNode;
 import com.oracle.truffle.js.nodes.access.JSArrayFirstElementIndexNode;
 import com.oracle.truffle.js.nodes.access.JSArrayLastElementIndexNode;
@@ -717,8 +718,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return previousElementIndexNode.executeLong(target, currentIndex);
         }
 
-        protected boolean isArrayWithHoles(DynamicObject thisObj, ValueProfile arrayTypeProfile) {
-            return arrayTypeProfile.profile(arrayGetArrayType(thisObj)).hasHoles(thisObj);
+        protected boolean isArrayWithHoles(DynamicObject thisObj, ValueProfile arrayTypeProfile, boolean isArray) {
+            return arrayTypeProfile.profile(arrayGetArrayType(thisObj, isArray)).hasHoles(thisObj, isArray);
         }
 
         protected static final void throwLengthError() {
@@ -999,12 +1000,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final ConditionProfile lengthIsZero = ConditionProfile.createBinaryProfile();
         private final ConditionProfile lengthLargerOne = ConditionProfile.createBinaryProfile();
         protected final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
+        @Child IsArrayNode isArrayNode = IsArrayNode.createIsArray();
 
-        protected static boolean isSparseArray(DynamicObject thisObj) {
-            return arrayGetArrayType(thisObj) instanceof SparseArray;
+        protected static boolean isSparseArray(DynamicObject thisObj, boolean isArray) {
+            return arrayGetArrayType(thisObj, isArray) instanceof SparseArray;
         }
 
-        @Specialization(guards = {"isJSArray(thisObj)", "!isArrayWithHoles(thisObj, arrayTypeProfile)"})
+        @Specialization(guards = {"isArrayNode.execute(thisObj)", "!isArrayWithHoles(thisObj, arrayTypeProfile, isArrayNode.execute(thisObj))"})
         protected Object shift(DynamicObject thisObj) {
             long len = getLength(thisObj);
 
@@ -1021,7 +1023,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"isJSArray(thisObj)", "isArrayWithHoles(thisObj, arrayTypeProfile)", "!isSparseArray(thisObj)"})
+        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isArrayWithHoles(thisObj, arrayTypeProfile, isArrayNode.execute(thisObj))", "!isSparseArray(thisObj, isArrayNode.execute(thisObj))"})
         protected Object shiftWithHoles(DynamicObject thisObj,
                         @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode) {
             long len = getLength(thisObj);
@@ -1042,7 +1044,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"isJSArray(thisObj)", "isSparseArray(thisObj)"})
+        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj, isArrayNode.execute(thisObj))"})
         protected Object shiftSparse(DynamicObject thisObj,
                         @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
                         @Cached("create(getContext())") JSArrayFirstElementIndexNode firstElementIndexNode,
@@ -1096,9 +1098,18 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
+        @Child protected IsArrayNode isArrayNode = IsArrayNode.createIsArray();
 
         protected boolean isFastPath(Object thisObj) {
-            return JSArray.isJSArray(thisObj) && !isArrayWithHoles((DynamicObject) thisObj, arrayTypeProfile);
+            if (thisObj instanceof TruffleObject) {
+                return isFastPath((TruffleObject) thisObj);
+            }
+            return false;
+        }
+
+        protected boolean isFastPath(TruffleObject thisObj) {
+            boolean isArray = isArrayNode.execute(thisObj);
+            return isArray && !isArrayWithHoles((DynamicObject) thisObj, arrayTypeProfile, isArray);
         }
 
         @Specialization(guards = "isFastPath(thisObj)")

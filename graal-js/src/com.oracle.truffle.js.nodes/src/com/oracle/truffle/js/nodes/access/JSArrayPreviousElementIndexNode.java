@@ -74,20 +74,22 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
 
     public abstract long executeLong(TruffleObject object, long currentIndex, boolean isArray);
 
-    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType", "!cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
+    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType",
+                    "!cachedArrayType.hasHoles(object, isArray)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long doWithoutHolesCached(DynamicObject object, long currentIndex, boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object, isArray);
         return cachedArrayType.previousElementIndex(object, currentIndex, isArray);
     }
 
-    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "!hasHoles(object)"}, replaces = "doWithoutHolesCached")
+    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "!hasHoles(object, isArray)"}, replaces = "doWithoutHolesCached")
     public long doWithoutHolesUncached(DynamicObject object, long currentIndex, boolean isArray) {
         assert isSupportedArray(object);
         return getArrayType(object, isArray).previousElementIndex(object, currentIndex, isArray);
     }
 
-    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType", "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
+    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType",
+                    "cachedArrayType.hasHoles(object, isArray)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long previousWithHolesCached(DynamicObject object, long currentIndex, boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
                     @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
@@ -96,7 +98,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
         return holesArrayImpl(object, currentIndex, isArray, cachedArrayType, previousElementIndexNode, isMinusOne);
     }
 
-    @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "previousWithHolesCached")
+    @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object, isArray)"}, replaces = "previousWithHolesCached")
     public long previousWithHolesUncached(DynamicObject object, long currentIndex, boolean isArray,
                     @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile isMinusOne,

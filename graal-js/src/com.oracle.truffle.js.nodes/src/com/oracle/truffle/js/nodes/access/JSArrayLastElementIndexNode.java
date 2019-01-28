@@ -75,41 +75,43 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
 
     public abstract long executeLong(TruffleObject object, long length, boolean isArray);
 
-    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType", "!cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
+    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType",
+                    "!cachedArrayType.hasHoles(object, isArray)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long doWithoutHolesCached(DynamicObject object, @SuppressWarnings("unused") long length, boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object, isArray);
-        return cachedArrayType.lastElementIndex(object);
+        return cachedArrayType.lastElementIndex(object, isArray);
     }
 
-    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "!hasHoles(object)"}, replaces = "doWithoutHolesCached")
+    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "!hasHoles(object, isArray)"}, replaces = "doWithoutHolesCached")
     public long doWithoutHolesUncached(DynamicObject object, @SuppressWarnings("unused") long length, boolean isArray) {
         assert isSupportedArray(object);
-        return getArrayType(object, isArray).lastElementIndex(object);
+        return getArrayType(object, isArray).lastElementIndex(object, isArray);
     }
 
-    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType", "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
+    @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType",
+                    "cachedArrayType.hasHoles(object, isArray)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long doWithHolesCached(DynamicObject object, long length, boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
                     @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile isLengthMinusOne) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object, isArray);
-        return holesArrayImpl(object, length, cachedArrayType, previousElementIndexNode, isLengthMinusOne);
+        return holesArrayImpl(object, length, cachedArrayType, previousElementIndexNode, isLengthMinusOne, isArray);
     }
 
-    @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "doWithHolesCached")
+    @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object, isArray)"}, replaces = "doWithHolesCached")
     public long doWithHolesUncached(DynamicObject object, long length, boolean isArray,
                     @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile isLengthMinusOne,
                     @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray arrayType = arrayTypeProfile.profile(getArrayType(object, isArray));
-        return holesArrayImpl(object, length, arrayType, previousElementIndexNode, isLengthMinusOne);
+        return holesArrayImpl(object, length, arrayType, previousElementIndexNode, isLengthMinusOne, isArray);
     }
 
     private long holesArrayImpl(DynamicObject object, long length, ScriptArray array,
-                    JSArrayPreviousElementIndexNode previousElementIndexNode, ConditionProfile isLengthMinusOne) {
-        long lastIndex = array.lastElementIndex(object);
+                    JSArrayPreviousElementIndexNode previousElementIndexNode, ConditionProfile isLengthMinusOne, boolean isArray) {
+        long lastIndex = array.lastElementIndex(object, isArray);
         if (isLengthMinusOne.profile(lastIndex == length - 1)) {
             return lastIndex;
         }
