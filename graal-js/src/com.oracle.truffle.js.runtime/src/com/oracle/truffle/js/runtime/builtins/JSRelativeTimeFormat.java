@@ -181,7 +181,8 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         NumberFormat numberFormat = relativeDateTimeFormatter.getNumberFormat();
         RelativeDateTimeUnit icuUnit = singularRelativeTimeUnit("formatToParts", unit);
         String formattedText = innerFormat(amount, state, relativeDateTimeFormatter, icuUnit);
-        String formattedNumber = numberFormat.format(amount);
+        double positiveAmount = Math.abs(amount);
+        String formattedNumber = numberFormat.format(positiveAmount);
         int numberIndex = formattedText.indexOf(formattedNumber);
         boolean numberPresentInFormattedText = numberIndex > -1;
 
@@ -193,7 +194,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
             }
 
             String esUnit = icuUnit.toString().toLowerCase();
-            resultParts.addAll(JSNumberFormat.innerFormatToParts(context, numberFormat, amount, esUnit));
+            resultParts.addAll(JSNumberFormat.innerFormatToParts(context, numberFormat, positiveAmount, esUnit));
 
             if (numberIndex + formattedNumber.length() < formattedText.length()) {
                 resultParts.add(IntlUtil.makePart(context, "literal", formattedText.substring(numberIndex + formattedNumber.length(), formattedText.length())));
