@@ -2595,13 +2595,13 @@ public final class GraalJSAccess {
         }
     }
 
-    public void isolateEnterPolyglotEngine(long callback, long isolate, long param1, long param2, int argc, long argv, int execArgc, long execArgv) {
+    public void isolateEnterPolyglotEngine(long callback, long isolate, long param1, long param2, long args, long execArgs) {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(JavaScriptLanguage.ID, "(function(r) { r.run(); })", "polyglotEngineWrapper").internal(true).buildLiteral();
         org.graalvm.polyglot.Value wrapper = evaluator.eval(source);
         wrapper.execute(new RunnableInvoker(new Runnable() {
             @Override
             public void run() {
-                NativeAccess.polyglotEngineEntered(callback, isolate, param1, param2, argc, argv, execArgc, execArgv);
+                NativeAccess.polyglotEngineEntered(callback, isolate, param1, param2, args, execArgs);
             }
         }));
     }

@@ -122,7 +122,7 @@ void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong d
 
 void GraalNotifyGCCallbacks(JNIEnv* env, jclass nativeAccess, jboolean prolog);
 
-void GraalPolyglotEngineEntered(JNIEnv* env, jclass nativeAccess, jlong functionPointer, jlong isolate, jlong param1, jlong param2, jint argc, jlong argv, jint exec_argc, jlong exec_argv);
+void GraalPolyglotEngineEntered(JNIEnv* env, jclass nativeAccess, jlong functionPointer, jlong isolate, jlong param1, jlong param2, jlong args, jlong exec_args);
 
 GraalIsolate* CurrentIsolateChecked();
 

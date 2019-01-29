@@ -2133,8 +2133,8 @@ namespace v8 {
         return v8_value;
     }
 
-    void Isolate::EnterPolyglotEngine(void* param1, void* param2, int argc, void* argv, int exec_argc, void* exec_argv, void (*callback) (void* isolate, void* param1, void* param2, int argc, void* argv, int exec_argc, void* exec_argv)) {
-        JNI_CALL_VOID(this, GraalAccessMethod::isolate_enter_polyglot_engine, (jlong) callback, (jlong) this, (jlong) param1, (jlong) param2, (jint) argc, (jlong) argv, (jint) exec_argc, (jlong) exec_argv);
+    void Isolate::EnterPolyglotEngine(void* param1, void* param2, void* args, void* exec_args, void (*callback) (void* isolate, void* param1, void* param2, void* args, void* exec_args)) {
+        JNI_CALL_VOID(this, GraalAccessMethod::isolate_enter_polyglot_engine, (jlong) callback, (jlong) this, (jlong) param1, (jlong) param2, (jlong) args, (jlong) exec_args);
     }
 
     MaybeLocal<Value> JSON::Parse(Isolate* isolate, Local<String> json_string) {

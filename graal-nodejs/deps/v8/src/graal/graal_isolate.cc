@@ -618,7 +618,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::isolate_get_large_int_placeholder, "isolateGetLargeIntPlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_double_placeholder, "isolateGetDoublePlaceholder", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_dispose, "isolateDispose", "(ZI)V")
-    ACCESS_METHOD(GraalAccessMethod::isolate_enter_polyglot_engine, "isolateEnterPolyglotEngine", "(JJJJIJIJ)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_enter_polyglot_engine, "isolateEnterPolyglotEngine", "(JJJJJJ)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_perform_gc, "isolatePerformGC", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_hook, "isolateEnablePromiseHook", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_reject_callback, "isolateEnablePromiseRejectCallback", "(Z)V")

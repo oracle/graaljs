@@ -83,7 +83,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("deallocate", "(J)V", &GraalDeallocate),
     CALLBACK("weakCallback", "(JJI)V", &GraalWeakCallback),
     CALLBACK("notifyGCCallbacks", "(Z)V", &GraalNotifyGCCallbacks),
-    CALLBACK("polyglotEngineEntered", "(JJJJIJIJ)V", &GraalPolyglotEngineEntered),
+    CALLBACK("polyglotEngineEntered", "(JJJJJJ)V", &GraalPolyglotEngineEntered),
     CALLBACK("getCoreModuleBinarySnapshot", "(Ljava/lang/String;)Ljava/nio/ByteBuffer;", &GraalGetCoreModuleBinarySnapshot),
     CALLBACK("createAsyncHandle", "(JLjava/lang/Runnable;)J", &GraalCreateAsyncHandle),
     CALLBACK("closeAsyncHandle", "(J)V", &GraalCloseAsyncHandle),
@@ -580,8 +580,8 @@ void GraalNotifyGCCallbacks(JNIEnv* env, jclass nativeAccess, jboolean prolog) {
     isolate->NotifyGCCallbacks(prolog);
 }
 
-void GraalPolyglotEngineEntered(JNIEnv* env, jclass nativeAccess, jlong functionPointer, jlong isolate, jlong param1, jlong param2, jint argc, jlong argv, jint exec_argc, jlong exec_argv) {
-    ((void (*) (void* isolate, void* param1, void* param2, int argc, void* argv, int exec_argc, void* exec_argv)) functionPointer)((void*) isolate, (void*) param1, (void*) param2, (int) argc, (void*) argv, (int) exec_argc, (void*) exec_argv);
+void GraalPolyglotEngineEntered(JNIEnv* env, jclass nativeAccess, jlong functionPointer, jlong isolate, jlong param1, jlong param2, jlong args, jlong exec_args) {
+    ((void (*) (void* isolate, void* param1, void* param2, void* args, void* exec_args)) functionPointer)((void*) isolate, (void*) param1, (void*) param2, (void*) args, (void*) exec_args);
 }
 
 GraalIsolate* CurrentIsolateChecked() {
