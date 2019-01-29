@@ -2954,8 +2954,7 @@ Isolate* NewIsolate(ArrayBufferAllocator* allocator) {
 }
 
 static void StartInPolyglotEngine(void* isolate_, void* event_loop_, void* allocator_,
-                                  int argc, void* argv,
-                                  int exec_argc, void* exec_argv);
+                                  void* args, void* exec_args);
 
 inline int Start(uv_loop_t* event_loop,
                  const std::vector<std::string>& args,
@@ -2965,19 +2964,16 @@ inline int Start(uv_loop_t* event_loop,
   Isolate* const isolate = NewIsolate(allocator.get());
   if (isolate == nullptr)
     return 12;  // Signal internal error.
-  isolate->EnterPolyglotEngine(event_loop, allocator.get(), args.size(), (void*) args.data(), exec_args.size(), (void*) exec_args.data(), &StartInPolyglotEngine);
+  isolate->EnterPolyglotEngine(event_loop, allocator.get(), (void*) &args, (void*) &exec_args, &StartInPolyglotEngine);
   return 0;
 }
 
 static void StartInPolyglotEngine(void* isolate_, void* event_loop_, void* allocator_,
-                                  int argc, void* argv_,
-                                  int exec_argc, void* exec_argv_) {
+                                  void* args_, void* exec_args_) {
   Isolate* isolate = static_cast<Isolate*>(isolate_);
   uv_loop_t* event_loop = static_cast<uv_loop_t*> (event_loop_);
-  const char* const* argv = static_cast<const char* const*> (argv_);
-  const char* const* exec_argv = static_cast<const char* const*> (exec_argv_);
-  std::vector<std::string> args(argv, argv + argc);
-  std::vector<std::string> exec_args(exec_argv, exec_argv + exec_argc);
+  std::vector<std::string>* args = static_cast<std::vector<std::string>*> (args_);
+  std::vector<std::string>* exec_args = static_cast<std::vector<std::string>*> (exec_args_);
   ArrayBufferAllocator* allocator = static_cast<ArrayBufferAllocator*>(allocator_);
 
   {
@@ -3004,7 +3000,7 @@ static void StartInPolyglotEngine(void* isolate_, void* event_loop_, void* alloc
       isolate->GetHeapProfiler()->StartTrackingHeapObjects(true);
     }
     exit_code =
-        Start(isolate, isolate_data.get(), args, exec_args);
+        Start(isolate, isolate_data.get(), *args, *exec_args);
   }
 
   {
