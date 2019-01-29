@@ -8105,7 +8105,7 @@ class V8_EXPORT Isolate {
   // graal-node.js extensions
   void SaveReturnValue(double value);
   Local<Value> CorrectReturnValue(internal::Object* value);
-  void EnterPolyglotEngine(void* param1, void* param2, int argc, void* argv, int exec_argc, void* exec_argv, void (*callback) (void* isolate, void* param1, void* param2, int argc, void* argv, int exec_argc, void* exec_argv));
+  void EnterPolyglotEngine(void* param1, void* param2, void* args, void* exec_args, void (*callback) (void* isolate, void* param1, void* param2, void* args, void* exec_args));
 
   /**
    * Check if this isolate is in use.
