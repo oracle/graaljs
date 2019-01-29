@@ -1440,11 +1440,18 @@ public class JSRealm {
                 private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
 
                 @Override
-                public JSModuleRecord resolveImportedModule(JSModuleRecord referencingModule, String specifier) {
+                public JSModuleRecord resolveImportedModule(JSModuleRecord referrer, String specifier) {
+                    String refPath = referrer.getSource().getPath();
                     try {
-                        TruffleFile refFile = getEnv().getTruffleFile(getPath(referencingModule.getSource())).getCanonicalFile();
-                        TruffleFile moduleFile = refFile.resolveSibling(specifier);
-                        String canonicalPath = moduleFile.getCanonicalFile().getPath();
+                        TruffleFile moduleFile;
+                        if (refPath == null) {
+                            // Importing module source does not originate from a file.
+                            moduleFile = getEnv().getTruffleFile(specifier).getCanonicalFile();
+                        } else {
+                            TruffleFile refFile = getEnv().getTruffleFile(refPath);
+                            moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
+                        }
+                        String canonicalPath = moduleFile.getPath();
                         JSModuleRecord existingModule = moduleMap.get(canonicalPath);
                         if (existingModule != null) {
                             return existingModule;
@@ -1458,27 +1465,22 @@ public class JSRealm {
                     }
                 }
 
-                private String getPath(Source source) {
-                    String path = source.getPath();
-                    if (path == null) {
-                        path = source.getName();
-                    }
-                    return path;
-                }
-
                 @Override
                 public JSModuleRecord loadModule(Source source) {
-                    String path = getPath(source);
-                    String canoncialPath = path;
-                    try {
-                        TruffleFile moduleFile = getEnv().getTruffleFile(path);
-                        canoncialPath = moduleFile.getCanonicalFile().getPath();
-                    } catch (IOException e) {
-                        throw Errors.createErrorFromException(e);
-                    } catch (SecurityException e) {
-                        // ignore: might be a literal source that does not exist on the file system.
+                    String path = source.getPath();
+                    String canonicalPath;
+                    if (path == null) {
+                        // Source does not originate from a file.
+                        canonicalPath = source.getName();
+                    } else {
+                        try {
+                            TruffleFile moduleFile = getEnv().getTruffleFile(path);
+                            canonicalPath = moduleFile.getCanonicalFile().getPath();
+                        } catch (IOException | SecurityException e) {
+                            throw Errors.createErrorFromException(e);
+                        }
                     }
-                    return moduleMap.computeIfAbsent(canoncialPath, (key) -> getContext().getEvaluator().parseModule(getContext(), source, this));
+                    return moduleMap.computeIfAbsent(canonicalPath, (key) -> getContext().getEvaluator().parseModule(getContext(), source, this));
                 }
             };
         }
