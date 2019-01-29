@@ -234,11 +234,6 @@ shared_optgroup.add_option('--enable-shared-library',
     dest='enable_shared_library',
     help='build as a shared library with JNI support')
 
-shared_optgroup.add_option('--enable-threading',
-    action='store_true',
-    dest='enable_threading',
-    help='enable support for spawning uv loops using threads')
-
 shared_optgroup.add_option('--svm',
     action='store_true',
     dest='svm',
@@ -1084,19 +1079,6 @@ def configure_node(o):
   if options.enable_shared_library:
     o['variables']['node_target_type'] = 'shared_library'
     o['cflags'] += ['-fPIC']
-
-  jniroot = options.java_home + '/include'
-  # threading support via JNI
-  if options.enable_threading:
-    if flavor == 'mac':
-      jnilinux = jniroot + '/darwin'
-    if flavor == 'linux':
-      jnilinux = jniroot + '/linux'
-    if not os.path.exists(jniroot):
-      raise Exception('cannot find ' + jniroot)
-    o['include_dirs'] += [jniroot]
-    o['include_dirs'] += [jnilinux]
-    o['variables']['node_enable_threading'] = b(True)
 
   if options.build_only_native:
     o['variables']['node_build_only_native'] = 'true'

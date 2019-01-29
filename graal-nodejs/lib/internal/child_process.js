@@ -21,17 +21,9 @@ const dgram = require('dgram');
 const util = require('util');
 const assert = require('assert');
 
-if (process.__node_cluster_threading) {
-  var vProcess = require('internal/graal/thread_process_wrap').Process;
-  var vPipe = require('internal/graal/thread_pipe_wrap').Pipe;
-} else {
-  var vProcess = internalBinding('process_wrap').Process;
-  var vPipe = internalBinding('pipe_wrap').Pipe;
-}
-const Process = vProcess;
-const Pipe = vPipe;
+const { Process } = internalBinding('process_wrap');
 const { WriteWrap } = internalBinding('stream_wrap');
-const { constants: PipeConstants } = internalBinding('pipe_wrap');
+const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
 const { TTY } = internalBinding('tty_wrap');
 const { TCP } = internalBinding('tcp_wrap');
 const { UDP } = internalBinding('udp_wrap');
@@ -325,12 +317,6 @@ ChildProcess.prototype.spawn = function(options) {
     }
 
     options.envPairs.push('NODE_CHANNEL_FD=' + ipcFd);
-  } else if (process.__node_cluster_threading) {
-    // If no IPC channel was created, we are about to spawn a non-node process.
-    var oldHandle = this._handle;
-    this._handle = new defaultProcess();
-    this._handle.owner = oldHandle.owner;
-    this._handle.onexit = oldHandle.onexit;
   }
 
   validateString(options.file, 'options.file');

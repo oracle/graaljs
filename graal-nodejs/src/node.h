@@ -857,7 +857,6 @@ class AsyncResource {
 // GRAAL EXTENSIONS
 
 long GraalArgumentsPreprocessing(int argc, char *argv[]);
-void GraalThreadingInit(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 }  // namespace node
 
