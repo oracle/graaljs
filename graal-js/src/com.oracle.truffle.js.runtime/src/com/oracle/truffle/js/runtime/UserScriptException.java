@@ -104,7 +104,7 @@ public final class UserScriptException extends GraalJSException {
      */
     @TruffleBoundary
     private static String getMessage(Object exc) {
-        if (JSObject.isJSObject(exc)) {
+        if (JSRuntime.isObject(exc)) {
             // try to get the constructor name, and then the message
             DynamicObject prototype = JSObject.getPrototype((DynamicObject) exc);
             if (prototype != Null.instance) {
@@ -120,9 +120,8 @@ public final class UserScriptException extends GraalJSException {
                     }
                 }
             }
-            return JSObject.safeToString((DynamicObject) exc);
         }
-        return Boundaries.stringValueOf(exc);
+        return JSRuntime.safeToString(exc);
     }
 
 }
