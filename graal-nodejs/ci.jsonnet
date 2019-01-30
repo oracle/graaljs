@@ -43,9 +43,10 @@ local common = import '../common.jsonnet';
   local gateSubstrateVmTip = buildGraalTip + {
     run+: [
       ['mx', '-p', '../../graal/substratevm', 'build', '--force-javac'],
-      ['mx', '--dynamicimports', '/substratevm', 'buildsvmimage'],
-      ['mx', '--dynamicimports', '/substratevm', 'svmnode', '-e', 'console.log(\'Hello, World!\')'],
-      ['mx', '--dynamicimports', '/substratevm', 'svmnpm', '--version'],
+      ['mx', '--env', 'svm', 'build'],
+      ['set-export', 'GRAALVM_HOME', ['mx', '--env', 'svm', 'graalvm-home']],
+      ['${GRAALVM_HOME}/bin/node', '-e', 'console.log(\'Hello, World!\')'],
+      ['${GRAALVM_HOME}/bin/npm', '--version'],
     ],
     timelimit: '30:00',
   },
