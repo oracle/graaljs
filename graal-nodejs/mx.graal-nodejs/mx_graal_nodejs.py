@@ -33,8 +33,7 @@ import mx_graal_nodejs_benchmark
 from mx import BinarySuite
 from mx_gate import Task
 from argparse import ArgumentParser
-from os import remove, symlink, unlink
-from os.path import exists, join, isdir, isfile, islink
+from os.path import exists, join
 
 _suite = mx.suite('graal-nodejs')
 _currentOs = mx.get_os()
@@ -99,8 +98,6 @@ def _build(args, debug, shared_library, threading, parallelism, debug_mode, outp
         nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
         _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), nodePath], verbose=True)
 
-    _createSymLinks()
-
 class GraalNodeJsProject(mx.NativeProject):
     def __init__(self, suite, name, deps, workingSets, results, output, **args):
         self.suite = suite
@@ -139,7 +136,6 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def clean(self, forBuild=False):
         if not forBuild:
             mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
-            _deleteTruffleNode()
 
 class GraalNodeJsArchiveProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):
@@ -382,33 +378,6 @@ def _mxrun(args, cwd=_suite.dir, verbose=False, out=None):
     status = mx.run(args, nonZeroIsFatal=False, cwd=cwd, out=out)
     if status:
         mx.abort(status)
-
-def _createSymLinks():
-    def _createSymLinkToTruffleNode(dest):
-        if not exists(dest):
-            symlink(join(_suite.dir, mx.distribution('TRUFFLENODE').path), dest)
-
-    # create symbolic links to trufflenode.jar
-    _createSymLinkToTruffleNode(join(_suite.dir, 'trufflenode.jar'))
-    for mode in ['Debug', 'Release']:
-        destDir = join(_suite.dir, 'out', mode)
-        if exists(destDir):
-            _createSymLinkToTruffleNode(join(destDir, 'trufflenode.jar'))
-
-def _deleteTruffleNode():
-    def _delete(path):
-        if islink(path):
-            unlink(path)
-        elif isfile(path):
-            mx.logv('Warning! %s is a file, not a symlink, and will be deleted' % path)
-            remove(path)
-        elif isdir(path):
-            mx.logv('Warning! %s is a directory, not a symlink, and will be deleted' % path)
-            shutil.rmtree(path)
-
-    _delete(join(_suite.dir, 'out'))
-    _delete(join(_suite.dir, 'node'))
-    _delete(join(_suite.dir, 'trufflenode.jar'))
 
 def _setEnvVar(name, val):
     if val:
