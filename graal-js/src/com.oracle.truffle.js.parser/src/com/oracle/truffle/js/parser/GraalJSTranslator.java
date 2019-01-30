@@ -46,6 +46,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import com.oracle.js.parser.Lexer;
 import com.oracle.js.parser.Token;
@@ -167,6 +169,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.util.Pair;
 
 abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor<LexicalContext, JavaScriptNode> {
     public static final JavaScriptNode[] EMPTY_NODE_ARRAY = new JavaScriptNode[0];
@@ -2402,8 +2405,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertLHSToNumeric) {
         assert shortcutOperation != null || (!returnOldValue && !convertLHSToNumeric) : "returnOldValue / convertLHSToNumeric can only be used with shortcut assignments";
         JavaScriptNode assignedNode = null;
-        JavaScriptNode prev = null;
-        VarRef resultTemp = (shortcutOperation != null && returnOldValue) ? environment.createTempVar() : null;
         TokenType tokenType = lhsExpression.tokenType();
         if (tokenType != TokenType.IDENT && lhsExpression instanceof IdentNode) {
             tokenType = TokenType.IDENT;
@@ -2411,7 +2412,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         switch (tokenType) {
             case IDENT: {
                 setAnonymousFunctionName(assignedValue, ((IdentNode) lhsExpression).getName());
-                assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, shortcutOperation, returnOldValue, convertLHSToNumeric, resultTemp, initializationAssignment);
+                assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, shortcutOperation, returnOldValue, convertLHSToNumeric, initializationAssignment);
                 break;
             }
             case LBRACKET: {
@@ -2420,49 +2421,51 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 JavaScriptNode target = transform(indexNode.getBase());
                 JavaScriptNode elem = transform(indexNode.getIndex());
 
-                JavaScriptNode rhs;
-
-                if (shortcutOperation != null) {
-                    if (!(target instanceof RepeatableNode)) {
-                        VarRef newTemp = environment.createTempVar();
-                        prev = newTemp.createWriteNode(target);
-                        target = newTemp.createReadNode();
-                    }
-                    if (!(elem instanceof RepeatableNode)) {
-                        VarRef newTemp = environment.createTempVar();
-                        JavaScriptNode assignment = newTemp.createWriteNode(elem);
-                        if (prev == null) {
-                            prev = assignment;
-                        } else {
-                            prev = factory.createDual(context, prev, assignment);
-                        }
-                        elem = newTemp.createReadNode();
-                    }
-
-                    // index must be ToPropertyKey-converted only once, save it in temp var
-                    VarRef keyTemp = environment.createTempVar();
-
-                    JavaScriptNode shortcutNode = tagExpression(factory.createReadElementNode(context, target, keyTemp.createReadNode()), lhsExpression);
-
-                    // RequireObjectCoercible(target); safely repeatable, no temp var needed
-                    target = factory.createToObject(context, factory.copy(target));
-                    // perform the key type conversion in WriteElementNode (evaluated first)
-                    elem = keyTemp.createWriteNode(factory.createToArrayIndex(elem));
-
-                    if (convertLHSToNumeric) {
-                        shortcutNode = factory.numericConversion(shortcutNode);
-                    }
-
-                    if (returnOldValue) {
-                        shortcutNode = resultTemp.createWriteNode(shortcutNode);
-                    }
-
-                    rhs = tagExpression(factory.createBinary(context, shortcutOperation, shortcutNode, assignedValue), lhsExpression);
+                if (shortcutOperation == null) {
+                    assignedNode = factory.createWriteElementNode(target, elem, assignedValue, context, environment.isStrictMode());
                 } else {
-                    rhs = assignedValue;
-                }
+                    // Evaluation order:
+                    // 1. target = GetValue(baseReference)
+                    // 2. key = GetValue(propertyNameReference)
+                    // 3. RequireObjectCoercible(target); safely repeatable
+                    // 4. key = ToPropertyKey(key); only once
+                    // 5. lhs = target[key];
+                    // 6. result = lhs op rhs;
+                    // 7. target[key] = result
 
-                assignedNode = factory.createWriteElementNode(target, elem, rhs, context, environment.isStrictMode());
+                    // Index must be ToPropertyKey-converted only once, save it in temp var
+                    VarRef keyTemp = environment.createTempVar();
+                    JavaScriptNode readIndex = keyTemp.createReadNode();
+                    JSWriteFrameSlotNode writeIndex = (JSWriteFrameSlotNode) keyTemp.createWriteNode(null);
+
+                    JavaScriptNode target1;
+                    JavaScriptNode target2;
+                    if (target instanceof RepeatableNode) {
+                        target1 = target;
+                        target2 = factory.copy(target);
+                    } else {
+                        VarRef targetTemp = environment.createTempVar();
+                        target1 = targetTemp.createWriteNode(target);
+                        target2 = targetTemp.createReadNode();
+                    }
+
+                    JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target2, readIndex), lhsExpression);
+                    if (convertLHSToNumeric) {
+                        readNode = factory.createToNumeric(readNode);
+                    }
+                    VarRef prevValueTemp = null;
+                    if (returnOldValue) {
+                        prevValueTemp = environment.createTempVar();
+                        readNode = prevValueTemp.createWriteNode(readNode);
+                    }
+                    JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, shortcutOperation, readNode, assignedValue), lhsExpression);
+                    JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target1, elem, binOpNode, writeIndex, context, environment.isStrictMode());
+                    if (returnOldValue) {
+                        assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+                    } else {
+                        assignedNode = writeNode;
+                    }
+                }
                 break;
             }
             case PERIOD: {
@@ -2470,33 +2473,37 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 AccessNode accessNode = (AccessNode) lhsExpression;
                 JavaScriptNode target = transform(accessNode.getBase());
 
-                JavaScriptNode rhs;
-
-                if (shortcutOperation != null) {
-                    if (!(target instanceof RepeatableNode)) {
-                        VarRef newTemp = environment.createTempVar();
-                        prev = newTemp.createWriteNode(target);
-                        target = newTemp.createReadNode();
-                    }
-
-                    JavaScriptNode shortcutNode = tagExpression(factory.createReadProperty(context, target, accessNode.getProperty()), accessNode);
-
-                    target = factory.copy(target);
-
-                    if (convertLHSToNumeric) {
-                        shortcutNode = factory.numericConversion(shortcutNode);
-                    }
-
-                    if (returnOldValue) {
-                        shortcutNode = resultTemp.createWriteNode(shortcutNode);
-                    }
-
-                    rhs = tagExpression(factory.createBinary(context, shortcutOperation, shortcutNode, assignedValue), accessNode);
+                if (shortcutOperation == null) {
+                    assignedNode = factory.createWriteProperty(target, accessNode.getProperty(), assignedValue, context, environment.isStrictMode());
                 } else {
-                    rhs = assignedValue;
-                }
+                    JavaScriptNode target1;
+                    JavaScriptNode target2;
+                    if (target instanceof RepeatableNode) {
+                        target1 = target;
+                        target2 = factory.copy(target);
+                    } else {
+                        VarRef targetTemp = environment.createTempVar();
+                        target1 = targetTemp.createWriteNode(target);
+                        target2 = targetTemp.createReadNode();
+                    }
 
-                assignedNode = factory.createWriteProperty(target, accessNode.getProperty(), rhs, context, environment.isStrictMode());
+                    VarRef prevValueTemp = null;
+                    JavaScriptNode readNode = tagExpression(factory.createReadProperty(context, target2, accessNode.getProperty()), accessNode);
+                    if (convertLHSToNumeric) {
+                        readNode = factory.createToNumeric(readNode);
+                    }
+                    if (returnOldValue) {
+                        prevValueTemp = environment.createTempVar();
+                        readNode = prevValueTemp.createWriteNode(readNode);
+                    }
+                    JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, shortcutOperation, readNode, assignedValue), lhsExpression);
+                    JavaScriptNode writeNode = factory.createWriteProperty(target1, accessNode.getProperty(), binOpNode, context, environment.isStrictMode());
+                    if (returnOldValue) {
+                        assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+                    } else {
+                        assignedNode = writeNode;
+                    }
+                }
                 break;
             }
             case ARRAY: {
@@ -2606,15 +2613,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             default:
                 throwUnsupportedAssignmentError(lhsExpression);
         }
-
-        if (shortcutOperation != null) {
-            ensureHasSourceSection(assignedNode, assignmentExpression);
-        }
-        if (prev != null) {
-            assignedNode = factory.createDual(context, prev, assignedNode);
-        }
-        if (resultTemp != null) {
-            assignedNode = factory.createDual(context, assignedNode, resultTemp.createReadNode());
+        if (returnOldValue && assignedNode instanceof DualNode) {
+            ensureHasSourceSection(((DualNode) assignedNode).getLeft(), assignmentExpression);
         }
         return tagExpression(assignedNode, assignmentExpression);
     }
@@ -2624,39 +2624,45 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode transformAssignmentIdent(IdentNode identNode, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertLHSToNumeric,
-                    VarRef resultTemp, boolean initializationAssignment) {
-        JavaScriptNode rhs;
+                    boolean initializationAssignment) {
+        JavaScriptNode rhs = assignedValue;
         String ident = identNode.getName();
         VarRef scopeVar = findScopeVarCheckTDZ(ident, initializationAssignment);
 
-        if (shortcutOperation != null) {
-            JavaScriptNode operand = tagExpression(scopeVar.createReadNode(), identNode);
-            JavaScriptNode shortcutNode = convertLHSToNumeric ? factory.numericConversion(operand) : operand;
-
-            if (returnOldValue) {
-                shortcutNode = resultTemp.createWriteNode(shortcutNode);
+        // if scopeVar is const, the assignment will never succeed and is only there to perform
+        // the temporal dead zone check and throw a ReferenceError instead of a TypeError
+        if (!initializationAssignment && scopeVar.isConst()) {
+            if (JSTruffleOptions.V8LegacyConst && !environment.isStrictMode()) {
+                // Note that there is no TDZ check for const in this mode either.
+                return rhs;
             }
-            rhs = tagExpression(factory.createBinary(context, shortcutOperation, shortcutNode, assignedValue), identNode);
-        } else {
-            rhs = assignedValue;
+            rhs = checkMutableBinding(rhs, scopeVar.getName());
         }
 
-        if (shortcutOperation != null && scopeVar.isGlobal()) {
-            // e.g.: lhs *= rhs => lhs = lhs * rhs
-            // If lhs is a side-effecting getter that deletes lhs, we must not throw
-            // ReferenceError at the lhs assignment since the lhs reference is already resolved.
-            return scopeVar.withRequired(false).createWriteNode(rhs);
-        } else {
-            // if scopeVar is const, the assignment will never succeed and is only there to perform
-            // the temporal dead zone check and throw a ReferenceError instead of a TypeError
-            if (!initializationAssignment && scopeVar.isConst()) {
-                if (JSTruffleOptions.V8LegacyConst && !environment.isStrictMode()) {
-                    // Note that there is no TDZ check for const in this mode either.
-                    return rhs;
-                }
-                rhs = checkMutableBinding(rhs, scopeVar.getName());
-            }
+        if (shortcutOperation == null) {
             return scopeVar.createWriteNode(rhs);
+        } else {
+            // e.g.: lhs *= rhs => lhs = lhs * rhs
+            // If lhs is a side-effecting getter that deletes lhs, we must not throw a
+            // ReferenceError at the lhs assignment since the lhs reference is already resolved.
+            // We also need to ensure that HasBinding is idempotent or evaluated at most once.
+            Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> pair = scopeVar.createCompoundAssignNode();
+            JavaScriptNode readNode = tagExpression(pair.getFirst().get(), identNode);
+            if (convertLHSToNumeric) {
+                readNode = factory.createToNumeric(readNode);
+            }
+            VarRef prevValueTemp = null;
+            if (returnOldValue) {
+                prevValueTemp = environment.createTempVar();
+                readNode = prevValueTemp.createWriteNode(readNode);
+            }
+            JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, shortcutOperation, readNode, rhs), identNode);
+            JavaScriptNode writeNode = pair.getSecond().apply(binOpNode);
+            if (returnOldValue) {
+                return factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+            } else {
+                return writeNode;
+            }
         }
     }
 

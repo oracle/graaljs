@@ -114,8 +114,10 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
 
     @Override
     public final Object executeWrite(VirtualFrame frame, Object value) {
-        throw new UnsupportedOperationException();
+        return executeWrite(frame, argumentsArrayNode.execute(frame), value);
     }
+
+    protected abstract Object executeWrite(VirtualFrame frame, Object argumentsArray, Object value);
 
     @Override
     public JavaScriptNode getRhs() {

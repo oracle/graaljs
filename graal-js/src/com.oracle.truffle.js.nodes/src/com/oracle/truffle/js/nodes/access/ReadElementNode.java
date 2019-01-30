@@ -141,12 +141,22 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadElementExpressionTag.class) && materializationNeeded()) {
-            JavaScriptNode clonedTarget = targetNode.hasSourceSection() ? cloneUninitialized(targetNode) : JSTaggedExecutionNode.createFor(targetNode, ExpressionTag.class);
-            JavaScriptNode clonedIndex = getIndexNode().hasSourceSection() ? cloneUninitialized(getIndexNode()) : JSTaggedExecutionNode.createFor(getIndexNode(), ExpressionTag.class);
+            JavaScriptNode clonedTarget;
+            if (targetNode == null || targetNode.hasSourceSection()) {
+                clonedTarget = cloneUninitialized(targetNode);
+            } else {
+                clonedTarget = JSTaggedExecutionNode.createFor(targetNode, ExpressionTag.class);
+                transferSourceSectionAddExpressionTag(this, clonedTarget);
+            }
+            JavaScriptNode clonedIndex;
+            if (indexNode == null || indexNode.hasSourceSection()) {
+                clonedIndex = cloneUninitialized(getIndexNode());
+            } else {
+                clonedIndex = JSTaggedExecutionNode.createFor(getIndexNode(), ExpressionTag.class);
+                transferSourceSectionAddExpressionTag(this, clonedIndex);
+            }
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
             transferSourceSectionAndTags(this, cloned);
-            transferSourceSectionAddExpressionTag(this, clonedTarget);
-            transferSourceSectionAddExpressionTag(this, clonedIndex);
             return cloned;
         }
         return this;
@@ -154,7 +164,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     private boolean materializationNeeded() {
         // Materialization is needed only if we don't have source sections.
-        return !(targetNode.hasSourceSection() && getIndexNode().hasSourceSection());
+        return (targetNode != null && !targetNode.hasSourceSection()) || (indexNode != null && !indexNode.hasSourceSection());
     }
 
     @Override

@@ -55,7 +55,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressio
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
-public class WritePropertyNode extends JSTargetableNode implements WriteNode {
+public class WritePropertyNode extends JSTargetableWriteNode {
 
     @Child protected JavaScriptNode targetNode;
     @Child protected JavaScriptNode rhsNode;
@@ -108,12 +108,15 @@ public class WritePropertyNode extends JSTargetableNode implements WriteNode {
         if (materializedTags.contains(WritePropertyExpressionTag.class) && !isScopeAccess()) {
             // if we have no source section, we must assign one to be discoverable at
             // instrumentation time.
-            if (!targetNode.hasSourceSection()) {
+            if (targetNode != null && !targetNode.hasSourceSection()) {
                 JavaScriptNode clonedTarget = (JavaScriptNode) targetNode.materializeInstrumentableNodes(materializedTags);
-                JavaScriptNode clonedRhs = (JavaScriptNode) rhsNode.materializeInstrumentableNodes(materializedTags);
+                JavaScriptNode clonedRhs = null;
+                if (rhsNode != null) {
+                    clonedRhs = (JavaScriptNode) rhsNode.materializeInstrumentableNodes(materializedTags);
+                    transferSourceSectionAndTags(this, clonedRhs);
+                }
                 WritePropertyNode cloneUninitialized = WritePropertyNode.create(clonedTarget, cache.getKey(), clonedRhs, cache.isGlobal(), cache.getContext(), cache.isStrict());
                 transferSourceSectionAndTags(this, cloneUninitialized);
-                transferSourceSectionAndTags(this, clonedRhs);
                 transferSourceSectionAddExpressionTag(this, cloneUninitialized.targetNode);
                 return cloneUninitialized;
             }

@@ -175,9 +175,9 @@ public class WriteElementNode extends JSTargetableNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded() && materializedTags.contains(WriteElementExpressionTag.class)) {
-            JavaScriptNode clonedTarget = targetNode.hasSourceSection() ? cloneUninitialized(targetNode) : JSTaggedExecutionNode.createFor(targetNode, this, ExpressionTag.class);
-            JavaScriptNode clonedIndex = indexNode.hasSourceSection() ? cloneUninitialized(indexNode) : JSTaggedExecutionNode.createFor(indexNode, this, ExpressionTag.class);
-            JavaScriptNode clonedValue = valueNode.hasSourceSection() ? cloneUninitialized(valueNode) : JSTaggedExecutionNode.createFor(valueNode, this, ExpressionTag.class);
+            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? cloneUninitialized(targetNode) : JSTaggedExecutionNode.createFor(targetNode, this, ExpressionTag.class);
+            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? cloneUninitialized(indexNode) : JSTaggedExecutionNode.createFor(indexNode, this, ExpressionTag.class);
+            JavaScriptNode clonedValue = valueNode == null || valueNode.hasSourceSection() ? cloneUninitialized(valueNode) : JSTaggedExecutionNode.createFor(valueNode, this, ExpressionTag.class);
             JavaScriptNode cloned = WriteElementNode.create(clonedTarget, clonedIndex, clonedValue, getContext(), isStrict(), writeOwn());
             transferSourceSectionAndTags(this, cloned);
             return cloned;
@@ -185,9 +185,9 @@ public class WriteElementNode extends JSTargetableNode {
         return this;
     }
 
-    private boolean materializationNeeded() {
+    protected boolean materializationNeeded() {
         // Materialization is needed only if we don't have source sections.
-        return !(targetNode.hasSourceSection() && indexNode.hasSourceSection() && valueNode.hasSourceSection());
+        return (targetNode != null && !targetNode.hasSourceSection()) || (indexNode != null && !indexNode.hasSourceSection()) || (valueNode != null && !valueNode.hasSourceSection());
     }
 
     @Override
@@ -295,19 +295,19 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    protected final Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index) {
+    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index) {
         Object value = valueNode.execute(frame);
         executeWithTargetAndIndexAndValue(target, index, value);
         return value;
     }
 
-    protected final Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index) {
+    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index) {
         Object value = valueNode.execute(frame);
         executeWithTargetAndIndexAndValue(target, index, value);
         return value;
     }
 
-    protected final int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
+    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
         try {
             int value = valueNode.executeInt(frame);
             executeWithTargetAndIndexAndValue(target, index, value);
@@ -318,7 +318,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    protected final int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
+    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
         try {
             int value = valueNode.executeInt(frame);
             executeWithTargetAndIndexAndValue(target, index, (Object) value);
@@ -329,7 +329,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    protected final double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
+    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
         try {
             double value = valueNode.executeDouble(frame);
             executeWithTargetAndIndexAndValue(target, index, value);
@@ -340,7 +340,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    protected final double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
+    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
         try {
             double value = valueNode.executeDouble(frame);
             executeWithTargetAndIndexAndValue(target, index, (Object) value);

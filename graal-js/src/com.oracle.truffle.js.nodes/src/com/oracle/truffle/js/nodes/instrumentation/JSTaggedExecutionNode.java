@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.instrumentation;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -82,7 +84,7 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
     }
 
     public JSTaggedExecutionNode(JavaScriptNode child, Class<? extends Tag> expectedTag, NodeObjectDescriptor descriptor) {
-        this.child = child;
+        this.child = Objects.requireNonNull(child);
         this.descriptor = descriptor;
         this.expectedTag = expectedTag;
     }

@@ -45,7 +45,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -54,19 +55,21 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
-import com.oracle.truffle.js.nodes.access.DoWithNode;
 import com.oracle.truffle.js.nodes.access.EvalVariableNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
+import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.Pair;
 
 public abstract class Environment {
 
@@ -183,10 +186,32 @@ public abstract class Environment {
     }
 
     @FunctionalInterface
-    interface WrapClosure extends BiFunction<JavaScriptNode, WrapAccess, JavaScriptNode> {
-        default WrapClosure compose(WrapClosure before) {
+    interface WrapClosure {
+        JavaScriptNode apply(JavaScriptNode node, WrapAccess access);
+
+        default Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> applyCompound(Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> suppliers) {
+            Supplier<JavaScriptNode> readSupplier = suppliers.getFirst();
+            UnaryOperator<JavaScriptNode> writeSupplier = suppliers.getSecond();
+            return new Pair<>(() -> apply(readSupplier.get(), WrapAccess.Read),
+                            (rhs) -> apply(writeSupplier.apply(rhs), WrapAccess.Write));
+        }
+
+        static WrapClosure compose(WrapClosure inner, WrapClosure before) {
             Objects.requireNonNull(before);
-            return (JavaScriptNode v, WrapAccess w) -> apply(before.apply(v, w), w);
+            if (inner == null) {
+                return before;
+            }
+            return new WrapClosure() {
+                @Override
+                public JavaScriptNode apply(JavaScriptNode v, WrapAccess w) {
+                    return inner.apply(before.apply(v, w), w);
+                }
+
+                @Override
+                public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> applyCompound(Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> suppliers) {
+                    return inner.applyCompound(before.applyCompound(suppliers));
+                }
+            };
         }
     }
 
@@ -280,10 +305,9 @@ public abstract class Environment {
     }
 
     private WrapClosure makeEvalWrapClosure(WrapClosure wrapClosure, String name, int frameLevel, int scopeLevel, Environment current) {
-        WrapClosure inner = maybeMakeDefaultWrapClosure(wrapClosure);
         final FrameSlot dynamicScopeSlot = current.findBlockFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
         assert dynamicScopeSlot != null;
-        return inner.compose(new WrapClosure() {
+        return WrapClosure.compose(wrapClosure, new WrapClosure() {
             @Override
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
                 JavaScriptNode dynamicScopeNode = createLocal(dynamicScopeSlot, frameLevel, scopeLevel);
@@ -293,10 +317,11 @@ public abstract class Environment {
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
                     scopeAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
-                } else {
-                    assert access == WrapAccess.Read;
+                } else if (access == WrapAccess.Read) {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
                     scopeAccessNode = factory.createProperty(context, null, name);
+                } else {
+                    throw new IllegalArgumentException();
                 }
                 return new EvalVariableNode(context, name, delegateNode, dynamicScopeNode, scopeAccessNode);
             }
@@ -304,8 +329,7 @@ public abstract class Environment {
     }
 
     private WrapClosure makeWithWrapClosure(WrapClosure wrapClosure, String name, String withVarName) {
-        WrapClosure inner = maybeMakeDefaultWrapClosure(wrapClosure);
-        return inner.compose(new WrapClosure() {
+        return WrapClosure.compose(wrapClosure, new WrapClosure() {
             @Override
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
                 JSTargetableNode withAccessNode;
@@ -314,19 +338,39 @@ public abstract class Environment {
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
                     withAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
-                } else {
-                    assert access == WrapAccess.Read;
+                } else if (access == WrapAccess.Read) {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
                     withAccessNode = factory.createProperty(context, null, name);
+                } else {
+                    throw new IllegalArgumentException();
                 }
-                return new DoWithNode(context, name, findLocalVar(withVarName).createReadNode(), withAccessNode, delegateNode);
+                JavaScriptNode withTarget = factory.createWithTarget(context, name, findInternalSlot(withVarName).createReadNode());
+                return factory.createWithVarWrapper(name, withTarget, withAccessNode, delegateNode);
+            }
+
+            @Override
+            public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> applyCompound(Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> suppliers) {
+                // Use temp var to ensure unscopables check is evaluated only once.
+                VarRef withTargetTempVar = Environment.this.createTempVar();
+                VarRef withObjVar = findInternalSlot(withVarName);
+                Supplier<JavaScriptNode> innerReadSupplier = suppliers.getFirst();
+                UnaryOperator<JavaScriptNode> innerWriteSupplier = suppliers.getSecond();
+                Supplier<JavaScriptNode> readSupplier = () -> {
+                    PropertyNode readWithProperty = factory.createProperty(context, null, name);
+                    return factory.createWithVarWrapper(name, withTargetTempVar.createReadNode(), readWithProperty, innerReadSupplier.get());
+                };
+                UnaryOperator<JavaScriptNode> writeSupplier = (rhs) -> {
+                    JavaScriptNode withTarget = factory.createWithTarget(context, name, withObjVar.createReadNode());
+                    WritePropertyNode writeWithProperty = factory.createWriteProperty(null, name, null, context, isStrictMode());
+                    return factory.createWithVarWrapper(name, withTargetTempVar.createWriteNode(withTarget), writeWithProperty, innerWriteSupplier.apply(rhs));
+                };
+                return new Pair<>(readSupplier, writeSupplier);
             }
         });
     }
 
     private WrapClosure makeGlobalWrapClosure(WrapClosure wrapClosure, String name) {
-        WrapClosure inner = maybeMakeDefaultWrapClosure(wrapClosure);
-        return inner.compose(new WrapClosure() {
+        return WrapClosure.compose(wrapClosure, new WrapClosure() {
             @Override
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
                 JSTargetableNode scopeAccessNode;
@@ -335,28 +379,16 @@ public abstract class Environment {
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
                     scopeAccessNode = factory.createWriteProperty(null, name, null, context, true);
-                } else {
-                    assert access == WrapAccess.Read;
+                } else if (access == WrapAccess.Read) {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
                     scopeAccessNode = factory.createProperty(context, null, name);
+                } else {
+                    throw new IllegalArgumentException();
                 }
                 JavaScriptNode globalScope = factory.createGlobalScope(context);
                 return factory.createGlobalVarWrapper(name, delegateNode, globalScope, scopeAccessNode);
             }
         });
-    }
-
-    private static WrapClosure maybeMakeDefaultWrapClosure(WrapClosure wrapClosure) {
-        WrapClosure inner = wrapClosure;
-        if (inner == null) {
-            inner = new WrapClosure() {
-                @Override
-                public JavaScriptNode apply(JavaScriptNode accessNode, WrapAccess write) {
-                    return accessNode;
-                }
-            };
-        }
-        return inner;
     }
 
     private VarRef wrapIn(WrapClosure wrapClosure, int wrapFrameLevel, VarRef wrappee) {
@@ -579,6 +611,10 @@ public abstract class Environment {
 
         public JavaScriptNode createDeleteNode() {
             return factory.createConstantBoolean(false);
+        }
+
+        public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> createCompoundAssignNode() {
+            return new Pair<>(this::createReadNode, rhs -> withRequired(false).createWriteNode(rhs));
         }
 
         public VarRef withTDZCheck() {
@@ -875,6 +911,11 @@ public abstract class Environment {
         @Override
         public JavaScriptNode createDeleteNode() {
             return wrapClosure.apply(wrappee.createDeleteNode(), WrapAccess.Delete);
+        }
+
+        @Override
+        public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> createCompoundAssignNode() {
+            return wrapClosure.applyCompound(wrappee.createCompoundAssignNode());
         }
 
         @Override

@@ -103,7 +103,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
             }
         }
         if (right instanceof JSConstantNumericUnitNode) {
-            return JSAddSubNumericUnitNodeGen.create(left, true, truncate);
+            return JSAddSubNumericUnitNode.create(left, true, truncate);
         }
         return JSAddNodeGen.create(truncate, left, right);
     }

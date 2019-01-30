@@ -78,7 +78,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(WriteVariableExpressionTag.class)) {
-            if (!getRhs().hasSourceSection() && this.hasSourceSection()) {
+            if (getRhs() != null && !getRhs().hasSourceSection() && this.hasSourceSection()) {
                 transferSourceSectionAddExpressionTag(this, getRhs());
             }
         }
