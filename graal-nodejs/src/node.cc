@@ -2016,10 +2016,6 @@ void SetupProcessObject(Environment* env,
     env->SetMethod(process, "abort", Abort);
     env->SetMethod(process, "chdir", Chdir);
     env->SetMethod(process, "umask", Umask);
-
-#ifdef GRAAL_ENABLE_THREADING
-  env->SetMethod(process, "_graalThreadingInit", GraalThreadingInit);
-#endif
   }
   env->SetMethod(process, "_getActiveRequests", GetActiveRequests);
   env->SetMethod(process, "_getActiveHandles", GetActiveHandles);
@@ -3133,14 +3129,6 @@ long GraalArgumentsPreprocessing(int argc, char *argv[]) {
   }
   return result;
 }
-
-#ifdef GRAAL_ENABLE_THREADING
-#include "graal/graal_threading.h"
-
-void GraalThreadingInit(const FunctionCallbackInfo<Value>& args) {
-  graal::threading::RegisterNativeCallbacks();
-}
-#endif
 
 // Call built-in modules' _register_<module name> function to
 // do module registration explicitly.

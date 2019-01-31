@@ -76,14 +76,14 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
-def _build(args, debug, shared_library, threading, parallelism, debug_mode, output_dir):
+def _build(args, debug, shared_library, parallelism, debug_mode, output_dir):
     _mxrun([join('.', 'configure'),
             '--partly-static',
             '--build-only-native',
             '--without-dtrace',
             '--without-snapshot',
             '--java-home', _getJdkHome()
-        ] + debug + shared_library + threading,
+        ] + debug + shared_library,
         cwd=_suite.dir, verbose=True)
 
     verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
@@ -126,9 +126,8 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         debugMode = hasattr(self.args, 'debug') and self.args.debug
         debug = ['--debug'] if debugMode else []
         sharedlibrary = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
-        threading = ['--enable-threading'] if hasattr(self.args, 'threading') and self.args.threading else []
 
-        _build(args=[], debug=debug, shared_library=sharedlibrary, threading=threading, parallelism=self.parallelism, debug_mode=debugMode, output_dir=self.subject.output)
+        _build(args=[], debug=debug, shared_library=sharedlibrary, parallelism=self.parallelism, debug_mode=debugMode, output_dir=self.subject.output)
 
     def needsBuild(self, newestInput):
         return (True, None) # Let make decide

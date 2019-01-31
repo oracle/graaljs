@@ -22,7 +22,6 @@
     'node_v8_options%': '',
     'node_enable_v8_vtunejit%': 'false',
     'node_target_type%': 'executable',
-    'node_enable_threading%': 'false',
     'node_production%': 'false',
     'node_build_only_native%': 'false',
     'node_core_target_name%': 'node',
@@ -473,17 +472,6 @@
         # Production build
         [ 'node_production=="true"', {
           'defines': [ 'NDEBUG' ],
-        }],
-        # Threading
-        [ 'node_enable_threading=="true"', {
-          'defines': [ 'GRAAL_ENABLE_THREADING' ],
-          'sources': [
-            'src/graal/graal_threading.cc',
-          ],
-          'library_files': [
-            'lib/internal/graal/thread_process_wrap.js',
-            'lib/internal/graal/thread_pipe_wrap.js',
-          ],          
         }],
         [ 'OS=="mac"', {
           'conditions': [
