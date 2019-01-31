@@ -77,7 +77,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
 def _build(args, debug, shared_library, threading, parallelism, debug_mode, output_dir):
-    _mxrun(['./configure',
+    _mxrun([join('.', 'configure'),
             '--partly-static',
             '--build-only-native',
             '--without-dtrace',
@@ -92,7 +92,7 @@ def _build(args, debug, shared_library, threading, parallelism, debug_mode, outp
     # put headers for native modules into out/headers
     _setEnvVar('HEADERS_ONLY', '1')
     out = None if mx.get_opts().verbose else open(os.devnull, 'w')
-    _mxrun([join(_suite.mxDir, 'python2', 'python'), 'tools/install.py', 'install', 'out/headers', '/'], out=out)
+    _mxrun([join(_suite.mxDir, 'python2', 'python'), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out)
 
     if _currentOs == 'darwin':
         nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
@@ -179,12 +179,12 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
 
     def newestInput(self):
         relInputPaths = [join('lib', m) for m in self.modulesToSnapshot()] + \
-                        ['mx.graal-nodejs/mx_graal_nodejs.py',
-                         'tools/js2c.py',
-                         'tools/expand-js-macros.py',
-                         'tools/snapshot2c.py',
-                         'src/notrace_macros.py',
-                         'src/noperfctr_macros.py']
+                        [join('mx.graal-nodejs', 'mx_graal_nodejs.py'),
+                         join('tools', 'js2c.py'),
+                         join('tools', 'expand-js-macros.py'),
+                         join('tools', 'snapshot2c.py'),
+                         join('src', 'notrace_macros.py'),
+                         join('src', 'noperfctr_macros.py')]
         absInputPaths = [join(_suite.dir, p) for p in relInputPaths]
         return mx.TimeStampFile.newest(absInputPaths)
 
@@ -207,10 +207,10 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
 
         brokenModules = [
             'assert.js',                          # Uses await
-            'internal/errors.js',                 # Uses JSFunction.HOME_OBJECT_ID
-            'internal/fs/promises.js',            # Uses await
-            'internal/modules/esm/module_map.js', # Uses JSFunction.HOME_OBJECT_ID
-            'internal/readline.js',               # Uses yield
+            join('internal', 'errors.js'),        # Uses JSFunction.HOME_OBJECT_ID
+            join('internal', 'fs', 'promises.js'),# Uses await
+            join('internal', 'modules', 'esm', 'module_map.js'),# Uses JSFunction.HOME_OBJECT_ID
+            join('internal', 'readline.js'),      # Uses yield
             'vm.js',                              # Uses JSFunction.HOME_OBJECT_ID
         ]
 
@@ -226,7 +226,7 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
     def build(self):
         outputDir = self.subject.output_dir()
         snapshotToolDistribution = 'graal-js:TRUFFLE_JS_SNAPSHOT_TOOL'
-        pythonCmd = join(_suite.mxDir, 'python2/python')
+        pythonCmd = join(_suite.mxDir, 'python2', 'python')
 
         moduleSet = self.modulesToSnapshot()
 
@@ -236,19 +236,19 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         macroFiles = []
         # performance counters are enabled by default only on Windows
         if _currentOs is not 'windows':
-            macroFiles.append('src/noperfctr_macros.py')
+            macroFiles.append(join('src', 'noperfctr_macros.py'))
         # DTrace is disabled explicitly by the --without-dtrace option
         # ETW is enabled by default only on Windows
         if _currentOs is not 'windows':
-            macroFiles.append('src/notrace_macros.py')
+            macroFiles.append(join('src', 'notrace_macros.py'))
 
-        mx.run([pythonCmd, 'tools/expand-js-modules.py', outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
+        mx.run([pythonCmd, join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
                cwd=_suite.dir)
         if not (hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac):
             mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]), mx.distribution(snapshotToolDistribution).mainClass,
                      '--binary', '--outdir=' + outputDirBin, '--indir=' + outputDirBin] + ['--file=' + m for m in moduleSet],
                     cwd=outputDirBin)
-        mx.run([pythonCmd, join(_suite.dir, 'tools/snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
+        mx.run([pythonCmd, join(_suite.dir, 'tools', 'snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
                cwd=outputDir)
 
     def clean(self, forBuild=False):
@@ -275,7 +275,7 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs'] + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
-    return mx.run([join(_suite.mxDir, 'python2', 'python'), 'tools/test.py'] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
+    return mx.run([join(_suite.mxDir, 'python2', 'python'), join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath(additionalPath=None):
     javaHome = _getJdkHome()
@@ -452,8 +452,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     truffle_jars=['graal-nodejs:TRUFFLENODE'],
     support_distributions=['graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
     provided_executables=[
-        'bin/node',
-        'bin/npm',
+        join('bin', 'node'),
+        join('bin', 'npm'),
     ],
     polyglot_lib_build_args=[
         "-H:JNIConfigurationResources=svmnodejs.jniconfig",
