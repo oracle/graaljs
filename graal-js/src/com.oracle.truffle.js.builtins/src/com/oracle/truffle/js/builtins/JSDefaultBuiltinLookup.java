@@ -217,7 +217,6 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
     /* In a separate method for Substrate VM support. */
     private void defineJavaInterop() {
         defineBuiltins(new JavaBuiltins());
-        defineBuiltins(new JavaInteropWorkerPrototypeBuiltins());
         defineBuiltins(new JavaNashornCompatBuiltins());
     }
 }

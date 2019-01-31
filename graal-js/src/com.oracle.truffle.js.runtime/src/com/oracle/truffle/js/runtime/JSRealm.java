@@ -85,7 +85,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSIntl;
-import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
@@ -137,7 +136,6 @@ public class JSRealm {
     public static final String ARGUMENTS_NAME = "arguments";
     public static final String JAVA_CLASS_NAME = "Java";
     public static final String JAVA_CLASS_NAME_NASHORN_COMPAT = "JavaNashornCompat";
-    private static final String JAVA_WORKER_PROPERTY_NAME = "Worker";
     public static final String PERFORMANCE_CLASS_NAME = "performance";
     public static final String DEBUG_CLASS_NAME = "Debug";
     public static final String CONSOLE_CLASS_NAME = "Console";
@@ -232,8 +230,6 @@ public class JSRealm {
     private final JSConstructor promiseConstructor;
 
     private DynamicObject javaPackageToPrimitiveFunction;
-
-    private final JSConstructor javaInteropWorkerConstructor;
 
     private final DynamicObject arrayProtoValuesIterator;
     @CompilationFinal private DynamicObject typedArrayConstructor;
@@ -408,8 +404,6 @@ public class JSRealm {
         this.asyncFromSyncIteratorPrototype = es9 ? JSFunction.createAsyncFromSyncIteratorPrototype(this) : null;
         this.asyncGeneratorFunctionConstructor = es9 ? JSFunction.createAsyncGeneratorFunctionConstructor(this) : null;
         this.asyncGeneratorObjectPrototype = es9 ? (DynamicObject) asyncGeneratorFunctionConstructor.getPrototype().get(JSObject.PROTOTYPE, null) : null;
-
-        this.javaInteropWorkerConstructor = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.createWorkerConstructor(this) : null;
 
         this.outputStream = System.out;
         this.errorStream = System.err;
@@ -1009,7 +1003,6 @@ public class JSRealm {
         if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
             JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME_NASHORN_COMPAT);
         }
-        JSObjectUtil.putDataProperty(context, java, JAVA_WORKER_PROPERTY_NAME, getJavaInteropWorkerConstructor().getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
         putGlobalProperty(global, JAVA_CLASS_NAME, java);
 
         if (getEnv() != null && getEnv().isHostLookupAllowed()) {
@@ -1220,10 +1213,6 @@ public class JSRealm {
 
     public JSConstructor getJSAdapterConstructor() {
         return jsAdapterConstructor;
-    }
-
-    public JSConstructor getJavaInteropWorkerConstructor() {
-        return javaInteropWorkerConstructor;
     }
 
     public TruffleLanguage.Env getEnv() {

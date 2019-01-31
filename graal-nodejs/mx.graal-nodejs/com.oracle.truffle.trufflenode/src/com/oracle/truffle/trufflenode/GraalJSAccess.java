@@ -206,7 +206,6 @@ import com.oracle.truffle.trufflenode.info.PropertyHandler;
 import com.oracle.truffle.trufflenode.info.Script;
 import com.oracle.truffle.trufflenode.info.UnboundScript;
 import com.oracle.truffle.trufflenode.info.Value;
-import com.oracle.truffle.trufflenode.interop.GraalJSJavaInteropMainWorker;
 import com.oracle.truffle.trufflenode.node.ExecuteNativeFunctionNode;
 import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
@@ -275,7 +274,7 @@ public final class GraalJSAccess {
     private static final TRegexUtil.TRegexCompiledRegexAccessor STATIC_COMPILED_REGEX_ACCESSOR = TRegexUtil.TRegexCompiledRegexAccessor.create();
     private static final TRegexUtil.TRegexFlagsAccessor STATIC_FLAGS_ACCESSOR = TRegexUtil.TRegexFlagsAccessor.create();
 
-    private GraalJSAccess(String[] args, long loopAddress) throws Exception {
+    private GraalJSAccess(String[] args) throws Exception {
         try {
             Options options = Options.parseArguments(prepareArguments(args));
             Context.Builder contextBuilder = options.getContextBuilder();
@@ -296,8 +295,6 @@ public final class GraalJSAccess {
         mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         mainJSContext = mainJSRealm.getContext();
         assert mainJSContext != null : "JSContext initialized";
-        GraalJSJavaInteropMainWorker worker = new GraalJSJavaInteropMainWorker(this, loopAddress);
-        mainJSContext.initializeJavaInteropWorkers(worker, worker);
         agent = new NodeJSAgent();
         mainJSContext.setJSAgent(agent);
         deallocator = new Deallocator();
@@ -316,8 +313,8 @@ public final class GraalJSAccess {
         return mergedArgs;
     }
 
-    public static Object create(String[] args, long loopAddress) throws Exception {
-        return new GraalJSAccess(args, loopAddress);
+    public static Object create(String[] args) throws Exception {
+        return new GraalJSAccess(args);
     }
 
     public Object undefinedInstance() {

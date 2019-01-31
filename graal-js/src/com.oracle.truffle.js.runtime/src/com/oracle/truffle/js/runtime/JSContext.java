@@ -95,7 +95,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
-import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
@@ -116,8 +115,6 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
-import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker;
-import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker.DefaultMainWorker;
 import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
@@ -288,13 +285,6 @@ public class JSContext {
      */
     @CompilationFinal private JSAgent agent;
 
-    /**
-     * Java Interop Workers factory.
-     */
-    @CompilationFinal private EcmaAgent mainWorker;
-    @CompilationFinal private EcmaAgent.Factory javaInteropWorkersFactory;
-    @CompilationFinal private boolean shouldProcessJavaInteropAsyncTasks = true;
-
     private final JSContextOptions contextOptions;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
@@ -369,7 +359,6 @@ public class JSContext {
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
-    private final JSObjectFactory javaInteropWorkerObjectFactory;
     private final JSObjectFactory jsAdapterFactory;
     private final JSObjectFactory dictionaryObjectFactory;
 
@@ -517,7 +506,6 @@ public class JSContext {
         this.javaImporterFactory = nashornJavaInterop ? builder.create(JavaImporter.instance()) : null;
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaPackageFactory = JSRealm.isJavaInteropAvailable() ? builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape) : null;
-        this.javaInteropWorkerObjectFactory = JSRealm.isJavaInteropAvailable() ? builder.create(JSJavaWorkerBuiltin.INSTANCE) : null;
 
         this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
@@ -710,11 +698,6 @@ public class JSContext {
                     }
                     queueContainsJobs = true;
                 }
-            }
-
-            // In node.js-mode, tasks are processed by the uv loop.
-            if (shouldProcessJavaInteropAsyncTasks) {
-                queueContainsJobs = processJavaInteropAsyncTasks();
             }
 
             // If a job was executed, it might have scheduled other tasks.
@@ -1265,41 +1248,6 @@ public class JSContext {
 
     public boolean usePromiseResolve() {
         return contextOptions.isAwaitOptimization();
-    }
-
-    public void initializeJavaInteropWorkers(EcmaAgent workerMain, EcmaAgent.Factory workerFactory) {
-        assert mainWorker == null && javaInteropWorkersFactory == null;
-        mainWorker = workerMain;
-        javaInteropWorkersFactory = workerFactory;
-        shouldProcessJavaInteropAsyncTasks = false;
-    }
-
-    public EcmaAgent.Factory getJavaInteropWorkerFactory() {
-        if (javaInteropWorkersFactory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            javaInteropWorkersFactory = new DefaultJavaInteropWorker.Factory((DefaultMainWorker) getMainWorker());
-            // As soon as we load Java interop, we know we will use promises.
-            invalidatePromiseQueueNotUsedAssumption();
-        }
-        return javaInteropWorkersFactory;
-    }
-
-    public JSObjectFactory getJavaInteropWorkerObjectFactory() {
-        return javaInteropWorkerObjectFactory;
-    }
-
-    public EcmaAgent getMainWorker() {
-        if (mainWorker == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            mainWorker = new DefaultMainWorker();
-        }
-        return mainWorker;
-    }
-
-    public boolean processJavaInteropAsyncTasks() {
-        assert shouldProcessJavaInteropAsyncTasks;
-        DefaultMainWorker main = (DefaultMainWorker) getMainWorker();
-        return main.processPendingTasks();
     }
 
     public final void setPromiseRejectionTracker(PromiseRejectionTracker tracker) {
