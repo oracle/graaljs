@@ -79,7 +79,6 @@ mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 def _build(args, debug, shared_library, parallelism, debug_mode, output_dir):
     _mxrun([join('.', 'configure'),
             '--partly-static',
-            '--build-only-native',
             '--without-dtrace',
             '--without-snapshot',
             '--java-home', _getJdkHome()
