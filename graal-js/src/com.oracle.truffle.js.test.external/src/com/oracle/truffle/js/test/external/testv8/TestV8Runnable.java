@@ -104,7 +104,7 @@ public class TestV8Runnable extends TestRunnable {
         TestFile.Result testResult;
 
         long startDate = System.currentTimeMillis();
-        String testFileNamePrefix = "\nTEST_FILE_NAME = \"" + file.getPath() + "\"\n";
+        String testFileNamePrefix = "\nTEST_FILE_NAME = \"" + file.getPath().replaceAll("\\\\", "\\\\\\\\") + "\"\n";
         Source testFileNamePrefixSource = Source.newBuilder(JavaScriptLanguage.ID, testFileNamePrefix, "").buildLiteral();
         Source[] prequelSources = loadHarnessSources(ecmaVersion);
         Source[] sources = Arrays.copyOf(prequelSources, prequelSources.length + 2);
