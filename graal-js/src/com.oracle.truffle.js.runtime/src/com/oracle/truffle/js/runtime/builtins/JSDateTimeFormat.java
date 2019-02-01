@@ -145,10 +145,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static List<Object> supportedLocales(JSContext ctx, String[] locales) {
-        return IntlUtil.supportedLocales(ctx, locales);
-    }
-
     public static DynamicObject create(JSContext context) {
         InternalState state = new InternalState();
         DynamicObject result = JSObject.create(context, context.getDateTimeFormatFactory(), state);
