@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -99,7 +100,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
             state.style = optStyle;
             state.numeric = optNumeric;
 
-            JSRelativeTimeFormat.setLocale(context, state, locales);
+            JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
             JSRelativeTimeFormat.setupInternalRelativeTimeFormatter(state);
 
         } catch (MissingResourceException e) {

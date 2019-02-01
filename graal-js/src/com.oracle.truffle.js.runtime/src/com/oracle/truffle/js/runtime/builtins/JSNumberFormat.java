@@ -53,6 +53,7 @@ import java.util.Set;
 
 import com.ibm.icu.text.DecimalFormat;
 import com.ibm.icu.text.NumberFormat;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -483,6 +484,10 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
+        if (strippedLocale.toLanguageTag().equals("und")) {
+            selectedLocale = Locale.getDefault();
+            strippedLocale = selectedLocale.stripExtensions();
+        }
         if (selectedLocale.getUnicodeLocaleKeys().contains("nu")) {
             String unicodeLocaleType = selectedLocale.getUnicodeLocaleType("nu");
             if (IntlUtil.isSupportedNumberSystemKey(unicodeLocaleType)) {

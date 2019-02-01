@@ -133,15 +133,6 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     }
 
     @TruffleBoundary
-    public static void setLocale(JSContext ctx, InternalState state, String[] locales) {
-        String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
-        Locale strippedLocale = selectedLocale.stripExtensions();
-        state.locale = strippedLocale.toLanguageTag();
-        state.javaLocale = strippedLocale;
-    }
-
-    @TruffleBoundary
     public static void setupInternalRelativeTimeFormatter(InternalState state) {
         state.javaLocale = Locale.forLanguageTag(state.locale);
         state.relativeDateTimeFormatter = createFormatter(state.javaLocale, state.style);
@@ -205,17 +196,15 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         return JSArray.createConstant(context, resultParts.toArray());
     }
 
-    public static class InternalState {
+    public static class InternalState extends JSNumberFormat.BasicInternalState {
 
         public boolean initialized = false;
         public RelativeDateTimeFormatter relativeDateTimeFormatter;
 
-        public String locale;
-        public Locale javaLocale;
-
         public String style = "long";
         public String numeric = "always";
 
+        @Override
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
             JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
