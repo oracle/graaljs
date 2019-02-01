@@ -73,7 +73,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 public final class JavaPackage extends JSBuiltinObject {
     public static final String TYPE_NAME = "object";
     public static final String CLASS_NAME = "JavaPackage";
-    public static final JavaPackage INSTANCE = JSTruffleOptions.SubstrateVM ? null : new JavaPackage();
+    public static final JavaPackage INSTANCE = new JavaPackage();
     private static final Property PACKAGE_PROPERTY;
     private static final HiddenKey PACKAGE_NAME_ID = new HiddenKey("packageName");
 
@@ -83,7 +83,6 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     private JavaPackage() {
-        assert !JSTruffleOptions.SubstrateVM;
     }
 
     public static DynamicObject create(JSRealm realm, String packageName) {

@@ -1089,7 +1089,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         JavaCacheNode(Object method, JavaDirectCallNode directCallNode) {
             this.directCallNode = directCallNode;
             this.method = method;
-            assert method instanceof JavaMethod || method instanceof JavaClass || JavaPackage.isJavaPackage(method);
+            assert JavaPackage.isJavaPackage(method) || (JSTruffleOptions.NashornJavaInterop && (method instanceof JavaMethod || method instanceof JavaClass));
         }
 
         @Override

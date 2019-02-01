@@ -313,17 +313,18 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
     @Override
     protected HasCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth) {
-        if (JSTruffleOptions.SubstrateVM) {
-            return null;
-        }
         if (JavaPackage.isJavaPackage(thisObj)) {
             return new PresentHasPropertyCacheNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
         } else if (JavaImporter.isJavaImporter(thisObj)) {
             return new UnspecializedHasPropertyCacheNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
         }
+        if (JSTruffleOptions.SubstrateVM) {
+            return null;
+        }
         if (!JSTruffleOptions.NashornJavaInterop) {
             return null;
-        } else if (JSObject.isDynamicObject(thisObj)) {
+        }
+        if (JSObject.isDynamicObject(thisObj)) {
             assert !JSJavaWrapper.isJSJavaWrapper(thisObj);
             return null;
         } else if (thisObj instanceof JavaClass) {

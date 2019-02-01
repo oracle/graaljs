@@ -371,11 +371,6 @@ public class JSRealm {
             this.listFormatConstructor = null;
         }
 
-        boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
-        boolean nashornJavaInterop = isJavaInteropAvailable() && (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
-        this.jsAdapterConstructor = nashornCompat ? JSAdapter.createConstructor(this) : null;
-        this.javaImporterConstructor = nashornJavaInterop ? JavaImporter.createConstructor(this) : null;
-
         this.iteratorPrototype = createIteratorPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
@@ -404,6 +399,10 @@ public class JSRealm {
         this.asyncFromSyncIteratorPrototype = es9 ? JSFunction.createAsyncFromSyncIteratorPrototype(this) : null;
         this.asyncGeneratorFunctionConstructor = es9 ? JSFunction.createAsyncGeneratorFunctionConstructor(this) : null;
         this.asyncGeneratorObjectPrototype = es9 ? (DynamicObject) asyncGeneratorFunctionConstructor.getPrototype().get(JSObject.PROTOTYPE, null) : null;
+
+        boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode || JSTruffleOptions.NashornJavaInterop;
+        this.jsAdapterConstructor = nashornCompat ? JSAdapter.createConstructor(this) : null;
+        this.javaImporterConstructor = nashornCompat ? JavaImporter.createConstructor(this) : null;
 
         this.outputStream = System.out;
         this.errorStream = System.err;
@@ -817,9 +816,6 @@ public class JSRealm {
         if (context.getContextOptions().isPolyglotBuiltin()) {
             setupPolyglot(global);
         }
-        if (isJavaInteropAvailable() && isJavaInteropEnabled()) {
-            setupJavaInterop(global);
-        }
         if (context.isOptionDebugBuiltin()) {
             putGlobalProperty(global, JSTruffleOptions.DebugPropertyName, createDebugObject());
         }
@@ -906,6 +902,9 @@ public class JSRealm {
      * Add or set optional global properties. Used by initializeContext and patchContext.
      */
     public void addOptionalGlobals() {
+        if (getEnv().isPreInitialization()) {
+            return;
+        }
         if (getContext().getContextOptions().isShell()) {
             getContext().getFunctionLookup().iterateBuiltinFunctions(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, new Consumer<Builtin>() {
                 @Override
@@ -914,6 +913,9 @@ public class JSRealm {
                     JSObjectUtil.putOrSetDataProperty(getContext(), getGlobalObject(), builtin.getKey(), JSFunction.create(JSRealm.this, functionData), builtin.getAttributeFlags());
                 }
             });
+        }
+        if (isJavaInteropEnabled()) {
+            setupJavaInterop(getGlobalObject());
         }
     }
 
@@ -979,24 +981,14 @@ public class JSRealm {
     }
 
     /**
-     * Can we do Java interop in principle.
-     */
-    static boolean isJavaInteropAvailable() {
-        return !JSTruffleOptions.SubstrateVM;
-    }
-
-    /**
-     * Is Java interop actually enabled.
+     * Is Java interop enabled in this Context.
      */
     public boolean isJavaInteropEnabled() {
-        assert isJavaInteropAvailable();
         return getEnv() != null && getEnv().isHostLookupAllowed();
     }
 
     private void setupJavaInterop(DynamicObject global) {
-        if (!isJavaInteropAvailable()) {
-            return;
-        }
+        assert isJavaInteropEnabled();
         DynamicObject java = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, java, Symbol.SYMBOL_TO_STRING_TAG, JAVA_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME);

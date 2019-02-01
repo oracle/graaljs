@@ -1248,12 +1248,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromURI(String resource) {
-            if (resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_FX)) {
-                if (JSTruffleOptions.SubstrateVM) {
-                    return null;
-                } else {
-                    return sourceFromResourceURL(resource);
-                }
+            if (!JSTruffleOptions.SubstrateVM &&
+                            (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {
+                return sourceFromResourceURL(resource);
             }
 
             try {
@@ -1265,14 +1262,17 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromResourceURL(String resource) {
-            assert !JSTruffleOptions.SubstrateVM;
             InputStream stream = null;
-            if (resource.startsWith(LOAD_CLASSPATH)) {
-                stream = ClassLoader.getSystemResourceAsStream(resource.substring(LOAD_CLASSPATH.length()));
-            } else if (getContext().isOptionNashornCompatibilityMode() && resource.startsWith(LOAD_NASHORN) && (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS))) {
-                stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
-            } else if (resource.startsWith(LOAD_FX)) {
-                stream = ClassLoader.getSystemResourceAsStream(NASHORN_BASE_PATH + FX_RESOURCES_PATH + resource.substring(LOAD_FX.length()));
+            if (getContext().isOptionNashornCompatibilityMode() && resource.startsWith(LOAD_NASHORN)) {
+                if (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS)) {
+                    stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
+                }
+            } else if (!JSTruffleOptions.SubstrateVM) {
+                if (resource.startsWith(LOAD_CLASSPATH)) {
+                    stream = ClassLoader.getSystemResourceAsStream(resource.substring(LOAD_CLASSPATH.length()));
+                } else if (resource.startsWith(LOAD_FX)) {
+                    stream = ClassLoader.getSystemResourceAsStream(NASHORN_BASE_PATH + FX_RESOURCES_PATH + resource.substring(LOAD_FX.length()));
+                }
             }
             if (stream != null) {
                 try {
@@ -1403,6 +1403,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 throw Errors.createError(ex.getMessage());
             }
         }
+
     }
 
     static Object getFileFromArgument(Object arg, TruffleLanguage.Env env) {
@@ -1411,7 +1412,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             String path;
             if (JSRuntime.isString(arg)) {
                 path = arg.toString();
-            } else if (!JSTruffleOptions.SubstrateVM && env.isHostObject(arg) && env.asHostObject(arg) instanceof File) {
+            } else if (env.isHostObject(arg) && env.asHostObject(arg) instanceof File) {
                 return verifyFile((File) env.asHostObject(arg));
             } else if (JSTruffleOptions.NashornJavaInterop && arg instanceof File) {
                 return verifyFile((File) arg);

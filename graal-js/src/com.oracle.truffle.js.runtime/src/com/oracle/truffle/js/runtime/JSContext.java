@@ -501,11 +501,10 @@ public class JSContext {
         this.pluralRulesFactory = intl402 ? builder.create(JSPluralRules.INSTANCE) : null;
         this.listFormatFactory = intl402 ? builder.create(JSListFormat.INSTANCE) : null;
 
-        boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
-        boolean nashornJavaInterop = JSRealm.isJavaInteropAvailable() && (isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
-        this.javaImporterFactory = nashornJavaInterop ? builder.create(JavaImporter.instance()) : null;
+        this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
+        boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode || JSTruffleOptions.NashornJavaInterop;
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
-        this.javaPackageFactory = JSRealm.isJavaInteropAvailable() ? builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape) : null;
+        this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
 
         this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 

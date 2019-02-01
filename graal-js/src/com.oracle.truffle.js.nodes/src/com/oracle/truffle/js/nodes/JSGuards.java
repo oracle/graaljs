@@ -51,6 +51,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
@@ -474,15 +475,15 @@ public final class JSGuards {
     }
 
     public static boolean isJavaClass(Object target) {
-        return target instanceof JavaClass;
+        return JSTruffleOptions.NashornJavaInterop && target instanceof JavaClass;
     }
 
     public static boolean isJavaMethod(Object target) {
-        return target instanceof JavaMethod;
+        return JSTruffleOptions.NashornJavaInterop && target instanceof JavaMethod;
     }
 
     public static boolean isJavaConstructor(Object target) {
-        return target instanceof JavaMethod && ((JavaMethod) target).isConstructor();
+        return JSTruffleOptions.NashornJavaInterop && target instanceof JavaMethod && ((JavaMethod) target).isConstructor();
     }
 
     public static boolean isJavaPackage(Object target) {

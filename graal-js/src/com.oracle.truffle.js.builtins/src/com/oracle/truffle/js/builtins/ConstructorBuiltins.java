@@ -264,12 +264,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         // non-standard (Nashorn) extensions
         JSAdapter(1),
-        JavaImporter(1) {
-            @Override
-            public boolean isEnabled() {
-                return !JSTruffleOptions.SubstrateVM;
-            }
-        };
+        JavaImporter(1);
 
         private final int length;
 
@@ -497,14 +492,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             case JSAdapter:
                 return ConstructJSAdapterNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
-
-            default:
-                if (!JSTruffleOptions.SubstrateVM) {
-                    switch (builtinEnum) {
-                        case JavaImporter:
-                            return ConstructJavaImporterNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
-                    }
-                }
+            case JavaImporter:
+                return ConstructJavaImporterNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
         }
         return null;
 
@@ -1695,7 +1684,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected DynamicObject constructJavaImporter(Object... args) {
+        protected DynamicObject constructJavaImporter(Object[] args) {
             SimpleArrayList<DynamicObject> pkgs = new SimpleArrayList<>(args.length);
             for (Object pkg : args) {
                 if (JavaPackage.isJavaPackage(pkg)) {
