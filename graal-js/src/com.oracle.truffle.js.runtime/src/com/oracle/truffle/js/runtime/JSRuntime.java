@@ -355,6 +355,15 @@ public final class JSRuntime {
             return value.toString().length() != 0;
         } else if (value instanceof BigInt) {
             return ((BigInt) value).compareTo(BigInt.ZERO) != 0;
+        } else if (isForeignObject(value)) {
+            TruffleObject object = (TruffleObject) value;
+            if (JSInteropNodeUtil.isNull(object)) {
+                return false;
+            } else if (JSInteropNodeUtil.isBoxed(object)) {
+                return toBoolean(JSInteropNodeUtil.unbox(object));
+            } else {
+                return true;
+            }
         } else {
             return true;
         }
