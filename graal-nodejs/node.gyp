@@ -23,7 +23,6 @@
     'node_enable_v8_vtunejit%': 'false',
     'node_target_type%': 'executable',
     'node_production%': 'false',
-    'node_build_only_native%': 'false',
     'node_core_target_name%': 'node',
     'node_lib_target_name%': 'node_lib',
     'node_intermediate_lib_type%': 'static_library',
@@ -725,42 +724,6 @@
       'target_name': 'node_etw',
       'type': 'none',
       'conditions': [
-        [ 'node_build_only_native!="true"', {
-          'actions': [
-            {
-              'action_name': 'trufflenode',
-              'inputs': [ 'trufflenode/pom.xml' ],
-              'outputs': [
-                'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar',
-              ],
-              'action': [ 'mvn', '-f', 'trufflenode/pom.xml', 'package', '-Dtrufflejs.jar=<(trufflejs)' ]
-            },
-            {
-              'action_name': 'trufflenode-to-release',
-              'inputs': [ 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar' ],
-              'outputs': [
-                'out/Release/trufflenode.jar',
-              ],
-              'action': [ 'cp', 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar', 'out/Release/trufflenode.jar' ]
-            },
-            {
-              'action_name': 'trufflenode-to-debug',
-              'inputs': [ 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar' ],
-              'outputs': [
-                'out/Debug/trufflenode.jar',
-              ],
-              'action': [ 'cp', 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar', 'out/Debug/trufflenode.jar' ]
-            },
-            {
-              'action_name': 'trufflenode-to-symlink',
-              'inputs': [ 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar' ],
-              'outputs': [
-                'trufflenode.jar',
-              ],
-              'action': [ 'ln', '-sf', 'trufflenode/target/trufflenode-1.0-SNAPSHOT.jar', 'trufflenode.jar' ]
-            }
-          ]
-        } ]
       ]
     }, # node_etw
     {

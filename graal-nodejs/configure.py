@@ -239,11 +239,6 @@ shared_optgroup.add_option('--svm',
     dest='svm',
     help='build binary for svm image')
 
-shared_optgroup.add_option('--build-only-native',
-    action='store_true',
-    dest='build_only_native',
-    help='build only the native parts, do not build the Java parts')
-
 shared_optgroup.add_option('--production',
     action='store_true',
     dest='build_production',
@@ -1079,9 +1074,6 @@ def configure_node(o):
   if options.enable_shared_library:
     o['variables']['node_target_type'] = 'shared_library'
     o['cflags'] += ['-fPIC']
-
-  if options.build_only_native:
-    o['variables']['node_build_only_native'] = 'true'
 
   o['variables']['svm'] = b(options.svm)
 

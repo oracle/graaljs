@@ -41,9 +41,6 @@
     if (typeof Packages !== 'undefined') {
       Packages[Symbol.toStringTag] = 'Packages'; // breaking isRhino check of acorn package
     }
-    if (typeof Debug === 'undefined') {
-        Object.defineProperty(global, 'Debug', { configurable: true, writable: true });
-    }
     // graal-node.js patch end
 
     // Do this good and early, since it handles errors.
