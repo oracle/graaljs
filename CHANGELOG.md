@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC13
 * Made Java interop available in native images. Note that you have to configure the accessible classes and methods at native image build time (see [reflection configuration](https://github.com/oracle/graal/blob/master/substratevm/REFLECTION.md#manual-configuration)).
+* Removed deprecated experimental `Java.Worker` API. Node.js Workers should be used instead.
 
 ## Version 1.0.0 RC12
 * Added option `js.experimental-array-prototype` that sets prototype of
