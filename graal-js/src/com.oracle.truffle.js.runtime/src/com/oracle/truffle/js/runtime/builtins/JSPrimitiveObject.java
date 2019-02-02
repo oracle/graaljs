@@ -68,7 +68,7 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject implements Proto
 
         if (key instanceof String && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
-            if (context.isOptionNashornCompatibilityMode()) {
+            if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
                 if (propertyValue == null) {
                     return getJavaProperty(thisObj, (String) key, context);
                 }
@@ -102,7 +102,7 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject implements Proto
     public Object getMethodHelper(DynamicObject store, Object thisObj, Object name) {
         if (name instanceof String && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
-            if (context.isOptionNashornCompatibilityMode()) {
+            if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
                 if (hasOwnProperty(store, name)) {
                     Object method = getJavaMethod(thisObj, (String) name, context);
                     if (method != null) {
