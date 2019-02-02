@@ -312,6 +312,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorSetNonObjectReceiver(Object receiver, Object key) {
+        return Errors.createTypeError("Cannot add property " + keyToString(key) + " to non-object " + JSRuntime.safeToString(receiver));
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorConstReassignment(Object key, Object thisObj, Node originatingNode) {
         if (JSObject.isJSObject(thisObj) && JSObject.getJSContext((DynamicObject) thisObj).isOptionV8CompatibilityMode()) {
             throw Errors.createTypeError("Assignment to constant variable.", originatingNode);

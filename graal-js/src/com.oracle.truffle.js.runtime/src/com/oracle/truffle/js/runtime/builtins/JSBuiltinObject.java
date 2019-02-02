@@ -278,6 +278,13 @@ public abstract class JSBuiltinObject extends JSClass {
             return true;
         }
 
+        if (!JSRuntime.isObject(receiver)) {
+            if (isStrict) {
+                throw Errors.createTypeErrorSetNonObjectReceiver(receiver, name);
+            }
+            return true;
+        }
+
         if (!JSObject.isExtensible(thisObj)) {
             if (isStrict) {
                 throw Errors.createTypeErrorNotExtensible(thisObj, name);
