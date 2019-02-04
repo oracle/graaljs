@@ -136,6 +136,10 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
+        if (strippedLocale.toLanguageTag().equals("und")) {
+            selectedLocale = Locale.getDefault();
+            strippedLocale = selectedLocale.stripExtensions();
+        }
         state.locale = strippedLocale.toLanguageTag();
         state.javaLocale = strippedLocale;
     }
