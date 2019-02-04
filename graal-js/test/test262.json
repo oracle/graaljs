@@ -2036,18 +2036,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl402/ListFormat/constructor/supportedLocalesOf/options-localeMatcher-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/ListFormat/constructor/supportedLocalesOf/options-null.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/ListFormat/constructor/supportedLocalesOf/options-toobject.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl402/ListFormat/constructor/supportedLocalesOf/result-type.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
@@ -2464,18 +2452,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/options-localeMatcher-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/options-null.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/options-toobject.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/result-type.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
@@ -2809,10 +2785,6 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "intl402/supportedLocalesOf-returned-array-elements-are-frozen.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/supportedLocalesOf-test-option-localeMatcher.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {

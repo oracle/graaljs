@@ -38,43 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.nodes.intl;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
-/**
- * Contains built-ins for {@linkplain JSRelativeTimeFormat} function (constructor).
- */
-public final class RelativeTimeFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<RelativeTimeFormatFunctionBuiltins.RelativeTimeFormatFunction> {
-    protected RelativeTimeFormatFunctionBuiltins() {
-        super(JSRelativeTimeFormat.CLASS_NAME, RelativeTimeFormatFunction.class);
+public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
+
+    @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
+
+    public SupportedLocalesOfNode(JSContext context, JSBuiltin builtin) {
+        super(context, builtin);
+        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
     }
 
-    public enum RelativeTimeFormatFunction implements BuiltinEnum<RelativeTimeFormatFunction> {
-        supportedLocalesOf(1);
-
-        private final int length;
-
-        RelativeTimeFormatFunction(int length) {
-            this.length = length;
-        }
-
-        @Override
-        public int getLength() {
-            return length;
-        }
+    @Specialization(guards = "isUndefined(opts)")
+    protected Object getSupportedLocales(Object locales, @SuppressWarnings("unused") Object opts) {
+        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales)));
     }
 
-    @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, RelativeTimeFormatFunction builtinEnum) {
-        switch (builtinEnum) {
-            case supportedLocalesOf:
-                return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-        }
-        return null;
+    @Specialization(guards = "!isUndefined(opts)")
+    protected Object getSupportedLocalesWithOptions(Object locales, Object opts,
+                    @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
+                    @Cached("createMatcherGetter(getContext())") GetStringOptionNode getMatcherNode) {
+        getMatcherNode.executeValue(toObjectNode.executeTruffleObject(opts));
+        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales)));
+    }
+
+    protected static GetStringOptionNode createMatcherGetter(JSContext context) {
+        return GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
     }
 }
