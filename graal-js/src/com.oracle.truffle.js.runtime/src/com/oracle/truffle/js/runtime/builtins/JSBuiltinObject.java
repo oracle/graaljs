@@ -468,13 +468,10 @@ public abstract class JSBuiltinObject extends JSClass {
         return true;
     }
 
-    private static boolean checkProtoCycle(DynamicObject thisObj, DynamicObject newPrototype) {
+    public static boolean checkProtoCycle(DynamicObject thisObj, DynamicObject newPrototype) {
         DynamicObject check = newPrototype;
         while (check != Null.instance) {
             if (check == thisObj) {
-                if (JSObject.getJSContext(thisObj).isOptionV8CompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode) {
-                    throw Errors.createTypeErrorProtoCycle(thisObj);
-                }
                 return false;
             }
             // 9.1.2.1 If p.[[GetPrototypeOf]] is not the ordinary object internal method

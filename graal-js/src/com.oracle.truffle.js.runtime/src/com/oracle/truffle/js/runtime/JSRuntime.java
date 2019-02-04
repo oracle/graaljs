@@ -1277,8 +1277,8 @@ public final class JSRuntime {
      * @param value an Object to be converted to an Object
      * @return an Object
      */
-    public static DynamicObject toObject(JSContext ctx, Object value) {
-        checkObjectCoercible(value);
+    public static TruffleObject toObject(JSContext ctx, Object value) {
+        requireObjectCoercible(value);
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSObject.isDynamicObject(value))) {
             return (DynamicObject) value;
         }
@@ -1286,7 +1286,7 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static DynamicObject toObjectFromPrimitive(JSContext ctx, Object value, boolean useJavaWrapper) {
+    public static TruffleObject toObjectFromPrimitive(JSContext ctx, Object value, boolean useJavaWrapper) {
         if (value instanceof Boolean) {
             return JSBoolean.create(ctx, (Boolean) value);
         } else if (value instanceof String) {
@@ -1464,14 +1464,13 @@ public final class JSRuntime {
     }
 
     /**
-     * Implementation of the (abstract) function CheckObjectCoercible as defined in ECMA 9.10.
-     *
-     * @param thisObj
+     * Implementation of the abstract operation RequireObjectCoercible.
      */
-    public static void checkObjectCoercible(Object thisObj) {
-        if (thisObj == Undefined.instance || thisObj == Null.instance) {
-            throw Errors.createTypeErrorNotObjectCoercible(thisObj);
+    public static <T> T requireObjectCoercible(T argument) {
+        if (argument == Undefined.instance || argument == Null.instance) {
+            throw Errors.createTypeErrorNotObjectCoercible(argument);
         }
+        return argument;
     }
 
     /**

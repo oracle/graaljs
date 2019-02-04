@@ -1492,37 +1492,22 @@ public class JSContext {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = JSRuntime.toObject(JSContext.this, JSArguments.getThisObject(arguments));
+                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments));
                 if (JSArguments.getUserArgumentCount(arguments) < 1) {
                     return Undefined.instance;
                 }
                 Object value = JSArguments.getUserArgument(arguments, 0);
-
-                DynamicObject current = JSObject.getPrototype(thisObj);
-                if (current == value) {
-                    return Undefined.instance; // true in OrdinarySetPrototype
-                }
-                if (!JSObject.isExtensible(thisObj)) {
-                    throwCannotSetNonExtensibleProtoError(thisObj);
-                }
-
-                if (!(JSObject.isDynamicObject(value)) || value == Undefined.instance) {
+                if (!JSObject.isJSObject(value) || value == Undefined.instance) {
                     return Undefined.instance;
                 }
+                if (!JSObject.isJSObject(obj)) {
+                    return Undefined.instance;
+                }
+                DynamicObject thisObj = (DynamicObject) obj;
                 if (!JSObject.setPrototype(thisObj, (DynamicObject) value)) {
-                    throwCannotSetProtoError(thisObj);
+                    throw Errors.createTypeErrorCannotSetProto(thisObj, (DynamicObject) value);
                 }
                 return Undefined.instance;
-            }
-
-            @TruffleBoundary
-            private void throwCannotSetNonExtensibleProtoError(DynamicObject thisObj) {
-                throw Errors.createTypeError("Cannot set __proto__ of non-extensible " + JSObject.defaultToString(thisObj));
-            }
-
-            @TruffleBoundary
-            private void throwCannotSetProtoError(DynamicObject thisObj) {
-                throw Errors.createTypeError("Cannot set __proto__ of " + JSObject.defaultToString(thisObj));
             }
         });
         return JSFunctionData.createCallOnly(this, callTarget, 0, "set " + JSObject.PROTO);
@@ -1532,8 +1517,11 @@ public class JSContext {
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                Object obj = JSArguments.getThisObject(frame.getArguments());
-                return JSObject.getPrototype(JSRuntime.toObject(JSContext.this, obj));
+                Object obj = JSRuntime.toObject(JSContext.this, JSArguments.getThisObject(frame.getArguments()));
+                if (JSObject.isJSObject(obj)) {
+                    return JSObject.getPrototype((DynamicObject) obj);
+                }
+                return Null.instance;
             }
         });
         return JSFunctionData.createCallOnly(this, callTarget, 0, "get " + JSObject.PROTO);

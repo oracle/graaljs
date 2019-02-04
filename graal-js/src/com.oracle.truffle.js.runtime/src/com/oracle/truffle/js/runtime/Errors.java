@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -282,8 +283,14 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorProtoCycle(DynamicObject thisObj) {
-        return Errors.createTypeError("Cannot create__proto__ cycle for " + JSObject.defaultToString(thisObj));
+    public static JSException createTypeErrorCannotSetProto(DynamicObject thisObj, DynamicObject proto) {
+        if (!JSBuiltinObject.checkProtoCycle(thisObj, proto)) {
+            if (JSObject.getJSContext(thisObj).isOptionNashornCompatibilityMode()) {
+                return Errors.createTypeError("Cannot create__proto__ cycle for " + JSObject.defaultToString(thisObj));
+            }
+            return Errors.createTypeError("Cyclic __proto__ value");
+        }
+        throw Errors.createTypeError("Cannot set __proto__ of non-extensible " + JSObject.defaultToString(thisObj));
     }
 
     @TruffleBoundary
