@@ -94,7 +94,7 @@ public class IntlUtil {
             // BestAvailableLocale: http://ecma-international.org/ecma-402/1.0/#sec-9.2.2
             Locale candidate = Locale.forLanguageTag(lt);
             while (true) {
-                if (lookupMatch(ctx, candidate, false)) {
+                if (lookupMatch(ctx, candidate, true)) {
                     return candidate;
                 }
                 String candidateLanguageTag = candidate.toLanguageTag();
@@ -116,9 +116,8 @@ public class IntlUtil {
     @TruffleBoundary
     public static List<Object> supportedLocales(JSContext ctx, String[] locales, @SuppressWarnings("unused") String matcher) {
         List<Object> result = new LinkedList<>();
-        boolean stripIt = matcher.equals("lookup");
         for (String l : locales) {
-            if (lookupMatch(ctx, Locale.forLanguageTag(l), stripIt)) {
+            if (lookupMatch(ctx, Locale.forLanguageTag(l), true)) {
                 result.add(l);
             }
         }
