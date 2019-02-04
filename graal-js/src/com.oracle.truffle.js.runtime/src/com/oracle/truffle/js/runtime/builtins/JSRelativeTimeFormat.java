@@ -198,7 +198,6 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     public static class InternalState extends JSNumberFormat.BasicInternalState {
 
-        public boolean initialized = false;
         public RelativeDateTimeFormatter relativeDateTimeFormatter;
 
         public String style = "long";

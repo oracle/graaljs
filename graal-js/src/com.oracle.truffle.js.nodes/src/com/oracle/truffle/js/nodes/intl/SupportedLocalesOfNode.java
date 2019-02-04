@@ -60,15 +60,16 @@ public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
 
     @Specialization(guards = "isUndefined(opts)")
     protected Object getSupportedLocales(Object locales, @SuppressWarnings("unused") Object opts) {
-        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales)));
+        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), "best fit"));
     }
 
     @Specialization(guards = "!isUndefined(opts)")
     protected Object getSupportedLocalesWithOptions(Object locales, Object opts,
                     @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
                     @Cached("createMatcherGetter(getContext())") GetStringOptionNode getMatcherNode) {
-        getMatcherNode.executeValue(toObjectNode.executeTruffleObject(opts));
-        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales)));
+
+        String matcher = getMatcherNode.executeValue(toObjectNode.executeTruffleObject(opts));
+        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), matcher));
     }
 
     protected static GetStringOptionNode createMatcherGetter(JSContext context) {
