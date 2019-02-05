@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,73 +40,67 @@
  */
 package com.oracle.truffle.js.test.threading;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.function.Supplier;
+import java.util.Queue;
+import java.util.concurrent.LinkedBlockingDeque;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-public class ExecutorsTest {
+public class JavaAsyncTaskScheduler {
 
     /**
-     * Graal.js can be used in Executors to evaluate share-nothing JavaScript code in parallel.
-     *
-     * ThreadLocals can be used to limit the number of Graal.js contexts. A single PolyglotEngine
-     * can be shared among Graal.js contexts to benefit from compilation cache sharing and other
-     * GraalVM optimizations.
+     * Utility class simulating an asynchronous event from Java.
      */
-    @Test
-    public void fixedThreadPool() {
-        final Engine engine = Engine.create();
-        final ExecutorService pool = Executors.newFixedThreadPool(4);
+    public static class Example {
+        // a concurrent queue shared with Node
+        private final Queue<Object> queue;
 
-        try {
-            final ThreadLocal<Context> tl = ThreadLocal.withInitial(new Supplier<Context>() {
+        public Example(Queue<Object> queue) {
+            this.queue = queue;
+        }
 
+        public void doAsynchronousWork() {
+            // simulate asynchronous events, e.g., an HTTP request, and notify back once received.
+            Thread thread = new Thread(new Runnable() {
                 @Override
-                public Context get() {
-                    return Context.newBuilder("js").engine(engine).build();
+                public void run() {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        throw new AssertionError();
+                    }
+                    double data = Math.random() + 42;
+                    // awake the Node.js worker, which is waiting on this queue
+                    queue.offer(data);
                 }
             });
-
-            Set<Callable<Value>> tasks = new HashSet<>();
-            for (int i = 0; i < 42; i++) {
-                tasks.add(new Callable<Value>() {
-
-                    @Override
-                    public Value call() throws Exception {
-                        Context cx = tl.get();
-                        cx.enter();
-                        try {
-                            return cx.eval("js", "42;");
-                        } finally {
-                            cx.leave();
-                        }
-                    }
-                });
-            }
-
-            try {
-                for (Future<Value> v : pool.invokeAll(tasks)) {
-                    assertEquals(v.get().asInt(), 42);
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                throw new AssertionError(e);
-            }
-        } finally {
-            engine.close();
-            pool.shutdown();
+            thread.start();
         }
     }
 
+    /**
+     * Java synchronization (e.g., a blocking queue) can be used to "awake" JavaScript code.
+     */
+    @Test
+    public void testJavaWakeup() {
+        Context cx = Context.newBuilder("js").allowHostAccess(true).build();
+        Queue<Object> sharedQueue = new LinkedBlockingDeque<>();
+        Example async = new Example(sharedQueue);
+
+        cx.getBindings("js").putMember("queue", sharedQueue);
+        cx.getBindings("js").putMember("javaAsync", async);
+        try {
+            Value data = cx.eval("js", "javaAsync.doAsynchronousWork();" +
+                            // Block until the queue has work to offer
+                            "var data = queue.take();" +
+                            "data;");
+            assertTrue(data.fitsInDouble());
+            assertTrue(data.asDouble() >= 42);
+        } finally {
+            cx.close();
+        }
+    }
 }
