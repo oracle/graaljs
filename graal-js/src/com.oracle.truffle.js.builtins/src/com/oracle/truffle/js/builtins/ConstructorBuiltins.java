@@ -1086,7 +1086,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getListFormatConstructor().getPrototype();
+            return realm.getRelativeTimeFormatConstructor().getPrototype();
         }
     }
 

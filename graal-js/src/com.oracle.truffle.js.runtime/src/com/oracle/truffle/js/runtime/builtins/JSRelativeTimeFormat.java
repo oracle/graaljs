@@ -143,7 +143,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     }
 
     private static void ensureFiniteNumber(double d) {
-        if (Double.isNaN(d) || Double.isInfinite(d)) {
+        if (!Double.isFinite(d)) {
             throw Errors.createRangeError("Value need to be finite number for Intl.RelativeTimeFormat operation");
         }
     }

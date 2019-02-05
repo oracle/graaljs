@@ -41,11 +41,11 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.text.AttributedCharacterIterator;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Currency;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -545,7 +545,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     static List<DynamicObject> innerFormatToParts(JSContext context, NumberFormat numberFormat, Number x, String unit) {
-        List<DynamicObject> resultParts = new LinkedList<>();
+        List<DynamicObject> resultParts = new ArrayList<>();
         AttributedCharacterIterator fit = numberFormat.formatToCharacterIterator(x);
         String formatted = numberFormat.format(x);
         int i = fit.getBeginIndex();

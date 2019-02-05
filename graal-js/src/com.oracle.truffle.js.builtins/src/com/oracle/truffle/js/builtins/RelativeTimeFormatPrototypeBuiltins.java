@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
@@ -120,7 +121,7 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
         public String doFormat(DynamicObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
-            return JSRelativeTimeFormat.format(relativeTimeFormat, toNumberNode.executeNumber(value).doubleValue(), toStringNode.executeString(unit));
+            return JSRelativeTimeFormat.format(relativeTimeFormat, JSRuntime.doubleValue(toNumberNode.executeNumber(value)), toStringNode.executeString(unit));
         }
 
         @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")
@@ -140,7 +141,7 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
         public Object doFormatToParts(DynamicObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
-            return JSRelativeTimeFormat.formatToParts(getContext(), relativeTimeFormat, toNumberNode.executeNumber(value).doubleValue(), toStringNode.executeString(unit));
+            return JSRelativeTimeFormat.formatToParts(getContext(), relativeTimeFormat, JSRuntime.doubleValue(toNumberNode.executeNumber(value)), toStringNode.executeString(unit));
         }
 
         @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")
