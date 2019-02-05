@@ -119,8 +119,11 @@ import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
+import com.oracle.truffle.js.nodes.binary.JSAndNode;
 import com.oracle.truffle.js.nodes.binary.JSBinaryNode;
+import com.oracle.truffle.js.nodes.binary.JSLogicalNode;
 import com.oracle.truffle.js.nodes.binary.JSOrNode;
+import com.oracle.truffle.js.nodes.binary.JSOrNode.NotUndefinedOrNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
@@ -570,6 +573,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (parent instanceof ReturnNode || parent instanceof ReturnTargetNode || isSideEffectFreeUnaryOpNode(parent)) {
             // these are side-effect-free, skip
             return parent;
+        } else if (isShortCircuitExpression(parent)) {
+            // we can only replace child fields assignable from JavaScriptNode
+            if (NodeUtil.isReplacementSafe(grandparent, parent, ANY_JAVA_SCRIPT_NODE)) {
+                // Extract left and right children and re-assign them to logical parent to support
+                // short-circuit evaluation
+                return wrapShortCircuitExpression((JSLogicalNode) parent);
+            } else {
+                // not assignable to field type (e.g. JSTargetableNode), ignore for now
+                return parent;
+            }
         } else if (isSupportedDispersibleExpression(parent)) {
             // need to rescue side-effecting/non-repeatable expressions into temporaries
             // note that the expressions have to be extracted in evaluation order
@@ -611,6 +624,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private static boolean isSideEffectFreeUnaryOpNode(Node node) {
         // (conservative) non-exhaustive list
         return node instanceof VoidNode || node instanceof TypeOfNode || node instanceof JSTypeofIdenticalNode;
+    }
+
+    private static boolean isShortCircuitExpression(Node node) {
+        return node instanceof JSAndNode || (node instanceof JSOrNode && !(node instanceof NotUndefinedOrNode));
     }
 
     private static boolean isSupportedDispersibleExpression(Node node) {
@@ -663,6 +680,21 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         for (Node child : getChildrenInExecutionOrder(parent)) {
             extractChildTo(child, parent, extracted);
         }
+    }
+
+    private JSLogicalNode wrapShortCircuitExpression(JSLogicalNode parent) {
+        for (Node child : getChildrenInExecutionOrder(parent)) {
+            String identifier = ":generatorexpr:" + environment.getFunctionFrameDescriptor().getSize();
+            LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
+            JavaScriptNode writeState = factory.createLazyWriteFrameSlot(identifier, (JavaScriptNode) child);
+            assert (NodeUtil.isReplacementSafe(parent, child, readState));
+            environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
+            JavaScriptNode exprBlock = factory.createExprBlock(writeState, readState);
+            // replace child with saved expression result
+            boolean ok = NodeUtil.replaceChild(parent, child, exprBlock);
+            assert ok;
+        }
+        return parent;
     }
 
     private JavaScriptNode handleFunctionReturn(FunctionNode functionNode, JavaScriptNode body) {
