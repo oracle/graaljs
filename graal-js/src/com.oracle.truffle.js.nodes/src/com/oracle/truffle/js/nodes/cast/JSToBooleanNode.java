@@ -153,7 +153,7 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
         return value.length() > 0;
     }
 
-    @Specialization(guards = "!isNullOrUndefined(value)")
+    @Specialization(guards = "isJSObject(value)")
     protected boolean doObject(@SuppressWarnings("unused") DynamicObject value) {
         return true;
     }
