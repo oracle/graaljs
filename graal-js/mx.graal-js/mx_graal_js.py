@@ -47,7 +47,7 @@ def _graal_js_gate_runner(args, tasks):
 
     with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
         if t:
-            unittest(['-Dtruffle.js.NashornJavaInterop=true', '--enable-timing', '--very-verbose', 'com.oracle.truffle.js.scriptengine.test'])
+            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.js.scriptengine.test'])
 
     gateTestConfigs = {
         GraalJsDefaultTags.default: ['gate'],
@@ -235,9 +235,7 @@ def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""
     _location = join(_suite.dir, 'lib', 'test262')
     _default_vm_args = [
-        '-Dtruffle.js.NashornJavaInterop=false',
         '-Dtruffle.js.Test262Mode=true',
-        '-Dtruffle.js.SIMDJS=true',
     ]
     return _run_test_suite(
         location=_location,
