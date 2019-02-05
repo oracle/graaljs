@@ -457,7 +457,7 @@ function formatValue(ctx, value, recurseTimes) {
   if (typeof value !== 'object' && typeof value !== 'function') {
     return formatPrimitive(ctx.stylize, value, ctx);
   }
-  if (value === null) {
+  if (value == null) {
     return ctx.stylize('null', 'null');
   }
 
