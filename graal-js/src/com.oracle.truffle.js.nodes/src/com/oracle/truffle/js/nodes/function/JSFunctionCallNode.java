@@ -40,10 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.invoke.MutableCallSite;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -68,7 +64,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
@@ -97,10 +92,8 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpression
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.interop.ExportArgumentsNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
-import com.oracle.truffle.js.nodes.unary.FlattenNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -112,18 +105,12 @@ import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.interop.Converters;
-import com.oracle.truffle.js.runtime.interop.Converters.Converter;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
-import com.oracle.truffle.js.runtime.interop.JavaMethod.AbstractJavaMethod;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
-import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaScriptFunctionCallNode {
@@ -284,8 +271,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 if (cachedCount < JSTruffleOptions.FunctionCacheLimit && !generic) {
                     if (JSFunction.isJSFunction(function)) {
                         c = specializeDirectCall((DynamicObject) function, currentHead);
-                    } else if (JSTruffleOptions.NashornJavaInterop && (function instanceof JavaMethod || function instanceof JavaClass)) {
-                        c = specializeJavaCall(function, currentHead);
                     }
                 }
                 if (c == null) {
@@ -312,7 +297,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private static boolean isCached(AbstractCacheNode c) {
-        return c instanceof JSFunctionCacheNode || c instanceof JavaCacheNode;
+        return c instanceof JSFunctionCacheNode;
     }
 
     private static boolean isGeneric(AbstractCacheNode c) {
@@ -402,33 +387,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             gen = c.withNext(gen);
         }
         return gen;
-    }
-
-    private AbstractCacheNode specializeJavaCall(Object method, AbstractCacheNode head) {
-        assert method instanceof JavaMethod || method instanceof JavaClass;
-        final JavaDirectCallNode directCall;
-        if (method instanceof JavaClass && ((JavaClass) method).getType().isArray()) {
-            directCall = new JavaClassCallNode((JavaClass) method);
-        } else if (method instanceof JavaClass && ((JavaClass) method).isAbstract()) {
-            JavaClass extendedClass = ((JavaClass) method).extend(null, null);
-            if (JSTruffleOptions.JavaCallCache) {
-                directCall = JavaMethodCallNode.create(extendedClass);
-            } else {
-                directCall = new JavaClassCallNode(extendedClass);
-            }
-        } else {
-            if (JSTruffleOptions.JavaCallCache) {
-                directCall = JavaMethodCallNode.create(method);
-            } else {
-                if (method instanceof JavaMethod) {
-                    directCall = new SlowJavaMethodCallNode((JavaMethod) method);
-                } else {
-                    directCall = new JavaClassCallNode((JavaClass) method);
-                }
-            }
-        }
-        AbstractCacheNode newNode = new JavaCacheNode(method, directCall);
-        return insertAtFront(newNode, head);
     }
 
     private AbstractCacheNode specializeForeignCall(Object[] arguments, AbstractCacheNode head, JSFunctionCallNode functionCallNode) {
@@ -1075,34 +1033,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private abstract static class JavaDirectCallNode extends JavaScriptBaseNode {
-        protected JavaDirectCallNode() {
-        }
-
-        public abstract Object executeCall(Object[] arguments);
-    }
-
-    private static final class JavaCacheNode extends AbstractCacheNode {
-        private final Object method;
-        @Child protected JavaDirectCallNode directCallNode;
-
-        JavaCacheNode(Object method, JavaDirectCallNode directCallNode) {
-            this.directCallNode = directCallNode;
-            this.method = method;
-            assert JavaPackage.isJavaPackage(method) || (JSTruffleOptions.NashornJavaInterop && (method instanceof JavaMethod || method instanceof JavaClass));
-        }
-
-        @Override
-        protected boolean accept(Object function) {
-            return function == method;
-        }
-
-        @Override
-        public Object executeCall(Object[] arguments) {
-            return directCallNode.executeCall(arguments);
-        }
-    }
-
     private abstract static class AbstractCacheNode extends JavaScriptBaseNode {
         @Child protected AbstractCacheNode nextNode;
 
@@ -1509,217 +1439,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    public abstract static class JavaMethodCallNode extends JavaDirectCallNode {
-        protected final Object method;
-
-        JavaMethodCallNode(Object method) {
-            super();
-            this.method = method;
-        }
-
-        public static JavaMethodCallNode create(Object method) {
-            return JSTruffleOptions.JavaConvertersAsMethodHandles ? new MHChainJavaMethodCallNode(method) : new UninitializedJavaMethodCallNode(method);
-        }
-
-        @TruffleBoundary(allowInlining = true)
-        protected final Object invoke(MethodHandle methodHandle, Object target, Object[] arguments) {
-            try {
-                return methodHandle.invokeExact(target, arguments);
-            } catch (ControlFlowException | GraalJSException e) {
-                throw e;
-            } catch (Throwable e) {
-                CompilerDirectives.transferToInterpreter();
-                throw UserScriptException.createJavaException(e, this);
-            }
-        }
-    }
-
-    private static final class UninitializedJavaMethodCallNode extends JavaMethodCallNode {
-        UninitializedJavaMethodCallNode(Object method) {
-            super(method);
-        }
-
-        @Override
-        public Object executeCall(Object[] arguments) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return this.replace(makeMethodHandleCallNode(JSArguments.extractUserArguments(arguments))).executeCall(arguments);
-        }
-
-        private JavaMethodCallNode makeMethodHandleCallNode(Object[] arguments) {
-            boolean isStatic;
-            Pair<AbstractJavaMethod, Converter> bestMethod;
-            if (method instanceof JavaMethod) {
-                JavaMethod javaMethod = (JavaMethod) method;
-                bestMethod = javaMethod.getBestMethod(arguments);
-                isStatic = javaMethod.isStatic() || javaMethod.isConstructor();
-            } else {
-                assert method instanceof JavaClass;
-                bestMethod = ((JavaClass) method).getBestConstructor(arguments);
-                isStatic = true;
-            }
-            MethodHandle adaptedHandle = bestMethod.getFirst().getMethodHandle();
-            Class<?>[] parameterTypes = bestMethod.getFirst().getParameterTypes();
-            Converter converter = bestMethod.getSecond();
-
-            // adapt this parameter and return type
-            adaptedHandle = adaptSignature(adaptedHandle, isStatic);
-            // spread arguments array to parameters
-            adaptedHandle = adaptedHandle.asSpreader(Object[].class, parameterTypes.length);
-
-            return new MHJavaMethodCallNode(method, adaptedHandle, converter);
-        }
-
-        private static MethodHandle adaptSignature(MethodHandle originalHandle, boolean isStatic) {
-            MethodHandle adaptedHandle = originalHandle;
-            if (isStatic) {
-                adaptedHandle = MethodHandles.dropArguments(adaptedHandle, 0, Object.class);
-            } else {
-                adaptedHandle = adaptedHandle.asType(adaptedHandle.type().changeParameterType(0, Object.class));
-            }
-            adaptedHandle = adaptedHandle.asType(adaptedHandle.type().changeReturnType(Object.class));
-            return adaptedHandle;
-        }
-    }
-
-    private static final class MHJavaMethodCallNode extends JavaMethodCallNode {
-        private final MethodHandle methodHandle;
-        private final Converter converter;
-        @Child private JavaMethodCallNode next;
-
-        MHJavaMethodCallNode(Object method, MethodHandle methodHandle, Converter converter) {
-            super(method);
-            this.methodHandle = methodHandle;
-            this.converter = converter;
-            this.next = new UninitializedJavaMethodCallNode(method);
-        }
-
-        @Override
-        public Object executeCall(Object[] arguments) {
-            Object[] userArgs = JSArguments.extractUserArguments(arguments);
-            if (converter.guard(userArgs)) {
-                return Converters.JAVA_TO_JS_CONVERTER.convert(invoke(methodHandle, JSArguments.getThisObject(arguments), (Object[]) converter.convert(userArgs)));
-            } else {
-                return next.executeCall(arguments);
-            }
-        }
-    }
-
-    private static class JavaClassCallNode extends JavaDirectCallNode {
-        private final JavaClass clazz;
-
-        JavaClassCallNode(JavaClass clazz) {
-            super();
-            this.clazz = clazz;
-        }
-
-        @Override
-        public Object executeCall(Object[] arguments) {
-            return clazz.newInstance(JSArguments.extractUserArguments(arguments));
-        }
-    }
-
-    private static class SlowJavaMethodCallNode extends JavaDirectCallNode {
-        private final JavaMethod method;
-
-        SlowJavaMethodCallNode(JavaMethod method) {
-            super();
-            this.method = method;
-        }
-
-        @Override
-        public Object executeCall(Object[] arguments) {
-            return method.invoke(JSArguments.getThisObject(arguments), JSArguments.extractUserArguments(arguments));
-        }
-    }
-
-    private static final class MHChainJavaMethodCallNode extends JavaMethodCallNode {
-        private final MethodHandle methodHandle;
-        private final MutableCallSite callSite;
-
-        MHChainJavaMethodCallNode(Object method) {
-            super(method);
-            MethodType methodType = MethodType.methodType(Object.class, Object.class, Object[].class);
-            try {
-                this.callSite = new MutableCallSite(MethodHandles.lookup().findVirtual(getClass(), "initialize", methodType).bindTo(this));
-            } catch (NoSuchMethodException | IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-            this.methodHandle = callSite.dynamicInvoker();
-        }
-
-        @Override
-        public Object executeCall(Object[] arguments) {
-            Object target = JSArguments.getThisObject(arguments);
-            Object[] userArguments = JSArguments.extractUserArguments(arguments);
-            return invoke(target, userArguments);
-        }
-
-        private Object invoke(Object target, Object[] userArguments) {
-            return Converters.JAVA_TO_JS_CONVERTER.convert(invoke(methodHandle, target, userArguments));
-        }
-
-        @SuppressWarnings("unused")
-        private Object initialize(Object target, Object[] arguments) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callSite.setTarget(makeMethodHandle(callSite.getTarget(), arguments));
-            return invoke(null, arguments);
-        }
-
-        private MethodHandle makeMethodHandle(MethodHandle fallback, Object[] arguments) {
-            Pair<AbstractJavaMethod, Converter> bestMethod;
-            boolean isStatic;
-            if (method instanceof JavaMethod) {
-                JavaMethod javaMethod = (JavaMethod) method;
-                bestMethod = javaMethod.getBestMethod(arguments);
-                isStatic = javaMethod.isStatic() || javaMethod.isConstructor();
-            } else {
-                assert method instanceof JavaClass;
-                bestMethod = ((JavaClass) method).getBestConstructor(arguments);
-                isStatic = true;
-            }
-            MethodHandle adaptedHandle = bestMethod.getFirst().getMethodHandle();
-            Class<?>[] parameterTypes = bestMethod.getFirst().getParameterTypes();
-            Converter converter = bestMethod.getSecond();
-
-            adaptedHandle = adaptSignature(adaptedHandle, isStatic);
-            adaptedHandle = convertArguments(adaptedHandle, fallback, parameterTypes, converter);
-            return adaptedHandle;
-        }
-
-        private static MethodHandle adaptSignature(MethodHandle originalHandle, boolean isStatic) {
-            MethodHandle adaptedHandle = originalHandle;
-            if (isStatic) {
-                adaptedHandle = MethodHandles.dropArguments(adaptedHandle, 0, Object.class);
-            } else {
-                adaptedHandle = adaptedHandle.asType(adaptedHandle.type().changeParameterType(0, Object.class));
-            }
-            adaptedHandle = adaptedHandle.asType(adaptedHandle.type().changeReturnType(Object.class));
-            return adaptedHandle;
-        }
-
-        private static MethodHandle convertArguments(MethodHandle originalHandle, MethodHandle fallback, Class<?>[] parameterTypes, Converter converter) {
-            MethodHandle adaptedHandle = originalHandle.asSpreader(Object[].class, parameterTypes.length);
-            if (parameterTypes.length > 0) {
-                MethodHandle guard;
-                MethodHandle convert;
-                try {
-                    guard = MethodHandles.dropArguments(
-                                    MethodHandles.lookup().findVirtual(Converter.class, "guard", MethodType.methodType(boolean.class, Object.class)).bindTo(converter).asType(
-                                                    MethodType.methodType(boolean.class, Object[].class)),
-                                    0, Object.class);
-                    convert = MethodHandles.lookup().findVirtual(Converter.class, "convert", MethodType.methodType(Object.class, Object.class)).bindTo(converter).asType(
-                                    MethodType.methodType(Object[].class, Object[].class));
-                } catch (NoSuchMethodException | IllegalAccessException e) {
-                    throw new IllegalStateException(e);
-                }
-
-                adaptedHandle = MethodHandles.filterArguments(adaptedHandle, 1, convert);
-                adaptedHandle = MethodHandles.guardWithTest(guard, adaptedHandle, fallback);
-            }
-            return adaptedHandle;
-        }
-    }
-
     /**
      * Generic case for {@link JSFunction}s.
      */
@@ -1824,13 +1543,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
      * Fallback (TypeError) and Java method/class/package.
      */
     private static class GenericFallbackCacheNode extends AbstractCacheNode {
-        private final BranchProfile hasSeenErrorBranch = BranchProfile.create();
-        private final BranchProfile hasSeenJavaClassBranch = BranchProfile.create();
-        private final BranchProfile hasSeenAbstractJavaClassBranch = BranchProfile.create();
-        private final BranchProfile hasSeenJavaMethodBranch = BranchProfile.create();
-        private final BranchProfile hasSeenJavaPackageBranch = BranchProfile.create();
-
-        @Child private FlattenNode flattenNode;
         @Child private AbstractCacheNode next;
 
         GenericFallbackCacheNode(AbstractCacheNode next) {
@@ -1848,52 +1560,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         public Object executeCall(Object[] arguments) {
             Object function = JSArguments.getFunctionObject(arguments);
-            Object target = JSArguments.getThisObject(arguments);
-            return executeCallNonFunction(arguments, function, target);
-        }
-
-        private Object[] flatten(Object[] extractedUserArguments) {
-            if (flattenNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                flattenNode = insert(FlattenNode.create());
-            }
-            for (int i = 0; i < extractedUserArguments.length; i++) {
-                extractedUserArguments[i] = flattenNode.execute(extractedUserArguments[i]);
-            }
-            return extractedUserArguments;
-        }
-
-        private Object executeCallNonFunction(Object[] arguments, Object function, Object target) {
-            if (JSTruffleOptions.NashornJavaInterop) {
-                if (function instanceof JavaClass) {
-                    hasSeenJavaClassBranch.enter();
-                    return executeJavaClassCall(arguments, function);
-                } else if (function instanceof JavaMethod) {
-                    hasSeenJavaMethodBranch.enter();
-                    return executeJavaMethodCall(arguments, function, target);
-                } else if (JavaPackage.isJavaPackage(function)) {
-                    hasSeenJavaPackageBranch.enter();
-                    DynamicObject pack = (DynamicObject) function;
-                    throw createClassNotFoundException(pack, this);
-                }
-            }
-            hasSeenErrorBranch.enter();
             throw typeError(function);
-        }
-
-        private Object executeJavaMethodCall(Object[] arguments, Object function, Object target) {
-            JavaMethod javaMethod = (JavaMethod) function;
-            Object receiver = javaMethod.isStatic() ? null : target;
-            return javaMethod.invoke(receiver, flatten(JSArguments.extractUserArguments(arguments)));
-        }
-
-        private Object executeJavaClassCall(Object[] arguments, Object function) {
-            JavaClass javaClass = (JavaClass) function;
-            if (javaClass.isAbstract()) {
-                hasSeenAbstractJavaClassBranch.enter();
-                javaClass = javaClass.extend(null, null);
-            }
-            return javaClass.newInstance(flatten(JSArguments.extractUserArguments(arguments)));
         }
 
         @TruffleBoundary

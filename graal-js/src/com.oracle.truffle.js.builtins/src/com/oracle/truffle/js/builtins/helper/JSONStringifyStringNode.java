@@ -143,7 +143,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             }
         } else if (value instanceof TruffleObject) {
             jsonTruffleObject(builder, data, (TruffleObject) value);
-        } else if (JSTruffleOptions.NashornJavaInterop || JSRuntime.isJavaPrimitive(value)) {
+        } else if (JSRuntime.isJavaPrimitive(value)) {
             // call toString on Java objects, GR-3722
             jsonQuote(builder, value.toString());
         } else {

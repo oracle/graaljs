@@ -318,7 +318,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = JSRuntime.toObject(context, JSArguments.getThisObject(arguments));
+                DynamicObject thisObj = (DynamicObject) JSArguments.getThisObject(arguments);
                 int argumentCount = JSArguments.getUserArgumentCount(arguments);
                 String one = (argumentCount > 0) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
                 String two = (argumentCount > 1) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
@@ -332,7 +332,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = JSRuntime.toObject(context, JSArguments.getThisObject(arguments));
+                DynamicObject thisObj = (DynamicObject) JSArguments.getThisObject(arguments);
                 int argumentCount = JSArguments.getUserArgumentCount(arguments);
                 String one = (argumentCount > 0) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
                 String two = (argumentCount > 1) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;

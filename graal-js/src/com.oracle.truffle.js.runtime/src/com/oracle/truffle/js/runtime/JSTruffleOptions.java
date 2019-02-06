@@ -157,10 +157,7 @@ public class JSTruffleOptions {
     public static final String HeapDumpFileName = stringOption("HeapDumpFileName", null);
 
     // Java Interop options
-    public static final boolean NashornJavaInterop = !SubstrateVM && booleanOption("NashornJavaInterop", false);
-    public static final boolean JavaCallCache = booleanOption("JavaCallCache", true);
     public static final boolean SingleThreaded = booleanOption("SingleThreaded", false);
-    public static final boolean JavaConvertersAsMethodHandles = booleanOption("JavaConvertersAsMethodHandles", false);
 
     // Tracing
     public static final boolean TracePolymorphicPropertyAccess = booleanOption("TracePolymorphicPropertyAccess", false);

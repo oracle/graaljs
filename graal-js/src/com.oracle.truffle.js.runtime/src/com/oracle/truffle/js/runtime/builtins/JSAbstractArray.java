@@ -401,7 +401,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         String propertyName = null;
         while (current != Null.instance) {
             if (JSProxy.isProxy(current)) {
-                return JSObject.setWithReceiver(current, Boundaries.stringValueOf(index), value, receiver, false);
+                return JSObject.setWithReceiver(current, index, value, receiver, false);
             }
             if (canHaveReadOnlyOrAccessorProperties(current)) {
                 if (JSObject.hasOwnProperty(current, index)) {

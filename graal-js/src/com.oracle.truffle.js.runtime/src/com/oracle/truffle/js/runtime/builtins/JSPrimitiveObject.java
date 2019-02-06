@@ -47,10 +47,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaGetter;
-import com.oracle.truffle.js.runtime.interop.JavaMember;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
@@ -68,7 +64,7 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject implements Proto
 
         if (key instanceof String && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
-            if (context.isOptionNashornCompatibilityMode()) {
+            if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
                 if (propertyValue == null) {
                     return getJavaProperty(thisObj, (String) key, context);
                 }
@@ -79,21 +75,12 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject implements Proto
     }
 
     private static Object getJavaProperty(Object thisObj, String name, JSContext context) {
-        if (JSTruffleOptions.NashornJavaInterop) {
-            JavaClass type = JavaClass.forClass(thisObj.getClass());
-            JavaMember member = type.getMember(name, JavaClass.INSTANCE, JavaClass.GETTER_METHOD, false);
-            if (member instanceof JavaGetter) {
-                return ((JavaGetter) member).getValue(thisObj);
-            }
-            return member;
-        } else {
-            String thisStr = (String) thisObj;
-            Object boxedString = context.getRealm().getEnv().asBoxedGuestValue(thisStr);
-            try {
-                return ForeignAccess.sendRead(JSInteropUtil.createRead(), (TruffleObject) boxedString, name);
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                return Undefined.instance;
-            }
+        String thisStr = (String) thisObj;
+        Object boxedString = context.getRealm().getEnv().asBoxedGuestValue(thisStr);
+        try {
+            return ForeignAccess.sendRead(JSInteropUtil.createRead(), (TruffleObject) boxedString, name);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            return Undefined.instance;
         }
     }
 
@@ -102,7 +89,7 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject implements Proto
     public Object getMethodHelper(DynamicObject store, Object thisObj, Object name) {
         if (name instanceof String && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
-            if (context.isOptionNashornCompatibilityMode()) {
+            if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
                 if (hasOwnProperty(store, name)) {
                     Object method = getJavaMethod(thisObj, (String) name, context);
                     if (method != null) {
@@ -116,18 +103,12 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject implements Proto
     }
 
     private static Object getJavaMethod(Object thisObj, String name, JSContext context) {
-        if (JSTruffleOptions.NashornJavaInterop) {
-            JavaClass type = JavaClass.forClass(thisObj.getClass());
-            JavaMember member = type.getMember(name, JavaClass.INSTANCE, JavaClass.METHOD, false);
-            return member;
-        } else {
-            String thisStr = (String) thisObj;
-            Object boxedString = context.getRealm().getEnv().asBoxedGuestValue(thisStr);
-            try {
-                return ForeignAccess.sendRead(JSInteropUtil.createRead(), (TruffleObject) boxedString, name);
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                return null;
-            }
+        String thisStr = (String) thisObj;
+        Object boxedString = context.getRealm().getEnv().asBoxedGuestValue(thisStr);
+        try {
+            return ForeignAccess.sendRead(JSInteropUtil.createRead(), (TruffleObject) boxedString, name);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            return null;
         }
     }
 

@@ -71,7 +71,6 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -172,18 +171,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         return env.isHostObject(obj) && env.asHostObject(obj) instanceof Class;
     }
 
-    @Specialization(guards = {"!isJavaObject(obj)"})
-    protected static boolean doJava(Object obj, JavaClass clazz) {
-        return clazz.getType().isInstance(obj);
-    }
-
-    @Specialization(guards = {"isJavaObject(obj)"})
-    protected final boolean doJavaUnwrap(Object obj, JavaClass clazz) {
-        TruffleLanguage.Env env = context.getRealm().getEnv();
-        return clazz.getType().isInstance(env.asHostObject(obj));
-    }
-
-    @Specialization(guards = {"!isDynamicObject(target)", "!isJavaInteropClass(target)", "!isJavaClass(target)"})
+    @Specialization(guards = {"!isDynamicObject(target)"})
     protected boolean doRHSNotAnObject(@SuppressWarnings("unused") Object obj, Object target) {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
     }

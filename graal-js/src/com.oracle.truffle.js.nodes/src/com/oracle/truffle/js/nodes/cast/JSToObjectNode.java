@@ -64,9 +64,6 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -176,16 +173,6 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return JSSymbol.create(context, value);
     }
 
-    @Specialization
-    protected DynamicObject doJava(JavaClass value) {
-        return JSJavaWrapper.create(context, value);
-    }
-
-    @Specialization
-    protected DynamicObject doJava(JavaMethod value) {
-        return JSJavaWrapper.create(context, value);
-    }
-
     @Specialization(guards = {"shape.check(object)", "isJSObjectShape(shape)", "!isCheckForNullOrUndefined()"}, limit = "MAX_SHAPE_COUNT")
     protected DynamicObject doJSObjectNoCheckShape(DynamicObject object,
                     @Cached("object.getShape()") @SuppressWarnings("unused") Shape shape) {
@@ -229,19 +216,19 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"object != null", "cachedClass != null", "object.getClass() == cachedClass"}, limit = "MAX_CLASSES")
-    protected DynamicObject doJavaObject(Object object, @Cached("getJavaObjectClass(object)") Class<?> cachedClass) {
+    protected TruffleObject doJavaObject(Object object, @Cached("getJavaObjectClass(object)") Class<?> cachedClass) {
         return doJavaGeneric(cachedClass.cast(object));
     }
 
     @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isJSObject(object)", "!isForeignObject(object)"}, replaces = "doJavaObject")
-    protected DynamicObject doJavaGeneric(Object object) {
+    protected TruffleObject doJavaGeneric(Object object) {
         // assume these to be Java objects
         assert !JSRuntime.isJSNative(object);
         if (isFromWith()) {
             // ... but make that an error within "with"
             throwWithError();
         }
-        return JSJavaWrapper.create(context, object);
+        return (TruffleObject) context.getRealm().getEnv().asBoxedGuestValue(object);
     }
 
     @TruffleBoundary

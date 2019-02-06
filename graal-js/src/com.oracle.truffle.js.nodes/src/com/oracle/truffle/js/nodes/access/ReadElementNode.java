@@ -105,7 +105,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -381,7 +380,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 assert JSRuntime.isForeignObject(target);
                 return new TruffleObjectReadElementTypeCacheNode(context, (Class<? extends TruffleObject>) target.getClass());
             } else {
-                assert JSTruffleOptions.NashornJavaInterop : target;
+                assert JSRuntime.isJavaPrimitive(target);
                 return new JavaObjectReadElementTypeCacheNode(context, target.getClass());
             }
         }
@@ -692,12 +691,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
-            return JSObject.get(JSJavaWrapper.create(context, target), toPropertyKey(index));
+            toPropertyKey(index);
+            return Undefined.instance;
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index) {
-            return JSObject.get(JSJavaWrapper.create(context, target), index);
+            return Undefined.instance;
         }
 
         @Override

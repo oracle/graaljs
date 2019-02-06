@@ -116,7 +116,6 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
@@ -197,7 +196,6 @@ public class JSContext {
     private final TimeProfiler timeProfiler;
 
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
-    private final JSObjectFactory.BoundProto javaWrapperFactory;
 
     /** The RegExp engine, as obtained from RegexLanguage. */
     private TruffleObject regexEngine;
@@ -408,7 +406,6 @@ public class JSContext {
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
         this.timeProfiler = JSTruffleOptions.ProfileTime ? new TimeProfiler() : null;
-        this.javaWrapperFactory = JSTruffleOptions.NashornJavaInterop ? JSObjectFactory.createBound(this, Null.instance, JSJavaWrapper.makeShape(this).createFactory()) : null;
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
@@ -505,7 +502,7 @@ public class JSContext {
         this.relativeTimeFormatFactory = intl402 ? builder.create(JSRelativeTimeFormat.INSTANCE) : null;
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
-        boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode || JSTruffleOptions.NashornJavaInterop;
+        boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
 
@@ -905,10 +902,6 @@ public class JSContext {
 
     public final JSObjectFactory getJavaPackageFactory() {
         return javaPackageFactory;
-    }
-
-    public final JSObjectFactory.BoundProto getJavaWrapperFactory() {
-        return javaWrapperFactory;
     }
 
     public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
@@ -1499,37 +1492,22 @@ public class JSContext {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = JSRuntime.toObject(JSContext.this, JSArguments.getThisObject(arguments));
+                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments));
                 if (JSArguments.getUserArgumentCount(arguments) < 1) {
                     return Undefined.instance;
                 }
                 Object value = JSArguments.getUserArgument(arguments, 0);
-
-                DynamicObject current = JSObject.getPrototype(thisObj);
-                if (current == value) {
-                    return Undefined.instance; // true in OrdinarySetPrototype
-                }
-                if (!JSObject.isExtensible(thisObj)) {
-                    throwCannotSetNonExtensibleProtoError(thisObj);
-                }
-
-                if (!(JSObject.isDynamicObject(value)) || value == Undefined.instance) {
+                if (!JSObject.isJSObject(value) || value == Undefined.instance) {
                     return Undefined.instance;
                 }
+                if (!JSObject.isJSObject(obj)) {
+                    return Undefined.instance;
+                }
+                DynamicObject thisObj = (DynamicObject) obj;
                 if (!JSObject.setPrototype(thisObj, (DynamicObject) value)) {
-                    throwCannotSetProtoError(thisObj);
+                    throw Errors.createTypeErrorCannotSetProto(thisObj, (DynamicObject) value);
                 }
                 return Undefined.instance;
-            }
-
-            @TruffleBoundary
-            private void throwCannotSetNonExtensibleProtoError(DynamicObject thisObj) {
-                throw Errors.createTypeError("Cannot set __proto__ of non-extensible " + JSObject.defaultToString(thisObj));
-            }
-
-            @TruffleBoundary
-            private void throwCannotSetProtoError(DynamicObject thisObj) {
-                throw Errors.createTypeError("Cannot set __proto__ of " + JSObject.defaultToString(thisObj));
             }
         });
         return JSFunctionData.createCallOnly(this, callTarget, 0, "set " + JSObject.PROTO);
@@ -1539,8 +1517,11 @@ public class JSContext {
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                Object obj = JSArguments.getThisObject(frame.getArguments());
-                return JSObject.getPrototype(JSRuntime.toObject(JSContext.this, obj));
+                Object obj = JSRuntime.toObject(JSContext.this, JSArguments.getThisObject(frame.getArguments()));
+                if (JSObject.isJSObject(obj)) {
+                    return JSObject.getPrototype((DynamicObject) obj);
+                }
+                return Null.instance;
             }
         });
         return JSFunctionData.createCallOnly(this, callTarget, 0, "get " + JSObject.PROTO);

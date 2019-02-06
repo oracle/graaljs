@@ -677,7 +677,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = JSRuntime.toObject(context, JSArguments.getThisObject(arguments));
+                DynamicObject thisObj = (DynamicObject) JSArguments.getThisObject(arguments);
                 Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
                 return format(context, thisObj, n);
             }

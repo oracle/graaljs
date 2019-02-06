@@ -119,7 +119,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -423,7 +422,7 @@ public class WriteElementNode extends JSTargetableNode {
                 assert JSRuntime.isForeignObject(target);
                 return new TruffleObjectWriteElementTypeCacheNode(context, isStrict, (Class<? extends TruffleObject>) target.getClass(), writeOwn);
             } else {
-                assert JSTruffleOptions.NashornJavaInterop : target;
+                assert JSRuntime.isJavaPrimitive(target);
                 return new JavaObjectWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
             }
         }
@@ -566,12 +565,10 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
-            JSObject.set(JSJavaWrapper.create(context, target), index, value, isStrict);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
-            JSObject.set(JSJavaWrapper.create(context, target), index, value, isStrict);
         }
 
         @Override
@@ -1512,7 +1509,7 @@ public class WriteElementNode extends JSTargetableNode {
                 }
             }
             stringIndexBranch.enter();
-            JSObject.set(JSString.create(context, charSequence), toPropertyKey(index), value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSString.create(context, charSequence), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
@@ -1525,7 +1522,7 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return;
             } else {
-                JSObject.set(JSString.create(context, charSequence), index, value, isStrict, classProfile);
+                JSObject.setWithReceiver(JSString.create(context, charSequence), index, value, target, isStrict, classProfile);
             }
         }
 
@@ -1546,13 +1543,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
             Number number = (Number) target;
-            JSObject.set(JSNumber.create(context, number), toPropertyKey(index), value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSNumber.create(context, number), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
             Number number = (Number) target;
-            JSObject.set(JSNumber.create(context, number), index, value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSNumber.create(context, number), index, value, target, isStrict, classProfile);
         }
 
         @Override
@@ -1569,13 +1566,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
             Boolean bool = (Boolean) target;
-            JSObject.set(JSBoolean.create(context, bool), toPropertyKey(index), value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSBoolean.create(context, bool), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
             Boolean bool = (Boolean) target;
-            JSObject.set(JSBoolean.create(context, bool), index, value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSBoolean.create(context, bool), index, value, target, isStrict, classProfile);
         }
 
         @Override
@@ -1621,13 +1618,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
             BigInt bigInt = (BigInt) target;
-            JSObject.set(JSBigInt.create(context, bigInt), toPropertyKey(index), value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSBigInt.create(context, bigInt), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
             BigInt bigInt = (BigInt) target;
-            JSObject.set(JSBigInt.create(context, bigInt), index, value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSBigInt.create(context, bigInt), index, value, target, isStrict, classProfile);
         }
 
         @Override

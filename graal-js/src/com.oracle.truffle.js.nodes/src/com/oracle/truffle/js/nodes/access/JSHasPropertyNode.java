@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -140,17 +139,17 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         return hasPropertyNode.hasProperty(object);
     }
 
-    @Specialization(guards = {"isJSType(object)", "!isJSJavaWrapper(object)"}, replaces = {"objectStringCached", "arrayStringCached"})
+    @Specialization(guards = {"isJSType(object)"}, replaces = {"objectStringCached", "arrayStringCached"})
     public boolean objectOrArrayString(DynamicObject object, String propertyName) {
         return hasPropertyGeneric(object, propertyName);
     }
 
-    @Specialization(guards = {"isJSType(object)", "!isJSJavaWrapper(object)"})
+    @Specialization(guards = {"isJSType(object)"})
     public boolean objectSymbol(DynamicObject object, Symbol propertyName) {
         return hasPropertyGeneric(object, propertyName);
     }
 
-    @Specialization(guards = {"isJSType(object)", "!isJSFastArray(object)", "!isJSJavaWrapper(object)"})
+    @Specialization(guards = {"isJSType(object)", "!isJSFastArray(object)"})
     public boolean objectLong(DynamicObject object, long propertyIdx) {
         if (hasOwnProperty) {
             return JSObject.hasOwnProperty(object, propertyIdx, classProfile);
@@ -213,8 +212,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                         !JSString.isJSString(obj) &&
                         !JSArray.isJSArray(obj) &&
                         !JSArgumentsObject.isJSArgumentsObject(obj) &&
-                        !JSArrayBufferView.isJSArrayBufferView(obj) &&
-                        !JSJavaWrapper.isJSJavaWrapper(obj));
+                        !JSArrayBufferView.isJSArrayBufferView(obj));
     }
 
     protected static JSClass getCacheableObjectType(DynamicObject obj) {
