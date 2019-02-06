@@ -97,6 +97,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumber
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructObjectNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructPluralRulesNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRegExpNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRelativeTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
@@ -146,6 +147,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeListFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
+import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -184,6 +186,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -224,6 +227,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         ListFormat(0),
         PluralRules(0),
         DateTimeFormat(0),
+        RelativeTimeFormat(0),
 
         Error(1),
         RangeError(1),
@@ -353,6 +357,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructDateTimeFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
                                 : ConstructDateTimeFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
                                 : CallDateTimeFormatNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case RelativeTimeFormat:
+                return construct ? (newTarget
+                                ? ConstructRelativeTimeFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                : ConstructRelativeTimeFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                                : createCallRequiresNew(context, builtin);
             case Object:
                 if (newTarget) {
                     return ConstructObjectNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context));
@@ -1057,6 +1066,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getListFormatConstructor().getPrototype();
+        }
+    }
+
+    public abstract static class ConstructRelativeTimeFormatNode extends ConstructWithNewTargetNode {
+
+        @Child InitializeRelativeTimeFormatNode initializeRelativeTimeFormatNode;
+
+        public ConstructRelativeTimeFormatNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+            initializeRelativeTimeFormatNode = InitializeRelativeTimeFormatNode.createInitalizeRelativeTimeFormatNode(context);
+        }
+
+        @Specialization
+        protected DynamicObject constructRelativeTimeFormat(DynamicObject newTarget, Object locales, Object options) {
+            DynamicObject listFormat = swapPrototype(JSRelativeTimeFormat.create(getContext()), newTarget);
+            return initializeRelativeTimeFormatNode.executeInit(listFormat, locales, options);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getRelativeTimeFormatConstructor().getPrototype();
         }
     }
 

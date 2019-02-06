@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,19 +44,14 @@ import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
-import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
-/*
- * https://tc39.github.io/ecma402/#sec-initializepluralrules
- */
-public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
+public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNode {
 
     private final JSContext context;
 
@@ -65,83 +60,54 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
 
     @Child GetStringOptionNode getLocaleMatcherOption;
 
-    @Child GetNumberOptionNode getMinIntDigitsOption;
-    @Child GetNumberOptionNode getMinFracDigitsOption;
-    @Child GetNumberOptionNode getMaxFracDigitsOption;
-    @Child PropertyGetNode getMinSignificantDigitsOption;
-    @Child PropertyGetNode getMaxSignificantDigitsOption;
-    @Child DefaultNumberOptionNode getMnsdDNO;
-    @Child DefaultNumberOptionNode getMxsdDNO;
+    @Child GetStringOptionNode getStyleOption;
+    @Child GetStringOptionNode getNumericOption;
 
-    @Child GetStringOptionNode getTypeOption;
-
-    protected InitializePluralRulesNode(JSContext context) {
+    protected InitializeRelativeTimeFormatNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW}, IntlUtil.LONG);
+        this.getNumericOption = GetStringOptionNode.create(context, "numeric", new String[]{IntlUtil.ALWAYS, IntlUtil.AUTO}, IntlUtil.ALWAYS);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
                         new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
-        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.CARDINAL, IntlUtil.ORDINAL}, IntlUtil.CARDINAL);
-        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_INTEGER_DIGITS, 21);
-        this.getMinSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, false, context);
-        this.getMaxSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MAXIMUM_SIGNIFICANT_DIGITS, false, context);
-        this.getMinFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_FRACTION_DIGITS, 21);
-        this.getMaxFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MAXIMUM_FRACTION_DIGITS, 20);
-        this.getMnsdDNO = DefaultNumberOptionNode.create(21, 1);
-        this.getMxsdDNO = DefaultNumberOptionNode.create(21, 21);
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
 
-    public static InitializePluralRulesNode createInitalizePluralRulesNode(JSContext context) {
-        return InitializePluralRulesNodeGen.create(context);
+    public static InitializeRelativeTimeFormatNode createInitalizeRelativeTimeFormatNode(JSContext context) {
+        return InitializeRelativeTimeFormatNodeGen.create(context);
     }
 
     @Specialization
-    public DynamicObject initializePluralRules(DynamicObject pluralRulesObj, Object localesArg, Object optionsArg) {
+    public DynamicObject initializeRelativeTimeFormat(DynamicObject relativeTimeFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
         IntlUtil.ensureICU4JDataPathSet(context);
 
         try {
-            JSPluralRules.InternalState state = JSPluralRules.getInternalState(pluralRulesObj);
+
+            JSRelativeTimeFormat.InternalState state = JSRelativeTimeFormat.getInternalState(relativeTimeFormatObj);
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             DynamicObject options = createOptionsNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
-            String optType = getTypeOption.executeValue(options);
+            String optStyle = getStyleOption.executeValue(options);
+            String optNumeric = getNumericOption.executeValue(options);
 
             state.initialized = true;
 
-            state.type = optType;
+            state.style = optStyle;
+            state.numeric = optNumeric;
 
             JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
-            JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
-
-            int mnfdDefault = 0;
-            int mxfdDefault = 3;
-            setPluralRulesDigitOptions(state, options, mnfdDefault, mxfdDefault);
+            JSRelativeTimeFormat.setupInternalRelativeTimeFormatter(state);
 
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
         }
-        return pluralRulesObj;
-    }
 
-    // https://tc39.github.io/ecma402/#sec-setnfdigitoptions
-    private void setPluralRulesDigitOptions(JSPluralRules.InternalState state, DynamicObject options, int mnfdDefault, int mxfdDefault) {
-        Number mnid = getMinIntDigitsOption.executeValue(options, 1, 1);
-        Number mnfd = getMinFracDigitsOption.executeValue(options, 0, mnfdDefault);
-        int mxfdActualDefault = Math.max(mnfd.intValue(), mxfdDefault);
-        Number mxfd = getMaxFracDigitsOption.executeValue(options, mnfdDefault, mxfdActualDefault);
-        state.setIntegerAndFractionsDigits(mnid.intValue(), mnfd.intValue(), mxfd.intValue());
-        Object mnsd = getMinSignificantDigitsOption.getValue(options);
-        Object mxsd = getMaxSignificantDigitsOption.getValue(options);
-        if (!JSGuards.isUndefined(mnsd) || !JSGuards.isUndefined(mxsd)) {
-            Number mnsdNumber = getMnsdDNO.executeValue(mnsd, 1);
-            Number mxsdNumber = getMxsdDNO.executeValue(mxsd, mnsdNumber.intValue());
-            state.setSignificantDigits(mnsdNumber.intValue(), mxsdNumber.intValue());
-        }
+        return relativeTimeFormatObj;
     }
 }

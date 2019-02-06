@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,22 +91,22 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = ToDateTimeOptionsNodeGen.create(context);
-        this.getTimeZoneNode = PropertyGetNode.create("timeZone", context);
+        this.getTimeZoneNode = PropertyGetNode.create(IntlUtil.TIME_ZONE, context);
 
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
-        this.getFormatMatcherOption = GetStringOptionNode.create(context, "formatMatcher", new String[]{"basic", "best fit"}, "best fit");
-        this.getHourCycleOption = GetStringOptionNode.create(context, "hourCycle", new String[]{"h11", "h12", "h23", "h24"}, null);
-        this.getHour12Option = GetBooleanOptionNode.create(context, "hour12", null);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getFormatMatcherOption = GetStringOptionNode.create(context, IntlUtil.FORMAT_MATCHER, new String[]{IntlUtil.BASIC, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getHourCycleOption = GetStringOptionNode.create(context, IntlUtil.HOUR_CYCLE, new String[]{IntlUtil.H11, IntlUtil.H12, IntlUtil.H23, IntlUtil.H24}, null);
+        this.getHour12Option = GetBooleanOptionNode.create(context, IntlUtil.HOUR12, null);
 
-        this.getWeekdayOption = GetStringOptionNode.create(context, "weekday", new String[]{"narrow", "short", "long"}, null);
-        this.getEraOption = GetStringOptionNode.create(context, "era", new String[]{"narrow", "short", "long"}, null);
-        this.getYearOption = GetStringOptionNode.create(context, "year", new String[]{"2-digit", "numeric"}, null);
-        this.getMonthOption = GetStringOptionNode.create(context, "month", new String[]{"2-digit", "numeric", "narrow", "short", "long"}, null);
-        this.getDayOption = GetStringOptionNode.create(context, "day", new String[]{"2-digit", "numeric"}, null);
-        this.getHourOption = GetStringOptionNode.create(context, "hour", new String[]{"2-digit", "numeric"}, null);
-        this.getMinuteOption = GetStringOptionNode.create(context, "minute", new String[]{"2-digit", "numeric"}, null);
-        this.getSecondOption = GetStringOptionNode.create(context, "second", new String[]{"2-digit", "numeric"}, null);
-        this.getTimeZoneNameOption = GetStringOptionNode.create(context, "timeZoneName", new String[]{"short", "long"}, null);
+        this.getWeekdayOption = GetStringOptionNode.create(context, IntlUtil.WEEKDAY, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, null);
+        this.getEraOption = GetStringOptionNode.create(context, IntlUtil.ERA, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, null);
+        this.getYearOption = GetStringOptionNode.create(context, IntlUtil.YEAR, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
+        this.getMonthOption = GetStringOptionNode.create(context, IntlUtil.MONTH, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC, IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, null);
+        this.getDayOption = GetStringOptionNode.create(context, IntlUtil.DAY, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
+        this.getHourOption = GetStringOptionNode.create(context, IntlUtil.HOUR, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
+        this.getMinuteOption = GetStringOptionNode.create(context, IntlUtil.MINUTE, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
+        this.getSecondOption = GetStringOptionNode.create(context, IntlUtil.SECOND, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
+        this.getTimeZoneNameOption = GetStringOptionNode.create(context, IntlUtil.TIME_ZONE_NAME, new String[]{IntlUtil.SHORT, IntlUtil.LONG}, null);
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);

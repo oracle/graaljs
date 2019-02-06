@@ -169,10 +169,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/regress-8030.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/regress-8525.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -185,39 +181,11 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl/relative-time-format/constructor-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl/relative-time-format/constructor.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/relative-time-format/default-locale-fr-CA.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "intl/relative-time-format/default-locale-pt-BR.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/relative-time-format/format-en.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/relative-time-format/format-to-parts-en.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/relative-time-format/format-to-parts-plural.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/relative-time-format/format-to-parts.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/relative-time-format/format.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {

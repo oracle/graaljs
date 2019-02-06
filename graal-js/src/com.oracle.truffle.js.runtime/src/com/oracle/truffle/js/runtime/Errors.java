@@ -83,6 +83,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorFormat(String message, Node originatingNode, Object... args) {
+        return JSException.create(JSErrorType.RangeError, String.format(message, args), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createURIError(String message) {
         return JSException.create(JSErrorType.URIError, message);
     }
@@ -100,11 +105,6 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeError(String message, Node originatingNode) {
         return JSException.create(JSErrorType.TypeError, message, originatingNode);
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorDateTimeFormatExpected() {
-        return createTypeError("DateTimeFormat object expected.");
     }
 
     @TruffleBoundary
@@ -144,13 +144,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNumberFormatExpected() {
-        return createTypeError("NumberFormat object expected.");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorPluralRulesExpected() {
-        return createTypeError("PluralRules object expected.");
+    public static JSException createTypeErrorTypeXExpected(String type) {
+        return createTypeErrorFormat("%s object expected.", type);
     }
 
     @TruffleBoundary
@@ -159,8 +154,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorListFormatExpected() {
-        return createTypeError("ListFormat object expected.");
+    public static JSException createTypeErrorMethodCalledOnNonObjectOrWrongType(String method) {
+        return createTypeErrorFormat("Method %s called on a non-object or on a wrong type of object.", method);
     }
 
     @TruffleBoundary
@@ -391,6 +386,11 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createRangeErrorCurrencyNotWellFormed(String currencyCode) {
         return createRangeError(String.format("Currency, %s, is not well formed.", currencyCode));
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorInvalidUnitArgument(String functionName, String unit) {
+        return createRangeError(String.format("Invalid unit argument for %s() '%s'", functionName, unit));
     }
 
     @TruffleBoundary

@@ -80,6 +80,81 @@ public class IntlUtil {
                     "taml", "tamldec", "telu", "thai", "tirh", "tibt", "traditio", "vaii", "wara"});
     public static final List<String> BANNED_BCP47_NU_KEYS = Arrays.asList(new String[]{"native", "traditio", "finance"});
 
+    public static final String _2_DIGIT = "2-digit";
+    public static final String ACCENT = "accent";
+    public static final String ALWAYS = "always";
+    public static final String AUTO = "auto";
+    public static final String BEST_FIT = "best fit";
+    public static final String BASE = "base";
+    public static final String BASIC = "basic";
+    public static final String CALENDAR = "calendar";
+    public static final String CARDINAL = "cardinal";
+    public static final String CASE = "case";
+    public static final String CASE_FIRST = "caseFirst";
+    public static final String CODE = "code";
+    public static final String COLLATION = "collation";
+    public static final String CONJUNCTION = "conjunction";
+    public static final String CURRENCY = "currency";
+    public static final String CURRENCY_DISPLAY = "currencyDisplay";
+    public static final String DAY = "day";
+    public static final String DEFAULT = "default";
+    public static final String DECIMAL = "decimal";
+    public static final String DISJUNCTION = "disjunction";
+    public static final String ELEMENT = "element";
+    public static final String ERA = "era";
+    public static final String FALSE = "false";
+    public static final String FORMAT_MATCHER = "formatMatcher";
+    public static final String H11 = "h11";
+    public static final String H12 = "h12";
+    public static final String H23 = "h23";
+    public static final String H24 = "h24";
+    public static final String HOUR = "hour";
+    public static final String HOUR_CYCLE = "hourCycle";
+    public static final String HOUR12 = "hour12";
+    public static final String IGNORE_PUNCTUATION = "ignorePunctuation";
+    public static final String LITERAL = "literal";
+    public static final String LOCALE = "locale";
+    public static final String LOCALE_MATCHER = "localeMatcher";
+    public static final String LONG = "long";
+    public static final String LOOKUP = "lookup";
+    public static final String LOWER = "lower";
+    public static final String MAXIMUM_FRACTION_DIGITS = "maximumFractionDigits";
+    public static final String MAXIMUM_SIGNIFICANT_DIGITS = "maximumSignificantDigits";
+    public static final String MINIMUM_FRACTION_DIGITS = "minimumFractionDigits";
+    public static final String MINIMUM_INTEGER_DIGITS = "minimumIntegerDigits";
+    public static final String MINIMUM_SIGNIFICANT_DIGITS = "minimumSignificantDigits";
+    public static final String MINUTE = "minute";
+    public static final String MONTH = "month";
+    public static final String NAME = "name";
+    public static final String NARROW = "narrow";
+    public static final String NUMERIC = "numeric";
+    public static final String NUMBERING_SYSTEM = "numberingSystem";
+    public static final String OR = "or";
+    public static final String ORDINAL = "ordinal";
+    public static final String PERCENT = "percent";
+    public static final String SEARCH = "search";
+    public static final String SECOND = "second";
+    public static final String SENSITIVITY = "sensitivity";
+    public static final String SHORT = "short";
+    public static final String SORT = "sort";
+    public static final String STANDARD = "standard";
+    public static final String STYLE = "style";
+    public static final String SYMBOL = "symbol";
+    public static final String TIME_ZONE = "timeZone";
+    public static final String TIME_ZONE_NAME = "timeZoneName";
+    public static final String TYPE = "type";
+    public static final String UND = "und";
+    public static final String UNIT = "unit";
+    public static final String UNIT_NARROW = "unit-narrow";
+    public static final String UNIT_SHORT = "unit-short";
+    public static final String UPPER = "upper";
+    public static final String USAGE = "usage";
+    public static final String USE_GROUPING = "useGrouping";
+    public static final String VALUE = "value";
+    public static final String VARIANT = "variant";
+    public static final String WEEKDAY = "weekday";
+    public static final String YEAR = "year";
+
     public static String selectedLocale(JSContext ctx, String[] locales) {
         Locale matchedLocale = lookupMatcher(ctx, locales);
         return matchedLocale != null ? matchedLocale.toLanguageTag() : null;
@@ -94,7 +169,7 @@ public class IntlUtil {
             // BestAvailableLocale: http://ecma-international.org/ecma-402/1.0/#sec-9.2.2
             Locale candidate = Locale.forLanguageTag(lt);
             while (true) {
-                if (lookupMatch(ctx, candidate)) {
+                if (lookupMatch(ctx, candidate, true)) {
                     return candidate;
                 }
                 String candidateLanguageTag = candidate.toLanguageTag();
@@ -114,19 +189,19 @@ public class IntlUtil {
     }
 
     @TruffleBoundary
-    public static List<Object> supportedLocales(JSContext ctx, String[] locales) {
+    public static List<Object> supportedLocales(JSContext ctx, String[] locales, @SuppressWarnings("unused") String matcher) {
         List<Object> result = new LinkedList<>();
         for (String l : locales) {
-            if (lookupMatch(ctx, Locale.forLanguageTag(l))) {
+            if (lookupMatch(ctx, Locale.forLanguageTag(l), true)) {
                 result.add(l);
             }
         }
         return result;
     }
 
-    private static boolean lookupMatch(JSContext ctx, Locale locale) {
-        Locale strippedLocale = locale.stripExtensions();
-        return getAvailableLocales(ctx).contains(strippedLocale);
+    private static boolean lookupMatch(JSContext ctx, Locale locale, boolean stripIt) {
+        Locale lookForLocale = stripIt ? locale.stripExtensions() : locale;
+        return getAvailableLocales(ctx).contains(lookForLocale);
     }
 
     static volatile List<Locale> availableLocales = null;
@@ -288,10 +363,17 @@ public class IntlUtil {
         }
     }
 
-    public static Object makePart(JSContext context, String type, String value) {
+    public static DynamicObject makePart(JSContext context, String type, String value) {
+        return makePart(context, type, value, null);
+    }
+
+    public static DynamicObject makePart(JSContext context, String type, String value, String unit) {
         DynamicObject p = JSUserObject.create(context);
         JSObject.set(p, "type", type);
         JSObject.set(p, "value", value);
+        if (unit != null) {
+            JSObject.set(p, "unit", unit);
+        }
         return p;
     }
 }

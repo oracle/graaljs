@@ -99,7 +99,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
 
         @Fallback
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeErrorDateTimeFormatExpected();
+            throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
     }
 
@@ -117,7 +117,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         @Fallback
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value) {
-            throw Errors.createTypeErrorDateTimeFormatExpected();
+            throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
     }
 }

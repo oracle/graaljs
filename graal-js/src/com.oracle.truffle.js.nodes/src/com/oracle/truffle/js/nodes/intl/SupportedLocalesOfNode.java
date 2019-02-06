@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.nodes.intl;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
-/**
- * Contains built-ins for {@linkplain JSPluralRules} function (constructor).
- */
-public final class PluralRulesFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<PluralRulesFunctionBuiltins.PluralRulesFunction> {
-    protected PluralRulesFunctionBuiltins() {
-        super(JSPluralRules.CLASS_NAME, PluralRulesFunction.class);
+public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
+
+    @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
+
+    public SupportedLocalesOfNode(JSContext context, JSBuiltin builtin) {
+        super(context, builtin);
+        this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
     }
 
-    public enum PluralRulesFunction implements BuiltinEnum<PluralRulesFunction> {
-        supportedLocalesOf(1);
-
-        private final int length;
-
-        PluralRulesFunction(int length) {
-            this.length = length;
-        }
-
-        @Override
-        public int getLength() {
-            return length;
-        }
+    @Specialization(guards = "isUndefined(opts)")
+    protected Object getSupportedLocales(Object locales, @SuppressWarnings("unused") Object opts) {
+        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), IntlUtil.BEST_FIT));
     }
 
-    @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, PluralRulesFunction builtinEnum) {
-        switch (builtinEnum) {
-            case supportedLocalesOf:
-                return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-        }
-        return null;
+    @Specialization(guards = "!isUndefined(opts)")
+    protected Object getSupportedLocalesWithOptions(Object locales, Object opts,
+                    @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
+                    @Cached("createMatcherGetter(getContext())") GetStringOptionNode getMatcherNode) {
+
+        String matcher = getMatcherNode.executeValue(toObjectNode.executeTruffleObject(opts));
+        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), matcher));
+    }
+
+    protected static GetStringOptionNode createMatcherGetter(JSContext context) {
+        return GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
+                        new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
     }
 }

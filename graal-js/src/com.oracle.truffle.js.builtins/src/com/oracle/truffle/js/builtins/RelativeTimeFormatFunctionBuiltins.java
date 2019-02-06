@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,22 +44,22 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 
 /**
- * Contains built-ins for {@linkplain JSPluralRules} function (constructor).
+ * Contains built-ins for {@linkplain JSRelativeTimeFormat} function (constructor).
  */
-public final class PluralRulesFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<PluralRulesFunctionBuiltins.PluralRulesFunction> {
-    protected PluralRulesFunctionBuiltins() {
-        super(JSPluralRules.CLASS_NAME, PluralRulesFunction.class);
+public final class RelativeTimeFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<RelativeTimeFormatFunctionBuiltins.RelativeTimeFormatFunction> {
+    protected RelativeTimeFormatFunctionBuiltins() {
+        super(JSRelativeTimeFormat.CLASS_NAME, RelativeTimeFormatFunction.class);
     }
 
-    public enum PluralRulesFunction implements BuiltinEnum<PluralRulesFunction> {
+    public enum RelativeTimeFormatFunction implements BuiltinEnum<RelativeTimeFormatFunction> {
         supportedLocalesOf(1);
 
         private final int length;
 
-        PluralRulesFunction(int length) {
+        RelativeTimeFormatFunction(int length) {
             this.length = length;
         }
 
@@ -70,7 +70,7 @@ public final class PluralRulesFunctionBuiltins extends JSBuiltinsContainer.Switc
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, PluralRulesFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, RelativeTimeFormatFunction builtinEnum) {
         switch (builtinEnum) {
             case supportedLocalesOf:
                 return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));

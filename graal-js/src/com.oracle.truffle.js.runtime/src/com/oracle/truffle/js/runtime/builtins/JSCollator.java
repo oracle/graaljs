@@ -158,14 +158,14 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
         state.collator = Collator.getInstance(Locale.forLanguageTag(state.locale));
         state.collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
         switch (state.sensitivity) {
-            case "base":
+            case IntlUtil.BASE:
                 state.collator.setStrength(Collator.PRIMARY);
                 break;
-            case "accent":
+            case IntlUtil.ACCENT:
                 state.collator.setStrength(Collator.SECONDARY);
                 break;
-            case "case":
-            case "variant":
+            case IntlUtil.CASE:
+            case IntlUtil.VARIANT:
                 state.collator.setStrength(Collator.TERTIARY);
                 break;
         }
@@ -240,22 +240,22 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
         DynamicObject boundCompareFunction = null;
 
         public String locale;
-        public String usage = "sort";
-        public String sensitivity = "variant";
-        public String collation = "default";
+        public String usage = IntlUtil.SORT;
+        public String sensitivity = IntlUtil.VARIANT;
+        public String collation = IntlUtil.DEFAULT;
         public boolean ignorePunctuation = false;
         public boolean numeric = false;
-        public String caseFirst = "false";
+        public String caseFirst = IntlUtil.FALSE;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
-            JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "usage", usage, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "sensitivity", sensitivity, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "ignorePunctuation", ignorePunctuation, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "collation", collation, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "numeric", numeric, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "caseFirst", caseFirst, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.USAGE, usage, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.SENSITIVITY, sensitivity, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.IGNORE_PUNCTUATION, ignorePunctuation, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.COLLATION, collation, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.NUMERIC, numeric, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.CASE_FIRST, caseFirst, JSAttributes.getDefault());
             return result;
         }
     }
@@ -287,13 +287,13 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                     InternalState state = getInternalState((DynamicObject) collatorObj);
 
                     if (state == null || !state.initializedCollator) {
-                        throw Errors.createTypeError("Method compare called on a non-object or on a wrong type of object.");
+                        throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("compare");
                     }
 
                     if (state.boundCompareFunction == null) {
                         JSFunctionData compareFunctionData;
                         DynamicObject compareFn;
-                        if (state.sensitivity.equals("case")) {
+                        if (state.sensitivity.equals(IntlUtil.CASE)) {
                             compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCaseSensitiveCompare,
                                             c -> createCaseSensitiveCompareFunctionData(c));
                             compareFn = JSFunction.create(realm, compareFunctionData);
@@ -308,7 +308,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
                     return state.boundCompareFunction;
                 }
-                throw Errors.createTypeError("expected collator object");
+                throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
             }
         });
     }
