@@ -2081,7 +2081,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             BinaryOperation operation = unaryNode.tokenType() == TokenType.INCPREFIX || unaryNode.tokenType() == TokenType.INCPOSTFIX ? BinaryOperation.ADD : BinaryOperation.SUBTRACT;
             boolean isPostfix = unaryNode.tokenType() == TokenType.INCPOSTFIX || unaryNode.tokenType() == TokenType.DECPOSTFIX;
             JavaScriptNode constNumericUnit = ensureHasSourceSection(factory.createConstantNumericUnit(), unaryNode);
-            return tagExpression(transformAssignment(unaryNode, unaryNode.getExpression(), constNumericUnit, operation, isPostfix, true), unaryNode);
+            return tagExpression(transformCompoundAssignment(unaryNode, unaryNode.getExpression(), constNumericUnit, operation, isPostfix, true), unaryNode);
         }
     }
 
@@ -2313,7 +2313,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode enterBinaryTransformNode(BinaryNode binaryNode) {
         JavaScriptNode assignedValue = transform(binaryNode.getAssignmentSource());
-        return tagExpression(transformAssignment(binaryNode, binaryNode.getAssignmentDest(), assignedValue, tokenTypeToBinaryOperation(binaryNode.tokenType()), false, false), binaryNode);
+        return tagExpression(transformCompoundAssignment(binaryNode, binaryNode.getAssignmentDest(), assignedValue, tokenTypeToBinaryOperation(binaryNode.tokenType()), false, false), binaryNode);
     }
 
     private JavaScriptNode enterBinaryAssignNode(BinaryNode binaryNode) {
@@ -2396,222 +2396,41 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return transformAssignmentImpl(assignmentExpression, lhsExpression, assignedValue, initializationAssignment, null, false, false);
     }
 
-    private JavaScriptNode transformAssignment(Expression assignmentExpression, Expression lhsExpression, JavaScriptNode assignedValue,
-                    BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertLHSToNumeric) {
-        return transformAssignmentImpl(assignmentExpression, lhsExpression, assignedValue, false, shortcutOperation, returnOldValue, convertLHSToNumeric);
+    private JavaScriptNode transformCompoundAssignment(Expression assignmentExpression, Expression lhsExpression, JavaScriptNode assignedValue,
+                    BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric) {
+        return transformAssignmentImpl(assignmentExpression, lhsExpression, assignedValue, false, binaryOp, returnOldValue, convertLHSToNumeric);
     }
 
     private JavaScriptNode transformAssignmentImpl(Expression assignmentExpression, Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment,
-                    BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertLHSToNumeric) {
-        assert shortcutOperation != null || (!returnOldValue && !convertLHSToNumeric) : "returnOldValue / convertLHSToNumeric can only be used with shortcut assignments";
-        JavaScriptNode assignedNode = null;
-        TokenType tokenType = lhsExpression.tokenType();
-        if (tokenType != TokenType.IDENT && lhsExpression instanceof IdentNode) {
-            tokenType = TokenType.IDENT;
-        }
-        switch (tokenType) {
-            case IDENT: {
-                setAnonymousFunctionName(assignedValue, ((IdentNode) lhsExpression).getName());
-                assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, shortcutOperation, returnOldValue, convertLHSToNumeric, initializationAssignment);
+                    BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric) {
+        JavaScriptNode assignedNode;
+        switch (lhsExpression.tokenType()) {
+            // Checkstyle: stop
+            default: // ident with other token type
+                // Checkstyle: resume
+                if (!(lhsExpression instanceof IdentNode)) {
+                    throw Errors.unsupported("unsupported assignment to token type: " + lhsExpression.tokenType().toString() + " " + lhsExpression.toString());
+                }
+                // fall through
+            case IDENT:
+                assignedNode = transformAssignmentIdent((IdentNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric, initializationAssignment);
                 break;
-            }
-            case LBRACKET: {
+            case LBRACKET:
                 // target[element]
-                IndexNode indexNode = (IndexNode) lhsExpression;
-                JavaScriptNode target = transform(indexNode.getBase());
-                JavaScriptNode elem = transform(indexNode.getIndex());
-
-                if (shortcutOperation == null) {
-                    assignedNode = factory.createWriteElementNode(target, elem, assignedValue, context, environment.isStrictMode());
-                } else {
-                    // Evaluation order:
-                    // 1. target = GetValue(baseReference)
-                    // 2. key = GetValue(propertyNameReference)
-                    // 3. RequireObjectCoercible(target); safely repeatable
-                    // 4. key = ToPropertyKey(key); only once
-                    // 5. lhs = target[key];
-                    // 6. result = lhs op rhs;
-                    // 7. target[key] = result
-
-                    // Index must be ToPropertyKey-converted only once, save it in temp var
-                    VarRef keyTemp = environment.createTempVar();
-                    JavaScriptNode readIndex = keyTemp.createReadNode();
-                    JSWriteFrameSlotNode writeIndex = (JSWriteFrameSlotNode) keyTemp.createWriteNode(null);
-
-                    JavaScriptNode target1;
-                    JavaScriptNode target2;
-                    if (target instanceof RepeatableNode) {
-                        target1 = target;
-                        target2 = factory.copy(target);
-                    } else {
-                        VarRef targetTemp = environment.createTempVar();
-                        target1 = targetTemp.createWriteNode(target);
-                        target2 = targetTemp.createReadNode();
-                    }
-
-                    JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target2, readIndex), lhsExpression);
-                    if (convertLHSToNumeric) {
-                        readNode = factory.createToNumeric(readNode);
-                    }
-                    VarRef prevValueTemp = null;
-                    if (returnOldValue) {
-                        prevValueTemp = environment.createTempVar();
-                        readNode = prevValueTemp.createWriteNode(readNode);
-                    }
-                    JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, shortcutOperation, readNode, assignedValue), lhsExpression);
-                    JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target1, elem, binOpNode, writeIndex, context, environment.isStrictMode());
-                    if (returnOldValue) {
-                        assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
-                    } else {
-                        assignedNode = writeNode;
-                    }
-                }
+                assignedNode = transformIndexAssignment((IndexNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric);
                 break;
-            }
-            case PERIOD: {
+            case PERIOD:
                 // target.property
-                AccessNode accessNode = (AccessNode) lhsExpression;
-                JavaScriptNode target = transform(accessNode.getBase());
-
-                if (shortcutOperation == null) {
-                    assignedNode = factory.createWriteProperty(target, accessNode.getProperty(), assignedValue, context, environment.isStrictMode());
-                } else {
-                    JavaScriptNode target1;
-                    JavaScriptNode target2;
-                    if (target instanceof RepeatableNode) {
-                        target1 = target;
-                        target2 = factory.copy(target);
-                    } else {
-                        VarRef targetTemp = environment.createTempVar();
-                        target1 = targetTemp.createWriteNode(target);
-                        target2 = targetTemp.createReadNode();
-                    }
-
-                    VarRef prevValueTemp = null;
-                    JavaScriptNode readNode = tagExpression(factory.createReadProperty(context, target2, accessNode.getProperty()), accessNode);
-                    if (convertLHSToNumeric) {
-                        readNode = factory.createToNumeric(readNode);
-                    }
-                    if (returnOldValue) {
-                        prevValueTemp = environment.createTempVar();
-                        readNode = prevValueTemp.createWriteNode(readNode);
-                    }
-                    JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, shortcutOperation, readNode, assignedValue), lhsExpression);
-                    JavaScriptNode writeNode = factory.createWriteProperty(target1, accessNode.getProperty(), binOpNode, context, environment.isStrictMode());
-                    if (returnOldValue) {
-                        assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
-                    } else {
-                        assignedNode = writeNode;
-                    }
-                }
+                assignedNode = transformPropertyAssignment((AccessNode) lhsExpression, assignedValue, binaryOp, returnOldValue, convertLHSToNumeric);
                 break;
-            }
-            case ARRAY: {
-                assert shortcutOperation == null;
-                LiteralNode.ArrayLiteralNode arrayLiteralNode = (LiteralNode.ArrayLiteralNode) lhsExpression;
-                List<Expression> elementExpressions = arrayLiteralNode.getElementExpressions();
-                JavaScriptNode[] initElements = javaScriptNodeArray(elementExpressions.size());
-                VarRef iteratorTempVar = environment.createTempVar();
-                VarRef valueTempVar = environment.createTempVar();
-                VarRef doneVar = environment.createTempVar();
-                JavaScriptNode initValue = valueTempVar.createWriteNode(assignedValue);
-                // By default, we use the hint to track the type of iterator.
-                JavaScriptNode getIterator = factory.createGetIterator(context, initValue);
-                JavaScriptNode initIteratorTempVar = iteratorTempVar.createWriteNode(getIterator);
-                JavaScriptNode writeDone = doneVar.createWriteNode(factory.createConstantBoolean(true));
-
-                for (int i = 0; i < elementExpressions.size(); i++) {
-                    Expression element = elementExpressions.get(i);
-                    Expression lhsExpr;
-                    Expression init = null;
-                    if (element instanceof IdentNode) {
-                        lhsExpr = element;
-                    } else if (element instanceof BinaryNode) {
-                        assert element.isTokenType(TokenType.ASSIGN) || element.isTokenType(TokenType.ASSIGN_INIT);
-                        lhsExpr = ((BinaryNode) element).lhs();
-                        init = ((BinaryNode) element).rhs();
-                    } else {
-                        lhsExpr = element;
-                    }
-                    JavaScriptNode rhsNode = factory.createIteratorStepSpecial(context, iteratorTempVar.createReadNode(), factory.createExprBlock(writeDone, factory.createConstantUndefined()), true);
-                    if (init != null) {
-                        rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
-                    }
-                    if (lhsExpr != null && lhsExpr.isTokenType(TokenType.SPREAD_ARRAY)) {
-                        rhsNode = factory.createIteratorToArray(context, iteratorTempVar.createReadNode(), writeDone);
-                        lhsExpr = ((UnaryNode) lhsExpr).getExpression();
-                    }
-                    if (lhsExpr != null) {
-                        initElements[i] = transformAssignment(lhsExpr, lhsExpr, rhsNode, initializationAssignment);
-                    } else {
-                        initElements[i] = rhsNode;
-                    }
-                }
-                JavaScriptNode closeIfNotDone = factory.createIteratorCloseIfNotDone(context, createBlock(initElements), iteratorTempVar.createReadNode(), doneVar.createReadNode());
-                assignedNode = factory.createExprBlock(initIteratorTempVar, closeIfNotDone, valueTempVar.createReadNode());
+            case ARRAY:
+                assert binaryOp == null;
+                assignedNode = transformDestructuringArrayAssignment(lhsExpression, assignedValue, initializationAssignment);
                 break;
-            }
-            case LBRACE: {
-                assert shortcutOperation == null;
-                ObjectNode objectLiteralNode = (ObjectNode) lhsExpression;
-                List<PropertyNode> propertyExpressions = objectLiteralNode.getElements();
-                if (propertyExpressions.isEmpty()) {
-                    return factory.createRequireObjectCoercible(assignedValue);
-                }
-
-                int numberOfProperties = propertyExpressions.size();
-                boolean hasRest = propertyExpressions.get(numberOfProperties - 1).isRest();
-                boolean requireObjectCoercible = hasRest && numberOfProperties == 1;
-                JavaScriptNode[] initElements = javaScriptNodeArray(numberOfProperties);
-                JavaScriptNode[] excludedKeys = hasRest ? javaScriptNodeArray(numberOfProperties - 1) : null;
-
-                VarRef valueTempVar = environment.createTempVar();
-                JavaScriptNode initValueTempVar = valueTempVar.createWriteNode(requireObjectCoercible ? factory.createRequireObjectCoercible(assignedValue) : assignedValue);
-
-                for (int i = 0; i < numberOfProperties; i++) {
-                    PropertyNode property = propertyExpressions.get(i);
-                    Expression lhsExpr;
-                    Expression init = null;
-                    if (property.getValue() instanceof BinaryNode) {
-                        assert property.getValue().isTokenType(TokenType.ASSIGN) || property.getValue().isTokenType(TokenType.ASSIGN_INIT);
-                        lhsExpr = ((BinaryNode) property.getValue()).lhs();
-                        init = ((BinaryNode) property.getValue()).rhs();
-                    } else if (property.isRest()) {
-                        assert hasRest;
-                        lhsExpr = ((UnaryNode) property.getKey()).getExpression();
-                    } else {
-                        lhsExpr = property.getValue();
-                    }
-                    JavaScriptNode rhsNode;
-                    if (property.isRest()) {
-                        JavaScriptNode restObj = factory.createObjectLiteral(context, new ArrayList<>());
-                        JavaScriptNode excludedItemsArray = excludedKeys.length == 0 ? null : factory.createArrayLiteral(context, excludedKeys);
-                        rhsNode = factory.createCopyDataProperties(context, restObj, valueTempVar.createReadNode(), excludedItemsArray);
-                    } else if (property.getKey() instanceof IdentNode && !property.isComputed()) {
-                        String keyName = property.getKeyName();
-                        if (hasRest) {
-                            excludedKeys[i] = factory.createConstantString(keyName);
-                        }
-                        rhsNode = factory.createReadProperty(context, valueTempVar.createReadNode(), keyName);
-                    } else {
-                        JavaScriptNode key = transform(property.getKey());
-                        if (hasRest) {
-                            VarRef keyTempVar = environment.createTempVar();
-                            excludedKeys[i] = keyTempVar.createReadNode();
-                            key = keyTempVar.createWriteNode(factory.createToPropertyKey(key));
-                        }
-                        rhsNode = factory.createReadElementNode(context, valueTempVar.createReadNode(), key);
-                    }
-                    if (init != null) {
-                        rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
-                    }
-                    initElements[i] = transformAssignment(lhsExpr, lhsExpr, rhsNode, initializationAssignment);
-                }
-                assignedNode = factory.createExprBlock(initValueTempVar, createBlock(initElements), valueTempVar.createReadNode());
+            case LBRACE:
+                assert binaryOp == null;
+                assignedNode = transformDestructuringObjectAssignment(lhsExpression, assignedValue, initializationAssignment);
                 break;
-            }
-            default:
-                throwUnsupportedAssignmentError(lhsExpression);
         }
         if (returnOldValue && assignedNode instanceof DualNode) {
             ensureHasSourceSection(((DualNode) assignedNode).getLeft(), assignmentExpression);
@@ -2619,12 +2438,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return tagExpression(assignedNode, assignmentExpression);
     }
 
-    private static void throwUnsupportedAssignmentError(Expression lhsExpression) {
-        throw Errors.createReferenceError("unsupported assignment to token type: " + lhsExpression.tokenType().toString() + " " + lhsExpression.toString());
-    }
-
-    private JavaScriptNode transformAssignmentIdent(IdentNode identNode, JavaScriptNode assignedValue, BinaryOperation shortcutOperation, boolean returnOldValue, boolean convertLHSToNumeric,
+    private JavaScriptNode transformAssignmentIdent(IdentNode identNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric,
                     boolean initializationAssignment) {
+        setAnonymousFunctionName(assignedValue, identNode.getName());
         JavaScriptNode rhs = assignedValue;
         String ident = identNode.getName();
         VarRef scopeVar = findScopeVarCheckTDZ(ident, initializationAssignment);
@@ -2639,7 +2455,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             rhs = checkMutableBinding(rhs, scopeVar.getName());
         }
 
-        if (shortcutOperation == null) {
+        if (binaryOp == null) {
             return scopeVar.createWriteNode(rhs);
         } else {
             // e.g.: lhs *= rhs => lhs = lhs * rhs
@@ -2656,7 +2472,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 prevValueTemp = environment.createTempVar();
                 readNode = prevValueTemp.createWriteNode(readNode);
             }
-            JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, shortcutOperation, readNode, rhs), identNode);
+            JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, rhs), identNode);
             JavaScriptNode writeNode = pair.getSecond().apply(binOpNode);
             if (returnOldValue) {
                 return factory.createDual(context, writeNode, prevValueTemp.createReadNode());
@@ -2677,6 +2493,199 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         String message = context.isOptionV8CompatibilityMode() ? "Assignment to constant variable." : "Assignment to constant \"" + identifier + "\"";
         JavaScriptNode throwTypeError = factory.createThrowError(JSErrorType.TypeError, message);
         return isPotentiallySideEffecting(rhsNode) ? createBlock(rhsNode, throwTypeError) : throwTypeError;
+    }
+
+    private JavaScriptNode transformPropertyAssignment(AccessNode accessNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertToNumeric) {
+        JavaScriptNode assignedNode;
+        JavaScriptNode target = transform(accessNode.getBase());
+
+        if (binaryOp == null) {
+            assignedNode = factory.createWriteProperty(target, accessNode.getProperty(), assignedValue, context, environment.isStrictMode());
+        } else {
+            JavaScriptNode target1;
+            JavaScriptNode target2;
+            if (target instanceof RepeatableNode) {
+                target1 = target;
+                target2 = factory.copy(target);
+            } else {
+                VarRef targetTemp = environment.createTempVar();
+                target1 = targetTemp.createWriteNode(target);
+                target2 = targetTemp.createReadNode();
+            }
+
+            VarRef prevValueTemp = null;
+            JavaScriptNode readNode = tagExpression(factory.createReadProperty(context, target2, accessNode.getProperty()), accessNode);
+            if (convertToNumeric) {
+                readNode = factory.createToNumeric(readNode);
+            }
+            if (returnOldValue) {
+                prevValueTemp = environment.createTempVar();
+                readNode = prevValueTemp.createWriteNode(readNode);
+            }
+            JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, assignedValue), accessNode);
+            JavaScriptNode writeNode = factory.createWriteProperty(target1, accessNode.getProperty(), binOpNode, context, environment.isStrictMode());
+            if (returnOldValue) {
+                assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+            } else {
+                assignedNode = writeNode;
+            }
+        }
+        return assignedNode;
+    }
+
+    private JavaScriptNode transformIndexAssignment(IndexNode indexNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertToNumeric) {
+        JavaScriptNode assignedNode;
+        JavaScriptNode target = transform(indexNode.getBase());
+        JavaScriptNode elem = transform(indexNode.getIndex());
+
+        if (binaryOp == null) {
+            assignedNode = factory.createWriteElementNode(target, elem, assignedValue, context, environment.isStrictMode());
+        } else {
+            // Evaluation order:
+            // 1. target = GetValue(baseReference)
+            // 2. key = GetValue(propertyNameReference)
+            // 3. RequireObjectCoercible(target); safely repeatable
+            // 4. key = ToPropertyKey(key); only once
+            // 5. lhs = target[key];
+            // 6. result = lhs op rhs;
+            // 7. target[key] = result
+
+            // Index must be ToPropertyKey-converted only once, save it in temp var
+            VarRef keyTemp = environment.createTempVar();
+            JavaScriptNode readIndex = keyTemp.createReadNode();
+            JSWriteFrameSlotNode writeIndex = (JSWriteFrameSlotNode) keyTemp.createWriteNode(null);
+
+            JavaScriptNode target1;
+            JavaScriptNode target2;
+            if (target instanceof RepeatableNode) {
+                target1 = target;
+                target2 = factory.copy(target);
+            } else {
+                VarRef targetTemp = environment.createTempVar();
+                target1 = targetTemp.createWriteNode(target);
+                target2 = targetTemp.createReadNode();
+            }
+
+            JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target2, readIndex), indexNode);
+            if (convertToNumeric) {
+                readNode = factory.createToNumeric(readNode);
+            }
+            VarRef prevValueTemp = null;
+            if (returnOldValue) {
+                prevValueTemp = environment.createTempVar();
+                readNode = prevValueTemp.createWriteNode(readNode);
+            }
+            JavaScriptNode binOpNode = tagExpression(factory.createBinary(context, binaryOp, readNode, assignedValue), indexNode);
+            JavaScriptNode writeNode = factory.createCompoundWriteElementNode(target1, elem, binOpNode, writeIndex, context, environment.isStrictMode());
+            if (returnOldValue) {
+                assignedNode = factory.createDual(context, writeNode, prevValueTemp.createReadNode());
+            } else {
+                assignedNode = writeNode;
+            }
+        }
+        return assignedNode;
+    }
+
+    private JavaScriptNode transformDestructuringArrayAssignment(Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment) {
+        LiteralNode.ArrayLiteralNode arrayLiteralNode = (LiteralNode.ArrayLiteralNode) lhsExpression;
+        List<Expression> elementExpressions = arrayLiteralNode.getElementExpressions();
+        JavaScriptNode[] initElements = javaScriptNodeArray(elementExpressions.size());
+        VarRef iteratorTempVar = environment.createTempVar();
+        VarRef valueTempVar = environment.createTempVar();
+        VarRef doneVar = environment.createTempVar();
+        JavaScriptNode initValue = valueTempVar.createWriteNode(assignedValue);
+        // By default, we use the hint to track the type of iterator.
+        JavaScriptNode getIterator = factory.createGetIterator(context, initValue);
+        JavaScriptNode initIteratorTempVar = iteratorTempVar.createWriteNode(getIterator);
+        JavaScriptNode writeDone = doneVar.createWriteNode(factory.createConstantBoolean(true));
+
+        for (int i = 0; i < elementExpressions.size(); i++) {
+            Expression element = elementExpressions.get(i);
+            Expression lhsExpr;
+            Expression init = null;
+            if (element instanceof IdentNode) {
+                lhsExpr = element;
+            } else if (element instanceof BinaryNode) {
+                assert element.isTokenType(TokenType.ASSIGN) || element.isTokenType(TokenType.ASSIGN_INIT);
+                lhsExpr = ((BinaryNode) element).lhs();
+                init = ((BinaryNode) element).rhs();
+            } else {
+                lhsExpr = element;
+            }
+            JavaScriptNode rhsNode = factory.createIteratorStepSpecial(context, iteratorTempVar.createReadNode(), factory.createExprBlock(writeDone, factory.createConstantUndefined()), true);
+            if (init != null) {
+                rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
+            }
+            if (lhsExpr != null && lhsExpr.isTokenType(TokenType.SPREAD_ARRAY)) {
+                rhsNode = factory.createIteratorToArray(context, iteratorTempVar.createReadNode(), writeDone);
+                lhsExpr = ((UnaryNode) lhsExpr).getExpression();
+            }
+            if (lhsExpr != null) {
+                initElements[i] = transformAssignment(lhsExpr, lhsExpr, rhsNode, initializationAssignment);
+            } else {
+                initElements[i] = rhsNode;
+            }
+        }
+        JavaScriptNode closeIfNotDone = factory.createIteratorCloseIfNotDone(context, createBlock(initElements), iteratorTempVar.createReadNode(), doneVar.createReadNode());
+        return factory.createExprBlock(initIteratorTempVar, closeIfNotDone, valueTempVar.createReadNode());
+    }
+
+    private JavaScriptNode transformDestructuringObjectAssignment(Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment) {
+        ObjectNode objectLiteralNode = (ObjectNode) lhsExpression;
+        List<PropertyNode> propertyExpressions = objectLiteralNode.getElements();
+        if (propertyExpressions.isEmpty()) {
+            return factory.createRequireObjectCoercible(assignedValue);
+        }
+
+        int numberOfProperties = propertyExpressions.size();
+        boolean hasRest = propertyExpressions.get(numberOfProperties - 1).isRest();
+        boolean requireObjectCoercible = hasRest && numberOfProperties == 1;
+        JavaScriptNode[] initElements = javaScriptNodeArray(numberOfProperties);
+        JavaScriptNode[] excludedKeys = hasRest ? javaScriptNodeArray(numberOfProperties - 1) : null;
+
+        VarRef valueTempVar = environment.createTempVar();
+        JavaScriptNode initValueTempVar = valueTempVar.createWriteNode(requireObjectCoercible ? factory.createRequireObjectCoercible(assignedValue) : assignedValue);
+
+        for (int i = 0; i < numberOfProperties; i++) {
+            PropertyNode property = propertyExpressions.get(i);
+            Expression lhsExpr;
+            Expression init = null;
+            if (property.getValue() instanceof BinaryNode) {
+                assert property.getValue().isTokenType(TokenType.ASSIGN) || property.getValue().isTokenType(TokenType.ASSIGN_INIT);
+                lhsExpr = ((BinaryNode) property.getValue()).lhs();
+                init = ((BinaryNode) property.getValue()).rhs();
+            } else if (property.isRest()) {
+                assert hasRest;
+                lhsExpr = ((UnaryNode) property.getKey()).getExpression();
+            } else {
+                lhsExpr = property.getValue();
+            }
+            JavaScriptNode rhsNode;
+            if (property.isRest()) {
+                JavaScriptNode restObj = factory.createObjectLiteral(context, new ArrayList<>());
+                JavaScriptNode excludedItemsArray = excludedKeys.length == 0 ? null : factory.createArrayLiteral(context, excludedKeys);
+                rhsNode = factory.createCopyDataProperties(context, restObj, valueTempVar.createReadNode(), excludedItemsArray);
+            } else if (property.getKey() instanceof IdentNode && !property.isComputed()) {
+                String keyName = property.getKeyName();
+                if (hasRest) {
+                    excludedKeys[i] = factory.createConstantString(keyName);
+                }
+                rhsNode = factory.createReadProperty(context, valueTempVar.createReadNode(), keyName);
+            } else {
+                JavaScriptNode key = transform(property.getKey());
+                if (hasRest) {
+                    VarRef keyTempVar = environment.createTempVar();
+                    excludedKeys[i] = keyTempVar.createReadNode();
+                    key = keyTempVar.createWriteNode(factory.createToPropertyKey(key));
+                }
+                rhsNode = factory.createReadElementNode(context, valueTempVar.createReadNode(), key);
+            }
+            if (init != null) {
+                rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
+            }
+            initElements[i] = transformAssignment(lhsExpr, lhsExpr, rhsNode, initializationAssignment);
+        }
+        return factory.createExprBlock(initValueTempVar, createBlock(initElements), valueTempVar.createReadNode());
     }
 
     @Override
