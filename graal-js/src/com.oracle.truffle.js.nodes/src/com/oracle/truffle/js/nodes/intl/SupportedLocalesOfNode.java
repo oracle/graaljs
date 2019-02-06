@@ -60,7 +60,7 @@ public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
 
     @Specialization(guards = "isUndefined(opts)")
     protected Object getSupportedLocales(Object locales, @SuppressWarnings("unused") Object opts) {
-        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), "best fit"));
+        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), IntlUtil.BEST_FIT));
     }
 
     @Specialization(guards = "!isUndefined(opts)")
@@ -73,6 +73,7 @@ public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
     }
 
     protected static GetStringOptionNode createMatcherGetter(JSContext context) {
-        return GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
+        return GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
+                        new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
     }
 }

@@ -484,7 +484,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
-        if (strippedLocale.toLanguageTag().equals("und")) {
+        if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
             selectedLocale = Locale.getDefault();
             strippedLocale = selectedLocale.stripExtensions();
         }
@@ -503,9 +503,9 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     @TruffleBoundary
     public static void setupInternalNumberFormat(InternalState state) {
-        if (state.style.equals("currency")) {
+        if (state.style.equals(IntlUtil.CURRENCY)) {
             state.numberFormat = NumberFormat.getCurrencyInstance(state.javaLocale);
-        } else if (state.style.equals("percent")) {
+        } else if (state.style.equals(IntlUtil.PERCENT)) {
             state.numberFormat = NumberFormat.getPercentInstance(state.javaLocale);
         } else {
             state.numberFormat = NumberFormat.getInstance(state.javaLocale);
@@ -582,7 +582,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 }
             } else {
                 String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
-                resultParts.add(IntlUtil.makePart(context, "literal", value, unit));
+                resultParts.add(IntlUtil.makePart(context, IntlUtil.LITERAL, value, unit));
                 i = fit.getRunLimit();
             }
         }
@@ -629,14 +629,14 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         }
 
         void fillResolvedOptions(@SuppressWarnings("unused") JSContext context, DynamicObject result) {
-            JSObjectUtil.defineDataProperty(result, "minimumIntegerDigits", minimumIntegerDigits, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "minimumFractionDigits", minimumFractionDigits, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "maximumFractionDigits", maximumFractionDigits, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_INTEGER_DIGITS, minimumIntegerDigits, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.MAXIMUM_FRACTION_DIGITS, maximumFractionDigits, JSAttributes.getDefault());
             if (minimumSignificantDigits != null) {
-                JSObjectUtil.defineDataProperty(result, "minimumSignificantDigits", minimumSignificantDigits, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, minimumSignificantDigits, JSAttributes.getDefault());
             }
             if (maximumSignificantDigits != null) {
-                JSObjectUtil.defineDataProperty(result, "maximumSignificantDigits", maximumSignificantDigits, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.MAXIMUM_SIGNIFICANT_DIGITS, maximumSignificantDigits, JSAttributes.getDefault());
             }
         }
 
@@ -664,7 +664,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     public static class InternalState extends BasicInternalState {
 
-        public String style = "decimal";
+        public String style = IntlUtil.DECIMAL;
         public String currency;
         public String currencyDisplay;
         public boolean useGrouping = true;
@@ -673,17 +673,17 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
         @Override
         void fillResolvedOptions(JSContext context, DynamicObject result) {
-            JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "numberingSystem", numberingSystem, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "style", style, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.NUMBERING_SYSTEM, numberingSystem, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
             if (currency != null) {
-                JSObjectUtil.defineDataProperty(result, "currency", currency, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.CURRENCY, currency, JSAttributes.getDefault());
             }
             if (currencyDisplay != null) {
-                JSObjectUtil.defineDataProperty(result, "currencyDisplay", currencyDisplay, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.CURRENCY_DISPLAY, currencyDisplay, JSAttributes.getDefault());
             }
             super.fillResolvedOptions(context, result);
-            JSObjectUtil.defineDataProperty(result, "useGrouping", useGrouping, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.USE_GROUPING, useGrouping, JSAttributes.getDefault());
         }
 
         @TruffleBoundary
@@ -719,7 +719,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                     InternalState state = getInternalState((DynamicObject) numberFormatObj);
 
                     if (state == null || !state.initialized) {
-                        throw Errors.createTypeError("Method format called on a non-object or on a wrong type of object.");
+                        throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
                     }
 
                     if (state.boundFormatFunction == null) {
@@ -732,7 +732,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
                     return state.boundFormatFunction;
                 }
-                throw Errors.createTypeError("expected NumberFormat object");
+                throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
             }
         });
     }

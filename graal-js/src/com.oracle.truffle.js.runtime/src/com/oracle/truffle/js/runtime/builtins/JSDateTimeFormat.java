@@ -243,11 +243,11 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             return "";
         }
         switch (weekdayOpt) {
-            case "narrow":
+            case IntlUtil.NARROW:
                 return "eeeee";
-            case "short":
+            case IntlUtil.SHORT:
                 return "eee";
-            case "long":
+            case IntlUtil.LONG:
                 return "eeee";
         }
         return "";
@@ -258,11 +258,11 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             return "";
         }
         switch (eraOpt) {
-            case "narrow":
+            case IntlUtil.NARROW:
                 return "GGGGG";
-            case "short":
+            case IntlUtil.SHORT:
                 return "GGG";
-            case "long":
+            case IntlUtil.LONG:
                 return "GGGG";
         }
         return "";
@@ -273,9 +273,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             return "";
         }
         switch (yearOpt) {
-            case "2-digit":
+            case IntlUtil._2_DIGIT:
                 return "yy";
-            case "numeric":
+            case IntlUtil.NUMERIC:
                 return "y";
         }
         return "";
@@ -286,15 +286,15 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             return "";
         }
         switch (monthOpt) {
-            case "2-digit":
+            case IntlUtil._2_DIGIT:
                 return "MM";
-            case "numeric":
+            case IntlUtil.NUMERIC:
                 return "M";
-            case "narrow":
+            case IntlUtil.NARROW:
                 return "MMMMM";
-            case "short":
+            case IntlUtil.SHORT:
                 return "MMM";
-            case "long":
+            case IntlUtil.LONG:
                 return "MMMM";
         }
         return "";
@@ -305,9 +305,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             return "";
         }
         switch (dayOpt) {
-            case "2-digit":
+            case IntlUtil._2_DIGIT:
                 return "dd";
-            case "numeric":
+            case IntlUtil.NUMERIC:
                 return "d";
         }
         return "";
@@ -318,7 +318,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             return "";
         }
         switch (hourOpt) {
-            case "2-digit":
+            case IntlUtil._2_DIGIT:
                 if (hcOpt == null) {
                     if (hour12Opt != null) {
                         if (hour12Opt) {
@@ -331,18 +331,18 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     }
                 } else {
                     switch (hcOpt) {
-                        case "h11":
+                        case IntlUtil.H11:
                             return "KK";
-                        case "h12":
+                        case IntlUtil.H12:
                             return "hh";
-                        case "h23":
+                        case IntlUtil.H23:
                             return "HH";
-                        case "h24":
+                        case IntlUtil.H24:
                             return "kk";
                     }
                 }
                 break;
-            case "numeric":
+            case IntlUtil.NUMERIC:
                 if (hcOpt == null) {
                     if (hour12Opt != null) {
                         if (hour12Opt) {
@@ -355,13 +355,13 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     }
                 } else {
                     switch (hcOpt) {
-                        case "h11":
+                        case IntlUtil.H11:
                             return "K";
-                        case "h12":
+                        case IntlUtil.H12:
                             return "h";
-                        case "h23":
+                        case IntlUtil.H23:
                             return "H";
-                        case "h24":
+                        case IntlUtil.H24:
                             return "k";
                     }
                 }
@@ -374,9 +374,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             return "";
         }
         switch (minuteOpt) {
-            case "2-digit":
+            case IntlUtil._2_DIGIT:
                 return "mm";
-            case "numeric":
+            case IntlUtil.NUMERIC:
                 return "m";
         }
         return "";
@@ -387,9 +387,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             return "";
         }
         switch (secondOpt) {
-            case "2-digit":
+            case IntlUtil._2_DIGIT:
                 return "ss";
-            case "numeric":
+            case IntlUtil.NUMERIC:
                 return "s";
         }
         return "";
@@ -400,9 +400,9 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             return "";
         }
         switch (timeZoneNameOpt) {
-            case "short":
+            case IntlUtil.SHORT:
                 return "v";
-            case "long":
+            case IntlUtil.LONG:
                 return "vvvv";
         }
         return "";
@@ -541,7 +541,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                 }
             } else {
                 String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
-                resultParts.add(makePart(context, "literal", value));
+                resultParts.add(makePart(context, IntlUtil.LITERAL, value));
                 i = fit.getRunLimit();
             }
         }
@@ -550,8 +550,8 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     private static Object makePart(JSContext context, String type, String value) {
         DynamicObject p = JSUserObject.create(context);
-        JSObject.set(p, "type", type);
-        JSObject.set(p, "value", value);
+        JSObject.set(p, IntlUtil.TYPE, type);
+        JSObject.set(p, IntlUtil.VALUE, value);
         return p;
     }
 
@@ -583,46 +583,46 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
-            JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
             if (calendar != null) {
-                JSObjectUtil.defineDataProperty(result, "calendar", calendar, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.CALENDAR, calendar, JSAttributes.getDefault());
             }
-            JSObjectUtil.defineDataProperty(result, "numberingSystem", numberingSystem, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.NUMBERING_SYSTEM, numberingSystem, JSAttributes.getDefault());
             if (timeZone != null) {
-                JSObjectUtil.defineDataProperty(result, "timeZone", timeZone, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.TIME_ZONE, timeZone, JSAttributes.getDefault());
             }
             if (hourCycle != null) {
-                JSObjectUtil.defineDataProperty(result, "hourCycle", hourCycle, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.HOUR_CYCLE, hourCycle, JSAttributes.getDefault());
             }
             if (hour12 != null) {
-                JSObjectUtil.defineDataProperty(result, "hour12", hour12, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.HOUR12, hour12, JSAttributes.getDefault());
             }
             if (weekday != null) {
-                JSObjectUtil.defineDataProperty(result, "weekday", weekday, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.WEEKDAY, weekday, JSAttributes.getDefault());
             }
             if (era != null) {
-                JSObjectUtil.defineDataProperty(result, "era", era, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.ERA, era, JSAttributes.getDefault());
             }
             if (year != null) {
-                JSObjectUtil.defineDataProperty(result, "year", year, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.YEAR, year, JSAttributes.getDefault());
             }
             if (month != null) {
-                JSObjectUtil.defineDataProperty(result, "month", month, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.MONTH, month, JSAttributes.getDefault());
             }
             if (day != null) {
-                JSObjectUtil.defineDataProperty(result, "day", day, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.DAY, day, JSAttributes.getDefault());
             }
             if (hour != null) {
-                JSObjectUtil.defineDataProperty(result, "hour", hour, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.HOUR, hour, JSAttributes.getDefault());
             }
             if (minute != null) {
-                JSObjectUtil.defineDataProperty(result, "minute", minute, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.MINUTE, minute, JSAttributes.getDefault());
             }
             if (second != null) {
-                JSObjectUtil.defineDataProperty(result, "second", second, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.SECOND, second, JSAttributes.getDefault());
             }
             if (timeZoneName != null) {
-                JSObjectUtil.defineDataProperty(result, "timeZoneName", timeZoneName, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.TIME_ZONE_NAME, timeZoneName, JSAttributes.getDefault());
             }
             return result;
         }
@@ -654,7 +654,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     InternalState state = getInternalState((DynamicObject) numberFormatObj);
 
                     if (state == null || !state.initialized) {
-                        throw Errors.createTypeError("Method format called on a non-object or on a wrong type of object (uninitialized DateTimeFormat?).");
+                        throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
                     }
 
                     if (state.boundFormatFunction == null) {
@@ -667,7 +667,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
                     return state.boundFormatFunction;
                 }
-                throw Errors.createTypeError("expected DateTimeFormat object");
+                throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
             }
         });
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,13 +79,14 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
-        this.getTypeOption = GetStringOptionNode.create(context, "type", new String[]{"cardinal", "ordinal"}, "cardinal");
-        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, "minimumIntegerDigits", 21);
-        this.getMinSignificantDigitsOption = PropertyGetNode.create("minimumSignificantDigits", false, context);
-        this.getMaxSignificantDigitsOption = PropertyGetNode.create("maximumSignificantDigits", false, context);
-        this.getMinFracDigitsOption = GetNumberOptionNode.create(context, "minimumFractionDigits", 21);
-        this.getMaxFracDigitsOption = GetNumberOptionNode.create(context, "maximumFractionDigits", 20);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
+                        new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.CARDINAL, IntlUtil.ORDINAL}, IntlUtil.CARDINAL);
+        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_INTEGER_DIGITS, 21);
+        this.getMinSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, false, context);
+        this.getMaxSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MAXIMUM_SIGNIFICANT_DIGITS, false, context);
+        this.getMinFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_FRACTION_DIGITS, 21);
+        this.getMaxFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MAXIMUM_FRACTION_DIGITS, 20);
         this.getMnsdDNO = DefaultNumberOptionNode.create(21, 1);
         this.getMxsdDNO = DefaultNumberOptionNode.create(21, 21);
     }

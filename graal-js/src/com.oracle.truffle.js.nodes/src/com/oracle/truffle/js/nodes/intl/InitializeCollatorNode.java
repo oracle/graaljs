@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,12 +71,12 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
-        this.getUsageOption = GetStringOptionNode.create(context, "usage", new String[]{"sort", "search"}, "sort");
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
-        this.getNumericOption = GetBooleanOptionNode.create(context, "numeric", null);
-        this.getCaseFirstOption = GetStringOptionNode.create(context, "caseFirst", new String[]{"upper", "lower", "false"}, null);
-        this.getSensitivityOption = GetStringOptionNode.create(context, "sensitivity", new String[]{"base", "accent", "case", "variant"}, null);
-        this.getIgnorePunctuationOption = GetBooleanOptionNode.create(context, "ignorePunctuation", false);
+        this.getUsageOption = GetStringOptionNode.create(context, IntlUtil.USAGE, new String[]{IntlUtil.SORT, IntlUtil.SEARCH}, IntlUtil.SORT);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getNumericOption = GetBooleanOptionNode.create(context, IntlUtil.NUMERIC, null);
+        this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.CASE_FIRST, new String[]{IntlUtil.UPPER, IntlUtil.LOWER, IntlUtil.FALSE}, null);
+        this.getSensitivityOption = GetStringOptionNode.create(context, IntlUtil.SENSITIVITY, new String[]{IntlUtil.BASE, IntlUtil.ACCENT, IntlUtil.CASE, IntlUtil.VARIANT}, null);
+        this.getIgnorePunctuationOption = GetBooleanOptionNode.create(context, IntlUtil.IGNORE_PUNCTUATION, false);
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);

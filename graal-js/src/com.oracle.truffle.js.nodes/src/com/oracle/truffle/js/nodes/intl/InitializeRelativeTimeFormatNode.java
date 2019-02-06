@@ -67,9 +67,10 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
-        this.getStyleOption = GetStringOptionNode.create(context, "style", new String[]{"long", "short", "narrow"}, "long");
-        this.getNumericOption = GetStringOptionNode.create(context, "numeric", new String[]{"always", "auto"}, "always");
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW}, IntlUtil.LONG);
+        this.getNumericOption = GetStringOptionNode.create(context, "numeric", new String[]{IntlUtil.ALWAYS, IntlUtil.AUTO}, IntlUtil.ALWAYS);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
+                        new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);

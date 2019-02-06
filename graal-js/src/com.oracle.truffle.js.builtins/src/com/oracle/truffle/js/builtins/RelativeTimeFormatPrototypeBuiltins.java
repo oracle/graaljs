@@ -107,7 +107,7 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
 
         @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeErrorRelativeTimeFormatExpected();
+            throw Errors.createTypeErrorTypeXExpected(JSRelativeTimeFormat.CLASS_NAME);
         }
     }
 
@@ -127,7 +127,7 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
         @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value, Object unit) {
-            throw Errors.createTypeErrorRelativeTimeFormatExpected();
+            throw Errors.createTypeErrorTypeXExpected(JSRelativeTimeFormat.CLASS_NAME);
         }
     }
 
@@ -147,7 +147,7 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
         @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value, Object unit) {
-            throw Errors.createTypeErrorRelativeTimeFormatExpected();
+            throw Errors.createTypeErrorTypeXExpected(JSRelativeTimeFormat.CLASS_NAME);
         }
     }
 }
