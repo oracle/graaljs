@@ -2080,8 +2080,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else {
             BinaryOperation operation = unaryNode.tokenType() == TokenType.INCPREFIX || unaryNode.tokenType() == TokenType.INCPOSTFIX ? BinaryOperation.ADD : BinaryOperation.SUBTRACT;
             boolean isPostfix = unaryNode.tokenType() == TokenType.INCPOSTFIX || unaryNode.tokenType() == TokenType.DECPOSTFIX;
-            JavaScriptNode constNumericUnit = ensureHasSourceSection(factory.createConstantNumericUnit(), unaryNode);
-            return tagExpression(transformCompoundAssignment(unaryNode, unaryNode.getExpression(), constNumericUnit, operation, isPostfix, true), unaryNode);
+            return tagExpression(transformCompoundAssignment(unaryNode, unaryNode.getExpression(), factory.createConstantNumericUnit(), operation, isPostfix, true), unaryNode);
         }
     }
 
