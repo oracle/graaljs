@@ -61,21 +61,21 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
     public static JavaScriptNode createFor(JavaScriptNode originalNode, Class<? extends Tag> expectedTag) {
         JavaScriptNode clone = cloneUninitialized(originalNode);
         JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag);
-        transferSourceSectionAddExpressionTag(originalNode, wrapper);
+        transferSourceSection(originalNode, wrapper);
         return wrapper;
     }
 
     public static JavaScriptNode createFor(JavaScriptNode originalNode, Class<? extends Tag> expectedTag, NodeObjectDescriptor descriptor) {
         JavaScriptNode clone = cloneUninitialized(originalNode);
         JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag, descriptor);
-        transferSourceSectionAddExpressionTag(originalNode, wrapper);
+        transferSourceSection(originalNode, wrapper);
         return wrapper;
     }
 
     public static JavaScriptNode createFor(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom, Class<? extends Tag> expectedTag) {
         JavaScriptNode clone = cloneUninitialized(originalNode);
         JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag);
-        transferSourceSectionAddExpressionTag(transferSourcesFrom, wrapper);
+        transferSourceSection(transferSourcesFrom, wrapper);
         return wrapper;
     }
 
@@ -100,6 +100,8 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == expectedTag) {
+            return true;
+        } else if (tag == JSTags.InputNodeTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

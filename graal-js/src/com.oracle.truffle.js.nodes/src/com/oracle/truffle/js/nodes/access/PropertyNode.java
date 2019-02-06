@@ -50,6 +50,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
@@ -86,13 +87,8 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadPropertyExpressionTag.class) && !isScopeAccess()) {
-            if (!target.hasSourceSection()) {
-                JavaScriptNode clonedTarget = cloneUninitialized(target);
-                if (clonedTarget instanceof GlobalScopeVarWrapperNode) {
-                    transferSourceSectionAddExpressionTag(this, ((GlobalScopeVarWrapperNode) clonedTarget).getDelegateNode());
-                } else {
-                    transferSourceSectionAddExpressionTag(this, clonedTarget);
-                }
+            if (target != null && !target.hasSourceSection()) {
+                JavaScriptNode clonedTarget = JSTaggedExecutionNode.createFor(target, this, JSTags.InputNodeTag.class);
                 PropertyNode propertyNode = PropertyNode.createProperty(cache.getContext(), clonedTarget, cache.getKey());
                 transferSourceSectionAndTags(this, propertyNode);
                 return propertyNode;

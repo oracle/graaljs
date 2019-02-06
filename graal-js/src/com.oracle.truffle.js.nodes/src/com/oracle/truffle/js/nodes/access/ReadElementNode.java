@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -71,6 +70,7 @@ import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNodeGen;
@@ -141,20 +141,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadElementExpressionTag.class) && materializationNeeded()) {
-            JavaScriptNode clonedTarget;
-            if (targetNode == null || targetNode.hasSourceSection()) {
-                clonedTarget = cloneUninitialized(targetNode);
-            } else {
-                clonedTarget = JSTaggedExecutionNode.createFor(targetNode, ExpressionTag.class);
-                transferSourceSectionAddExpressionTag(this, clonedTarget);
-            }
-            JavaScriptNode clonedIndex;
-            if (indexNode == null || indexNode.hasSourceSection()) {
-                clonedIndex = cloneUninitialized(getIndexNode());
-            } else {
-                clonedIndex = JSTaggedExecutionNode.createFor(getIndexNode(), ExpressionTag.class);
-                transferSourceSectionAddExpressionTag(this, clonedIndex);
-            }
+            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createFor(targetNode, this, JSTags.InputNodeTag.class);
+            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createFor(indexNode, this, JSTags.InputNodeTag.class);
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
             transferSourceSectionAndTags(this, cloned);
             return cloned;

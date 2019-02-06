@@ -50,6 +50,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
@@ -108,20 +109,19 @@ public class WritePropertyNode extends JSTargetableWriteNode {
         if (materializedTags.contains(WritePropertyExpressionTag.class) && !isScopeAccess()) {
             // if we have no source section, we must assign one to be discoverable at
             // instrumentation time.
-            if (targetNode != null && !targetNode.hasSourceSection()) {
-                JavaScriptNode clonedTarget = (JavaScriptNode) targetNode.materializeInstrumentableNodes(materializedTags);
-                JavaScriptNode clonedRhs = null;
-                if (rhsNode != null) {
-                    clonedRhs = (JavaScriptNode) rhsNode.materializeInstrumentableNodes(materializedTags);
-                    transferSourceSectionAndTags(this, clonedRhs);
-                }
-                WritePropertyNode cloneUninitialized = WritePropertyNode.create(clonedTarget, cache.getKey(), clonedRhs, cache.isGlobal(), cache.getContext(), cache.isStrict());
-                transferSourceSectionAndTags(this, cloneUninitialized);
-                transferSourceSectionAddExpressionTag(this, cloneUninitialized.targetNode);
-                return cloneUninitialized;
+            if (materializationNeeded()) {
+                JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createFor(targetNode, this, JSTags.InputNodeTag.class);
+                JavaScriptNode clonedRhs = rhsNode == null || rhsNode.hasSourceSection() ? rhsNode : JSTaggedExecutionNode.createFor(rhsNode, this, JSTags.InputNodeTag.class);
+                WritePropertyNode clone = WritePropertyNode.create(clonedTarget, cache.getKey(), clonedRhs, cache.isGlobal(), cache.getContext(), cache.isStrict());
+                transferSourceSectionAndTags(this, clone);
+                return clone;
             }
         }
         return this;
+    }
+
+    private boolean materializationNeeded() {
+        return (targetNode != null && !targetNode.hasSourceSection()) || (rhsNode != null && !rhsNode.hasSourceSection());
     }
 
     @Override

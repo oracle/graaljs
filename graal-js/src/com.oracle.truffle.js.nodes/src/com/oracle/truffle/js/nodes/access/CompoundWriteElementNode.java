@@ -40,18 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class CompoundWriteElementNode extends WriteElementNode {
@@ -134,15 +127,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
     }
 
     @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializationNeeded() && materializedTags.contains(WriteElementExpressionTag.class)) {
-            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? cloneUninitialized(targetNode) : JSTaggedExecutionNode.createFor(targetNode, this, ExpressionTag.class);
-            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? cloneUninitialized(indexNode) : JSTaggedExecutionNode.createFor(indexNode, this, ExpressionTag.class);
-            JavaScriptNode clonedValue = valueNode == null || valueNode.hasSourceSection() ? cloneUninitialized(valueNode) : JSTaggedExecutionNode.createFor(valueNode, this, ExpressionTag.class);
-            JavaScriptNode cloned = CompoundWriteElementNode.create(clonedTarget, clonedIndex, clonedValue, cloneUninitialized(writeIndexNode), getContext(), isStrict(), writeOwn());
-            transferSourceSectionAndTags(this, cloned);
-            return cloned;
-        }
-        return this;
+    protected WriteElementNode createMaterialized(JavaScriptNode newTarget, JavaScriptNode newIndex, JavaScriptNode newValue) {
+        return CompoundWriteElementNode.create(newTarget, newIndex, newValue, writeIndexNode, getContext(), isStrict(), writeOwn());
     }
 }
