@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.js.nodes.*;
 
@@ -48,23 +47,11 @@ import com.oracle.truffle.js.nodes.*;
 public class JSAndNode extends JSLogicalNode {
 
     public JSAndNode(JavaScriptNode left, JavaScriptNode right) {
-        super(left, right);
+        super(left, right, true);
     }
 
     public static JSAndNode create(JavaScriptNode left, JavaScriptNode right) {
         return new JSAndNode(left, right);
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        Object leftValue = getLeft().execute(frame);
-        boolean leftAsBoolean = toBoolean(leftValue);
-        if (canShortCircuit.profile(!leftAsBoolean)) {
-            return leftValue;
-        } else {
-            Object rightValue = getRight().execute(frame);
-            return rightValue;
-        }
     }
 
     @Override

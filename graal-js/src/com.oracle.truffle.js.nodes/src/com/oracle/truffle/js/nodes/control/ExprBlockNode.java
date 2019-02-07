@@ -55,10 +55,6 @@ public final class ExprBlockNode extends AbstractBlockNode implements SequenceNo
         assert statements.length >= 1 : "block must contain at least 1 statement";
     }
 
-    public static JavaScriptNode createExprBlockNoOptimize(JavaScriptNode[] statements) {
-        return new ExprBlockNode(statements);
-    }
-
     public static JavaScriptNode createExprBlock(JavaScriptNode[] statements) {
         return filterStatements(statements, true);
     }

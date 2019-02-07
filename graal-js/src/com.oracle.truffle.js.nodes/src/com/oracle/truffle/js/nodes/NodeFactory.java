@@ -475,10 +475,6 @@ public class NodeFactory {
         return ExprBlockNode.createExprBlock(statements);
     }
 
-    public JavaScriptNode createExprBlockNoOptimize(JavaScriptNode... statements) {
-        return ExprBlockNode.createExprBlockNoOptimize(statements);
-    }
-
     public ReturnTargetNode createReturnTarget(JavaScriptNode body) {
         return ReturnTargetNode.create(body);
     }
