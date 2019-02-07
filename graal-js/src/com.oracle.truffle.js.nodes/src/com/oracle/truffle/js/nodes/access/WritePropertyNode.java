@@ -110,8 +110,8 @@ public class WritePropertyNode extends JSTargetableWriteNode {
             // if we have no source section, we must assign one to be discoverable at
             // instrumentation time.
             if (materializationNeeded()) {
-                JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createFor(targetNode, this, JSTags.InputNodeTag.class);
-                JavaScriptNode clonedRhs = rhsNode == null || rhsNode.hasSourceSection() ? rhsNode : JSTaggedExecutionNode.createFor(rhsNode, this, JSTags.InputNodeTag.class);
+                JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
+                JavaScriptNode clonedRhs = rhsNode == null || rhsNode.hasSourceSection() ? rhsNode : JSTaggedExecutionNode.createForInput(rhsNode, this);
                 WritePropertyNode clone = WritePropertyNode.create(clonedTarget, cache.getKey(), clonedRhs, cache.isGlobal(), cache.getContext(), cache.isStrict());
                 transferSourceSectionAndTags(this, clone);
                 return clone;

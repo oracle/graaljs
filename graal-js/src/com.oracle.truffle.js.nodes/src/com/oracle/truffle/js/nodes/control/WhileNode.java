@@ -108,7 +108,7 @@ public final class WhileNode extends StatementNode {
             if (loop.getRepeatingNode() instanceof AbstractRepeatingNode) {
                 AbstractRepeatingNode repeatingNode = (AbstractRepeatingNode) loop.getRepeatingNode();
                 JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockTag.class);
-                JavaScriptNode conditionNode = JSTaggedExecutionNode.createFor(repeatingNode.conditionNode, ControlFlowBranchTag.class,
+                JavaScriptNode conditionNode = JSTaggedExecutionNode.createForInput(repeatingNode.conditionNode, ControlFlowBranchTag.class,
                                 JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
                 transferSourceSectionAndTags(this, bodyNode);
                 WhileNode materialized;
