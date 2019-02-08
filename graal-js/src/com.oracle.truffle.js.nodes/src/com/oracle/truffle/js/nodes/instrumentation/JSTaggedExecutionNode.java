@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.instrumentation;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -54,37 +56,37 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
     @Child private JavaScriptNode child;
 
     private final Class<? extends Tag> expectedTag;
+    private final boolean inputTag;
     private final NodeObjectDescriptor descriptor;
 
     public static JavaScriptNode createFor(JavaScriptNode originalNode, Class<? extends Tag> expectedTag) {
+        return createImpl(originalNode, originalNode, expectedTag, false, null);
+    }
+
+    public static JavaScriptNode createForInput(JavaScriptNode originalNode, Class<? extends Tag> expectedTag) {
+        return createImpl(originalNode, originalNode, expectedTag, true, null);
+    }
+
+    public static JavaScriptNode createForInput(JavaScriptNode originalNode, Class<? extends Tag> expectedTag, NodeObjectDescriptor descriptor) {
+        return createImpl(originalNode, originalNode, expectedTag, true, descriptor);
+    }
+
+    public static JavaScriptNode createForInput(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom) {
+        return createImpl(originalNode, transferSourcesFrom, null, true, null);
+    }
+
+    private static JavaScriptNode createImpl(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom, Class<? extends Tag> expectedTag, boolean inputTag, NodeObjectDescriptor descriptor) {
         JavaScriptNode clone = cloneUninitialized(originalNode);
-        JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag);
-        transferSourceSectionAddExpressionTag(originalNode, wrapper);
+        JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag, inputTag, descriptor);
+        transferSourceSection(transferSourcesFrom, wrapper);
         return wrapper;
     }
 
-    public static JavaScriptNode createFor(JavaScriptNode originalNode, Class<? extends Tag> expectedTag, NodeObjectDescriptor descriptor) {
-        JavaScriptNode clone = cloneUninitialized(originalNode);
-        JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag, descriptor);
-        transferSourceSectionAddExpressionTag(originalNode, wrapper);
-        return wrapper;
-    }
-
-    public static JavaScriptNode createFor(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom, Class<? extends Tag> expectedTag) {
-        JavaScriptNode clone = cloneUninitialized(originalNode);
-        JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag);
-        transferSourceSectionAddExpressionTag(transferSourcesFrom, wrapper);
-        return wrapper;
-    }
-
-    private JSTaggedExecutionNode(JavaScriptNode child, Class<? extends Tag> expectedTag) {
-        this(child, expectedTag, null);
-    }
-
-    public JSTaggedExecutionNode(JavaScriptNode child, Class<? extends Tag> expectedTag, NodeObjectDescriptor descriptor) {
-        this.child = child;
-        this.descriptor = descriptor;
+    private JSTaggedExecutionNode(JavaScriptNode child, Class<? extends Tag> expectedTag, boolean inputTag, NodeObjectDescriptor descriptor) {
+        this.child = Objects.requireNonNull(child);
         this.expectedTag = expectedTag;
+        this.inputTag = inputTag;
+        this.descriptor = descriptor;
     }
 
     @Override
@@ -97,8 +99,10 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == expectedTag) {
+        if (expectedTag != null && tag == expectedTag) {
             return true;
+        } else if (tag == JSTags.InputNodeTag.class) {
+            return inputTag;
         } else {
             return super.hasTag(tag);
         }
@@ -111,6 +115,6 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new JSTaggedExecutionNode(cloneUninitialized(child), expectedTag);
+        return new JSTaggedExecutionNode(cloneUninitialized(child), expectedTag, inputTag, descriptor);
     }
 }

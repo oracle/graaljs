@@ -83,10 +83,10 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     protected final Number executeNumber(Object a, Object b) {
-        return (Number) executeObject(a, b);
+        return (Number) execute(a, b);
     }
 
-    protected abstract Object executeObject(Object a, Object b);
+    public abstract Object execute(Object a, Object b);
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {

@@ -49,13 +49,14 @@ import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Wrapper around a variable access in the presence of dynamic scopes induced by direct eval calls.
  */
-public final class EvalVariableNode extends JavaScriptNode implements ReadNode, WriteNode {
+public final class EvalVariableNode extends JSTargetableNode implements ReadNode, WriteNode {
 
     @Child private JavaScriptNode defaultDelegate;
     private final String varName;
@@ -103,9 +104,28 @@ public final class EvalVariableNode extends JavaScriptNode implements ReadNode, 
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public JavaScriptNode getTarget() {
+        return dynamicScopeNode;
+    }
+
+    @Override
+    public Object evaluateTarget(VirtualFrame frame) {
         Object dynamicScope = dynamicScopeNode.execute(frame);
         if (dynamicScope != Undefined.instance && hasPropertyNode.hasProperty(dynamicScope)) {
+            return dynamicScope;
+        }
+        return Undefined.instance;
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        Object dynamicScope = evaluateTarget(frame);
+        return executeWithTarget(frame, dynamicScope);
+    }
+
+    @Override
+    public Object executeWithTarget(VirtualFrame frame, Object dynamicScope) {
+        if (dynamicScope != Undefined.instance) {
             if (isWrite()) {
                 Object value = ((WriteNode) defaultDelegate).getRhs().execute(frame);
                 ((WritePropertyNode) scopeAccessNode).executeWithValue(dynamicScope, value);
@@ -120,7 +140,7 @@ public final class EvalVariableNode extends JavaScriptNode implements ReadNode, 
 
     @Override
     public Object executeWrite(VirtualFrame frame, Object value) {
-        throw new UnsupportedOperationException();
+        throw Errors.shouldNotReachHere();
     }
 
     @Override

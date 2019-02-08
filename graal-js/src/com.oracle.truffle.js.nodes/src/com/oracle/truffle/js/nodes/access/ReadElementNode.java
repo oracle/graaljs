@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -140,12 +139,10 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadElementExpressionTag.class) && materializationNeeded()) {
-            JavaScriptNode clonedTarget = targetNode.hasSourceSection() ? cloneUninitialized(targetNode) : JSTaggedExecutionNode.createFor(targetNode, ExpressionTag.class);
-            JavaScriptNode clonedIndex = getIndexNode().hasSourceSection() ? cloneUninitialized(getIndexNode()) : JSTaggedExecutionNode.createFor(getIndexNode(), ExpressionTag.class);
+            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
+            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
             transferSourceSectionAndTags(this, cloned);
-            transferSourceSectionAddExpressionTag(this, clonedTarget);
-            transferSourceSectionAddExpressionTag(this, clonedIndex);
             return cloned;
         }
         return this;
@@ -153,7 +150,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     private boolean materializationNeeded() {
         // Materialization is needed only if we don't have source sections.
-        return !(targetNode.hasSourceSection() && getIndexNode().hasSourceSection());
+        return (targetNode != null && !targetNode.hasSourceSection()) || (indexNode != null && !indexNode.hasSourceSection());
     }
 
     @Override

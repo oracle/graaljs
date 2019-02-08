@@ -171,8 +171,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (hasMaterializationTag(materializedTags) && materializationNeeded()) {
                 JavaScriptNode newBody = JSTaggedExecutionNode.createFor(bodyNode, ControlFlowBlockTag.class);
-                JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(conditionNode,
-                                ControlFlowBranchTag.class,
+                JavaScriptNode newCondition = JSTaggedExecutionNode.createForInput(conditionNode, ControlFlowBranchTag.class,
                                 JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
                 JavaScriptNode newLoop = new ForRepeatingNode(newCondition, newBody, cloneUninitialized(modify),
                                 cloneUninitialized(copy), isFirstNode, cloneUninitialized(setNotFirstNode));

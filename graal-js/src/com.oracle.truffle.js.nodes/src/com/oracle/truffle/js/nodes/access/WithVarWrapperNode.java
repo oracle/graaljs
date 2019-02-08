@@ -40,70 +40,64 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.Objects;
-
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-/**
- * Wrapper around a global property access that handles potential lexical declarations shadowing
- * global properties.
- */
-public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements ReadNode, WriteNode {
+public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, WriteNode {
 
+    @Child private JSTargetableNode withAccessNode;
+    @Child private JavaScriptNode globalDelegate;
+    @Child private JavaScriptNode withTarget;
     private final String varName;
-    @Child private JavaScriptNode dynamicScopeNode;
-    @Child private JavaScriptNode defaultDelegate;
-    @Child private JSTargetableNode scopeAccessNode;
-    @Child private GlobalScopeLookupNode scopeHasBinding;
 
-    public GlobalScopeVarWrapperNode(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
+    protected WithVarWrapperNode(String varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+        this.withAccessNode = withAccessNode;
+        this.globalDelegate = globalDelegate;
+        this.withTarget = withTarget;
         this.varName = varName;
-        this.dynamicScopeNode = dynamicScope;
-        this.defaultDelegate = Objects.requireNonNull(defaultDelegate);
-        this.scopeAccessNode = scopeAccessNode;
-        this.scopeHasBinding = GlobalScopeLookupNode.create(varName, isWrite());
     }
 
-    public JavaScriptNode getDelegateNode() {
-        return defaultDelegate;
-    }
-
-    public String getPropertyName() {
-        return varName;
+    public static JavaScriptNode create(String varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+        return new WithVarWrapperNode(varName, withTarget, withAccessNode, globalDelegate);
     }
 
     @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        return false;
-    }
-
-    @Override
-    public boolean isInstrumentable() {
-        return false;
-    }
-
-    private boolean isWrite() {
-        return scopeAccessNode instanceof WritePropertyNode;
+    public JavaScriptNode getTarget() {
+        return withTarget;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object dynamicScope = dynamicScopeNode.execute(frame);
-        if (scopeHasBinding.execute(dynamicScope)) {
-            if (isWrite()) {
-                Object value = ((WriteNode) defaultDelegate).getRhs().execute(frame);
-                ((WritePropertyNode) scopeAccessNode).executeWithValue(dynamicScope, value);
-                return value;
-            } else {
-                // read or delete
-                return scopeAccessNode.executeWithTarget(frame, dynamicScope);
-            }
+        TruffleObject target = evaluateTarget(frame);
+        return executeWithTarget(frame, target);
+    }
+
+    @Override
+    public TruffleObject evaluateTarget(VirtualFrame frame) {
+        try {
+            return withTarget.executeTruffleObject(frame);
+        } catch (UnexpectedResultException e) {
+            throw Errors.shouldNotReachHere();
         }
-        return defaultDelegate.execute(frame);
+    }
+
+    @Override
+    public Object executeWithTarget(VirtualFrame frame, Object target) {
+        if (target != Undefined.instance) {
+            // the property was found in the with object
+            if (withAccessNode instanceof WritePropertyNode) {
+                return ((WritePropertyNode) withAccessNode).executeWithValue(target, ((WriteNode) globalDelegate).getRhs().execute(frame));
+            }
+            return withAccessNode.executeWithTarget(frame, target);
+        } else {
+            // property not found or blocked
+            return globalDelegate.execute(frame);
+        }
     }
 
     @Override
@@ -112,18 +106,12 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
     }
 
     @Override
-    public JavaScriptNode getRhs() {
-        return ((WriteNode) defaultDelegate).getRhs();
+    protected JavaScriptNode copyUninitialized() {
+        return create(varName, cloneUninitialized(withTarget), cloneUninitialized(withAccessNode), cloneUninitialized(globalDelegate));
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized() {
-        return new GlobalScopeVarWrapperNode(varName, cloneUninitialized(defaultDelegate), cloneUninitialized(dynamicScopeNode), cloneUninitialized(scopeAccessNode));
-    }
-
-    public void setMethod() {
-        if (defaultDelegate instanceof GlobalPropertyNode) {
-            ((GlobalPropertyNode) defaultDelegate).setMethod();
-        }
+    public JavaScriptNode getRhs() {
+        return ((WriteNode) globalDelegate).getRhs();
     }
 }

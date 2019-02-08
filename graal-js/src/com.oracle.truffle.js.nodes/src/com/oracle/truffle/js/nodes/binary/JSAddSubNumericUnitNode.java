@@ -111,12 +111,12 @@ public abstract class JSAddSubNumericUnitNode extends JSUnaryNode implements Tru
         }
     }
 
-    public static JSAddSubNumericUnitNode create(boolean isAddition, boolean truncate, JavaScriptNode operand) {
+    public static JSAddSubNumericUnitNode create(JavaScriptNode operand, boolean isAddition, boolean truncate) {
         return JSAddSubNumericUnitNodeGen.create(operand, isAddition, truncate);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(isAddition, truncate, cloneUninitialized(getOperand()));
+        return create(cloneUninitialized(getOperand()), isAddition, truncate);
     }
 }

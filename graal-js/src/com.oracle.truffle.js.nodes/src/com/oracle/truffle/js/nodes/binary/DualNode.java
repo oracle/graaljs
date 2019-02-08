@@ -166,4 +166,12 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     protected JavaScriptNode copyUninitialized() {
         return new DualNode(cloneUninitialized(left), cloneUninitialized(right));
     }
+
+    public JavaScriptNode getLeft() {
+        return left;
+    }
+
+    public JavaScriptNode getRight() {
+        return right;
+    }
 }
