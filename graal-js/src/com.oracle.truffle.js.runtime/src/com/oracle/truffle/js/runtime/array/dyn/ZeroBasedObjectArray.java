@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetLen
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUsedLength;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
@@ -172,5 +173,17 @@ public final class ZeroBasedObjectArray extends AbstractObjectArray {
     @Override
     protected ZeroBasedObjectArray withIntegrityLevel(int newIntegrityLevel) {
         return new ZeroBasedObjectArray(newIntegrityLevel, cache);
+    }
+
+    @Override
+    public long nextElementIndex(DynamicObject object, long index, boolean condition) {
+        assert index >= -1;
+        long lastI = lastElementIndex(object, condition);
+        if ((index + 1) > lastI) {
+            // length is not enough; could be the
+            // prototype with shorter length
+            return JSRuntime.MAX_SAFE_INTEGER_LONG;
+        }
+        return index + 1;
     }
 }
