@@ -52,7 +52,21 @@ class GraalIsolate;
 class _jobject;
 typedef _jobject *jobject;
 
-class GraalHandleContent {
+#ifdef _WIN32
+
+#ifdef BUILDING_V8_SHARED
+# define V8_EXPORT __declspec(dllexport)
+#elif USING_V8_SHARED
+# define V8_EXPORT __declspec(dllimport)
+#else
+# define V8_EXPORT
+#endif // BUILDING_V8_SHARED
+
+#else  // _WIN32
+# define V8_EXPORT
+#endif // _WIN32
+
+class V8_EXPORT GraalHandleContent {
 public:
     GraalHandleContent(GraalIsolate* isolate, jobject java_object);
     virtual ~GraalHandleContent();

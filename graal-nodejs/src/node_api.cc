@@ -3218,12 +3218,13 @@ napi_status napi_new_instance(napi_env env,
   v8::Local<v8::Function> ctor;
   CHECK_TO_FUNCTION(env, ctor, constructor);
 
-  v8::Local<v8::Value> args[argc];
+  v8::Local<v8::Value>* args = new v8::Local<v8::Value>[argc];
   for (size_t i = 0; i < argc; i++) {
       args[i] = v8impl::V8LocalValueFromJsValue(argv[i]);
   }
 
   auto maybe = ctor->NewInstance(context, argc, args);
+  delete[] args;
 
   CHECK_MAYBE_EMPTY(env, maybe, napi_generic_failure);
 
@@ -3337,7 +3338,7 @@ napi_status napi_make_callback(napi_env env,
     node_async_context = &empty_context;
   }
   
-  v8::Local<v8::Value> args[argc];
+  v8::Local<v8::Value>* args = new v8::Local<v8::Value>[argc];
   for (size_t i = 0; i < argc; i++) {
       args[i] = v8impl::V8LocalValueFromJsValue(argv[i]);
   }
@@ -3346,6 +3347,7 @@ napi_status napi_make_callback(napi_env env,
       env->isolate, v8recv, v8func, argc,
       args,
       *node_async_context);
+  delete[] args;
 
   if (try_catch.HasCaught()) {
     return napi_set_last_error(env, napi_pending_exception);

@@ -435,6 +435,11 @@
             '<(java_home)/include/linux/',
           ],
         }],
+        ['OS=="win"', {
+          'include_dirs+': [
+            '<(java_home)/include/win32/',
+          ],
+        }],
         ['OS=="solaris"', {
           'include_dirs+': [
             '<(java_home)/include/solaris/',
@@ -444,6 +449,9 @@
           'include_dirs+': [
             '<(java_home)/include/darwin/',
           ],
+        }],
+        ['OS != "win"', {
+          'defines': [ '__POSIX__' ],
         }],
       ],
       'link_settings': {
@@ -477,7 +485,12 @@
               "-Wl,-rpath,'@loader_path/../../../../jre/languages/R/lib/'",
             ],
           }],
-          ['1 == 1', {
+          ['OS == "win"', {
+            'libraries': [
+              '-lDbghelp',
+            ],
+          }],
+          ['OS != "win"', {
             'libraries': [
               '-ljsig',
               '-ldl',

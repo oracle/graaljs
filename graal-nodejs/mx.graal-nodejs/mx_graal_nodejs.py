@@ -76,22 +76,38 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
-def _build(args, debug, shared_library, parallelism, debug_mode, output_dir):
-    _mxrun([join('.', 'configure'),
-            '--partly-static',
-            '--without-dtrace',
-            '--without-snapshot',
-            '--java-home', _getJdkHome()
-        ] + debug + shared_library,
-        cwd=_suite.dir, verbose=True)
+def python_cmd():
+    if _currentOs is 'windows':
+        return 'python.exe'
+    else:
+        return join(_suite.mxDir, 'python2', 'python')
 
-    verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
-    _mxrun([mx.gmake_cmd(), '-j%d' % parallelism, verbose], cwd=_suite.dir, verbose=True)
+def _build(args, debug, shared_library, parallelism, debug_mode, output_dir):
+    if _currentOs is 'windows':
+        _mxrun([join('.', 'vcbuild.bat'),
+                'projgen',
+                'no-cctest',
+                'noetw',
+                'nosnapshot',
+                'java-home', _getJdkHome()
+            ] + debug + shared_library,
+            cwd=_suite.dir, verbose=True)
+    else:
+        _mxrun([join('.', 'configure'),
+                '--partly-static',
+                '--without-dtrace',
+                '--without-snapshot',
+                '--java-home', _getJdkHome()
+            ] + debug + shared_library,
+            cwd=_suite.dir, verbose=True)
+
+        verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
+        _mxrun([mx.gmake_cmd(), '-j%d' % parallelism, verbose], cwd=_suite.dir, verbose=True)
 
     # put headers for native modules into out/headers
     _setEnvVar('HEADERS_ONLY', '1')
     out = None if mx.get_opts().verbose else open(os.devnull, 'w')
-    _mxrun([join(_suite.mxDir, 'python2', 'python'), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out)
+    _mxrun([python_cmd(), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out)
 
     if _currentOs == 'darwin':
         nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
@@ -133,7 +149,13 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
 
     def clean(self, forBuild=False):
         if not forBuild:
-            mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
+            if _currentOs is 'windows':
+                mx.run([join('.', 'vcbuild.bat'),
+                        'clean',
+                        'java-home', _getJdkHome()
+                    ], cwd=_suite.dir)
+            else:
+                mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
 
 class GraalNodeJsArchiveProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):
@@ -224,7 +246,6 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
     def build(self):
         outputDir = self.subject.output_dir()
         snapshotToolDistribution = 'graal-js:TRUFFLE_JS_SNAPSHOT_TOOL'
-        pythonCmd = join(_suite.mxDir, 'python2', 'python')
 
         moduleSet = self.modulesToSnapshot()
 
@@ -240,13 +261,13 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         if _currentOs is not 'windows':
             macroFiles.append(join('src', 'notrace_macros.py'))
 
-        mx.run([pythonCmd, join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
+        mx.run([python_cmd(), join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
                cwd=_suite.dir)
         if not (hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac):
             mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]), mx.distribution(snapshotToolDistribution).mainClass,
                      '--binary', '--outdir=' + outputDirBin, '--indir=' + outputDirBin] + ['--file=' + m for m in moduleSet],
                     cwd=outputDirBin)
-        mx.run([pythonCmd, join(_suite.dir, 'tools', 'snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
+        mx.run([python_cmd(), join(_suite.dir, 'tools', 'snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
                cwd=outputDir)
 
     def clean(self, forBuild=False):
@@ -273,7 +294,7 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs'] + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
-    return mx.run([join(_suite.mxDir, 'python2', 'python'), join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
+    return mx.run([python_cmd(), join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath(additionalPath=None):
     javaHome = _getJdkHome()
@@ -339,17 +360,24 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 def makeInNodeEnvironment(args):
     argGroups = setupNodeEnvironment(args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(argGroups[1]))
-    makeCmd = mx.gmake_cmd()
-    if _currentOs == 'solaris':
-        # we have to use GNU make and cp because the Solaris versions
-        # do not support options used by Node.js Makefile and gyp files
-        _setEnvVar('MAKE', makeCmd)
-        _mxrun(['sh', '-c', 'ln -s `which gcp` ' + join(_suite.dir, 'cp')])
-        prevPATH = os.environ['PATH']
-        _setEnvVar('PATH', "%s:%s" % (_suite.dir, prevPATH))
-    _mxrun([makeCmd] + argGroups[2], cwd=_suite.dir)
-    if _currentOs == 'solaris':
-        _mxrun(['rm', 'cp'])
+    if _currentOs is 'windows':
+        _mxrun([join('.', 'vcbuild.bat'),
+                'noprojgen',
+                'nobuild',
+                'java-home', _getJdkHome()
+            ] + argGroups[2], cwd=_suite.dir)
+    else:
+        makeCmd = mx.gmake_cmd()
+        if _currentOs == 'solaris':
+            # we have to use GNU make and cp because the Solaris versions
+            # do not support options used by Node.js Makefile and gyp files
+            _setEnvVar('MAKE', makeCmd)
+            _mxrun(['sh', '-c', 'ln -s `which gcp` ' + join(_suite.dir, 'cp')])
+            prevPATH = os.environ['PATH']
+            _setEnvVar('PATH', "%s:%s" % (_suite.dir, prevPATH))
+        _mxrun([makeCmd] + argGroups[2], cwd=_suite.dir)
+        if _currentOs == 'solaris':
+            _mxrun(['rm', 'cp'])
 
 def prepareNodeCmdLine(args, add_graal_vm_args=True):
     '''run a Node.js program or shell
@@ -357,7 +385,11 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
     '''
     mode, vmArgs, progArgs = setupNodeEnvironment(args, add_graal_vm_args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
-    return [join(_suite.dir, 'out', mode, 'node')] + progArgs
+
+    if _currentOs is 'windows':
+        return [join(_suite.dir, mode, 'node.exe')] + progArgs
+    else:
+        return [join(_suite.dir, 'out', mode, 'node')] + progArgs
 
 def parse_js_args(args):
     vmArgs, progArgs = mx_graal_js.parse_js_args(args)
