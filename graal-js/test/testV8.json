@@ -633,9 +633,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/es6/reflect-set-prototype-of.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
     "status" : "FAIL"
   }, {
