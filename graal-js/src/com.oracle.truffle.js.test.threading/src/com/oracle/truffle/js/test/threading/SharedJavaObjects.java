@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,70 +42,46 @@ package com.oracle.truffle.js.test.threading;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.function.Supplier;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-public class ExecutorsTest {
+public class SharedJavaObjects {
 
     /**
-     * Graal.js can be used in Executors to evaluate share-nothing JavaScript code in parallel.
-     *
-     * ThreadLocals can be used to limit the number of Graal.js contexts. A single PolyglotEngine
-     * can be shared among Graal.js contexts to benefit from compilation cache sharing and other
-     * GraalVM optimizations.
+     * Polyglot language bindings can be used to share Java objects between JS Contexts.
      */
-    @Test
-    public void fixedThreadPool() {
-        final Engine engine = Engine.create();
-        final ExecutorService pool = Executors.newFixedThreadPool(4);
+    @Test(timeout = 30000)
+    public void valueInTwoThreads() throws InterruptedException {
+        final Context cx1 = Context.create("js");
+        final Context cx2 = Context.create("js");
+        final AtomicInteger counter = new AtomicInteger(200);
 
         try {
-            final ThreadLocal<Context> tl = ThreadLocal.withInitial(new Supplier<Context>() {
+            cx1.getBindings("js").putMember("counter", counter);
+            cx2.getBindings("js").putMember("counter", counter);
+
+            Thread thread = new Thread(new Runnable() {
 
                 @Override
-                public Context get() {
-                    return Context.newBuilder("js").engine(engine).build();
+                public void run() {
+                    int dec = 100;
+                    while (dec-- != 0) {
+                        cx1.eval("js", "counter.decrementAndGet()");
+                    }
                 }
             });
-
-            Set<Callable<Value>> tasks = new HashSet<>();
-            for (int i = 0; i < 42; i++) {
-                tasks.add(new Callable<Value>() {
-
-                    @Override
-                    public Value call() throws Exception {
-                        Context cx = tl.get();
-                        cx.enter();
-                        try {
-                            return cx.eval("js", "42;");
-                        } finally {
-                            cx.leave();
-                        }
-                    }
-                });
+            thread.start();
+            int dec = 100;
+            while (dec-- != 0) {
+                cx2.eval("js", "counter.decrementAndGet()");
             }
-
-            try {
-                for (Future<Value> v : pool.invokeAll(tasks)) {
-                    assertEquals(v.get().asInt(), 42);
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                throw new AssertionError(e);
-            }
+            thread.join();
+            assertEquals(counter.get(), 0);
         } finally {
-            engine.close();
-            pool.shutdown();
+            cx1.close();
+            cx2.close();
         }
     }
 

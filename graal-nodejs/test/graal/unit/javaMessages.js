@@ -60,7 +60,7 @@ describe('Java interop messages', function() {
             var A = Java.type('java.util.concurrent.atomic.AtomicInteger');
             var atomic = new A();
             let w = new Worker(`
-                            const { 
+                            const {
                                 parentPort
                             } = require('worker_threads');
 
@@ -84,7 +84,7 @@ describe('Java interop messages', function() {
         if (isMainThread) {
             var A = Java.type('java.util.concurrent.atomic.AtomicInteger');
             let w = new Worker(`
-                            const { 
+                            const {
                                 parentPort
                             } = require('worker_threads');
 
@@ -113,7 +113,7 @@ describe('Java interop messages', function() {
         if (isMainThread) {
             var A = Java.type('java.util.concurrent.atomic.AtomicInteger');
             let w = new Worker(`
-                            const { 
+                            const {
                                 parentPort
                             } = require('worker_threads');
 
@@ -150,7 +150,7 @@ describe('Java interop messages', function() {
             var received = 0;
             for (var worker = 0; worker < workersNum; worker++) {
                 let w = new Worker(`
-                                const { 
+                                const {
                                     parentPort,
                                     workerData,
                                 } = require('worker_threads');
@@ -181,7 +181,7 @@ describe('Java interop messages', function() {
     it('workers can send Java objects back to main', function(done) {
         if (isMainThread) {
             let w = new Worker(`
-                            const { 
+                            const {
                                 parentPort
                             } = require('worker_threads');
 
@@ -204,7 +204,7 @@ describe('Java interop messages', function() {
     it('Child workers can send messages, too', function(done) {
         if (isMainThread) {
             let w = new Worker(`
-                            const { 
+                            const {
                                 parentPort
                             } = require('worker_threads');
 
@@ -223,7 +223,7 @@ describe('Java interop messages', function() {
     it('Can send messageports and close them', function(done) {
         if (isMainThread) {
             const worker = new Worker(`
-                            const { 
+                            const {
                                 parentPort,
                                 MessageChannel
                             } = require('worker_threads');
@@ -257,9 +257,9 @@ describe('Java interop messages', function() {
             var A = Java.type('java.util.concurrent.atomic.AtomicInteger');
             var a1 = new A(1);
             var a2 = new A(2);
-            var a3 = new A(3);            
+            var a3 = new A(3);
             let w = new Worker(`
-                            const { 
+                            const {
                                 parentPort
                             } = require('worker_threads');
                             const assert = require('assert');
@@ -280,6 +280,60 @@ describe('Java interop messages', function() {
                 w.terminate(done);
             });
             w.postMessage({a1:a1, a2:a2, a3:{a3:a3}});
+        }
+    });
+    it('Multiple objects can be shared', function(done) {
+        if (isMainThread) {
+            let w = new Worker(`
+                            const {
+                                parentPort
+                            } = require('worker_threads');
+
+                            parentPort.on('message', (m) => {
+                                const x = m.random.nextInt(100);
+                                const y = m.random.nextInt(100);
+                                const Point = Java.type('java.awt.Point');
+                                parentPort.postMessage(new Point(x, y));
+                            });
+            `, {
+                eval: true
+            });
+            const JavaRandom = Java.type('java.util.Random');
+            w.postMessage({random : new JavaRandom()});
+            w.on('message', (point) => {
+                const val = point.x + point.y;
+                assert(val >= 0 && val < 200);
+                w.terminate(done);
+            });
+        }
+    });
+    it('Java can schedule back to the main Node.js event loop using a (blocking) worker', function(done) {
+        if (isMainThread) {
+            const JavaAsyncClass = Java.type('com.oracle.truffle.js.test.threading.JavaAsyncTaskScheduler.Example');
+            function javaAsyncNotifier() {
+                this.queue = new java.util.concurrent.LinkedBlockingDeque();
+                this.worker = new Worker(`
+                                    const {
+                                        workerData,
+                                        parentPort
+                                    } = require('worker_threads');
+
+                                    while (true) {
+                                        // block the worker waiting for the next notification from Java
+                                        var data = workerData.queue.take();
+                                        // notify the main event loop that we got new data 
+                                        parentPort.postMessage(data);
+                                    }`,
+                {eval: true, workerData: { queue: this.queue }});
+            }
+            // register a callback to be executed when something is added to the shared queue
+            const asyncJavaEvents = new javaAsyncNotifier();
+            asyncJavaEvents.worker.on('message', (n) => {
+                assert(n >= 42);
+                asyncJavaEvents.worker.terminate(done);
+            });
+            // pass the queue to Java, to give a way to notify us back when data is available
+            new JavaAsyncClass(asyncJavaEvents.queue).doAsynchronousWork();
         }
     });
 });
