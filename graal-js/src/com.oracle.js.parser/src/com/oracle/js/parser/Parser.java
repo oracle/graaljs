@@ -6042,18 +6042,14 @@ loop:
         long reservedWordToken = 0L;
         while (type != RBRACE) {
             long nameToken = token;
-            IdentNode localName;
-            if (isIdentifier()) {
-                localName = identifier(false, false);
-            } else if (isReservedWord()) {
+            TokenType nameType = type;
+            IdentNode localName = getIdentifierName();
+            if (isReservedWord(nameType) || (isEscapedIdent(localName) && (isReservedWordSequence(localName.getName()) || isFutureStrictName(localName)))) {
                 // Reserved words are allowed iff the ExportClause is followed by a FromClause.
                 // Remember the first reserved word and throw an error if this is not the case.
                 if (reservedWordToken == 0L) {
-                    reservedWordToken = token;
+                    reservedWordToken = nameToken;
                 }
-                localName = getIdentifierName();
-            } else {
-                throw error(expectMessage(IDENT));
             }
             if (type == AS) {
                 next();
@@ -6079,7 +6075,7 @@ loop:
         return new ExportClauseNode(startToken, Token.descPosition(startToken), finish, optimizeList(exports));
     }
 
-    private boolean isReservedWord() {
+    private static boolean isReservedWord(TokenType type) {
         return type.getKind() == TokenKind.KEYWORD || type.getKind() == TokenKind.FUTURE || type.getKind() == TokenKind.FUTURESTRICT;
     }
 
