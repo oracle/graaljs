@@ -18698,10 +18698,6 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
   }, {
-    "filePath" : "language/statements/labeled/value-yield-strict-escaped.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
     "filePath" : "language/statements/return/tco.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
