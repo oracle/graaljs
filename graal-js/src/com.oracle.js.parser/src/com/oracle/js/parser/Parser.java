@@ -5852,6 +5852,7 @@ loop:
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
                 //importEntries.add(ImportEntry.importSpecifier(importName.getName(), localName.getName()));
             } else if (bindingIdentifier) {
+                verifyIdent(importName, false, false);
                 verifyStrictIdent(importName, "ImportedBinding");
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, importName, null));
                 //importEntries.add(ImportEntry.importSpecifier(importName.getName()));
