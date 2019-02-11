@@ -860,9 +860,6 @@ public class JSRealm {
         if (context.isOptionAtomics()) {
             putGlobalProperty(global, ATOMICS_CLASS_NAME, createAtomics());
         }
-        if (getEnv() != null) {
-            setupGlobalGlobal();
-        }
         if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
             putGlobalProperty(global, "globalThis", global);
         }
@@ -889,12 +886,6 @@ public class JSRealm {
         JSObjectUtil.putOrSetDataProperty(getContext(), global, "parseToJSON", parseToJSON, JSAttributes.getDefaultNotEnumerable());
     }
 
-    private void initGlobalScriptingExtensions(DynamicObject global) {
-        JSObjectUtil.putOrSetDataProperty(getContext(), global, "$EXEC", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putOrSetDataProperty(getContext(), global, "readFully", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readFully"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putOrSetDataProperty(getContext(), global, "readLine", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readLine"), JSAttributes.getDefaultNotEnumerable());
-    }
-
     private void initGlobalPrintExtensions(DynamicObject global) {
         putGlobalProperty(global, "print", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "print"));
         putGlobalProperty(global, "printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
@@ -912,13 +903,29 @@ public class JSRealm {
         if (getEnv().isPreInitialization()) {
             return;
         }
+        CompilerAsserts.neverPartOfCompilation();
+
+        setupGlobalGlobal();
+        setupShellGlobals();
+        setupScriptingGlobals();
+        if (isJavaInteropEnabled()) {
+            setupJavaInterop(getGlobalObject());
+        }
+    }
+
+    private void setupGlobalGlobal() {
+        CompilerAsserts.neverPartOfCompilation();
+
+        toggleGlobalProperty("global", getGlobalObject(), JSContextOptions.GLOBAL_PROPERTY.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityModeInContextInit());
+    }
+
+    private void setupShellGlobals() {
+        CompilerAsserts.neverPartOfCompilation();
+
         getContext().getFunctionLookup().iterateBuiltinFunctions(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, (Builtin builtin) -> {
             Supplier<Object> lazyBuiltin = () -> JSFunction.create(JSRealm.this, builtin.createFunctionData(getContext()));
             toggleGlobalProperty(builtin.getKey(), lazyBuiltin, builtin.getAttributeFlags(), getContext().getContextOptions().isShell());
         });
-        if (isJavaInteropEnabled()) {
-            setupJavaInterop(getGlobalObject());
-        }
     }
 
     private void putGraalObject(DynamicObject global) {
@@ -1127,46 +1134,59 @@ public class JSRealm {
     }
 
     /**
-     * Adds several objects to the global object, in case scripting mode is enabled (for Nashorn
-     * compatibility). This includes an {@code $OPTIONS} property that exposes several options to
-     * the script, an {@code $ARG} array with arguments to the script, an {@code $ENV} object with
-     * environment variables, and an {@code $EXEC} function to execute external code.
+     * Adds or removes several objects to the global object, depending on whether scripting mode is
+     * enabled (for Nashorn compatibility). This includes an {@code $OPTIONS} property that exposes
+     * several options to the script, an {@code $ARG} array with arguments to the script, an
+     * {@code $ENV} object with environment variables, and an {@code $EXEC} function to execute
+     * external code.
      */
-    public void addScriptingObjects() {
+    private void setupScriptingGlobals() {
         CompilerAsserts.neverPartOfCompilation();
-        DynamicObject globalObj = getGlobalObject();
+
+        boolean isScripting = getContext().getParserOptions().isScripting();
 
         // $OPTIONS
-        String timezone = context.getLocalTimeZoneId().getId();
-        DynamicObject timezoneObj = JSUserObject.create(context, this);
-        JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
+        Supplier<Object> lazyOptions = () -> {
+            String timezone = context.getLocalTimeZoneId().getId();
+            DynamicObject timezoneObj = JSUserObject.create(context, this);
+            JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
 
-        DynamicObject optionsObj = JSUserObject.create(context, this);
-        JSObjectUtil.putDataProperty(context, optionsObj, "_timezone", timezoneObj, JSAttributes.configurableEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, optionsObj, "_scripting", true, JSAttributes.configurableEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, optionsObj, "_compile_only", false, JSAttributes.configurableEnumerableWritable());
+            DynamicObject optionsObj = JSUserObject.create(context, this);
+            JSObjectUtil.putDataProperty(context, optionsObj, "_timezone", timezoneObj, JSAttributes.configurableEnumerableWritable());
+            JSObjectUtil.putDataProperty(context, optionsObj, "_scripting", true, JSAttributes.configurableEnumerableWritable());
+            JSObjectUtil.putDataProperty(context, optionsObj, "_compile_only", false, JSAttributes.configurableEnumerableWritable());
 
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$OPTIONS", optionsObj, JSAttributes.configurableNotEnumerableWritable());
+            return optionsObj;
+        };
+
+        toggleGlobalProperty("$OPTIONS", lazyOptions, JSAttributes.configurableNotEnumerableWritable(), isScripting);
 
         // $ARG
-        DynamicObject argObj = JSArray.createConstant(context, getEnv().getApplicationArguments());
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ARG", argObj, JSAttributes.configurableNotEnumerableWritable());
+        Supplier<Object> lazyArguments = () -> JSArray.createConstant(context, getEnv().getApplicationArguments());
+
+        toggleGlobalProperty("$ARG", lazyArguments, JSAttributes.configurableNotEnumerableWritable(), isScripting);
 
         // $ENV
-        DynamicObject envObj = JSUserObject.create(context, this);
-        Map<String, String> sysenv = System.getenv();
-        for (Map.Entry<String, String> entry : sysenv.entrySet()) {
-            JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
-        }
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ENV", envObj, JSAttributes.configurableNotEnumerableWritable());
+        Supplier<Object> lazyEnvironment = () -> {
+            DynamicObject envObj = JSUserObject.create(context, this);
+            Map<String, String> sysenv = System.getenv();
+            for (Map.Entry<String, String> entry : sysenv.entrySet()) {
+                JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
+            }
+            return envObj;
+        };
+
+        toggleGlobalProperty("$ENV", lazyEnvironment, JSAttributes.configurableNotEnumerableWritable(), isScripting);
 
         // $EXEC
-        initGlobalScriptingExtensions(globalObj);
+        toggleGlobalProperty("$EXEC", () -> lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec"), isScripting);
+        toggleGlobalProperty("readFully", () -> lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readFully"), isScripting);
+        toggleGlobalProperty("readLine", () -> lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readLine"), isScripting);
 
         // $OUT, $ERR, $EXIT
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$EXIT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$OUT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ERR", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
+        toggleGlobalProperty("$EXIT", Undefined.instance, isScripting);
+        toggleGlobalProperty("$OUT", Undefined.instance, isScripting);
+        toggleGlobalProperty("$ERR", Undefined.instance, isScripting);
     }
 
     public void setRealmBuiltinObject(DynamicObject realmBuiltinObject) {
@@ -1235,29 +1255,15 @@ public class JSRealm {
 
         setArguments(newEnv.getApplicationArguments());
 
-        // Reflect any changes to the global-property and v8-compat options.
-        setupGlobalGlobal();
+        // Reflect changes to the global-property, v8-compat, shell and scripting options
+        // by updating the set of available globals.
+        setupOptionalGlobals();
 
         // Reflect any changes to the timezone option.
         context.setLocalTimeZoneFromOptions(newEnv.getOptions());
 
-        // Reflect any changes to the shell option.
-        setupOptionalGlobals();
-
-        // Reflect any changes to the scripting option.
-        // TODO: Do this properly and then add SCRIPTING to the set of patchable options in
-        // JSContextOptions.optionsAllowPreInitializedContext. Otherwise, remove this.
-        if (context.getParserOptions().isScripting()) {
-            addScriptingObjects();
-        }
-
         return true;
     }
-
-    private void setupGlobalGlobal() {
-        toggleGlobalProperty("global", getGlobalObject(), JSContextOptions.GLOBAL_PROPERTY.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityModeInContextInit());
-    }
-
 
     private void toggleGlobalProperty(Object key, Supplier<Object> lazyValue, int attributes, boolean enable) {
         boolean present = getGlobalObject().containsKey(key);
@@ -1270,6 +1276,10 @@ public class JSRealm {
 
     private void toggleGlobalProperty(Object key, Object value, int attributes, boolean enable) {
         toggleGlobalProperty(key, () -> value, attributes, enable);
+    }
+
+    private void toggleGlobalProperty(Object key, Supplier<Object> lazyValue, boolean enable) {
+        toggleGlobalProperty(key, lazyValue, JSAttributes.getDefaultNotEnumerable(), enable);
     }
 
     private void toggleGlobalProperty(Object key, Object value, boolean enable) {

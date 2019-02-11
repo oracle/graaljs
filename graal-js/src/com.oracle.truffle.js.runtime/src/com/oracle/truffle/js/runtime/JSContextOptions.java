@@ -42,8 +42,6 @@ package com.oracle.truffle.js.runtime;
 
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -60,7 +58,6 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 
 public final class JSContextOptions {
     @CompilationFinal private ParserOptions parserOptions;
@@ -159,7 +156,7 @@ public final class JSContextOptions {
     private static final String TIME_ZONE_HELP = "Set custom timezone.";
 
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
-    private static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
+    public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
     private static final String TIMER_RESOLUTION_HELP = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.";
     @CompilationFinal private long timerResolution;
 
@@ -250,17 +247,6 @@ public final class JSContextOptions {
     private static final OptionKey<Boolean> SIMDJS = new OptionKey<>(false);
     private static final String SIMDJS_HELP = "Provide implementation of the SIMD.js proposal.";
     @CompilationFinal private boolean simdjs;
-
-    /**
-     * Options which can be patched without throwing away the pre-initialized context.
-     */
-    private static final OptionKey<?>[] PREINIT_CONTEXT_PATCHABLE_OPTIONS = {
-                    ARRAY_SORT_INHERITED,
-                    TIMER_RESOLUTION,
-                    SHELL,
-                    V8_COMPATIBILITY_MODE,
-                    GLOBAL_PROPERTY
-    };
 
     public JSContextOptions(ParserOptions parserOptions) {
         this.parserOptions = parserOptions;
@@ -403,35 +389,6 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, OptionCategory.EXPERT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP));
         options.add(newOptionDescriptor(ARRAY_LIKE_PROTOTYPE, ARRAY_LIKE_PROTOTYPE_NAME, OptionCategory.EXPERT, ARRAY_LIKE_PROTOTYPE_HELP));
         options.add(newOptionDescriptor(SIMDJS, SIMDJS_NAME, OptionCategory.EXPERT, SIMDJS_HELP));
-    }
-
-    /**
-     * Check for options that differ from the expected options and do not support patching, in which
-     * case we cannot use the pre-initialized context for faster startup.
-     */
-    public static boolean optionsAllowPreInitializedContext(Env preinitEnv, Env env) {
-        OptionValues preinitOptions = preinitEnv.getOptions();
-        OptionValues options = env.getOptions();
-        if (!preinitOptions.hasSetOptions() && !options.hasSetOptions()) {
-            return true;
-        } else if (preinitOptions.equals(options)) {
-            return true;
-        } else {
-            assert preinitOptions.getDescriptors().equals(options.getDescriptors());
-            Collection<OptionKey<?>> ignoredOptions = Arrays.asList(PREINIT_CONTEXT_PATCHABLE_OPTIONS);
-            for (OptionDescriptor descriptor : options.getDescriptors()) {
-                OptionKey<?> key = descriptor.getKey();
-                if (preinitOptions.hasBeenSet(key) || options.hasBeenSet(key)) {
-                    if (ignoredOptions.contains(key)) {
-                        continue;
-                    }
-                    if (!preinitOptions.get(key).equals(options.get(key))) {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
     }
 
     public <T> boolean optionWillChange(OptionKey<T> option, OptionValues newOptionValues) {
