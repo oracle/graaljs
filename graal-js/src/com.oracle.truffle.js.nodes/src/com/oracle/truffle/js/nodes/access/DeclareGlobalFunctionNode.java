@@ -88,6 +88,11 @@ public class DeclareGlobalFunctionNode extends DeclareGlobalNode {
     }
 
     @Override
+    public boolean isGlobalFunctionDeclaration() {
+        return true;
+    }
+
+    @Override
     protected DeclareGlobalNode copyUninitialized() {
         return new DeclareGlobalFunctionNode(varName, configurable, valueNode);
     }

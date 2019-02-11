@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -51,7 +50,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -86,11 +84,15 @@ public class GlobalDeclarationInstantiationNode extends StatementNode {
         for (DeclareGlobalNode declaration : globalDeclarations) {
             String varName = declaration.varName;
             if (hasLexicalDeclaration(globalScope, varName)) {
-                throw throwSyntaxErrorVariableAlreadyDeclared(varName);
+                throw Errors.createSyntaxErrorVariableAlreadyDeclared(varName);
             }
             if (declaration.isLexicallyDeclared()) {
                 if (hasRestrictedGlobalProperty(globalObject, varName)) {
-                    throw throwSyntaxErrorVariableAlreadyDeclared(varName);
+                    throw Errors.createSyntaxErrorVariableAlreadyDeclared(varName);
+                }
+            } else if (declaration.isGlobalFunctionDeclaration()) {
+                if (!canDeclareGlobalFunction(globalObject, varName)) {
+                    throw Errors.createTypeErrorCannotDeclareGlobalFunction(varName);
                 }
             }
         }
@@ -118,9 +120,10 @@ public class GlobalDeclarationInstantiationNode extends StatementNode {
         return desc != null && !desc.getConfigurable();
     }
 
-    private static JSException throwSyntaxErrorVariableAlreadyDeclared(String varName) {
-        CompilerDirectives.transferToInterpreter();
-        throw Errors.createSyntaxError("Variable \"" + varName + "\" has already been declared");
+    @TruffleBoundary
+    private static boolean canDeclareGlobalFunction(DynamicObject globalObject, String varName) {
+        PropertyDescriptor desc = JSObject.getOwnProperty(globalObject, varName);
+        return desc == null || desc.getConfigurable() || (desc.isDataDescriptor() && desc.getWritable() && desc.getEnumerable());
     }
 
     @Override
