@@ -830,7 +830,7 @@ public class JSRealm {
             putGlobalProperty(global, JSTruffleOptions.DebugPropertyName, createDebugObject());
         }
         if (JSTruffleOptions.Test262Mode) {
-            putGlobalProperty(global, JSTest262.CLASS_NAME, JSTest262.create(this));
+            putGlobalProperty(global, JSTest262.GLOBAL_PROPERTY_NAME, JSTest262.create(this));
         }
         if (JSTruffleOptions.TestV8Mode) {
             putGlobalProperty(global, JSTestV8.CLASS_NAME, JSTestV8.create(this));

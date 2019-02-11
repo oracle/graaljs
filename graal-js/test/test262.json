@@ -3011,6 +3011,18 @@
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
   }, {
+    "filePath" : "language/expressions/call/tco-cross-realm-class-construct.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/call/tco-cross-realm-class-derived-construct.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/call/tco-cross-realm-fun-call.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/call/tco-cross-realm-fun-construct.js",
+    "status" : "FAIL"
+  }, {
     "filePath" : "language/expressions/call/tco-member-args.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"

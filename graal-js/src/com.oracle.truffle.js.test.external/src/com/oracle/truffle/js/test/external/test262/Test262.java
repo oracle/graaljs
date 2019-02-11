@@ -42,12 +42,9 @@ package com.oracle.truffle.js.test.external.test262;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
-import java.util.stream.Stream;
 import java.util.TimeZone;
+import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Source;
 
@@ -55,7 +52,6 @@ import com.oracle.truffle.js.test.external.suite.SuiteConfig;
 import com.oracle.truffle.js.test.external.suite.TestFile;
 import com.oracle.truffle.js.test.external.suite.TestRunnable;
 import com.oracle.truffle.js.test.external.suite.TestSuite;
-import com.oracle.truffle.js.test.external.testv8.TestV8;
 
 public class Test262 extends TestSuite {
 
@@ -82,8 +78,6 @@ public class Test262 extends TestSuite {
     private static final String TESTS_CONFIG_FILE = "test262.json";
     private static final String FAILED_TESTS_FILE = "test262.failed";
 
-    private Source mockupSource;
-
     public Test262(SuiteConfig config) {
         super(config);
     }
@@ -91,7 +85,6 @@ public class Test262 extends TestSuite {
     public Source[] getHarnessSources(boolean strict, boolean async, Stream<String> includes) {
         Source prologSource = Source.newBuilder("js", strict ? "var strict_mode = true;" : "var strict_mode = false;", "").buildLiteral();
         Stream<Source> prologStream = Stream.of(prologSource);
-        Stream<Source> mockupStream = Stream.of(getMockupSource());
 
         String harnessLocation = getConfig().getSuiteHarnessLoc();
         Stream<String> harnessNamesStream = Stream.of(COMMON_PREQUEL_FILES);
@@ -108,7 +101,7 @@ public class Test262 extends TestSuite {
         });
 
         String prefix = strict ? "\"use strict\";" : "";
-        return Stream.concat(Stream.concat(prologStream, mockupStream), harnessStream.map(s -> applyPrefix(s, prefix))).toArray(Source[]::new);
+        return Stream.concat(prologStream, harnessStream.map(s -> applyPrefix(s, prefix))).toArray(Source[]::new);
     }
 
     private static Source applyPrefix(Source source, String prefix) {
@@ -158,22 +151,6 @@ public class Test262 extends TestSuite {
     @Override
     public boolean executeWithSeparateThreads() {
         return false;
-    }
-
-    private static Source loadMockup() {
-        InputStream resourceStream = TestV8.class.getResourceAsStream("/com/oracle/truffle/js/test/external/resources/test262mockup.js");
-        try {
-            return Source.newBuilder("js", new InputStreamReader(resourceStream, StandardCharsets.UTF_8), "test262mockup.js").internal(true).build();
-        } catch (IOException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
-    protected Source getMockupSource() {
-        if (this.mockupSource == null) {
-            this.mockupSource = loadMockup();
-        }
-        return this.mockupSource;
     }
 
     @Override

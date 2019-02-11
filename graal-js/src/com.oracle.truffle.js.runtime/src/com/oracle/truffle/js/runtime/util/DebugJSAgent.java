@@ -94,18 +94,11 @@ public class DebugJSAgent extends JSAgent {
                     }
                 }
 
-                String init = "var $262 = { agent : {} };" +
-                                "$262.agent.receiveBroadcast = Test262.agentReceiveBroadcast;" +
-                                "$262.agent.report = Test262.agentReport;" +
-                                "$262.agent.sleep = Test262.agentSleep;" +
-                                "$262.agent.leaving = Test262.agentLeaving;" +
-                                "$262.agent.monotonicNow = Test262.agentMonotonicNow;" +
-                                "$262;";
-
                 Context polyglotContext = contextBuilder.build();
                 polyglotContext.enter();
                 try {
-                    polyglotContext.eval(AbstractJavaScriptLanguage.ID, init);
+                    polyglotContext.initialize(AbstractJavaScriptLanguage.ID);
+
                     DebugJSAgent debugJSAgent = (DebugJSAgent) AbstractJavaScriptLanguage.getCurrentJSRealm().getContext().getJSAgent();
                     AgentExecutor executor = registerChildAgent(Thread.currentThread(), debugJSAgent);
 
