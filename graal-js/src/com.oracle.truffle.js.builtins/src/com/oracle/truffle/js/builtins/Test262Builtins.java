@@ -56,6 +56,8 @@ import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentSleepNo
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentStartNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262CreateRealmNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262EvalScriptNodeGen;
+import com.oracle.truffle.js.nodes.NodeEvaluator;
+import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.RealmNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -157,13 +159,15 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         protected Object evalScript(VirtualFrame frame, Object obj) {
             String sourceText = JSRuntime.toString(obj);
             JSRealm realm = realmNode.execute(frame);
+            getContext().checkEvalAllowed();
             return evalScript(realm, sourceText);
         }
 
-        @TruffleBoundary
+        @TruffleBoundary(transferToInterpreterOnException = false)
         private Object evalScript(JSRealm realm, String sourceText) {
             Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).build();
-            return realm.getContext().getEvaluator().evaluate(realm, this, source);
+            ScriptNode script = ((NodeEvaluator) getContext().getEvaluator()).loadCompile(getContext(), source);
+            return script.run(realm);
         }
 
     }

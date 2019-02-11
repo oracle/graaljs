@@ -36,38 +36,6 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
-    "filePath" : "annexB/language/global-code/block-decl-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/if-decl-else-decl-a-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/if-decl-else-decl-b-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/if-decl-else-stmt-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/if-decl-no-else-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/if-stmt-else-decl-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/switch-case-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/switch-dflt-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "annexB/language/statements/for-await-of/iterator-close-return-emulates-undefined-throws-when-called.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -11537,40 +11505,7 @@
     "filePath" : "language/global-code/new.target-arrow.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/global-code/script-decl-func-dups.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/global-code/script-decl-func-err-non-configurable.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-func-err-non-extensible.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-func.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex-deletion.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex-lex.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex-restricted-global.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex-var.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-var-collision.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-var-err.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-var.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/import/dup-bound-names.js",

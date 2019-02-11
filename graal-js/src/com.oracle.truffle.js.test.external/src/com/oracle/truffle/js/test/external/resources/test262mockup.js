@@ -58,7 +58,7 @@ $262.detachArrayBuffer = function detachArrayBuffer(buffer) {
 }
 
 $262.evalScript = function evalScript(string) {
-    return eval(string);
+    return Test262.evalScript(string);
 }
 
 $262.global = this;
