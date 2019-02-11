@@ -158,6 +158,7 @@ public final class JSContextOptions {
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
     public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
     private static final String TIMER_RESOLUTION_HELP = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.";
+    @CompilationFinal private Assumption timerResolutionAssumption = Truffle.getRuntime().createAssumption("The timer-resolution option is stable.");
     @CompilationFinal private long timerResolution;
 
     public static final String AGENT_CAN_BLOCK_NAME = JS_OPTION_PREFIX + "agent-can-block";
@@ -283,7 +284,7 @@ public final class JSContextOptions {
         this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME);
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
-        this.timerResolution = readLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME);
+        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, timerResolutionAssumption);
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME);
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME);
         this.disableEval = readBooleanOption(DISABLE_EVAL, DISABLE_EVAL_NAME);
@@ -330,6 +331,14 @@ public final class JSContextOptions {
 
     private static int readIntegerFromSystemProperty(OptionKey<Integer> key, String name) {
         return Integer.getInteger("polyglot." + name, key.getDefaultValue());
+    }
+
+    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Assumption assumption) {
+        long newValue = readLongOption(key, name);
+        if (oldValue != newValue) {
+            assumption.invalidate(String.format("Option {0} was changed from {1} to {2}.", name, oldValue, newValue));
+        }
+        return newValue;
     }
 
     private long readLongOption(OptionKey<Long> key, String name) {
@@ -456,6 +465,12 @@ public final class JSContextOptions {
     }
 
     public long getTimerResolution() {
+        try {
+            timerResolutionAssumption.check();
+        } catch (InvalidAssumptionException e) {
+            timerResolutionAssumption = Truffle.getRuntime().createAssumption();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return timerResolution;
     }
 

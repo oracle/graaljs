@@ -1241,6 +1241,9 @@ public class JSRealm {
         if (contextOptions.optionWillChange(JSContextOptions.ARRAY_SORT_INHERITED, newEnv.getOptions()) && getContext().wasOptionArraySortInheritedQueried()) {
             return false;
         }
+        if (contextOptions.optionWillChange(JSContextOptions.TIMER_RESOLUTION, newEnv.getOptions()) && getContext().wasTimerResolutionQueried()) {
+            return false;
+        }
 
         truffleLanguageEnv = newEnv;
         getContext().setAllocationReporter(newEnv);

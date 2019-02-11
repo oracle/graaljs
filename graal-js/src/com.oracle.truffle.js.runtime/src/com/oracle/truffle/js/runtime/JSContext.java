@@ -290,6 +290,7 @@ public class JSContext {
     private final JSContextOptions contextOptions;
     private boolean arraySortInheritedOptionQueried = false;
     private boolean v8CompatibilityModeOptionQueried = false;
+    private boolean timerResolutionQueried = false;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
 
@@ -1272,7 +1273,12 @@ public class JSContext {
     }
 
     public long getTimerResolution() {
+        timerResolutionQueried = true;
         return contextOptions.getTimerResolution();
+    }
+
+    public boolean wasTimerResolutionQueried() {
+        return timerResolutionQueried;
     }
 
     public boolean usePromiseResolve() {
