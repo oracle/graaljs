@@ -33,16 +33,16 @@
     "status" : "FAIL"
   }, {
     "filePath" : "annexB/language/expressions/yield/star-iterable-return-emulates-undefined-throws-when-called.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "IsHTMLDDA"
   }, {
     "filePath" : "annexB/language/statements/for-await-of/iterator-close-return-emulates-undefined-throws-when-called.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "IsHTMLDDA"
   }, {
     "filePath" : "annexB/language/statements/for-of/iterator-close-return-emulates-undefined-throws-when-called.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "IsHTMLDDA"
   }, {
     "filePath" : "built-ins/Array/prototype/indexOf/calls-only-has-on-prototype-after-length-zeroed.js",
     "status" : "FAIL",
