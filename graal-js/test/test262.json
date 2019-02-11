@@ -33,48 +33,16 @@
     "status" : "FAIL"
   }, {
     "filePath" : "annexB/language/expressions/yield/star-iterable-return-emulates-undefined-throws-when-called.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "annexB/language/global-code/block-decl-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/if-decl-else-decl-a-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/if-decl-else-decl-b-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/if-decl-else-stmt-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/if-decl-no-else-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/if-stmt-else-decl-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/switch-case-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/global-code/switch-dflt-global-existing-non-enumerable-global-init.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "IsHTMLDDA"
   }, {
     "filePath" : "annexB/language/statements/for-await-of/iterator-close-return-emulates-undefined-throws-when-called.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "IsHTMLDDA"
   }, {
     "filePath" : "annexB/language/statements/for-of/iterator-close-return-emulates-undefined-throws-when-called.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
+    "status" : "SKIP",
+    "comment" : "IsHTMLDDA"
   }, {
     "filePath" : "built-ins/Array/prototype/indexOf/calls-only-has-on-prototype-after-length-zeroed.js",
     "status" : "FAIL",
@@ -2924,9 +2892,6 @@
     "filePath" : "language/eval-code/direct/new.target-fn.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/eval-code/direct/non-definable-function-with-function.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/eval-code/direct/super-prop-method.js",
     "status" : "FAIL"
   }, {
@@ -2937,9 +2902,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/eval-code/indirect/lex-env-heritage.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/eval-code/indirect/non-definable-function-with-function.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/arrow-function/param-dflt-yield-expr.js",
@@ -3042,6 +3004,18 @@
     "filePath" : "language/expressions/call/tco-call-args.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
+  }, {
+    "filePath" : "language/expressions/call/tco-cross-realm-class-construct.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/call/tco-cross-realm-class-derived-construct.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/call/tco-cross-realm-fun-call.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/call/tco-cross-realm-fun-construct.js",
+    "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/call/tco-member-args.js",
     "status" : "SKIP",
@@ -11535,42 +11509,6 @@
     "comment" : "ES7 tests"
   }, {
     "filePath" : "language/global-code/new.target-arrow.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-func-dups.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-func-err-non-configurable.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-func-err-non-extensible.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-func.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex-deletion.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex-lex.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex-restricted-global.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex-var.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-var-collision.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-var-err.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/script-decl-var.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/import/dup-bound-names.js",

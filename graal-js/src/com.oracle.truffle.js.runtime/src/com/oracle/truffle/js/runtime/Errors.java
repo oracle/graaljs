@@ -175,6 +175,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createSyntaxErrorVariableAlreadyDeclared(String varName) {
+        return Errors.createSyntaxError("Variable \"" + varName + "\" has already been declared");
+    }
+
+    @TruffleBoundary
     public static JSException createReferenceError(String message, Node originatingNode) {
         return JSException.create(JSErrorType.ReferenceError, message, originatingNode);
     }
@@ -393,6 +398,11 @@ public final class Errors {
             errorMessage = "Cannot read property '" + key + "' of " + JSRuntime.safeToString(object);
         }
         return createTypeError(errorMessage, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorCannotDeclareGlobalFunction(String varName) {
+        return Errors.createTypeError("Cannot declare global function '" + varName + "'");
     }
 
     @TruffleBoundary

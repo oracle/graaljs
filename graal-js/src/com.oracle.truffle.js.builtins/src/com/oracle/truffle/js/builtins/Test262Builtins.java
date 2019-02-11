@@ -44,18 +44,20 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentBroadcastNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentGetReportNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentLeavingNodeGen;
-import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentMonotonicNowNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentReceiveBroadcastNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentReportNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentSleepNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentStartNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262CreateRealmNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262EvalScriptNodeGen;
+import com.oracle.truffle.js.nodes.NodeEvaluator;
+import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.RealmNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -69,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 
@@ -84,7 +87,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
     public enum Test262 implements BuiltinEnum<Test262> {
         createRealm(0),
         evalScript(1),
-        typedArrayDetachBuffer(1),
+        detachArrayBuffer(1),
 
         agentStart(1),
         agentBroadcast(1),
@@ -92,8 +95,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         agentSleep(1),
         agentReceiveBroadcast(1),
         agentReport(1),
-        agentLeaving(0),
-        agentMonotonicNow(0);
+        agentLeaving(0);
 
         private final int length;
 
@@ -110,7 +112,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, Test262 builtinEnum) {
         switch (builtinEnum) {
-            case typedArrayDetachBuffer:
+            case detachArrayBuffer:
                 return DebugTypedArrayDetachBufferNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case createRealm:
                 return Test262CreateRealmNodeGen.create(context, builtin, args().createArgumentNodes(context));
@@ -134,8 +136,6 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
                             return Test262AgentReportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                         case agentLeaving:
                             return Test262AgentLeavingNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                        case agentMonotonicNow:
-                            return Test262AgentMonotonicNowNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
                     }
                 }
         }
@@ -143,7 +143,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
     }
 
     /**
-     * Used by test262mockup.js.
+     * Used by test262.
      */
     public abstract static class Test262EvalScriptNode extends JSBuiltinNode {
         @Child private RealmNode realmNode;
@@ -157,19 +157,22 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         protected Object evalScript(VirtualFrame frame, Object obj) {
             String sourceText = JSRuntime.toString(obj);
             JSRealm realm = realmNode.execute(frame);
+            getContext().checkEvalAllowed();
             return evalScript(realm, sourceText);
         }
 
-        @TruffleBoundary
+        @TruffleBoundary(transferToInterpreterOnException = false)
         private Object evalScript(JSRealm realm, String sourceText) {
             Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).build();
-            return realm.getContext().getEvaluator().evaluate(realm, this, source);
+            ScriptNode script = ((NodeEvaluator) getContext().getEvaluator()).loadCompile(getContext(), source);
+            return script.run(realm);
         }
 
     }
 
     /**
-     * Used by test262mockup.js.
+     * A function which creates a new ECMAScript Realm, defines the Test262 API on the new realm's
+     * global object, and returns the {@code $262} property of the new realm's global object.
      */
     public abstract static class Test262CreateRealmNode extends JSBuiltinNode {
 
@@ -179,7 +182,8 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         protected Object createRealm() {
-            return createChildRealm().getGlobalObject();
+            DynamicObject newGlobalObj = createChildRealm().getGlobalObject();
+            return JSObject.get(newGlobalObj, JSTest262.GLOBAL_PROPERTY_NAME);
         }
 
         @TruffleBoundary
@@ -189,7 +193,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
     }
 
     /**
-     * Used by test262mockup.js to test concurrent agents.
+     * Used by test262 to test concurrent agents.
      */
     public abstract static class Test262AgentStart extends JSBuiltinNode {
 
@@ -205,7 +209,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
     }
 
     /**
-     * Used by test262mockup.js to test concurrent agents.
+     * Used by test262 to test concurrent agents.
      */
     public abstract static class Test262AgentBroadcast extends JSBuiltinNode {
 
@@ -221,7 +225,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
     }
 
     /**
-     * Used by test262mockup.js to test concurrent agents.
+     * Used by test262 to test concurrent agents.
      */
     public abstract static class Test262AgentGetReport extends JSBuiltinNode {
 
@@ -236,7 +240,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
     }
 
     /**
-     * Used by test262mockup.js to test concurrent agents.
+     * Used by test262 to test concurrent agents.
      */
     public abstract static class Test262AgentSleep extends JSBuiltinNode {
 
@@ -257,7 +261,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
     }
 
     /**
-     * Used by test262mockup.js to test concurrent agents.
+     * Used by test262 to test concurrent agents.
      */
     public abstract static class Test262AgentReceiveBroadcast extends JSBuiltinNode {
 
@@ -273,7 +277,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
     }
 
     /**
-     * Used by test262mockup.js to test concurrent agents.
+     * Used by test262 to test concurrent agents.
      */
     public abstract static class Test262AgentReport extends JSBuiltinNode {
         @Child private JSToStringNode toStringNode = JSToStringNode.create();
@@ -291,7 +295,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
     }
 
     /**
-     * Used by test262mockup.js to test concurrent agents.
+     * Used by test262 to test concurrent agents.
      */
     public abstract static class Test262AgentLeaving extends JSBuiltinNode {
 
@@ -305,17 +309,4 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
             return Undefined.instance;
         }
     }
-
-    public abstract static class Test262AgentMonotonicNow extends JSBuiltinNode {
-
-        public Test262AgentMonotonicNow(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected double monotonicNow() {
-            return System.nanoTime() / 1000000;
-        }
-    }
-
 }
