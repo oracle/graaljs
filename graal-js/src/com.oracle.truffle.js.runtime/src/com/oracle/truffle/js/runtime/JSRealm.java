@@ -49,7 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
 
@@ -906,21 +906,16 @@ public class JSRealm {
     }
 
     /**
-     * Add or set optional global properties. Used by initializeContext and patchContext.
+     * Add or remove optional global properties. Used by initializeContext and patchContext.
      */
-    public void addOptionalGlobals() {
+    public void setupOptionalGlobals() {
         if (getEnv().isPreInitialization()) {
             return;
         }
-        if (getContext().getContextOptions().isShell()) {
-            getContext().getFunctionLookup().iterateBuiltinFunctions(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, new Consumer<Builtin>() {
-                @Override
-                public void accept(Builtin builtin) {
-                    JSFunctionData functionData = builtin.createFunctionData(getContext());
-                    JSObjectUtil.putOrSetDataProperty(getContext(), getGlobalObject(), builtin.getKey(), JSFunction.create(JSRealm.this, functionData), builtin.getAttributeFlags());
-                }
-            });
-        }
+        getContext().getFunctionLookup().iterateBuiltinFunctions(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, (Builtin builtin) -> {
+            Supplier<Object> lazyBuiltin = () -> JSFunction.create(JSRealm.this, builtin.createFunctionData(getContext()));
+            toggleGlobalProperty(builtin.getKey(), lazyBuiltin, builtin.getAttributeFlags(), getContext().getContextOptions().isShell());
+        });
         if (isJavaInteropEnabled()) {
             setupJavaInterop(getGlobalObject());
         }
@@ -1247,9 +1242,7 @@ public class JSRealm {
         context.setLocalTimeZoneFromOptions(newEnv.getOptions());
 
         // Reflect any changes to the shell option.
-        // TODO: Handle the case when the context was initialized with shell=True but should
-        // be patched to shell=False (i.e. the globals should be removed).
-        addOptionalGlobals();
+        setupOptionalGlobals();
 
         // Reflect any changes to the scripting option.
         // TODO: Do this properly and then add SCRIPTING to the set of patchable options in
@@ -1265,13 +1258,22 @@ public class JSRealm {
         toggleGlobalProperty("global", getGlobalObject(), JSContextOptions.GLOBAL_PROPERTY.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityModeInContextInit());
     }
 
-    private void toggleGlobalProperty(String name, Object value, boolean enable) {
-        boolean present = getGlobalObject().containsKey(name);
+
+    private void toggleGlobalProperty(Object key, Supplier<Object> lazyValue, int attributes, boolean enable) {
+        boolean present = getGlobalObject().containsKey(key);
         if (!present && enable) {
-            putGlobalProperty(getGlobalObject(), name, value);
+            JSObjectUtil.putDataProperty(getContext(), getGlobalObject(), key, lazyValue.get(), attributes);
         } else if (present && !enable) {
-            getGlobalObject().delete(name);
+            getGlobalObject().delete(key);
         }
+    }
+
+    private void toggleGlobalProperty(Object key, Object value, int attributes, boolean enable) {
+        toggleGlobalProperty(key, () -> value, attributes, enable);
+    }
+
+    private void toggleGlobalProperty(Object key, Object value, boolean enable) {
+        toggleGlobalProperty(key, value, JSAttributes.getDefaultNotEnumerable(), enable);
     }
 
     @TruffleBoundary

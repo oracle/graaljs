@@ -458,7 +458,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     protected void initializeContext(JSRealm realm) {
         realm.setArguments(realm.getEnv().getApplicationArguments());
 
-        realm.addOptionalGlobals();
+        realm.setupOptionalGlobals();
         if (realm.getContext().getParserOptions().isScripting()) {
             realm.addScriptingObjects();
         }
