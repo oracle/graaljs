@@ -99,7 +99,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.interop.JavaAccess;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuiltins.Java> {
@@ -568,70 +567,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
                 throw Errors.createTypeError(Boundaries.javaToString(e));
             }
-        }
-
-        @TruffleBoundary
-        private static Object convertElement(Object element, Class<?> componentType) {
-            if (componentType == int.class) {
-                return (int) JSRuntime.toInteger(element);
-            } else if (componentType == Integer.class) {
-                return isNullOrUndefined(element) ? null : (int) JSRuntime.toInteger(element);
-            } else if (componentType == double.class) {
-                return JSRuntime.toDouble(element);
-            } else if (componentType == Double.class) {
-                return isNull(element) ? null : JSRuntime.toDouble(element);
-            } else if (componentType == float.class) {
-                return (float) JSRuntime.toDouble(element);
-            } else if (componentType == Float.class) {
-                return isNull(element) ? null : (float) JSRuntime.toDouble(element);
-            } else if (componentType == long.class) {
-                return JSRuntime.longValue(JSRuntime.toNumber(element));
-            } else if (componentType == Long.class) {
-                return isNullOrUndefined(element) ? null : JSRuntime.longValue(JSRuntime.toNumber(element));
-            } else if (componentType == boolean.class) {
-                return JSRuntime.toBoolean(element);
-            } else if (componentType == Boolean.class) {
-                return isNullOrUndefined(element) ? null : JSRuntime.toBoolean(element);
-            } else if (componentType == short.class) {
-                return (short) JSRuntime.toInteger(element);
-            } else if (componentType == Short.class) {
-                return isNullOrUndefined(element) ? null : (short) JSRuntime.toInteger(element);
-            } else if (componentType == byte.class) {
-                return (byte) JSRuntime.toInteger(element);
-            } else if (componentType == Byte.class) {
-                return isNullOrUndefined(element) ? null : (byte) JSRuntime.toInteger(element);
-            } else if (componentType == char.class) {
-                return isNull(element) ? '\0' : toChar(element);
-            } else if (componentType == Character.class) {
-                return isNull(element) ? null : toChar(element);
-            } else if (componentType == String.class) {
-                return isNull(element) ? null : JSRuntime.toString(element);
-            } else {
-                throw Errors.createTypeErrorFormat("Unsupported component type: %s", componentType);
-            }
-        }
-
-        private static boolean isNull(Object element) {
-            return element == Null.instance;
-        }
-
-        private static boolean isNullOrUndefined(Object element) {
-            return element == Null.instance || element == Undefined.instance;
-        }
-
-        private static Character toChar(Object value) {
-            if (value instanceof Number) {
-                final int intValue = ((Number) value).intValue();
-                if (intValue >= Character.MIN_VALUE && intValue <= Character.MAX_VALUE) {
-                    return (char) intValue;
-                }
-                throw Errors.createTypeError("Cannot convert number to character; it is out of 0-65535 range");
-            }
-            String s = JSRuntime.toString(value);
-            if (s.length() != 1) {
-                throw Errors.createTypeError("Cannot convert string to character; its length must be exactly 1");
-            }
-            return s.charAt(0);
         }
     }
 

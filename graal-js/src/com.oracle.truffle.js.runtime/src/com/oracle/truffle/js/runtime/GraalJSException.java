@@ -448,16 +448,6 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         }
     }
 
-    @TruffleBoundary
-    private static StackTraceElement[] toStackTraceElements(JSStackTraceElement[] jsStack) {
-        StackTraceElement[] ste = new StackTraceElement[jsStack.length];
-        for (int i = 0; i < jsStack.length; i++) {
-            JSStackTraceElement jsStackElement = jsStack[i];
-            ste[i] = new StackTraceElement(JSError.correctMethodName(jsStackElement.getFunctionName()), "", jsStackElement.getFileName(), jsStackElement.getLineNumber());
-        }
-        return ste;
-    }
-
     public static final class JSStackTraceElement {
         private final String fileName;
         private final String functionName;

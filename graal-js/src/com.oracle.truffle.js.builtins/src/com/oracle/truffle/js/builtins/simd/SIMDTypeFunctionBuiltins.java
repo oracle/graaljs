@@ -343,11 +343,6 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         return SIMDType.SIMDTypedBoolean.class.isAssignableFrom(t.getClass());
     }
 
-    @SuppressWarnings("unused")
-    private static boolean isIntegerSIMD(SIMDType t) {
-        return SIMDType.SIMDTypeInt.class.isAssignableFrom(t.getClass());
-    }
-
     public abstract static class JSBasicSimdOperation extends JSBuiltinNode {
 
         protected final Class<?> simdElementType;
