@@ -1559,7 +1559,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             } else if (simdElementType.equals(SIMDFloat32x4.class)) {
                 doFloatLessThan(a, b, res);
             } else {
-                System.out.println("TypeNotFound");
+                assert false : "TypeNotFound";
             }
             return res;
         }
