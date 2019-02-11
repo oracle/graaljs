@@ -209,7 +209,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
         }
     }
 
-    public final int bytesPerElement() {
+    public final int getBytesPerElement() {
         return bytesPerElement;
     }
 

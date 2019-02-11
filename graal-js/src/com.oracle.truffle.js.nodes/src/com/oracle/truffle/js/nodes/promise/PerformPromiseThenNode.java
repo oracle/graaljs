@@ -59,15 +59,15 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public class PerformPromiseThenNode extends JavaScriptBaseNode {
     private final JSContext context;
-    @Child private IsCallableNode isCallableFulfill = IsCallableNode.create();
-    @Child private IsCallableNode isCallableReject = IsCallableNode.create();
-    @Child private PropertyGetNode getPromiseState;
-    @Child private PropertyGetNode getPromiseFulfillReactions;
-    @Child private PropertyGetNode getPromiseRejectReactions;
-    @Child private PropertyGetNode getPromiseResult;
-    @Child private PropertyGetNode getPromiseIsHandled;
-    @Child private PropertySetNode setPromiseIsHandled;
-    @Child private PromiseReactionJobNode promiseReactionJob;
+    @Child private IsCallableNode isCallableFulfillNode = IsCallableNode.create();
+    @Child private IsCallableNode isCallableRejectNode = IsCallableNode.create();
+    @Child private PropertyGetNode getPromiseStateNode;
+    @Child private PropertyGetNode getPromiseFulfillReactionsNode;
+    @Child private PropertyGetNode getPromiseRejectReactionsNode;
+    @Child private PropertyGetNode getPromiseResultNode;
+    @Child private PropertyGetNode getPromiseIsHandledNode;
+    @Child private PropertySetNode setPromiseIsHandledNode;
+    @Child private PromiseReactionJobNode promiseReactionJobNode;
     private final ConditionProfile pendingProf = ConditionProfile.createBinaryProfile();
     private final ConditionProfile fulfilledProf = ConditionProfile.createBinaryProfile();
     private final ConditionProfile unhandledProf = ConditionProfile.createBinaryProfile();
@@ -75,10 +75,10 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
 
     protected PerformPromiseThenNode(JSContext context) {
         this.context = context;
-        this.getPromiseState = PropertyGetNode.createGetHidden(JSPromise.PROMISE_STATE, context);
-        this.getPromiseFulfillReactions = PropertyGetNode.createGetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
-        this.getPromiseRejectReactions = PropertyGetNode.createGetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
-        this.setPromiseIsHandled = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
+        this.getPromiseStateNode = PropertyGetNode.createGetHidden(JSPromise.PROMISE_STATE, context);
+        this.getPromiseFulfillReactionsNode = PropertyGetNode.createGetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
+        this.getPromiseRejectReactionsNode = PropertyGetNode.createGetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
+        this.setPromiseIsHandledNode = PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context);
     }
 
     public static PerformPromiseThenNode create(JSContext context) {
@@ -88,16 +88,16 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
     @SuppressWarnings("unchecked")
     public DynamicObject execute(DynamicObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability) {
         assert JSPromise.isJSPromise(promise);
-        Object onFulfilledHandler = isCallableFulfill.executeBoolean(onFulfilled) ? onFulfilled : Undefined.instance;
-        Object onRejectedHandler = isCallableReject.executeBoolean(onRejected) ? onRejected : Undefined.instance;
+        Object onFulfilledHandler = isCallableFulfillNode.executeBoolean(onFulfilled) ? onFulfilled : Undefined.instance;
+        Object onRejectedHandler = isCallableRejectNode.executeBoolean(onRejected) ? onRejected : Undefined.instance;
         assert resultCapability != null || (onFulfilledHandler != Undefined.instance && onRejectedHandler != Undefined.instance);
         PromiseReactionRecord fulfillReaction = PromiseReactionRecord.create(resultCapability, onFulfilledHandler, true);
         PromiseReactionRecord rejectReaction = PromiseReactionRecord.create(resultCapability, onRejectedHandler, false);
 
         int promiseState = getPromiseState(promise);
         if (pendingProf.profile(promiseState == JSPromise.PENDING)) {
-            ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseFulfillReactions.getValue(promise)).add(fulfillReaction, growProfile);
-            ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseRejectReactions.getValue(promise)).add(rejectReaction, growProfile);
+            ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseFulfillReactionsNode.getValue(promise)).add(fulfillReaction, growProfile);
+            ((SimpleArrayList<? super PromiseReactionRecord>) getPromiseRejectReactionsNode.getValue(promise)).add(rejectReaction, growProfile);
         } else if (fulfilledProf.profile(promiseState == JSPromise.FULFILLED)) {
             Object value = getPromiseResult(promise);
             DynamicObject job = getPromiseReactionJob(fulfillReaction, value);
@@ -111,7 +111,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
             DynamicObject job = getPromiseReactionJob(rejectReaction, reason);
             context.promiseEnqueueJob(job);
         }
-        setPromiseIsHandled.setValueBoolean(promise, true);
+        setPromiseIsHandledNode.setValueBoolean(promise, true);
         if (resultCapability == null) {
             return Undefined.instance;
         }
@@ -119,28 +119,28 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
     }
 
     private DynamicObject getPromiseReactionJob(PromiseReactionRecord reaction, Object value) {
-        if (promiseReactionJob == null) {
+        if (promiseReactionJobNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            promiseReactionJob = insert(PromiseReactionJobNode.create(context));
+            promiseReactionJobNode = insert(PromiseReactionJobNode.create(context));
         }
-        return promiseReactionJob.execute(reaction, value);
+        return promiseReactionJobNode.execute(reaction, value);
     }
 
     private Object getPromiseResult(DynamicObject promise) {
-        if (getPromiseResult == null) {
+        if (getPromiseResultNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getPromiseResult = insert(PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context));
+            getPromiseResultNode = insert(PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context));
         }
-        return getPromiseResult.getValue(promise);
+        return getPromiseResultNode.getValue(promise);
     }
 
     private boolean getPromiseIsHandled(DynamicObject promise) {
         try {
-            if (getPromiseIsHandled == null) {
+            if (getPromiseIsHandledNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getPromiseIsHandled = insert(PropertyGetNode.createGetHidden(JSPromise.PROMISE_IS_HANDLED, context));
+                getPromiseIsHandledNode = insert(PropertyGetNode.createGetHidden(JSPromise.PROMISE_IS_HANDLED, context));
             }
-            return getPromiseIsHandled.getValueBoolean(promise);
+            return getPromiseIsHandledNode.getValueBoolean(promise);
         } catch (UnexpectedResultException e) {
             throw Errors.shouldNotReachHere();
         }
@@ -148,7 +148,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
 
     private int getPromiseState(DynamicObject promise) {
         try {
-            return getPromiseState.getValueInt(promise);
+            return getPromiseStateNode.getValueInt(promise);
         } catch (UnexpectedResultException e) {
             throw Errors.shouldNotReachHere();
         }

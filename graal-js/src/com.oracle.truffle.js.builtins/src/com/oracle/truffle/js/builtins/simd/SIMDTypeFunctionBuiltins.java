@@ -330,7 +330,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         if (timd.equals(simdContext)) {
             return false;
         }
-        if (simdContext.getFactory().numberOfElements() != timd.getFactory().numberOfElements()) {
+        if (simdContext.getFactory().getNumberOfElements() != timd.getFactory().getNumberOfElements()) {
             return false;
         }
         if (isBooleanSIMD(timd) || isBooleanSIMD(simdContext)) {
@@ -477,7 +477,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 return false;
             }
             if (JSSIMD.isJSSIMD(x) && JSSIMD.isJSSIMD(y)) {
-                for (int i = 0; i < JSSIMD.simdTypeGetSIMDType((DynamicObject) x).getFactory().numberOfElements(); i++) {
+                for (int i = 0; i < JSSIMD.simdTypeGetSIMDType((DynamicObject) x).getFactory().getNumberOfElements(); i++) {
                     if (!sameValueZero(simdExtractLane((DynamicObject) x, i), simdExtractLane((DynamicObject) y, i))) {
                         return false;
                     }
@@ -493,7 +493,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         // 5.1.1 SIMDCreate( descriptor, vectorElements )
         @ExplodeLoop
         public DynamicObject simdCreate(SIMDType descriptor, List<Object> vectorElements) {
-            assert (vectorElements.size() == descriptor.getFactory().numberOfElements());
+            assert (vectorElements.size() == descriptor.getFactory().getNumberOfElements());
             assert vectorElements.size() == numberOfElements;
 
             DynamicObject t = JSSIMD.createSIMD(getContext(), descriptor);
@@ -521,7 +521,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         // 5.1.3 SIMDExtractLane( value, lane )
         public Object simdExtractLane(DynamicObject value, Object lane) {
             assert JSSIMD.isJSSIMD(value);
-            int index = simdToLane(JSSIMD.simdTypeGetSIMDType(value).getFactory().numberOfElements(), lane);
+            int index = simdToLane(JSSIMD.simdTypeGetSIMDType(value).getFactory().getNumberOfElements(), lane);
             Object res = getLane(value, index);
             return res;
         }
@@ -562,14 +562,14 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             for (int i = 0; i < length; i++) {
                 Boundaries.listAdd(elements, descriptor.deserialize(dataBlock, byteOffset + i * descriptor.getBytesPerElement()));
             }
-            for (int i = length; i < descriptor.getFactory().numberOfElements(); i++) {
+            for (int i = length; i < descriptor.getFactory().getNumberOfElements(); i++) {
                 Boundaries.listAdd(elements, 0);
             }
             return simdCreate(descriptor, elements);
         }
 
         protected Object simdLoadFromTypedArray(DynamicObject tarray, Object index, SIMDType descriptor) {
-            return simdLoadFromTypedArray(tarray, index, descriptor, descriptor.getFactory().numberOfElements());
+            return simdLoadFromTypedArray(tarray, index, descriptor, descriptor.getFactory().getNumberOfElements());
         }
 
         // SIMDLoadFromTypedArray( tarray, index, descriptor [, length] )
@@ -604,7 +604,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             int elementlength = byteLength / JSArrayBufferView.typedArrayGetLength(tarray);
             long byteindex = indx * elementlength;
 
-            if (byteindex + simdContext.getFactory().bytesPerElement() * length > byteLength || byteindex < 0) {
+            if (byteindex + simdContext.getFactory().getBytesPerElement() * length > byteLength || byteindex < 0) {
                 errorBranch.enter();
                 throw Errors.createRangeError("");
             }
@@ -674,7 +674,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             int elementlength = byteLength / JSArrayBufferView.typedArrayGetLength(tarray);
             long byteindex = indx * elementlength;
 
-            if (byteindex + simdContext.getFactory().bytesPerElement() * length > byteLength || byteindex < 0) {
+            if (byteindex + simdContext.getFactory().getBytesPerElement() * length > byteLength || byteindex < 0) {
                 errorBranch.enter();
                 throw Errors.createRangeError("");
             }
@@ -699,16 +699,16 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             byte[] block = new byte[bytes];
             SIMDType olddesc = JSSIMD.simdTypeGetSIMDType((DynamicObject) value);
             simdStore(block, olddesc, 0, (DynamicObject) value, olddesc.getNumberOfElements());
-            return simdLoad(block, newDescriptor, 0, newDescriptor.getFactory().numberOfElements());
+            return simdLoad(block, newDescriptor, 0, newDescriptor.getFactory().getNumberOfElements());
         }
 
         // 5.1.14 SIMDBoolType( descriptor )
         protected SIMDType simdBoolType(SIMDType descriptor) {
-            if (descriptor.getFactory().bytesPerElement() * 8 * descriptor.getFactory().numberOfElements() != 128) {
+            if (descriptor.getFactory().getBytesPerElement() * 8 * descriptor.getFactory().getNumberOfElements() != 128) {
                 errorBranch.enter();
                 throw Errors.createError("not 128 bits");
             }
-            switch (descriptor.getFactory().numberOfElements()) {
+            switch (descriptor.getFactory().getNumberOfElements()) {
                 case 4:
                     return SIMDType.BOOL32X4_FACTORY.createSimdType();
                 case 8:
@@ -1976,7 +1976,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         protected Object doShiftLeft(DynamicObject a, Object bits) {
             long scalar = getToUInt32Node().executeLong(bits);
-            long shiftCount = scalar % (simdContext.getFactory().bytesPerElement() * 8);
+            long shiftCount = scalar % (simdContext.getFactory().getBytesPerElement() * 8);
             DynamicObject res = JSSIMD.createSIMD(getContext(), simdContext);
             if (simdElementType.equals(SIMDInt32x4.class) || simdElementType.equals(SIMDUint32x4.class)) {
                 doIntShiftLeft(a, shiftCount, res);
@@ -2026,7 +2026,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization
         protected Object doShiftRight(DynamicObject a, Object bits) {
             long scalar = getToUInt32Node().executeLong(bits);
-            long shiftCount = scalar % (simdContext.getFactory().bytesPerElement() * 8);
+            long shiftCount = scalar % (simdContext.getFactory().getBytesPerElement() * 8);
             DynamicObject res = JSSIMD.createSIMD(getContext(), simdContext);
             if (simdElementType.equals(SIMDInt32x4.class)) {
                 doIntShiftRight(a, shiftCount, res);

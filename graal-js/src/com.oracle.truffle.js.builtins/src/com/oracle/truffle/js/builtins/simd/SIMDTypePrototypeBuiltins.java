@@ -171,23 +171,23 @@ public final class SIMDTypePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return SIMDToLocaleStringNodeGen.create(context, builtin, createArgumentNodes);
         }
 
-        private JSFunctionCallNode callToLocaleString;
-        private PropertyGetNode getToLocaleString;
+        private JSFunctionCallNode callToLocaleStringNode;
+        private PropertyGetNode getToLocaleStringNode;
 
         @SuppressWarnings("unused")
         private Object callToLocaleString(VirtualFrame frame, Object nextElement) {
-            if (getToLocaleString == null) {
+            if (getToLocaleStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getToLocaleString = insert(PropertyGetNode.create("toLocaleString", false, getContext()));
-                callToLocaleString = insert(JSFunctionCallNode.create(false));
+                getToLocaleStringNode = insert(PropertyGetNode.create("toLocaleString", false, getContext()));
+                callToLocaleStringNode = insert(JSFunctionCallNode.create(false));
             }
 
-            Object toLocaleString = getToLocaleString.getValue(nextElement);
+            Object toLocaleString = getToLocaleStringNode.getValue(nextElement);
 
             if (!JSFunction.isJSFunction(toLocaleString)) {
                 return nextElement;
             }
-            return callToLocaleString.executeCall(JSArguments.create(nextElement, toLocaleString));
+            return callToLocaleStringNode.executeCall(JSArguments.create(nextElement, toLocaleString));
         }
 
         @Override

@@ -69,7 +69,7 @@ public abstract class TypedArray extends ScriptArray {
 
     protected TypedArray(TypedArrayFactory factory, boolean offset) {
         this.offset = offset;
-        this.bytesPerElement = factory.bytesPerElement();
+        this.bytesPerElement = factory.getBytesPerElement();
         this.name = factory.getName();
         this.factory = factory;
     }

@@ -144,10 +144,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     public static JSFunctionCallNode create(boolean isNew, boolean isNewTarget) {
-        return new ExecuteCallNode(flags(isNew, isNewTarget));
+        return new ExecuteCallNode(createFlags(isNew, isNewTarget));
     }
 
-    private static byte flags(boolean isNew, boolean isNewTarget) {
+    private static byte createFlags(boolean isNew, boolean isNewTarget) {
         return isNewTarget ? NEW_TARGET : (isNew ? NEW : CALL);
     }
 
@@ -155,28 +155,28 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         assert arguments.length <= JSTruffleOptions.MaxFunctionArgumentsLength;
         boolean spread = hasSpreadArgument(arguments);
         if (spread) {
-            return new CallSpreadNode(target, function, arguments, flags(isNew, isNewTarget));
+            return new CallSpreadNode(target, function, arguments, createFlags(isNew, isNewTarget));
         }
         if (arguments.length == 0) {
-            return new Call0Node(target, function, flags(isNew, isNewTarget));
+            return new Call0Node(target, function, createFlags(isNew, isNewTarget));
         } else if (arguments.length == 1) {
-            return new Call1Node(target, function, arguments[0], flags(isNew, isNewTarget));
+            return new Call1Node(target, function, arguments[0], createFlags(isNew, isNewTarget));
         }
-        return new CallNNode(target, function, arguments, flags(isNew, isNewTarget));
+        return new CallNNode(target, function, arguments, createFlags(isNew, isNewTarget));
     }
 
     public static JSFunctionCallNode createInvoke(JSTargetableNode targetFunction, JavaScriptNode[] arguments, boolean isNew, boolean isNewTarget) {
         assert arguments.length <= JSTruffleOptions.MaxFunctionArgumentsLength;
         boolean spread = hasSpreadArgument(arguments);
         if (spread) {
-            return new InvokeSpreadNode(targetFunction, arguments, flags(isNew, isNewTarget));
+            return new InvokeSpreadNode(targetFunction, arguments, createFlags(isNew, isNewTarget));
         }
         if (arguments.length == 0) {
-            return new Invoke0Node(targetFunction, flags(isNew, isNewTarget));
+            return new Invoke0Node(targetFunction, createFlags(isNew, isNewTarget));
         } else if (arguments.length == 1) {
-            return new Invoke1Node(targetFunction, arguments[0], flags(isNew, isNewTarget));
+            return new Invoke1Node(targetFunction, arguments[0], createFlags(isNew, isNewTarget));
         }
-        return new InvokeNNode(targetFunction, arguments, flags(isNew, isNewTarget));
+        return new InvokeNNode(targetFunction, arguments, createFlags(isNew, isNewTarget));
     }
 
     static boolean isNewTarget(byte flags) {
@@ -1352,10 +1352,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         public Object executeCall(Object[] arguments) {
             TruffleObject function = getForeignFunction(arguments);
             Object[] callArguments = exportArguments(arguments);
-            return convertForeignReturn(JSInteropNodeUtil.call(function, callArguments, callNode()));
+            return convertForeignReturn(JSInteropNodeUtil.call(function, callArguments, getCallNode()));
         }
 
-        protected Node callNode() {
+        protected Node getCallNode() {
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callNode = insert(JSInteropUtil.createCall());
@@ -1393,7 +1393,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 assert getForeignFunction(arguments) == receiver;
                 TruffleObject truffleReceiver = (TruffleObject) receiver;
                 try {
-                    callReturn = ForeignAccess.sendInvoke(invokeNode(), truffleReceiver, functionName, callArguments);
+                    callReturn = ForeignAccess.sendInvoke(getInvokeNode(), truffleReceiver, functionName, callArguments);
                 } catch (UnknownIdentifierException uiex) {
                     JSRealm realm = contextRef.get();
                     if (realm.getContext().getContextOptions().isArrayLikePrototype() && ForeignAccess.sendHasSize(hasSizeNode(), truffleReceiver)) {
@@ -1409,12 +1409,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 }
             } else {
                 TruffleObject function = getForeignFunction(arguments);
-                callReturn = JSInteropNodeUtil.call(function, callArguments, callNode());
+                callReturn = JSInteropNodeUtil.call(function, callArguments, getCallNode());
             }
             return convertForeignReturn(callReturn);
         }
 
-        private Node invokeNode() {
+        private Node getInvokeNode() {
             if (invokeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 invokeNode = insert(JSInteropUtil.createInvoke());

@@ -201,7 +201,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
     private DynamicObject doArrayBufferImpl(DynamicObject arrayBuffer, Object byteOffset0, Object length0, DynamicObject newTarget, int bufferByteLength, boolean direct,
                     ConditionProfile lengthIsUndefinedProfile) {
-        final int elementSize = factory.bytesPerElement();
+        final int elementSize = factory.getBytesPerElement();
 
         final long byteOffset = toIndex(byteOffset0);
         rangeCheckIsMultipleOfElementSize(byteOffset % elementSize == 0, "start offset", factory.getName(), elementSize);
@@ -421,7 +421,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
     private DynamicObject createTypedArrayBuffer(long length) {
         assert length >= 0;
-        int elementSize = factory.bytesPerElement();
+        int elementSize = factory.getBytesPerElement();
         checkLengthLimit(length, elementSize);
         int byteLength = toByteLength((int) length, elementSize);
         assert length <= Integer.MAX_VALUE && byteLength >= 0 && byteLength <= Integer.MAX_VALUE;

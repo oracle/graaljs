@@ -85,10 +85,10 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
     @Child private IsPristineObjectNode isPristineObjectNode;
     @Child private IsCallableNode isCallableNode = IsCallableNode.create();
     @Child private JSFunctionCallNode specialCallNode;
-    private final ConditionProfile isPristine = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isCallable = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile validResult = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile isRegExp = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile isPristineProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile isCallableProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile validResultProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile isRegExpProfile = ConditionProfile.createBinaryProfile();
 
     JSRegExpExecIntlNode(JSContext context) {
         this.context = context;
@@ -103,16 +103,16 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
     @Specialization
     Object doGeneric(DynamicObject regExp, String input) {
         if (context.getEcmaScriptVersion() >= 6) {
-            if (isPristine.profile(isPristine(regExp))) {
+            if (isPristineProfile.profile(isPristine(regExp))) {
                 return executeBuiltIn(regExp, input);
             } else {
                 Object exec = getExecProperty(regExp);
-                if (isCallable.profile(isCallable(exec))) {
+                if (isCallableProfile.profile(isCallable(exec))) {
                     return callJSFunction(regExp, input, exec);
                 }
             }
         }
-        if (!isRegExp.profile(isJSRegExp(regExp))) {
+        if (!isRegExpProfile.profile(isJSRegExp(regExp))) {
             throw Errors.createTypeError("RegExp expected");
         }
         return executeBuiltIn(regExp, input);
@@ -120,7 +120,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
     private Object callJSFunction(DynamicObject regExp, String input, Object exec) {
         Object result = doCallJSFunction(exec, regExp, input);
-        if (validResult.profile(result == Null.instance || isJSObject(result) && result != Undefined.instance)) {
+        if (validResultProfile.profile(result == Null.instance || isJSObject(result) && result != Undefined.instance)) {
             return result;
         }
         throw Errors.createTypeError("object or null expected");

@@ -107,7 +107,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                 DynamicObject iterator = iteratorRecord.getIterator();
                 Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
                 if (returnMethod != Undefined.instance) {
-                    innerResult = returnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                    innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
                     completion = Completion.forReturn(e);
                     break await;
                 } else {
@@ -121,7 +121,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                     Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
                     if (returnMethod != Undefined.instance) {
                         try {
-                            innerResult = returnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                            innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
                         } catch (Exception ex) {
                             // re-throw outer exception
                             throw e;
@@ -143,7 +143,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                 DynamicObject iterator = iteratorRecord.getIterator();
                 Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
                 if (returnMethod != Undefined.instance) {
-                    innerResult = returnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                    innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
                     completion = Completion.forNormal(result);
                     break await;
                 } else {
@@ -182,7 +182,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
         return (IteratorRecord) iteratorNode.execute(frame);
     }
 
-    private JSFunctionCallNode returnMethodCallNode() {
+    private JSFunctionCallNode getReturnMethodCallNode() {
         if (returnMethodCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             returnMethodCallNode = insert(JSFunctionCallNode.createCall());

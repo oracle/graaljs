@@ -72,28 +72,28 @@ public final class JoniRegexCompiler extends RegexCompiler {
         this.language = language;
     }
 
-    private CallTarget searchSimpleCallTarget() {
+    private CallTarget getSearchSimpleCallTarget() {
         if (searchSimpleCallTarget == null) {
             searchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Simple(language, false)));
         }
         return searchSimpleCallTarget;
     }
 
-    private CallTarget searchGroupCallTarget() {
+    private CallTarget getSearchGroupCallTarget() {
         if (searchGroupCallTarget == null) {
             searchGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Groups(language, false)));
         }
         return searchGroupCallTarget;
     }
 
-    private CallTarget matchSimpleCallTarget() {
+    private CallTarget getMatchSimpleCallTarget() {
         if (matchSimpleCallTarget == null) {
             matchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Simple(language, true)));
         }
         return matchSimpleCallTarget;
     }
 
-    private CallTarget matchGroupCallTarget() {
+    private CallTarget getMatchGroupCallTarget() {
         if (matchGroupCallTarget == null) {
             matchGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Groups(language, true)));
         }
@@ -109,9 +109,9 @@ public final class JoniRegexCompiler extends RegexCompiler {
             CallTarget callTarget;
             boolean group = PatternAnalyzer.containsGroup(source.getPattern());
             if (flags.isSticky()) {
-                callTarget = group ? matchGroupCallTarget() : matchSimpleCallTarget();
+                callTarget = group ? getMatchGroupCallTarget() : getMatchSimpleCallTarget();
             } else {
-                callTarget = group ? searchGroupCallTarget() : searchSimpleCallTarget();
+                callTarget = group ? getSearchGroupCallTarget() : getSearchSimpleCallTarget();
             }
             return new CompiledRegexObject(new JoniCompiledRegex(implementation, callTarget));
         } catch (UnsupportedRegexException e) {

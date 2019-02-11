@@ -152,12 +152,12 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
 
     @Override
     public Expression getAssignmentDest() {
-        return isAssignment() ? lhs() : null;
+        return isAssignment() ? getLhs() : null;
     }
 
     @Override
     public Expression getAssignmentSource() {
-        return rhs();
+        return getRhs();
     }
 
     /**
@@ -206,14 +206,14 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
     public void toString(final StringBuilder sb, final boolean printType) {
         final TokenType tokenType = tokenType();
 
-        final boolean lhsParen = tokenType.needsParens(lhs().tokenType(), true);
-        final boolean rhsParen = tokenType.needsParens(rhs().tokenType(), false);
+        final boolean lhsParen = tokenType.needsParens(getLhs().tokenType(), true);
+        final boolean rhsParen = tokenType.needsParens(getRhs().tokenType(), false);
 
         if (lhsParen) {
             sb.append('(');
         }
 
-        lhs().toString(sb, printType);
+        getLhs().toString(sb, printType);
 
         if (lhsParen) {
             sb.append(')');
@@ -245,7 +245,7 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
         if (rhsParen) {
             sb.append('(');
         }
-        rhs().toString(sb, printType);
+        getRhs().toString(sb, printType);
         if (rhsParen) {
             sb.append(')');
         }
@@ -255,7 +255,7 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
      * Get the left hand side expression for this node
      * @return the left hand side expression
      */
-    public Expression lhs() {
+    public Expression getLhs() {
         return lhs;
     }
 
@@ -263,7 +263,7 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
      * Get the right hand side expression for this node
      * @return the left hand side expression
      */
-    public Expression rhs() {
+    public Expression getRhs() {
         return rhs;
     }
 

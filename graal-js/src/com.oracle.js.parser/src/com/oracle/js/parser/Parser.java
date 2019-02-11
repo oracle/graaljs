@@ -2052,7 +2052,7 @@ loop:
         @Override
         public boolean enterBinaryNode(BinaryNode binaryNode) {
             if (binaryNode.isTokenType(ASSIGN)) {
-                binaryNode.lhs().accept(this);
+                binaryNode.getLhs().accept(this);
                 // Initializer(rhs) can be any AssignmentExpression
                 return false;
             } else {
@@ -5299,9 +5299,9 @@ loop:
             ArrayList<Expression> params = new ArrayList<>();
             Expression car = paramListExpr;
             do {
-                Expression cdr = ((BinaryNode) car).rhs();
+                Expression cdr = ((BinaryNode) car).getRhs();
                 params.add(cdr);
-                car = ((BinaryNode) car).lhs();
+                car = ((BinaryNode) car).getLhs();
             } while (car instanceof BinaryNode && Token.descType(car.getToken()) == COMMARIGHT);
             params.add(car);
 
@@ -5333,9 +5333,9 @@ loop:
         }
 
         if (param.isTokenType(ASSIGN)) {
-            Expression lhs = ((BinaryNode) param).lhs();
+            Expression lhs = ((BinaryNode) param).getLhs();
             long paramToken = lhs.getToken();
-            Expression initializer = ((BinaryNode) param).rhs();
+            Expression initializer = ((BinaryNode) param).getRhs();
             if (initializer instanceof IdentNode) {
                 if (((IdentNode) initializer).getName().equals(AWAIT.getName())) {
                     throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());

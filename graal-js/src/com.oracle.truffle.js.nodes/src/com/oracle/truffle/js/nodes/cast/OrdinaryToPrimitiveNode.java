@@ -63,19 +63,19 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     private final JSContext context;
     private final ConditionProfile toStringFunctionProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile valueOfFunctionProfile = ConditionProfile.createBinaryProfile();
-    @Child private PropertyNode getToString;
-    @Child private PropertyNode getValueOf;
-    @Child private IsCallableNode isCallable;
-    @Child private JSFunctionCallNode callToString;
-    @Child private JSFunctionCallNode callValueOf;
-    @Child private IsPrimitiveNode isPrimitive;
+    @Child private PropertyNode getToStringNode;
+    @Child private PropertyNode getValueOfNode;
+    @Child private IsCallableNode isCallableNode;
+    @Child private JSFunctionCallNode callToStringNode;
+    @Child private JSFunctionCallNode callValueOfNode;
+    @Child private IsPrimitiveNode isPrimitiveNode;
 
     protected OrdinaryToPrimitiveNode(JSContext context, Hint hint) {
         assert hint == Hint.String || hint == Hint.Number;
         this.hint = hint;
         this.context = context;
-        this.isCallable = IsCallableNode.create();
-        this.isPrimitive = IsPrimitiveNode.create();
+        this.isCallableNode = IsCallableNode.create();
+        this.isPrimitiveNode = IsPrimitiveNode.create();
     }
 
     public Object execute(DynamicObject object) {
@@ -102,17 +102,17 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
 
     protected Object doHintString(DynamicObject object) {
         Object toString = getToString().executeWithTarget(object);
-        if (toStringFunctionProfile.profile(isCallable.executeBoolean(toString))) {
-            Object result = callToString.executeCall(JSArguments.createZeroArg(object, toString));
-            if (isPrimitive.executeBoolean(result)) {
+        if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(toString))) {
+            Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, toString));
+            if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
         }
 
         Object valueOf = getValueOf().executeWithTarget(object);
-        if (valueOfFunctionProfile.profile(isCallable.executeBoolean(valueOf))) {
-            Object result = callValueOf.executeCall(JSArguments.createZeroArg(object, valueOf));
-            if (isPrimitive.executeBoolean(result)) {
+        if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(valueOf))) {
+            Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, valueOf));
+            if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
         }
@@ -123,17 +123,17 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     protected Object doHintNumber(DynamicObject object) {
         assert JSGuards.isJSObject(object);
         Object valueOf = getValueOf().executeWithTarget(object);
-        if (valueOfFunctionProfile.profile(isCallable.executeBoolean(valueOf))) {
-            Object result = callValueOf.executeCall(JSArguments.createZeroArg(object, valueOf));
-            if (isPrimitive.executeBoolean(result)) {
+        if (valueOfFunctionProfile.profile(isCallableNode.executeBoolean(valueOf))) {
+            Object result = callValueOfNode.executeCall(JSArguments.createZeroArg(object, valueOf));
+            if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
         }
 
         Object toString = getToString().executeWithTarget(object);
-        if (toStringFunctionProfile.profile(isCallable.executeBoolean(toString))) {
-            Object result = callToString.executeCall(JSArguments.createZeroArg(object, toString));
-            if (isPrimitive.executeBoolean(result)) {
+        if (toStringFunctionProfile.profile(isCallableNode.executeBoolean(toString))) {
+            Object result = callToStringNode.executeCall(JSArguments.createZeroArg(object, toString));
+            if (isPrimitiveNode.executeBoolean(result)) {
                 return result;
             }
         }
@@ -142,20 +142,20 @@ public class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     private PropertyNode getToString() {
-        if (getToString == null || callToString == null) {
+        if (getToStringNode == null || callToStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getToString = insert(PropertyNode.createMethod(context, null, JSRuntime.TO_STRING));
-            callToString = insert(JSFunctionCallNode.createCall());
+            getToStringNode = insert(PropertyNode.createMethod(context, null, JSRuntime.TO_STRING));
+            callToStringNode = insert(JSFunctionCallNode.createCall());
         }
-        return getToString;
+        return getToStringNode;
     }
 
     private PropertyNode getValueOf() {
-        if (getValueOf == null || callValueOf == null) {
+        if (getValueOfNode == null || callValueOfNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getValueOf = insert(PropertyNode.createMethod(context, null, JSRuntime.VALUE_OF));
-            callValueOf = insert(JSFunctionCallNode.createCall());
+            getValueOfNode = insert(PropertyNode.createMethod(context, null, JSRuntime.VALUE_OF));
+            callValueOfNode = insert(JSFunctionCallNode.createCall());
         }
-        return getValueOf;
+        return getValueOfNode;
     }
 }

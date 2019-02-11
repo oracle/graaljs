@@ -2305,8 +2305,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode enterBinaryExpressionNode(BinaryNode binaryNode) {
-        JavaScriptNode lhs = transform(binaryNode.lhs());
-        JavaScriptNode rhs = transform(binaryNode.rhs());
+        JavaScriptNode lhs = transform(binaryNode.getLhs());
+        JavaScriptNode rhs = transform(binaryNode.getRhs());
         return tagExpression(factory.createBinary(context, tokenTypeToBinaryOperation(binaryNode.tokenType()), lhs, rhs), binaryNode);
     }
 
@@ -2606,8 +2606,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 lhsExpr = element;
             } else if (element instanceof BinaryNode) {
                 assert element.isTokenType(TokenType.ASSIGN) || element.isTokenType(TokenType.ASSIGN_INIT);
-                lhsExpr = ((BinaryNode) element).lhs();
-                init = ((BinaryNode) element).rhs();
+                lhsExpr = ((BinaryNode) element).getLhs();
+                init = ((BinaryNode) element).getRhs();
             } else {
                 lhsExpr = element;
             }
@@ -2651,8 +2651,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             Expression init = null;
             if (property.getValue() instanceof BinaryNode) {
                 assert property.getValue().isTokenType(TokenType.ASSIGN) || property.getValue().isTokenType(TokenType.ASSIGN_INIT);
-                lhsExpr = ((BinaryNode) property.getValue()).lhs();
-                init = ((BinaryNode) property.getValue()).rhs();
+                lhsExpr = ((BinaryNode) property.getValue()).getLhs();
+                init = ((BinaryNode) property.getValue()).getRhs();
             } else if (property.isRest()) {
                 assert hasRest;
                 lhsExpr = ((UnaryNode) property.getKey()).getExpression();

@@ -81,7 +81,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         this.requestIndexNode = requestIndex;
         this.isLittleEndianNode = isLittleEndian;
         this.valueNode = value;
-        this.toBooleanNode = factory.bytesPerElement() == 1 ? null : JSToBooleanNode.create();
+        this.toBooleanNode = factory.getBytesPerElement() == 1 ? null : JSToBooleanNode.create();
         if (isBigIntView()) {
             this.toBigIntNode = JSToBigIntNode.create();
         } else {
@@ -105,7 +105,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
 
         long getIndex = toIndexNode.executeLong(requestIndex);
         Object numberValue = isBigIntView() ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
-        boolean isLittleEndian = factory.bytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
+        boolean isLittleEndian = factory.getBytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
 
         if (!context.getTypedArrayNotDetachedAssumption().isValid()) {
             if (JSArrayBuffer.isDetachedBuffer(buffer)) {
@@ -114,7 +114,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
             }
         }
         int viewLength = JSDataView.typedArrayGetLength(dataView);
-        int elementSize = factory.bytesPerElement();
+        int elementSize = factory.getBytesPerElement();
         if (getIndex + elementSize > viewLength) {
             errorBranch.enter();
             throw Errors.createRangeError("index + elementSize > viewLength");
