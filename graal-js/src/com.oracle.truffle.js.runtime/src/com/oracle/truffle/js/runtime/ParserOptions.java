@@ -42,8 +42,12 @@ package com.oracle.truffle.js.runtime;
 
 import org.graalvm.options.OptionValues;
 
+// Does this interface provide any meaningful abstraction boundary?
+// It could be replaced by moving the GraalJSParserOptions class to the com.oracle.truffle.js.runtime package.
 public interface ParserOptions {
     int getEcmaScriptVersion();
+
+    boolean isScripting();
 
     ParserOptions putOptions(OptionValues options);
 }

@@ -48,6 +48,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
@@ -101,7 +105,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean regexpStaticResult;
 
     public static final String ARRAY_SORT_INHERITED_NAME = JS_OPTION_PREFIX + "array-sort-inherited";
-    private static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
+    public static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
     private static final String ARRAY_SORT_INHERITED_HELP = "implementation-defined behavior in Array.protoype.sort: sort inherited keys?";
     @CompilationFinal private boolean arraySortInherited;
 
@@ -116,8 +120,9 @@ public final class JSContextOptions {
     @CompilationFinal private boolean atomics;
 
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
-    private static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
+    public static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
     private static final String V8_COMPATIBILITY_MODE_HELP = "provide compatibility with the Google V8 engine";
+    @CompilationFinal private Assumption v8CompatibilityAssumption = Truffle.getRuntime().createAssumption("The v8-compat option is stable.");
     @CompilationFinal private boolean v8CompatibilityMode;
 
     public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
@@ -253,6 +258,8 @@ public final class JSContextOptions {
                     ARRAY_SORT_INHERITED,
                     TIMER_RESOLUTION,
                     SHELL,
+                    V8_COMPATIBILITY_MODE,
+                    GLOBAL_PROPERTY
     };
 
     public JSContextOptions(ParserOptions parserOptions) {
@@ -284,7 +291,7 @@ public final class JSContextOptions {
         this.arraySortInherited = readBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME);
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME);
         this.atomics = readBooleanOption(ATOMICS, ATOMICS_NAME);
-        this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME);
+        this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, v8CompatibilityAssumption);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
         this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME);
@@ -301,6 +308,14 @@ public final class JSContextOptions {
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
         this.arrayLikePrototype = readBooleanOption(ARRAY_LIKE_PROTOTYPE, ARRAY_LIKE_PROTOTYPE_NAME);
         this.simdjs = readBooleanOption(SIMDJS, SIMDJS_NAME);
+    }
+
+    private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Assumption assumption) {
+        boolean newValue = readBooleanOption(key, name);
+        if (oldValue != newValue) {
+            assumption.invalidate(String.format("Option {0} was changed from {1} to {2}.", name, oldValue, newValue));
+        }
+        return newValue;
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
@@ -419,6 +434,10 @@ public final class JSContextOptions {
         }
     }
 
+    public <T> boolean optionWillChange(OptionKey<T> option, OptionValues newOptionValues) {
+        return !option.getValue(this.optionValues).equals(option.getValue(newOptionValues));
+    }
+
     public int getEcmaScriptVersion() {
         return ecmascriptVersion;
     }
@@ -454,6 +473,12 @@ public final class JSContextOptions {
     }
 
     public boolean isV8CompatibilityMode() {
+        try {
+            v8CompatibilityAssumption.check();
+        } catch (InvalidAssumptionException e) {
+            v8CompatibilityAssumption = Truffle.getRuntime().createAssumption();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return v8CompatibilityMode;
     }
 

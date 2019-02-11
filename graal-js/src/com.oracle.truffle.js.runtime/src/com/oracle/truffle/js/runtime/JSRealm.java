@@ -860,8 +860,8 @@ public class JSRealm {
         if (context.isOptionAtomics()) {
             putGlobalProperty(global, ATOMICS_CLASS_NAME, createAtomics());
         }
-        if (getEnv() != null && JSContextOptions.GLOBAL_PROPERTY.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityMode()) {
-            putGlobalProperty(global, "global", global);
+        if (getEnv() != null) {
+            setupGlobalGlobal();
         }
         if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
             putGlobalProperty(global, "globalThis", global);
@@ -1202,8 +1202,8 @@ public class JSRealm {
     }
 
     public void setArguments(Object[] arguments) {
-        JSObjectUtil.putOrSetDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, arguments),
-                        context.isOptionV8CompatibilityMode() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.defineDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, arguments),
+                        context.isOptionV8CompatibilityModeInContextInit() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
     }
 
     public JSConstructor getJSAdapterConstructor() {
@@ -1214,12 +1214,64 @@ public class JSRealm {
         return truffleLanguageEnv;
     }
 
-    public void patchTruffleLanguageEnv(TruffleLanguage.Env env) {
+    public boolean patchContext(TruffleLanguage.Env newEnv) {
         CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull(env, "New env cannot be null.");
-        truffleLanguageEnv = env;
-        context.setAllocationReporter(env);
-        context.getContextOptions().setOptionValues(env.getOptions());
+        Objects.requireNonNull(newEnv, "New env cannot be null.");
+
+        JSContextOptions contextOptions = context.getContextOptions();
+
+        if (contextOptions.optionWillChange(JSContextOptions.V8_COMPATIBILITY_MODE, newEnv.getOptions()) && getContext().wasOptionV8CompatibilityModeQueried()) {
+            return false;
+        }
+        if (contextOptions.optionWillChange(JSContextOptions.ARRAY_SORT_INHERITED, newEnv.getOptions()) && getContext().wasOptionArraySortInheritedQueried()) {
+            return false;
+        }
+
+        truffleLanguageEnv = newEnv;
+        getContext().setAllocationReporter(newEnv);
+        contextOptions.setOptionValues(newEnv.getOptions());
+
+        if (newEnv.out() != getOutputStream()) {
+            setOutputWriter(null, newEnv.out());
+        }
+        if (newEnv.err() != getErrorStream()) {
+            setErrorWriter(null, newEnv.err());
+        }
+
+        setArguments(newEnv.getApplicationArguments());
+
+        // Reflect any changes to the global-property and v8-compat options.
+        setupGlobalGlobal();
+
+        // Reflect any changes to the timezone option.
+        context.setLocalTimeZoneFromOptions(newEnv.getOptions());
+
+        // Reflect any changes to the shell option.
+        // TODO: Handle the case when the context was initialized with shell=True but should
+        // be patched to shell=False (i.e. the globals should be removed).
+        addOptionalGlobals();
+
+        // Reflect any changes to the scripting option.
+        // TODO: Do this properly and then add SCRIPTING to the set of patchable options in
+        // JSContextOptions.optionsAllowPreInitializedContext. Otherwise, remove this.
+        if (context.getParserOptions().isScripting()) {
+            addScriptingObjects();
+        }
+
+        return true;
+    }
+
+    private void setupGlobalGlobal() {
+        toggleGlobalProperty("global", getGlobalObject(), JSContextOptions.GLOBAL_PROPERTY.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityModeInContextInit());
+    }
+
+    private void toggleGlobalProperty(String name, Object value, boolean enable) {
+        boolean present = getGlobalObject().containsKey(name);
+        if (!present && enable) {
+            putGlobalProperty(getGlobalObject(), name, value);
+        } else if (present && !enable) {
+            getGlobalObject().delete(name);
+        }
     }
 
     @TruffleBoundary

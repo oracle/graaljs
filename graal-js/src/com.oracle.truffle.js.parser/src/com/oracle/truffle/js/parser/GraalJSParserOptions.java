@@ -124,6 +124,7 @@ public final class GraalJSParserOptions implements ParserOptions {
         return strict;
     }
 
+    @Override
     public boolean isScripting() {
         return scripting;
     }

@@ -47,6 +47,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -136,6 +137,7 @@ import com.oracle.truffle.regex.CachingRegexEngine;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
+import org.graalvm.options.OptionValues;
 
 public class JSContext {
     private final Evaluator evaluator;
@@ -286,6 +288,8 @@ public class JSContext {
     @CompilationFinal private JSAgent agent;
 
     private final JSContextOptions contextOptions;
+    private boolean arraySortInheritedOptionQueried = false;
+    private boolean v8CompatibilityModeOptionQueried = false;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
 
@@ -375,6 +379,8 @@ public class JSContext {
             this.contextOptions.setOptionValues(env.getOptions());
             setAllocationReporter(env);
         }
+
+        this.setLocalTimeZoneFromOptions(env.getOptions());
 
         this.language = lang;
         this.contextRef = lang.getContextReference();
@@ -626,8 +632,10 @@ public class JSContext {
         return JSShape.makeEmptyRoot(JSObject.LAYOUT, JSGlobalObject.INSTANCE, this);
     }
 
-    public void setLocalTimeZoneId(ZoneId zoneId) {
-        localTimeZoneHolder = new LocalTimeZoneHolder(zoneId);
+    public void setLocalTimeZoneFromOptions(OptionValues options) {
+        if (JSContextOptions.TIME_ZONE.hasBeenSet(options)) {
+            localTimeZoneHolder = new LocalTimeZoneHolder(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(options)).toZoneId());
+        }
     }
 
     private LocalTimeZoneHolder getLocalTimeZoneHolder() {
@@ -1210,7 +1218,12 @@ public class JSContext {
     }
 
     public boolean isOptionArraySortInherited() {
+        arraySortInheritedOptionQueried = true;
         return contextOptions.isArraySortInherited();
+    }
+
+    public boolean wasOptionArraySortInheritedQueried() {
+        return arraySortInheritedOptionQueried;
     }
 
     public boolean isOptionSharedArrayBuffer() {
@@ -1222,6 +1235,15 @@ public class JSContext {
     }
 
     public boolean isOptionV8CompatibilityMode() {
+        v8CompatibilityModeOptionQueried = true;
+        return contextOptions.isV8CompatibilityMode();
+    }
+
+    public boolean wasOptionV8CompatibilityModeQueried() {
+        return v8CompatibilityModeOptionQueried;
+    }
+
+    public boolean isOptionV8CompatibilityModeInContextInit() {
         return contextOptions.isV8CompatibilityMode();
     }
 

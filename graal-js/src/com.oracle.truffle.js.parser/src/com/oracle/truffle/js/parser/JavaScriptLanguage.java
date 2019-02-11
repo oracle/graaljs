@@ -42,7 +42,6 @@ package com.oracle.truffle.js.parser;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TimeZone;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -443,11 +442,10 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     private JSContext newJSContext(Env env) {
         JSContext context = JSEngine.createJSContext(this, env);
-
-        if (JSContextOptions.TIME_ZONE.hasBeenSet(env.getOptions())) {
-            context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
-        }
-
+        // The (constant) value for the interopRuntime field has to be provided here post-hoc,
+        // since it is defined in the com.oracle.truffle.js.parser.foreign package. If this package
+        // would be moved to the com.oracle.truffle.js.runtime project, then we would not need
+        // to do this.
         context.setInteropRuntime(interopRuntime());
         return context;
     }
@@ -461,41 +459,21 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         realm.setArguments(realm.getEnv().getApplicationArguments());
 
         realm.addOptionalGlobals();
-        if (((GraalJSParserOptions) realm.getContext().getParserOptions()).isScripting()) {
+        if (realm.getContext().getParserOptions().isScripting()) {
             realm.addScriptingObjects();
         }
     }
 
     @Override
     protected boolean patchContext(JSRealm realm, Env newEnv) {
-        JSContext context = realm.getContext();
-        if (!JSContextOptions.optionsAllowPreInitializedContext(realm.getEnv(), newEnv)) {
+        assert realm.getContext().getLanguage() == this;
+
+        if (JSContextOptions.optionsAllowPreInitializedContext(realm.getEnv(), newEnv) && realm.patchContext(newEnv)) {
+            return true;
+        } else {
             languageContext = null;
             return false;
         }
-
-        assert context.getLanguage() == this;
-        realm.patchTruffleLanguageEnv(newEnv);
-
-        if (newEnv.out() != realm.getOutputStream()) {
-            realm.setOutputWriter(null, newEnv.out());
-        }
-        if (newEnv.err() != realm.getErrorStream()) {
-            realm.setErrorWriter(null, newEnv.err());
-        }
-
-        if (JSContextOptions.TIME_ZONE.hasBeenSet(newEnv.getOptions())) {
-            context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(newEnv.getOptions())).toZoneId());
-        }
-
-        context.setInteropRuntime(interopRuntime());
-        realm.setArguments(newEnv.getApplicationArguments());
-
-        realm.addOptionalGlobals();
-        if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
-            realm.addScriptingObjects();
-        }
-        return true;
     }
 
     @Override
