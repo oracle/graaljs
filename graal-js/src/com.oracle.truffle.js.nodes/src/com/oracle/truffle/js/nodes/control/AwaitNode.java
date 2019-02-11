@@ -79,7 +79,6 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child private PerformPromiseThenNode performPromiseThenNode;
     @Child private PromiseResolveNode promiseResolveNode;
     @Child private JSFunctionCallNode callPromiseResolveNode;
-    @Child private JSFunctionCallNode callPerformPromiseThenNode;
     @Child private PropertySetNode setPromiseIsHandledNode;
     @Child private PropertySetNode setAsyncContextNode;
     @Child private PropertySetNode setAsyncTargetNode;

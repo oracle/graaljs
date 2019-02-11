@@ -161,7 +161,6 @@ public final class SIMDTypePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public abstract static class SIMDToLocaleStringNode extends SIMDToStringNode {
-        @Child private JSToStringNode toStringNode;
 
         protected SIMDToLocaleStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
