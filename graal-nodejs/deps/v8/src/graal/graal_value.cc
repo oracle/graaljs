@@ -567,7 +567,7 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
             }
             break;
         case 7:
-            JNI_CALL(long, value_external, isolate, GraalAccessMethod::value_external, Long, java_object);
+            JNI_CALL(jlong, value_external, isolate, GraalAccessMethod::value_external, Long, java_object);
             if (placement) {
                 result = new(placement) GraalExternal(isolate, (void*) value_external, java_object);
             } else {
@@ -721,20 +721,3 @@ GraalValue* GraalValue::FromJavaObject(GraalIsolate* isolate, jobject java_objec
 
     return result;
 }
-
-const int GraalValue::MAX_SIZE =
-    std::max(sizeof(GraalArray),
-    std::max(sizeof(GraalArrayBuffer),
-    std::max(sizeof(GraalArrayBufferView),
-    std::max(sizeof(GraalBoolean),
-    std::max(sizeof(GraalDate),
-    std::max(sizeof(GraalExternal),
-    std::max(sizeof(GraalFunction),
-    std::max(sizeof(GraalMap),
-    std::max(sizeof(GraalNumber),
-    std::max(sizeof(GraalObject),
-    std::max(sizeof(GraalPromise),
-    std::max(sizeof(GraalProxy),
-    std::max(sizeof(GraalSet),
-    std::max(sizeof(GraalString),
-    sizeof(GraalSymbol)))))))))))))));

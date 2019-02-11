@@ -46,9 +46,12 @@
 #include "graal_handle_content.h"
 #include "include/v8.h"
 #include "jni.h"
-#include <pthread.h>
 #include <string.h>
 #include <vector>
+
+#ifdef __POSIX__
+#include <pthread.h>
+#endif
 
 #define JNI_CALL_HELPER(semicolon, equals, return_type, variable, isolate, id, type, ...) \
     return_type variable semicolon \
@@ -344,7 +347,7 @@ public:
     GraalIsolate(JavaVM* jvm, JNIEnv* env);
     v8::Local<v8::Value> ThrowException(v8::Local<v8::Value> exception);
     bool AddMessageListener(v8::MessageCallback callback, v8::Local<v8::Value> data);
-    void SendMessage(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
+    void NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
     void SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback);
     bool AbortOnUncaughtExceptionCallbackValue();
     v8::Local<v8::Value> InternalFieldKey(int index);
@@ -511,7 +514,7 @@ public:
         return stack_check_enabled_;
     }
 
-    bool StackOverflowCheck(long stack_top);
+    bool StackOverflowCheck(intptr_t stack_top);
 
     void FindDynamicObjectFields(jobject context);
 
@@ -559,6 +562,8 @@ public:
     }
 
     static void InitThreadLocals();
+    static void SetEnv(const char * name, const char * value);
+    static void UnsetEnv(const char * name);
 
     // Valid values of mode
     static const int kModeDefault = 0;
@@ -607,8 +612,8 @@ private:
     int try_catch_count_;
     int function_template_count_;
     bool stack_check_enabled_;
-    long stack_bottom_;
-    long stack_size_limit_;
+    intptr_t stack_bottom_;
+    size_t stack_size_limit_;
     bool main_;
     double return_value_;
     static bool abort_on_uncaught_exception_;
@@ -620,7 +625,7 @@ private:
     }
 
     void SetJNIField(GraalAccessField id, jobject holder_class, jobject field_name, const char* sig);
-    void InitStackOverflowCheck(long stack_bottom);
+    void InitStackOverflowCheck(intptr_t stack_bottom);
     void RemoveCallback(std::vector<std::tuple<GCCallbackType, void*, void*>>&vector, void* callback);
 
     GraalNumber* CachedNumber(int value);
@@ -631,7 +636,11 @@ private:
     friend class GraalFunction;
     friend class v8::Isolate;
 
+#ifdef __POSIX__
     pthread_mutex_t lock_;
+#else
+    void* lock_;
+#endif
     v8::Locker* lock_owner_;
     friend class v8::Locker;
     friend class v8::Unlocker;

@@ -3071,6 +3071,14 @@ int Start(int argc, char** argv) {
 
 // GRAAL EXTENSIONS
 
+static void os_setenv(const char * name, const char * value) {
+#ifdef __POSIX__
+    setenv(name, value, 1);
+#else
+    _putenv_s(name, value);
+#endif
+}
+
 long GraalArgumentsPreprocessing(int argc, char *argv[]) {
   long result = -1;
   for (int i = 1; i < argc; i++) {
@@ -3090,9 +3098,9 @@ long GraalArgumentsPreprocessing(int argc, char *argv[]) {
     }
     if (classpath != nullptr) {
       if (classpath[0] == '=') {
-        setenv("NODE_JVM_CLASSPATH", classpath + 1, 1);
+        os_setenv("NODE_JVM_CLASSPATH", classpath + 1);
       } else if (classpath[0] == 0 && i + 1 < argc) {
-        setenv("NODE_JVM_CLASSPATH", argv[++i], 1);
+        os_setenv("NODE_JVM_CLASSPATH", argv[++i]);
         // Hack: replace the argument with the classpath by a string full of '-'.
         // This ensures that it looks like an option (i.e. is passed to JS engine
         // options, i.e., is not considered to be a name of the script to execute).

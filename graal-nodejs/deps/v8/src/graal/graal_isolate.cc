@@ -51,9 +51,19 @@
 #include <stdlib.h>
 #include <string>
 #include <string.h>
-#include <unistd.h>
-#include <dlfcn.h>
 #include <algorithm>
+#include <tuple>
+
+#ifdef __POSIX__
+
+#include <dlfcn.h>
+#include <unistd.h>
+
+#else
+
+#include <io.h>
+
+#endif
 
 #ifdef __APPLE__
 #define LIBNODESVM_RELPATH "/jre/lib/polyglot/libpolyglot.dylib"
@@ -62,6 +72,8 @@
 #elif defined(__sparc__)
 // SVM currently not supported
 #define LIBJVM_RELPATH     "/lib/sparcv9/server/libjvm.so"
+#elif defined(_WIN32)
+#define LIBJVM_RELPATH     "\\bin\\server\\jvm.dll"
 #else
 #define LIBNODESVM_RELPATH "/jre/lib/polyglot/libpolyglot.so"
 #define LIBJVM_RELPATH     "/lib/amd64/server/libjvm.so"
@@ -75,14 +87,25 @@
     exit(1); \
 }
 
-extern "C" int uv_exepath(char* buffer, size_t* size) __attribute__((weak));
-extern "C" int uv_key_create(uv_key_t* key) __attribute__((weak));
-extern "C" void uv_key_set(uv_key_t* key, void* value) __attribute__((weak));
-extern "C" void* uv_key_get(uv_key_t* key) __attribute__((weak));
-extern "C" uv_loop_t* uv_default_loop(void) __attribute__((weak));
-extern "C" int uv__cloexec_ioctl(int fd, int set) __attribute__((weak));
-extern "C" int uv__cloexec_fcntl(int fd, int set) __attribute__((weak));
+#ifdef __POSIX__
+#define WEAK_ATTRIBUTE  __attribute__((weak))
+#else
+#define WEAK_ATTRIBUTE
+#endif
 
+extern "C" int uv_exepath(char* buffer, size_t* size) WEAK_ATTRIBUTE;
+extern "C" int uv_key_create(uv_key_t* key) WEAK_ATTRIBUTE;
+extern "C" void uv_key_set(uv_key_t* key, void* value) WEAK_ATTRIBUTE;
+extern "C" void* uv_key_get(uv_key_t* key) WEAK_ATTRIBUTE;
+extern "C" uv_loop_t* uv_default_loop(void) WEAK_ATTRIBUTE;
+#ifdef __POSIX__
+extern "C" int uv__cloexec_ioctl(int fd, int set) WEAK_ATTRIBUTE;
+extern "C" int uv__cloexec_fcntl(int fd, int set) WEAK_ATTRIBUTE;
+#endif
+
+#undef WEAK_ATTRIBUTE
+
+#ifdef __POSIX__
 #if defined(_AIX) || \
     defined(__APPLE__) || \
     defined(__DragonFly__) || \
@@ -92,6 +115,7 @@ extern "C" int uv__cloexec_fcntl(int fd, int set) __attribute__((weak));
 #define uv__cloexec uv__cloexec_ioctl
 #else
 #define uv__cloexec uv__cloexec_fcntl
+#endif
 #endif
 
 // Key for the current (per-thread) isolate
@@ -173,13 +197,18 @@ jclass findClassExtra(JNIEnv* env, const char* name) {
     return loadedClass;
 }
 
+#ifdef __POSIX__
+#define access access
+#else
+#define access _access
+#endif
+
 // Workaround for a bug in SVM's JNI_GetCreatedJavaVMs
 static JavaVM* existing_jvm = nullptr;
 
 v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
     JavaVM *jvm;
     JNIEnv *env;
-    void* jvm_handle;
 
     std::string node = nodeExe();
 
@@ -188,12 +217,13 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         // We set environment variables to ensure these values are correctly
         // propagated to child processes.
         std::string graalvm_home = up(node, 5);
-        setenv("JAVA_HOME", graalvm_home.c_str(), 1);
+        SetEnv("JAVA_HOME", graalvm_home.c_str());
 
 #       ifdef LIBNODESVM_RELPATH
             bool force_native = false;
             if (mode == kModeJVM) {
-                unsetenv("NODE_JVM_LIB"); // will be set to appropriate libjvm path below
+                 // will be set to appropriate libjvm path below
+                UnsetEnv("NODE_JVM_LIB");
             } else if (mode == kModeNative) {
                 force_native = true;
             } else { // mode == kModeDefault
@@ -203,7 +233,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             }
             if (force_native) {
                 std::string node_jvm_lib = graalvm_home + LIBNODESVM_RELPATH;
-                setenv("NODE_JVM_LIB", node_jvm_lib.c_str(), 1);
+                SetEnv("NODE_JVM_LIB", node_jvm_lib.c_str());
             }
 #       else
             if (mode == kModeNative) {
@@ -225,13 +255,15 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
     std::string jvmlib_path = getstdenv("NODE_JVM_LIB");
     if (jvmlib_path.empty()) {
         jvmlib_path = jdk_path + LIBJVM_RELPATH;
-        setenv("NODE_JVM_LIB", jvmlib_path.c_str(), 1);
+        SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
     }
     if (access(jvmlib_path.c_str(), F_OK) == -1) {
         fprintf(stderr, "Cannot find %s. Specify JAVA_HOME so $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
         exit(1);
     }
-    jvm_handle = dlopen(jvmlib_path.c_str(), RTLD_NOW);
+    
+#ifdef __POSIX__
+    void* jvm_handle = dlopen(jvmlib_path.c_str(), RTLD_NOW);
     if (jvm_handle == NULL) {
         fprintf(stderr, "jvm library could not be loaded: %s\n", dlerror());
         exit(1);
@@ -243,6 +275,19 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         fprintf(stderr, "JNI_GetCreatedJavaVMs symbol could not be resolved: %s\n", dlerror());
         exit(1);
     }
+#else
+    HMODULE jvm_handle = LoadLibraryA(jvmlib_path.c_str());
+    if (jvm_handle == NULL) {
+        fprintf(stderr, "jvm library could not be loaded: %lu\n", GetLastError());
+        exit(1);
+    }
+
+    CreatedJVMs createdJVMs = (CreatedJVMs) GetProcAddress(jvm_handle, "JNI_GetCreatedJavaVMs");
+    if (createdJVMs == NULL) {
+        fprintf(stderr, "JNI_GetCreatedJavaVMs symbol could not be resolved: %lu\n", GetLastError());
+        exit(1);
+    }
+#endif
     jsize existingJVMs;
     createdJVMs(&jvm, 1, &existingJVMs);
     bool spawn_jvm = (existingJVMs == 0);
@@ -287,12 +332,17 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             exit(1);
         }
 
+#ifdef __POSIX__
+        const char* const path_separator = ":";
+#else
+        const char* const path_separator = ";";
+#endif
         std::string extra_jvm_path = getstdenv("NODE_JVM_CLASSPATH");
         if (use_classpath_env_var) {
             std::string classpath = getstdenv("CLASSPATH");
             if (!classpath.empty()) {
                 if (!extra_jvm_path.empty()) {
-                    extra_jvm_path += ":";
+                    extra_jvm_path += path_separator;
                 }
                 extra_jvm_path += classpath;
             }
@@ -303,22 +353,22 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         std::string boot_classpath = getstdenv("NODE_JVM_BOOTCLASSPATH");
         if (boot_classpath.empty()) {
             if (!graal_sdk_jar_path.empty()) {
-                boot_classpath += ":";
+                boot_classpath += path_separator;
                 boot_classpath += graal_sdk_jar_path;
             }
             if (!truffle_jar_path.empty()) {
-                boot_classpath += ":";
+                boot_classpath += path_separator;
                 boot_classpath += truffle_jar_path;
             }
             if (!truffleom_jar_path.empty()) {
-                boot_classpath += ":";
+                boot_classpath += path_separator;
                 boot_classpath += truffleom_jar_path;
             }
         } else {
-            boot_classpath = ":" + boot_classpath;
+            boot_classpath = path_separator + boot_classpath;
         }
         if (!boot_classpath.empty()) {
-            boot_classpath = "-Xbootclasspath/a" + boot_classpath;
+            boot_classpath = "-Xbootclasspath/a:" + boot_classpath.substr(1);
             options.push_back({const_cast<char*>(boot_classpath.c_str()), nullptr});
         }
 
@@ -326,22 +376,22 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         std::string classpath_sep = "";
         if (!graaljs_jar_path.empty()) {
             classpath += graaljs_jar_path;
-            classpath_sep = ":";
+            classpath_sep = path_separator;
         }
         if (!tregex_jar_path.empty()) {
             classpath += classpath_sep;
             classpath += tregex_jar_path;
-            classpath_sep = ":";
+            classpath_sep = path_separator;
         }
         if (!graalnode_jar_path.empty()) {
             classpath += classpath_sep;
             classpath += graalnode_jar_path;
-            classpath_sep = ":";
+            classpath_sep = path_separator;
         }
         if (!extra_jvm_path.empty()) {
             classpath += classpath_sep;
             classpath += extra_jvm_path;
-            classpath_sep = ":";
+            classpath_sep = path_separator;
         }
         if (!classpath.empty()) {
             classpath = "-Djava.class.path=" + classpath;
@@ -360,7 +410,8 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         std::string debugParam = "-Xrunjdwp:transport=dt_socket";
         std::string debugPort = getstdenv("DEBUG_PORT");
         if (!debugPort.empty()) {
-            unsetenv("DEBUG_PORT"); // do not debug child processes
+            // do not debug child processes
+            UnsetEnv("DEBUG_PORT"); 
             debugParam += ",server=n,suspend=y,address=";
             debugParam += debugPort;
         } else {
@@ -390,10 +441,12 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
                     } else {
                         // -help is not supported by JNI_CreateJavaVM
                         if (mode == GraalIsolate::kModeJVM) {
+#ifdef __POSIX__
                             // Re-enable inheritance of stdout and stderr disabled
                             // by uv_disable_stdio_inheritance() in node::Init()
                             uv__cloexec(1, 0);
                             uv__cloexec(2, 0);
+#endif
                             // Delegate to java -help
                             std::string java = jdk_path + "/bin/java";
                             char * argv[] = {const_cast<char*> (java.c_str()), (char*) "-help", nullptr};
@@ -406,7 +459,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
                 }
             }
         }
-        unsetenv(no_spawn_options);
+        UnsetEnv(no_spawn_options);
 
     #if __APPLE__
         if (dlopen((jdk_path + LIBJLI_RELPATH).c_str(), RTLD_NOW) == NULL) {
@@ -420,11 +473,19 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         vm_args.options = options.data();
         vm_args.ignoreUnrecognized = false;
 
+#ifdef __POSIX__
         InitJVM createJvm = (InitJVM) dlsym(jvm_handle, "JNI_CreateJavaVM");
         if (createJvm == NULL) {
             fprintf(stderr, "JNI_CreateJavaVM symbol could not be resolved: %s\n", dlerror());
             exit(1);
         }
+#else
+        InitJVM createJvm = (InitJVM) GetProcAddress(jvm_handle, "JNI_CreateJavaVM");
+        if (createJvm == NULL) {
+            fprintf(stderr, "JNI_CreateJavaVM symbol could not be resolved: %lu\n", GetLastError());
+            exit(1);
+        }
+#endif
         jint result = createJvm(&jvm, (void**) &env, &vm_args);
         if (result != JNI_OK) {
             fprintf(stderr, "Creation of the JVM failed!\n");
@@ -449,13 +510,22 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
 
     isolate->main_ = spawn_jvm;
     if (spawn_jvm) {
-        isolate->InitStackOverflowCheck((long) &params);
+        isolate->InitStackOverflowCheck((intptr_t) &params);
     }
 
     return reinterpret_cast<v8::Isolate*> (isolate);
 }
 
-GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(), message_listener_(nullptr), function_template_count_(0), lock_(PTHREAD_MUTEX_INITIALIZER), promise_hook_(nullptr), promise_reject_callback_(nullptr) {
+#undef access
+
+GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(), message_listener_(nullptr), function_template_count_(0), promise_hook_(nullptr), promise_reject_callback_(nullptr) {
+
+#ifdef __POSIX__
+    lock_ = PTHREAD_MUTEX_INITIALIZER;
+#else
+    lock_ = CreateMutex(NULL, false, NULL);
+#endif
+
     // Object.class
     jclass object_class = env->FindClass("java/lang/Object");
     object_class_ = (jclass) env->NewGlobalRef(object_class);
@@ -791,8 +861,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     delete false_local;
 
     // EmptyString
-    const jchar empty_string[] = {};
-    GraalString* empty_string_local = new GraalString(this, env->NewString(empty_string, 0));
+    const jchar empty_string = 0;
+    GraalString* empty_string_local = new GraalString(this, env->NewString(&empty_string, 0));
     GraalString* empty_string_global = reinterpret_cast<GraalString*> (empty_string_local->Copy(true));
     slot[root_offset + v8::internal::Internals::kEmptyStringRootIndex] = empty_string_global;
     delete empty_string_local;
@@ -880,7 +950,7 @@ bool GraalIsolate::AddMessageListener(v8::MessageCallback callback, v8::Local<v8
     return true;
 }
 
-void GraalIsolate::SendMessage(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error) {
+void GraalIsolate::NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error) {
     if (message_listener_ != nullptr && (error_to_ignore_ == nullptr || !GetJNIEnv()->IsSameObject(java_error, error_to_ignore_))) {
         error_to_ignore_ = nullptr;
         sending_message_ = true;
@@ -896,6 +966,7 @@ v8::Local<v8::Value> GraalIsolate::ThrowException(v8::Local<v8::Value> exception
 }
 
 void GraalIsolate::EnsureValidWorkingDir() {
+#ifdef __POSIX__
     // JVM is unable to start from a deleted directory
     char* cwd = getcwd(nullptr, 0);
     if (cwd == nullptr) {
@@ -906,6 +977,7 @@ void GraalIsolate::EnsureValidWorkingDir() {
     } else {
         free(cwd);
     }
+#endif
 }
 
 void GraalIsolate::InitThreadLocals() {
@@ -971,6 +1043,12 @@ void GraalIsolate::Dispose(bool exit, int status) {
     // this is executed when exit is false only
     env->ExceptionClear();
     jvm_->DetachCurrentThread();
+    
+#ifdef __POSIX__
+    pthread_mutex_destroy(&lock_);
+#else
+    CloseHandle(lock_);
+#endif
 }
 
 double GraalIsolate::ReadDoubleFromSharedBuffer() {
@@ -1045,7 +1123,7 @@ void GraalIsolate::InternalErrorCheck() {
     }
 }
 
-void GraalIsolate::InitStackOverflowCheck(long stack_bottom) {
+void GraalIsolate::InitStackOverflowCheck(intptr_t stack_bottom) {
     char* stack_size_str = getenv("NODE_STACK_SIZE");
     size_t stack_size = 0;
     if (stack_size_str != nullptr) {
@@ -1066,7 +1144,7 @@ void GraalIsolate::InitStackOverflowCheck(long stack_bottom) {
 // It is an experimental feature with a very naive implementation.
 // It should be replaced by more sophisticated techniques if it
 // turns out to be useful.
-bool GraalIsolate::StackOverflowCheck(long stack_top) {
+bool GraalIsolate::StackOverflowCheck(intptr_t stack_top) {
     if (labs(stack_top - stack_bottom_) > stack_size_limit_) {
         JNI_CALL_VOID(this, GraalAccessMethod::isolate_throw_stack_overflow_error);
         return true;
@@ -1294,7 +1372,7 @@ void GraalIsolate::HandleEmptyCallResult() {
             GraalValue* graal_exception = GraalValue::FromJavaObject(this, exception_object);
             v8::Value* exception = reinterpret_cast<v8::Value*> (graal_exception);
             v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (this);
-            SendMessage(v8::Exception::CreateMessage(v8_isolate, exception), exception, java_exception);
+            NotifyMessageListener(v8::Exception::CreateMessage(v8_isolate, exception), exception, java_exception);
             if (error_to_ignore_ != nullptr) {
                 env->DeleteGlobalRef(error_to_ignore_);
                 error_to_ignore_ = nullptr;
@@ -1315,4 +1393,20 @@ void GraalIsolate::Externalize(jobject java_buffer) {
     jobject cleaner = env->GetObjectField(java_buffer, cleanerField_);
     jobject deallocator = env->GetObjectField(cleaner, thunkField_);
     env->SetLongField(deallocator, addressField_, (jlong) 0);
+}
+
+void GraalIsolate::SetEnv(const char * name, const char * value) {
+#ifdef __POSIX__
+    setenv(name, value, 1);
+#else
+    _putenv_s(name, value);
+#endif
+}
+
+void GraalIsolate::UnsetEnv(const char * name) {
+#ifdef __POSIX__
+    unsetenv(name);
+#else
+    _putenv_s(name, "");
+#endif
 }
