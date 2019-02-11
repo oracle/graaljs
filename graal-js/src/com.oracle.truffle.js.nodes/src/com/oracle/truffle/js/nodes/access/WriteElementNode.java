@@ -967,7 +967,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             AbstractDoubleArray doubleArray = (AbstractDoubleArray) cast(array);
-            double doubleValue = 0.0; // dummy
+            double doubleValue;
             if (value instanceof Double) {
                 doubleValueBranch.enter();
                 doubleValue = (double) value;
@@ -1185,7 +1185,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             HolesDoubleArray holesDoubleArray = (HolesDoubleArray) cast(array);
-            double doubleValue = 0.0; // dummy
+            double doubleValue;
             if (value instanceof Double) {
                 doubleValueBranch.enter();
                 doubleValue = (double) value;
