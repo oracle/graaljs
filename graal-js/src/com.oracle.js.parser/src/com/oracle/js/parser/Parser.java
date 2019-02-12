@@ -768,10 +768,10 @@ loop:
     }
 
     /**
-     * ES2019 or newer.
+     * ES2020 or newer.
      */
-    private boolean isES2019() {
-        return env.ecmaScriptVersion >= 10;
+    private boolean isES2020() {
+        return env.ecmaScriptVersion >= 11;
     }
 
     private static boolean isArguments(final String name) {
@@ -3966,7 +3966,7 @@ loop:
             // fall through
 
         case IMPORT:
-            if (isES2019() && type == IMPORT) {
+            if (isES2020() && type == IMPORT) {
                 lhs = importExpression();
                 break;
             }
