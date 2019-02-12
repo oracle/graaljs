@@ -425,6 +425,17 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return index;
     }
 
+    protected final long nextElementIndexZeroBased(DynamicObject object, long index, boolean condition) {
+        assert index >= -1;
+        long lastI = lastElementIndex(object, condition);
+        if ((index + 1) > lastI) {
+            // length is not enough; could be the
+            // prototype with shorter length
+            return JSRuntime.MAX_SAFE_INTEGER_LONG;
+        }
+        return index + 1;
+    }
+
     @Override
     public long previousElementIndex(DynamicObject object, long index, boolean condition) {
         long lastIdx = lastElementIndex(object, condition);

@@ -56,11 +56,11 @@ public abstract class AbstractConstantArray extends DynamicArray {
     public final ScriptArray setElementImpl(DynamicObject object, long index, Object value, boolean strict, boolean condition) {
         if (index <= Integer.MAX_VALUE) {
             if (value instanceof Integer) {
-                return createWriteableInt(object, index, (int) value, ProfileHolder.empty()).setElementImpl(object, index, value, strict, condition);
+                return createWriteableInt(object, index, (int) value, condition, ProfileHolder.empty()).setElementImpl(object, index, value, strict, condition);
             } else if (value instanceof Double) {
-                return createWriteableDouble(object, index, (double) value, ProfileHolder.empty()).setElementImpl(object, index, value, strict, condition);
+                return createWriteableDouble(object, index, (double) value, condition, ProfileHolder.empty()).setElementImpl(object, index, value, strict, condition);
             } else {
-                return createWriteableObject(object, index, value, ProfileHolder.empty()).setElementImpl(object, index, value, strict, condition);
+                return createWriteableObject(object, index, value, condition, ProfileHolder.empty()).setElementImpl(object, index, value, strict, condition);
             }
         } else {
             return SparseArray.makeSparseArray(object, this).setElementImpl(object, index, value, strict, condition);
@@ -120,13 +120,13 @@ public abstract class AbstractConstantArray extends DynamicArray {
         return firstElementIndex(object, condition) <= index && index <= lastElementIndex(object, condition);
     }
 
-    public abstract AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile);
 
-    public abstract AbstractWritableArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile);
 
-    public abstract AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile);
 
-    public abstract AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile);
+    public abstract AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile);
 
     protected interface CreateWritableProfileAccess extends ProfileAccess {
         default boolean lengthZero(ProfileHolder profile, boolean condition) {

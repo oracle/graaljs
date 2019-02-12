@@ -184,4 +184,9 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     protected ZeroBasedJSObjectArray withIntegrityLevel(int newIntegrityLevel) {
         return new ZeroBasedJSObjectArray(newIntegrityLevel, cache);
     }
+
+    @Override
+    public long nextElementIndex(DynamicObject object, long index, boolean condition) {
+        return nextElementIndexZeroBased(object, index, condition);
+    }
 }

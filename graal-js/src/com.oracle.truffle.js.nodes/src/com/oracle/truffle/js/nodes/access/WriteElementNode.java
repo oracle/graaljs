@@ -847,16 +847,16 @@ public class WriteElementNode extends JSTargetableNode {
                 ScriptArray newArray;
                 if (value instanceof Integer) {
                     inBoundsIntBranch.enter();
-                    newArray = constantArray.createWriteableInt(target, index, (int) value, createWritableProfile);
+                    newArray = constantArray.createWriteableInt(target, index, (int) value, arrayCondition, createWritableProfile);
                 } else if (value instanceof Double) {
                     inBoundsDoubleBranch.enter();
-                    newArray = constantArray.createWriteableDouble(target, index, (double) value, createWritableProfile);
+                    newArray = constantArray.createWriteableDouble(target, index, (double) value, arrayCondition, createWritableProfile);
                 } else if (JSObject.isDynamicObject(value)) {
                     inBoundsJSObjectBranch.enter();
-                    newArray = constantArray.createWriteableJSObject(target, index, (DynamicObject) value, createWritableProfile);
+                    newArray = constantArray.createWriteableJSObject(target, index, (DynamicObject) value, arrayCondition, createWritableProfile);
                 } else {
                     inBoundsObjectBranch.enter();
-                    newArray = constantArray.createWriteableObject(target, index, value, createWritableProfile);
+                    newArray = constantArray.createWriteableObject(target, index, value, arrayCondition, createWritableProfile);
                 }
                 setArrayAndWrite(newArray, target, index, value, arrayCondition);
             } else {
