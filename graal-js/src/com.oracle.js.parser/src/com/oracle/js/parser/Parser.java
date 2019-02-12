@@ -724,21 +724,6 @@ loop:
     }
 
     /**
-     * Detect calls to special functions.
-     * @param ident Called function.
-     */
-    private void detectSpecialFunction(final IdentNode ident) {
-        final String name = ident.getName();
-
-        if (EVAL_NAME.equals(name)) {
-            markEval(lc);
-        } else if (SUPER.getName().equals(name)) {
-            assert ident.isDirectSuper();
-            markSuperCall(lc);
-        }
-    }
-
-    /**
      * Detect use of special properties.
      * @param ident Referenced property.
      */
@@ -3737,11 +3722,6 @@ loop:
             boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC);
             final List<Expression> arguments = optimizeList(argumentList(yield, await, async));
 
-            // Catch special functions.
-            if (lhs instanceof IdentNode) {
-                detectSpecialFunction((IdentNode) lhs);
-            }
-
             if (async) {
                 if (type == ARROW && checkNoLineTerminator()) {
                     // async () => ...
@@ -3759,7 +3739,21 @@ loop:
                 }
             }
 
-            lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
+            // Catch special functions.
+            boolean eval = false;
+            if (lhs instanceof IdentNode) {
+                final IdentNode ident = (IdentNode) lhs;
+                final String name = ident.getName();
+                if (EVAL_NAME.equals(name)) {
+                    markEval(lc);
+                    eval = true;
+                } else if (SUPER.getName().equals(name)) {
+                    assert ident.isDirectSuper();
+                    markSuperCall(lc);
+                }
+            }
+
+            lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, eval);
         }
 
 loop:
@@ -3847,6 +3841,9 @@ loop:
             } else {
                 throw error(AbstractParser.message("expected.target"), token);
             }
+        } else if (type == IMPORT && isES2020() && lookahead() == LPAREN) {
+            // new cannot be used with import()
+            throw error(AbstractParser.message("expected.operand", IMPORT.getName()), token);
         }
 
         // Get function base.
@@ -3967,7 +3964,7 @@ loop:
 
         case IMPORT:
             if (isES2020() && type == IMPORT) {
-                lhs = importExpression();
+                lhs = importExpression(yield);
                 break;
             }
             // fall through
@@ -4027,7 +4024,7 @@ loop:
                 final int callLine = line;
                 final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
+                lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
 
                 break;
             }
@@ -4039,8 +4036,10 @@ loop:
         return lhs;
     }
 
-    private Expression importExpression() {
+    private Expression importExpression(boolean yield) {
         final long importToken = token;
+        final int importLine = line;
+        final int importStart = start;
         assert type == IMPORT;
         next();
         if (type == PERIOD) {
@@ -4056,6 +4055,13 @@ loop:
             } else {
                 throw error(AbstractParser.message("unexpected.ident", meta), token);
             }
+        } else if (type == LPAREN) {
+            next();
+            Expression argument = assignmentExpression(true, yield, false);
+            expect(RPAREN);
+
+            IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), IMPORT.getName());
+            return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, Collections.singletonList(argument));
         } else {
             throw error(AbstractParser.message("expected.operand", IMPORT.getName()), importToken);
         }
@@ -5714,8 +5720,8 @@ loop:
                 exportDeclaration(module);
                 break;
             case IMPORT:
-                // Ensure we are parsing an import declaration and not import.meta.
-                if (lookahead() != PERIOD) {
+                // Ensure we are parsing an import declaration and not import.meta or import().
+                if (!isImportExpression()) {
                     importDeclaration(module);
                     break;
                 }
@@ -5726,6 +5732,15 @@ loop:
                 break;
             }
         }
+    }
+
+    private boolean isImportExpression() {
+        assert type == IMPORT;
+        if (!isES2020()) {
+            return false;
+        }
+        TokenType la = lookahead();
+        return la == PERIOD || la == LPAREN;
     }
 
     /**

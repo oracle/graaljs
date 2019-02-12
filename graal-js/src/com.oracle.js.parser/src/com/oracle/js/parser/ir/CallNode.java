@@ -66,6 +66,9 @@ public final class CallNode extends LexicalContextExpression {
     /** Can this be an eval? */
     private static final int IS_EVAL = 1 << 1;
 
+    /** Is this an ImportCall? */
+    private static final int IS_IMPORT = 1 << 2;
+
     private final int flags;
 
     private final int lineNumber;
@@ -101,11 +104,23 @@ public final class CallNode extends LexicalContextExpression {
      * @param isNew      true if this is a constructor call with the "new" keyword
      */
     public CallNode(final int lineNumber, final long token, final int start,  final int finish, final Expression function, final List<Expression> args, final boolean isNew) {
+        this(lineNumber, token, start, finish, function, args, isNew ? IS_NEW : 0);
+    }
+
+    public CallNode(final int lineNumber, final long token, final int start,  final int finish, final Expression function, final List<Expression> args, final boolean isNew, final boolean isEval) {
+        this(lineNumber, token, start, finish, function, args, (isNew ? IS_NEW : 0) | (isEval ? IS_EVAL : 0));
+    }
+
+    public static Expression forImport(int lineNumber, long token, int start, int finish, IdentNode importIdent, List<Expression> args) {
+        return new CallNode(lineNumber, token, start, finish, importIdent, args, IS_IMPORT);
+    }
+
+    private CallNode(final int lineNumber, final long token, final int start,  final int finish, final Expression function, final List<Expression> args, final int flags) {
         super(token, start, finish);
 
         this.function       = function;
         this.args           = args;
-        this.flags          = isNew ? IS_NEW : 0;
+        this.flags          = flags;
         this.lineNumber     = lineNumber;
     }
 
@@ -230,5 +245,12 @@ public final class CallNode extends LexicalContextExpression {
      */
     public boolean isNew() {
         return (flags & IS_NEW) != 0;
+    }
+
+    /**
+     * Check if this call is a dynamic import call.
+     */
+    public boolean isImport() {
+        return (flags & IS_IMPORT) != 0;
     }
 }
