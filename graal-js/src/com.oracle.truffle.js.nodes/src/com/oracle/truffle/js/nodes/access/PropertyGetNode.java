@@ -640,10 +640,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
      */
     public static final class CheckNoSuchPropertyNode extends LinkedPropertyGetNode {
         private final JSContext context;
-        @Child private PropertyGetNode getNoSuchProperty;
-        @Child private PropertyGetNode getNoSuchMethod;
-        @Child private JSHasPropertyNode hasProperty;
-        @Child private JSFunctionCallNode callNoSuch;
+        @Child private PropertyGetNode getNoSuchPropertyNode;
+        @Child private PropertyGetNode getNoSuchMethodNode;
+        @Child private JSHasPropertyNode hasPropertyNode;
+        @Child private JSFunctionCallNode callNoSuchNode;
 
         public CheckNoSuchPropertyNode(Object key, ReceiverCheckNode receiverCheck, JSContext context) {
             super(receiverCheck);
@@ -694,35 +694,35 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         public PropertyGetNode getNoSuchProperty() {
-            if (getNoSuchProperty == null) {
+            if (getNoSuchPropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getNoSuchProperty = insert(PropertyGetNode.create(JSObject.NO_SUCH_PROPERTY_NAME, context));
+                getNoSuchPropertyNode = insert(PropertyGetNode.create(JSObject.NO_SUCH_PROPERTY_NAME, context));
             }
-            return getNoSuchProperty;
+            return getNoSuchPropertyNode;
         }
 
         public PropertyGetNode getNoSuchMethod() {
-            if (getNoSuchMethod == null) {
+            if (getNoSuchMethodNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getNoSuchMethod = insert(PropertyGetNode.create(JSObject.NO_SUCH_METHOD_NAME, context));
+                getNoSuchMethodNode = insert(PropertyGetNode.create(JSObject.NO_SUCH_METHOD_NAME, context));
             }
-            return getNoSuchMethod;
+            return getNoSuchMethodNode;
         }
 
         public JSHasPropertyNode getHasProperty() {
-            if (hasProperty == null) {
+            if (hasPropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                hasProperty = insert(JSHasPropertyNode.create());
+                hasPropertyNode = insert(JSHasPropertyNode.create());
             }
-            return hasProperty;
+            return hasPropertyNode;
         }
 
         public JSFunctionCallNode getCallNoSuch() {
-            if (callNoSuch == null) {
+            if (callNoSuchNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNoSuch = insert(JSFunctionCallNode.createCall());
+                callNoSuchNode = insert(JSFunctionCallNode.createCall());
             }
-            return callNoSuch;
+            return callNoSuchNode;
         }
     }
 
@@ -847,14 +847,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class ForeignPropertyGetNode extends LinkedPropertyGetNode {
 
-        @Child private Node isNull;
-        @Child private Node keyInfo;
-        @Child private Node read;
-        @Child private Node hasSize;
-        @Child private Node getSize;
-        @Child private Node getterKeyInfo;
-        @Child private Node getterInvoke;
-        @Child private JSForeignToJSTypeNode toJSType;
+        @Child private Node isNullNode;
+        @Child private Node keyInfoNode;
+        @Child private Node readNode;
+        @Child private Node hasSizeNode;
+        @Child private Node getSizeNode;
+        @Child private Node getterKeyInfoNode;
+        @Child private Node getterInvokeNode;
+        @Child private JSForeignToJSTypeNode toJSTypeNode;
         @Child private PropertyGetNode getFromArrayPrototypeNode;
         private final boolean isLength;
         private final boolean isMethod;
@@ -865,9 +865,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal, JSContext context) {
             super(new ForeignLanguageCheckNode());
             this.context = context;
-            this.isNull = Message.IS_NULL.createNode();
-            this.read = Message.READ.createNode();
-            this.toJSType = JSForeignToJSTypeNodeGen.create();
+            this.isNullNode = Message.IS_NULL.createNode();
+            this.readNode = Message.READ.createNode();
+            this.toJSTypeNode = JSForeignToJSTypeNodeGen.create();
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
             this.isGlobal = isGlobal;
@@ -875,13 +875,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         private Object foreignGet(TruffleObject thisObj, PropertyGetNode root) {
             Object key = root.getKey();
-            if (ForeignAccess.sendIsNull(isNull, thisObj)) {
+            if (ForeignAccess.sendIsNull(isNullNode, thisObj)) {
                 throw Errors.createTypeErrorCannotGetProperty(key, thisObj, isMethod, this);
             }
             Object foreignResult;
             if (optimistic) {
                 try {
-                    foreignResult = ForeignAccess.sendRead(read, thisObj, key);
+                    foreignResult = ForeignAccess.sendRead(readNode, thisObj, key);
                 } catch (UnknownIdentifierException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     optimistic = false;
@@ -894,13 +894,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return Undefined.instance;
                 }
             } else {
-                if (keyInfo == null) {
+                if (keyInfoNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    keyInfo = insert(Message.KEY_INFO.createNode());
+                    keyInfoNode = insert(Message.KEY_INFO.createNode());
                 }
-                if (KeyInfo.isReadable(ForeignAccess.sendKeyInfo(keyInfo, thisObj, key))) {
+                if (KeyInfo.isReadable(ForeignAccess.sendKeyInfo(keyInfoNode, thisObj, key))) {
                     try {
-                        foreignResult = ForeignAccess.sendRead(read, thisObj, key);
+                        foreignResult = ForeignAccess.sendRead(readNode, thisObj, key);
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                         return Undefined.instance;
                     }
@@ -910,7 +910,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return maybeGetFromPrototype(thisObj, key);
                 }
             }
-            return toJSType.executeWithTarget(foreignResult);
+            return toJSTypeNode.executeWithTarget(foreignResult);
         }
 
         private Object maybeGetFromPrototype(TruffleObject thisObj, Object key) {
@@ -948,19 +948,19 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (getterKey == null) {
                 return null;
             }
-            if (getterKeyInfo == null) {
+            if (getterKeyInfoNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterKeyInfo = insert(Message.KEY_INFO.createNode());
+                getterKeyInfoNode = insert(Message.KEY_INFO.createNode());
             }
-            if (!KeyInfo.isInvocable(ForeignAccess.sendKeyInfo(getterKeyInfo, thisObj, getterKey))) {
+            if (!KeyInfo.isInvocable(ForeignAccess.sendKeyInfo(getterKeyInfoNode, thisObj, getterKey))) {
                 return null;
             }
-            if (getterInvoke == null) {
+            if (getterInvokeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterInvoke = insert(Message.INVOKE.createNode());
+                getterInvokeNode = insert(Message.INVOKE.createNode());
             }
             try {
-                return ForeignAccess.sendInvoke(getterInvoke, thisObj, getterKey, new Object[]{});
+                return ForeignAccess.sendInvoke(getterInvokeNode, thisObj, getterKey, new Object[]{});
             } catch (UnknownIdentifierException e) {
                 return null;
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
@@ -969,24 +969,24 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         private Object getSize(TruffleObject thisObj) {
-            if (getSize == null) {
+            if (getSizeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.getSize = insert(Message.GET_SIZE.createNode());
+                this.getSizeNode = insert(Message.GET_SIZE.createNode());
             }
             try {
-                Object foreignResult = ForeignAccess.sendGetSize(getSize, thisObj);
-                return toJSType.executeWithTarget(foreignResult);
+                Object foreignResult = ForeignAccess.sendGetSize(getSizeNode, thisObj);
+                return toJSTypeNode.executeWithTarget(foreignResult);
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(thisObj, e, Message.GET_SIZE, this);
             }
         }
 
         private boolean hasSizeProperty(TruffleObject thisObj) {
-            if (hasSize == null) {
+            if (hasSizeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.hasSize = insert(Message.HAS_SIZE.createNode());
+                this.hasSizeNode = insert(Message.HAS_SIZE.createNode());
             }
-            return ForeignAccess.sendHasSize(hasSize, thisObj);
+            return ForeignAccess.sendHasSize(hasSizeNode, thisObj);
         }
 
         @Override

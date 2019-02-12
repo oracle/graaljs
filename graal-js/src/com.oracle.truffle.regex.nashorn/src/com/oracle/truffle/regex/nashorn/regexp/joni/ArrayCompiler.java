@@ -394,11 +394,6 @@ final class ArrayCompiler extends Compiler {
 
     private static final int QUANTIFIER_EXPAND_LIMIT_SIZE   = 50; // was 50
 
-    @SuppressWarnings("unused")
-    private static boolean cknOn(final int ckn) {
-        return ckn > 0;
-    }
-
     private void addMemoryClear(final Range clearCaptureGroups) {
         if (!clearCaptureGroups.empty) {
             addOpcode(OPCode.MEMORY_CLEAR);
@@ -999,11 +994,6 @@ final class ArrayCompiler extends Compiler {
         default:
             break;
         }
-    }
-
-    @SuppressWarnings("unused")
-    private void addStateCheckNum(final int num) {
-        addInt(num);
     }
 
     private void addRelAddr(final int addr) {

@@ -109,28 +109,28 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class PromiseAllOrRaceNode extends JSBuiltinNode {
-        @Child private NewPromiseCapabilityNode newPromiseCapability;
-        @Child private GetIteratorNode getIterator;
-        @Child private PerformPromiseAllOrRaceNode performPromiseOp;
-        @Child private JSFunctionCallNode callReject;
-        @Child private IteratorCloseNode iteratorClose;
+        @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+        @Child private GetIteratorNode getIteratorNode;
+        @Child private PerformPromiseAllOrRaceNode performPromiseOpNode;
+        @Child private JSFunctionCallNode callRejectNode;
+        @Child private IteratorCloseNode iteratorCloseNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
         private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
         protected PromiseAllOrRaceNode(JSContext context, JSBuiltin builtin, PerformPromiseAllOrRaceNode performPromiseOp) {
             super(context, builtin);
-            this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
-            this.getIterator = GetIteratorNode.create(context);
-            this.performPromiseOp = performPromiseOp;
+            this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
+            this.getIteratorNode = GetIteratorNode.create(context);
+            this.performPromiseOpNode = performPromiseOp;
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
         protected DynamicObject doObject(DynamicObject thisObj, Object iterable) {
             DynamicObject constructor = thisObj;
-            PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(constructor);
+            PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(constructor);
             IteratorRecord iteratorRecord;
             try {
-                iteratorRecord = getIterator.execute(iterable);
+                iteratorRecord = getIteratorNode.execute(iterable);
             } catch (Throwable ex) {
                 if (shouldCatch(ex)) {
                     return rejectPromise(getErrorObjectNode.execute(ex), promiseCapability);
@@ -139,7 +139,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
             }
             try {
-                return performPromiseOp.execute(iteratorRecord, constructor, promiseCapability);
+                return performPromiseOpNode.execute(iteratorRecord, constructor, promiseCapability);
             } catch (Throwable ex) {
                 if (shouldCatch(ex)) {
                     if (!iteratorRecord.isDone()) {
@@ -153,20 +153,20 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         protected DynamicObject rejectPromise(Object value, PromiseCapabilityRecord promiseCapability) {
-            if (callReject == null) {
+            if (callRejectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                callReject = insert(JSFunctionCallNode.createCall());
+                callRejectNode = insert(JSFunctionCallNode.createCall());
             }
-            callReject.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), value));
+            callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), value));
             return promiseCapability.getPromise();
         }
 
         private void iteratorClose(IteratorRecord iteratorRecord) {
-            if (iteratorClose == null) {
+            if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorClose = insert(IteratorCloseNode.create(getContext()));
+                iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
-            iteratorClose.executeAbrupt(iteratorRecord.getIterator());
+            iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
         }
 
         private boolean shouldCatch(Throwable exception) {

@@ -442,7 +442,7 @@ public class Deserializer {
         } else {
             TypedArrayFactory factory = tag.getFactory();
             TypedArray array = factory.createArrayType(true, offset != 0);
-            int length = byteLength / factory.bytesPerElement();
+            int length = byteLength / factory.getBytesPerElement();
             view = JSArrayBufferView.createArrayBufferView(context, arrayBuffer, array, offset, length);
         }
         return assignId(view);

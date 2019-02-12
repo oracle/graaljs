@@ -75,15 +75,14 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child protected JavaScriptNode expression;
     @Child protected JSReadFrameSlotNode readAsyncResultNode;
     @Child protected JSReadFrameSlotNode readAsyncContextNode;
-    @Child private NewPromiseCapabilityNode newPromiseCapability;
+    @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private PerformPromiseThenNode performPromiseThenNode;
     @Child private PromiseResolveNode promiseResolveNode;
     @Child private JSFunctionCallNode callPromiseResolveNode;
-    @Child private JSFunctionCallNode callPerformPromiseThen;
-    @Child private PropertySetNode setPromiseIsHandled;
-    @Child private PropertySetNode setAsyncContext;
-    @Child private PropertySetNode setAsyncTarget;
-    @Child private PropertySetNode setAsyncGenerator;
+    @Child private PropertySetNode setPromiseIsHandledNode;
+    @Child private PropertySetNode setAsyncContextNode;
+    @Child private PropertySetNode setAsyncTargetNode;
+    @Child private PropertySetNode setAsyncGeneratorNode;
     protected final JSContext context;
     private final ConditionProfile asyncTypeProf = ConditionProfile.createBinaryProfile();
     private final ConditionProfile resumptionTypeProf = ConditionProfile.createBinaryProfile();
@@ -98,9 +97,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         this.readAsyncResultNode = readAsyncResultNode;
         this.readAsyncContextNode = readAsyncContextNode;
 
-        this.setAsyncContext = PropertySetNode.createSetHidden(ASYNC_CONTEXT, context);
-        this.setAsyncTarget = PropertySetNode.createSetHidden(ASYNC_TARGET, context);
-        this.setAsyncGenerator = PropertySetNode.createSetHidden(ASYNC_GENERATOR, context);
+        this.setAsyncContextNode = PropertySetNode.createSetHidden(ASYNC_CONTEXT, context);
+        this.setAsyncTargetNode = PropertySetNode.createSetHidden(ASYNC_TARGET, context);
+        this.setAsyncGeneratorNode = PropertySetNode.createSetHidden(ASYNC_GENERATOR, context);
 
         this.performPromiseThenNode = PerformPromiseThenNode.create(context);
         if (context.usePromiseResolve()) {
@@ -156,12 +155,12 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
             return null;
         }
-        if (setPromiseIsHandled == null) {
+        if (setPromiseIsHandledNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setPromiseIsHandled = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context));
+            setPromiseIsHandledNode = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context));
         }
         PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
-        setPromiseIsHandled.setValueBoolean(throwawayCapability.getPromise(), true);
+        setPromiseIsHandledNode.setValueBoolean(throwawayCapability.getPromise(), true);
         return throwawayCapability;
     }
 
@@ -191,19 +190,19 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     private PromiseCapabilityRecord newPromiseCapability() {
-        if (newPromiseCapability == null) {
+        if (newPromiseCapabilityNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            newPromiseCapability = insert(NewPromiseCapabilityNode.create(context));
+            newPromiseCapabilityNode = insert(NewPromiseCapabilityNode.create(context));
         }
-        return newPromiseCapability.executeDefault();
+        return newPromiseCapabilityNode.executeDefault();
     }
 
     private DynamicObject createAwaitFulfilledFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AwaitFulfilled, (c) -> createAwaitFulfilledImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
-        setAsyncTarget.setValue(function, resumeTarget);
-        setAsyncContext.setValue(function, asyncContext);
-        setAsyncGenerator.setValue(function, generator);
+        setAsyncTargetNode.setValue(function, resumeTarget);
+        setAsyncContextNode.setValue(function, asyncContext);
+        setAsyncGeneratorNode.setValue(function, generator);
         return function;
     }
 
@@ -232,26 +231,26 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     private DynamicObject createAwaitRejectedFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AwaitRejected, (c) -> createAwaitRejectedImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
-        setAsyncTarget.setValue(function, resumeTarget);
-        setAsyncContext.setValue(function, asyncContext);
-        setAsyncGenerator.setValue(function, generator);
+        setAsyncTargetNode.setValue(function, resumeTarget);
+        setAsyncContextNode.setValue(function, asyncContext);
+        setAsyncGeneratorNode.setValue(function, generator);
         return function;
     }
 
     private static JSFunctionData createAwaitRejectedImpl(JSContext context) {
         class AwaitRejectedRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode reasonNode = AccessIndexedArgumentNode.create(0);
-            @Child private PropertyGetNode getAsyncTarget = PropertyGetNode.createGetHidden(ASYNC_TARGET, context);
-            @Child private PropertyGetNode getAsyncContext = PropertyGetNode.createGetHidden(ASYNC_CONTEXT, context);
-            @Child private PropertyGetNode getAsyncGenerator = PropertyGetNode.createGetHidden(ASYNC_GENERATOR, context);
+            @Child private PropertyGetNode getAsyncTargetNode = PropertyGetNode.createGetHidden(ASYNC_TARGET, context);
+            @Child private PropertyGetNode getAsyncContextNode = PropertyGetNode.createGetHidden(ASYNC_CONTEXT, context);
+            @Child private PropertyGetNode getAsyncGeneratorNode = PropertyGetNode.createGetHidden(ASYNC_GENERATOR, context);
             @Child private AwaitResumeNode awaitResumeNode = AwaitResumeNode.create(true);
 
             @Override
             public Object execute(VirtualFrame frame) {
                 DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                CallTarget asyncTarget = (CallTarget) getAsyncTarget.getValue(functionObject);
-                Object asyncContext = getAsyncContext.getValue(functionObject);
-                Object generator = getAsyncGenerator.getValue(functionObject);
+                CallTarget asyncTarget = (CallTarget) getAsyncTargetNode.getValue(functionObject);
+                Object asyncContext = getAsyncContextNode.getValue(functionObject);
+                Object generator = getAsyncGeneratorNode.getValue(functionObject);
                 Object reason = reasonNode.execute(frame);
                 return awaitResumeNode.execute(asyncTarget, asyncContext, generator, reason);
             }

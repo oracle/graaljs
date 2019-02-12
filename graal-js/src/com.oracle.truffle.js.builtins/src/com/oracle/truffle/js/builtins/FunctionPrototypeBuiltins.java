@@ -401,16 +401,16 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public abstract static class JSCallNode extends JSBuiltinNode {
 
-        @Child private JSFunctionCallNode call;
+        @Child private JSFunctionCallNode callNode;
 
         public JSCallNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.call = JSFunctionCallNode.createCall();
+            this.callNode = JSFunctionCallNode.createCall();
         }
 
         @Specialization
         protected Object call(Object function, Object target, Object[] args) {
-            return call.executeCall(JSArguments.create(target, function, args));
+            return callNode.executeCall(JSArguments.create(target, function, args));
         }
 
     }

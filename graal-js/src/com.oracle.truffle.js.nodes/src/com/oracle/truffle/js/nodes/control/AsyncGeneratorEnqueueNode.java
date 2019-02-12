@@ -64,21 +64,21 @@ import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
-    @Child private PropertyGetNode getGeneratorState;
+    @Child private PropertyGetNode getGeneratorStateNode;
     @Child private PropertyGetNode getAsyncGeneratorQueueNode;
-    @Child private HasHiddenKeyCacheNode hasAsyncGeneratorInternalSlots;
+    @Child private HasHiddenKeyCacheNode hasAsyncGeneratorInternalSlotsNode;
     @Child private JSFunctionCallNode callPromiseRejectNode;
-    @Child private NewPromiseCapabilityNode newPromiseCapability;
+    @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
     private final ConditionProfile notExecutingProf = ConditionProfile.createBinaryProfile();
     private final JSContext context;
 
     protected AsyncGeneratorEnqueueNode(JSContext context) {
         this.context = context;
-        this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
+        this.getGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
         this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
-        this.hasAsyncGeneratorInternalSlots = HasHiddenKeyCacheNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
-        this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
+        this.hasAsyncGeneratorInternalSlotsNode = HasHiddenKeyCacheNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
+        this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
         this.asyncGeneratorResumeNextNode = AsyncGeneratorResumeNextNode.create(context);
     }
 
@@ -89,14 +89,14 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     @SuppressWarnings("unchecked")
     public Object execute(VirtualFrame frame, Object generator, Completion completion) {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
-        if (!JSGuards.isJSObject(generator) || !hasAsyncGeneratorInternalSlots.executeHasHiddenKey(generator)) {
+        if (!JSGuards.isJSObject(generator) || !hasAsyncGeneratorInternalSlotsNode.executeHasHiddenKey(generator)) {
             enterErrorBranch();
             return badGeneratorError(promiseCapability);
         }
         ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
         AsyncGeneratorRequest request = AsyncGeneratorRequest.create(completion, promiseCapability);
         queueAdd(queue, request);
-        AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorState.getValue(generator);
+        AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorStateNode.getValue(generator);
         if (notExecutingProf.profile(state != AsyncGeneratorState.Executing)) {
             asyncGeneratorResumeNextNode.execute(frame, (DynamicObject) generator);
         }
@@ -104,7 +104,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     }
 
     private PromiseCapabilityRecord newPromiseCapability() {
-        return newPromiseCapability.executeDefault();
+        return newPromiseCapabilityNode.executeDefault();
     }
 
     @TruffleBoundary

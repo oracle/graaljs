@@ -603,11 +603,11 @@ public abstract class SIMDType {
             return simdType;
         }
 
-        public int bytesPerElement() {
+        public int getBytesPerElement() {
             return bytesPerElement;
         }
 
-        public int numberOfElements() {
+        public int getNumberOfElements() {
             return numberOfElements;
         }
 

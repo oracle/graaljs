@@ -1602,8 +1602,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayToLocaleStringNode extends JSArrayOperation {
 
         private final BranchProfile sbAppendProfile = BranchProfile.create();
-        @Child private PropertyGetNode getToLocaleString;
-        @Child private JSFunctionCallNode callToLocaleString;
+        @Child private PropertyGetNode getToLocaleStringNode;
+        @Child private JSFunctionCallNode callToLocaleStringNode;
 
         public JSArrayToLocaleStringNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -1636,15 +1636,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private Object callToLocaleString(Object nextElement, Object[] userArguments) {
-            if (getToLocaleString == null) {
+            if (getToLocaleStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getToLocaleString = insert(PropertyGetNode.create("toLocaleString", false, getContext()));
-                callToLocaleString = insert(JSFunctionCallNode.createCall());
+                getToLocaleStringNode = insert(PropertyGetNode.create("toLocaleString", false, getContext()));
+                callToLocaleStringNode = insert(JSFunctionCallNode.createCall());
             }
 
-            Object toLocaleString = getToLocaleString.getValue(nextElement);
+            Object toLocaleString = getToLocaleStringNode.getValue(nextElement);
             JSFunction.checkIsFunction(toLocaleString);
-            return callToLocaleString.executeCall(JSArguments.create(nextElement, toLocaleString, userArguments));
+            return callToLocaleStringNode.executeCall(JSArguments.create(nextElement, toLocaleString, userArguments));
         }
     }
 

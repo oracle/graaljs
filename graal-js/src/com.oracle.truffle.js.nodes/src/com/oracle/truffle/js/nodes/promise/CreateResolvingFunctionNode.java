@@ -79,13 +79,13 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
     static final HiddenKey THEN_KEY = new HiddenKey("then");
 
     private final JSContext context;
-    @Child private PropertySetNode setAlreadyResolved;
-    @Child private PropertySetNode setPromise;
+    @Child private PropertySetNode setAlreadyResolvedNode;
+    @Child private PropertySetNode setPromiseNode;
 
     protected CreateResolvingFunctionNode(JSContext context) {
         this.context = context;
-        this.setAlreadyResolved = PropertySetNode.createSetHidden(ALREADY_RESOLVED_KEY, context);
-        this.setPromise = PropertySetNode.createSetHidden(PROMISE_KEY, context);
+        this.setAlreadyResolvedNode = PropertySetNode.createSetHidden(ALREADY_RESOLVED_KEY, context);
+        this.setPromiseNode = PropertySetNode.createSetHidden(PROMISE_KEY, context);
     }
 
     public static CreateResolvingFunctionNode create(JSContext context) {
@@ -102,36 +102,36 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
     private DynamicObject createPromiseResolveFunction(DynamicObject promise, AlreadyResolved alreadyResolved) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseResolveFunction, (c) -> createPromiseResolveFunctionImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
-        setPromise.setValue(function, promise);
-        setAlreadyResolved.setValue(function, alreadyResolved);
+        setPromiseNode.setValue(function, promise);
+        setAlreadyResolvedNode.setValue(function, alreadyResolved);
         return function;
     }
 
     private static JSFunctionData createPromiseResolveFunctionImpl(JSContext context) {
         class PromiseResolveRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode resolutionNode = AccessIndexedArgumentNode.create(0);
-            @Child private PropertyGetNode getPromise;
-            @Child private PropertyGetNode getAlreadyResolved = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
-            @Child private PropertyGetNode getThen;
-            @Child private IsCallableNode isCallable = IsCallableNode.create();
+            @Child private PropertyGetNode getPromiseNode;
+            @Child private PropertyGetNode getAlreadyResolvedNode = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
+            @Child private PropertyGetNode getThenNode;
+            @Child private IsCallableNode isCallableNode = IsCallableNode.create();
             @Child private IsObjectNode isObjectNode = IsObjectNode.create();
-            @Child private FulfillPromiseNode fulfillPromise;
-            @Child private RejectPromiseNode rejectPromise;
+            @Child private FulfillPromiseNode fulfillPromiseNode;
+            @Child private RejectPromiseNode rejectPromiseNode;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
             private final ValueProfile typeProfile = ValueProfile.createClassProfile();
             private final ConditionProfile alreadyResolvedProfile = ConditionProfile.createBinaryProfile();
 
             // PromiseResolveThenableJob
-            @Child private PropertySetNode setPromise;
-            @Child private PropertySetNode setThenable;
-            @Child private PropertySetNode setThen;
+            @Child private PropertySetNode setPromiseNode;
+            @Child private PropertySetNode setThenableNode;
+            @Child private PropertySetNode setThenNode;
 
             @Override
             public Object execute(VirtualFrame frame) {
                 DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
                 DynamicObject promise = (DynamicObject) getPromise(functionObject);
                 Object resolution = resolutionNode.execute(frame);
-                AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolved.getValue(functionObject);
+                AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolvedNode.getValue(functionObject);
                 if (alreadyResolvedProfile.profile(alreadyResolved.value)) {
                     context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_RESOLVE_AFTER_RESOLVED, resolution);
                     return Undefined.instance;
@@ -157,7 +157,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                         throw ex;
                     }
                 }
-                if (!isCallable.executeBoolean(then)) {
+                if (!isCallableNode.executeBoolean(then)) {
                     return fulfillPromise(promise, resolution);
                 }
                 DynamicObject job = promiseResolveThenableJob(promise, resolution, then);
@@ -166,54 +166,54 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             }
 
             private Object fulfillPromise(DynamicObject promise, Object resolution) {
-                if (fulfillPromise == null) {
+                if (fulfillPromiseNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    fulfillPromise = insert(FulfillPromiseNode.create(context));
+                    fulfillPromiseNode = insert(FulfillPromiseNode.create(context));
                 }
-                return fulfillPromise.execute(promise, resolution);
+                return fulfillPromiseNode.execute(promise, resolution);
             }
 
             private Object getThen(Object resolution) {
-                if (getThen == null) {
+                if (getThenNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getThen = insert(PropertyGetNode.create(JSPromise.THEN, false, context));
+                    getThenNode = insert(PropertyGetNode.create(JSPromise.THEN, false, context));
                 }
-                return getThen.getValue(resolution);
+                return getThenNode.getValue(resolution);
             }
 
             private Object getPromise(DynamicObject functionObject) {
-                if (getPromise == null) {
+                if (getPromiseNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getPromise = insert(PropertyGetNode.createGetHidden(PROMISE_KEY, context));
+                    getPromiseNode = insert(PropertyGetNode.createGetHidden(PROMISE_KEY, context));
                 }
-                return getPromise.getValue(functionObject);
+                return getPromiseNode.getValue(functionObject);
             }
 
             private Object rejectPromise(DynamicObject promise, Throwable exception) {
                 Object error = getErrorObjectNode.execute(exception);
-                return rejectPromise.execute(promise, error);
+                return rejectPromiseNode.execute(promise, error);
             }
 
             private void enterErrorBranch() {
-                if (rejectPromise == null || getErrorObjectNode == null) {
+                if (rejectPromiseNode == null || getErrorObjectNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    rejectPromise = insert(RejectPromiseNode.create(context));
+                    rejectPromiseNode = insert(RejectPromiseNode.create(context));
                     getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
                 }
             }
 
             private DynamicObject promiseResolveThenableJob(DynamicObject promise, Object thenable, Object then) {
-                if (setPromise == null || setThenable == null || setThen == null) {
+                if (setPromiseNode == null || setThenableNode == null || setThenNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setPromise = insert(PropertySetNode.createSetHidden(PROMISE_KEY, context));
-                    setThenable = insert(PropertySetNode.createSetHidden(THENABLE_KEY, context));
-                    setThen = insert(PropertySetNode.createSetHidden(THEN_KEY, context));
+                    setPromiseNode = insert(PropertySetNode.createSetHidden(PROMISE_KEY, context));
+                    setThenableNode = insert(PropertySetNode.createSetHidden(THENABLE_KEY, context));
+                    setThenNode = insert(PropertySetNode.createSetHidden(THEN_KEY, context));
                 }
                 JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseResolveThenableJob, (c) -> createPromiseResolveThenableJobImpl(c));
                 DynamicObject function = JSFunction.create(context.getRealm(), functionData);
-                setPromise.setValue(function, promise);
-                setThenable.setValue(function, thenable);
-                setThen.setValue(function, then);
+                setPromiseNode.setValue(function, promise);
+                setThenableNode.setValue(function, thenable);
+                setThenNode.setValue(function, then);
                 return function;
             }
         }
@@ -223,17 +223,17 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
     private static JSFunctionData createPromiseResolveThenableJobImpl(JSContext context) {
         class PromiseResolveThenableJob extends JavaScriptRootNode {
-            @Child private PropertyGetNode getPromiseToResolve = PropertyGetNode.createGetHidden(PROMISE_KEY, context);
-            @Child private PropertyGetNode getThenable = PropertyGetNode.createGetHidden(THENABLE_KEY, context);
-            @Child private PropertyGetNode getThen = PropertyGetNode.createGetHidden(THEN_KEY, context);
+            @Child private PropertyGetNode getPromiseToResolveNode = PropertyGetNode.createGetHidden(PROMISE_KEY, context);
+            @Child private PropertyGetNode getThenableNode = PropertyGetNode.createGetHidden(THENABLE_KEY, context);
+            @Child private PropertyGetNode getThenNode = PropertyGetNode.createGetHidden(THEN_KEY, context);
             @Child private PromiseResolveThenableNode promiseResolveThenable = PromiseResolveThenableNode.create(context);
 
             @Override
             public Object execute(VirtualFrame frame) {
                 DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                DynamicObject promiseToResolve = (DynamicObject) getPromiseToResolve.getValue(functionObject);
-                Object thenable = getThenable.getValue(functionObject);
-                Object then = getThen.getValue(functionObject);
+                DynamicObject promiseToResolve = (DynamicObject) getPromiseToResolveNode.getValue(functionObject);
+                Object thenable = getThenableNode.getValue(functionObject);
+                Object then = getThenNode.getValue(functionObject);
                 return promiseResolveThenable.execute(promiseToResolve, thenable, then);
             }
         }
@@ -244,40 +244,40 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
     private DynamicObject createPromiseRejectFunction(DynamicObject promise, AlreadyResolved alreadyResolved) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseRejectFunction, (c) -> createPromiseRejectFunctionImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
-        setPromise.setValue(function, promise);
-        setAlreadyResolved.setValue(function, alreadyResolved);
+        setPromiseNode.setValue(function, promise);
+        setAlreadyResolvedNode.setValue(function, alreadyResolved);
         return function;
     }
 
     private static JSFunctionData createPromiseRejectFunctionImpl(JSContext context) {
         class PromiseRejectRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode reasonNode;
-            @Child private PropertyGetNode getPromise;
-            @Child private PropertyGetNode getAlreadyResolved = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
-            @Child private RejectPromiseNode rejectPromise;
+            @Child private PropertyGetNode getPromiseNode;
+            @Child private PropertyGetNode getAlreadyResolvedNode = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
+            @Child private RejectPromiseNode rejectPromiseNode;
             private final ConditionProfile alreadyResolvedProfile = ConditionProfile.createBinaryProfile();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 init();
                 DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                DynamicObject promise = (DynamicObject) getPromise.getValue(functionObject);
+                DynamicObject promise = (DynamicObject) getPromiseNode.getValue(functionObject);
                 Object reason = reasonNode.execute(frame);
-                AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolved.getValue(functionObject);
+                AlreadyResolved alreadyResolved = (AlreadyResolved) getAlreadyResolvedNode.getValue(functionObject);
                 if (alreadyResolvedProfile.profile(alreadyResolved.value)) {
                     context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_REJECT_AFTER_RESOLVED, reason);
                     return Undefined.instance;
                 }
                 alreadyResolved.value = true;
 
-                return rejectPromise.execute(promise, reason);
+                return rejectPromiseNode.execute(promise, reason);
             }
 
             public void init() {
-                if (reasonNode == null || getPromise == null || rejectPromise == null) {
+                if (reasonNode == null || getPromiseNode == null || rejectPromiseNode == null) {
                     reasonNode = insert(AccessIndexedArgumentNode.create(0));
-                    getPromise = insert(PropertyGetNode.createGetHidden(PROMISE_KEY, context));
-                    rejectPromise = insert(RejectPromiseNode.create(context));
+                    getPromiseNode = insert(PropertyGetNode.createGetHidden(PROMISE_KEY, context));
+                    rejectPromiseNode = insert(RejectPromiseNode.create(context));
                 }
             }
         }

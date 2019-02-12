@@ -967,7 +967,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             AbstractDoubleArray doubleArray = (AbstractDoubleArray) cast(array);
-            double doubleValue = 0.0; // dummy
+            double doubleValue;
             if (value instanceof Double) {
                 doubleValueBranch.enter();
                 doubleValue = (double) value;
@@ -1185,7 +1185,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             HolesDoubleArray holesDoubleArray = (HolesDoubleArray) cast(array);
-            double doubleValue = 0.0; // dummy
+            double doubleValue;
             if (value instanceof Double) {
                 doubleValueBranch.enter();
                 doubleValue = (double) value;
@@ -1391,7 +1391,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class Uint8ClampedArrayWriteElementCacheNode extends AbstractTypedIntArrayWriteElementCacheNode {
-        private final ConditionProfile toInt = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile toIntProfile = ConditionProfile.createBinaryProfile();
         @Child private JSToDoubleNode toDoubleNode;
 
         Uint8ClampedArrayWriteElementCacheNode(JSContext context, boolean isStrict, ScriptArray arrayType, boolean writeOwn, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1400,7 +1400,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected int toInt(Object value) {
-            if (toInt.profile(value instanceof Integer)) {
+            if (toIntProfile.profile(value instanceof Integer)) {
                 return (int) value;
             } else {
                 double doubleValue = toDouble(value);
@@ -1418,7 +1418,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class Uint32ArrayWriteElementCacheNode extends AbstractTypedIntArrayWriteElementCacheNode {
-        private final ConditionProfile toInt = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile toIntProfile = ConditionProfile.createBinaryProfile();
         @Child private JSToNumberNode toNumberNode;
 
         Uint32ArrayWriteElementCacheNode(JSContext context, boolean isStrict, ScriptArray arrayType, boolean writeOwn, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1427,7 +1427,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected int toInt(Object value) {
-            if (toInt.profile(value instanceof Integer)) {
+            if (toIntProfile.profile(value instanceof Integer)) {
                 return (int) value;
             } else {
                 return (int) JSRuntime.toUInt32(toNumber(value));

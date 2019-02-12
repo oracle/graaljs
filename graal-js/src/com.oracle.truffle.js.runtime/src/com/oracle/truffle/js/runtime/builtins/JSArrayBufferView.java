@@ -402,9 +402,9 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         DynamicObject arrayBufferViewConstructor = realm.lookupFunction(JSConstructor.BUILTINS, factory.getName());
         JSObject.setPrototype(arrayBufferViewConstructor, taConstructor.getFunctionObject());
 
-        DynamicObject arrayBufferViewPrototype = createArrayBufferViewPrototype(realm, arrayBufferViewConstructor, factory.bytesPerElement(), factory, taConstructor.getPrototype());
+        DynamicObject arrayBufferViewPrototype = createArrayBufferViewPrototype(realm, arrayBufferViewConstructor, factory.getBytesPerElement(), factory, taConstructor.getPrototype());
         JSObjectUtil.putConstructorPrototypeProperty(ctx, arrayBufferViewConstructor, arrayBufferViewPrototype);
-        JSObjectUtil.putDataProperty(ctx, arrayBufferViewConstructor, BYTES_PER_ELEMENT, factory.bytesPerElement(), JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSObjectUtil.putDataProperty(ctx, arrayBufferViewConstructor, BYTES_PER_ELEMENT, factory.getBytesPerElement(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         putConstructorSpeciesGetter(realm, arrayBufferViewConstructor);
         return new JSConstructor(arrayBufferViewConstructor, arrayBufferViewPrototype);
     }

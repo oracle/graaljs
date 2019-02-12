@@ -1451,38 +1451,38 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     static class TruffleObjectReadElementTypeCacheNode extends CachedReadElementTypeCacheNode {
         private final Class<? extends TruffleObject> targetClass;
 
-        @Child private Node foreignIsNull;
-        @Child private Node foreignArrayAccess;
-        @Child private ExportValueNode exportKey;
-        @Child private JSForeignToJSTypeNode toJSType;
-        @Child private Node hasSize;
-        @Child private Node getSize;
-        @Child private Node getterKeyInfo;
-        @Child private Node getterInvoke;
+        @Child private Node foreignIsNullNode;
+        @Child private Node foreignArrayAccessNode;
+        @Child private ExportValueNode exportKeyNode;
+        @Child private JSForeignToJSTypeNode toJSTypeNode;
+        @Child private Node hasSizeNode;
+        @Child private Node getSizeNode;
+        @Child private Node getterKeyInfoNode;
+        @Child private Node getterInvokeNode;
         @Child private ReadElementNode readFromPrototypeNode;
 
         TruffleObjectReadElementTypeCacheNode(JSContext context, Class<? extends TruffleObject> targetClass) {
             super(context);
             this.targetClass = targetClass;
-            this.exportKey = ExportValueNodeGen.create(context);
-            this.foreignIsNull = Message.IS_NULL.createNode();
-            this.foreignArrayAccess = Message.READ.createNode();
-            this.toJSType = JSForeignToJSTypeNodeGen.create();
+            this.exportKeyNode = ExportValueNodeGen.create(context);
+            this.foreignIsNullNode = Message.IS_NULL.createNode();
+            this.foreignArrayAccessNode = Message.READ.createNode();
+            this.toJSTypeNode = JSForeignToJSTypeNodeGen.create();
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index) {
             TruffleObject truffleObject = targetClass.cast(target);
-            if (ForeignAccess.sendIsNull(foreignIsNull, truffleObject)) {
+            if (ForeignAccess.sendIsNull(foreignIsNullNode, truffleObject)) {
                 throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
             }
-            Object exportedKey = exportKey.executeWithTarget(index, Undefined.instance);
+            Object exportedKey = exportKeyNode.executeWithTarget(index, Undefined.instance);
             if (exportedKey instanceof Symbol) {
                 return Undefined.instance;
             }
             Object foreignResult;
             try {
-                foreignResult = ForeignAccess.sendRead(foreignArrayAccess, truffleObject, exportedKey);
+                foreignResult = ForeignAccess.sendRead(foreignArrayAccessNode, truffleObject, exportedKey);
             } catch (UnknownIdentifierException e) {
                 if (JSAbstractArray.LENGTH.equals(exportedKey) && hasSize(truffleObject)) {
                     foreignResult = getSize(truffleObject);
@@ -1518,19 +1518,19 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (getterKey == null) {
                 return null;
             }
-            if (getterKeyInfo == null) {
+            if (getterKeyInfoNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterKeyInfo = insert(Message.KEY_INFO.createNode());
+                getterKeyInfoNode = insert(Message.KEY_INFO.createNode());
             }
-            if (!KeyInfo.isInvocable(ForeignAccess.sendKeyInfo(getterKeyInfo, thisObj, getterKey))) {
+            if (!KeyInfo.isInvocable(ForeignAccess.sendKeyInfo(getterKeyInfoNode, thisObj, getterKey))) {
                 return null;
             }
-            if (getterInvoke == null) {
+            if (getterInvokeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterInvoke = insert(Message.INVOKE.createNode());
+                getterInvokeNode = insert(Message.INVOKE.createNode());
             }
             try {
-                return ForeignAccess.sendInvoke(getterInvoke, thisObj, getterKey, new Object[]{});
+                return ForeignAccess.sendInvoke(getterInvokeNode, thisObj, getterKey, new Object[]{});
             } catch (UnknownIdentifierException e) {
                 return null;
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
@@ -1539,28 +1539,28 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         private Object toJSType(Object value) {
-            if (toJSType == null) {
+            if (toJSTypeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toJSType = insert(JSForeignToJSTypeNode.create());
+                toJSTypeNode = insert(JSForeignToJSTypeNode.create());
             }
-            return toJSType.executeWithTarget(value);
+            return toJSTypeNode.executeWithTarget(value);
         }
 
         private boolean hasSize(TruffleObject thisObj) {
-            if (hasSize == null) {
+            if (hasSizeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.hasSize = insert(Message.HAS_SIZE.createNode());
+                this.hasSizeNode = insert(Message.HAS_SIZE.createNode());
             }
-            return ForeignAccess.sendHasSize(hasSize, thisObj);
+            return ForeignAccess.sendHasSize(hasSizeNode, thisObj);
         }
 
         private Object getSize(TruffleObject thisObj) {
-            if (getSize == null) {
+            if (getSizeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.getSize = insert(Message.GET_SIZE.createNode());
+                this.getSizeNode = insert(Message.GET_SIZE.createNode());
             }
             try {
-                return ForeignAccess.sendGetSize(getSize, thisObj);
+                return ForeignAccess.sendGetSize(getSizeNode, thisObj);
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(thisObj, e, Message.GET_SIZE, this);
             }

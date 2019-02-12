@@ -82,8 +82,8 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     @Child private TypeOfNode typeOfNode;
     @Child private JSHasPropertyNode hasPropertyNode;
     @Child private PropertyGetNode getLengthPropertyNode;
-    @Child private Node foreignGet;
-    @Child private JSForeignToJSTypeNode toJSType;
+    @Child private Node foreignGetNode;
+    @Child private JSForeignToJSTypeNode toJSTypeNode;
 
     private final JSContext context;
 
@@ -186,12 +186,12 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     }
 
     private Object foreignGet(TruffleObject thisObj, String key) {
-        if (foreignGet == null) {
+        if (foreignGetNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.foreignGet = insert(Message.READ.createNode());
+            this.foreignGetNode = insert(Message.READ.createNode());
         }
         try {
-            Object foreignResult = ForeignAccess.sendRead(foreignGet, thisObj, key);
+            Object foreignResult = ForeignAccess.sendRead(foreignGetNode, thisObj, key);
             return convertToJSType(foreignResult);
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             return Null.instance;
@@ -199,11 +199,11 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     }
 
     private Object convertToJSType(Object foreinResult) {
-        if (toJSType == null) {
+        if (toJSTypeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.toJSType = insert(JSForeignToJSTypeNodeGen.create());
+            this.toJSTypeNode = insert(JSForeignToJSTypeNodeGen.create());
         }
-        return toJSType.executeWithTarget(foreinResult);
+        return toJSTypeNode.executeWithTarget(foreinResult);
     }
 
     private TruffleObject toObject(Object obj) {

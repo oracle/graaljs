@@ -249,11 +249,11 @@ public final class PrintVisitor extends NodeVisitor<LexicalContext> {
 
     @Override
     public boolean enterBinaryNode(final BinaryNode binaryNode) {
-        binaryNode.lhs().accept(this);
+        binaryNode.getLhs().accept(this);
         sb.append(' ');
         sb.append(binaryNode.tokenType());
         sb.append(' ');
-        binaryNode.rhs().accept(this);
+        binaryNode.getRhs().accept(this);
         return false;
     }
 

@@ -118,7 +118,7 @@ public class JSNodeDecoder {
         ID_NODE_SOURCE_SECTION_FIXUP,
         ID_NODE_TAGS_FIXUP;
 
-        static final Bytecode[] values = values();
+        static final Bytecode[] bcValues = values();
     }
 
     public static final int BREAK_TARGET_LABEL = 1;
@@ -141,7 +141,7 @@ public class JSNodeDecoder {
 
     public Object decodeNode(NodeDecoder.DecoderState state, NodeFactory nodeFactory, JSContext context, Source source) {
         while (state.hasRemaining()) {
-            Bytecode bc = Bytecode.values[state.getBytecode()];
+            Bytecode bc = Bytecode.bcValues[state.getBytecode()];
             switch (bc) {
                 case ID_NOP:
                     break;
