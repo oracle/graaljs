@@ -480,7 +480,7 @@ public class Lexer extends Scanner {
                 return true;
             }
         } else if (ch0 == '#') {
-            assert scripting;
+            assert shebang || scripting;
             // shell style comment
             // Skip over #.
             skip(1);
@@ -1436,7 +1436,7 @@ public class Lexer extends Scanner {
 
     /**
      * Determines if the specified character has Other_ID_Start Unicode property.
-     * 
+     *
      * @param codePoint the character to be tested.
      * @return {@code true} if the character has Other_ID_Start Unicode property,
      * {@code false} otherwise.
@@ -1466,7 +1466,7 @@ public class Lexer extends Scanner {
 
     /**
      * Determines if the specified character has Other_ID_Continue Unicode property.
-     * 
+     *
      * @param codePoint the character to be tested.
      * @return {@code true} if the character has Other_ID_Continue Unicode property,
      * {@code false} otherwise.
@@ -1862,7 +1862,7 @@ public class Lexer extends Scanner {
                 continue;
             }
 
-            if ((scripting || shebang) && ch0 == '#' && skipComments()) {
+            if (ch0 == '#' && ((ch1 == '!' && position == 0 && shebang) || scripting) && skipComments()) {
                 continue;
             }
 

@@ -292,8 +292,8 @@ public class Parser extends AbstractParser {
         this.defaultNames = new ArrayList<>();
         this.env = env;
         this.namespace = new Namespace(env.getNamespace());
-        this.scripting = env.scripting;
-        this.shebang = env.shebang;
+        this.scripting = env.scripting && env.syntaxExtensions;
+        this.shebang = env.shebang || scripting;
         if (this.scripting) {
             this.lineInfoReceiver = new Lexer.LineInfoReceiver() {
                 @Override
@@ -348,7 +348,7 @@ public class Parser extends AbstractParser {
      */
     private void prepareLexer(final int startPos, final int len) {
         stream = new TokenStream();
-        lexer  = new Lexer(source, startPos, len, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions, reparsedFunction != null);
+        lexer  = new Lexer(source, startPos, len, stream, scripting, isES6(), shebang, reparsedFunction != null);
         lexer.line = lexer.pendingLine = lineOffset + 1;
         line = lineOffset;
     }
@@ -445,7 +445,7 @@ public class Parser extends AbstractParser {
     public void parseFormalParameterList() {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions);
+            lexer  = new Lexer(source, stream, scripting, isES6(), shebang);
 
             scanFirstToken();
 
@@ -466,7 +466,7 @@ public class Parser extends AbstractParser {
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions);
+            lexer  = new Lexer(source, stream, scripting, isES6(), shebang);
             final int functionLine = line;
 
             scanFirstToken();
@@ -4672,7 +4672,7 @@ loop:
         }
 
         stream.reset();
-        lexer = parserState.createLexer(source, lexer, stream, scripting && env.syntaxExtensions, isES6(), shebang);
+        lexer = parserState.createLexer(source, lexer, stream, scripting, isES6(), shebang);
         line = parserState.line;
         linePosition = parserState.linePosition;
         // Doesn't really matter, but it's safe to treat it as if there were a semicolon before

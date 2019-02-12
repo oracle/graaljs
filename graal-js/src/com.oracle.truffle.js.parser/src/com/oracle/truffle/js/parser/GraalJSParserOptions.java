@@ -65,7 +65,7 @@ public final class GraalJSParserOptions implements ParserOptions {
     private static final String SCRIPTING_HELP = "enable scripting features (Nashorn compatibility option)";
 
     public static final String SHEBANG_NAME = JS_OPTION_PREFIX + "shebang";
-    private static final OptionKey<Boolean> SHEBANG = new OptionKey<>(true);
+    private static final OptionKey<Boolean> SHEBANG = new OptionKey<>(false);
     private static final String SHEBANG_HELP = "support files starting with #!";
 
     public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
