@@ -1233,27 +1233,9 @@ public class JSRealm {
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(newEnv, "New env cannot be null.");
 
-        JSContextOptions contextOptions = context.getContextOptions();
-
-        if (contextOptions.optionWillChange(JSContextOptions.ARRAY_SORT_INHERITED, newEnv.getOptions()) && getContext().wasOptionArraySortInheritedQueried()) {
-            return false;
-        }
-        if (contextOptions.optionWillChange(JSContextOptions.V8_COMPATIBILITY_MODE, newEnv.getOptions()) && getContext().wasOptionV8CompatibilityModeQueried()) {
-            return false;
-        }
-        if (contextOptions.optionWillChange(JSContextOptions.DIRECT_BYTE_BUFFER, newEnv.getOptions()) && getContext().wasOptionDirectByteBufferQueried()) {
-            return false;
-        }
-        if (contextOptions.optionWillChange(JSContextOptions.TIMER_RESOLUTION, newEnv.getOptions()) && getContext().wasTimerResolutionQueried()) {
-            return false;
-        }
-        if (contextOptions.optionWillChange(JSContextOptions.INTL_402, newEnv.getOptions()) && getContext().wasOptionIntl402Queried()) {
-            return false;
-        }
-
         truffleLanguageEnv = newEnv;
         getContext().setAllocationReporter(newEnv);
-        contextOptions.setOptionValues(newEnv.getOptions());
+        getContext().getContextOptions().setOptionValues(newEnv.getOptions());
 
         if (newEnv.out() != getOutputStream()) {
             setOutputWriter(null, newEnv.out());

@@ -144,6 +144,7 @@ public class JSContext {
     private final JSFunctionLookup functionLookup;
 
     private final AbstractJavaScriptLanguage language;
+    private TruffleLanguage.Env truffleLanguageEnv;
 
     private final Shape emptyShape;
     private final Shape emptyShapePrototypeInObject;
@@ -288,11 +289,6 @@ public class JSContext {
     @CompilationFinal private JSAgent agent;
 
     private final JSContextOptions contextOptions;
-    private boolean intl402OptionQueried = false;
-    private boolean arraySortInheritedOptionQueried = false;
-    private boolean v8CompatibilityModeOptionQueried = false;
-    private boolean directByteBufferOptionQueried = false;
-    private boolean timerResolutionQueried = false;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
 
@@ -387,6 +383,7 @@ public class JSContext {
 
         this.language = lang;
         this.contextRef = lang.getContextReference();
+        this.truffleLanguageEnv = env;
 
         this.emptyShape = createEmptyShape();
         this.emptyShapePrototypeInObject = createEmptyShapePrototypeInObject();
@@ -593,6 +590,7 @@ public class JSContext {
             singleRealmAssumption.invalidate("single realm assumption");
         }
 
+        truffleLanguageEnv = env;
         JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
         if (realmList != null) {
@@ -1019,6 +1017,10 @@ public class JSContext {
         return language;
     }
 
+    private TruffleLanguage.Env getEnv() {
+        return truffleLanguageEnv;
+    }
+
     public CallTarget getEmptyFunctionCallTarget() {
         return emptyFunctionCallTarget;
     }
@@ -1211,12 +1213,8 @@ public class JSContext {
         return contextOptions.isAnnexB();
     }
 
-    public boolean wasOptionIntl402Queried() {
-        return intl402OptionQueried;
-    }
-
     public boolean isOptionIntl402() {
-        intl402OptionQueried = true;
+        assert !getEnv().isPreInitialization() : "Patchable option intl-402 accessed during context pre-initialization.";
         return contextOptions.isIntl402();
     }
 
@@ -1229,12 +1227,8 @@ public class JSContext {
     }
 
     public boolean isOptionArraySortInherited() {
-        arraySortInheritedOptionQueried = true;
+        assert !getEnv().isPreInitialization() : "Patchable option array-sort-inherited accessed during context pre-initialization.";
         return contextOptions.isArraySortInherited();
-    }
-
-    public boolean wasOptionArraySortInheritedQueried() {
-        return arraySortInheritedOptionQueried;
     }
 
     public boolean isOptionSharedArrayBuffer() {
@@ -1246,12 +1240,8 @@ public class JSContext {
     }
 
     public boolean isOptionV8CompatibilityMode() {
-        v8CompatibilityModeOptionQueried = true;
+        assert !getEnv().isPreInitialization() : "Patchable option v8-compat accessed during context pre-initialization.";
         return contextOptions.isV8CompatibilityMode();
-    }
-
-    public boolean wasOptionV8CompatibilityModeQueried() {
-        return v8CompatibilityModeOptionQueried;
     }
 
     public boolean isOptionV8CompatibilityModeInContextInit() {
@@ -1267,12 +1257,8 @@ public class JSContext {
     }
 
     public boolean isOptionDirectByteBuffer() {
-        directByteBufferOptionQueried = true;
+        assert !getEnv().isPreInitialization() : "Patchable option direct-byte-buffer accessed during context pre-initialization.";
         return contextOptions.isDirectByteBuffer();
-    }
-
-    public boolean wasOptionDirectByteBufferQueried() {
-        return directByteBufferOptionQueried;
     }
 
     public boolean isOptionParseOnly() {
@@ -1288,12 +1274,8 @@ public class JSContext {
     }
 
     public long getTimerResolution() {
-        timerResolutionQueried = true;
+        assert !getEnv().isPreInitialization() : "Patchable option timer-resolution accessed during context pre-initialization.";
         return contextOptions.getTimerResolution();
-    }
-
-    public boolean wasTimerResolutionQueried() {
-        return timerResolutionQueried;
     }
 
     public boolean usePromiseResolve() {
