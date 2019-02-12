@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 /**
  * Source Text Module Record.
  */
-public final class JSModuleRecord {
+public final class JSModuleRecord extends ScriptOrModule {
     public enum Status {
         Uninstantiated,
         Instantiating,
@@ -62,9 +62,7 @@ public final class JSModuleRecord {
 
     /** Module parse node. */
     private final Object module;
-    private final JSContext context;
     private final JSModuleLoader moduleLoader;
-    private final Source source;
 
     /** Module's instantiation/evaluation status. */
     private Status status;
@@ -99,10 +97,9 @@ public final class JSModuleRecord {
     private int dfsAncestorIndex;
 
     public JSModuleRecord(Object module, JSContext context, JSModuleLoader moduleLoader, Source source, Runnable finishTranslation) {
+        super(context, source);
         this.module = module;
-        this.context = context;
         this.moduleLoader = moduleLoader;
-        this.source = source;
         this.finishTranslation = finishTranslation;
         setUninstantiated();
     }
@@ -111,16 +108,8 @@ public final class JSModuleRecord {
         return module;
     }
 
-    public JSContext getContext() {
-        return context;
-    }
-
     public JSModuleLoader getModuleLoader() {
         return moduleLoader;
-    }
-
-    public Source getSource() {
-        return source;
     }
 
     public JSFunctionData getFunctionData() {

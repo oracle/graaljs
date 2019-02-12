@@ -193,6 +193,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -3131,7 +3132,7 @@ public final class GraalJSAccess {
     }
 
     static class ESModuleLoader implements JSModuleLoader {
-        private final Map<JSModuleRecord, Map<String, JSModuleRecord>> cache = new HashMap<>();
+        private final Map<ScriptOrModule, Map<String, JSModuleRecord>> cache = new HashMap<>();
         private long resolver;
 
         void setResolver(long resolver) {
@@ -3139,7 +3140,7 @@ public final class GraalJSAccess {
         }
 
         @Override
-        public JSModuleRecord resolveImportedModule(JSModuleRecord referrer, String specifier) {
+        public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
             Map<String, JSModuleRecord> referrerCache = cache.get(referrer);
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();

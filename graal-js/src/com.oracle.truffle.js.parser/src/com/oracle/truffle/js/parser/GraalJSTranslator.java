@@ -1243,7 +1243,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         throw new UnsupportedOperationException();
     }
 
-    protected JavaScriptNode getModuleRecord() {
+    protected JavaScriptNode getActiveScriptOrModule() {
         throw new UnsupportedOperationException();
     }
 
@@ -1521,7 +1521,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (identNode.isNewTarget()) {
             result = environment.findNewTargetVar().createReadNode();
         } else if (identNode.isImportMeta()) {
-            result = factory.createImportMeta(getModuleRecord());
+            result = factory.createImportMeta(getActiveScriptOrModule());
         } else {
             String varName = identNode.getName();
             VarRef varRef = findScopeVarCheckTDZ(varName, false);
@@ -2194,7 +2194,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             args = insertNewTargetArg(args);
             call = initializeThis(factory.createFunctionCallWithNewTarget(context, function, args));
         } else if (callNode.isImport()) {
-            call = createImportCallNode(function, args);
+            call = createImportCallNode(args);
         } else {
             call = createCallDefaultNode(function, args);
         }
@@ -2249,9 +2249,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         ((IdentNode) callNode.getArgs().get(1)).getName().equals(Environment.ARGUMENTS_NAME);
     }
 
-    @SuppressWarnings({"unused", "static-method"})
-    private JavaScriptNode createImportCallNode(JavaScriptNode function, JavaScriptNode[] args) {
-        throw Errors.createSyntaxError("import() not supported");
+    private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
+        assert args.length == 1;
+        return factory.createImportCall(context, args[0], getActiveScriptOrModule());
     }
 
     @Override
