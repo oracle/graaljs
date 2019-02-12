@@ -356,21 +356,12 @@ public class JSRealm {
             this.simdTypeConstructors = null;
         }
 
-        if (context.isOptionIntl402()) {
-            this.collatorConstructor = JSCollator.createConstructor(this);
-            this.numberFormatConstructor = JSNumberFormat.createConstructor(this);
-            this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
-            this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
-            this.listFormatConstructor = JSListFormat.createConstructor(this);
-            this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
-        } else {
-            this.collatorConstructor = null;
-            this.numberFormatConstructor = null;
-            this.dateTimeFormatConstructor = null;
-            this.pluralRulesConstructor = null;
-            this.listFormatConstructor = null;
-            this.relativeTimeFormatConstructor = null;
-        }
+        this.collatorConstructor = JSCollator.createConstructor(this);
+        this.numberFormatConstructor = JSNumberFormat.createConstructor(this);
+        this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
+        this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
+        this.listFormatConstructor = JSListFormat.createConstructor(this);
+        this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
 
         this.iteratorPrototype = createIteratorPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
@@ -762,23 +753,6 @@ public class JSRealm {
         putGlobalProperty(global, JSMath.CLASS_NAME, mathObject);
         putGlobalProperty(global, JSON.CLASS_NAME, JSON.create(this));
 
-        if (context.isOptionIntl402()) {
-            DynamicObject intlObject = JSIntl.create(this);
-            DynamicObject collatorFn = getCollatorConstructor().getFunctionObject();
-            DynamicObject numberFormatFn = getNumberFormatConstructor().getFunctionObject();
-            DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor().getFunctionObject();
-            DynamicObject pluralRulesFn = getPluralRulesConstructor().getFunctionObject();
-            DynamicObject listFormatFn = getListFormatConstructor().getFunctionObject();
-            DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor().getFunctionObject();
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
-            putGlobalProperty(global, JSIntl.CLASS_NAME, intlObject);
-        }
-
         JSObjectUtil.putDataProperty(context, global, JSRuntime.NAN_STRING, Double.NaN);
         JSObjectUtil.putDataProperty(context, global, JSRuntime.INFINITY_STRING, Double.POSITIVE_INFINITY);
         JSObjectUtil.putDataProperty(context, global, Undefined.NAME, Undefined.instance);
@@ -908,6 +882,8 @@ public class JSRealm {
         setupGlobalGlobal();
         setupShellGlobals();
         setupScriptingGlobals();
+        setupIntlGlobals();
+
         if (isJavaInteropEnabled()) {
             setupJavaInterop(getGlobalObject());
         }
@@ -926,6 +902,30 @@ public class JSRealm {
             Supplier<Object> lazyBuiltin = () -> JSFunction.create(JSRealm.this, builtin.createFunctionData(getContext()));
             toggleGlobalProperty(builtin.getKey(), lazyBuiltin, builtin.getAttributeFlags(), getContext().getContextOptions().isShell());
         });
+    }
+
+    private void setupIntlGlobals() {
+        CompilerAsserts.neverPartOfCompilation();
+
+        Supplier<Object> lazyIntl = () -> {
+            DynamicObject intlObject = JSIntl.create(this);
+            DynamicObject collatorFn = getCollatorConstructor().getFunctionObject();
+            DynamicObject numberFormatFn = getNumberFormatConstructor().getFunctionObject();
+            DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor().getFunctionObject();
+            DynamicObject pluralRulesFn = getPluralRulesConstructor().getFunctionObject();
+            DynamicObject listFormatFn = getListFormatConstructor().getFunctionObject();
+            DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor().getFunctionObject();
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+
+            return intlObject;
+        };
+
+        toggleGlobalProperty(JSIntl.CLASS_NAME, lazyIntl, context.isOptionIntl402InContextInit());
     }
 
     private void putGraalObject(DynamicObject global) {
@@ -1247,6 +1247,9 @@ public class JSRealm {
         if (contextOptions.optionWillChange(JSContextOptions.TIMER_RESOLUTION, newEnv.getOptions()) && getContext().wasTimerResolutionQueried()) {
             return false;
         }
+        if (contextOptions.optionWillChange(JSContextOptions.INTL_402, newEnv.getOptions()) && getContext().wasOptionIntl402Queried()) {
+            return false;
+        }
 
         truffleLanguageEnv = newEnv;
         getContext().setAllocationReporter(newEnv);
@@ -1261,7 +1264,7 @@ public class JSRealm {
 
         setArguments(newEnv.getApplicationArguments());
 
-        // Reflect changes to the global-property, v8-compat, shell and scripting options
+        // Reflect changes to the global-property, v8-compat, shell, scripting and intl-402 options
         // by updating the set of available globals.
         setupOptionalGlobals();
 

@@ -288,6 +288,7 @@ public class JSContext {
     @CompilationFinal private JSAgent agent;
 
     private final JSContextOptions contextOptions;
+    private boolean intl402OptionQueried = false;
     private boolean arraySortInheritedOptionQueried = false;
     private boolean v8CompatibilityModeOptionQueried = false;
     private boolean directByteBufferOptionQueried = false;
@@ -504,13 +505,12 @@ public class JSContext {
         this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, ordinaryObjectShapeSupplier);
 
-        boolean intl402 = isOptionIntl402();
-        this.collatorFactory = intl402 ? builder.create(JSCollator.INSTANCE) : null;
-        this.numberFormatFactory = intl402 ? builder.create(JSNumberFormat.INSTANCE) : null;
-        this.dateTimeFormatFactory = intl402 ? builder.create(JSDateTimeFormat.INSTANCE) : null;
-        this.pluralRulesFactory = intl402 ? builder.create(JSPluralRules.INSTANCE) : null;
-        this.listFormatFactory = intl402 ? builder.create(JSListFormat.INSTANCE) : null;
-        this.relativeTimeFormatFactory = intl402 ? builder.create(JSRelativeTimeFormat.INSTANCE) : null;
+        this.collatorFactory = builder.create(JSCollator.INSTANCE);
+        this.numberFormatFactory = builder.create(JSNumberFormat.INSTANCE);
+        this.dateTimeFormatFactory = builder.create(JSDateTimeFormat.INSTANCE);
+        this.pluralRulesFactory = builder.create(JSPluralRules.INSTANCE);
+        this.listFormatFactory = builder.create(JSListFormat.INSTANCE);
+        this.relativeTimeFormatFactory = builder.create(JSRelativeTimeFormat.INSTANCE);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
@@ -1211,7 +1211,16 @@ public class JSContext {
         return contextOptions.isAnnexB();
     }
 
+    public boolean wasOptionIntl402Queried() {
+        return intl402OptionQueried;
+    }
+
     public boolean isOptionIntl402() {
+        intl402OptionQueried = true;
+        return contextOptions.isIntl402();
+    }
+
+    public boolean isOptionIntl402InContextInit() {
         return contextOptions.isIntl402();
     }
 
