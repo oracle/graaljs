@@ -290,6 +290,7 @@ public class JSContext {
     private final JSContextOptions contextOptions;
     private boolean arraySortInheritedOptionQueried = false;
     private boolean v8CompatibilityModeOptionQueried = false;
+    private boolean directByteBufferOptionQueried = false;
     private boolean timerResolutionQueried = false;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
@@ -1257,7 +1258,12 @@ public class JSContext {
     }
 
     public boolean isOptionDirectByteBuffer() {
+        directByteBufferOptionQueried = true;
         return contextOptions.isDirectByteBuffer();
+    }
+
+    public boolean wasOptionDirectByteBufferQueried() {
+        return directByteBufferOptionQueried;
     }
 
     public boolean isOptionParseOnly() {

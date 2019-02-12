@@ -1235,10 +1235,13 @@ public class JSRealm {
 
         JSContextOptions contextOptions = context.getContextOptions();
 
+        if (contextOptions.optionWillChange(JSContextOptions.ARRAY_SORT_INHERITED, newEnv.getOptions()) && getContext().wasOptionArraySortInheritedQueried()) {
+            return false;
+        }
         if (contextOptions.optionWillChange(JSContextOptions.V8_COMPATIBILITY_MODE, newEnv.getOptions()) && getContext().wasOptionV8CompatibilityModeQueried()) {
             return false;
         }
-        if (contextOptions.optionWillChange(JSContextOptions.ARRAY_SORT_INHERITED, newEnv.getOptions()) && getContext().wasOptionArraySortInheritedQueried()) {
+        if (contextOptions.optionWillChange(JSContextOptions.DIRECT_BYTE_BUFFER, newEnv.getOptions()) && getContext().wasOptionDirectByteBufferQueried()) {
             return false;
         }
         if (contextOptions.optionWillChange(JSContextOptions.TIMER_RESOLUTION, newEnv.getOptions()) && getContext().wasTimerResolutionQueried()) {
