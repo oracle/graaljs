@@ -891,10 +891,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/harmony/object-fromentries.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "mjsunit/harmony/private-fields-ic.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -992,10 +988,6 @@
     "filePath" : "mjsunit/harmony/regexp-property-sequence.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/regress/regress-912504.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/basics.js",
     "status" : "FAIL",

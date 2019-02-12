@@ -7,6 +7,7 @@ The main focus is on user-observable behavior of the engine.
 * Made Java interop available in native images. Note that you have to configure the accessible classes and methods at native image build time (see [reflection configuration](https://github.com/oracle/graal/blob/master/substratevm/REFLECTION.md#manual-configuration)).
 * Removed deprecated experimental `Java.Worker` API. Node.js Workers should be used instead.
 * Removed deprecated `NashornJavaInterop` mode.
+* [Object.fromEntries](https://tc39.github.io/proposal-object-from-entries/) proposal implemented.
 
 ## Version 1.0.0 RC12
 * Added option `js.experimental-array-prototype` that sets prototype of
