@@ -1825,7 +1825,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object nextItem = getIteratorValue((DynamicObject) next);
                         if (!JSObject.isDynamicObject(nextItem)) {
                             errorBranch.enter();
-                            throw Errors.createTypeError("not an object in iterator");
+                            throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                         }
                         DynamicObject nextItemObj = (DynamicObject) (nextItem);
                         Object k = JSObject.get(nextItemObj, 0, classProfile);

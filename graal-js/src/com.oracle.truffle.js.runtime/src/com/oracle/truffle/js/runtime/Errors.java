@@ -625,4 +625,10 @@ public final class Errors {
     public static JSException createEvalDisabled() {
         return Errors.createEvalError("dynamic evaluation of code is disabled.");
     }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorIteratorResultNotObject(Object value, Node originatingNode) {
+        return Errors.createTypeError("Iterator result " + JSRuntime.safeToString(value) + " is not an object", originatingNode);
+    }
+
 }

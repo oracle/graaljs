@@ -845,7 +845,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     Object nextItem = iteratorValueNode.execute((DynamicObject) next);
                     if (!isObjectNode.executeBoolean(nextItem)) {
                         errorBranch.enter();
-                        throw Errors.createTypeError("not an object in iterator");
+                        throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                     }
                     DynamicObject nextItemObj = (DynamicObject) nextItem;
                     Object k = JSObject.get(nextItemObj, 0, classProfile);
