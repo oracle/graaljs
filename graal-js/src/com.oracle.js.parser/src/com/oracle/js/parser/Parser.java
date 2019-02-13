@@ -3964,7 +3964,7 @@ loop:
 
         case IMPORT:
             if (isES2020() && type == IMPORT) {
-                lhs = importExpression(yield);
+                lhs = importExpression(yield, await);
                 break;
             }
             // fall through
@@ -4036,7 +4036,7 @@ loop:
         return lhs;
     }
 
-    private Expression importExpression(boolean yield) {
+    private Expression importExpression(boolean yield, boolean await) {
         final long importToken = token;
         final int importLine = line;
         final int importStart = start;
@@ -4057,7 +4057,7 @@ loop:
             }
         } else if (type == LPAREN) {
             next();
-            Expression argument = assignmentExpression(true, yield, false);
+            Expression argument = assignmentExpression(true, yield, await);
             expect(RPAREN);
 
             IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), IMPORT.getName());
