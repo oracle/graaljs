@@ -65,6 +65,6 @@
       // for compatibility with macOS El Capitan
       MACOSX_DEPLOYMENT_TARGET: '10.11',
     },
-    capabilities: ['darwin_sierra', 'amd64'],
+    capabilities: ['darwin', 'amd64'],
   },
 }
