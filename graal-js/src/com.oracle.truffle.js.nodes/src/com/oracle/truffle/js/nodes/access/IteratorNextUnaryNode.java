@@ -40,16 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
@@ -59,6 +57,7 @@ public class IteratorNextUnaryNode extends JavaScriptNode {
     @Child private JSFunctionCallNode methodCallNode;
     @Child private IsObjectNode isObjectNode;
     @Child private JavaScriptNode iteratorNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected IteratorNextUnaryNode(JavaScriptNode iteratorNode) {
         this.iteratorNode = iteratorNode;
@@ -81,14 +80,10 @@ public class IteratorNextUnaryNode extends JavaScriptNode {
         Object next = iteratorRecord.getNextMethod();
         Object nextResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, next));
         if (!isObjectNode.executeBoolean(nextResult)) {
-            throw iteratorResultNotObject(nextResult);
+            errorBranch.enter();
+            throw Errors.createTypeErrorIteratorResultNotObject(nextResult, this);
         }
         return nextResult;
-    }
-
-    @TruffleBoundary
-    private JSException iteratorResultNotObject(Object value) {
-        return Errors.createTypeError("Iterator result " + JSRuntime.safeToString(value) + " is not an object", this);
     }
 
     @Override

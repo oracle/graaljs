@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
@@ -56,6 +54,7 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 public class IteratorNextNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode methodCallNode;
     @Child private IsObjectNode isObjectNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected IteratorNextNode() {
         this.methodCallNode = JSFunctionCallNode.createCall();
@@ -71,7 +70,8 @@ public class IteratorNextNode extends JavaScriptBaseNode {
         DynamicObject iterator = iteratorRecord.getIterator();
         Object result = methodCallNode.executeCall(JSArguments.createOneArg(iterator, nextMethod, value));
         if (!isObjectNode.executeBoolean(result)) {
-            throw iteratorResultNotObject(result);
+            errorBranch.enter();
+            throw Errors.createTypeErrorIteratorResultNotObject(result, this);
         }
         return (DynamicObject) result;
     }
@@ -81,13 +81,10 @@ public class IteratorNextNode extends JavaScriptBaseNode {
         DynamicObject iterator = iteratorRecord.getIterator();
         Object result = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, nextMethod));
         if (!isObjectNode.executeBoolean(result)) {
-            throw iteratorResultNotObject(result);
+            errorBranch.enter();
+            throw Errors.createTypeErrorIteratorResultNotObject(result, this);
         }
         return (DynamicObject) result;
     }
 
-    @TruffleBoundary
-    private JSException iteratorResultNotObject(Object value) {
-        return Errors.createTypeError("Iterator result " + JSRuntime.safeToString(value) + " is not an object", this);
-    }
 }
