@@ -51,6 +51,7 @@ const {
 
 
 describe('Java interop messages', function() {
+    this.timeout(10000);
     if (typeof Java !== 'object') {
         // no interop
         return;
