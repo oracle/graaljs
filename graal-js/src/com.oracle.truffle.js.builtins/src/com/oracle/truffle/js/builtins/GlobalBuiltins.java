@@ -1373,8 +1373,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     }
 
     /**
-     * Non-standard readline() and readLine() to provide compatibility with V8 and Nashorn,
-     * respectively.
+     * Non-standard readline() for V8 compatibility, and readLine(prompt) for Nashorn compatibility
+     * (only available in nashorn-compat mode with scripting enabled).
+     *
+     * The prompt argument is only accepted and printed by Nashorn's variant.
      */
     public abstract static class JSGlobalReadLineNode extends JSGlobalOperation {
 
@@ -1392,12 +1394,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        private static String doReadLine(String promptString) {
+        private String doReadLine(String promptString) {
             if (promptString != null) {
-                System.out.println(promptString);
+                getContext().getRealm().getOutputWriter().print(promptString);
             }
             try {
-                final BufferedReader inReader = new BufferedReader(new InputStreamReader(System.in));
+                final BufferedReader inReader = new BufferedReader(new InputStreamReader(getContext().getRealm().getEnv().in()));
                 return inReader.readLine();
             } catch (Exception ex) {
                 throw Errors.createError(ex.getMessage());
