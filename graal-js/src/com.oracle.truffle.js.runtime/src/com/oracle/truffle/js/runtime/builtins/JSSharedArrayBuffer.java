@@ -87,6 +87,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     public static DynamicObject createSharedArrayBuffer(JSContext context, ByteBuffer buffer) {
+        assert buffer != null;
         DynamicObject obj = JSObject.create(context, context.getSharedArrayBufferFactory(), buffer, new JSAgentWaiterList());
         assert isJSSharedArrayBuffer(obj);
         return obj;
@@ -110,11 +111,8 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = JSArguments.getThisObject(frame.getArguments());
-                if (JSObject.isDynamicObject(obj)) {
-                    DynamicObject buffer = (DynamicObject) obj;
-                    if (hasArrayBufferData(buffer) && isJSSharedArrayBuffer(buffer)) {
-                        return JSArrayBuffer.getDirectByteLength(buffer);
-                    }
+                if (isJSSharedArrayBuffer(obj)) {
+                    return JSArrayBuffer.getDirectByteLength((DynamicObject) obj);
                 }
                 throw Errors.createTypeErrorIncompatibleReceiver(obj);
             }
@@ -149,11 +147,6 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
 
     public static boolean isJSSharedArrayBuffer(DynamicObject obj) {
         return isInstance(obj, INSTANCE);
-    }
-
-    public static boolean hasArrayBufferData(DynamicObject obj) {
-        Object maybeBuffer = BYTE_BUFFER_PROPERTY.get(obj, isJSSharedArrayBuffer(obj));
-        return maybeBuffer != null && maybeBuffer instanceof ByteBuffer;
     }
 
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
