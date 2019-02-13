@@ -154,16 +154,16 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj, boolean condition) {
-        assert JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
+        assert isJSSharedArrayBuffer(thisObj);
         return DirectByteBufferHelper.cast((ByteBuffer) BYTE_BUFFER_PROPERTY.get(thisObj, condition));
     }
 
     public static JSAgentWaiterList getWaiterList(DynamicObject thisObj) {
-        return (JSAgentWaiterList) BUFFER_WAIT_LIST.get(thisObj, JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj));
+        return (JSAgentWaiterList) BUFFER_WAIT_LIST.get(thisObj, isJSSharedArrayBuffer(thisObj));
     }
 
     public static JSAgentWaiterList getWaiterList(DynamicObject thisObj, boolean condition) {
-        assert JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
+        assert isJSSharedArrayBuffer(thisObj);
         return (JSAgentWaiterList) BUFFER_WAIT_LIST.get(thisObj, condition);
     }
 
