@@ -4287,7 +4287,7 @@ loop:
             }
 
             // mark ES6 block functions as lexically scoped
-            final int     varFlags = (topLevel || !useBlockScope()) ? 0 : VarNode.IS_LET;
+            final int     varFlags = ((topLevel && !isModule) || !useBlockScope()) ? 0 : VarNode.IS_LET;
             final VarNode varNode  = new VarNode(functionLine, functionToken, finish, name, function, varFlags);
             if (topLevel) {
                 functionDeclarations.add(varNode);
