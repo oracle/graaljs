@@ -344,7 +344,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
                 long end = getContext().getRealm().currentTimeMillis();
                 long delta = end - start;
 
-                Object[] arr = new Object[data.length + 1]; // ignore first, but add two
+                Object[] arr = new Object[Math.max(2, data.length + 1)]; // add two, ignore first
                 if (data.length > 1) {
                     System.arraycopy(data, 1, arr, 2, data.length - 1);
                 }
