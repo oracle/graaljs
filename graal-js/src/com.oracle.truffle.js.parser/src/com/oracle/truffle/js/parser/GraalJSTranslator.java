@@ -883,7 +883,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         // declare in var declaration scope if not a parameter
                         bodyBlock.putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE));
                     } else {
-                        assert parameterBlock != null && parameterBlock.getExistingSymbol(varName) != null;
+                        assert parameterBlock.getExistingSymbol(varName) != null;
                         // variable is already declared in parameter block
                         bodyBlock.putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE | Symbol.IS_VAR_REDECLARED_HERE));
                     }
