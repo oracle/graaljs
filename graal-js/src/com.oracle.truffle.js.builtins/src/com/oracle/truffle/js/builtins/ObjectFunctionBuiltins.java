@@ -84,6 +84,7 @@ import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
@@ -816,7 +817,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private IsObjectNode isObjectNode = IsObjectNode.create();
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
-        private final JSClassProfile classProfile = JSClassProfile.create();
+        @Child private ReadElementNode readElementNode;
         private final BranchProfile errorBranch = BranchProfile.create();
 
         public ObjectFromEntriesNode(JSContext context, JSBuiltin builtin) {
@@ -824,6 +825,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             this.getIteratorNode = GetIteratorNode.create(context);
             this.iteratorStepNode = IteratorStepNode.create(context);
             this.iteratorValueNode = IteratorValueNode.create(context);
+            this.readElementNode = ReadElementNode.create(context);
         }
 
         @Specialization
@@ -847,9 +849,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         errorBranch.enter();
                         throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                     }
-                    DynamicObject nextItemObj = (DynamicObject) nextItem;
-                    Object k = JSObject.get(nextItemObj, 0, classProfile);
-                    Object v = JSObject.get(nextItemObj, 1, classProfile);
+                    Object k = readElementNode.executeWithTargetAndIndex(nextItem, 0);
+                    Object v = readElementNode.executeWithTargetAndIndex(nextItem, 1);
                     createDataPropertyOnObject(target, k, v);
                 }
             } catch (Exception ex) {

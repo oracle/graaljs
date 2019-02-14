@@ -125,6 +125,7 @@ import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
@@ -198,7 +199,6 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.WeakMap;
@@ -1790,7 +1790,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class ConstructMapNode extends JSConstructIterableOperation {
 
-        private final JSClassProfile classProfile = JSClassProfile.create();
+        private @Child ReadElementNode readElementNode;
 
         public ConstructMapNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -1827,9 +1827,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                             errorBranch.enter();
                             throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                         }
-                        DynamicObject nextItemObj = (DynamicObject) (nextItem);
-                        Object k = JSObject.get(nextItemObj, 0, classProfile);
-                        Object v = JSObject.get(nextItemObj, 1, classProfile);
+                        Object k = readElement(nextItem, 0);
+                        Object v = readElement(nextItem, 1);
                         call(mapObj, adderFn, new Object[]{k, v});
                     }
                 } catch (Exception ex) {
@@ -1837,6 +1836,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     throw ex;
                 }
             }
+        }
+
+        private Object readElement(Object target, int index) {
+            if (readElementNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readElementNode = insert(ReadElementNode.create(getContext()));
+            }
+            return readElementNode.executeWithTargetAndIndex(target, index);
         }
 
         @Override
