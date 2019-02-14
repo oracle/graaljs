@@ -284,6 +284,10 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
             contextBuilder.option(JSContextOptions.INTL_402_NAME, "true");
             contextBuilder.option(GraalJSParserOptions.SYNTAX_EXTENSIONS_NAME, "false");
+            // Node.js does not have global load property
+            contextBuilder.option(JSContextOptions.LOAD_NAME, "false");
+            // Node.js provides its own console
+            contextBuilder.option(JSContextOptions.CONSOLE_NAME, "false");
 
             exposeGC = options.isGCExposed();
             evaluator = contextBuilder.build();
@@ -2282,9 +2286,8 @@ public final class GraalJSAccess {
         }
         realm.setEmbedderData(new RealmData());
         DynamicObject global = realm.getGlobalObject();
-        // Node.js does not have global arguments and load properties
+        // Node.js does not have global arguments property
         global.delete(JSRealm.ARGUMENTS_NAME);
-        global.delete("load");
         if (exposeGC) {
             contextExposeGC(realm);
         }
