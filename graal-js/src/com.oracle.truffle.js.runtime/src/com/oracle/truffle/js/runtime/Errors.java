@@ -416,6 +416,21 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorMapExpected() {
+        return Errors.createTypeError("Map expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorSetExpected() {
+        return Errors.createTypeError("Set expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorSymbolExpected() {
+        return Errors.createTypeError("Symbol expected");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorDetachedBuffer() {
         return Errors.createTypeError("Detached buffer");
     }

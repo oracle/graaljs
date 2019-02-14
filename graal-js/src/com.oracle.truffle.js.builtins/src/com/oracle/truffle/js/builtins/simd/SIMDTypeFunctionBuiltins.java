@@ -101,6 +101,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -776,6 +777,10 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 return descriptor.getMin();
             }
             return (int) x;
+        }
+
+        protected JSException createTypeErrorInvalidArgumentType() {
+            return Errors.createTypeError("invalid argument Type");
         }
     }
 
@@ -1886,12 +1891,12 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         protected Object doSelect(DynamicObject selector, DynamicObject a, DynamicObject b) {
             if (!JSSIMD.isJSSIMD(a) || !JSSIMD.isJSSIMD(b)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("invalid argument Type");
+                throw createTypeErrorInvalidArgumentType();
             }
             SIMDType selDescriptor = simdBoolType(simdContext);
             if (selDescriptor != JSSIMD.simdTypeGetSIMDType(selector)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("invalid argument Type");
+                throw createTypeErrorInvalidArgumentType();
             }
 
             DynamicObject res = JSSIMD.createSIMD(getContext(), simdContext);
@@ -2195,7 +2200,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             }
             if (!JSSIMD.isJSSIMD(simd)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("invalid argument Types");
+                throw createTypeErrorInvalidArgumentType();
             }
 
             return simdStoreInTypedArray(tarray, index, simdContext, simd, length);

@@ -130,10 +130,6 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             super(context, builtin);
         }
 
-        protected static RuntimeException typeErrorMapExpected() {
-            throw Errors.createTypeError("Map expected");
-        }
-
         protected Object normalize(Object value) {
             if (normalizeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -160,7 +156,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization(guards = "!isJSMap(thisObj)")
         protected static DynamicObject notMap(@SuppressWarnings("unused") Object thisObj) {
-            throw typeErrorMapExpected();
+            throw Errors.createTypeErrorMapExpected();
         }
     }
 
@@ -182,7 +178,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSMap(thisObj)")
         protected static boolean notMap(Object thisObj, Object key) {
-            throw typeErrorMapExpected();
+            throw Errors.createTypeErrorMapExpected();
         }
     }
 
@@ -209,7 +205,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSMap(thisObj)")
         protected static Object notMap(Object thisObj, Object key) {
-            throw typeErrorMapExpected();
+            throw Errors.createTypeErrorMapExpected();
         }
     }
 
@@ -232,7 +228,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSMap(thisObj)")
         protected static DynamicObject notMap(Object thisObj, Object key, Object value) {
-            throw typeErrorMapExpected();
+            throw Errors.createTypeErrorMapExpected();
         }
     }
 
@@ -254,7 +250,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSMap(thisObj)")
         protected static boolean notMap(Object thisObj, Object key) {
-            throw typeErrorMapExpected();
+            throw Errors.createTypeErrorMapExpected();
         }
     }
 
@@ -288,7 +284,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)"})
         protected static Object notMap(Object thisObj, Object callback, Object thisArg) {
-            throw typeErrorMapExpected();
+            throw Errors.createTypeErrorMapExpected();
         }
 
         private void forEachIntl(DynamicObject thisObj, Object thisArg, DynamicObject callbackObj) {
