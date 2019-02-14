@@ -152,6 +152,8 @@ public final class NativeAccess {
 
     public static native Object executeResolveCallback(long callback, Object context, String specifier, Object referrer);
 
+    public static native Object executeImportModuleDynamicallyCallback(Object context, Object referrer, String specifier);
+
     public static native void writeHostObject(long delegate, Object object);
 
     public static native Object readHostObject(long delegate);

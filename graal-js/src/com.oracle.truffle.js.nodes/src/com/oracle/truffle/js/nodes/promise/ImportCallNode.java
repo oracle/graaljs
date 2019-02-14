@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -51,11 +52,14 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
@@ -69,7 +73,7 @@ import com.oracle.truffle.js.runtime.util.Pair;
 public class ImportCallNode extends JavaScriptNode {
     @Child private JavaScriptNode argRefNode;
     @Child private JavaScriptNode activeScriptOrModuleNode;
-    @Child private NewPromiseCapabilityNode newPromiseCapability;
+    @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private JSToStringNode toStringNode;
     @Child private PromiseReactionJobNode promiseReactionJobNode;
 
@@ -84,7 +88,7 @@ public class ImportCallNode extends JavaScriptNode {
         this.context = context;
         this.argRefNode = argRefNode;
         this.activeScriptOrModuleNode = activeScriptOrModuleNode;
-        this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
+        this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
         this.toStringNode = JSToStringNode.create();
         this.promiseReactionJobNode = PromiseReactionJobNode.create(context);
     }
@@ -97,37 +101,57 @@ public class ImportCallNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         Object referencingScriptOrModule = activeScriptOrModuleNode.execute(frame);
         Object specifier = argRefNode.execute(frame);
-        PromiseCapabilityRecord promiseCapability = newPromiseCapability.executeDefault();
         String specifierString;
         try {
             specifierString = toStringNode.executeString(specifier);
         } catch (Throwable ex) {
-            if (catchAndRejectPromise(ex, promiseCapability)) {
-                return promiseCapability.getPromise();
+            if (TryCatchNode.shouldCatch(ex, typeProfile)) {
+                return newRejectedPromiseFromException(ex);
             } else {
                 throw ex;
             }
         }
-        hostImportModuleDynamically(referencingScriptOrModule, specifierString, promiseCapability);
-        return promiseCapability.getPromise();
+        return hostImportModuleDynamically(referencingScriptOrModule, specifierString);
     }
 
-    private boolean catchAndRejectPromise(Throwable ex, PromiseCapabilityRecord promiseCapability) {
-        if (TryCatchNode.shouldCatch(ex, typeProfile)) {
-            if (callRejectNode == null || getErrorObjectNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                callRejectNode = insert(JSFunctionCallNode.createCall());
-                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+    private DynamicObject hostImportModuleDynamically(Object referencingScriptOrModule, String specifier) {
+        if (context.hasImportModuleDynamicallyCallbackBeenSet()) {
+            DynamicObject promise = context.hostImportModuleDynamically(context.getRealm(), (ScriptOrModule) referencingScriptOrModule, specifier);
+            if (promise == null) {
+                return newRejectedPromiseFromException(createTypeErrorCannotImport(specifier));
             }
-            callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), getErrorObjectNode.execute(ex)));
-            return true;
+            assert JSPromise.isJSPromise(promise);
+            return promise;
         } else {
-            return false;
+            // default implementation
+            PromiseCapabilityRecord promiseCapability = newPromiseCapability();
+            context.promiseEnqueueJob(createImportModuleDynamicallyJob((ScriptOrModule) referencingScriptOrModule, specifier, promiseCapability));
+            return promiseCapability.getPromise();
         }
     }
 
-    private void hostImportModuleDynamically(Object referencingScriptOrModule, String specifier, PromiseCapabilityRecord promiseCapability) {
-        context.promiseEnqueueJob(createImportModuleDynamicallyJob((ScriptOrModule) referencingScriptOrModule, specifier, promiseCapability));
+    private PromiseCapabilityRecord newPromiseCapability() {
+        if (newPromiseCapabilityNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            newPromiseCapabilityNode = insert(NewPromiseCapabilityNode.create(context));
+        }
+        return newPromiseCapabilityNode.executeDefault();
+    }
+
+    private DynamicObject newRejectedPromiseFromException(Throwable ex) {
+        if (callRejectNode == null || getErrorObjectNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            callRejectNode = insert(JSFunctionCallNode.createCall());
+            getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+        }
+        PromiseCapabilityRecord promiseCapability = newPromiseCapability();
+        callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), getErrorObjectNode.execute(ex)));
+        return promiseCapability.getPromise();
+    }
+
+    @TruffleBoundary
+    private static JSException createTypeErrorCannotImport(String specifier) {
+        return Errors.createError("Cannot dynamically import module: " + specifier);
     }
 
     /**

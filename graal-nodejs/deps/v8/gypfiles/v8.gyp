@@ -538,6 +538,7 @@
         '../src/graal/graal_proxy.cc',
         '../src/graal/graal_regexp.cc',
         '../src/graal/graal_script.cc',
+        '../src/graal/graal_script_or_module.cc',
         '../src/graal/graal_set.cc',
         '../src/graal/graal_stack_frame.cc',
         '../src/graal/graal_stack_trace.cc',

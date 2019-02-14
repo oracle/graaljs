@@ -197,6 +197,7 @@ enum GraalAccessMethod {
     isolate_enable_promise_hook,
     isolate_enable_promise_reject_callback,
     isolate_enable_import_meta_initializer,
+    isolate_enable_import_module_dynamically,
     isolate_enter,
     isolate_exit,
     template_set,
@@ -297,6 +298,7 @@ enum GraalAccessMethod {
     module_get_namespace,
     module_get_identity_hash,
     module_get_exception,
+    script_or_module_get_resource_name,
     value_serializer_new,
     value_serializer_release,
     value_serializer_size,
@@ -367,6 +369,8 @@ public:
     void NotifyPromiseRejectCallback(v8::PromiseRejectMessage message);
     void SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback);
     void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
+    void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier);
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
     void RunMicrotasks();
     void Enter();
@@ -654,6 +658,7 @@ private:
     v8::PromiseHook promise_hook_;
     v8::PromiseRejectCallback promise_reject_callback_;
     v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
+    v8::HostImportModuleDynamicallyCallback import_module_dynamically;
 };
 
 #endif /* GRAAL_ISOLATE_H_ */

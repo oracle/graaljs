@@ -139,6 +139,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.ImportMetaInitializer;
+import com.oracle.truffle.js.runtime.ImportModuleDynamicallyCallback;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -304,6 +305,8 @@ public final class GraalJSAccess {
         mainJSContext.setJSAgent(agent);
         deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
+        // Disallow importing dynamically unless ESM Loader (--experimental-modules) is enabled.
+        isolateEnableImportModuleDynamically(false);
     }
 
     private static String[] prepareArguments(String[] args) {
@@ -2582,6 +2585,16 @@ public final class GraalJSAccess {
         mainJSContext.setImportMetaInitializer(initializer);
     }
 
+    public void isolateEnableImportModuleDynamically(boolean enable) {
+        ImportModuleDynamicallyCallback callback = enable ? new ImportModuleDynamicallyCallback() {
+            @Override
+            public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, String specifier) {
+                return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, specifier);
+            }
+        } : null;
+        mainJSContext.setImportModuleDynamicallyCallback(callback);
+    }
+
     private void exit(int status) {
         try {
             evaluator.close();
@@ -2933,6 +2946,11 @@ public final class GraalJSAccess {
 
     public int moduleGetIdentityHash(Object module) {
         return System.identityHashCode(module);
+    }
+
+    public String scriptOrModuleGetResourceName(Object scriptOrModule) {
+        ScriptOrModule record = (ScriptOrModule) scriptOrModule;
+        return record.getSource().getName();
     }
 
     public Object valueSerializerNew(long delegatePointer) {

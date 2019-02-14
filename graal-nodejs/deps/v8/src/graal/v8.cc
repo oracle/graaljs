@@ -65,6 +65,7 @@
 #include "graal_symbol.h"
 #include "graal_unbound_script.h"
 #include "graal_value.h"
+#include "graal_script_or_module.h"
 #include "v8.h"
 #include "v8-profiler.h"
 #include "libplatform/v8-tracing.h"
@@ -2848,7 +2849,7 @@ namespace v8 {
     }
 
     void Isolate::SetHostImportModuleDynamicallyCallback(HostImportModuleDynamicallyCallback callback) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->SetImportModuleDynamicallyCallback(callback);
     }
 
     void Isolate::SetHostInitializeImportMetaObjectCallback(HostInitializeImportMetaObjectCallback callback) {
@@ -2856,8 +2857,7 @@ namespace v8 {
     }
 
     Local<Value> ScriptOrModule::GetResourceName() {
-        TRACE
-        return Local<Value>();
+        return reinterpret_cast<GraalScriptOrModule*> (this)->GetResourceName();
     }
 
     Local<BigInt> BigInt::New(Isolate* isolate, int64_t value) {
