@@ -350,7 +350,7 @@ public class JSRealm {
         initializeTypedArrayConstructors();
         this.dataViewConstructor = JSDataView.createConstructor(this);
 
-        if (JSTruffleOptions.SIMDJS) {
+        if (context.getContextOptions().isSIMDjs()) {
             this.simdTypeFactories = new JSObjectFactory[SIMDType.FACTORIES.length];
             this.simdTypeConstructors = new JSConstructor[SIMDType.FACTORIES.length];
             initializeSIMDTypeConstructors();
@@ -426,7 +426,7 @@ public class JSRealm {
     }
 
     private void initializeSIMDTypeConstructors() {
-        assert JSTruffleOptions.SIMDJS;
+        assert context.getContextOptions().isSIMDjs();
         JSConstructor taConst = JSSIMD.createSIMDTypeConstructor(this);
         simdTypeConstructor = taConst.getFunctionObject();
         simdTypePrototype = taConst.getPrototype();
@@ -802,7 +802,7 @@ public class JSRealm {
         }
         putGlobalProperty(global, JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
 
-        if (JSTruffleOptions.SIMDJS) {
+        if (context.getContextOptions().isSIMDjs()) {
             DynamicObject simdObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
             for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
                 JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());

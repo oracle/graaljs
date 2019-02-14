@@ -133,9 +133,6 @@ public class JSTruffleOptions {
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true);
 
-    /** Java implementation of SIMD.js. */
-    public static final boolean SIMDJS = booleanOption("SIMDJS", false);
-
     // Nashorn extensions
     public static final boolean NashornCompatibilityMode = booleanOption("NashornCompatibilityMode", false);
 
