@@ -214,7 +214,6 @@ public class JSRealm {
     private final DynamicObject enumerateIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
-    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] simdTypeFactories;
 
     private final JSConstructor generatorFunctionConstructor;
     private final DynamicObject generatorObjectPrototype;
@@ -351,11 +350,9 @@ public class JSRealm {
         this.dataViewConstructor = JSDataView.createConstructor(this);
 
         if (context.getContextOptions().isSIMDjs()) {
-            this.simdTypeFactories = new JSObjectFactory[SIMDType.FACTORIES.length];
             this.simdTypeConstructors = new JSConstructor[SIMDType.FACTORIES.length];
             initializeSIMDTypeConstructors();
         } else {
-            this.simdTypeFactories = null;
             this.simdTypeConstructors = null;
         }
 
@@ -957,10 +954,6 @@ public class JSRealm {
 
     public JSConstructor getSIMDTypeConstructor(SIMDTypeFactory<? extends SIMDType> factory) {
         return simdTypeConstructors[factory.getFactoryIndex()];
-    }
-
-    public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
-        return simdTypeFactories[factory.getFactoryIndex()];
     }
 
     /**
