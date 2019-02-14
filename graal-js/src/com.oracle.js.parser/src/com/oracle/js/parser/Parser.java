@@ -5331,12 +5331,10 @@ loop:
         if (param instanceof IdentNode) {
             IdentNode ident = (IdentNode)param;
             verifyStrictIdent(ident, FUNCTION_PARAMETER_CONTEXT);
-            if (currentFunction != null && currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
+            if (currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
             }
-            if (currentFunction != null) {
-                currentFunction.addParameter(ident);
-            }
+            currentFunction.addParameter(ident);
             return;
         }
 
@@ -5358,17 +5356,13 @@ loop:
                 // default parameter
                 IdentNode ident = (IdentNode) lhs;
 
-                if (currentFunction != null) {
-                    addDefaultParameter(paramToken, param.getFinish(), paramLine, ident, initializer, currentFunction);
-                }
+                addDefaultParameter(paramToken, param.getFinish(), paramLine, ident, initializer, currentFunction);
                 return;
             } else if (isDestructuringLhs(lhs)) {
                 // binding pattern with initializer
                 verifyDestructuringParameterBindingPattern(lhs, paramToken, paramLine);
 
-                if (currentFunction != null) {
-                    addDestructuringParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction);
-                }
+                addDestructuringParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction);
             }
         } else if (isDestructuringLhs(param)) {
             // binding pattern
@@ -5376,9 +5370,7 @@ loop:
 
             verifyDestructuringParameterBindingPattern(param, paramToken, paramLine);
 
-            if (currentFunction != null) {
-                addDestructuringParameter(paramToken, param.getFinish(), paramLine, param, null, currentFunction);
-            }
+            addDestructuringParameter(paramToken, param.getFinish(), paramLine, param, null, currentFunction);
         } else if (param.isTokenType(SPREAD_ARGUMENT)) {
             Expression expression = ((UnaryNode) param).getExpression();
             if (expression instanceof IdentNode && identAtTheEndOfArrowParamList()) {

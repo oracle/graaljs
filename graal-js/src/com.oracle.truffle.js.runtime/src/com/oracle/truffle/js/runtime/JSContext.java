@@ -424,7 +424,7 @@ public class JSContext {
         this.protoGetterFunctionData = annexB ? protoGetterFunction() : null;
         this.protoSetterFunctionData = annexB ? protoSetterFunction() : null;
 
-        this.isMultiContext = lang != null && lang.isMultiContext();
+        this.isMultiContext = lang.isMultiContext();
 
         // shapes and factories
         PrototypeSupplier objectPrototypeSupplier = JSUserObject.INSTANCE;
