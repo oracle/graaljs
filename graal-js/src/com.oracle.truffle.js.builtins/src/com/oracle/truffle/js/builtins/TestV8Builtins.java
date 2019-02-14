@@ -46,19 +46,21 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugStringCompareNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugToLengthNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ConstructDoubleNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8EnqueueJobNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToLengthNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNumberNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToPrimitiveNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToStringNodeGen;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -158,7 +160,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             case toNumber:
                 return TestV8ToNumberNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case toLength:
-                return DebugToLengthNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                return TestV8ToLengthNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -328,6 +330,34 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization(guards = "!isJSObject(syncIterator)")
         protected Object notObject(Object syncIterator) {
             throw Errors.createTypeErrorNotAnObject(syncIterator, this);
+        }
+    }
+
+    /**
+     * Calls [[ToLength]].
+     */
+    public abstract static class TestV8ToLengthNode extends JSBuiltinNode {
+        @Child private JSToLengthNode toLengthNode;
+
+        public TestV8ToLengthNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            toLengthNode = JSToLengthNode.create();
+        }
+
+        @Specialization
+        protected Object toLengthOp(Object obj) {
+            long value = toLengthNode.executeLong(obj);
+            double d = value;
+            if (JSRuntime.doubleIsRepresentableAsInt(d)) {
+                return (int) d;
+            } else {
+                return d;
+            }
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized() {
+            return TestV8ToLengthNodeGen.create(getContext(), getBuiltin(), cloneUninitialized(getArguments()));
         }
     }
 

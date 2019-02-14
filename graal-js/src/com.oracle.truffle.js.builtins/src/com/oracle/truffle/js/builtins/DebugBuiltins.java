@@ -91,7 +91,6 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemGCNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemPropertiesNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemPropertyNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugToJavaStringNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugToLengthNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
 import com.oracle.truffle.js.builtins.helper.ClassHistogramElement;
 import com.oracle.truffle.js.builtins.helper.HeapDump;
@@ -99,7 +98,6 @@ import com.oracle.truffle.js.builtins.helper.ObjectSizeCalculator;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -158,7 +156,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         isHolesArray(1),
         jsStack(0),
         loadModule(2),
-        printNodeCounters(0),
         createLargeInteger(1),
         createLazyString(2),
         typedArrayDetachBuffer(1),
@@ -872,34 +869,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             return createLazyString(JSRuntime.toString(left), JSRuntime.toString(right));
         }
 
-    }
-
-    /**
-     * Calls [[ToLength]], used by V8mockup.js and internal js files.
-     */
-    public abstract static class DebugToLengthNode extends JSBuiltinNode {
-        @Child private JSToLengthNode toLengthNode;
-
-        public DebugToLengthNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-            toLengthNode = JSToLengthNode.create();
-        }
-
-        @Specialization
-        protected Object toLengthOp(Object obj) {
-            long value = toLengthNode.executeLong(obj);
-            double d = value;
-            if (JSRuntime.doubleIsRepresentableAsInt(d)) {
-                return (int) d;
-            } else {
-                return d;
-            }
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return DebugToLengthNodeGen.create(getContext(), getBuiltin(), cloneUninitialized(getArguments()));
-        }
     }
 
     public abstract static class DebugNeverPartOfCompilationNode extends JSBuiltinNode implements JSBuiltinNode.Inlineable, JSBuiltinNode.Inlined {
