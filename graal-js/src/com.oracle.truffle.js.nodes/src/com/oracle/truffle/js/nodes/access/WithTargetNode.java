@@ -114,12 +114,17 @@ public final class WithTargetNode extends JavaScriptNode {
      */
     private boolean isPropertyScopable(TruffleObject target) {
         if (context.getEcmaScriptVersion() >= 6) {
-            Object unscopables = withObjectGetUnscopables.getValue(target);
-            if (JSRuntime.isObject(unscopables)) {
-                boolean blocked = toBoolean.executeBoolean(unscopablesGetProperty.getValue(unscopables));
-                if (blocked) {
-                    return false;
+            if (JSObject.isJSObject(target)) {
+                Object unscopables = withObjectGetUnscopables.getValue(target);
+                if (JSRuntime.isObject(unscopables)) {
+                    boolean blocked = toBoolean.executeBoolean(unscopablesGetProperty.getValue(unscopables));
+                    if (blocked) {
+                        return false;
+                    }
                 }
+            } else {
+                // no unscopables in foreign objects
+                return true;
             }
         }
         return true;
