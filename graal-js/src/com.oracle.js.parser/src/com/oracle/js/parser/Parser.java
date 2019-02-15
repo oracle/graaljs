@@ -4525,7 +4525,6 @@ loop:
      * @return function node (body.)
      */
     private Block functionBody(final ParserContextFunctionNode functionNode) {
-        long lastToken = 0L;
         ParserContextBlockNode body = null;
         final long bodyToken = token;
         Block functionBody;
@@ -4550,7 +4549,7 @@ loop:
 
                 // just expression as function body
                 final Expression expr = assignmentExpression(true);
-                lastToken = previousToken;
+                long lastToken = previousToken;
                 functionNode.setLastToken(previousToken);
                 assert lc.getCurrentBlock() == lc.getFunctionBody(functionNode);
                 // EOL uses length field to store the line number
@@ -4579,7 +4578,6 @@ loop:
                         functionDeclarations = prevFunctionDecls;
                     }
 
-                    lastToken = token;
                     if (parseBody) {
                         // Since the lexer can read ahead and lexify some number of tokens in advance and have
                         // them buffered in the TokenStream, we need to produce a lexer state as it was just

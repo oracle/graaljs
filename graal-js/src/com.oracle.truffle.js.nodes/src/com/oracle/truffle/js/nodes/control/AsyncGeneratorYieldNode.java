@@ -202,18 +202,17 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         DynamicObject iterator = iteratorRecord.getIterator();
 
         Completion received = Completion.forNormal(Undefined.instance);
-        Object awaited;
         for (;;) {
             switch (state) {
                 case loopBegin: {
                     if (received.isNormal()) {
                         DynamicObject innerResult = iteratorNextNode.execute(iteratorRecord, received.getValue());
-                        awaited = awaitWithNext(frame, innerResult, normalOrThrowAwaitInnerResult);
+                        awaitWithNext(frame, innerResult, normalOrThrowAwaitInnerResult);
                     } else if (received.isThrow()) {
                         Object throwMethod = getThrowMethodNode.executeWithTarget(iterator);
                         if (throwMethod != Undefined.instance) {
                             Object innerResult = callThrowMethod(throwMethod, iterator, received.getValue());
-                            awaited = awaitWithNext(frame, innerResult, normalOrThrowAwaitInnerResult);
+                            awaitWithNext(frame, innerResult, normalOrThrowAwaitInnerResult);
                             /*
                              * NOTE: Exceptions from the inner iterator throw method are propagated.
                              * Normal completions from an inner throw method are processed similarly
@@ -235,7 +234,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                                     // swallow inner error
                                     break error;
                                 }
-                                awaited = awaitWithNext(frame, returnResult, throwAwaitReturnResult);
+                                awaitWithNext(frame, returnResult, throwAwaitReturnResult);
                             }
                             throw Errors.createTypeErrorYieldStarThrowMethodMissing(this);
                         }
@@ -246,7 +245,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                             Object innerReturnResult = callReturnMethod(returnMethod, iterator, received.getValue());
                             awaitWithNext(frame, innerReturnResult, returnAwaitInnerReturnResult);
                         } else {
-                            awaited = awaitWithNext(frame, received.getValue(), returnAwaitReceivedValue);
+                            awaitWithNext(frame, received.getValue(), returnAwaitReceivedValue);
                         }
                     }
                     break;
@@ -254,7 +253,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
 
                 // received.[[Type]] is normal or throw
                 case normalOrThrowAwaitInnerResult: {
-                    awaited = resumeAwait(frame);
+                    Object awaited = resumeAwait(frame);
                     DynamicObject innerResult = checkcastIterResult(awaited);
                     boolean done = iteratorCompleteNode.execute(innerResult);
                     if (done) {
@@ -262,12 +261,12 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                         return iteratorValueNode.execute(innerResult);
                     }
                     Object iteratorValue = iteratorValueNode.execute(innerResult);
-                    awaited = awaitWithNext(frame, iteratorValue, asyncGeneratorYieldInnerResult);
+                    awaitWithNext(frame, iteratorValue, asyncGeneratorYieldInnerResult);
                     break;
                 }
                 // received.[[Type]] is return
                 case returnAwaitInnerReturnResult: {
-                    awaited = resumeAwait(frame);
+                    Object awaited = resumeAwait(frame);
                     DynamicObject innerReturnResult = checkcastIterResult(awaited);
                     boolean done = iteratorCompleteNode.execute(innerReturnResult);
                     if (done) {
@@ -275,14 +274,14 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                         return returnValue(frame, iteratorValueNode.execute(innerReturnResult));
                     }
                     Object iteratorValue = iteratorValueNode.execute(innerReturnResult);
-                    awaited = awaitWithNext(frame, iteratorValue, asyncGeneratorYieldInnerResult);
+                    awaitWithNext(frame, iteratorValue, asyncGeneratorYieldInnerResult);
                     break;
                 }
 
                 // received.[[Type]] is normal, throw, or return
                 // AsyncGeneratorYield, then repeat
                 case asyncGeneratorYieldInnerResult: {
-                    awaited = resumeAwait(frame);
+                    Object awaited = resumeAwait(frame);
                     yieldWithNext(frame, awaited, asyncGeneratorYieldInnerResultSuspendedYield);
                     break;
                 }
@@ -294,7 +293,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
                         break;
                     } else {
                         assert resumptionValue.isReturn();
-                        awaited = awaitWithNext(frame, resumptionValue.getValue(), asyncGeneratorYieldInnerResultReturn);
+                        awaitWithNext(frame, resumptionValue.getValue(), asyncGeneratorYieldInnerResultReturn);
                         break;
                     }
                 }
@@ -312,14 +311,14 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
 
                 // received.[[Type]] is return, return method is undefined
                 case returnAwaitReceivedValue: {
-                    awaited = resumeAwait(frame);
+                    Object awaited = resumeAwait(frame);
                     reset(frame);
                     return returnValue(frame, awaited);
                 }
                 // received.[[Type]] is throw, throw method is undefined
                 case throwAwaitReturnResult: {
                     // AsyncIteratorClose: handle Await(innerResult) throw completion.
-                    awaited = resumeAwait(frame);
+                    resumeAwait(frame);
                     throw Errors.createTypeErrorYieldStarThrowMethodMissing(this);
                 }
                 default:
@@ -330,9 +329,9 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         }
     }
 
-    private Object awaitWithNext(VirtualFrame frame, Object value, int nextState) {
+    private void awaitWithNext(VirtualFrame frame, Object value, int nextState) {
         setState(frame, nextState);
-        return suspendAwait(frame, value);
+        suspendAwait(frame, value);
     }
 
     private Object yieldWithNext(VirtualFrame frame, Object value, int nextState) {
