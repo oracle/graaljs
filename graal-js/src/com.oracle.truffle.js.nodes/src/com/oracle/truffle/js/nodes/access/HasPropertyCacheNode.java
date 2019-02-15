@@ -208,6 +208,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
     @NodeInfo(cost = NodeCost.MEGAMORPHIC)
     public static final class GenericHasPropertyCacheNode extends HasCacheNode {
+        @Child private Node keyInfoNode;
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
 
         public GenericHasPropertyCacheNode() {
@@ -216,13 +217,27 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
-            Object key = root.getKey();
-            if (root.isOwnProperty()) {
-                return JSObject.hasOwnProperty((DynamicObject) thisObj, key, jsclassProfile);
+            if (JSObject.isJSObject(thisObj)) {
+                Object key = root.getKey();
+                if (root.isOwnProperty()) {
+                    return JSObject.hasOwnProperty((DynamicObject) thisObj, key, jsclassProfile);
+                } else {
+                    return JSObject.hasProperty((DynamicObject) thisObj, key, jsclassProfile);
+                }
             } else {
-                return JSObject.hasProperty((DynamicObject) thisObj, key, jsclassProfile);
+                assert JSRuntime.isForeignObject(thisObj);
+                return JSInteropNodeUtil.hasProperty((TruffleObject) thisObj, root.getKey(), getKeyInfoNode());
             }
         }
+
+        private Node getKeyInfoNode() {
+            if (keyInfoNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                keyInfoNode = insert(Message.KEY_INFO.createNode());
+            }
+            return keyInfoNode;
+        }
+
     }
 
     public static final class ForeignHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
