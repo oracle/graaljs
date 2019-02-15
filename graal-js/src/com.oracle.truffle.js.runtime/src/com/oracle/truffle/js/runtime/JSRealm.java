@@ -214,7 +214,6 @@ public class JSRealm {
     private final DynamicObject enumerateIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
-    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] simdTypeFactories;
 
     private final JSConstructor generatorFunctionConstructor;
     private final DynamicObject generatorObjectPrototype;
@@ -350,12 +349,10 @@ public class JSRealm {
         initializeTypedArrayConstructors();
         this.dataViewConstructor = JSDataView.createConstructor(this);
 
-        if (JSTruffleOptions.SIMDJS) {
-            this.simdTypeFactories = new JSObjectFactory[SIMDType.FACTORIES.length];
+        if (context.getContextOptions().isSIMDjs()) {
             this.simdTypeConstructors = new JSConstructor[SIMDType.FACTORIES.length];
             initializeSIMDTypeConstructors();
         } else {
-            this.simdTypeFactories = null;
             this.simdTypeConstructors = null;
         }
 
@@ -426,7 +423,7 @@ public class JSRealm {
     }
 
     private void initializeSIMDTypeConstructors() {
-        assert JSTruffleOptions.SIMDJS;
+        assert context.getContextOptions().isSIMDjs();
         JSConstructor taConst = JSSIMD.createSIMDTypeConstructor(this);
         simdTypeConstructor = taConst.getFunctionObject();
         simdTypePrototype = taConst.getPrototype();
@@ -802,7 +799,7 @@ public class JSRealm {
         }
         putGlobalProperty(global, JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
 
-        if (JSTruffleOptions.SIMDJS) {
+        if (context.getContextOptions().isSIMDjs()) {
             DynamicObject simdObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
             for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
                 JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
@@ -957,10 +954,6 @@ public class JSRealm {
 
     public JSConstructor getSIMDTypeConstructor(SIMDTypeFactory<? extends SIMDType> factory) {
         return simdTypeConstructors[factory.getFactoryIndex()];
-    }
-
-    public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
-        return simdTypeFactories[factory.getFactoryIndex()];
     }
 
     /**

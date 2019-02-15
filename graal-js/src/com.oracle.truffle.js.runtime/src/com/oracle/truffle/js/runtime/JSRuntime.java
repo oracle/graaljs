@@ -294,16 +294,18 @@ public final class JSRuntime {
     public static Object toPrimitive(Object value, String hint) {
         if (value == Null.instance || value == Undefined.instance) {
             return value;
-        } else if (JSTruffleOptions.SIMDJS && JSSIMD.isJSSIMD(value)) {
-            return value;
-        } else if (JSObject.isJSObject(value)) {
-            return JSObject.toPrimitive((DynamicObject) value, hint);
-        } else if (isForeignObject(value)) {
-            TruffleObject tObj = (TruffleObject) value;
-            return toPrimitiveFromForeign(tObj);
-        } else {
-            return value;
+        } else if (value instanceof TruffleObject) {
+            if (JSSIMD.isJSSIMD(value)) {
+                return value;
+            } else if (JSObject.isJSObject(value)) {
+                return JSObject.toPrimitive((DynamicObject) value, hint);
+            } else if (isForeignObject(value)) {
+                TruffleObject tObj = (TruffleObject) value;
+                return toPrimitiveFromForeign(tObj);
+            }
         }
+        return value;
+
     }
 
     /**

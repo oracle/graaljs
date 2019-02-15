@@ -106,6 +106,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.JSSIMD;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -362,6 +363,8 @@ public class JSContext {
     private final JSObjectFactory jsAdapterFactory;
     private final JSObjectFactory dictionaryObjectFactory;
 
+    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] simdTypeFactories;
+
     private final int factoryCount;
 
     protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
@@ -505,6 +508,11 @@ public class JSContext {
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
+
+        this.simdTypeFactories = new JSObjectFactory[SIMDType.factories().length];
+        for (SIMDType.SIMDTypeFactory<? extends SIMDType> factory : SIMDType.factories()) {
+            simdTypeFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSSIMD.makeInitialSIMDShape(c, p));
+        }
 
         this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
@@ -905,7 +913,7 @@ public class JSContext {
     }
 
     public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
-        return getRealm().getSIMDTypeFactory(factory);
+        return simdTypeFactories[factory.getFactoryIndex()];
     }
 
     public JSObjectFactory getDictionaryObjectFactory() {

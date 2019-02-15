@@ -1441,7 +1441,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
             this.getUnicodeNode = PropertyGetNode.create(JSRegExp.UNICODE, false, context);
             this.getGlobalNode = PropertyGetNode.create(JSRegExp.GLOBAL, false, context);
-            this.toLengthNode = JSToLengthNode.create();
         }
 
         @Specialization(guards = "isObjectNode.executeBoolean(rx)", limit = "1")

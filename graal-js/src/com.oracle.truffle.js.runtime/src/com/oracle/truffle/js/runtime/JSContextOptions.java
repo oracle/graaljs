@@ -241,6 +241,11 @@ public final class JSContextOptions {
     private static final String ARRAY_LIKE_PROTOTYPE_HELP = "Non-JS array-like objects (like ProxyArray or java.util.List) have prototype set to Array.prototype.";
     @CompilationFinal private boolean arrayLikePrototype;
 
+    public static final String SIMDJS_NAME = JS_OPTION_PREFIX + "simdjs";
+    private static final OptionKey<Boolean> SIMDJS = new OptionKey<>(false);
+    private static final String SIMDJS_HELP = "Provide implementation of the SIMD.js proposal.";
+    @CompilationFinal private boolean simdjs;
+
     /**
      * Options which can be patched without throwing away the pre-initialized context.
      */
@@ -295,6 +300,7 @@ public final class JSContextOptions {
         this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME);
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
         this.arrayLikePrototype = readBooleanOption(ARRAY_LIKE_PROTOTYPE, ARRAY_LIKE_PROTOTYPE_NAME);
+        this.simdjs = readBooleanOption(SIMDJS, SIMDJS_NAME);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
@@ -381,6 +387,7 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME, OptionCategory.DEBUG, REGEX_ALWAYS_EAGER_HELP));
         options.add(newOptionDescriptor(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, OptionCategory.EXPERT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP));
         options.add(newOptionDescriptor(ARRAY_LIKE_PROTOTYPE, ARRAY_LIKE_PROTOTYPE_NAME, OptionCategory.EXPERT, ARRAY_LIKE_PROTOTYPE_HELP));
+        options.add(newOptionDescriptor(SIMDJS, SIMDJS_NAME, OptionCategory.EXPERT, SIMDJS_HELP));
     }
 
     /**
@@ -538,6 +545,10 @@ public final class JSContextOptions {
         return POLYGLOT_BUILTIN.getValue(optionValues);
     }
 
+    public boolean isSIMDjs() {
+        return SIMDJS.getValue(optionValues);
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -565,6 +576,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
         hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
         hash = 53 * hash + (this.arrayLikePrototype ? 1 : 0);
+        hash = 53 * hash + (this.simdjs ? 1 : 0);
         return hash;
     }
 
@@ -647,6 +659,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.arrayLikePrototype != other.arrayLikePrototype) {
+            return false;
+        }
+        if (this.simdjs != other.simdjs) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

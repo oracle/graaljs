@@ -139,17 +139,21 @@ public final class SIMDTypePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             Object element0 = simdArray[0];
 
             if (element0 != null && element0 != Undefined.instance) {
-                sb.append(JSRuntime.toString(element0)); // toString(frame, element0));
+                sb.append(JSRuntime.toString(toDouble(element0)));
             }
 
             for (int k = 1; k < len; k++) {
                 sb.append(sep);
                 Object element = simdArray[k];
                 if (element != null && element != Undefined.instance) {
-                    sb.append(JSRuntime.toString(element)); // ;toString(frame, element));
+                    sb.append(JSRuntime.toString(toDouble(element)));
                 }
             }
             return sb.toString();
+        }
+
+        private static double toDouble(Object element) {
+            return ((Number) element).doubleValue();
         }
 
         @Specialization

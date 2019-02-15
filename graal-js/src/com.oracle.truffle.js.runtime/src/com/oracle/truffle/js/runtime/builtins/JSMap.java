@@ -116,7 +116,7 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
                 if (JSMap.isJSMap(obj)) {
                     return JSMap.getMapSize((DynamicObject) obj);
                 } else {
-                    throw Errors.createTypeError("Map expected");
+                    throw Errors.createTypeErrorMapExpected();
                 }
             }
         });

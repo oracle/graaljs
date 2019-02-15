@@ -635,4 +635,8 @@ public abstract class SIMDType {
         }
         return factories;
     }
+
+    public static SIMDTypeFactory<? extends SIMDType>[] factories() {
+        return FACTORIES;
+    }
 }

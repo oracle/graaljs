@@ -101,6 +101,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -514,31 +515,9 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         // 5.1.3 SIMDExtractLane( value, lane )
-        public Object simdExtractLane(DynamicObject value, Object lane) {
-            assert JSSIMD.isJSSIMD(value);
-            int index = simdToLane(JSSIMD.simdTypeGetSIMDType(value).getFactory().getNumberOfElements(), lane);
-            Object res = getLane(value, index);
-            return res;
-        }
-
-        // 5.1.3 SIMDExtractLane( value, lane )
         public Object simdExtractLane(DynamicObject value, int lane) {
             assert JSSIMD.isJSSIMD(value);
             Object res = getLane(value, lane);
-            return res;
-        }
-
-        // 5.1.4 SIMDReplaceLane( value, lane, replacement )
-        public DynamicObject simdReplaceLane(DynamicObject value, Object lane, Object replacement) {
-            SIMDType descriptor = JSSIMD.simdTypeGetSIMDType(value);
-
-            DynamicObject res = JSSIMD.createSIMD(getContext(), descriptor);
-            int index = simdToLane(JSSIMD.simdTypeGetSIMDType(value).getNumberOfElements(), lane);
-            for (int i = 0; i < descriptor.getNumberOfElements(); i++) {
-                setLane(res, i, getLane(value, i));
-            }
-
-            setLane(res, index, cast(0, replacement));
             return res;
         }
 
@@ -684,19 +663,6 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             return n;
         }
 
-        // SIMDReinterpretCast( value, newDescriptor )
-        protected Object simdReinterpretCast(Object value, SIMDType newDescriptor) {
-            int bytes = newDescriptor.getBytesPerElement() * newDescriptor.getNumberOfElements();
-            if (simdContext.getBytesPerElement() * simdContext.getNumberOfElements() != bytes) {
-                errorBranch.enter();
-                throw Errors.createError("assertion");
-            }
-            byte[] block = new byte[bytes];
-            SIMDType olddesc = JSSIMD.simdTypeGetSIMDType((DynamicObject) value);
-            simdStore(block, olddesc, 0, (DynamicObject) value, olddesc.getNumberOfElements());
-            return simdLoad(block, newDescriptor, 0, newDescriptor.getFactory().getNumberOfElements());
-        }
-
         // 5.1.14 SIMDBoolType( descriptor )
         protected SIMDType simdBoolType(SIMDType descriptor) {
             if (descriptor.getFactory().getBytesPerElement() * 8 * descriptor.getFactory().getNumberOfElements() != 128) {
@@ -776,6 +742,10 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 return descriptor.getMin();
             }
             return (int) x;
+        }
+
+        protected JSException createTypeErrorInvalidArgumentType() {
+            return Errors.createTypeError("invalid argument Type");
         }
     }
 
@@ -1886,12 +1856,12 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         protected Object doSelect(DynamicObject selector, DynamicObject a, DynamicObject b) {
             if (!JSSIMD.isJSSIMD(a) || !JSSIMD.isJSSIMD(b)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("invalid argument Type");
+                throw createTypeErrorInvalidArgumentType();
             }
             SIMDType selDescriptor = simdBoolType(simdContext);
             if (selDescriptor != JSSIMD.simdTypeGetSIMDType(selector)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("invalid argument Type");
+                throw createTypeErrorInvalidArgumentType();
             }
 
             DynamicObject res = JSSIMD.createSIMD(getContext(), simdContext);
@@ -2195,7 +2165,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             }
             if (!JSSIMD.isJSSIMD(simd)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("invalid argument Types");
+                throw createTypeErrorInvalidArgumentType();
             }
 
             return simdStoreInTypedArray(tarray, index, simdContext, simd, length);

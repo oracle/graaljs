@@ -39,10 +39,9 @@
  * SOFTWARE.
  */
 
-// This file is available under and governed by the GNU General Public
-// License version 2 only, as published by the Free Software Foundation.
-// However, the following notice accompanied the original version of this
-// file:
+// This file is available under and governed by the Universal Permissive License
+// (UPL) 1.0 only. However, the following notice accompanied the original version
+// of this file:
 //
 // Copyright 2010 the V8 project authors. All rights reserved.
 // Redistribution and use in source and binary forms, with or without

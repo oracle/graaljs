@@ -127,7 +127,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     private JSException createTypeError(DynamicObject value) {
-        if (fromWith) {
+        if (isFromWith()) {
             return Errors.createTypeError("Cannot apply \"with\" to " + JSRuntime.safeToString(value), this);
         }
         return Errors.createTypeErrorNotObjectCoercible(value, this);
@@ -140,37 +140,37 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @Specialization
     protected DynamicObject doJSLazyString(JSLazyString value) {
-        return JSString.create(context, value);
+        return JSString.create(getContext(), value);
     }
 
     @Specialization
     protected DynamicObject doString(String value) {
-        return JSString.create(context, value);
+        return JSString.create(getContext(), value);
     }
 
     @Specialization
     protected DynamicObject doInt(int value) {
-        return JSNumber.create(context, value);
+        return JSNumber.create(getContext(), value);
     }
 
     @Specialization
     protected DynamicObject doDouble(double value) {
-        return JSNumber.create(context, value);
+        return JSNumber.create(getContext(), value);
     }
 
     @Specialization
     protected DynamicObject doBigInt(BigInt value) {
-        return JSBigInt.create(context, value);
+        return JSBigInt.create(getContext(), value);
     }
 
     @Specialization(guards = "isJavaNumber(value)")
     protected DynamicObject doNumber(Object value) {
-        return JSNumber.create(context, (Number) value);
+        return JSNumber.create(getContext(), (Number) value);
     }
 
     @Specialization
     protected DynamicObject doSymbol(Symbol value) {
-        return JSSymbol.create(context, value);
+        return JSSymbol.create(getContext(), value);
     }
 
     @Specialization(guards = {"shape.check(object)", "isJSObjectShape(shape)", "!isCheckForNullOrUndefined()"}, limit = "MAX_SHAPE_COUNT")
@@ -205,7 +205,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isForeignObject(obj)"})
     protected TruffleObject doForeignTruffleObject(TruffleObject obj) {
-        if (allowForeign) {
+        if (isAllowForeign()) {
             if (isFromWith() && context.isOptionNashornCompatibilityMode() && context.getRealm().getEnv().isHostObject(obj)) {
                 throwWithError();
             }
