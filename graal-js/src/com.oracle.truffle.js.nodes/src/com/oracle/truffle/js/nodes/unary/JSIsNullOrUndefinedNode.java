@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -52,7 +56,11 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.binary.JSEqualNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -71,8 +79,37 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     protected static final int MAX_TYPE_COUNT = 1;
     protected static final int MAX_CLASSES = 3;
 
-    protected JSIsNullOrUndefinedNode(JavaScriptNode operand) {
+    private final boolean isLeft;
+    private final boolean isUndefined;
+
+    protected JSIsNullOrUndefinedNode(JavaScriptNode operand, boolean isUndefined, boolean isLeft) {
         super(operand);
+        this.isUndefined = isUndefined;
+        this.isLeft = isLeft;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == BinaryExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(BinaryExpressionTag.class)) {
+            JSConstantNode constantNode = isUndefined ? JSConstantNode.createUndefined() : JSConstantNode.createNull();
+            JavaScriptNode left = isLeft ? constantNode : getOperand();
+            JavaScriptNode right = isLeft ? getOperand() : constantNode;
+            JavaScriptNode materialized = JSEqualNode.createUnoptimized(left, right);
+            transferSourceSectionAddExpressionTag(this, constantNode);
+            transferSourceSectionAndTags(this, materialized);
+            return materialized;
+        } else {
+            return this;
+        }
     }
 
     @Specialization(guards = "isJSNull(operand)")
@@ -152,12 +189,21 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
         return ForeignAccess.sendIsNull(isNullNode, operand);
     }
 
-    public static JSIsNullOrUndefinedNode create(JavaScriptNode operand) {
-        return JSIsNullOrUndefinedNodeGen.create(operand);
+    public static JSIsNullOrUndefinedNode createFromEquals(JavaScriptNode left, JavaScriptNode right) {
+        assert isNullOrUndefined(left) || isNullOrUndefined(right);
+        boolean isLeft = isNullOrUndefined(left);
+        JavaScriptNode operand = isLeft ? right : left;
+        JavaScriptNode constant = isLeft ? left : right;
+        boolean isUndefined = constant instanceof JSConstantUndefinedNode;
+        return JSIsNullOrUndefinedNodeGen.create(operand, isUndefined, isLeft);
+    }
+
+    private static boolean isNullOrUndefined(JavaScriptNode node) {
+        return node instanceof JSConstantUndefinedNode || node instanceof JSConstantNullNode;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSIsNullOrUndefinedNodeGen.create(cloneUninitialized(getOperand()));
+        return JSIsNullOrUndefinedNodeGen.create(cloneUninitialized(getOperand()), isUndefined, isLeft);
     }
 }
