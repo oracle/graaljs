@@ -190,6 +190,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
 import com.oracle.truffle.js.nodes.function.NewTargetRootNode;
 import com.oracle.truffle.js.nodes.function.SpreadArgumentNode;
+import com.oracle.truffle.js.nodes.promise.ImportCallNode;
 import com.oracle.truffle.js.nodes.unary.JSComplementNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryMinusNode;
@@ -1084,6 +1085,10 @@ public class NodeFactory {
                 return copy();
             }
         };
+    }
+
+    public JavaScriptNode createImportCall(JSContext context, JavaScriptNode argument, JavaScriptNode activeScriptOrModule) {
+        return ImportCallNode.create(context, argument, activeScriptOrModule);
     }
 
     public JavaScriptNode createCopyDataProperties(JSContext context, JavaScriptNode targetObj, JavaScriptNode source, JavaScriptNode excludedNames) {

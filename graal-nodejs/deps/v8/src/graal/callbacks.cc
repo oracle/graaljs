@@ -63,6 +63,7 @@
 #include "graal_string.h"
 #include "graal_symbol.h"
 #include "graal_external.h"
+#include "graal_script_or_module.h"
 #include "jni.h"
 #include "uv.h"
 #include "../../../../mxbuild/trufflenode/coremodules/node_snapshots.h"
@@ -103,6 +104,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("notifyPromiseRejectionTracker", "(Ljava/lang/Object;ILjava/lang/Object;)V", &GraalNotifyPromiseRejectionTracker),
     CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
     CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
+    CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
     CALLBACK("writeHostObject", "(JLjava/lang/Object;)V", &GraalWriteHostObject),
     CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
     CALLBACK("throwDataCloneError", "(JLjava/lang/String;)V", &GraalThrowDataCloneError),
@@ -721,6 +723,24 @@ jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong call
         v8::Local<v8::Module> v8_module = v8_result.ToLocalChecked();
         GraalModule* graal_module = reinterpret_cast<GraalModule*> (*v8_module);
         return env->NewLocalRef(graal_module->GetJavaObject());
+    }
+}
+
+jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_referrer, jstring java_specifier) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    GraalContext* graal_context = new GraalContext(graal_isolate, java_context);
+    GraalScriptOrModule* graal_referrer = new GraalScriptOrModule(graal_isolate, java_referrer);
+    GraalString* graal_specifier = new GraalString(graal_isolate, java_specifier);
+    v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
+    v8::Local<v8::ScriptOrModule> v8_referrer = reinterpret_cast<v8::ScriptOrModule*> (graal_referrer);
+    v8::Local<v8::String> v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
+    v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleDynamically(v8_context, v8_referrer, v8_specifier);
+    if (v8_result.IsEmpty()) {
+        return NULL;
+    } else {
+        v8::Local<v8::Promise> v8_promise = v8_result.ToLocalChecked();
+        GraalPromise* graal_promise = reinterpret_cast<GraalPromise*> (*v8_promise);
+        return env->NewLocalRef(graal_promise->GetJavaObject());
     }
 }
 

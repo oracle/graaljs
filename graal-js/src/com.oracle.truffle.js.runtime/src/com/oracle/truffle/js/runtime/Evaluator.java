@@ -42,9 +42,11 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
 public interface Evaluator {
 
@@ -81,9 +83,11 @@ public interface Evaluator {
 
     JSModuleRecord parseModule(JSContext context, Source source, JSModuleLoader moduleLoader);
 
-    JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, String specifier);
+    JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, String specifier);
 
     void moduleInstantiation(JSModuleRecord moduleRecord);
 
     Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord);
+
+    DynamicObject getModuleNamespace(JSModuleRecord moduleRecord);
 }

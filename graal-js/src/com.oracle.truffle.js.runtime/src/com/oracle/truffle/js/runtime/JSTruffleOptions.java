@@ -128,7 +128,8 @@ public class JSTruffleOptions {
     public static final int ECMAScript2017 = 8;
     public static final int ECMAScript2018 = 9;
     public static final int ECMAScript2019 = 10;
-    private static final int LatestECMAScriptVersion = ECMAScript2019;
+    public static final int ECMAScript2020 = 11;
+    private static final int LatestECMAScriptVersion = ECMAScript2020;
     public static final int MaxECMAScriptVersion = integerOption("ECMAScriptVersion", LatestECMAScriptVersion);
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true);

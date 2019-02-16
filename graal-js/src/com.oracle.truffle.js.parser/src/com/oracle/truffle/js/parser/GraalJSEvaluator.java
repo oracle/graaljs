@@ -101,6 +101,7 @@ import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -319,6 +320,7 @@ public final class GraalJSEvaluator implements JSParser {
         return () -> JavaScriptTranslator.translateFunction(NodeFactory.getInstance(context), context, null, source, false, ast);
     }
 
+    @TruffleBoundary
     @Override
     public JSModuleRecord parseModule(JSContext context, Source source, JSModuleLoader moduleLoader) {
         try {
@@ -328,8 +330,14 @@ public final class GraalJSEvaluator implements JSParser {
         }
     }
 
+    @TruffleBoundary
     @Override
-    public JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, String specifier) {
+    public JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referrer, String specifier) {
+        JSModuleLoader moduleLoader = referrer instanceof JSModuleRecord ? ((JSModuleRecord) referrer).getModuleLoader() : context.getRealm().getModuleLoader();
+        return moduleLoader.resolveImportedModule(referrer, specifier);
+    }
+
+    private static JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, String specifier) {
         return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, specifier);
     }
 
@@ -440,11 +448,14 @@ public final class GraalJSEvaluator implements JSParser {
         return starResolution;
     }
 
+    @TruffleBoundary
+    @Override
     public DynamicObject getModuleNamespace(JSModuleRecord moduleRecord) {
         if (moduleRecord.getNamespace() != null) {
             return moduleRecord.getNamespace();
         }
 
+        assert moduleRecord.getStatus() != Status.Uninstantiated;
         Collection<String> exportedNames = getExportedNames(moduleRecord);
         List<Pair<String, ExportResolution>> unambiguousNames = new ArrayList<>();
         for (String exportedName : exportedNames) {
@@ -462,6 +473,7 @@ public final class GraalJSEvaluator implements JSParser {
         return namespace;
     }
 
+    @TruffleBoundary
     @Override
     public void moduleInstantiation(JSModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() != Status.Instantiating && moduleRecord.getStatus() != Status.Evaluating;
@@ -556,6 +568,7 @@ public final class GraalJSEvaluator implements JSParser {
         moduleRecord.finishTranslation();
     }
 
+    @TruffleBoundary
     @Override
     public Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() == Status.Instantiated || moduleRecord.getStatus() == Status.Evaluated;

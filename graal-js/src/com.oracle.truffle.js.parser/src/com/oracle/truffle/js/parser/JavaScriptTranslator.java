@@ -64,10 +64,11 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
 public final class JavaScriptTranslator extends GraalJSTranslator {
     private final Module moduleNode;
-    private JSModuleRecord moduleRecord;
+    private ScriptOrModule scriptOrModule;
 
     private JavaScriptTranslator(NodeFactory factory, JSContext context, Source source, Environment environment, boolean isParentStrict, Module moduleNode) {
         super(factory, context, source, environment, isParentStrict);
@@ -113,7 +114,9 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     public static JSModuleRecord translateModule(NodeFactory factory, JSContext context, Source source, JSModuleLoader moduleLoader) {
         FunctionNode parsed = GraalJSParserHelper.parseModule(source, ((GraalJSParserOptions) context.getParserOptions()).putStrict(true));
         JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, null, true, parsed.getModule());
-        return translator.moduleRecord = new JSModuleRecord(parsed.getModule(), context, moduleLoader, source, () -> translator.translateModule(parsed));
+        JSModuleRecord moduleRecord = new JSModuleRecord(parsed.getModule(), context, moduleLoader, source, () -> translator.translateModule(parsed));
+        translator.scriptOrModule = moduleRecord;
+        return moduleRecord;
     }
 
     private JSModuleRecord translateModule(com.oracle.js.parser.ir.FunctionNode functionNode) {
@@ -122,6 +125,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         }
         JSFunctionExpressionNode functionExpression = (JSFunctionExpressionNode) transformFunction(functionNode);
         FunctionRootNode functionRoot = functionExpression.getFunctionNode();
+        JSModuleRecord moduleRecord = (JSModuleRecord) scriptOrModule;
         moduleRecord.setFunctionData(functionRoot.getFunctionData());
         return moduleRecord;
     }
@@ -135,7 +139,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         GraalJSEvaluator evaluator = (GraalJSEvaluator) context.getEvaluator();
         // Assert: all named exports from module are resolvable.
         for (ImportEntry importEntry : moduleNode.getImportEntries()) {
-            JSModuleRecord importedModule = evaluator.hostResolveImportedModule(moduleRecord, importEntry.getModuleRequest());
+            JSModuleRecord importedModule = evaluator.hostResolveImportedModule(context, scriptOrModule, importEntry.getModuleRequest());
             if (importEntry.getImportName().equals(Module.STAR_NAME)) {
                 Symbol symbol = new Symbol(importEntry.getLocalName(), Symbol.IS_CONST | Symbol.HAS_BEEN_DECLARED);
                 moduleBlock.putSymbol(lc, symbol);
@@ -160,7 +164,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         // Check for duplicate exports
         verifyModuleExportedNames();
 
-        declarations.add(factory.createSetModuleEnvironment(getModuleRecord()));
+        declarations.add(factory.createSetModuleEnvironment(getActiveScriptOrModule()));
         return declarations;
     }
 
@@ -190,14 +194,18 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     @Override
-    protected JavaScriptNode getModuleRecord() {
-        return factory.createConstant(moduleRecord);
+    protected JavaScriptNode getActiveScriptOrModule() {
+        if (scriptOrModule == null) {
+            assert moduleNode == null;
+            scriptOrModule = new ScriptOrModule(context, source);
+        }
+        return factory.createConstant(scriptOrModule);
     }
 
     @Override
     protected GraalJSTranslator newTranslator(Environment env) {
         JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, env, false, moduleNode);
-        translator.moduleRecord = this.moduleRecord;
+        translator.scriptOrModule = this.scriptOrModule;
         return translator;
     }
 }

@@ -118,6 +118,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -1424,8 +1425,8 @@ public class JSRealm {
                 private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
 
                 @Override
-                public JSModuleRecord resolveImportedModule(JSModuleRecord referrer, String specifier) {
-                    String refPath = referrer.getSource().getPath();
+                public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
+                    String refPath = referrer == null ? null : referrer.getSource().getPath();
                     try {
                         TruffleFile moduleFile;
                         if (refPath == null) {

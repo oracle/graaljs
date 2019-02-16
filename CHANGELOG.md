@@ -8,6 +8,7 @@ The main focus is on user-observable behavior of the engine.
 * Removed deprecated experimental `Java.Worker` API. Node.js Workers should be used instead.
 * Removed deprecated `NashornJavaInterop` mode.
 * [Object.fromEntries](https://tc39.github.io/proposal-object-from-entries/) proposal implemented.
+* Implemented [import()](https://tc39.github.io/proposal-dynamic-import/) proposal.
 
 ## Version 1.0.0 RC12
 * Added option `js.experimental-array-prototype` that sets prototype of

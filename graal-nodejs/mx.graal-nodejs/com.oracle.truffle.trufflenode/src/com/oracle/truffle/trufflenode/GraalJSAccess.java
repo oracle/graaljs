@@ -139,6 +139,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.ImportMetaInitializer;
+import com.oracle.truffle.js.runtime.ImportModuleDynamicallyCallback;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -193,6 +194,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -283,6 +285,10 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
             contextBuilder.option(JSContextOptions.INTL_402_NAME, "true");
             contextBuilder.option(GraalJSParserOptions.SYNTAX_EXTENSIONS_NAME, "false");
+            // Node.js does not have global load property
+            contextBuilder.option(JSContextOptions.LOAD_NAME, "false");
+            // Node.js provides its own console
+            contextBuilder.option(JSContextOptions.CONSOLE_NAME, "false");
 
             exposeGC = options.isGCExposed();
             evaluator = contextBuilder.build();
@@ -299,6 +305,8 @@ public final class GraalJSAccess {
         mainJSContext.setJSAgent(agent);
         deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
+        // Disallow importing dynamically unless ESM Loader (--experimental-modules) is enabled.
+        isolateEnableImportModuleDynamically(false);
     }
 
     private static String[] prepareArguments(String[] args) {
@@ -2281,9 +2289,8 @@ public final class GraalJSAccess {
         }
         realm.setEmbedderData(new RealmData());
         DynamicObject global = realm.getGlobalObject();
-        // Node.js does not have global arguments and load properties
+        // Node.js does not have global arguments property
         global.delete(JSRealm.ARGUMENTS_NAME);
-        global.delete("load");
         if (exposeGC) {
             contextExposeGC(realm);
         }
@@ -2576,6 +2583,16 @@ public final class GraalJSAccess {
             }
         } : null;
         mainJSContext.setImportMetaInitializer(initializer);
+    }
+
+    public void isolateEnableImportModuleDynamically(boolean enable) {
+        ImportModuleDynamicallyCallback callback = enable ? new ImportModuleDynamicallyCallback() {
+            @Override
+            public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, String specifier) {
+                return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, specifier);
+            }
+        } : null;
+        mainJSContext.setImportModuleDynamicallyCallback(callback);
     }
 
     private void exit(int status) {
@@ -2931,6 +2948,11 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
+    public String scriptOrModuleGetResourceName(Object scriptOrModule) {
+        ScriptOrModule record = (ScriptOrModule) scriptOrModule;
+        return record.getSource().getName();
+    }
+
     public Object valueSerializerNew(long delegatePointer) {
         return new Serializer(mainJSContext, this, delegatePointer);
     }
@@ -3131,7 +3153,7 @@ public final class GraalJSAccess {
     }
 
     static class ESModuleLoader implements JSModuleLoader {
-        private final Map<JSModuleRecord, Map<String, JSModuleRecord>> cache = new HashMap<>();
+        private final Map<ScriptOrModule, Map<String, JSModuleRecord>> cache = new HashMap<>();
         private long resolver;
 
         void setResolver(long resolver) {
@@ -3139,7 +3161,7 @@ public final class GraalJSAccess {
         }
 
         @Override
-        public JSModuleRecord resolveImportedModule(JSModuleRecord referrer, String specifier) {
+        public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
             Map<String, JSModuleRecord> referrerCache = cache.get(referrer);
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();

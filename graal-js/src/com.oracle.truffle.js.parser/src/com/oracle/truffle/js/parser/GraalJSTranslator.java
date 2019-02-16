@@ -105,7 +105,6 @@ import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.DeclareEvalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.FrameSlotNode;
-import com.oracle.truffle.js.nodes.access.GetTemplateObjectNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -166,7 +165,6 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -1245,7 +1243,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         throw new UnsupportedOperationException();
     }
 
-    protected JavaScriptNode getModuleRecord() {
+    protected JavaScriptNode getActiveScriptOrModule() {
         throw new UnsupportedOperationException();
     }
 
@@ -1523,7 +1521,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (identNode.isNewTarget()) {
             result = environment.findNewTargetVar().createReadNode();
         } else if (identNode.isImportMeta()) {
-            result = factory.createImportMeta(getModuleRecord());
+            result = factory.createImportMeta(getActiveScriptOrModule());
         } else {
             String varName = identNode.getName();
             VarRef varRef = findScopeVarCheckTDZ(varName, false);
@@ -2188,18 +2186,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode function = transform(callNode.getFunction());
         JavaScriptNode[] args = transformArgs(callNode.getArgs());
         JavaScriptNode call;
-        if (callNode.getFunction() instanceof IdentNode && args.length >= 1 && ((IdentNode) callNode.getFunction()).getName().equals(JSGlobalObject.EVAL_NAME) &&
-                        !(args[0] instanceof GetTemplateObjectNode)) {
+        if (callNode.isEval() && args.length >= 1) {
             call = createCallEvalNode(function, args);
         } else if (currentFunction().isDirectArgumentsAccess() && isCallApplyArguments(callNode)) {
             call = createCallApplyArgumentsNode(function, args);
+        } else if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).isDirectSuper()) {
+            args = insertNewTargetArg(args);
+            call = initializeThis(factory.createFunctionCallWithNewTarget(context, function, args));
+        } else if (callNode.isImport()) {
+            call = createImportCallNode(args);
         } else {
-            if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).isDirectSuper()) {
-                args = insertNewTargetArg(args);
-                call = initializeThis(factory.createFunctionCallWithNewTarget(context, function, args));
-            } else {
-                call = createCallDefaultNode(function, args);
-            }
+            call = createCallDefaultNode(function, args);
         }
         return tagExpression(tagCall(call), callNode);
     }
@@ -2250,6 +2247,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private static boolean isCallApplyArguments(CallNode callNode) {
         return isApply(callNode) && callNode.getArgs().size() == 2 && callNode.getArgs().get(1) instanceof IdentNode &&
                         ((IdentNode) callNode.getArgs().get(1)).getName().equals(Environment.ARGUMENTS_NAME);
+    }
+
+    private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
+        assert args.length == 1;
+        return factory.createImportCall(context, args[0], getActiveScriptOrModule());
     }
 
     @Override

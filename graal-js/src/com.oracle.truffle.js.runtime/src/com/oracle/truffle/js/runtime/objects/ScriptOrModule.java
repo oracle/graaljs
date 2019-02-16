@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,25 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.runtime.JSContext;
 
-public interface JSModuleLoader {
-    JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier);
+/**
+ * Script or Module Record.
+ */
+public class ScriptOrModule {
+    protected final JSContext context;
+    protected final Source source;
 
-    JSModuleRecord loadModule(Source moduleSource);
+    public ScriptOrModule(JSContext context, Source source) {
+        this.context = context;
+        this.source = source;
+    }
+
+    public final JSContext getContext() {
+        return context;
+    }
+
+    public final Source getSource() {
+        return source;
+    }
 }

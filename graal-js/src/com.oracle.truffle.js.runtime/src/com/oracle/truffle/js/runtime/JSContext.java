@@ -127,6 +127,7 @@ import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.JSShapeData;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
@@ -209,6 +210,8 @@ public class JSContext {
 
     private ImportMetaInitializer importMetaInitializer;
     private final Assumption importMetaInitializerNotUsedAssumption;
+    private ImportModuleDynamicallyCallback importModuleDynamicallyCallback;
+    private final Assumption importModuleDynamicallyCallbackNotUsedAssumption;
 
     private final CallTarget emptyFunctionCallTarget;
     private final CallTarget speciesGetterFunctionCallTarget;
@@ -240,6 +243,7 @@ public class JSContext {
         PromiseCatchFinally,
         PromiseValueThunk,
         PromiseThrower,
+        ImportModuleDynamically,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
@@ -402,6 +406,7 @@ public class JSContext {
         this.promiseHookNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseHookNotUsedAssumption");
         this.promiseRejectionTrackerNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseRejectionTrackerNotUsedAssumption");
         this.importMetaInitializerNotUsedAssumption = Truffle.getRuntime().createAssumption("importMetaInitializerNotUsedAssumption");
+        this.importModuleDynamicallyCallbackNotUsedAssumption = Truffle.getRuntime().createAssumption("importModuleDynamicallyCallbackNotUsedAssumption");
 
         this.emptyFunctionCallTarget = createEmptyFunctionCallTarget(lang);
         this.speciesGetterFunctionCallTarget = createSpeciesGetterFunctionCallTarget(lang);
@@ -1357,20 +1362,42 @@ public class JSContext {
     }
 
     public final void setImportMetaInitializer(ImportMetaInitializer importMetaInitializer) {
-        invalidateImportMetaInitializerNotUsedAssumption();
+        importMetaInitializerNotUsedAssumption.invalidate("ImportMetaInitializer unused");
         this.importMetaInitializer = importMetaInitializer;
     }
 
-    private void invalidateImportMetaInitializerNotUsedAssumption() {
-        if (importMetaInitializerNotUsedAssumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            importMetaInitializerNotUsedAssumption.invalidate("ImportMetaInitializer unused");
+    public final boolean hasImportMetaInitializerBeenSet() {
+        return !importMetaInitializerNotUsedAssumption.isValid();
+    }
+
+    @TruffleBoundary
+    public final void notifyImportMetaInitializer(DynamicObject importMeta, JSModuleRecord module) {
+        if (importMetaInitializer != null) {
+            importMetaInitializer.initializeImportMeta(importMeta, module);
         }
     }
 
-    public final void notifyImportMetaInitializer(DynamicObject importMeta, JSModuleRecord module) {
-        if (!importMetaInitializerNotUsedAssumption.isValid() && importMetaInitializer != null) {
-            importMetaInitializer.initializeImportMeta(importMeta, module);
+    public final void setImportModuleDynamicallyCallback(ImportModuleDynamicallyCallback callback) {
+        importModuleDynamicallyCallbackNotUsedAssumption.invalidate();
+        this.importModuleDynamicallyCallback = callback;
+    }
+
+    public final boolean hasImportModuleDynamicallyCallbackBeenSet() {
+        return !importModuleDynamicallyCallbackNotUsedAssumption.isValid();
+    }
+
+    /**
+     * Invokes the HostImportModuleDynamically (and FinishDynamicImport) callback. Returns a promise
+     * of dynamic import completion or {@null} if no callback is installed or the callback failed.
+     *
+     * @return the callback result (a promise or {@code null}).
+     */
+    @TruffleBoundary
+    public final DynamicObject hostImportModuleDynamically(JSRealm realm, ScriptOrModule referrer, String specifier) {
+        if (importModuleDynamicallyCallback != null) {
+            return importModuleDynamicallyCallback.importModuleDynamically(realm, referrer, specifier);
+        } else {
+            return null;
         }
     }
 
