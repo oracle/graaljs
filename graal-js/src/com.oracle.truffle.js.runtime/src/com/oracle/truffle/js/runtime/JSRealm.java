@@ -225,8 +225,8 @@ public class JSRealm {
     private final DynamicObject asyncGeneratorObjectPrototype;
     private final JSConstructor asyncGeneratorFunctionConstructor;
 
-    private final DynamicObject throwerFunction;
-    private final Accessor throwerAccessor;
+    private DynamicObject throwerFunction;
+    private Accessor throwerAccessor;
 
     private final JSConstructor promiseConstructor;
 
@@ -291,9 +291,6 @@ public class JSRealm {
         this.functionPrototype = JSFunction.createFunctionPrototype(this, objectPrototype);
 
         this.objectFactories = context.newObjectFactoryRealmData();
-
-        this.throwerFunction = createThrowerFunction();
-        this.throwerAccessor = new Accessor(throwerFunction, throwerFunction);
 
         if (context.isOptionAnnexB()) {
             putProtoAccessorProperty(this);
@@ -670,11 +667,16 @@ public class JSRealm {
     }
 
     public final DynamicObject getThrowerFunction() {
+        if (throwerFunction == null) {
+            throwerFunction = createThrowerFunction();
+        }
         return throwerFunction;
     }
 
     public final Accessor getThrowerAccessor() {
-        assert throwerAccessor != null;
+        if (throwerAccessor == null) {
+            throwerAccessor = new Accessor(getThrowerFunction(), getThrowerFunction());
+        }
         return throwerAccessor;
     }
 
@@ -1252,6 +1254,13 @@ public class JSRealm {
 
         // Reflect any changes to the timezone option.
         context.setLocalTimeZoneFromOptions(newEnv.getOptions());
+
+        // Perform the deferred part of setting up properties in the function prototype.
+        // Taken from JSFunction#fillFunctionPrototype, which is called from the JSRealm
+        // constructor.
+        if (getContext().getEcmaScriptVersion() >= 6) {
+            JSFunction.addRestrictedFunctionProperties(this, getFunctionPrototype());
+        }
 
         return true;
     }
