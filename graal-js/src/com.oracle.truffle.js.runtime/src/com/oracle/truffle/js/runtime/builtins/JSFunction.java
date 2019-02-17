@@ -676,8 +676,16 @@ public final class JSFunction extends JSBuiltinObject {
         }
     }
 
+    public static JSFunctionData createNamedEmptyFunctionData(JSContext context, String name) {
+        return JSFunctionData.createCallOnly(context, context.getEmptyFunctionCallTarget(), 0, name);
+    }
+
     public static JSFunctionData createEmptyFunctionData(JSContext context) {
-        return JSFunctionData.createCallOnly(context, context.getEmptyFunctionCallTarget(), 0, "");
+        return createNamedEmptyFunctionData(context, "");
+    }
+
+    public static DynamicObject createNamedEmptyFunction(JSRealm realm, String name) {
+        return JSFunction.create(realm, createNamedEmptyFunctionData(realm.getContext(), name));
     }
 
     public static DynamicObject createEmptyFunction(JSRealm realm) {
