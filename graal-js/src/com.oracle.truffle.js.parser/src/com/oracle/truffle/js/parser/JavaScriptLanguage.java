@@ -487,7 +487,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     GraalJSParserOptions.SCRIPTING,
                     JSContextOptions.DIRECT_BYTE_BUFFER,
                     JSContextOptions.INTL_402,
-                    JSContextOptions.LOAD
+                    JSContextOptions.LOAD,
+                    JSContextOptions.CONSOLE
     };
 
     /**

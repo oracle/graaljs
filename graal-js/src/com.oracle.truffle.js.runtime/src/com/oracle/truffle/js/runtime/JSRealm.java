@@ -839,9 +839,6 @@ public class JSRealm {
         if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject(global);
         }
-        if (context.getContextOptions().isConsole()) {
-            putConsoleObject(global);
-        }
         if (context.getContextOptions().isPerformance()) {
             putGlobalProperty(global, PERFORMANCE_CLASS_NAME, createPerformance());
         }
@@ -886,6 +883,7 @@ public class JSRealm {
         setupScriptingGlobals();
         setupIntlGlobals();
         setupLoadGlobals();
+        setupConsoleGlobals();
 
         if (isJavaInteropEnabled()) {
             setupJavaInterop(getGlobalObject());
@@ -1031,10 +1029,16 @@ public class JSRealm {
         putGlobalProperty(global, POLYGLOT_CLASS_NAME, obj);
     }
 
-    private void putConsoleObject(DynamicObject global) {
-        DynamicObject console = JSUserObject.createInit(this);
-        JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
-        putGlobalProperty(global, "console", console);
+    private void setupConsoleGlobals() {
+        CompilerAsserts.neverPartOfCompilation();
+
+        Supplier<Object> lazyConsole = () -> {
+            DynamicObject console = JSUserObject.createInit(this);
+            JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
+            return console;
+        };
+
+        toggleGlobalProperty("console", lazyConsole, context.getContextOptions().isConsole());
     }
 
     private DynamicObject createPerformance() {
