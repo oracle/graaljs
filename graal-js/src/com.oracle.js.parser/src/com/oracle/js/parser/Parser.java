@@ -3589,7 +3589,9 @@ loop:
 
         Block functionBody;
         try {
-            formalParameter(yield, await);
+            if (!env.syntaxExtensions || type != RPAREN) {
+                formalParameter(yield, await);
+            } // else Nashorn allows no-argument setters
             expect(RPAREN);
 
             functionBody = functionBody(functionNode);
