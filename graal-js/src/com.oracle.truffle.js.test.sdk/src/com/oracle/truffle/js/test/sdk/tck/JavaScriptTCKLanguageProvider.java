@@ -307,8 +307,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         res.add(createInlineSnippet(
                         context,
                         "resources/recursion.js",
-                        23,
-                        33,
+                        63,
+                        73,
                         "resources/recursion_inline1.js"));
         res.add(createInlineSnippet(
                         context,
