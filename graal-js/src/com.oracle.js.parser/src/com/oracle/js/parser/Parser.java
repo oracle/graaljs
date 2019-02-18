@@ -3579,22 +3579,8 @@ loop:
         final Expression propertyName = propertyName(yield, await);
         final IdentNode setterName = createMethodNameIdent(propertyName, "set ");
         expect(LPAREN);
-        // be sloppy and allow missing setter parameter even though
-        // spec does not permit it!
-        final IdentNode argIdent;
-        if (isBindingIdentifier()) {
-            argIdent = bindingIdentifier(false, false, "setter argument");
-        } else {
-            argIdent = null;
-        }
-        expect(RPAREN);
-        final List<IdentNode> parameters = new ArrayList<>();
-        if (argIdent != null) {
-            parameters.add(argIdent);
-        }
 
-
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setterName, getSetToken, FunctionNode.Kind.SETTER, functionLine, parameters, parameters.size());
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setterName, getSetToken, FunctionNode.Kind.SETTER, functionLine);
         functionNode.setFlag(FunctionNode.IS_METHOD);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
@@ -3603,7 +3589,14 @@ loop:
 
         Block functionBody;
         try {
+            formalParameter(yield, await);
+            expect(RPAREN);
+
             functionBody = functionBody(functionNode);
+
+            if (functionNode.getParameterBlock() != null) {
+                functionBody = wrapParameterBlock(functionNode.getParameterBlock(), functionBody);
+            }
         } finally {
             lc.pop(functionNode);
         }
