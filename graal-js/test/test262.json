@@ -9445,21 +9445,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
   }, {
-    "filePath" : "language/expressions/class/scope-setter-paramsbody-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/class/scope-setter-paramsbody-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/class/scope-static-setter-paramsbody-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/class/scope-static-setter-paramsbody-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/class/setter-length-dflt.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/comma/tco-final.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
@@ -9647,15 +9632,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/object/scope-setter-body-lex-distinc.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-setter-paramsbody-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/scope-setter-paramsbody-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/object/setter-length-dflt.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/postfix-decrement/arguments-nostrict.js",
@@ -10044,14 +10020,6 @@
     "filePath" : "language/module-code/privatename-valid-no-earlyerr.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/rest-parameters/array-pattern.js",
-    "status" : "FAIL",
-    "comment" : "ES7 tests"
-  }, {
-    "filePath" : "language/rest-parameters/object-pattern.js",
-    "status" : "FAIL",
-    "comment" : "ES7 tests"
   }, {
     "filePath" : "language/statements/block/tco-stmt-list.js",
     "status" : "SKIP",
@@ -16664,21 +16632,6 @@
     "filePath" : "language/statements/class/elements/wrapped-in-sc-string-literal-names.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/statements/class/scope-setter-paramsbody-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/class/scope-setter-paramsbody-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/class/scope-static-setter-paramsbody-var-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/class/scope-static-setter-paramsbody-var-open.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/class/setter-length-dflt.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/statements/class/static-classelementname-abrupt-completion.js",
     "status" : "FAIL",

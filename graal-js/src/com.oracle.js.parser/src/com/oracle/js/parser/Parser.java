@@ -3579,22 +3579,8 @@ loop:
         final Expression propertyName = propertyName(yield, await);
         final IdentNode setterName = createMethodNameIdent(propertyName, "set ");
         expect(LPAREN);
-        // be sloppy and allow missing setter parameter even though
-        // spec does not permit it!
-        final IdentNode argIdent;
-        if (isBindingIdentifier()) {
-            argIdent = bindingIdentifier(false, false, "setter argument");
-        } else {
-            argIdent = null;
-        }
-        expect(RPAREN);
-        final List<IdentNode> parameters = new ArrayList<>();
-        if (argIdent != null) {
-            parameters.add(argIdent);
-        }
 
-
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setterName, getSetToken, FunctionNode.Kind.SETTER, functionLine, parameters, parameters.size());
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setterName, getSetToken, FunctionNode.Kind.SETTER, functionLine);
         functionNode.setFlag(FunctionNode.IS_METHOD);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
@@ -3603,7 +3589,16 @@ loop:
 
         Block functionBody;
         try {
+            if (!env.syntaxExtensions || type != RPAREN) {
+                formalParameter(yield, await);
+            } // else Nashorn allows no-argument setters
+            expect(RPAREN);
+
             functionBody = functionBody(functionNode);
+
+            if (functionNode.getParameterBlock() != null) {
+                functionBody = wrapParameterBlock(functionNode.getParameterBlock(), functionBody);
+            }
         } finally {
             lc.pop(functionNode);
         }
@@ -4386,6 +4381,79 @@ loop:
         formalParameterList(RPAREN, yield, async);
     }
 
+    private void formalParameter(final boolean yield, final boolean await) {
+        if (type == YIELD && yield || isAwait() && await) {
+            throw error(expectMessage(IDENT));
+        }
+
+        final ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+        final long paramToken = token;
+        final int paramLine = line;
+        IdentNode ident;
+        if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
+            ident = bindingIdentifier(yield, await, FUNCTION_PARAMETER_CONTEXT);
+
+            if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
+                next();
+
+                if (type == YIELD && yield || isAwait() && await) {
+                    // error: yield in default expression
+                    throw error(expectMessage(IDENT));
+                }
+
+                // default parameter
+                Expression initializer = assignmentExpression(true, yield, await);
+
+                if (currentFunction != null) {
+                    addDefaultParameter(paramToken, finish, paramLine, ident, initializer, currentFunction);
+                }
+            } else {
+                if (currentFunction != null) {
+                    currentFunction.addParameter(ident);
+                }
+            }
+        } else {
+            final Expression pattern = bindingPattern(yield, await);
+            // Introduce synthetic temporary parameter to capture the object to be destructured.
+            verifyDestructuringParameterBindingPattern(pattern, paramToken, paramLine);
+
+            Expression initializer = null;
+            if (type == ASSIGN) {
+                next();
+                // binding pattern with initializer
+                initializer = assignmentExpression(true, yield, await);
+            }
+
+            if (currentFunction != null) {
+                addDestructuringParameter(paramToken, finish, paramLine, pattern, initializer, currentFunction, false);
+            }
+        }
+    }
+
+    private void functionRestParameter(final TokenType endType, final boolean yield, final boolean await) {
+        final long paramToken = token;
+        final int paramLine = line;
+        final ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+
+        final Expression pattern = bindingIdentifierOrPattern(yield, await, FUNCTION_PARAMETER_CONTEXT);
+        if (pattern instanceof IdentNode) {
+            IdentNode ident = ((IdentNode) pattern).setIsRestParameter();
+
+            if (currentFunction != null) {
+                currentFunction.addParameter(ident);
+            }
+        } else {
+            verifyDestructuringParameterBindingPattern(pattern, paramToken, paramLine);
+
+            if (currentFunction != null) {
+                addDestructuringParameter(paramToken, finish, paramLine, pattern, null, currentFunction, true);
+            }
+        }
+
+        // rest parameter must be last
+        expectDontAdvance(endType);
+    }
+
     /**
      * Parse function parameter list.
      * Same as the other method of the same name - except that the end
@@ -4396,7 +4464,6 @@ loop:
      *      FormalParameterList , Identifier
      */
     private void formalParameterList(final TokenType endType, final boolean yield, final boolean await) {
-        final ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
         // Track commas.
         boolean first = true;
 
@@ -4412,65 +4479,13 @@ loop:
                 first = false;
             }
 
-            boolean restParameter = false;
             if (ES6_REST_PARAMETER && type == ELLIPSIS && isES6()) {
                 next();
-                restParameter = true;
+                functionRestParameter(endType, yield, await);
+                break;
             }
 
-            if (type == YIELD && yield || isAwait() && await) {
-                throw error(expectMessage(IDENT));
-            }
-
-            final long paramToken = token;
-            final int paramLine = line;
-            IdentNode ident;
-            if (isBindingIdentifier() || restParameter || !(ES6_DESTRUCTURING && isES6())) {
-                ident = bindingIdentifier(yield, await, FUNCTION_PARAMETER_CONTEXT);
-
-                if (restParameter) {
-                    ident = ident.setIsRestParameter();
-                    // rest parameter must be last
-                    expectDontAdvance(endType);
-                }
-                if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
-                    next();
-
-                    if (type == YIELD && yield || isAwait() && await) {
-                        // error: yield in default expression
-                        throw error(expectMessage(IDENT));
-                    }
-
-                    // default parameter
-                    Expression initializer = assignmentExpression(true, yield, await);
-
-                    if (currentFunction != null) {
-                        addDefaultParameter(paramToken, finish, paramLine, ident, initializer, currentFunction);
-                    }
-                } else {
-                    if (currentFunction != null) {
-                        currentFunction.addParameter(ident);
-                    }
-                }
-                if (restParameter) {
-                    break;
-                }
-            } else {
-                final Expression pattern = bindingPattern(yield, await);
-                // Introduce synthetic temporary parameter to capture the object to be destructured.
-                verifyDestructuringParameterBindingPattern(pattern, paramToken, paramLine);
-
-                Expression initializer = null;
-                if (type == ASSIGN) {
-                    next();
-                    // binding pattern with initializer
-                    initializer = assignmentExpression(true, yield, await);
-                }
-
-                if (currentFunction != null) {
-                    addDestructuringParameter(paramToken, finish, paramLine, pattern, initializer, currentFunction);
-                }
-            }
+            formalParameter(yield, await);
         }
     }
 
@@ -4486,13 +4501,13 @@ loop:
         function.addDefaultParameter(new VarNode(paramLine, Token.recast(paramToken, LET), paramFinish, target, value, VarNode.IS_LET));
     }
 
-    private void addDestructuringParameter(long paramToken, int paramFinish, int paramLine, Expression target, Expression initializer, ParserContextFunctionNode function) {
+    private void addDestructuringParameter(long paramToken, int paramFinish, int paramLine, Expression target, Expression initializer, ParserContextFunctionNode function, boolean isRest) {
         assert isDestructuringLhs(target);
         // desugar to: target := (param === undefined) ? initializer : param;
         // we use an special positional parameter node not subjected to TDZ rules;
         // thereby, we forego the need for a synthethic param symbol to refer to the passed value.
         final int paramIndex = function.getParameterCount();
-        final ParameterNode param = new ParameterNode(paramToken, paramFinish, paramIndex);
+        final ParameterNode param = new ParameterNode(paramToken, paramFinish, paramIndex, isRest);
         final Expression value;
         if (initializer == null) {
             value = param; // binding pattern without initializer
@@ -5366,7 +5381,7 @@ loop:
                 // binding pattern with initializer
                 verifyDestructuringParameterBindingPattern(lhs, paramToken, paramLine);
 
-                addDestructuringParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction);
+                addDestructuringParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction, false);
             }
         } else if (isDestructuringLhs(param)) {
             // binding pattern
@@ -5374,7 +5389,7 @@ loop:
 
             verifyDestructuringParameterBindingPattern(param, paramToken, paramLine);
 
-            addDestructuringParameter(paramToken, param.getFinish(), paramLine, param, null, currentFunction);
+            addDestructuringParameter(paramToken, param.getFinish(), paramLine, param, null, currentFunction, false);
         } else if (param.isTokenType(SPREAD_ARGUMENT)) {
             Expression expression = ((UnaryNode) param).getExpression();
             if (expression instanceof IdentNode && identAtTheEndOfArrowParamList()) {
