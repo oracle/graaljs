@@ -1544,14 +1544,15 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create()") JSToLengthNode toLengthNode,
                         @Cached("create(LAST_INDEX, FALSE, getContext(), TRUE)") PropertySetNode setLastIndexNode,
                         @Cached("createCreateRegExpStringIteratorNode()") StringPrototypeBuiltins.CreateRegExpStringIteratorNode createRegExpStringIteratorNode,
-                        @Cached("create()") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+                        @Cached("create()") @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                        @Cached("createBinaryProfile()") ConditionProfile indexInIntRangeProf) {
             String string = toStringNodeForInput.executeString(stringObj);
             DynamicObject regExpConstructor = getContext().getRealm().getRegExpConstructor().getFunctionObject();
             DynamicObject constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
             String flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(regex));
             Object matcher = speciesConstructNode.construct(constructor, regex, flags);
             long lastIndex = toLengthNode.executeLong(getLastIndexNode.getValue(regex));
-            setLastIndexNode.setValue(matcher, lastIndex);
+            setLastIndexNode.setValue(matcher, JSRuntime.boxIndex(lastIndex, indexInIntRangeProf));
             boolean global = flags.indexOf("g") != -1;
             boolean fullUnicode = flags.indexOf("u") != -1;
             return createRegExpStringIteratorNode.createIterator(frame, matcher, string, global, fullUnicode);
