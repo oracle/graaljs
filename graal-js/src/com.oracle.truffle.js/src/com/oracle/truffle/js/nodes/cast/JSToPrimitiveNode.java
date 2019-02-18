@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
@@ -191,25 +192,35 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isTruffleJavaObject(object)")
-    protected Object doTruffleJavaObject(TruffleObject object) {
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
-        Object javaObject = env.asHostObject(object);
-        return (javaObject == null) ? Null.instance : doGeneric(javaObject);
-    }
-
-    @Specialization(guards = {"isForeignObject(object)", "!isTruffleJavaObject(object)"})
-    protected Object doCrossLanguage(TruffleObject object,
+    protected Object doTruffleJavaObject(TruffleObject object,
                     @Cached("create()") JSUnboxOrGetNode unboxOrGet) {
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        if (env.isHostObject(object)) {
+            Object javaObject = env.asHostObject(object);
+            if (javaObject == null) {
+                return Null.instance;
+            } else if (JSGuards.isJavaPrimitiveNumber(javaObject)) {
+                return javaObject;
+            } else {
+                if (hint == Hint.String || hint == Hint.None) {
+                    return JSRuntime.toJSNull(Boundaries.javaToString(javaObject));
+                } else {
+                    throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+                }
+            }
+        }
         return unboxOrGet.executeWithTarget(object);
     }
 
+    @Specialization(guards = "isJavaPrimitiveNumber(value)")
+    protected static Object doNumber(Object value) {
+        return value;
+    }
+
     @Fallback
-    protected static Object doGeneric(Object value) {
+    protected Object doFallback(Object value) {
         assert value != null;
-        if (value instanceof Number) {
-            return value;
-        }
-        return JSRuntime.toJSNull(Boundaries.javaToString(value));
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
     protected static PropertyNode createGetToPrimitive(DynamicObject object) {

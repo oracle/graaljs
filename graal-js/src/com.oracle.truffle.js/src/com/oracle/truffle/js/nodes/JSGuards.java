@@ -563,6 +563,10 @@ public final class JSGuards {
         return JSRuntime.isJavaPrimitive(value);
     }
 
+    public static boolean isJavaPrimitiveNumber(Object value) {
+        return value instanceof Number && JSRuntime.isJavaPrimitive(value);
+    }
+
     public static boolean isNullOrUndefined(Object value) {
         return JSObject.isDynamicObject(value) && isNullOrUndefined((DynamicObject) value);
     }

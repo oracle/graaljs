@@ -407,10 +407,13 @@ public final class JSRuntime {
             return stringToNumber(value.toString());
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
+        } else if (value instanceof BigInt) {
+            throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value");
         } else if (value instanceof Number) {
-            return (Number) value; // BigDecimal, BigInteger
+            assert isJavaPrimitive(value) : value.getClass().getName();
+            return (Number) value;
         }
-        assert false : "coerceToNumber: should never reach here, type " + value.getClass().getSimpleName() + " not handled.";
+        assert false : "should never reach here, type " + value.getClass().getName() + " not handled.";
         throw Errors.createTypeErrorCannotConvertToNumber(safeToString(value));
     }
 
