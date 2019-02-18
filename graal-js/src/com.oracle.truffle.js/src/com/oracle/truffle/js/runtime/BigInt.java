@@ -123,10 +123,12 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         return new BigInteger(trimmedString, 10);
     }
 
+    @TruffleBoundary
     public int intValue() {
         return value.intValue();
     }
 
+    @TruffleBoundary
     public double doubleValue() {
         return value.doubleValue();
     }

@@ -597,6 +597,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorUnsupportedInteropType(Object value) {
+        return Errors.createTypeError("type " + value.getClass().getSimpleName() + " not supported in JavaScript");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorNotATruffleObject(Message message) {
         return Errors.createTypeError("cannot call " + message + " on a non-interop object");
     }

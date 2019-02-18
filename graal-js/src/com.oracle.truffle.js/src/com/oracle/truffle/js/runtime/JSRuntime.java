@@ -2761,24 +2761,14 @@ public final class JSRuntime {
             return value;
         } else if (value instanceof Character) {
             return String.valueOf(value);
-        } else if (value instanceof Number) {
-            Number numVal = (Number) value;
-            if (value instanceof Byte) {
-                return ((Byte) numVal).intValue();
-            } else if (value instanceof Short) {
-                return ((Short) numVal).intValue();
-            } else if (value instanceof Long) {
-                long lValue = numVal.longValue();
-                if (JSRuntime.longIsRepresentableAsInt(lValue)) {
-                    return (int) lValue;
-                } else if (JSRuntime.MIN_SAFE_INTEGER_LONG <= lValue && lValue <= JSRuntime.MAX_SAFE_INTEGER_LONG) {
-                    return LargeInteger.valueOf(lValue);
-                }
-                return (double) lValue;
-            }
-            return numVal.doubleValue();
+        } else if (value instanceof Long) {
+            return BigInt.valueOf((long) value);
+        } else if (value instanceof Byte || value instanceof Short) {
+            return ((Number) value).intValue();
+        } else if (value instanceof Float) {
+            return ((Number) value).doubleValue();
         } else {
-            throw Errors.createTypeError("type " + value.getClass().getSimpleName() + " not supported in JavaScript");
+            throw Errors.createTypeErrorUnsupportedInteropType(value);
         }
     }
 

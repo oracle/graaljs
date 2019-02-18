@@ -44,12 +44,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNodeGen.JSToNumberWrapperNodeGen;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNodeGen.JSToNumberUnaryNodeGen;
 import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -76,6 +74,13 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         return JSToNumberNodeGen.create();
     }
 
+    public static JavaScriptNode create(JavaScriptNode child) {
+        if (child.isResultAlwaysOfType(Number.class) || child.isResultAlwaysOfType(int.class) || child.isResultAlwaysOfType(double.class)) {
+            return child;
+        }
+        return JSToNumberUnaryNodeGen.create(child);
+    }
+
     @Specialization
     protected static int doInteger(int value) {
         return value;
@@ -91,11 +96,6 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization
-    protected static void doBigInt(@SuppressWarnings("unused") BigInt value) {
-        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
-    }
-
     @Specialization(guards = "isJSNull(value)")
     protected static int doNull(@SuppressWarnings("unused") Object value) {
         return 0;
@@ -106,18 +106,10 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         return Double.NaN;
     }
 
-    @Specialization(rewriteOn = SlowPathException.class)
-    protected int doStringInt(String value) throws SlowPathException {
-        double doubleValue = stringToNumber(value);
-        if (!JSRuntime.doubleIsRepresentableAsInt(doubleValue)) {
-            throw JSNodeUtil.slowPathException();
-        }
-        return (int) doubleValue;
-    }
-
     @Specialization
-    protected double doStringDouble(String value) {
-        return stringToNumber(value);
+    protected Number doString(String value) {
+        double doubleValue = stringToNumber(value);
+        return JSRuntime.doubleToNarrowestNumber(doubleValue);
     }
 
     @Specialization(guards = "isJSObject(value)")
@@ -129,6 +121,11 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     @Specialization
     protected final Number doSymbol(@SuppressWarnings("unused") Symbol value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
+    }
+
+    @Specialization
+    protected final void doBigInt(@SuppressWarnings("unused") BigInt value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
     }
 
     @Specialization(guards = "isForeignObject(object)")
@@ -158,19 +155,12 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         return stringToNumberNode.executeString(value);
     }
 
-    public abstract static class JSToNumberWrapperNode extends JSUnaryNode {
+    public abstract static class JSToNumberUnaryNode extends JSUnaryNode {
 
         @Child private JSToNumberNode toNumberNode;
 
-        protected JSToNumberWrapperNode(JavaScriptNode operand) {
+        protected JSToNumberUnaryNode(JavaScriptNode operand) {
             super(operand);
-        }
-
-        public static JavaScriptNode create(JavaScriptNode child) {
-            if (child.isResultAlwaysOfType(Number.class) || child.isResultAlwaysOfType(int.class) || child.isResultAlwaysOfType(double.class)) {
-                return child;
-            }
-            return JSToNumberWrapperNodeGen.create(child);
         }
 
         @Specialization
