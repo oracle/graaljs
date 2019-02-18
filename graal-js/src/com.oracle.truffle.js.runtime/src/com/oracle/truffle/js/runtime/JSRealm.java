@@ -893,7 +893,7 @@ public class JSRealm {
     private void setupGlobalGlobal() {
         CompilerAsserts.neverPartOfCompilation();
 
-        toggleGlobalProperty("global", getGlobalObject(), JSContextOptions.GLOBAL_PROPERTY.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityModeInContextInit());
+        toggleGlobalProperty("global", getGlobalObject(), getContext().getContextOptions().isGlobalProperty() && !context.isOptionV8CompatibilityModeInContextInit());
     }
 
     private void setupShellGlobals() {

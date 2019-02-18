@@ -104,6 +104,7 @@ public final class JSContextOptions {
     public static final String ARRAY_SORT_INHERITED_NAME = JS_OPTION_PREFIX + "array-sort-inherited";
     public static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
     private static final String ARRAY_SORT_INHERITED_HELP = "implementation-defined behavior in Array.protoype.sort: sort inherited keys?";
+    @CompilationFinal private Assumption arraySortInheritedAssumption = Truffle.getRuntime().createAssumption("The array-sort-inherited option is stable.");
     @CompilationFinal private boolean arraySortInherited;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
@@ -144,6 +145,7 @@ public final class JSContextOptions {
     public static final String DIRECT_BYTE_BUFFER_NAME = JS_OPTION_PREFIX + "direct-byte-buffer";
     public static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(JSTruffleOptions.DirectByteBuffer);
     private static final String DIRECT_BYTE_BUFFER_HELP = "Use direct (off-heap) byte buffer for typed arrays.";
+    @CompilationFinal private Assumption directByteBufferAssumption = Truffle.getRuntime().createAssumption("The direct-byte-buffer option is stable.");
     @CompilationFinal private boolean directByteBuffer;
 
     public static final String PARSE_ONLY_NAME = JS_OPTION_PREFIX + "parse-only";
@@ -275,13 +277,13 @@ public final class JSContextOptions {
         this.annexB = readBooleanOption(ANNEX_B, ANNEX_B_NAME);
         this.intl402 = readBooleanOption(INTL_402, INTL_402_NAME);
         this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME);
-        this.arraySortInherited = readBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME);
+        this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, arraySortInheritedAssumption);
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME);
         this.atomics = readBooleanOption(ATOMICS, ATOMICS_NAME);
         this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, v8CompatibilityAssumption);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
-        this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME);
+        this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, directByteBufferAssumption);
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
         this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, timerResolutionAssumption);
@@ -413,6 +415,7 @@ public final class JSContextOptions {
     }
 
     public boolean isIntl402() {
+        CompilerAsserts.neverPartOfCompilation("Patchable option intl-402 should never be accessed in compiled code.");
         return intl402;
     }
 
@@ -421,6 +424,12 @@ public final class JSContextOptions {
     }
 
     public boolean isArraySortInherited() {
+        try {
+            arraySortInheritedAssumption.check();
+        } catch (InvalidAssumptionException e) {
+            arraySortInheritedAssumption = Truffle.getRuntime().createAssumption(arraySortInheritedAssumption.getName());
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return arraySortInherited;
     }
 
@@ -442,7 +451,7 @@ public final class JSContextOptions {
         try {
             v8CompatibilityAssumption.check();
         } catch (InvalidAssumptionException e) {
-            v8CompatibilityAssumption = Truffle.getRuntime().createAssumption();
+            v8CompatibilityAssumption = Truffle.getRuntime().createAssumption(v8CompatibilityAssumption.getName());
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return v8CompatibilityMode;
@@ -457,6 +466,12 @@ public final class JSContextOptions {
     }
 
     public boolean isDirectByteBuffer() {
+        try {
+            directByteBufferAssumption.check();
+        } catch (InvalidAssumptionException e) {
+            directByteBufferAssumption = Truffle.getRuntime().createAssumption(directByteBufferAssumption.getName());
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
         return directByteBuffer;
     }
 
@@ -468,7 +483,7 @@ public final class JSContextOptions {
         try {
             timerResolutionAssumption.check();
         } catch (InvalidAssumptionException e) {
-            timerResolutionAssumption = Truffle.getRuntime().createAssumption();
+            timerResolutionAssumption = Truffle.getRuntime().createAssumption(timerResolutionAssumption.getName());
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return timerResolution;
@@ -514,7 +529,13 @@ public final class JSContextOptions {
         return arrayLikePrototype;
     }
 
+    public boolean isGlobalProperty() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option global-property was assumed not to be accessed in compiled code.");
+        return GLOBAL_PROPERTY.getValue(optionValues);
+    }
+
     public boolean isConsole() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option console was assumed not to be accessed in compiled code.");
         return CONSOLE.getValue(optionValues);
     }
 
@@ -523,6 +544,7 @@ public final class JSContextOptions {
     }
 
     public boolean isLoad() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
         return LOAD.getValue(optionValues);
     }
 
@@ -531,6 +553,7 @@ public final class JSContextOptions {
     }
 
     public boolean isShell() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option shell was assumed not to be accessed in compiled code.");
         return SHELL.getValue(optionValues);
     }
 

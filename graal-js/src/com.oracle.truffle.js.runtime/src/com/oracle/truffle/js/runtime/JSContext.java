@@ -1214,7 +1214,7 @@ public class JSContext {
     }
 
     public boolean isOptionIntl402() {
-        assert !getEnv().isPreInitialization() : "Patchable option intl-402 accessed during context pre-initialization.";
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option intl-402 accessed during context pre-initialization.";
         return contextOptions.isIntl402();
     }
 
@@ -1227,7 +1227,7 @@ public class JSContext {
     }
 
     public boolean isOptionArraySortInherited() {
-        assert !getEnv().isPreInitialization() : "Patchable option array-sort-inherited accessed during context pre-initialization.";
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option array-sort-inherited accessed during context pre-initialization.";
         return contextOptions.isArraySortInherited();
     }
 
@@ -1240,7 +1240,7 @@ public class JSContext {
     }
 
     public boolean isOptionV8CompatibilityMode() {
-        assert !getEnv().isPreInitialization() : "Patchable option v8-compat accessed during context pre-initialization.";
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option v8-compat accessed during context pre-initialization.";
         return contextOptions.isV8CompatibilityMode();
     }
 
@@ -1257,7 +1257,7 @@ public class JSContext {
     }
 
     public boolean isOptionDirectByteBuffer() {
-        assert !getEnv().isPreInitialization() : "Patchable option direct-byte-buffer accessed during context pre-initialization.";
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option direct-byte-buffer accessed during context pre-initialization.";
         return contextOptions.isDirectByteBuffer();
     }
 
@@ -1274,7 +1274,7 @@ public class JSContext {
     }
 
     public long getTimerResolution() {
-        assert !getEnv().isPreInitialization() : "Patchable option timer-resolution accessed during context pre-initialization.";
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option timer-resolution accessed during context pre-initialization.";
         return contextOptions.getTimerResolution();
     }
 
