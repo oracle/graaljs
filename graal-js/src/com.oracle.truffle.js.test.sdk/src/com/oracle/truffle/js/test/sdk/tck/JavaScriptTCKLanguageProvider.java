@@ -240,7 +240,6 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // for in
         res.add(createStatement(context, "for-in", "for (let k in {1});",
                         TypeDescriptor.NULL,
-                        JavaScriptVerifier.unsupportedDynamicObjectVerifier(null),
                         ANY));
         // for of
         final TypeDescriptor noType = TypeDescriptor.intersection();
@@ -257,7 +256,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
                         TypeDescriptor.NULL,
-                        JavaScriptVerifier.hasKeysVerifier(JavaScriptVerifier.unsupportedDynamicObjectVerifier(null)),
+                        JavaScriptVerifier.hasKeysVerifier(null),
                         TypeDescriptor.ANY));
 
         // switch
@@ -527,29 +526,6 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     if (snippetRun.getException() != null) {
                         final Value objArg = snippetRun.getParameters().get(1);
                         if (objArg.hasArrayElements() && objArg.getArraySize() == 0) {
-                            return;
-                        }
-                    }
-                    super.accept(snippetRun);
-                }
-            };
-        }
-
-        /**
-         * Creates a {@link ResultVerifier} ignoring errors caused unsupported foreign
-         * DynamicObjects. Use this verifier in case the operator accepts foreign Objects but not
-         * foreign DynamicObjects.
-         *
-         * @param next the next {@link ResultVerifier} to be called, null for last one
-         * @return the {@link ResultVerifier}
-         */
-        static ResultVerifier unsupportedDynamicObjectVerifier(ResultVerifier next) {
-            return new JavaScriptVerifier(next) {
-                @Override
-                public void accept(SnippetRun snippetRun) throws PolyglotException {
-                    final PolyglotException exception = snippetRun.getException();
-                    if (exception != null) {
-                        if ("TypeError: Foreign DynamicObjects not supported".equals(exception.getMessage())) {
                             return;
                         }
                     }
