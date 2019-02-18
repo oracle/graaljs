@@ -64,6 +64,8 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     public static final BigInt MIN_INT = new BigInt(BigInteger.valueOf(Integer.MIN_VALUE));
 
     private static final BigInteger TWO64 = BigInteger.ONE.shiftLeft(64);
+    private static final BigInteger MAX_LONG_VALUE = BigInteger.valueOf(Long.MAX_VALUE);
+    private static final BigInteger MIN_LONG_VALUE = BigInteger.valueOf(Long.MIN_VALUE);
 
     public BigInt(String s, int r) {
         this.value = new BigInteger(s, r);
@@ -286,6 +288,11 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     @TruffleBoundary
     public long longValueExact() {
         return value.longValueExact();
+    }
+
+    @TruffleBoundary
+    public boolean fitsInLong() {
+        return value.compareTo(MAX_LONG_VALUE) <= 0 && value.compareTo(MIN_LONG_VALUE) >= 0;
     }
 
     @TruffleBoundary
