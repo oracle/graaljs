@@ -486,7 +486,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     JSContextOptions.GLOBAL_PROPERTY,
                     GraalJSParserOptions.SCRIPTING,
                     JSContextOptions.DIRECT_BYTE_BUFFER,
-                    JSContextOptions.INTL_402
+                    JSContextOptions.INTL_402,
+                    JSContextOptions.LOAD
     };
 
     /**

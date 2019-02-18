@@ -793,9 +793,6 @@ public class JSRealm {
         if (context.getContextOptions().isPrint()) {
             initGlobalPrintExtensions(global);
         }
-        if (context.getContextOptions().isLoad()) {
-            initGlobalLoadExtensions(global);
-        }
         if (context.getContextOptions().isPolyglotBuiltin()) {
             setupPolyglot(global);
         }
@@ -867,9 +864,12 @@ public class JSRealm {
         putGlobalProperty(global, "printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
     }
 
-    private void initGlobalLoadExtensions(DynamicObject global) {
-        putGlobalProperty(global, "load", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "load"));
-        putGlobalProperty(global, "loadWithNewGlobal", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "loadWithNewGlobal"));
+    private void setupLoadGlobals() {
+        CompilerAsserts.neverPartOfCompilation();
+
+        boolean enabled = getContext().getContextOptions().isLoad();
+        toggleGlobalProperty("load", () -> lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "load"), enabled);
+        toggleGlobalProperty("loadWithNewGlobal", () -> lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "loadWithNewGlobal"), enabled);
     }
 
     /**
@@ -885,6 +885,7 @@ public class JSRealm {
         setupShellGlobals();
         setupScriptingGlobals();
         setupIntlGlobals();
+        setupLoadGlobals();
 
         if (isJavaInteropEnabled()) {
             setupJavaInterop(getGlobalObject());
