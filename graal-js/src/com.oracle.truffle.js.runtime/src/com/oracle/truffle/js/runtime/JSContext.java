@@ -1218,10 +1218,6 @@ public class JSContext {
         return contextOptions.isIntl402();
     }
 
-    public boolean isOptionIntl402InContextInit() {
-        return contextOptions.isIntl402();
-    }
-
     public boolean isOptionRegexpStaticResult() {
         return contextOptions.isRegexpStaticResult();
     }
@@ -1244,6 +1240,12 @@ public class JSContext {
         return contextOptions.isV8CompatibilityMode();
     }
 
+    /**
+     * Returns whether the v8-compat option is set or not. This method is the same as
+     * {@link #isOptionV8CompatibilityMode()}, but it does not trigger an assertion error when used
+     * during context pre-initialization. It is meant to be used for taking decisions which can be
+     * undone during context-patching.
+     */
     public boolean isOptionV8CompatibilityModeInContextInit() {
         return contextOptions.isV8CompatibilityMode();
     }

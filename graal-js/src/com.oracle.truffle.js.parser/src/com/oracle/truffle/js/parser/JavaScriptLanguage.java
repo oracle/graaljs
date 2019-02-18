@@ -460,7 +460,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @Override
     protected void initializeContext(JSRealm realm) {
         realm.setArguments(realm.getEnv().getApplicationArguments());
-        realm.setupOptionalGlobals();
+        realm.addOptionalGlobals();
     }
 
     @Override
