@@ -1777,10 +1777,6 @@ public final class JSRuntime {
         return String.class.isAssignableFrom(clazz) || JSLazyString.class.isAssignableFrom(clazz) || PropertyReference.class.isAssignableFrom(clazz);
     }
 
-    public static boolean isJavaObject(Object value) {
-        return !isJSNative(value) && !(value instanceof Number) && !(value instanceof TruffleObject);
-    }
-
     public static Object nullToUndefined(Object value) {
         return value == null ? Undefined.instance : value;
     }

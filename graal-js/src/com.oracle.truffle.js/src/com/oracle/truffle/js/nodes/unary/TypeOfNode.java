@@ -186,17 +186,6 @@ public abstract class TypeOfNode extends JSUnaryNode {
         }
     }
 
-    @Specialization(guards = {"cachedClass != null", "operand.getClass() == cachedClass"}, limit = "MAX_CLASSES")
-    protected String doOtherCached(Object operand,
-                    @Cached("getJavaObjectClass(operand)") Class<?> cachedClass) {
-        return JSUserObject.TYPE_NAME;
-    }
-
-    @Specialization(guards = {"isJavaObject(operand)"}, replaces = "doOtherCached")
-    protected String doOther(Object operand) {
-        return JSUserObject.TYPE_NAME;
-    }
-
     @Fallback
     protected String doJavaObject(Object operand) {
         assert operand != null;

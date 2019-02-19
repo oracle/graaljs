@@ -182,17 +182,6 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         return getToStringNode().executeString(interopUnboxNode.executeWithTarget(object));
     }
 
-    @Specialization(guards = {"cachedClass != null", "object.getClass() == cachedClass"}, limit = "MAX_CLASSES")
-    protected String doJavaObject(Object object, @Cached("getJavaObjectClass(object)") Class<?> cachedClass) {
-        return doJavaGeneric(cachedClass.cast(object));
-    }
-
-    @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isJSObject(object)", "!isForeignObject(object)"}, replaces = "doJavaObject")
-    protected String doJavaGeneric(Object object) {
-        assert object != null && !JSRuntime.isJSNative(object);
-        return Boundaries.stringValueOf(object);
-    }
-
     protected JSToStringNode getToStringNode() {
         if (toStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

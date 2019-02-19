@@ -331,24 +331,6 @@ public abstract class JSEqualNode extends JSCompareNode {
         return doStringDouble(a, JSRuntime.doubleValue((Number) b));
     }
 
-    @Specialization(guards = {"a != null", "cachedClassA != null", "a.getClass() == cachedClassA"}, limit = "MAX_CLASSES")
-    protected static boolean doJavaObjectA(Object a, Object b, //
-                    @Cached("getJavaObjectClass(a)") @SuppressWarnings("unused") Class<?> cachedClassA) {
-        return doJavaGeneric(a, b);
-    }
-
-    @Specialization(guards = {"b != null", "cachedClassB != null", "b.getClass() == cachedClassB"}, limit = "MAX_CLASSES")
-    protected static boolean doJavaObjectB(Object a, Object b, //
-                    @Cached("getJavaObjectClass(b)") @SuppressWarnings("unused") Class<?> cachedClassB) {
-        return doJavaGeneric(a, b);
-    }
-
-    @Specialization(guards = {"isJavaObject(a) || isJavaObject(b)"}, replaces = {"doJavaObjectA", "doJavaObjectB"})
-    protected static boolean doJavaGeneric(Object a, Object b) {
-        assert JSRuntime.isJavaObject(a) || JSRuntime.isJavaObject(b);
-        return a == b;
-    }
-
     @Fallback
     protected static boolean doFallback(Object a, Object b) {
         return JSRuntime.equal(a, b);

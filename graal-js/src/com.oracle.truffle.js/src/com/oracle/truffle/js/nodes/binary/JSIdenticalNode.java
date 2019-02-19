@@ -268,25 +268,6 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
     }
 
-    @Specialization(guards = {"cachedClassA != null", "a.getClass() == cachedClassA"}, limit = "MAX_CLASSES")
-    protected static boolean doJavaObjectA(Object a, Object b, //
-                    @Cached("getJavaObjectClass(a)") @SuppressWarnings("unused") Class<?> cachedClassA) {
-        return doJavaGeneric(a, b);
-    }
-
-    @Specialization(guards = {"cachedClassB != null", "b.getClass() == cachedClassB"}, limit = "MAX_CLASSES")
-    protected static boolean doJavaObjectB(Object a, Object b, //
-                    @Cached("getJavaObjectClass(b)") @SuppressWarnings("unused") Class<?> cachedClassB) {
-        return doJavaGeneric(a, b);
-    }
-
-    @Specialization(guards = {"isJavaObject(a) || isJavaObject(b)"}, replaces = {"doJavaObjectA", "doJavaObjectB"})
-    protected static boolean doJavaGeneric(Object a, Object b) {
-        assert (a != null) && (b != null);
-        assert JSRuntime.isJavaObject(a) || JSRuntime.isJavaObject(b);
-        return a == b;
-    }
-
     @Specialization(guards = {"isTruffleJavaObject(a)", "isTruffleJavaObject(b)"})
     protected static boolean doTruffleJavaObjects(TruffleObject a, TruffleObject b) {
         TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();

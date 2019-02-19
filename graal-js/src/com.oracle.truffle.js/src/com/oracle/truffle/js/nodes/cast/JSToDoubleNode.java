@@ -133,10 +133,4 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     protected static double doJavaNumber(Object value) {
         return JSRuntime.doubleValue((Number) value);
     }
-
-    @Specialization(guards = "isJavaObject(value)")
-    protected static double doJavaObject(@SuppressWarnings("unused") Object value) {
-        return Double.NaN;
-    }
-
 }

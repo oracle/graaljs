@@ -319,10 +319,6 @@ public final class JSGuards {
         return JSRuntime.isJavaNumber(operand);
     }
 
-    public static boolean isJavaObject(Object operand) {
-        return JSRuntime.isJavaObject(operand);
-    }
-
     public static boolean isNumberInteger(Object thisObj) {
         return thisObj instanceof Integer;
     }
@@ -546,13 +542,6 @@ public final class JSGuards {
 
     public static Class<?> getNonTruffleObjectClass(Object value) {
         if (value != null && !(value instanceof TruffleObject)) {
-            return value.getClass();
-        }
-        return null;
-    }
-
-    public static Class<?> getJavaObjectClass(Object value) {
-        if (value != null && JSRuntime.isJavaObject(value)) {
             return value.getClass();
         }
         return null;
