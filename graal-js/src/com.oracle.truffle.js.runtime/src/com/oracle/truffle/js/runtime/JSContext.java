@@ -375,11 +375,10 @@ public class JSContext {
         this.contextOptions = contextOptions;
 
         if (env != null) { // env could still be null
-            this.contextOptions.setOptionValues(env.getOptions());
             setAllocationReporter(env);
+            this.contextOptions.setOptionValues(env.getOptions());
+            this.setLocalTimeZoneFromOptions(env.getOptions());
         }
-
-        this.setLocalTimeZoneFromOptions(env.getOptions());
 
         this.language = lang;
         this.contextRef = lang.getContextReference();

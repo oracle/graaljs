@@ -302,7 +302,7 @@ public final class JSContextOptions {
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Assumption assumption) {
         boolean newValue = readBooleanOption(key, name);
         if (oldValue != newValue) {
-            assumption.invalidate(String.format("Option {0} was changed from {1} to {2}.", name, oldValue, newValue));
+            assumption.invalidate(String.format("Option %s was changed from %b to %b.", name, oldValue, newValue));
         }
         return newValue;
     }
@@ -338,7 +338,7 @@ public final class JSContextOptions {
     private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Assumption assumption) {
         long newValue = readLongOption(key, name);
         if (oldValue != newValue) {
-            assumption.invalidate(String.format("Option {0} was changed from {1} to {2}.", name, oldValue, newValue));
+            assumption.invalidate(String.format("Option %s was changed from %d to %d.", name, oldValue, newValue));
         }
         return newValue;
     }
