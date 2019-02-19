@@ -570,8 +570,8 @@ public final class JSGuards {
         return a == b;
     }
 
-    public static boolean isJavaPrimitive(Object o) {
-        return o.getClass().isPrimitive();
+    public static boolean isJavaPrimitive(Object value) {
+        return JSRuntime.isJavaPrimitive(value);
     }
 
     public static boolean isNullOrUndefined(Object value) {
