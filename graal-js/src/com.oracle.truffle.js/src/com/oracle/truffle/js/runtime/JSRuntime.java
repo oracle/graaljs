@@ -1365,7 +1365,7 @@ public final class JSRuntime {
             double numberVal = doubleValue((Number) a);
             return !Double.isNaN(numberVal) && ((BigInt) b).compareValueTo(numberVal) == 0;
         } else if (isBigInt(a) && isJavaNumber(b)) {
-            double numberVal = doubleValue((Number) a);
+            double numberVal = doubleValue((Number) b);
             return !Double.isNaN(numberVal) && ((BigInt) a).compareValueTo(numberVal) == 0;
         } else if (a instanceof Boolean) {
             return equal(booleanToNumber((Boolean) a), b);
