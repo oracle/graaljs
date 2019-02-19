@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,11 +89,15 @@ public abstract class JSEqualNode extends JSCompareNode {
             if (rightIs) {
                 return JSConstantNode.createBoolean(true);
             } else {
-                return JSIsNullOrUndefinedNode.create(right);
+                return JSIsNullOrUndefinedNode.createFromEquals(left, right);
             }
         } else if (rightIs) {
-            return JSIsNullOrUndefinedNode.create(left);
+            return JSIsNullOrUndefinedNode.createFromEquals(left, right);
         }
+        return JSEqualNodeGen.create(left, right);
+    }
+
+    public static JavaScriptNode createUnoptimized(JavaScriptNode left, JavaScriptNode right) {
         return JSEqualNodeGen.create(left, right);
     }
 
