@@ -185,10 +185,13 @@ public class TestNashorn extends TestSuite {
     private static void initializeSaveOutput() {
         File outputDir = new File("output");
         outputDir.mkdir();
-        for (File f : outputDir.listFiles()) {
-            String name = f.getName();
-            if (name.endsWith(".DIFF") || name.endsWith(".RESULT")) {
-                f.delete();
+        File[] files = outputDir.listFiles();
+        if (files != null) {
+            for (File f : files) {
+                String name = f.getName();
+                if (name.endsWith(".DIFF") || name.endsWith(".RESULT")) {
+                    f.delete();
+                }
             }
         }
     }

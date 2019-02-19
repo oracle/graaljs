@@ -51,9 +51,12 @@ import java.nio.file.spi.FileTypeDetector;
 public final class JSFileTypeDetector extends FileTypeDetector {
     @Override
     public String probeContentType(Path path) throws IOException {
-        String fileName = path.getFileName().toString();
-        if (fileName.endsWith(SCRIPT_SOURCE_NAME_SUFFIX) || fileName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
-            return APPLICATION_MIME_TYPE;
+        Path fileNamePath = path.getFileName();
+        if (fileNamePath != null) {
+            String fileName = fileNamePath.toString();
+            if (fileName.endsWith(SCRIPT_SOURCE_NAME_SUFFIX) || fileName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
+                return APPLICATION_MIME_TYPE;
+            }
         }
         return null;
     }
