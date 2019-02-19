@@ -162,6 +162,11 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     }
 
     @TruffleBoundary
+    public int compareValueTo(long b) {
+        return value.compareTo(BigInteger.valueOf(b));
+    }
+
+    @TruffleBoundary
     public int compareValueTo(double b) {
 
         assert !Double.isNaN(b) : "unexpected NAN in BigInt value comparison";

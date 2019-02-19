@@ -313,12 +313,12 @@ public abstract class JSEqualNode extends JSCompareNode {
     protected static boolean doNumberCached(Object a, Object b,
                     @Cached("getJavaNumberClass(a)") Class<?> cachedClassA,
                     @Cached("getJavaNumberClass(b)") Class<?> cachedClassB) {
-        return doDouble(JSRuntime.doubleValue((Number) cachedClassA.cast(a)), JSRuntime.doubleValue((Number) cachedClassB.cast(b)));
+        return doNumber((Number) cachedClassA.cast(a), (Number) cachedClassB.cast(b));
     }
 
     @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"}, replaces = "doNumberCached")
-    protected static boolean doNumber(Object a, Object b) {
-        return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
+    protected static boolean doNumber(Number a, Number b) {
+        return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
     }
 
     @Specialization(guards = {"isJavaNumber(a)"})

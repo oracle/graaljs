@@ -1362,11 +1362,9 @@ public final class JSRuntime {
         } else if (isString(a) && isBigInt(b)) {
             return b.equals(stringToBigInt(a.toString()));
         } else if (isJavaNumber(a) && isBigInt(b)) {
-            double numberVal = doubleValue((Number) a);
-            return !Double.isNaN(numberVal) && ((BigInt) b).compareValueTo(numberVal) == 0;
+            return equalBigIntAndNumber((BigInt) b, (Number) a);
         } else if (isBigInt(a) && isJavaNumber(b)) {
-            double numberVal = doubleValue((Number) b);
-            return !Double.isNaN(numberVal) && ((BigInt) a).compareValueTo(numberVal) == 0;
+            return equalBigIntAndNumber((BigInt) a, (Number) b);
         } else if (a instanceof Boolean) {
             return equal(booleanToNumber((Boolean) a), b);
         } else if (b instanceof Boolean) {
@@ -1426,6 +1424,15 @@ public final class JSRuntime {
         } else {
             assert !isForeignObject(primLeft) && !isForeignObject(primRight);
             return equal(primLeft, primRight);
+        }
+    }
+
+    private static boolean equalBigIntAndNumber(BigInt a, Number b) {
+        if (b instanceof Double || b instanceof Float) {
+            double numberVal = doubleValue(b);
+            return !Double.isNaN(numberVal) && a.compareValueTo(numberVal) == 0;
+        } else {
+            return a.compareValueTo(longValue(b)) == 0;
         }
     }
 
