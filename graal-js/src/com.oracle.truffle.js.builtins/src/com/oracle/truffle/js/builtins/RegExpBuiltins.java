@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -147,17 +146,17 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             return RegExpBuiltinsFactory.GetStaticRegExpResultNodeGen.create(context);
         }
 
-        abstract TruffleObject execute();
+        abstract Object execute();
 
         @Specialization
-        TruffleObject get() {
+        Object get() {
             JSRealm realm = context.getRealm();
-            TruffleObject compiledRegex = realm.getLazyStaticRegexResultCompiledRegex();
+            Object compiledRegex = realm.getLazyStaticRegexResultCompiledRegex();
             String input = realm.getLazyStaticRegexResultInputString();
             long fromIndex = realm.getLazyStaticRegexResultFromIndex();
             realm.switchToEagerStaticRegExpResults();
             if (compiledRegex != null) {
-                TruffleObject result = compiledRegexAccessor.exec(compiledRegex, input, fromIndex);
+                Object result = compiledRegexAccessor.exec(compiledRegex, input, fromIndex);
                 realm.setRegexResult(result);
             }
             return realm.getRegexResult();
@@ -178,7 +177,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         @Specialization
         String getInputEager(@Cached("createGetResultNode()") GetStaticRegExpResultNode getResultNode,
                         @Cached("create()") TRegexUtil.TRegexResultAccessor resultAccessor) {
-            TruffleObject result = getResultNode.execute();
+            Object result = getResultNode.execute();
             return resultAccessor.isMatch(result) ? resultAccessor.input(result) : "";
         }
 
@@ -193,7 +192,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
     /**
      * Seems to be a leftover even in the nashorn implementation. QUOTE:
-     * 
+     *
      * <pre>
      * &#64;Getter(where = Where.CONSTRUCTOR, attributes = Attribute.CONSTANT, name = "multiline")
      * public static Object getLastMultiline(final Object self) {
@@ -211,7 +210,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization(assumptions = "getStaticResultUnusedAssumption()")
         boolean getMultilineLazy() {
-            TruffleObject compiledRegex = getContext().getRealm().getLazyStaticRegexResultCompiledRegex();
+            Object compiledRegex = getContext().getRealm().getLazyStaticRegexResultCompiledRegex();
             if (!JSTruffleOptions.NashornCompatibilityMode && compiledRegex != null) {
                 return multilineAccessor.get(compiledRegex);
             } else {
@@ -222,7 +221,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         @Specialization
         boolean getMultilineEager(@Cached("createGetResultNode()") GetStaticRegExpResultNode getResultNode,
                         @Cached("create()") TRegexUtil.TRegexResultAccessor resultAccessor) {
-            TruffleObject result = getResultNode.execute();
+            Object result = getResultNode.execute();
             if (!JSTruffleOptions.NashornCompatibilityMode && resultAccessor.isMatch(result)) {
                 return multilineAccessor.get(resultAccessor.regex(result));
             } else {
@@ -263,7 +262,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         String getGroup() {
-            TruffleObject result = getResultNode.execute();
+            Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result) && resultAccessor.groupCount(result) > groupNumber) {
                 int start = resultAccessor.captureGroupStart(result, groupNumber);
                 if (start >= 0) {
@@ -282,7 +281,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         String lastParen() {
-            TruffleObject result = getResultNode.execute();
+            Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int groupNumber = resultAccessor.groupCount(result) - 1;
                 if (groupNumber > 0) {
@@ -304,7 +303,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         String leftContext() {
-            TruffleObject result = getResultNode.execute();
+            Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int start = resultAccessor.captureGroupStart(result, 0);
                 return Boundaries.substring(resultAccessor.input(result), 0, start);
@@ -322,7 +321,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         String rightContext() {
-            TruffleObject result = getResultNode.execute();
+            Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int end = resultAccessor.captureGroupEnd(result, 0);
                 return Boundaries.substring(resultAccessor.input(result), end);

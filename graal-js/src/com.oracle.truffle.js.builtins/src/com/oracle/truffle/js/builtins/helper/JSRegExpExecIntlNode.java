@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -205,16 +204,16 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return JSRegExpExecIntlNodeGen.JSRegExpExecIntlIgnoreLastIndexNodeGen.create(context, doStaticResultUpdate);
         }
 
-        public abstract TruffleObject execute(DynamicObject regExp, String input, long lastIndex);
+        public abstract Object execute(DynamicObject regExp, String input, long lastIndex);
 
         @Specialization
-        TruffleObject doGeneric(DynamicObject regExp, String input, long lastIndex,
+        Object doGeneric(DynamicObject regExp, String input, long lastIndex,
                         @Cached("create()") TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor,
                         @Cached("create()") TRegexUtil.TRegexResultAccessor regexResultAccessor,
                         @Cached("createIsJSRegExpNode()") IsJSClassNode isJSRegExpNode) {
             assert JSRegExp.isJSRegExp(regExp);
-            TruffleObject compiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegexUnchecked(regExp, isJSRegExpNode.executeBoolean(regExp)));
-            TruffleObject result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
+            Object compiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegexUnchecked(regExp, isJSRegExpNode.executeBoolean(regExp)));
+            Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (doStaticResultUpdate && context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
                 context.getRealm().setStaticRegexResult(compiledRegex, input, lastIndex, result);
             }
@@ -229,7 +228,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return BuildGroupsObjectNodeGen.create();
         }
 
-        public abstract DynamicObject execute(JSContext context, DynamicObject regExp, TruffleObject regexResult);
+        public abstract DynamicObject execute(JSContext context, DynamicObject regExp, Object regexResult);
 
         // We can reuse the cachedGroupsFactory even if the new groups factory is different, as long
         // as the compiledRegex is the same. This can happen if a new RegExp instance is repeatedly
@@ -237,8 +236,8 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Specialization(guards = "getGroupsFactoryUnchecked(regExp, isJSRegExpNode.executeBoolean(regExp)) == cachedGroupsFactory || getCompiledRegexUnchecked(regExp, isJSRegExpNode.executeBoolean(regExp)) == cachedCompiledRegex")
         static DynamicObject doCachedGroupsFactory(JSContext context,
                         @SuppressWarnings("unused") DynamicObject regExp,
-                        TruffleObject regexResult,
-                        @Cached("getCompiledRegex(regExp)") @SuppressWarnings("unused") TruffleObject cachedCompiledRegex,
+                        Object regexResult,
+                        @Cached("getCompiledRegex(regExp)") @SuppressWarnings("unused") Object cachedCompiledRegex,
                         @Cached("getGroupsFactory(regExp)") JSObjectFactory cachedGroupsFactory,
                         @Cached("createIsJSRegExpNode()") @SuppressWarnings("unused") IsJSClassNode isJSRegExpNode) {
             return doIt(context, cachedGroupsFactory, regexResult);
@@ -246,11 +245,11 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         @Specialization
         @TruffleBoundary
-        static DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, TruffleObject regexResult) {
+        static DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, Object regexResult) {
             return doIt(context, JSRegExp.getGroupsFactory(regExp), regexResult);
         }
 
-        private static DynamicObject doIt(JSContext context, JSObjectFactory groupsFactory, TruffleObject regexResult) {
+        private static DynamicObject doIt(JSContext context, JSObjectFactory groupsFactory, Object regexResult) {
             if (groupsFactory == null) {
                 return Undefined.instance;
             } else {
@@ -294,7 +293,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
         @Specialization(guards = "getCompiledRegexUnchecked(regExp, isJSRegExpNode.executeBoolean(regExp)) == cachedCompiledRegex")
         Object doCached(DynamicObject regExp, String input,
-                        @Cached("getCompiledRegex(regExp)") TruffleObject cachedCompiledRegex,
+                        @Cached("getCompiledRegex(regExp)") Object cachedCompiledRegex,
                         @Cached("createIsJSRegExpNode()") @SuppressWarnings("unused") IsJSClassNode isJSRegExpNode) {
             return doExec(regExp, cachedCompiledRegex, input);
         }
@@ -306,8 +305,8 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // Implements 21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
-        private Object doExec(DynamicObject regExp, TruffleObject compiledRegex, String input) {
-            TruffleObject flags = compiledRegexAccessor.flags(compiledRegex);
+        private Object doExec(DynamicObject regExp, Object compiledRegex, String input) {
+            Object flags = compiledRegexAccessor.flags(compiledRegex);
             boolean global = flagsAccessor.global(flags);
             boolean sticky = ecmaScriptVersion >= 6 && flagsAccessor.sticky(flags);
             long lastIndex = getLastIndex(regExp);
@@ -320,7 +319,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 lastIndex = 0;
             }
 
-            TruffleObject result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
+            Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
                 context.getRealm().setStaticRegexResult(compiledRegex, input, lastIndex, result);
             }
@@ -347,12 +346,12 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // converts RegexResult into DynamicObject
-        private DynamicObject getMatchResult(TruffleObject result, String inputStr, DynamicObject groups) {
+        private DynamicObject getMatchResult(Object result, String inputStr, DynamicObject groups) {
             return JSArray.createLazyRegexArray(context, regexResultAccessor.groupCount(result), result, inputStr, groups);
         }
 
         // builds the object containing the matches of the named capture groups
-        private DynamicObject getGroupsObject(DynamicObject regExp, TruffleObject result) {
+        private DynamicObject getGroupsObject(DynamicObject regExp, Object result) {
             if (groupsBuilder == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 groupsBuilder = insert(BuildGroupsObjectNode.create());
@@ -386,7 +385,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
     }
 
-    private static TruffleObject executeCompiledRegex(TruffleObject compiledRegex, String input, long fromIndex,
+    private static Object executeCompiledRegex(Object compiledRegex, String input, long fromIndex,
                     TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
         try {
             return compiledRegexAccessor.exec(compiledRegex, input, fromIndex);

@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -454,7 +453,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        protected final TruffleObject matchIgnoreLastIndex(DynamicObject regExp, String input, int fromIndex) {
+        protected final Object matchIgnoreLastIndex(DynamicObject regExp, String input, int fromIndex) {
             assert getContext().getEcmaScriptVersion() <= 5;
             return getRegExpIgnoreLastIndexNode().execute(regExp, input, fromIndex);
         }
@@ -1001,12 +1000,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             private static Object[] splitEmptyString(DynamicObject regExp, JSStringSplitNode parent) {
-                TruffleObject result = parent.matchIgnoreLastIndex(regExp, "", 0);
+                Object result = parent.matchIgnoreLastIndex(regExp, "", 0);
                 return parent.matchProfile.profile(parent.getResultAccessor().isMatch(result)) ? EMPTY_SPLITS : SINGLE_ZERO_LENGTH_SPLIT;
             }
 
             private static Object[] splitNonEmptyString(String input, int limit, DynamicObject regExp, JSStringSplitNode parent) {
-                TruffleObject result = parent.matchIgnoreLastIndex(regExp, input, 0);
+                Object result = parent.matchIgnoreLastIndex(regExp, input, 0);
                 if (parent.matchProfile.profile(!parent.getResultAccessor().isMatch(result))) {
                     return new Object[]{input};
                 }
@@ -1338,19 +1337,19 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private <T> String replaceFirst(String thisStr, DynamicObject regExp, Replacer<T> replacer, T replaceValue) {
-            TruffleObject result = match(regExp, thisStr);
+            Object result = match(regExp, thisStr);
             if (match.profile(!resultAccessor.isMatch(result))) {
                 return thisStr;
             }
             return replace(result, replacer, replaceValue);
         }
 
-        protected final TruffleObject match(DynamicObject regExp, String input) {
+        protected final Object match(DynamicObject regExp, String input) {
             assert getContext().getEcmaScriptVersion() <= 5;
-            return (TruffleObject) getRegExpNode().execute(regExp, input);
+            return getRegExpNode().execute(regExp, input);
         }
 
-        private <T> String replace(TruffleObject result, Replacer<T> replacer, T replaceValue) {
+        private <T> String replace(Object result, Replacer<T> replacer, T replaceValue) {
             StringBuilder sb = new StringBuilder(replacer.guessResultLength(result, replaceValue));
             CharSequence input = resultAccessor.input(result);
             Boundaries.builderAppend(sb, input, 0, resultAccessor.captureGroupStart(result, 0));
@@ -1361,7 +1360,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private <T> String replaceAll(DynamicObject regExp, String input, Replacer<T> replacer, T replaceValue) {
             setLastIndex(regExp, 0);
-            TruffleObject result = matchIgnoreLastIndex(regExp, input, 0);
+            Object result = matchIgnoreLastIndex(regExp, input, 0);
             if (match.profile(!resultAccessor.isMatch(result))) {
                 return input;
             }
@@ -1395,11 +1394,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected final ConditionProfile groups = ConditionProfile.createBinaryProfile();
             protected final BranchProfile replaceDollar = BranchProfile.create();
 
-            int guessResultLength(TruffleObject result, @SuppressWarnings("unused") T replaceValue) {
+            int guessResultLength(Object result, @SuppressWarnings("unused") T replaceValue) {
                 return resultAccessor.input(result).length() * 2;
             }
 
-            abstract void appendReplacement(StringBuilder sb, TruffleObject result, T replaceValue);
+            abstract void appendReplacement(StringBuilder sb, Object result, T replaceValue);
 
             abstract void appendReplacement(StringBuilder sb, String input, String matchedString, int pos, T replaceValue);
         }
@@ -1416,7 +1415,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            int guessResultLength(TruffleObject result, String replaceStr) {
+            int guessResultLength(Object result, String replaceStr) {
                 if (replaceStr.isEmpty()) {
                     return resultAccessor.input(result).length() - resultAccessor.captureGroupLength(result, 0);
                 } else {
@@ -1425,7 +1424,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            void appendReplacement(StringBuilder sb, TruffleObject result, String replaceStr) {
+            void appendReplacement(StringBuilder sb, Object result, String replaceStr) {
                 if (emptyReplace.profile(!replaceStr.isEmpty())) {
                     int pos = nextDollar(sb, 0, replaceStr);
                     while (pos != -1) {
@@ -1441,7 +1440,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 JSStringReplaceNode.appendSubstitution(sb, input, replaceValue, matchedString, pos, dollarProfile);
             }
 
-            private int appendSubstitution(StringBuilder sb, int pos, TruffleObject result, String replaceStr) {
+            private int appendSubstitution(StringBuilder sb, int pos, Object result, String replaceStr) {
                 if (pos == replaceStr.length()) {
                     Boundaries.builderAppend(sb, '$');
                     return pos;
@@ -1480,7 +1479,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             // Returns 2 for valid two digit group references ($nn), otherwise returns 1.
-            private int appendGroup(StringBuilder sb, int pos, char digit, TruffleObject result, String replaceStr) {
+            private int appendGroup(StringBuilder sb, int pos, char digit, Object result, String replaceStr) {
                 int groupNr = parseGroupNr(replaceStr, pos, digit, resultAccessor.groupCount(result) - 1);
                 if (groupNr == -1) {
                     Boundaries.builderAppend(sb, '$');
@@ -1529,7 +1528,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            void appendReplacement(StringBuilder sb, TruffleObject result, DynamicObject replaceFunc) {
+            void appendReplacement(StringBuilder sb, Object result, DynamicObject replaceFunc) {
                 String replaceStr = callReplaceValueFunc(result, replaceFunc);
                 Boundaries.builderAppend(sb, replaceStr);
             }
@@ -1542,7 +1541,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 Boundaries.builderAppend(sb, replaceStr);
             }
 
-            private String callReplaceValueFunc(TruffleObject result, DynamicObject replaceFunc) {
+            private String callReplaceValueFunc(Object result, DynamicObject replaceFunc) {
                 Object[] matches = resultMaterializer.materializeFull(result);
                 Object[] arguments = createArguments(matches, resultAccessor.captureGroupStart(result, 0), resultAccessor.input(result), replaceFunc);
                 Object replaceValue = functionCallNode.executeCall(arguments);
@@ -1736,7 +1735,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private Object builtinSearch(Object thisObj, Object regex) {
             String thisStr = toString(thisObj);
-            TruffleObject cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex));
+            Object cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex));
             DynamicObject regExp = getCreateRegExpNode().execute(cRe);
             return invoke(regExp, Symbol.SYMBOL_SEARCH, thisStr);
         }
@@ -1777,7 +1776,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
             DynamicObject regExp = toRegExpNode.execute(searchObj);
-            TruffleObject result = matchIgnoreLastIndex(regExp, thisStr, 0);
+            Object result = matchIgnoreLastIndex(regExp, thisStr, 0);
             return resultAccessor.isMatch(result) ? resultAccessor.captureGroupStart(result, 0) : -1;
         }
     }
@@ -1863,7 +1862,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private Object builtinMatch(Object thisObj, Object regex) {
             String thisStr = toString(thisObj);
-            TruffleObject cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex), matchAll ? "g" : "");
+            Object cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex), matchAll ? "g" : "");
             DynamicObject regExp = getCreateRegExpNode().execute(cRe);
             return invoke(regExp, matchSymbol(), thisStr);
         }
@@ -1934,7 +1933,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private DynamicObject matchAll(DynamicObject regExp, String input) {
             setLastIndex(regExp, 0);
-            TruffleObject result = matchIgnoreLastIndex(regExp, input, 0);
+            Object result = matchIgnoreLastIndex(regExp, input, 0);
             if (match.profile(!resultAccessor.isMatch(result))) {
                 return Null.instance;
             }

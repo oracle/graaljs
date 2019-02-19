@@ -57,7 +57,7 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
 
     public static final LazyRegexResultArray LAZY_REGEX_RESULT_ARRAY = new LazyRegexResultArray(INTEGRITY_LEVEL_NONE, createCache());
 
-    private static final TRegexUtil.TRegexMaterializeResultNode SLOW_PATH_RESULT_MATERIALIZE_NODE = TRegexUtil.TRegexMaterializeResultNode.create();
+    private static final TRegexUtil.TRegexMaterializeResultNode SLOW_PATH_RESULT_MATERIALIZE_NODE = TRegexUtil.TRegexMaterializeResultNode.getUncached();
 
     public static LazyRegexResultArray createLazyRegexResultArray() {
         return LAZY_REGEX_RESULT_ARRAY;
