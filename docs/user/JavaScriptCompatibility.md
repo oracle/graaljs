@@ -51,7 +51,7 @@ It employs two regular expression engines:
 
 While both engines support most regular expressions, they lack support for some of the advaced features of the newest ECMAScript specifications.
 TRegex is the default engine, and Joni will be used in case a feature is not supported in TRegex.
-In the rare case several features are mixed in one regular expression so no single engine can execute the expression, Graal JavaScript has to throw a JavaString Error.
+In the rare case several features are mixed in one regular expression so no single engine can execute the expression, Graal JavaScript has to throw a JavaScript Error.
 We are working on improving both engines to limit the number of unsupported regular expressions.
 
 The current status of feature support in both engines is listed below (features not listed are supported by both engines):
@@ -312,6 +312,10 @@ The `isScriptFunction` method returns whether `fn` is a JavaScript function.
 It returns `false` for all other types, including Java function, and functions of other polyglot languages.
 
 This function requires the Nashorn compatibility mode flag.
+
+#### `Java.addToClasspath(location)`
+
+The `addToClasspath` method adds the specified location (file name or path name, as String) to Java's classpath.
 
 ### Polyglot
 

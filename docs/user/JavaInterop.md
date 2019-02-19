@@ -26,6 +26,8 @@ You can specify the classpath with the `--jvm.classpath=<classpath>` option (or 
     node --jvm --jvm.cp=/my/class/path
     js --jvm --jvm.cp=/my/class/path
 
+The method `Java.addToClasspath()` can be used to programmatically add to the classpath at runtime.
+
 ### Polyglot Context
 The preferred method of launching Graal JavaScript with Java interop support instance is via polyglot `Context`.
 For that, a new `org.graalvm.polyglot.Context` is built with the `hostAccess` option set:
