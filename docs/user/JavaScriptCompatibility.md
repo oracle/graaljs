@@ -313,6 +313,10 @@ It returns `false` for all other types, including Java function, and functions o
 
 This function requires the Nashorn compatibility mode flag.
 
+#### `Java.addToClasspath(location)`
+
+The `addToClasspath` method adds the specified location (file name or path name, as String) to Java's classpath.
+
 ### Polyglot
 
 The functions of the `Polyglot` object allow to interact with values from other polyglot languages.
