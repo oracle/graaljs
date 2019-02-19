@@ -576,6 +576,10 @@
     "filePath" : "basic/JDK-8162771.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/JDK-8163945.js",
+    "status" : "FAIL",
+    "comment" : "ToPrimitive conversion fails for unknown Java Number classes"
+  }, {
     "filePath" : "basic/JDK-8164708.js",
     "status" : "FAIL"
   }, {
