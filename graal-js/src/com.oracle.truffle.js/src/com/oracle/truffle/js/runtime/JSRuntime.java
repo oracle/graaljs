@@ -2319,8 +2319,6 @@ public final class JSRuntime {
             return key;
         } else if (isString(key)) {
             return key.toString();
-        } else if (key instanceof HiddenKey) {
-            return key;
         }
         return toString(key);
     }
