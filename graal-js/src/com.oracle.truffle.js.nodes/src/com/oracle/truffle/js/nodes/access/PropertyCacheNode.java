@@ -883,7 +883,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             Shape depthShape = shape;
             DynamicObject depthProto = thisObj;
             for (int i = 0; i < depth; i++) {
-                Assumption stablePrototypeAssumption = depth == 0 ? null : JSShape.getPrototypeAssumption(depthShape);
+                Assumption stablePrototypeAssumption = JSShape.getPrototypeAssumption(depthShape);
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
                 shapeCheckNodes[i] = new AssumptionShapeCheckNode(depthShape, key, context, true, stablePrototypeAssumption);

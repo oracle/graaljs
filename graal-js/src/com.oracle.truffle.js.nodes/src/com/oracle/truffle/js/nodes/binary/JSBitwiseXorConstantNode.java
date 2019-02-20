@@ -151,7 +151,12 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
         }
     }
 
-    @Specialization(replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"}, guards = "!isInt")
+    // Workaround for SpotBugs warning in JSBitwiseXorConstantNodeGen
+    protected final boolean isInt() {
+        return isInt;
+    }
+
+    @Specialization(replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"}, guards = "!isInt()")
     protected BigInt doGenericBigIntCase(Object a,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt) {
