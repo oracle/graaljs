@@ -75,16 +75,6 @@ public class LexicalContext {
     }
 
     /**
-     * Returns the outermost function in this context. It is either the program,
-     * or a lazily compiled function.
-     *
-     * @return the outermost function in this context.
-     */
-    public FunctionNode getOutermostFunction() {
-        return (FunctionNode) stack[0];
-    }
-
-    /**
      * Pushes a new block on top of the context, making it the innermost open
      * block.
      *
@@ -193,16 +183,6 @@ public class LexicalContext {
     }
 
     /**
-     * Returns an iterator over all of the current function's blocks in the context,
-     * with the top block (innermost lexical context) first.
-     *
-     * @return an iterator over all blocks in the context.
-     */
-    public Iterator<Block> getBlocksInCurrentFunction() {
-        return new NodeIterator<>(Block.class, getCurrentFunction());
-    }
-
-    /**
      * Get the parent block for the current lexical context block
      *
      * @return parent block
@@ -211,21 +191,6 @@ public class LexicalContext {
         final Iterator<Block> iter = new NodeIterator<>(Block.class, getCurrentFunction());
         iter.next();
         return iter.hasNext() ? iter.next() : null;
-    }
-
-    /**
-     * Gets the label node of the current block.
-     *
-     * @return the label node of the current block, if it is labeled. Otherwise
-     *         returns {@code null}.
-     */
-    public LabelNode getCurrentBlockLabelNode() {
-        assert stack[sp - 1] instanceof Block;
-        if (sp < 2) {
-            return null;
-        }
-        final LexicalContextNode parent = stack[sp - 2];
-        return parent instanceof LabelNode ? (LabelNode) parent : null;
     }
 
     /**
@@ -242,105 +207,6 @@ public class LexicalContext {
         for (int i = sp - 1; i >= 0; i--) {
             if (stack[i] instanceof FunctionNode) {
                 return (FunctionNode) stack[i];
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Is the topmost lexical context element a function body?
-     *
-     * @return {@code true} if function body.
-     */
-    public boolean isFunctionBody() {
-        return getParentBlock() == null;
-    }
-
-    private BreakableNode getBreakable() {
-        for (final NodeIterator<BreakableNode> iter = new NodeIterator<>(BreakableNode.class, getCurrentFunction()); iter.hasNext();) {
-            final BreakableNode next = iter.next();
-            if (next.isBreakableWithoutLabel()) {
-                return next;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * @return the loop header of the current loop, or {@code null} if not
-     *         inside a loop.
-     */
-    public LoopNode getCurrentLoop() {
-        final Iterator<LoopNode> iter = new NodeIterator<>(LoopNode.class, getCurrentFunction());
-        return iter.hasNext() ? iter.next() : null;
-    }
-
-    /**
-     * Find the breakable node corresponding to this label.
-     *
-     * @param labelName name of the label to search for. If {@code null}, the
-     *        closest breakable node will be returned unconditionally, e.g., a
-     *        while loop with no label.
-     *
-     * @return closest breakable node.
-     */
-    public BreakableNode getBreakable(final String labelName) {
-        if (labelName != null) {
-            final LabelNode foundLabel = findLabel(labelName);
-            if (foundLabel != null) {
-                // iterate to the nearest breakable to the foundLabel
-                BreakableNode breakable = null;
-                for (final NodeIterator<BreakableNode> iter = new NodeIterator<>(BreakableNode.class, foundLabel); iter.hasNext();) {
-                    breakable = iter.next();
-                }
-                return breakable;
-            }
-            return null;
-        }
-        return getBreakable();
-    }
-
-    private LoopNode getContinueTo() {
-        return getCurrentLoop();
-    }
-
-    /**
-     * Find the continue target node corresponding to this label.
-     *
-     * @param labelName label name to search for. If {@code null} the closest
-     *        loop node will be returned unconditionally, e.g., a while loop
-     *        with no label.
-     *
-     * @return closest continue target node.
-     */
-    public LoopNode getContinueTo(final String labelName) {
-        if (labelName != null) {
-            final LabelNode foundLabel = findLabel(labelName);
-            if (foundLabel != null) {
-                // iterate to the nearest loop to the foundLabel
-                LoopNode loop = null;
-                for (final NodeIterator<LoopNode> iter = new NodeIterator<>(LoopNode.class, foundLabel); iter.hasNext();) {
-                    loop = iter.next();
-                }
-                return loop;
-            }
-            return null;
-        }
-        return getContinueTo();
-    }
-
-    /**
-     * Check the lexical context for a given label node by name.
-     *
-     * @param name name of the label.
-     *
-     * @return LabelNode if found, {@code null} otherwise.
-     */
-    public LabelNode findLabel(final String name) {
-        for (final Iterator<LabelNode> iter = new NodeIterator<>(LabelNode.class, getCurrentFunction()); iter.hasNext();) {
-            final LabelNode next = iter.next();
-            if (next.getLabelName().equals(name)) {
-                return next;
             }
         }
         return null;

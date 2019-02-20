@@ -1220,19 +1220,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Specialization
-        protected Object loadMap(VirtualFrame frame, Map<?, ?> map,
-                        @Cached("create()") JSToStringNode sourceToStringNode) {
-            JSRealm realm = realmNode.execute(frame);
-            if (Boundaries.mapContainsKey(map, EVAL_OBJ_FILE_NAME) && Boundaries.mapContainsKey(map, EVAL_OBJ_SOURCE)) {
-                Object scriptNameObj = Boundaries.mapGet(map, EVAL_OBJ_FILE_NAME);
-                Object sourceObj = Boundaries.mapGet(map, EVAL_OBJ_SOURCE);
-                return evalImpl(realm, toString1(scriptNameObj), sourceToStringNode.executeString(sourceObj));
-            } else {
-                throw cannotLoadScript(map);
-            }
-        }
-
         @Specialization(guards = "isFallback(fileName)")
         protected Object loadConvertToString(VirtualFrame frame, Object fileName) {
             return loadString(frame, toString1(fileName));

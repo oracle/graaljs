@@ -94,11 +94,4 @@ public abstract class JumpStatement extends Statement {
     }
 
     abstract String getStatementName();
-
-    /**
-     * Finds the target for this jump statement in a lexical context.
-     * @param lc the lexical context
-     * @return the target, or null if not found
-     */
-    public abstract BreakableNode getTarget(final LexicalContext lc);
 }

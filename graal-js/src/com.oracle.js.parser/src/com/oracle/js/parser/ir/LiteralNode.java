@@ -46,7 +46,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
-import com.oracle.js.parser.JSType;
 import com.oracle.js.parser.Lexer.LexerToken;
 import com.oracle.js.parser.Token;
 import com.oracle.js.parser.TokenType;
@@ -95,60 +94,6 @@ public abstract class LiteralNode<T> extends Expression {
     }
 
     /**
-     * Check if the literal value is null
-     *
-     * @return true if literal value is null
-     */
-    public boolean isNull() {
-        return value == null;
-    }
-
-    /**
-     * Fetch boolean value of node.
-     *
-     * @return boolean value of node.
-     */
-    public boolean getBoolean() {
-        return JSType.toBoolean(value);
-    }
-
-    /**
-     * Fetch int32 value of node.
-     *
-     * @return Int32 value of node.
-     */
-    public int getInt32() {
-        return JSType.toInt32(value);
-    }
-
-    /**
-     * Fetch uint32 value of node.
-     *
-     * @return uint32 value of node.
-     */
-    public long getUint32() {
-        return JSType.toUint32(value);
-    }
-
-    /**
-     * Fetch long value of node
-     *
-     * @return long value of node
-     */
-    public long getLong() {
-        return JSType.toLong(value);
-    }
-
-    /**
-     * Fetch double value of node.
-     *
-     * @return double value of node.
-     */
-    public double getNumber() {
-        return JSType.toNumber(value);
-    }
-
-    /**
      * Fetch String value of node.
      *
      * @return String value of node.
@@ -180,30 +125,12 @@ public abstract class LiteralNode<T> extends Expression {
     }
 
     /**
-     * Test if the value is a boolean.
-     *
-     * @return True if value is a boolean.
-     */
-    public boolean isBoolean() {
-        return value instanceof Boolean;
-    }
-
-    /**
      * Test if the value is a string.
      *
      * @return True if value is a string.
      */
     public boolean isString() {
         return value instanceof String;
-    }
-
-    /**
-     * Test if tha value is a number
-     *
-     * @return True if value is a number
-     */
-    public boolean isNumeric() {
-        return value instanceof Number;
     }
 
     /**
@@ -273,25 +200,6 @@ public abstract class LiteralNode<T> extends Expression {
             super(literalNode);
         }
 
-        /**
-         * Check if the literal value is boolean true
-         *
-         * @return true if literal value is boolean true
-         */
-        public boolean isTrue() {
-            return JSType.toBoolean(value);
-        }
-
-        @Override
-        public boolean isAlwaysFalse() {
-            return !isTrue();
-        }
-
-        @Override
-        public boolean isAlwaysTrue() {
-            return isTrue();
-        }
-
         @Override
         public String getPropertyName() {
             return String.valueOf(getObject());
@@ -306,11 +214,6 @@ public abstract class LiteralNode<T> extends Expression {
 
         private BooleanLiteralNode(final BooleanLiteralNode literalNode) {
             super(literalNode);
-        }
-
-        @Override
-        public boolean isTrue() {
-            return value;
         }
     }
 
