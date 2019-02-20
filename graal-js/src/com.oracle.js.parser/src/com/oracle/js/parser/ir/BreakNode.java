@@ -83,9 +83,4 @@ public final class BreakNode extends JumpStatement {
     String getStatementName() {
         return "break";
     }
-
-    @Override
-    public BreakableNode getTarget(final LexicalContext lc) {
-        return lc.getBreakable(getLabelName());
-    }
 }

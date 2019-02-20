@@ -82,9 +82,4 @@ public class ContinueNode extends JumpStatement {
     String getStatementName() {
         return "continue";
     }
-
-    @Override
-    public BreakableNode getTarget(final LexicalContext lc) {
-        return lc.getContinueTo(getLabelName());
-    }
 }
