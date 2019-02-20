@@ -270,24 +270,6 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
         return length == 0;
     }
 
-    // accessed via Java Interop, JDK-8062624.js
-    @TruffleBoundary
-    public boolean startsWith(String prefix) {
-        return toString().startsWith(prefix);
-    }
-
-    // accessed via Java Interop, JDK-8062624.js
-    @TruffleBoundary
-    public boolean endsWith(String prefix) {
-        return toString().endsWith(prefix);
-    }
-
-    // accessed via Java Interop, JDK-8062624.js
-    @TruffleBoundary
-    public byte[] getBytes() {
-        return toString().getBytes();
-    }
-
     private static class JSLazyIntWrapper implements CharSequence {
 
         private final int value;
