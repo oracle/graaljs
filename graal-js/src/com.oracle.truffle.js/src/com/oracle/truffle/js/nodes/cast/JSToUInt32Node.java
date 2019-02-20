@@ -160,6 +160,12 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return ((Number) toUInt32Node.execute(toPrimitiveNode.execute(object))).doubleValue();
     }
 
+    @Specialization
+    protected double doLong(long value) {
+        // Long is used internally for array length
+        return value;
+    }
+
     public abstract static class JSToUInt32WrapperNode extends JSUnaryNode {
         @Child private JSToUInt32Node toUInt32Node;
 
