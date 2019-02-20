@@ -184,18 +184,24 @@ public abstract class EnumerateNode extends JavaScriptNode {
     @TruffleBoundary
     private static Iterator<?> getHostObjectIterator(Object hostObject, boolean values, TruffleLanguage.Env env) {
         if (hostObject != null) {
+            Iterator<?> iterator;
             if (hostObject instanceof Map) {
                 Map<?, ?> map = (Map<?, ?>) hostObject;
-                Iterator<?> iterator = values ? map.values().iterator() : map.keySet().iterator();
-                return IteratorUtil.convertIterator(iterator, env::asGuestValue);
+                iterator = values ? map.values().iterator() : map.keySet().iterator();
             } else if (hostObject.getClass().isArray()) {
-                return values ? new ArrayIterator(hostObject) : IteratorUtil.rangeIterator(Array.getLength(hostObject));
+                if (values) {
+                    iterator = new ArrayIterator(hostObject);
+                } else {
+                    return IteratorUtil.rangeIterator(Array.getLength(hostObject));
+                }
             } else if (!values && hostObject instanceof List<?>) {
                 return IteratorUtil.rangeIterator(((List<?>) hostObject).size());
             } else if (values && hostObject instanceof Iterable<?>) {
-                Iterator<?> iterator = ((Iterable<?>) hostObject).iterator();
-                return IteratorUtil.convertIterator(iterator, env::asGuestValue);
+                iterator = ((Iterable<?>) hostObject).iterator();
+            } else {
+                return null;
             }
+            return IteratorUtil.convertIterator(iterator, env::asGuestValue);
         }
         return null;
     }
