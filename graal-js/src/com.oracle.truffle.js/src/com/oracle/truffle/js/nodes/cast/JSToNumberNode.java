@@ -48,7 +48,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNodeGen.JSToNumberUnaryNodeGen;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -128,10 +127,10 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
     }
 
-    @Specialization(guards = "isForeignObject(object)")
-    protected Number doCrossLanguageToDouble(TruffleObject object,
-                    @Cached("create()") JSUnboxOrGetNode unboxOrGetNode) {
-        return toNumber(unboxOrGetNode.executeWithTarget(object));
+    @Specialization(guards = "isForeignObject(value)")
+    protected Number doForeignObject(TruffleObject value,
+                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
+        return toNumber(toPrimitiveNode.execute(value));
     }
 
     @Specialization(guards = "isJavaNumber(value)")

@@ -47,7 +47,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -69,7 +71,6 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -219,6 +220,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
+    @ImportStatic(JSInteropUtil.class)
     public abstract static class ObjectPrototypeValueOfNode extends ObjectOperation {
 
         public ObjectPrototypeValueOfNode(JSContext context, JSBuiltin builtin) {
@@ -257,8 +259,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isForeignObject(thisObj)")
         protected Object valueOf(TruffleObject thisObj,
-                        @Cached("create()") JSUnboxOrGetNode unboxOrGetNode) {
-            return unboxOrGetNode.executeWithTarget(thisObj);
+                        @Cached("createIsNull()") Node isNullNode) {
+            if (ForeignAccess.sendIsNull(isNullNode, thisObj)) {
+                throw Errors.createTypeErrorNotObjectCoercible(thisObj);
+            }
+            return thisObj;
         }
     }
 

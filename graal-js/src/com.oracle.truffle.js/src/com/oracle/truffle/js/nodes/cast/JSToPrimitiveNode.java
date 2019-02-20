@@ -202,7 +202,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return hint == Hint.String || hint == Hint.None;
     }
 
-    @Specialization(guards = "isTruffleJavaObject(object)")
+    @Specialization(guards = "isForeignObject(object)")
     protected Object doTruffleJavaObject(TruffleObject object,
                     @Cached("createIsBoxed()") Node isBoxed,
                     @Cached("createUnbox()") Node unbox,
@@ -240,11 +240,6 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         } else {
             throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
         }
-    }
-
-    @Specialization(guards = "isJavaPrimitiveNumber(value)")
-    protected static Object doNumber(Object value) {
-        return value;
     }
 
     @Fallback

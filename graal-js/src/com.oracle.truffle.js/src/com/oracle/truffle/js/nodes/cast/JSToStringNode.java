@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,9 +51,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNodeGen.JSToStringWrapperNodeGen;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -165,21 +162,10 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = "isTruffleJavaObject(object)")
-    protected String doTruffleJavaObject(TruffleObject object) {
-        String result = null;
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
-        Object javaObject = env.asHostObject(object);
-        if (javaObject != null) {
-            result = Boundaries.javaToString(javaObject);
-        }
-        return (result == null) ? Null.NAME : result;
-    }
-
-    @Specialization(guards = {"isForeignObject(object)", "!isTruffleJavaObject(object)"})
+    @Specialization(guards = {"isForeignObject(object)"})
     protected String doTruffleObject(TruffleObject object,
-                    @Cached("create()") JSUnboxOrGetNode interopUnboxNode) {
-        return getToStringNode().executeString(interopUnboxNode.executeWithTarget(object));
+                    @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode) {
+        return getToStringNode().executeString(toPrimitiveNode.execute(object));
     }
 
     protected JSToStringNode getToStringNode() {

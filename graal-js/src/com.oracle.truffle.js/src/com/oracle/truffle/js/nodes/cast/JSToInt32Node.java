@@ -52,7 +52,6 @@ import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -205,16 +204,10 @@ public abstract class JSToInt32Node extends JSUnaryNode {
     }
 
     @Specialization(guards = "isForeignObject(object)")
-    protected static int doCrossLanguageToDouble(TruffleObject object,
-                    @Cached("create()") JSUnboxOrGetNode unboxOrGetNode,
+    protected static int doForeignObject(TruffleObject object,
+                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Cached("create()") JSToInt32Node toInt32Node) {
-        Object unboxed = unboxOrGetNode.executeWithTarget(object);
-        return toInt32Node.executeInt(unboxed);
-    }
-
-    @Specialization(guards = "isJavaNumber(value)")
-    protected static int doJavaNumer(Object value) {
-        return doubleToInt32(JSRuntime.doubleValue((Number) value));
+        return toInt32Node.executeInt(toPrimitiveNode.execute(object));
     }
 
     @Override

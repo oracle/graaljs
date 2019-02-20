@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -116,9 +115,9 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isForeignObject(object)")
-    protected double doCrossLanguageToDouble(TruffleObject object,
-                    @Cached("create()") JSUnboxOrGetNode interopUnboxNode) {
-        return getToDoubleNode().executeDouble(interopUnboxNode.executeWithTarget(object));
+    protected double doForeignObject(TruffleObject object,
+                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
+        return getToDoubleNode().executeDouble(toPrimitiveNode.execute(object));
     }
 
     private JSToDoubleNode getToDoubleNode() {
