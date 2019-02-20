@@ -242,6 +242,12 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         }
     }
 
+    @Specialization
+    protected long doLong(long value) {
+        // Long is used internally for integer indices
+        return value;
+    }
+
     @Fallback
     protected Object doFallback(Object value) {
         assert value != null;
