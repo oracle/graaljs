@@ -228,6 +228,10 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
+        if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
+            selectedLocale = Locale.getDefault();
+            strippedLocale = selectedLocale.stripExtensions();
+        }
         state.locale = strippedLocale.toLanguageTag();
         state.javaLocale = strippedLocale;
     }
@@ -270,7 +274,9 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
             DynamicObject result = JSUserObject.create(context);
             JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "granularity", granularity, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "lineBreakStyle", lineBreakStyle, JSAttributes.getDefault());
+            if (kind == Kind.LINE) {
+                JSObjectUtil.defineDataProperty(result, "lineBreakStyle", lineBreakStyle, JSAttributes.getDefault());
+            }
             return result;
         }
     }
