@@ -201,18 +201,27 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @SuppressWarnings("unused")
-        /* abstract */ int advanceIterator(BreakIterator icuIterator, int offset) {
+        /* abstract */ int doAdvanceOp(BreakIterator icuIterator, int offset) {
             throw Errors.shouldNotReachHere();
         }
 
-        protected boolean makeProgress(DynamicObject iterator, int offset) {
+        @SuppressWarnings("unused")
+        /* abstract */ void doCheckOffsetRange(int offset, int length) {
+            throw Errors.shouldNotReachHere();
+        }
+
+        private boolean checkRangeAndAdvanceOp(DynamicObject iterator, int offset) {
             Object iteratedString = getIteratedObjectNode.getValue(iterator);
-            if (iteratedString == Undefined.instance) {
-                return true;
+            if (iteratedString instanceof String) {
+                doCheckOffsetRange(offset, ((String) iteratedString).length());
             }
+            return advanceOp(iterator, offset);
+        }
+
+        private boolean advanceOp(DynamicObject iterator, int offset) {
             BreakIterator icuIterator = (BreakIterator) getSegmenterNode.getValue(iterator);
             JSSegmenter.Kind segmenterKind = (JSSegmenter.Kind) getSegmentIteratorKindNode.getValue(iterator);
-            int newIndex = advanceIterator(icuIterator, offset);
+            int newIndex = doAdvanceOp(icuIterator, offset);
             String breakType = segmenterKind.getBreakType(null, icuIterator.getRuleStatus());
             setBreakTypeNode.setValue(iterator, breakType);
             setIndexNode.setValue(iterator, newIndex);
@@ -221,14 +230,14 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization(guards = {"isSegmentIterator(iterator)", "!isUndefined(from)"})
         protected boolean doSegmentIteratorWithFrom(DynamicObject iterator, Object from, @Cached("create()") JSToIndexNode toIndexNode) {
-            return makeProgress(iterator, (int) toIndexNode.executeLong(from));
+            return checkRangeAndAdvanceOp(iterator, (int) toIndexNode.executeLong(from));
         }
 
         @Specialization(guards = {"isSegmentIterator(iterator)", "isUndefined(from)"})
         protected boolean doSegmentIteratorNoFrom(DynamicObject iterator, @SuppressWarnings("unused") Object from,
                         @Cached("createGetHidden(SEGMENT_ITERATOR_INDEX_ID, getContext())") PropertyGetNode getIndexNode) {
             try {
-                return makeProgress(iterator, getIndexNode.getValueInt(iterator));
+                return advanceOp(iterator, getIndexNode.getValueInt(iterator));
             } catch (UnexpectedResultException e) {
                 throw Errors.shouldNotReachHere();
             }
@@ -248,8 +257,15 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Override
+        final void doCheckOffsetRange(int offset, int length) {
+            if (offset == 0 || offset > length) {
+                throw Errors.createRangeErrorFormat("Offset out of bounds in Intl.Segment iterator %s method.", this, "preceding");
+            }
+        }
+
+        @Override
         @TruffleBoundary
-        final int advanceIterator(BreakIterator icuIterator, int offset) {
+        final int doAdvanceOp(BreakIterator icuIterator, int offset) {
             return icuIterator.preceding(offset);
         }
     }
@@ -261,8 +277,15 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Override
+        final void doCheckOffsetRange(int offset, int length) {
+            if (offset >= length) {
+                throw Errors.createRangeErrorFormat("Offset out of bounds in Intl.Segment iterator %s method.", this, "following");
+            }
+        }
+
+        @Override
         @TruffleBoundary
-        final int advanceIterator(BreakIterator icuIterator, int offset) {
+        final int doAdvanceOp(BreakIterator icuIterator, int offset) {
             return icuIterator.following(offset);
         }
     }
