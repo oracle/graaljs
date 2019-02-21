@@ -188,7 +188,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             if (breakType != null) {
                 JSObject.set(result, "breakType", breakType);
             }
-            JSObject.set(result, "position", endIndex);
+            JSObject.set(result, "index", endIndex);
             return result;
         }
     }

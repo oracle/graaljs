@@ -122,33 +122,28 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
             }
 
             @Override
-            @TruffleBoundary
             public String getBreakType(String segment, int icuStatus) {
                 return null;
             }
         },
         WORD(2) {
             @Override
-            @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
                 return BreakIterator.getWordInstance(locale);
             }
 
             @Override
-            @TruffleBoundary
             public String getBreakType(@SuppressWarnings("unused") String segment, int icuStatus) {
                 return icuStatus == BreakIterator.WORD_NONE ? "none" : "word";
             }
         },
         SENTENCE(3) {
             @Override
-            @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
                 return BreakIterator.getSentenceInstance(locale);
             }
 
             @Override
-            @TruffleBoundary
             public String getBreakType(String segment, int icuStatus) {
                 return icuStatus == BreakIterator.WORD_NONE ? "sep" : "term";
             }
@@ -161,7 +156,6 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
             }
 
             @Override
-            @TruffleBoundary
             public String getBreakType(String segment, int icuStatus) {
                 return icuStatus == BreakIterator.KIND_LINE ? "hard" : "soft";
             }
