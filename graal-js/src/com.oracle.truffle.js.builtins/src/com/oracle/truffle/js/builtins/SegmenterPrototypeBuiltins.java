@@ -41,11 +41,13 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
-
+import com.ibm.icu.text.BreakIterator;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.SegmenterPrototypeBuiltinsFactory.JSSegmenterResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.SegmenterPrototypeBuiltinsFactory.JSSegmenterSegmentNodeGen;
+import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -53,6 +55,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter.Kind;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SegmenterPrototypeBuiltins.SegmenterPrototype> {
 
@@ -83,7 +87,7 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
             case resolvedOptions:
                 return JSSegmenterResolvedOptionsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case segment:
-                return JSSegmenterSegmentNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSSegmenterSegmentNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -107,20 +111,50 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
     public abstract static class JSSegmenterSegmentNode extends JSBuiltinNode {
 
+        @Child private CreateSegmentIteratorNode createSegmentIteratorNode;
+
         public JSSegmenterSegmentNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.createSegmentIteratorNode = CreateSegmentIteratorNode.create(context);
         }
 
         @Specialization(guards = "isJSSegmenter(segmenter)")
         public Object doSegment(DynamicObject segmenter, Object value,
                         @Cached("create()") JSToStringNode toStringNode) {
-            return JSSegmenter.segment(segmenter, toStringNode.executeString(value));
+            return createSegmentIteratorNode.execute(segmenter, toStringNode.executeString(value));
         }
 
         @Specialization(guards = "!isJSSegmenter(bummer)")
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object value, Object unit) {
+        public void throwTypeError(Object bummer, Object value) {
             throw Errors.createTypeErrorSegmenterExpected();
+        }
+    }
+
+    public static class CreateSegmentIteratorNode extends JavaScriptBaseNode {
+        private final JSContext context;
+
+        protected CreateSegmentIteratorNode(JSContext context) {
+            this.context = context;
+        }
+
+        public static CreateSegmentIteratorNode create(JSContext context) {
+            return new CreateSegmentIteratorNode(context);
+        }
+
+        public DynamicObject execute(DynamicObject segmenter, String value) {
+            assert JSGuards.isJSObject(segmenter) || JSGuards.isForeignObject(segmenter);
+            BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter);
+            icuIterator.setText(value);
+            Kind kind = JSSegmenter.getKind(segmenter);
+            DynamicObject jsIterator = JSObject.create(context, JSSegmenter.createIteratorShape(context));
+            JSObject.setPrototype(jsIterator, context.getRealm().getSegmentIteratorPrototype());
+            JSSegmenter.ITERATED_OBJECT_PROPERTY.setInternal(jsIterator, value);
+            JSSegmenter.SEGMENTER_PROPERTY.setInternal(jsIterator, icuIterator);
+            JSSegmenter.ITER_KIND_PROPERTY.setInternal(jsIterator, kind);
+            JSSegmenter.BREAK_TYPE_PROPERTY.setInternal(jsIterator, kind.getBreakType(value, icuIterator.current()));
+            JSSegmenter.INDEX_PROPERTY.setInternal(jsIterator, 0);
+            return jsIterator;
         }
     }
 }

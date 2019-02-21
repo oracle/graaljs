@@ -45,20 +45,27 @@ import java.util.Locale;
 
 import com.ibm.icu.text.BreakIterator;
 import com.ibm.icu.util.ULocale;
-
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSSegmenter extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
@@ -69,12 +76,109 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     private static final HiddenKey INTERNAL_STATE_ID = new HiddenKey("_internalState");
     private static final Property INTERNAL_STATE_PROPERTY;
 
-    public static final JSSegmenter INSTANCE = new JSSegmenter();
+    public static final String ITERATOR_CLASS_NAME = "Segment Iterator";
+    public static final String ITERATOR_PROTOTYPE_NAME = "Segment Iterator.prototype";
+
+    public static final HiddenKey SEGMENT_ITERATOR_KIND_ID = new HiddenKey("kind");
+    public static final HiddenKey SEGMENT_ITERATOR_SEGMENTER_ID = new HiddenKey("segmenter");
+    public static final HiddenKey SEGMENT_ITERATOR_INDEX_ID = new HiddenKey("index");
+    public static final HiddenKey SEGMENT_ITERATOR_BREAK_TYPE_ID = new HiddenKey("breakType");
+
+    public static final Property ITERATED_OBJECT_PROPERTY;
+    public static final Property SEGMENTER_PROPERTY;
+    public static final Property ITER_KIND_PROPERTY;
+    public static final Property BREAK_TYPE_PROPERTY;
+    public static final Property INDEX_PROPERTY;
+
+    public static Shape.Allocator iterAllocator;
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
-        INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID, allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
+        INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID,
+                        allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
+
+        iterAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
+        ITERATED_OBJECT_PROPERTY = JSObjectUtil.makeHiddenProperty(JSRuntime.ITERATED_OBJECT_ID, iterAllocator.locationForType(String.class));
+        SEGMENTER_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_SEGMENTER_ID, iterAllocator.locationForType(BreakIterator.class));
+        ITER_KIND_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_KIND_ID, iterAllocator.locationForType(Kind.class));
+        BREAK_TYPE_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_BREAK_TYPE_ID, iterAllocator.locationForType(String.class));
+        INDEX_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_INDEX_ID, iterAllocator.locationForType(Integer.class));
     }
+
+    interface IcuIteratorHelper {
+
+        BreakIterator getIterator(ULocale locale);
+
+        String getBreakType(String segment, int icuStatus);
+    }
+
+    public static enum Kind implements IcuIteratorHelper {
+
+        GRAPHEME(1) {
+            @Override
+            @TruffleBoundary
+            public BreakIterator getIterator(ULocale locale) {
+                return BreakIterator.getCharacterInstance(locale);
+            }
+
+            @Override
+            @TruffleBoundary
+            public String getBreakType(String segment, int icuStatus) {
+                return null;
+            }
+        },
+        WORD(2) {
+            @Override
+            @TruffleBoundary
+            public BreakIterator getIterator(ULocale locale) {
+                return BreakIterator.getWordInstance(locale);
+            }
+
+            @Override
+            @TruffleBoundary
+            public String getBreakType(@SuppressWarnings("unused") String segment, int icuStatus) {
+                return icuStatus == BreakIterator.WORD_NONE ? "none" : "word";
+            }
+        },
+        SENTENCE(3) {
+            @Override
+            @TruffleBoundary
+            public BreakIterator getIterator(ULocale locale) {
+                return BreakIterator.getSentenceInstance(locale);
+            }
+
+            @Override
+            @TruffleBoundary
+            public String getBreakType(String segment, int icuStatus) {
+                return icuStatus == BreakIterator.WORD_NONE ? "sep" : "term";
+            }
+        },
+        LINE(4) {
+            @Override
+            @TruffleBoundary
+            public BreakIterator getIterator(ULocale locale) {
+                return BreakIterator.getLineInstance(locale);
+            }
+
+            @Override
+            @TruffleBoundary
+            public String getBreakType(String segment, int icuStatus) {
+                return icuStatus == BreakIterator.KIND_LINE ? "hard" : "soft";
+            }
+        };
+
+        int v;
+
+        Kind(int v) {
+            this.v = v;
+        }
+
+        int getValue() {
+            return v;
+        }
+    }
+
+    public static final JSSegmenter INSTANCE = new JSSegmenter();
 
     private JSSegmenter() {
     }
@@ -135,32 +239,38 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static void setupInternalBreakIterator(InternalState state) {
+    public static void setupInternalBreakIterator(InternalState state, String granularity, String lineBreakStyle) {
         state.javaLocale = Locale.forLanguageTag(state.locale);
-        state.breakIterator = createBreakIterator(state.javaLocale, state.lineBreakStyle, state.granularity);
-    }
-
-    @TruffleBoundary
-    @SuppressWarnings("unused")
-    public static Object segment(DynamicObject segmenterObj, String s) {
-// InternalState state = getInternalState(segmenterObj);
-        return null;
-    }
-
-    public static BreakIterator getBreakIteratorProperty(DynamicObject obj) {
-        return getInternalState(obj).breakIterator;
+        state.granularity = granularity;
+        state.lineBreakStyle = lineBreakStyle;
+        switch (state.granularity) {
+            case "grapheme":
+                state.kind = Kind.GRAPHEME;
+                break;
+            case "word":
+                state.kind = Kind.WORD;
+                break;
+            case "sentence":
+                state.kind = Kind.SENTENCE;
+                break;
+            case "line":
+                state.kind = Kind.LINE;
+                break;
+            default:
+                throw Errors.shouldNotReachHere(String.format("Segmenter with granularity, %s, is not supported", state.granularity));
+        }
     }
 
     public static class InternalState {
 
         public boolean initialized = false;
-        public BreakIterator breakIterator;
 
         public String locale;
         public Locale javaLocale;
 
-        public String lineBreakStyle = "normal";
         public String granularity = "grapheme";
+        public String lineBreakStyle = "normal";
+        public Kind kind = Kind.GRAPHEME;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
@@ -172,9 +282,17 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     }
 
     @SuppressWarnings("unused")
-    private static BreakIterator createBreakIterator(Locale locale, String lineBreakStyle, String granularity) {
-        ULocale ulocale = ULocale.forLocale(locale);
-        return BreakIterator.getLineInstance(ulocale);
+    @TruffleBoundary
+    public static BreakIterator createBreakIterator(DynamicObject segmenterObj) {
+        InternalState state = getInternalState(segmenterObj);
+        ULocale ulocale = ULocale.forLocale(state.javaLocale);
+        return state.kind.getIterator(ulocale);
+    }
+
+    @SuppressWarnings("unused")
+    public static Kind getKind(DynamicObject segmenterObj) {
+        InternalState state = getInternalState(segmenterObj);
+        return state.kind;
     }
 
     @TruffleBoundary
@@ -190,5 +308,68 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getSegmenterConstructor().getPrototype();
+    }
+
+    // Iterator
+
+    @TruffleBoundary
+    public static JSObjectFactory buildIteratorFactory(JSContext ctx) {
+        return JSObjectFactory.createUnbound(ctx, createIteratorShape(ctx).createFactory());
+    }
+
+    public static Shape createIteratorShape(JSContext ctx) {
+        Shape iteratorShape = ctx.createEmptyShape();
+        iteratorShape = iteratorShape.addProperty(ITERATED_OBJECT_PROPERTY);
+        iteratorShape = iteratorShape.addProperty(SEGMENTER_PROPERTY);
+        iteratorShape = iteratorShape.addProperty(ITER_KIND_PROPERTY);
+        iteratorShape = iteratorShape.addProperty(BREAK_TYPE_PROPERTY);
+        iteratorShape = iteratorShape.addProperty(INDEX_PROPERTY);
+        return iteratorShape;
+    }
+
+    private static CallTarget createBreakTypeGetterCallTarget(JSContext context) {
+        return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object obj = JSArguments.getThisObject(frame.getArguments());
+                if (JSObject.isDynamicObject(obj)) {
+                    DynamicObject iteratorObj = (DynamicObject) obj;
+                    Object breakType = BREAK_TYPE_PROPERTY.get(iteratorObj, true);
+                    return breakType == null ? Undefined.instance : breakType;
+                }
+                throw Errors.createTypeError("SegmenterIterator object expected");
+            }
+        });
+    }
+
+    private static CallTarget createPositionGetterCallTarget(JSContext context) {
+        return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object obj = JSArguments.getThisObject(frame.getArguments());
+                if (JSObject.isDynamicObject(obj)) {
+                    DynamicObject iteratorObj = (DynamicObject) obj;
+                    Object position = INDEX_PROPERTY.get(iteratorObj, true);
+                    return position == null ? Undefined.instance : position;
+                }
+                throw Errors.createTypeError("SegmenterIterator object expected");
+            }
+        });
+    }
+
+    /**
+     * Creates the %SegmentIteratorPrototype% object.
+     */
+    public static DynamicObject createSegmentIteratorPrototype(JSContext context, JSRealm realm) {
+        DynamicObject prototype = JSObject.createInit(realm, realm.getIteratorPrototype(), JSUserObject.INSTANCE);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, ITERATOR_PROTOTYPE_NAME);
+        JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        DynamicObject breakTypeGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createBreakTypeGetterCallTarget(context), 0, "get " + "breakType"));
+        JSObjectUtil.putConstantAccessorProperty(context, prototype, "breakType", breakTypeGetter, Undefined.instance);
+        DynamicObject positionGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createPositionGetterCallTarget(context), 0, "get " + "position"));
+        JSObjectUtil.putConstantAccessorProperty(context, prototype, "position", positionGetter, Undefined.instance);
+        return prototype;
     }
 }

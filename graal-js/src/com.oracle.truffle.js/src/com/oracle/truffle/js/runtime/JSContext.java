@@ -369,6 +369,7 @@ public class JSContext {
     private final JSObjectFactory listFormatFactory;
     private final JSObjectFactory relativeTimeFormatFactory;
     private final JSObjectFactory segmenterFactory;
+    private final JSObjectFactory segmentIteratorFactory;
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
@@ -518,6 +519,7 @@ public class JSContext {
         this.listFormatFactory = builder.create(JSListFormat.INSTANCE);
         this.relativeTimeFormatFactory = builder.create(JSRelativeTimeFormat.INSTANCE);
         this.segmenterFactory = builder.create(JSSegmenter.INSTANCE);
+        this.segmentIteratorFactory = JSSegmenter.buildIteratorFactory(this);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
@@ -914,6 +916,10 @@ public class JSContext {
 
     public final JSObjectFactory getSegmenterFactory() {
         return segmenterFactory;
+    }
+
+    public final JSObjectFactory getSegmentIteratorFactory() {
+        return segmentIteratorFactory;
     }
 
     public final JSObjectFactory getDateTimeFormatFactory() {

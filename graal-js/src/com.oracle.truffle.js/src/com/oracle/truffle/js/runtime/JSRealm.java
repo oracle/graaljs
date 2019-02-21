@@ -211,6 +211,7 @@ public class JSRealm {
     private final DynamicObject arrayIteratorPrototype;
     private final DynamicObject setIteratorPrototype;
     private final DynamicObject mapIteratorPrototype;
+    private final DynamicObject segmentIteratorPrototype;
     private final DynamicObject stringIteratorPrototype;
     private final DynamicObject regExpStringIteratorPrototype;
     private final DynamicObject enumerateIteratorPrototype;
@@ -362,6 +363,7 @@ public class JSRealm {
         this.listFormatConstructor = JSListFormat.createConstructor(this);
         this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
         this.segmenterConstructor = JSSegmenter.createConstructor(this);
+        this.segmentIteratorPrototype = JSSegmenter.createSegmentIteratorPrototype(context, this);
 
         this.iteratorPrototype = createIteratorPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
@@ -522,16 +524,16 @@ public class JSRealm {
         return relativeTimeFormatConstructor;
     }
 
-    public final JSConstructor getSegmenterConstructor() {
-        return segmenterConstructor;
-    }
-
     public final JSConstructor getDateTimeFormatConstructor() {
         return dateTimeFormatConstructor;
     }
 
     public final JSConstructor getDateConstructor() {
         return dateConstructor;
+    }
+
+    public final JSConstructor getSegmenterConstructor() {
+        return segmenterConstructor;
     }
 
     public final JSConstructor getSymbolConstructor() {
@@ -723,6 +725,10 @@ public class JSRealm {
 
     public DynamicObject getRegExpStringIteratorPrototype() {
         return regExpStringIteratorPrototype;
+    }
+
+    public DynamicObject getSegmentIteratorPrototype() {
+        return segmentIteratorPrototype;
     }
 
     /**

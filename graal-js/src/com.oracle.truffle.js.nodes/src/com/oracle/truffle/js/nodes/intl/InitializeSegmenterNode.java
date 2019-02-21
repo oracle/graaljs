@@ -96,11 +96,8 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
 
             state.initialized = true;
 
-            state.lineBreakStyle = optLineBreakStyle;
-            state.granularity = optGranularity;
-
             JSSegmenter.setLocale(context, state, locales);
-            JSSegmenter.setupInternalBreakIterator(state);
+            JSSegmenter.setupInternalBreakIterator(state, optGranularity, optLineBreakStyle);
 
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();
