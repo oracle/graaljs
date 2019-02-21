@@ -73,7 +73,7 @@ public final class SegmenterFunctionBuiltins extends JSBuiltinsContainer.SwitchE
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, SegmenterFunction builtinEnum) {
         switch (builtinEnum) {
             case supportedLocalesOf:
-                return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }

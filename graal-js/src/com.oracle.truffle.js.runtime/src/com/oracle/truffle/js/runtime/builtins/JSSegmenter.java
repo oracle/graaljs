@@ -368,8 +368,8 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         DynamicObject breakTypeGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createBreakTypeGetterCallTarget(context), 0, "get " + "breakType"));
         JSObjectUtil.putConstantAccessorProperty(context, prototype, "breakType", breakTypeGetter, Undefined.instance);
-        DynamicObject positionGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createPositionGetterCallTarget(context), 0, "get " + "position"));
-        JSObjectUtil.putConstantAccessorProperty(context, prototype, "position", positionGetter, Undefined.instance);
+        DynamicObject positionGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createPositionGetterCallTarget(context), 0, "get " + "index"));
+        JSObjectUtil.putConstantAccessorProperty(context, prototype, "index", positionGetter, Undefined.instance);
         return prototype;
     }
 }

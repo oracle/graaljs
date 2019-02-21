@@ -152,7 +152,6 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSSegmenter.ITERATED_OBJECT_PROPERTY.setInternal(jsIterator, value);
             JSSegmenter.SEGMENTER_PROPERTY.setInternal(jsIterator, icuIterator);
             JSSegmenter.ITER_KIND_PROPERTY.setInternal(jsIterator, kind);
-            JSSegmenter.BREAK_TYPE_PROPERTY.setInternal(jsIterator, kind.getBreakType(value, icuIterator.current()));
             JSSegmenter.INDEX_PROPERTY.setInternal(jsIterator, 0);
             return jsIterator;
         }
