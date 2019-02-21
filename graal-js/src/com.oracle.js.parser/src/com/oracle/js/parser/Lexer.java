@@ -378,6 +378,17 @@ public class Lexer extends Scanner {
     }
 
     /**
+     * Test whether a char is valid JavaScript end of string.
+     * Line separators and paragraph separators can appear in
+     * JavaScript string literals.
+     * @param ch a char
+     * @return true if valid JavaScript end of string
+     */
+    public static boolean isStringLineTerminator(final char ch) {
+        return ch == '\n' || ch == '\r';
+    }
+
+    /**
      * Test if char is a string delimiter, e.g. '\' or '"'.
      * @param ch a char
      * @return true if string delimiter
@@ -1048,7 +1059,7 @@ public class Lexer extends Scanner {
         final State stringState = saveState();
 
         // Scan until close quote or end of line.
-        while (!atEOF() && ch0 != quote && !isEOL(ch0)) {
+        while (!atEOF() && ch0 != quote && !Lexer.isStringLineTerminator(ch0)) {
             // Skip over escaped character.
             if (ch0 == '\\') {
                 type = ESCSTRING;
