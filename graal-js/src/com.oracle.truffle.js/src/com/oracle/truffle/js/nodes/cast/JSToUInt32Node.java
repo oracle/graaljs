@@ -144,7 +144,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
     @Specialization
     protected int doBigInt(@SuppressWarnings("unused") BigInt value) {
-        throw Errors.createTypeErrorCanNotConvertBigIntToNumber();
+        throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
     }
 
     @Specialization(guards = "isJSObject(value)")

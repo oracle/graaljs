@@ -83,8 +83,8 @@ public abstract class JSToDoubleNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static double doBigInt(@SuppressWarnings("unused") BigInt value) {
-        throw Errors.createTypeErrorCanNotConvertBigIntToNumber();
+    protected final double doBigInt(@SuppressWarnings("unused") BigInt value) {
+        throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
     }
 
     @Specialization(guards = "isJSNull(value)")

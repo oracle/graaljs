@@ -134,7 +134,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
 
     @Specialization
     protected int doBigInt(@SuppressWarnings("unused") BigInt a) {
-        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+        throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
     @Specialization(guards = "!isHandled(lval)")

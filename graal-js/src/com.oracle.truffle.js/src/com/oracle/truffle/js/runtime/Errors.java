@@ -109,8 +109,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCanNotMixBigIntWithOtherTypes() {
-        return createTypeError("Cannot mix BigInt and other types, use explicit conversions.");
+    public static JSException createTypeErrorCannotMixBigIntWithOtherTypes(Node originatingNode) {
+        return createTypeError("Cannot mix BigInt and other types, use explicit conversions.", originatingNode);
     }
 
     @TruffleBoundary
@@ -119,8 +119,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCanNotConvertBigIntToNumber() {
-        return createTypeError("Cannot convert a BigInt value to a number.");
+    public static JSException createTypeErrorCannotConvertBigIntToNumber(Node originatingNode) {
+        return createTypeError("Cannot convert a BigInt value to a number.", originatingNode);
     }
 
     @TruffleBoundary
