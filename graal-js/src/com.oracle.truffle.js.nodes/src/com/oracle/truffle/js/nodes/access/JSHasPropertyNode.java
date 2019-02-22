@@ -56,6 +56,7 @@ import com.oracle.truffle.js.nodes.IntToLongTypeSystem;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -175,7 +176,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     public boolean foreignObject(TruffleObject object, Object propertyName,
                     @Cached("createKeyInfo()") Node keyInfoNode,
                     @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("createHasSize()") Node hasSizeNode,
+                    @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,
                     @Cached("create()") JSHasPropertyNode hasInPrototype,
                     @Cached("contextReference()") ContextReference<JSRealm> contextRef) {
         Object key;
@@ -191,9 +192,9 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
             return true;
         } else {
             JSRealm realm = contextRef.get();
-            if (realm.getContext().getContextOptions().isArrayLikePrototype() && ForeignAccess.sendHasSize(hasSizeNode, object)) {
-                DynamicObject arrayPrototype = realm.getArrayConstructor().getPrototype();
-                return hasInPrototype.executeBoolean(arrayPrototype, propertyName);
+            if (realm.getContext().getContextOptions().hasForeignObjectPrototype()) {
+                DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(object);
+                return hasInPrototype.executeBoolean(prototype, propertyName);
             } else {
                 return false;
             }

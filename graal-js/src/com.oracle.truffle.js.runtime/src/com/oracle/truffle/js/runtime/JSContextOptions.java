@@ -236,10 +236,10 @@ public final class JSContextOptions {
     private static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP = "Enable ScriptEngine-specific global scope import function.";
     @CompilationFinal private boolean scriptEngineGlobalScopeImport;
 
-    public static final String ARRAY_LIKE_PROTOTYPE_NAME = JS_OPTION_PREFIX + "experimental-array-prototype";
-    public static final OptionKey<Boolean> ARRAY_LIKE_PROTOTYPE = new OptionKey<>(false);
-    private static final String ARRAY_LIKE_PROTOTYPE_HELP = "Non-JS array-like objects (like ProxyArray or java.util.List) have prototype set to Array.prototype.";
-    @CompilationFinal private boolean arrayLikePrototype;
+    public static final String FOREIGN_OBJECT_PROTOTYPE_NAME = JS_OPTION_PREFIX + "experimental-foreign-object-prototype";
+    public static final OptionKey<Boolean> FOREIGN_OBJECT_PROTOTYPE = new OptionKey<>(false);
+    private static final String FOREIGN_OBJECT_PROTOTYPE_HELP = "Non-JS objects have prototype (Object/Function/Array.prototype) set.";
+    @CompilationFinal private boolean hasForeignObjectPrototype;
 
     public static final String SIMDJS_NAME = JS_OPTION_PREFIX + "simdjs";
     private static final OptionKey<Boolean> SIMDJS = new OptionKey<>(false);
@@ -299,7 +299,7 @@ public final class JSContextOptions {
         this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME);
         this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME);
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
-        this.arrayLikePrototype = readBooleanOption(ARRAY_LIKE_PROTOTYPE, ARRAY_LIKE_PROTOTYPE_NAME);
+        this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME);
         this.simdjs = readBooleanOption(SIMDJS, SIMDJS_NAME);
     }
 
@@ -386,7 +386,7 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME, OptionCategory.DEBUG, REGEX_STEP_EXECUTION_HELP));
         options.add(newOptionDescriptor(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME, OptionCategory.DEBUG, REGEX_ALWAYS_EAGER_HELP));
         options.add(newOptionDescriptor(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, OptionCategory.EXPERT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP));
-        options.add(newOptionDescriptor(ARRAY_LIKE_PROTOTYPE, ARRAY_LIKE_PROTOTYPE_NAME, OptionCategory.EXPERT, ARRAY_LIKE_PROTOTYPE_HELP));
+        options.add(newOptionDescriptor(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME, OptionCategory.EXPERT, FOREIGN_OBJECT_PROTOTYPE_HELP));
         options.add(newOptionDescriptor(SIMDJS, SIMDJS_NAME, OptionCategory.EXPERT, SIMDJS_HELP));
     }
 
@@ -513,8 +513,8 @@ public final class JSContextOptions {
         return scriptEngineGlobalScopeImport;
     }
 
-    public boolean isArrayLikePrototype() {
-        return arrayLikePrototype;
+    public boolean hasForeignObjectPrototype() {
+        return hasForeignObjectPrototype;
     }
 
     public boolean isConsole() {
@@ -575,7 +575,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.regexStepExecution ? 1 : 0);
         hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
         hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
-        hash = 53 * hash + (this.arrayLikePrototype ? 1 : 0);
+        hash = 53 * hash + (this.hasForeignObjectPrototype ? 1 : 0);
         hash = 53 * hash + (this.simdjs ? 1 : 0);
         return hash;
     }
@@ -658,7 +658,7 @@ public final class JSContextOptions {
         if (this.scriptEngineGlobalScopeImport != other.scriptEngineGlobalScopeImport) {
             return false;
         }
-        if (this.arrayLikePrototype != other.arrayLikePrototype) {
+        if (this.hasForeignObjectPrototype != other.hasForeignObjectPrototype) {
             return false;
         }
         if (this.simdjs != other.simdjs) {

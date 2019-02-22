@@ -86,6 +86,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNodeFactory.GetPropertyFrom
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -855,7 +856,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Child private Node getterKeyInfoNode;
         @Child private Node getterInvokeNode;
         @Child private JSForeignToJSTypeNode toJSTypeNode;
-        @Child private PropertyGetNode getFromArrayPrototypeNode;
+        @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
+        @Child private PropertyGetNode getFromPrototypeNode;
         private final boolean isLength;
         private final boolean isMethod;
         private final boolean isGlobal;
@@ -891,7 +893,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         return maybeGetFromPrototype(thisObj, key);
                     }
                 } catch (UnsupportedMessageException e) {
-                    return Undefined.instance;
+                    return maybeGetFromPrototype(thisObj, key);
                 }
             } else {
                 if (keyInfoNode == null) {
@@ -914,14 +916,15 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         private Object maybeGetFromPrototype(TruffleObject thisObj, Object key) {
-            if (context.getContextOptions().isArrayLikePrototype() && hasSizeProperty(thisObj)) {
-                // Array-like foreign object => use Array.prototype
-                if (getFromArrayPrototypeNode == null) {
+            if (context.getContextOptions().hasForeignObjectPrototype()) {
+                if (getFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getFromArrayPrototypeNode = insert(PropertyGetNode.create(key, context));
+                    getFromPrototypeNode = insert(PropertyGetNode.create(key, context));
+                    foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
-                assert key.equals(getFromArrayPrototypeNode.getKey());
-                return getFromArrayPrototypeNode.getValue(context.getRealm().getArrayConstructor().getPrototype());
+                assert key.equals(getFromPrototypeNode.getKey());
+                DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(thisObj);
+                return getFromPrototypeNode.getValue(prototype);
             }
             return Undefined.instance;
         }
