@@ -1553,13 +1553,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return (boolean) hasNext;
         }
 
-        // for legacy NashornJavaInterop mode
-        @Specialization
-        @SuppressWarnings("unchecked")
-        final Object importGlobalContextJavaLangObject(Object globalContextBindings) {
-            return importGlobalContext((TruffleObject) getContext().getRealm().getEnv().asGuestValue(globalContextBindings));
-        }
-
         private static class ScriptEngineGlobalScopeBindingsPropertyProxy implements PropertyProxy {
 
             private static final Node SLOW_INVOKE_NODE = Message.INVOKE.createNode();
