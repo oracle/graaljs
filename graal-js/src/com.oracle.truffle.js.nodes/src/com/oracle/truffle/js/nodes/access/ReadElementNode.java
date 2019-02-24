@@ -73,6 +73,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNodeGen;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -1459,6 +1460,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private Node getSizeNode;
         @Child private Node getterKeyInfoNode;
         @Child private Node getterInvokeNode;
+        @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private ReadElementNode readFromPrototypeNode;
 
         TruffleObjectReadElementTypeCacheNode(JSContext context, Class<? extends TruffleObject> targetClass) {
@@ -1492,7 +1494,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return maybeReadFromPrototype(truffleObject, index);
                 }
             } catch (UnsupportedMessageException e) {
-                return Undefined.instance;
+                return maybeReadFromPrototype(truffleObject, index);
             }
             return toJSType(foreignResult);
         }
@@ -1567,12 +1569,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         private Object maybeReadFromPrototype(TruffleObject truffleObject, Object index) {
-            if (context.getContextOptions().isArrayLikePrototype() && hasSize(truffleObject)) {
-                if (readFromPrototypeNode == null) {
+            if (context.getContextOptions().hasForeignObjectPrototype()) {
+                if (readFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     this.readFromPrototypeNode = insert(ReadElementNode.create(context));
+                    this.foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
-                DynamicObject prototype = context.getRealm().getArrayConstructor().getPrototype();
+                DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
                 return readFromPrototypeNode.executeWithTargetAndIndex(prototype, index);
             } else {
                 return Undefined.instance;

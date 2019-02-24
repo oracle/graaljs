@@ -90,6 +90,7 @@ import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -226,14 +227,14 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     @ImportStatic(value = {JSInteropUtil.class})
     public abstract static class ObjectGetPrototypeOfNode extends ObjectOperation {
+        @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
 
         public ObjectGetPrototypeOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization(guards = "!isJSObject(object)")
-        protected DynamicObject getPrototypeOf(Object object,
-                        @Cached("createHasSize()") Node hasSizeNode) {
+        protected DynamicObject getPrototypeOf(Object object) {
             if (getContext().getEcmaScriptVersion() < 6) {
                 if (JSRuntime.isJSPrimitive(object)) {
                     throw Errors.createTypeErrorNotAnObject(object);
@@ -245,13 +246,22 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 if (JSObject.isJSObject(tobject)) {
                     return getPrototypeOf((DynamicObject) tobject);
                 } else {
-                    if (getContext().getContextOptions().isArrayLikePrototype() && JSInteropNodeUtil.hasSize(tobject, hasSizeNode)) {
-                        return getContext().getRealm().getArrayConstructor().getPrototype();
+                    if (getContext().getContextOptions().hasForeignObjectPrototype()) {
+                        return getForeignObjectPrototype(tobject);
                     } else {
                         return Null.instance;
                     }
                 }
             }
+        }
+
+        private DynamicObject getForeignObjectPrototype(TruffleObject truffleObject) {
+            assert JSRuntime.isForeignObject(truffleObject);
+            if (foreignObjectPrototypeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
+            }
+            return foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
         }
 
         @Specialization(guards = "isJSObject(object)")
