@@ -109,7 +109,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
         BreakIterator getIterator(ULocale locale);
 
-        String getBreakType(String segment, int icuStatus);
+        String getBreakType(int icuStatus);
     }
 
     public enum Kind implements IcuIteratorHelper {
@@ -122,7 +122,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
             }
 
             @Override
-            public String getBreakType(String segment, int icuStatus) {
+            public String getBreakType(int icuStatus) {
                 return null;
             }
         },
@@ -134,7 +134,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
             }
 
             @Override
-            public String getBreakType(@SuppressWarnings("unused") String segment, int icuStatus) {
+            public String getBreakType(int icuStatus) {
                 return icuStatus == BreakIterator.WORD_NONE ? IntlUtil.NONE : IntlUtil.WORD;
             }
         },
@@ -146,20 +146,8 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
             }
 
             @Override
-            public String getBreakType(String segment, int icuStatus) {
+            public String getBreakType(int icuStatus) {
                 return icuStatus == BreakIterator.WORD_NONE ? IntlUtil.SEP : IntlUtil.TERM;
-            }
-        },
-        LINE(4) {
-            @Override
-            @TruffleBoundary
-            public BreakIterator getIterator(ULocale locale) {
-                return BreakIterator.getLineInstance(locale);
-            }
-
-            @Override
-            public String getBreakType(String segment, int icuStatus) {
-                return icuStatus == BreakIterator.KIND_LINE ? IntlUtil.HARD : IntlUtil.SOFT;
             }
         };
 
@@ -239,10 +227,9 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static void setupInternalBreakIterator(InternalState state, String granularity, String lineBreakStyle) {
+    public static void setupInternalBreakIterator(InternalState state, String granularity) {
         state.javaLocale = Locale.forLanguageTag(state.locale);
         state.granularity = granularity;
-        state.lineBreakStyle = lineBreakStyle;
         switch (state.granularity) {
             case IntlUtil.GRAPHEME:
                 state.kind = Kind.GRAPHEME;
@@ -252,9 +239,6 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
                 break;
             case IntlUtil.SENTENCE:
                 state.kind = Kind.SENTENCE;
-                break;
-            case IntlUtil.LINE:
-                state.kind = Kind.LINE;
                 break;
             default:
                 throw Errors.shouldNotReachHere(String.format("Segmenter with granularity, %s, is not supported", state.granularity));
@@ -269,16 +253,12 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         public Locale javaLocale;
 
         public String granularity = IntlUtil.GRAPHEME;
-        public String lineBreakStyle = IntlUtil.NORMAL;
         public Kind kind = Kind.GRAPHEME;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
             JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.GRANULARITY, granularity, JSAttributes.getDefault());
-            if (kind == Kind.LINE) {
-                JSObjectUtil.defineDataProperty(result, IntlUtil.LINE_BREAK_STYLE, lineBreakStyle, JSAttributes.getDefault());
-            }
             return result;
         }
     }

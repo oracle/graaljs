@@ -1108,8 +1108,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructSegmenter(DynamicObject newTarget, Object locales, Object options) {
-            DynamicObject listFormat = swapPrototype(JSSegmenter.create(getContext()), newTarget);
-            return initializeSegmenterNode.executeInit(listFormat, locales, options);
+            DynamicObject segmenter = swapPrototype(JSSegmenter.create(getContext()), newTarget);
+            return initializeSegmenterNode.executeInit(segmenter, locales, options);
         }
 
         @Override

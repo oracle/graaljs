@@ -2164,6 +2164,34 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
+    "filePath" : "intl402/Segmenter/constructor/constructor/options-granularity-valid.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/constructor/constructor/options-lineBreakStyle-invalid.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/constructor/constructor/options-lineBreakStyle-valid.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/constructor/constructor/options-order.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/constructor/constructor/options-throwing-getters.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/constructor/constructor/options-toobject-prototype.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/constructor/constructor/options-valid-combinations.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
     "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/locales-invalid.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
@@ -2176,9 +2204,41 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
+    "filePath" : "intl402/Segmenter/iterator/granularity.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/prototype/resolvedOptions/order.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/prototype/resolvedOptions/type-with-lbs.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
     "filePath" : "intl402/Segmenter/prototype/segment/segment-line-following-modes.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+  }, {
+    "filePath" : "intl402/Segmenter/prototype/segment/segment-line-following.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/prototype/segment/segment-line-iterable.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/prototype/segment/segment-line-next.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/prototype/segment/segment-line-preceding.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl402/Segmenter/prototype/segment/segment-line.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/supportedLocalesOf-consistent-with-resolvedOptions.js",
     "status" : "FAIL",

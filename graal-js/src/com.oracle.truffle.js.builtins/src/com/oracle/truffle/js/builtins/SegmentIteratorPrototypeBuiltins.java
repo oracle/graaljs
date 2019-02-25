@@ -173,7 +173,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             }
 
             String segment = s.substring(startIndex, endIndex);
-            String breakType = segmenterKind.getBreakType(segment, icuIterator.getRuleStatus());
+            String breakType = segmenterKind.getBreakType(icuIterator.getRuleStatus());
 
             DynamicObject result = makeIterationResultValue(endIndex, segment, breakType);
 
@@ -223,7 +223,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             BreakIterator icuIterator = (BreakIterator) getSegmenterNode.getValue(iterator);
             JSSegmenter.Kind segmenterKind = (JSSegmenter.Kind) getSegmentIteratorKindNode.getValue(iterator);
             int newIndex = doAdvanceOp(icuIterator, offset);
-            String breakType = segmenterKind.getBreakType(null, icuIterator.getRuleStatus());
+            String breakType = segmenterKind.getBreakType(icuIterator.getRuleStatus());
             setBreakTypeNode.setValue(iterator, breakType);
             setIndexNode.setValue(iterator, newIndex);
             return newIndex == BreakIterator.DONE;

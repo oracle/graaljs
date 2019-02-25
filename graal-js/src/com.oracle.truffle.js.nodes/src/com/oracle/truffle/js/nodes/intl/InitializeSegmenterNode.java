@@ -59,15 +59,13 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
 
     @Child GetStringOptionNode getLocaleMatcherOption;
 
-    @Child GetStringOptionNode getLineBreakStyleOption;
     @Child GetStringOptionNode getGranularityOption;
 
     protected InitializeSegmenterNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
-        this.getLineBreakStyleOption = GetStringOptionNode.create(context, IntlUtil.LINE_BREAK_STYLE, new String[]{IntlUtil.STRICT, IntlUtil.NORMAL, IntlUtil.LOOSE}, IntlUtil.NORMAL);
-        this.getGranularityOption = GetStringOptionNode.create(context, "granularity", new String[]{IntlUtil.GRAPHEME, IntlUtil.WORD, IntlUtil.SENTENCE, IntlUtil.LINE}, IntlUtil.GRAPHEME);
+        this.getGranularityOption = GetStringOptionNode.create(context, "granularity", new String[]{IntlUtil.GRAPHEME, IntlUtil.WORD, IntlUtil.SENTENCE}, IntlUtil.GRAPHEME);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
     }
 
@@ -91,13 +89,12 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
             DynamicObject options = createOptionsNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
-            String optLineBreakStyle = getLineBreakStyleOption.executeValue(options);
             String optGranularity = getGranularityOption.executeValue(options);
 
             state.initialized = true;
 
             JSSegmenter.setLocale(context, state, locales);
-            JSSegmenter.setupInternalBreakIterator(state, optGranularity, optLineBreakStyle);
+            JSSegmenter.setupInternalBreakIterator(state, optGranularity);
 
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError();

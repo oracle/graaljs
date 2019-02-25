@@ -205,13 +205,49 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
+    "filePath" : "intl/segmenter/constructor-order.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl/segmenter/constructor.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl/segmenter/resolved-options.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
     "filePath" : "intl/segmenter/segment-iterator-ownPropertyDescriptor.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
+    "filePath" : "intl/segmenter/segment-iterator.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
     "filePath" : "intl/segmenter/segment-line-following-modes.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl/segmenter/segment-line-following.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl/segmenter/segment-line-iterable.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl/segmenter/segment-line-next.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl/segmenter/segment-line-preceding.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
+  }, {
+    "filePath" : "intl/segmenter/segment-line.js",
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/supported-locale.js",
     "status" : "FAIL",

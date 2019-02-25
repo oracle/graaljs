@@ -111,14 +111,11 @@ public class IntlUtil {
     public static final String H12 = "h12";
     public static final String H23 = "h23";
     public static final String H24 = "h24";
-    public static final String HARD = "hard";
     public static final String HOUR = "hour";
     public static final String HOUR_CYCLE = "hourCycle";
     public static final String HOUR12 = "hour12";
     public static final String INDEX = "index";
     public static final String IGNORE_PUNCTUATION = "ignorePunctuation";
-    public static final String LINE = "line";
-    public static final String LINE_BREAK_STYLE = "lineBreakStyle";
     public static final String LITERAL = "literal";
     public static final String LOCALE = "locale";
     public static final String LOCALE_MATCHER = "localeMatcher";
@@ -149,7 +146,6 @@ public class IntlUtil {
     public static final String SENTENCE = "sentence";
     public static final String SENSITIVITY = "sensitivity";
     public static final String SHORT = "short";
-    public static final String SOFT = "soft";
     public static final String SORT = "sort";
     public static final String STANDARD = "standard";
     public static final String STRICT = "strict";
