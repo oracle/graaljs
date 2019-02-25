@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -1022,10 +1023,10 @@ public final class JSRuntime {
                 }
                 return keys;
             } else {
-                try {
+                if (JSInteropNodeUtil.hasKeys(obj)) {
                     return JSInteropNodeUtil.keys(obj);
-                } catch (Exception ex) {
-                    return new ArrayList<>();
+                } else {
+                    return Collections.emptyList();
                 }
             }
         }
