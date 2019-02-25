@@ -87,6 +87,7 @@ public class IntlUtil {
     public static final String BEST_FIT = "best fit";
     public static final String BASE = "base";
     public static final String BASIC = "basic";
+    public static final String BREAK_TYPE = "breakType";
     public static final String CALENDAR = "calendar";
     public static final String CARDINAL = "cardinal";
     public static final String CASE = "case";
@@ -114,6 +115,7 @@ public class IntlUtil {
     public static final String HOUR = "hour";
     public static final String HOUR_CYCLE = "hourCycle";
     public static final String HOUR12 = "hour12";
+    public static final String INDEX = "index";
     public static final String IGNORE_PUNCTUATION = "ignorePunctuation";
     public static final String LINE = "line";
     public static final String LINE_BREAK_STYLE = "lineBreakStyle";
@@ -143,6 +145,7 @@ public class IntlUtil {
     public static final String SEARCH = "search";
     public static final String SEP = "sep";
     public static final String SECOND = "second";
+    public static final String SEGMENT = "segment";
     public static final String SENTENCE = "sentence";
     public static final String SENSITIVITY = "sensitivity";
     public static final String SHORT = "short";

@@ -112,7 +112,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         String getBreakType(String segment, int icuStatus);
     }
 
-    public static enum Kind implements IcuIteratorHelper {
+    public enum Kind implements IcuIteratorHelper {
 
         GRAPHEME(1) {
             @Override
@@ -327,7 +327,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         return iteratorShape;
     }
 
-    private static CallTarget createBreakTypeGetterCallTarget(JSContext context) {
+    private static CallTarget createPropertyGetterCallTarget(JSContext context, Property property) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
 
             @Override
@@ -335,24 +335,8 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
                 Object obj = JSArguments.getThisObject(frame.getArguments());
                 if (JSObject.isDynamicObject(obj)) {
                     DynamicObject iteratorObj = (DynamicObject) obj;
-                    Object breakType = BREAK_TYPE_PROPERTY.get(iteratorObj, true);
-                    return breakType == null ? Undefined.instance : breakType;
-                }
-                throw Errors.createTypeErrorTypeXExpected(ITERATOR_CLASS_NAME);
-            }
-        });
-    }
-
-    private static CallTarget createPositionGetterCallTarget(JSContext context) {
-        return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object obj = JSArguments.getThisObject(frame.getArguments());
-                if (JSObject.isDynamicObject(obj)) {
-                    DynamicObject iteratorObj = (DynamicObject) obj;
-                    Object position = INDEX_PROPERTY.get(iteratorObj, true);
-                    return position == null ? Undefined.instance : position;
+                    Object result = property.get(iteratorObj, true);
+                    return result == null ? Undefined.instance : result;
                 }
                 throw Errors.createTypeErrorTypeXExpected(ITERATOR_CLASS_NAME);
             }
@@ -366,10 +350,10 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         DynamicObject prototype = JSObject.createInit(realm, realm.getIteratorPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        DynamicObject breakTypeGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createBreakTypeGetterCallTarget(context), 0, "get " + "breakType"));
-        JSObjectUtil.putConstantAccessorProperty(context, prototype, "breakType", breakTypeGetter, Undefined.instance);
-        DynamicObject positionGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createPositionGetterCallTarget(context), 0, "get " + "index"));
-        JSObjectUtil.putConstantAccessorProperty(context, prototype, "index", positionGetter, Undefined.instance);
+        DynamicObject breakTypeGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createPropertyGetterCallTarget(context, BREAK_TYPE_PROPERTY), 0, "get " + IntlUtil.BREAK_TYPE));
+        JSObjectUtil.putConstantAccessorProperty(context, prototype, IntlUtil.BREAK_TYPE, breakTypeGetter, Undefined.instance);
+        DynamicObject positionGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createPropertyGetterCallTarget(context, INDEX_PROPERTY), 0, "get " + IntlUtil.INDEX));
+        JSObjectUtil.putConstantAccessorProperty(context, prototype, IntlUtil.INDEX, positionGetter, Undefined.instance);
         return prototype;
     }
 }

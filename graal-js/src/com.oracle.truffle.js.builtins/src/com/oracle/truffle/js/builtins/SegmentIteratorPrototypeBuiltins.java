@@ -67,6 +67,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 /**
  * Contains functions of the %SegmentIteratorPrototype% object.
@@ -156,7 +157,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         @SuppressWarnings("unused")
         @Fallback
         protected DynamicObject doIncompatibleReceiver(Object iterator) {
-            throw Errors.createTypeError("not a Segment Iterator");
+            throw Errors.createTypeErrorTypeXExpected(JSSegmenter.ITERATOR_CLASS_NAME);
         }
 
         @TruffleBoundary
@@ -184,11 +185,11 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
         protected DynamicObject makeIterationResultValue(int endIndex, String segment, String breakType) {
             DynamicObject result = JSUserObject.create(getContext());
-            JSObject.set(result, "segment", segment);
+            JSObject.set(result, IntlUtil.SEGMENT, segment);
             if (breakType != null) {
-                JSObject.set(result, "breakType", breakType);
+                JSObject.set(result, IntlUtil.BREAK_TYPE, breakType);
             }
-            JSObject.set(result, "index", endIndex);
+            JSObject.set(result, IntlUtil.INDEX, endIndex);
             return result;
         }
     }
@@ -246,7 +247,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         @SuppressWarnings("unused")
         @Specialization(guards = "!isSegmentIterator(iterator)")
         protected DynamicObject doIncompatibleReceiver(Object iterator, Object from) {
-            throw Errors.createTypeError("not a Segment Iterator");
+            throw Errors.createTypeErrorTypeXExpected(JSSegmenter.ITERATOR_CLASS_NAME);
         }
     }
 
