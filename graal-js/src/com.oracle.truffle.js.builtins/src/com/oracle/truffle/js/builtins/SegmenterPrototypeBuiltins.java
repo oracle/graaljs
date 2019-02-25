@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.SegmenterPrototypeBuiltinsFactory.JSSegmenterResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.SegmenterPrototypeBuiltinsFactory.JSSegmenterSegmentNodeGen;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -143,7 +142,7 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         public DynamicObject execute(DynamicObject segmenter, String value) {
-            assert JSGuards.isJSObject(segmenter) || JSGuards.isForeignObject(segmenter);
+            assert JSSegmenter.isJSSegmenter(segmenter);
             BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter);
             icuIterator.setText(value);
             Kind kind = JSSegmenter.getKind(segmenter);

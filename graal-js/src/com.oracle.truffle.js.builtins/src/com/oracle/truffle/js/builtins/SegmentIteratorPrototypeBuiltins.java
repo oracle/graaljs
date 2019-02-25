@@ -79,8 +79,8 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
     public enum SegmentIteratorPrototype implements BuiltinEnum<SegmentIteratorPrototype> {
         next(0),
-        preceding(1),
-        following(1);
+        preceding(0),
+        following(0);
 
         private final int length;
 
