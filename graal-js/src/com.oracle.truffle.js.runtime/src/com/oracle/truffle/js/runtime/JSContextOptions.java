@@ -50,6 +50,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
@@ -104,7 +105,8 @@ public final class JSContextOptions {
     public static final String ARRAY_SORT_INHERITED_NAME = JS_OPTION_PREFIX + "array-sort-inherited";
     public static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
     private static final String ARRAY_SORT_INHERITED_HELP = "implementation-defined behavior in Array.protoype.sort: sort inherited keys?";
-    @CompilationFinal private Assumption arraySortInheritedAssumption = Truffle.getRuntime().createAssumption("The array-sort-inherited option is stable.");
+    private final CyclicAssumption arraySortInheritedCyclicAssumption = new CyclicAssumption("The array-sort-inherited option is stable.");
+    @CompilationFinal private Assumption arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
     @CompilationFinal private boolean arraySortInherited;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
@@ -120,7 +122,8 @@ public final class JSContextOptions {
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
     public static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
     private static final String V8_COMPATIBILITY_MODE_HELP = "provide compatibility with the Google V8 engine";
-    @CompilationFinal private Assumption v8CompatibilityAssumption = Truffle.getRuntime().createAssumption("The v8-compat option is stable.");
+    private final CyclicAssumption v8CompatibilityModeCyclicAssumption = new CyclicAssumption("The v8-compat option is stable.");
+    @CompilationFinal private Assumption v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
     @CompilationFinal private boolean v8CompatibilityMode;
 
     public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
@@ -145,7 +148,8 @@ public final class JSContextOptions {
     public static final String DIRECT_BYTE_BUFFER_NAME = JS_OPTION_PREFIX + "direct-byte-buffer";
     public static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(JSTruffleOptions.DirectByteBuffer);
     private static final String DIRECT_BYTE_BUFFER_HELP = "Use direct (off-heap) byte buffer for typed arrays.";
-    @CompilationFinal private Assumption directByteBufferAssumption = Truffle.getRuntime().createAssumption("The direct-byte-buffer option is stable.");
+    private final CyclicAssumption directByteBufferCyclicAssumption = new CyclicAssumption("The direct-byte-buffer option is stable.");
+    @CompilationFinal private Assumption directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
     @CompilationFinal private boolean directByteBuffer;
 
     public static final String PARSE_ONLY_NAME = JS_OPTION_PREFIX + "parse-only";
@@ -160,7 +164,8 @@ public final class JSContextOptions {
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
     public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
     private static final String TIMER_RESOLUTION_HELP = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.";
-    @CompilationFinal private Assumption timerResolutionAssumption = Truffle.getRuntime().createAssumption("The timer-resolution option is stable.");
+    private final CyclicAssumption timerResolutionCyclicAssumption = new CyclicAssumption("The timer-resolution option is stable.");
+    @CompilationFinal private Assumption timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
     @CompilationFinal private long timerResolution;
 
     public static final String AGENT_CAN_BLOCK_NAME = JS_OPTION_PREFIX + "agent-can-block";
@@ -277,16 +282,16 @@ public final class JSContextOptions {
         this.annexB = readBooleanOption(ANNEX_B, ANNEX_B_NAME);
         this.intl402 = readBooleanOption(INTL_402, INTL_402_NAME);
         this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME);
-        this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, arraySortInheritedAssumption);
+        this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, arraySortInheritedCyclicAssumption);
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME);
         this.atomics = readBooleanOption(ATOMICS, ATOMICS_NAME);
-        this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, v8CompatibilityAssumption);
+        this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, v8CompatibilityModeCyclicAssumption);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
-        this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, directByteBufferAssumption);
+        this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, directByteBufferCyclicAssumption);
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
-        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, timerResolutionAssumption);
+        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, timerResolutionCyclicAssumption);
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME);
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME);
         this.disableEval = readBooleanOption(DISABLE_EVAL, DISABLE_EVAL_NAME);
@@ -299,7 +304,7 @@ public final class JSContextOptions {
         this.simdjs = readBooleanOption(SIMDJS, SIMDJS_NAME);
     }
 
-    private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Assumption assumption) {
+    private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, CyclicAssumption assumption) {
         boolean newValue = readBooleanOption(key, name);
         if (oldValue != newValue) {
             assumption.invalidate(String.format("Option %s was changed from %b to %b.", name, oldValue, newValue));
@@ -335,7 +340,7 @@ public final class JSContextOptions {
         return Integer.getInteger("polyglot." + name, key.getDefaultValue());
     }
 
-    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Assumption assumption) {
+    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, CyclicAssumption assumption) {
         long newValue = readLongOption(key, name);
         if (oldValue != newValue) {
             assumption.invalidate(String.format("Option %s was changed from %d to %d.", name, oldValue, newValue));
@@ -425,9 +430,9 @@ public final class JSContextOptions {
 
     public boolean isArraySortInherited() {
         try {
-            arraySortInheritedAssumption.check();
+            arraySortInheritedCurrentAssumption.check();
         } catch (InvalidAssumptionException e) {
-            arraySortInheritedAssumption = Truffle.getRuntime().createAssumption(arraySortInheritedAssumption.getName());
+            arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return arraySortInherited;
@@ -449,9 +454,9 @@ public final class JSContextOptions {
 
     public boolean isV8CompatibilityMode() {
         try {
-            v8CompatibilityAssumption.check();
+            v8CompatibilityModeCurrentAssumption.check();
         } catch (InvalidAssumptionException e) {
-            v8CompatibilityAssumption = Truffle.getRuntime().createAssumption(v8CompatibilityAssumption.getName());
+            v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return v8CompatibilityMode;
@@ -467,9 +472,9 @@ public final class JSContextOptions {
 
     public boolean isDirectByteBuffer() {
         try {
-            directByteBufferAssumption.check();
+            directByteBufferCurrentAssumption.check();
         } catch (InvalidAssumptionException e) {
-            directByteBufferAssumption = Truffle.getRuntime().createAssumption(directByteBufferAssumption.getName());
+            directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return directByteBuffer;
@@ -481,9 +486,9 @@ public final class JSContextOptions {
 
     public long getTimerResolution() {
         try {
-            timerResolutionAssumption.check();
+            timerResolutionCurrentAssumption.check();
         } catch (InvalidAssumptionException e) {
-            timerResolutionAssumption = Truffle.getRuntime().createAssumption(timerResolutionAssumption.getName());
+            timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return timerResolution;
