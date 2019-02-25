@@ -128,6 +128,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         },
         WORD(2) {
             @Override
+            @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
                 return BreakIterator.getWordInstance(locale);
             }
@@ -139,6 +140,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         },
         SENTENCE(3) {
             @Override
+            @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
                 return BreakIterator.getSentenceInstance(locale);
             }
@@ -281,7 +283,6 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         }
     }
 
-    @SuppressWarnings("unused")
     @TruffleBoundary
     public static BreakIterator createBreakIterator(DynamicObject segmenterObj) {
         InternalState state = getInternalState(segmenterObj);
@@ -289,7 +290,6 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         return state.kind.getIterator(ulocale);
     }
 
-    @SuppressWarnings("unused")
     public static Kind getKind(DynamicObject segmenterObj) {
         InternalState state = getInternalState(segmenterObj);
         return state.kind;
