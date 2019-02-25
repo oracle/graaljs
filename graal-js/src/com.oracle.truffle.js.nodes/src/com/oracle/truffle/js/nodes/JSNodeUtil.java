@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes;
 
-import java.io.File;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -118,7 +117,7 @@ public final class JSNodeUtil {
         if (section == null || !section.isAvailable()) {
             return "<unknown source>";
         } else {
-            String sourceName = new File(section.getSource().getName()).getName();
+            String sourceName = section.getSource().getName();
             int startLine = section.getStartLine();
             return String.format("%s:%d%s", sourceName, startLine, estimated ? "~" : "");
         }
