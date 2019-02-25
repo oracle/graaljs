@@ -134,7 +134,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
             @Override
             public String getBreakType(@SuppressWarnings("unused") String segment, int icuStatus) {
-                return icuStatus == BreakIterator.WORD_NONE ? "none" : "word";
+                return icuStatus == BreakIterator.WORD_NONE ? IntlUtil.NONE : IntlUtil.WORD;
             }
         },
         SENTENCE(3) {
@@ -145,7 +145,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
             @Override
             public String getBreakType(String segment, int icuStatus) {
-                return icuStatus == BreakIterator.WORD_NONE ? "sep" : "term";
+                return icuStatus == BreakIterator.WORD_NONE ? IntlUtil.SEP : IntlUtil.TERM;
             }
         },
         LINE(4) {
@@ -157,7 +157,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
             @Override
             public String getBreakType(String segment, int icuStatus) {
-                return icuStatus == BreakIterator.KIND_LINE ? "hard" : "soft";
+                return icuStatus == BreakIterator.KIND_LINE ? IntlUtil.HARD : IntlUtil.SOFT;
             }
         };
 
@@ -242,16 +242,16 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         state.granularity = granularity;
         state.lineBreakStyle = lineBreakStyle;
         switch (state.granularity) {
-            case "grapheme":
+            case IntlUtil.GRAPHEME:
                 state.kind = Kind.GRAPHEME;
                 break;
-            case "word":
+            case IntlUtil.WORD:
                 state.kind = Kind.WORD;
                 break;
-            case "sentence":
+            case IntlUtil.SENTENCE:
                 state.kind = Kind.SENTENCE;
                 break;
-            case "line":
+            case IntlUtil.LINE:
                 state.kind = Kind.LINE;
                 break;
             default:
@@ -266,16 +266,16 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         public String locale;
         public Locale javaLocale;
 
-        public String granularity = "grapheme";
-        public String lineBreakStyle = "normal";
+        public String granularity = IntlUtil.GRAPHEME;
+        public String lineBreakStyle = IntlUtil.NORMAL;
         public Kind kind = Kind.GRAPHEME;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
-            JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "granularity", granularity, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.GRANULARITY, granularity, JSAttributes.getDefault());
             if (kind == Kind.LINE) {
-                JSObjectUtil.defineDataProperty(result, "lineBreakStyle", lineBreakStyle, JSAttributes.getDefault());
+                JSObjectUtil.defineDataProperty(result, IntlUtil.LINE_BREAK_STYLE, lineBreakStyle, JSAttributes.getDefault());
             }
             return result;
         }
@@ -338,7 +338,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
                     Object breakType = BREAK_TYPE_PROPERTY.get(iteratorObj, true);
                     return breakType == null ? Undefined.instance : breakType;
                 }
-                throw Errors.createTypeError("SegmenterIterator object expected");
+                throw Errors.createTypeErrorTypeXExpected(ITERATOR_CLASS_NAME);
             }
         });
     }
@@ -354,7 +354,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
                     Object position = INDEX_PROPERTY.get(iteratorObj, true);
                     return position == null ? Undefined.instance : position;
                 }
-                throw Errors.createTypeError("SegmenterIterator object expected");
+                throw Errors.createTypeErrorTypeXExpected(ITERATOR_CLASS_NAME);
             }
         });
     }

@@ -66,9 +66,9 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
-        this.getLineBreakStyleOption = GetStringOptionNode.create(context, "lineBreakStyle", new String[]{"strict", "normal", "loose"}, "normal");
-        this.getGranularityOption = GetStringOptionNode.create(context, "granularity", new String[]{"grapheme", "word", "sentence", "line"}, "grapheme");
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
+        this.getLineBreakStyleOption = GetStringOptionNode.create(context, IntlUtil.LINE_BREAK_STYLE, new String[]{IntlUtil.STRICT, IntlUtil.NORMAL, IntlUtil.LOOSE}, IntlUtil.NORMAL);
+        this.getGranularityOption = GetStringOptionNode.create(context, "granularity", new String[]{IntlUtil.GRAPHEME, IntlUtil.WORD, IntlUtil.SENTENCE, IntlUtil.LINE}, IntlUtil.GRAPHEME);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);

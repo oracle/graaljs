@@ -201,12 +201,12 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @SuppressWarnings("unused")
-        /* abstract */ int doAdvanceOp(BreakIterator icuIterator, int offset) {
+        int doAdvanceOp(BreakIterator icuIterator, int offset) {
             throw Errors.shouldNotReachHere();
         }
 
         @SuppressWarnings("unused")
-        /* abstract */ void doCheckOffsetRange(int offset, int length) {
+        void doCheckOffsetRange(int offset, int length) {
             throw Errors.shouldNotReachHere();
         }
 
