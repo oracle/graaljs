@@ -584,7 +584,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Source sourceFromURL(URL url) {
             try {
                 return Source.newBuilder(AbstractJavaScriptLanguage.ID, url).name(url.getFile()).build();
-            } catch (IOException e) {
+            } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
@@ -593,7 +593,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
                 return Source.newBuilder(AbstractJavaScriptLanguage.ID, realm.getEnv().getTruffleFile(fileName)).name(fileName).build();
-            } catch (IOException e) {
+            } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
@@ -602,7 +602,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Source sourceFromTruffleFile(TruffleFile file) {
             try {
                 return Source.newBuilder(AbstractJavaScriptLanguage.ID, file).build();
-            } catch (IOException e) {
+            } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
@@ -1264,7 +1264,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (stream != null) {
                 try {
                     return Source.newBuilder(AbstractJavaScriptLanguage.ID, new InputStreamReader(stream, StandardCharsets.UTF_8), resource).build();
-                } catch (IOException e) {
+                } catch (IOException | SecurityException e) {
                 }
             }
             return null;
