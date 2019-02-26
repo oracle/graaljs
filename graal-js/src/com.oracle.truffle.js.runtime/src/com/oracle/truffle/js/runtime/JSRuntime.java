@@ -2234,6 +2234,16 @@ public final class JSRuntime {
         return false;
     }
 
+    public static boolean isCallableIsJSObject(DynamicObject value) {
+        assert JSObject.isJSObject(value);
+        if (JSFunction.isJSFunction(value)) {
+            return true;
+        } else if (JSProxy.isProxy(value)) {
+            return isCallableProxy(value);
+        }
+        return false;
+    }
+
     @TruffleBoundary
     public static boolean isCallableForeign(TruffleObject value) {
         if (isForeignObject(value)) {
