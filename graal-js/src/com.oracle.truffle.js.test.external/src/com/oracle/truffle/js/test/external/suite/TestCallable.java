@@ -48,7 +48,6 @@ import java.util.concurrent.Callable;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 
-import com.oracle.truffle.js.parser.GraalJSParserOptions;
 import com.oracle.truffle.js.parser.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -74,10 +73,10 @@ public class TestCallable implements Callable<Object> {
         assert ecmaScriptVersion <= JSTruffleOptions.MaxECMAScriptVersion;
 
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion));
-        contextBuilder.option(GraalJSParserOptions.STRICT_NAME, Boolean.toString(false));
-        contextBuilder.option(GraalJSParserOptions.SYNTAX_EXTENSIONS_NAME, Boolean.toString(false));
-        contextBuilder.option(GraalJSParserOptions.SHEBANG_NAME, Boolean.toString(false));
-        contextBuilder.option(GraalJSParserOptions.CONST_AS_VAR_NAME, Boolean.toString(false));
+        contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(false));
+        contextBuilder.option(JSContextOptions.SYNTAX_EXTENSIONS_NAME, Boolean.toString(false));
+        contextBuilder.option(JSContextOptions.SHEBANG_NAME, Boolean.toString(false));
+        contextBuilder.option(JSContextOptions.CONST_AS_VAR_NAME, Boolean.toString(false));
         contextBuilder.options(options);
     }
 

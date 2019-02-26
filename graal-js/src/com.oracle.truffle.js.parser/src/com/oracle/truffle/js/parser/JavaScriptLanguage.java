@@ -176,7 +176,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
-        GraalJSParserOptions.describeOptions(options);
         JSContextOptions.describeOptions(options);
         OPTION_DESCRIPTORS = OptionDescriptors.create(options);
         ensureErrorClassesInitialized();
@@ -484,7 +483,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     JSContextOptions.SHELL,
                     JSContextOptions.V8_COMPATIBILITY_MODE,
                     JSContextOptions.GLOBAL_PROPERTY,
-                    GraalJSParserOptions.SCRIPTING,
+                    JSContextOptions.SCRIPTING,
                     JSContextOptions.DIRECT_BYTE_BUFFER,
                     JSContextOptions.INTL_402,
                     JSContextOptions.LOAD,

@@ -93,6 +93,30 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> ANNEX_B = new OptionKey<>(JSTruffleOptions.AnnexB);
     @CompilationFinal private boolean annexB;
 
+    public static final String SYNTAX_EXTENSIONS_NAME = JS_OPTION_PREFIX + "syntax-extensions";
+    @Option(name = SYNTAX_EXTENSIONS_NAME, category = OptionCategory.USER, help = "Enable Nashorn syntax extensions.") //
+    public static final OptionKey<Boolean> SYNTAX_EXTENSIONS = new OptionKey<>(false);
+
+    public static final String SCRIPTING_NAME = JS_OPTION_PREFIX + "scripting";
+    @Option(name = SCRIPTING_NAME, category = OptionCategory.USER, help = "Enable scripting features (Nashorn compatibility option).") //
+    public static final OptionKey<Boolean> SCRIPTING = new OptionKey<>(false);
+
+    public static final String SHEBANG_NAME = JS_OPTION_PREFIX + "shebang";
+    @Option(name = SHEBANG_NAME, category = OptionCategory.USER, help = "Allow parsing files starting with #!.") //
+    public static final OptionKey<Boolean> SHEBANG = new OptionKey<>(false);
+
+    public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
+    @Option(name = STRICT_NAME, category = OptionCategory.USER, help = "Enforce strict mode.") //
+    public static final OptionKey<Boolean> STRICT = new OptionKey<>(false);
+
+    public static final String CONST_AS_VAR_NAME = JS_OPTION_PREFIX + "const-as-var";
+    @Option(name = CONST_AS_VAR_NAME, category = OptionCategory.EXPERT, help = "Parse const declarations as a var (legacy compatibility option).") //
+    public static final OptionKey<Boolean> CONST_AS_VAR = new OptionKey<>(false);
+
+    public static final String FUNCTION_STATEMENT_ERROR_NAME = JS_OPTION_PREFIX + "function-statement-error";
+    @Option(name = FUNCTION_STATEMENT_ERROR_NAME, category = OptionCategory.EXPERT, help = "Treat hoistable function statements in blocks as an error (in ES5 mode).") //
+    public static final OptionKey<Boolean> FUNCTION_STATEMENT_ERROR = new OptionKey<>(false);
+
     public static final String INTL_402_NAME = JS_OPTION_PREFIX + "intl-402";
     @Option(name = INTL_402_NAME, category = OptionCategory.USER, help = "Enable ECMAScript Internationalization API.") //
     public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(false);
