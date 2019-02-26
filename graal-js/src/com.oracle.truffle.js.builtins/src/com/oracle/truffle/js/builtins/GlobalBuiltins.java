@@ -1228,7 +1228,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromURI(String resource) {
-            if (!JSTruffleOptions.SubstrateVM &&
+            if (JSTruffleOptions.SubstrateVM) {
+                return null;
+            }
+            if (getContext().isOptionNashornCompatibilityMode() &&
                             (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {
                 return sourceFromResourceURL(resource);
             }
@@ -1242,8 +1245,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromResourceURL(String resource) {
+            assert getContext().isOptionNashornCompatibilityMode();
             InputStream stream = null;
-            if (getContext().isOptionNashornCompatibilityMode() && resource.startsWith(LOAD_NASHORN)) {
+            if (resource.startsWith(LOAD_NASHORN)) {
                 if (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS)) {
                     stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
                 }
