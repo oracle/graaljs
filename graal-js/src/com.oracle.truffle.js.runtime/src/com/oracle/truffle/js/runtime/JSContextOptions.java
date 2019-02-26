@@ -57,6 +57,7 @@ import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 public final class JSContextOptions {
@@ -64,7 +65,9 @@ public final class JSContextOptions {
     @CompilationFinal private OptionValues optionValues;
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSTruffleOptions.MaxECMAScriptVersion,
+    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, help = "ECMAScript Version.") //
+    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(
+                    JSTruffleOptions.MaxECMAScriptVersion,
                     new OptionType<>(
                                     "ecmascript-version",
                                     JSTruffleOptions.MaxECMAScriptVersion,
@@ -83,174 +86,173 @@ public final class JSContextOptions {
                                             }
                                         }
                                     }));
-    private static final String ECMASCRIPT_VERSION_HELP = "ECMAScript Version.";
     @CompilationFinal private int ecmascriptVersion;
 
     public static final String ANNEX_B_NAME = JS_OPTION_PREFIX + "annex-b";
+    @Option(name = ANNEX_B_NAME, category = OptionCategory.USER, help = "Enable ECMAScript Annex B features.") //
     public static final OptionKey<Boolean> ANNEX_B = new OptionKey<>(JSTruffleOptions.AnnexB);
-    private static final String ANNEX_B_HELP = "Enable ECMAScript Annex B features.";
     @CompilationFinal private boolean annexB;
 
     public static final String INTL_402_NAME = JS_OPTION_PREFIX + "intl-402";
+    @Option(name = INTL_402_NAME, category = OptionCategory.USER, help = "Enable ECMAScript Internationalization API.") //
     public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(false);
-    private static final String INTL_402_HELP = "Enable ECMAScript Internationalization API";
     @CompilationFinal private boolean intl402;
 
     public static final String REGEXP_STATIC_RESULT_NAME = JS_OPTION_PREFIX + "regexp-static-result";
-    private static final OptionKey<Boolean> REGEXP_STATIC_RESULT = new OptionKey<>(true);
-    private static final String REGEXP_STATIC_RESULT_HELP = "provide last RegExp match in RegExp global var, e.g. RegExp.$1";
+    @Option(name = REGEXP_STATIC_RESULT_NAME, category = OptionCategory.USER, help = "Provide last RegExp match in RegExp global var, e.g. RegExp.$1.") //
+    public static final OptionKey<Boolean> REGEXP_STATIC_RESULT = new OptionKey<>(true);
     @CompilationFinal private boolean regexpStaticResult;
 
     public static final String ARRAY_SORT_INHERITED_NAME = JS_OPTION_PREFIX + "array-sort-inherited";
+    @Option(name = ARRAY_SORT_INHERITED_NAME, category = OptionCategory.USER, help = "Sort inherited keys in Array.protoype.sort.") //
     public static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
-    private static final String ARRAY_SORT_INHERITED_HELP = "implementation-defined behavior in Array.protoype.sort: sort inherited keys?";
-    private final CyclicAssumption arraySortInheritedCyclicAssumption = new CyclicAssumption("The array-sort-inherited option is stable.");
+    private final CyclicAssumption arraySortInheritedCyclicAssumption = new CyclicAssumption("The " + ARRAY_SORT_INHERITED_NAME + " option is stable.");
     @CompilationFinal private Assumption arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
     @CompilationFinal private boolean arraySortInherited;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
-    private static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(true);
-    private static final String SHARED_ARRAY_BUFFER_HELP = "ES2017 SharedArrayBuffer";
+    @Option(name = SHARED_ARRAY_BUFFER_NAME, category = OptionCategory.USER, help = "Enable ES2017 SharedArrayBuffer.") //
+    public static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(true);
     @CompilationFinal private boolean sharedArrayBuffer;
 
     public static final String ATOMICS_NAME = JS_OPTION_PREFIX + "atomics";
-    private static final OptionKey<Boolean> ATOMICS = new OptionKey<>(true);
-    private static final String ATOMICS_HELP = "ES2017 Atomics";
+    @Option(name = ATOMICS_NAME, category = OptionCategory.USER, help = "Enable ES2017 Atomics.") //
+    public static final OptionKey<Boolean> ATOMICS = new OptionKey<>(true);
     @CompilationFinal private boolean atomics;
 
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
+    @Option(name = V8_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the Google V8 engine.") //
     public static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
-    private static final String V8_COMPATIBILITY_MODE_HELP = "provide compatibility with the Google V8 engine";
-    private final CyclicAssumption v8CompatibilityModeCyclicAssumption = new CyclicAssumption("The v8-compat option is stable.");
+    private final CyclicAssumption v8CompatibilityModeCyclicAssumption = new CyclicAssumption("The " + V8_COMPATIBILITY_MODE_NAME + " option is stable.");
     @CompilationFinal private Assumption v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
     @CompilationFinal private boolean v8CompatibilityMode;
 
     public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
-    private static final OptionKey<Boolean> V8_REALM_BUILTIN = new OptionKey<>(false);
-    private static final String V8_REALM_BUILTIN_HELP = "Provide Realm builtin compatible with V8's d8 shell.";
+    @Option(name = V8_REALM_BUILTIN_NAME, category = OptionCategory.INTERNAL, help = "Provide Realm builtin compatible with V8's d8 shell.") //
+    public static final OptionKey<Boolean> V8_REALM_BUILTIN = new OptionKey<>(false);
     @CompilationFinal private boolean v8RealmBuiltin;
 
     public static final String NASHORN_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "nashorn-compat";
+    @Option(name = NASHORN_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the OpenJDK Nashorn engine.") //
     public static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
-    private static final String NASHORN_COMPATIBILITY_MODE_HELP = "provide compatibility with the OpenJDK Nashorn engine";
     @CompilationFinal private boolean nashornCompatibilityMode;
 
     public static final String STACK_TRACE_LIMIT_NAME = JS_OPTION_PREFIX + "stack-trace-limit";
+    @Option(name = STACK_TRACE_LIMIT_NAME, category = OptionCategory.USER, help = "Number of stack frames to capture.") //
     public static final OptionKey<Integer> STACK_TRACE_LIMIT = new OptionKey<>(JSTruffleOptions.StackTraceLimit);
-    private static final String STACK_TRACE_LIMIT_HELP = "number of stack frames to capture";
 
     public static final String DEBUG_BUILTIN_NAME = JS_OPTION_PREFIX + "debug-builtin";
-    private static final OptionKey<Boolean> DEBUG_BUILTIN = new OptionKey<>(false);
-    private static final String DEBUG_BUILTIN_HELP = "provide a non-API Debug builtin. Behaviour will likely change. Don't depend on this in production code.";
+    @Option(name = DEBUG_BUILTIN_NAME, category = OptionCategory.INTERNAL, help = "Provide a non-API Debug builtin. Behaviour will likely change. Don't depend on this in production code.") //
+    public static final OptionKey<Boolean> DEBUG_BUILTIN = new OptionKey<>(false);
     @CompilationFinal private boolean debug;
 
     public static final String DIRECT_BYTE_BUFFER_NAME = JS_OPTION_PREFIX + "direct-byte-buffer";
+    @Option(name = DIRECT_BYTE_BUFFER_NAME, category = OptionCategory.USER, help = "Use direct (off-heap) byte buffer for typed arrays.") //
     public static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(JSTruffleOptions.DirectByteBuffer);
-    private static final String DIRECT_BYTE_BUFFER_HELP = "Use direct (off-heap) byte buffer for typed arrays.";
-    private final CyclicAssumption directByteBufferCyclicAssumption = new CyclicAssumption("The direct-byte-buffer option is stable.");
+    private final CyclicAssumption directByteBufferCyclicAssumption = new CyclicAssumption("The " + DIRECT_BYTE_BUFFER_NAME + " option is stable.");
     @CompilationFinal private Assumption directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
     @CompilationFinal private boolean directByteBuffer;
 
     public static final String PARSE_ONLY_NAME = JS_OPTION_PREFIX + "parse-only";
-    private static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
-    private static final String PARSE_ONLY_HELP = "Only parse source code, do not run it.";
+    @Option(name = PARSE_ONLY_NAME, category = OptionCategory.INTERNAL, help = "Only parse source code, do not run it.") //
+    public static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
     @CompilationFinal private boolean parseOnly;
 
     public static final String TIME_ZONE_NAME = JS_OPTION_PREFIX + "timezone";
+    @Option(name = TIME_ZONE_NAME, category = OptionCategory.USER, help = "Set custom timezone.") //
     public static final OptionKey<String> TIME_ZONE = new OptionKey<>("");
-    private static final String TIME_ZONE_HELP = "Set custom timezone.";
 
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
+    @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
     public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
-    private static final String TIMER_RESOLUTION_HELP = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.";
-    private final CyclicAssumption timerResolutionCyclicAssumption = new CyclicAssumption("The timer-resolution option is stable.");
+    private final CyclicAssumption timerResolutionCyclicAssumption = new CyclicAssumption("The " + TIMER_RESOLUTION_NAME + " option is stable.");
     @CompilationFinal private Assumption timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
     @CompilationFinal private long timerResolution;
 
     public static final String AGENT_CAN_BLOCK_NAME = JS_OPTION_PREFIX + "agent-can-block";
+    @Option(name = AGENT_CAN_BLOCK_NAME, category = OptionCategory.INTERNAL, help = "Determines whether agents can block or not.") //
     public static final OptionKey<Boolean> AGENT_CAN_BLOCK = new OptionKey<>(true);
-    private static final String AGENT_CAN_BLOCK_HELP = "Determines whether agents can block or not.";
     @CompilationFinal private boolean agentCanBlock;
 
     public static final String JAVA_PACKAGE_GLOBALS_NAME = JS_OPTION_PREFIX + "java-package-globals";
+    @Option(name = JAVA_PACKAGE_GLOBALS_NAME, category = OptionCategory.USER, help = "Provide Java package globals: Packages, java, javafx, javax, com, org, edu.") //
     public static final OptionKey<Boolean> JAVA_PACKAGE_GLOBALS = new OptionKey<>(true);
-    private static final String JAVA_PACKAGE_GLOBALS_HELP = "provide Java package globals: Packages, java, javafx, javax, com, org, edu.";
 
     public static final String GLOBAL_PROPERTY_NAME = JS_OPTION_PREFIX + "global-property";
+    @Option(name = GLOBAL_PROPERTY_NAME, category = OptionCategory.USER, help = "Provide 'global' global property.") //
     public static final OptionKey<Boolean> GLOBAL_PROPERTY = new OptionKey<>(true);
-    private static final String GLOBAL_PROPERTY_HELP = "provide 'global' global property.";
 
     public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
+    @Option(name = CONSOLE_NAME, category = OptionCategory.USER, help = "Provide 'console' global property.") //
     public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
-    private static final String CONSOLE_HELP = "provide 'console' global property.";
 
     public static final String PERFORMANCE_NAME = JS_OPTION_PREFIX + "performance";
+    @Option(name = PERFORMANCE_NAME, category = OptionCategory.USER, help = "Provide 'performance' global property.") //
     public static final OptionKey<Boolean> PERFORMANCE = new OptionKey<>(true);
-    private static final String PERFORMANCE_HELP = "provide 'performance' global property.";
 
     public static final String SHELL_NAME = JS_OPTION_PREFIX + "shell";
+    @Option(name = SHELL_NAME, category = OptionCategory.USER, help = "Provide global functions for js shell.") //
     public static final OptionKey<Boolean> SHELL = new OptionKey<>(false);
-    private static final String SHELL_HELP = "provide global functions for js shell.";
 
     public static final String PRINT_NAME = JS_OPTION_PREFIX + "print";
+    @Option(name = PRINT_NAME, category = OptionCategory.USER, help = "Provide 'print' global function.") //
     public static final OptionKey<Boolean> PRINT = new OptionKey<>(true);
-    private static final String PRINT_HELP = "provide 'print' global method.";
 
     public static final String LOAD_NAME = JS_OPTION_PREFIX + "load";
+    @Option(name = LOAD_NAME, category = OptionCategory.USER, help = "Provide 'load' global function.") //
     public static final OptionKey<Boolean> LOAD = new OptionKey<>(true);
-    private static final String LOAD_HELP = "provide 'load' global method.";
 
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
+    @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
-    private static final String GRAAL_BUILTIN_HELP = "provide 'Graal' global property.";
 
     public static final String POLYGLOT_BUILTIN_NAME = JS_OPTION_PREFIX + "polyglot-builtin";
+    @Option(name = POLYGLOT_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Polyglot' global property.") //
     public static final OptionKey<Boolean> POLYGLOT_BUILTIN = new OptionKey<>(true);
-    private static final String POLYGLOT_BUILTIN_HELP = "provide 'Polyglot' global property.";
 
     public static final String AWAIT_OPTIMIZATION_NAME = JS_OPTION_PREFIX + "await-optimization";
+    @Option(name = AWAIT_OPTIMIZATION_NAME, category = OptionCategory.INTERNAL, help = "Use PromiseResolve for Await.") //
     public static final OptionKey<Boolean> AWAIT_OPTIMIZATION = new OptionKey<>(true);
-    private static final String AWAIT_OPTIMIZATION_HELP = "Use PromiseResolve for Await.";
     @CompilationFinal private boolean awaitOptimization;
 
     public static final String DISABLE_EVAL_NAME = JS_OPTION_PREFIX + "disable-eval";
+    @Option(name = DISABLE_EVAL_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to parse code via e.g. eval().") //
     public static final OptionKey<Boolean> DISABLE_EVAL = new OptionKey<>(false);
-    private static final String DISABLE_EVAL_HELP = "User code is not allowed to parse code via e.g. eval().";
     @CompilationFinal private boolean disableEval;
 
     public static final String DISABLE_WITH_NAME = JS_OPTION_PREFIX + "disable-with";
+    @Option(name = DISABLE_WITH_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to use the 'with' statement.") //
     public static final OptionKey<Boolean> DISABLE_WITH = new OptionKey<>(false);
-    private static final String DISABLE_WITH_HELP = "User code is not allowed to use the 'with' statement.";
     @CompilationFinal private boolean disableWith;
 
     public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
-    private static final OptionKey<Boolean> REGEX_DUMP_AUTOMATA = new OptionKey<>(false);
-    private static final String REGEX_DUMP_AUTOMATA_HELP = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.";
+    @Option(name = REGEX_DUMP_AUTOMATA_NAME, category = OptionCategory.INTERNAL, help = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.") //
+    public static final OptionKey<Boolean> REGEX_DUMP_AUTOMATA = new OptionKey<>(false);
     @CompilationFinal private boolean regexDumpAutomata;
 
     public static final String REGEX_STEP_EXECUTION_NAME = JS_OPTION_PREFIX + "regex.step-execution";
-    private static final OptionKey<Boolean> REGEX_STEP_EXECUTION = new OptionKey<>(false);
-    private static final String REGEX_STEP_EXECUTION_HELP = "Trace the execution of automata in JSON files.";
+    @Option(name = REGEX_STEP_EXECUTION_NAME, category = OptionCategory.INTERNAL, help = "Trace the execution of automata in JSON files.") //
+    public static final OptionKey<Boolean> REGEX_STEP_EXECUTION = new OptionKey<>(false);
     @CompilationFinal private boolean regexStepExecution;
 
     public static final String REGEX_ALWAYS_EAGER_NAME = JS_OPTION_PREFIX + "regex.always-eager";
-    private static final OptionKey<Boolean> REGEX_ALWAYS_EAGER = new OptionKey<>(false);
-    private static final String REGEX_ALWAYS_EAGER_HELP = "Always match capture groups eagerly.";
+    @Option(name = REGEX_ALWAYS_EAGER_NAME, category = OptionCategory.INTERNAL, help = "Always match capture groups eagerly.") //
+    public static final OptionKey<Boolean> REGEX_ALWAYS_EAGER = new OptionKey<>(false);
     @CompilationFinal private boolean regexAlwaysEager;
 
     public static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME = JS_OPTION_PREFIX + "script-engine-global-scope-import";
+    @Option(name = SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, category = OptionCategory.INTERNAL, help = "Enable ScriptEngine-specific global scope import function.") //
     public static final OptionKey<Boolean> SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT = new OptionKey<>(false);
-    private static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP = "Enable ScriptEngine-specific global scope import function.";
     @CompilationFinal private boolean scriptEngineGlobalScopeImport;
 
     public static final String FOREIGN_OBJECT_PROTOTYPE_NAME = JS_OPTION_PREFIX + "experimental-foreign-object-prototype";
+    @Option(name = FOREIGN_OBJECT_PROTOTYPE_NAME, category = OptionCategory.EXPERT, help = "Non-JS objects have prototype (Object/Function/Array.prototype) set.") //
     public static final OptionKey<Boolean> FOREIGN_OBJECT_PROTOTYPE = new OptionKey<>(false);
-    private static final String FOREIGN_OBJECT_PROTOTYPE_HELP = "Non-JS objects have prototype (Object/Function/Array.prototype) set.";
     @CompilationFinal private boolean hasForeignObjectPrototype;
 
     public static final String SIMDJS_NAME = JS_OPTION_PREFIX + "simdjs";
-    private static final OptionKey<Boolean> SIMDJS = new OptionKey<>(false);
-    private static final String SIMDJS_HELP = "Provide implementation of the SIMD.js proposal.";
+    @Option(name = SIMDJS_NAME, category = OptionCategory.EXPERT, help = "Provide an experimental implementation of the SIMD.js proposal.") //
+    public static final OptionKey<Boolean> SIMDJS = new OptionKey<>(false);
     @CompilationFinal private boolean simdjs;
 
     public JSContextOptions(ParserOptions parserOptions) {
@@ -378,41 +380,9 @@ public final class JSContextOptions {
     }
 
     public static void describeOptions(List<OptionDescriptor> options) {
-        options.add(newOptionDescriptor(ECMASCRIPT_VERSION, ECMASCRIPT_VERSION_NAME, OptionCategory.USER, ECMASCRIPT_VERSION_HELP));
-        options.add(newOptionDescriptor(ANNEX_B, ANNEX_B_NAME, OptionCategory.USER, ANNEX_B_HELP));
-        options.add(newOptionDescriptor(INTL_402, INTL_402_NAME, OptionCategory.USER, INTL_402_HELP));
-        options.add(newOptionDescriptor(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME, OptionCategory.USER, REGEXP_STATIC_RESULT_HELP));
-        options.add(newOptionDescriptor(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, OptionCategory.USER, ARRAY_SORT_INHERITED_HELP));
-        options.add(newOptionDescriptor(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME, OptionCategory.USER, SHARED_ARRAY_BUFFER_HELP));
-        options.add(newOptionDescriptor(ATOMICS, ATOMICS_NAME, OptionCategory.USER, ATOMICS_HELP));
-        options.add(newOptionDescriptor(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, OptionCategory.USER, V8_COMPATIBILITY_MODE_HELP));
-        options.add(newOptionDescriptor(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME, OptionCategory.INTERNAL, V8_REALM_BUILTIN_HELP));
-        options.add(newOptionDescriptor(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME, OptionCategory.USER, NASHORN_COMPATIBILITY_MODE_HELP));
-        options.add(newOptionDescriptor(STACK_TRACE_LIMIT, STACK_TRACE_LIMIT_NAME, OptionCategory.USER, STACK_TRACE_LIMIT_HELP));
-        options.add(newOptionDescriptor(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME, OptionCategory.INTERNAL, DEBUG_BUILTIN_HELP));
-        options.add(newOptionDescriptor(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, OptionCategory.USER, DIRECT_BYTE_BUFFER_HELP));
-        options.add(newOptionDescriptor(PARSE_ONLY, PARSE_ONLY_NAME, OptionCategory.USER, PARSE_ONLY_HELP));
-        options.add(newOptionDescriptor(TIME_ZONE, TIME_ZONE_NAME, OptionCategory.USER, TIME_ZONE_HELP));
-        options.add(newOptionDescriptor(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, OptionCategory.USER, TIMER_RESOLUTION_HELP));
-        options.add(newOptionDescriptor(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME, OptionCategory.INTERNAL, AGENT_CAN_BLOCK_HELP));
-        options.add(newOptionDescriptor(JAVA_PACKAGE_GLOBALS, JAVA_PACKAGE_GLOBALS_NAME, OptionCategory.USER, JAVA_PACKAGE_GLOBALS_HELP));
-        options.add(newOptionDescriptor(GLOBAL_PROPERTY, GLOBAL_PROPERTY_NAME, OptionCategory.USER, GLOBAL_PROPERTY_HELP));
-        options.add(newOptionDescriptor(CONSOLE, CONSOLE_NAME, OptionCategory.USER, CONSOLE_HELP));
-        options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
-        options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
-        options.add(newOptionDescriptor(PRINT, PRINT_NAME, OptionCategory.USER, PRINT_HELP));
-        options.add(newOptionDescriptor(LOAD, LOAD_NAME, OptionCategory.USER, LOAD_HELP));
-        options.add(newOptionDescriptor(GRAAL_BUILTIN, GRAAL_BUILTIN_NAME, OptionCategory.USER, GRAAL_BUILTIN_HELP));
-        options.add(newOptionDescriptor(POLYGLOT_BUILTIN, POLYGLOT_BUILTIN_NAME, OptionCategory.USER, POLYGLOT_BUILTIN_HELP));
-        options.add(newOptionDescriptor(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME, OptionCategory.INTERNAL, AWAIT_OPTIMIZATION_HELP));
-        options.add(newOptionDescriptor(DISABLE_EVAL, DISABLE_EVAL_NAME, OptionCategory.EXPERT, DISABLE_EVAL_HELP));
-        options.add(newOptionDescriptor(DISABLE_WITH, DISABLE_WITH_NAME, OptionCategory.EXPERT, DISABLE_WITH_HELP));
-        options.add(newOptionDescriptor(REGEX_DUMP_AUTOMATA, REGEX_DUMP_AUTOMATA_NAME, OptionCategory.INTERNAL, REGEX_DUMP_AUTOMATA_HELP));
-        options.add(newOptionDescriptor(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME, OptionCategory.INTERNAL, REGEX_STEP_EXECUTION_HELP));
-        options.add(newOptionDescriptor(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME, OptionCategory.INTERNAL, REGEX_ALWAYS_EAGER_HELP));
-        options.add(newOptionDescriptor(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, OptionCategory.EXPERT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_HELP));
-        options.add(newOptionDescriptor(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME, OptionCategory.EXPERT, FOREIGN_OBJECT_PROTOTYPE_HELP));
-        options.add(newOptionDescriptor(SIMDJS, SIMDJS_NAME, OptionCategory.EXPERT, SIMDJS_HELP));
+        for (OptionDescriptor optionDescriptor : new JSContextOptionsOptionDescriptors()) {
+            options.add(newOptionDescriptor(optionDescriptor.getKey(), optionDescriptor.getName(), optionDescriptor.getCategory(), optionDescriptor.getHelp()));
+        }
     }
 
     public <T> boolean optionWillChange(OptionKey<T> option, OptionValues newOptionValues) {
