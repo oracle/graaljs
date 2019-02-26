@@ -101,7 +101,6 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNode
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -1179,27 +1178,25 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return source;
         }
 
-        @Specialization
-        protected Object loadURL(VirtualFrame frame, URL url) {
-            return runImpl(realmNode.execute(frame), sourceFromURL(url));
+        protected Object loadFile(JSRealm realm, File file) {
+            return runImpl(realm, sourceFromFileName(fileGetPath(file), realm));
         }
 
-        @Specialization
-        protected Object loadFile(VirtualFrame frame, File file) {
-            JSRealm realm = realmNode.execute(frame);
-            return runImpl(realm, sourceFromFileName(fileGetPath(file), realm));
+        protected Object loadURL(JSRealm realm, URL url) {
+            return runImpl(realm, sourceFromURL(url));
         }
 
         @Specialization(guards = "isForeignObject(scriptObj)")
         protected Object loadTruffleObject(VirtualFrame frame, TruffleObject scriptObj,
                         @Cached("createUnbox()") Node unboxNode) {
-            TruffleLanguage.Env env = realmNode.execute(frame).getEnv();
+            JSRealm realm = realmNode.execute(frame);
+            TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(scriptObj)) {
                 Object hostObject = env.asHostObject(scriptObj);
                 if (hostObject instanceof File) {
-                    return loadFile(frame, (File) hostObject);
+                    return loadFile(realm, (File) hostObject);
                 } else if (hostObject instanceof URL) {
-                    return loadURL(frame, (URL) hostObject);
+                    return loadURL(realm, (URL) hostObject);
                 }
             }
             Object unboxed = JSInteropNodeUtil.unbox(scriptObj, unboxNode);
@@ -1220,13 +1217,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Specialization(guards = "isFallback(fileName)")
+        @Specialization(guards = {"!isString(fileName)", "!isForeignObject(fileName)", "!isJSObject(fileName)"})
         protected Object loadConvertToString(VirtualFrame frame, Object fileName) {
             return loadString(frame, toString1(fileName));
-        }
-
-        protected static boolean isFallback(Object value) {
-            return !(JSGuards.isString(value) || value instanceof URL || value instanceof File || value instanceof Map || JSGuards.isForeignObject(value) || JSGuards.isJSObject(value));
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
