@@ -101,7 +101,6 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNode
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -584,7 +583,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Source sourceFromURL(URL url) {
             try {
                 return Source.newBuilder(AbstractJavaScriptLanguage.ID, url).name(url.getFile()).build();
-            } catch (IOException e) {
+            } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
@@ -593,7 +592,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
                 return Source.newBuilder(AbstractJavaScriptLanguage.ID, realm.getEnv().getTruffleFile(fileName)).name(fileName).build();
-            } catch (IOException e) {
+            } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
@@ -602,7 +601,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Source sourceFromTruffleFile(TruffleFile file) {
             try {
                 return Source.newBuilder(AbstractJavaScriptLanguage.ID, file).build();
-            } catch (IOException e) {
+            } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
@@ -1179,27 +1178,25 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return source;
         }
 
-        @Specialization
-        protected Object loadURL(VirtualFrame frame, URL url) {
-            return runImpl(realmNode.execute(frame), sourceFromURL(url));
+        protected Object loadFile(JSRealm realm, File file) {
+            return runImpl(realm, sourceFromFileName(fileGetPath(file), realm));
         }
 
-        @Specialization
-        protected Object loadFile(VirtualFrame frame, File file) {
-            JSRealm realm = realmNode.execute(frame);
-            return runImpl(realm, sourceFromFileName(fileGetPath(file), realm));
+        protected Object loadURL(JSRealm realm, URL url) {
+            return runImpl(realm, sourceFromURL(url));
         }
 
         @Specialization(guards = "isForeignObject(scriptObj)")
         protected Object loadTruffleObject(VirtualFrame frame, TruffleObject scriptObj,
                         @Cached("createUnbox()") Node unboxNode) {
-            TruffleLanguage.Env env = realmNode.execute(frame).getEnv();
+            JSRealm realm = realmNode.execute(frame);
+            TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(scriptObj)) {
                 Object hostObject = env.asHostObject(scriptObj);
                 if (hostObject instanceof File) {
-                    return loadFile(frame, (File) hostObject);
+                    return loadFile(realm, (File) hostObject);
                 } else if (hostObject instanceof URL) {
-                    return loadURL(frame, (URL) hostObject);
+                    return loadURL(realm, (URL) hostObject);
                 }
             }
             Object unboxed = JSInteropNodeUtil.unbox(scriptObj, unboxNode);
@@ -1220,13 +1217,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Specialization(guards = "isFallback(fileName)")
+        @Specialization(guards = {"!isString(fileName)", "!isForeignObject(fileName)", "!isJSObject(fileName)"})
         protected Object loadConvertToString(VirtualFrame frame, Object fileName) {
             return loadString(frame, toString1(fileName));
-        }
-
-        protected static boolean isFallback(Object value) {
-            return !(JSGuards.isString(value) || value instanceof URL || value instanceof File || value instanceof Map || JSGuards.isForeignObject(value) || JSGuards.isJSObject(value));
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
@@ -1235,7 +1228,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromURI(String resource) {
-            if (!JSTruffleOptions.SubstrateVM &&
+            if (JSTruffleOptions.SubstrateVM) {
+                return null;
+            }
+            if (getContext().isOptionNashornCompatibilityMode() &&
                             (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {
                 return sourceFromResourceURL(resource);
             }
@@ -1249,8 +1245,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromResourceURL(String resource) {
+            assert getContext().isOptionNashornCompatibilityMode();
             InputStream stream = null;
-            if (getContext().isOptionNashornCompatibilityMode() && resource.startsWith(LOAD_NASHORN)) {
+            if (resource.startsWith(LOAD_NASHORN)) {
                 if (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS)) {
                     stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
                 }
@@ -1264,7 +1261,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (stream != null) {
                 try {
                     return Source.newBuilder(AbstractJavaScriptLanguage.ID, new InputStreamReader(stream, StandardCharsets.UTF_8), resource).build();
-                } catch (IOException e) {
+                } catch (IOException | SecurityException e) {
                 }
             }
             return null;
