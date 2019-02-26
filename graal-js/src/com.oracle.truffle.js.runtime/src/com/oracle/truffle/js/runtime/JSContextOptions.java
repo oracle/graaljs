@@ -179,8 +179,6 @@ public final class JSContextOptions {
     public static final String GLOBAL_PROPERTY_NAME = JS_OPTION_PREFIX + "global-property";
     public static final OptionKey<Boolean> GLOBAL_PROPERTY = new OptionKey<>(true);
     private static final String GLOBAL_PROPERTY_HELP = "provide 'global' global property.";
-    public static final String GLOBAL_THIS_NAME = JS_OPTION_PREFIX + "global-this";
-    private static final String GLOBAL_THIS_HELP = "provide 'global' global property. Deprecated option, use " + GLOBAL_PROPERTY_NAME + " instead.";
 
     public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
     public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
@@ -399,7 +397,6 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME, OptionCategory.INTERNAL, AGENT_CAN_BLOCK_HELP));
         options.add(newOptionDescriptor(JAVA_PACKAGE_GLOBALS, JAVA_PACKAGE_GLOBALS_NAME, OptionCategory.USER, JAVA_PACKAGE_GLOBALS_HELP));
         options.add(newOptionDescriptor(GLOBAL_PROPERTY, GLOBAL_PROPERTY_NAME, OptionCategory.USER, GLOBAL_PROPERTY_HELP));
-        options.add(newOptionDescriptor(GLOBAL_PROPERTY, GLOBAL_THIS_NAME, OptionCategory.USER, GLOBAL_THIS_HELP));
         options.add(newOptionDescriptor(CONSOLE, CONSOLE_NAME, OptionCategory.USER, CONSOLE_HELP));
         options.add(newOptionDescriptor(PERFORMANCE, PERFORMANCE_NAME, OptionCategory.USER, PERFORMANCE_HELP));
         options.add(newOptionDescriptor(SHELL, SHELL_NAME, OptionCategory.USER, SHELL_HELP));
