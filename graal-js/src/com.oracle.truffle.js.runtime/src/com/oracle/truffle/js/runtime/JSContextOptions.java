@@ -42,12 +42,14 @@ package com.oracle.truffle.js.runtime;
 
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
@@ -56,7 +58,6 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 
 public final class JSContextOptions {
     @CompilationFinal private ParserOptions parserOptions;
@@ -101,8 +102,10 @@ public final class JSContextOptions {
     @CompilationFinal private boolean regexpStaticResult;
 
     public static final String ARRAY_SORT_INHERITED_NAME = JS_OPTION_PREFIX + "array-sort-inherited";
-    private static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
+    public static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
     private static final String ARRAY_SORT_INHERITED_HELP = "implementation-defined behavior in Array.protoype.sort: sort inherited keys?";
+    private final CyclicAssumption arraySortInheritedCyclicAssumption = new CyclicAssumption("The array-sort-inherited option is stable.");
+    @CompilationFinal private Assumption arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
     @CompilationFinal private boolean arraySortInherited;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
@@ -116,8 +119,10 @@ public final class JSContextOptions {
     @CompilationFinal private boolean atomics;
 
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
-    private static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
+    public static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
     private static final String V8_COMPATIBILITY_MODE_HELP = "provide compatibility with the Google V8 engine";
+    private final CyclicAssumption v8CompatibilityModeCyclicAssumption = new CyclicAssumption("The v8-compat option is stable.");
+    @CompilationFinal private Assumption v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
     @CompilationFinal private boolean v8CompatibilityMode;
 
     public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
@@ -140,8 +145,10 @@ public final class JSContextOptions {
     @CompilationFinal private boolean debug;
 
     public static final String DIRECT_BYTE_BUFFER_NAME = JS_OPTION_PREFIX + "direct-byte-buffer";
-    private static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(JSTruffleOptions.DirectByteBuffer);
+    public static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(JSTruffleOptions.DirectByteBuffer);
     private static final String DIRECT_BYTE_BUFFER_HELP = "Use direct (off-heap) byte buffer for typed arrays.";
+    private final CyclicAssumption directByteBufferCyclicAssumption = new CyclicAssumption("The direct-byte-buffer option is stable.");
+    @CompilationFinal private Assumption directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
     @CompilationFinal private boolean directByteBuffer;
 
     public static final String PARSE_ONLY_NAME = JS_OPTION_PREFIX + "parse-only";
@@ -154,8 +161,10 @@ public final class JSContextOptions {
     private static final String TIME_ZONE_HELP = "Set custom timezone.";
 
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
-    private static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
+    public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
     private static final String TIMER_RESOLUTION_HELP = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.";
+    private final CyclicAssumption timerResolutionCyclicAssumption = new CyclicAssumption("The timer-resolution option is stable.");
+    @CompilationFinal private Assumption timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
     @CompilationFinal private long timerResolution;
 
     public static final String AGENT_CAN_BLOCK_NAME = JS_OPTION_PREFIX + "agent-can-block";
@@ -246,15 +255,6 @@ public final class JSContextOptions {
     private static final String SIMDJS_HELP = "Provide implementation of the SIMD.js proposal.";
     @CompilationFinal private boolean simdjs;
 
-    /**
-     * Options which can be patched without throwing away the pre-initialized context.
-     */
-    private static final OptionKey<?>[] PREINIT_CONTEXT_PATCHABLE_OPTIONS = {
-                    ARRAY_SORT_INHERITED,
-                    TIMER_RESOLUTION,
-                    SHELL,
-    };
-
     public JSContextOptions(ParserOptions parserOptions) {
         this.parserOptions = parserOptions;
         cacheOptions();
@@ -281,16 +281,28 @@ public final class JSContextOptions {
         this.annexB = readBooleanOption(ANNEX_B, ANNEX_B_NAME);
         this.intl402 = readBooleanOption(INTL_402, INTL_402_NAME);
         this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME);
-        this.arraySortInherited = readBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME);
+        this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, msg -> {
+            arraySortInheritedCyclicAssumption.invalidate(msg);
+            arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
+        });
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME);
         this.atomics = readBooleanOption(ATOMICS, ATOMICS_NAME);
-        this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME);
+        this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, msg -> {
+            v8CompatibilityModeCyclicAssumption.invalidate(msg);
+            v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
+        });
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
-        this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME);
+        this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, msg -> {
+            directByteBufferCyclicAssumption.invalidate(msg);
+            directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
+        });
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
-        this.timerResolution = readLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME);
+        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, msg -> {
+            timerResolutionCyclicAssumption.invalidate(msg);
+            timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
+        });
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME);
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME);
         this.disableEval = readBooleanOption(DISABLE_EVAL, DISABLE_EVAL_NAME);
@@ -301,6 +313,14 @@ public final class JSContextOptions {
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
         this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME);
         this.simdjs = readBooleanOption(SIMDJS, SIMDJS_NAME);
+    }
+
+    private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
+        boolean newValue = readBooleanOption(key, name);
+        if (oldValue != newValue) {
+            invalidate.accept(String.format("Option %s was changed from %b to %b.", name, oldValue, newValue));
+        }
+        return newValue;
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
@@ -329,6 +349,14 @@ public final class JSContextOptions {
 
     private static int readIntegerFromSystemProperty(OptionKey<Integer> key, String name) {
         return Integer.getInteger("polyglot." + name, key.getDefaultValue());
+    }
+
+    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Consumer<String> invalidate) {
+        long newValue = readLongOption(key, name);
+        if (oldValue != newValue) {
+            invalidate.accept(String.format("Option %s was changed from %d to %d.", name, oldValue, newValue));
+        }
+        return newValue;
     }
 
     private long readLongOption(OptionKey<Long> key, String name) {
@@ -390,33 +418,8 @@ public final class JSContextOptions {
         options.add(newOptionDescriptor(SIMDJS, SIMDJS_NAME, OptionCategory.EXPERT, SIMDJS_HELP));
     }
 
-    /**
-     * Check for options that differ from the expected options and do not support patching, in which
-     * case we cannot use the pre-initialized context for faster startup.
-     */
-    public static boolean optionsAllowPreInitializedContext(Env preinitEnv, Env env) {
-        OptionValues preinitOptions = preinitEnv.getOptions();
-        OptionValues options = env.getOptions();
-        if (!preinitOptions.hasSetOptions() && !options.hasSetOptions()) {
-            return true;
-        } else if (preinitOptions.equals(options)) {
-            return true;
-        } else {
-            assert preinitOptions.getDescriptors().equals(options.getDescriptors());
-            Collection<OptionKey<?>> ignoredOptions = Arrays.asList(PREINIT_CONTEXT_PATCHABLE_OPTIONS);
-            for (OptionDescriptor descriptor : options.getDescriptors()) {
-                OptionKey<?> key = descriptor.getKey();
-                if (preinitOptions.hasBeenSet(key) || options.hasBeenSet(key)) {
-                    if (ignoredOptions.contains(key)) {
-                        continue;
-                    }
-                    if (!preinitOptions.get(key).equals(options.get(key))) {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
+    public <T> boolean optionWillChange(OptionKey<T> option, OptionValues newOptionValues) {
+        return !option.getValue(this.optionValues).equals(option.getValue(newOptionValues));
     }
 
     public int getEcmaScriptVersion() {
@@ -428,6 +431,7 @@ public final class JSContextOptions {
     }
 
     public boolean isIntl402() {
+        CompilerAsserts.neverPartOfCompilation("Patchable option intl-402 should never be accessed in compiled code.");
         return intl402;
     }
 
@@ -436,6 +440,10 @@ public final class JSContextOptions {
     }
 
     public boolean isArraySortInherited() {
+        try {
+            arraySortInheritedCurrentAssumption.check();
+        } catch (InvalidAssumptionException e) {
+        }
         return arraySortInherited;
     }
 
@@ -454,6 +462,10 @@ public final class JSContextOptions {
     }
 
     public boolean isV8CompatibilityMode() {
+        try {
+            v8CompatibilityModeCurrentAssumption.check();
+        } catch (InvalidAssumptionException e) {
+        }
         return v8CompatibilityMode;
     }
 
@@ -466,6 +478,10 @@ public final class JSContextOptions {
     }
 
     public boolean isDirectByteBuffer() {
+        try {
+            directByteBufferCurrentAssumption.check();
+        } catch (InvalidAssumptionException e) {
+        }
         return directByteBuffer;
     }
 
@@ -474,6 +490,10 @@ public final class JSContextOptions {
     }
 
     public long getTimerResolution() {
+        try {
+            timerResolutionCurrentAssumption.check();
+        } catch (InvalidAssumptionException e) {
+        }
         return timerResolution;
     }
 
@@ -517,7 +537,13 @@ public final class JSContextOptions {
         return hasForeignObjectPrototype;
     }
 
+    public boolean isGlobalProperty() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option global-property was assumed not to be accessed in compiled code.");
+        return GLOBAL_PROPERTY.getValue(optionValues);
+    }
+
     public boolean isConsole() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option console was assumed not to be accessed in compiled code.");
         return CONSOLE.getValue(optionValues);
     }
 
@@ -526,6 +552,7 @@ public final class JSContextOptions {
     }
 
     public boolean isLoad() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
         return LOAD.getValue(optionValues);
     }
 
@@ -534,6 +561,7 @@ public final class JSContextOptions {
     }
 
     public boolean isShell() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option shell was assumed not to be accessed in compiled code.");
         return SHELL.getValue(optionValues);
     }
 
@@ -666,5 +694,4 @@ public final class JSContextOptions {
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
     }
-
 }

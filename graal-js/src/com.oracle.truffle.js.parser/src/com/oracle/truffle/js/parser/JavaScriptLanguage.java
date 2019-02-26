@@ -41,11 +41,13 @@
 package com.oracle.truffle.js.parser;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.TimeZone;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 
@@ -443,11 +445,10 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     private JSContext newJSContext(Env env) {
         JSContext context = JSEngine.createJSContext(this, env);
-
-        if (JSContextOptions.TIME_ZONE.hasBeenSet(env.getOptions())) {
-            context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(env.getOptions())).toZoneId());
-        }
-
+        // The (constant) value for the interopRuntime field has to be provided here post-hoc,
+        // since it is defined in the com.oracle.truffle.js.parser.foreign package. If this package
+        // would be moved to the com.oracle.truffle.js.runtime project, then we would not need
+        // to do this.
         context.setInteropRuntime(interopRuntime());
         return context;
     }
@@ -459,43 +460,64 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @Override
     protected void initializeContext(JSRealm realm) {
         realm.setArguments(realm.getEnv().getApplicationArguments());
-
         realm.addOptionalGlobals();
-        if (((GraalJSParserOptions) realm.getContext().getParserOptions()).isScripting()) {
-            realm.addScriptingObjects();
-        }
     }
 
     @Override
     protected boolean patchContext(JSRealm realm, Env newEnv) {
-        JSContext context = realm.getContext();
-        if (!JSContextOptions.optionsAllowPreInitializedContext(realm.getEnv(), newEnv)) {
+        assert realm.getContext().getLanguage() == this;
+
+        if (optionsAllowPreInitializedContext(realm.getEnv(), newEnv) && realm.patchContext(newEnv)) {
+            return true;
+        } else {
             languageContext = null;
             return false;
         }
+    }
 
-        assert context.getLanguage() == this;
-        realm.patchTruffleLanguageEnv(newEnv);
+    /**
+     * Options which can be patched without throwing away the pre-initialized context.
+     */
+    private static final OptionKey<?>[] PREINIT_CONTEXT_PATCHABLE_OPTIONS = {
+                    JSContextOptions.ARRAY_SORT_INHERITED,
+                    JSContextOptions.TIMER_RESOLUTION,
+                    JSContextOptions.SHELL,
+                    JSContextOptions.V8_COMPATIBILITY_MODE,
+                    JSContextOptions.GLOBAL_PROPERTY,
+                    GraalJSParserOptions.SCRIPTING,
+                    JSContextOptions.DIRECT_BYTE_BUFFER,
+                    JSContextOptions.INTL_402,
+                    JSContextOptions.LOAD,
+                    JSContextOptions.CONSOLE
+    };
 
-        if (newEnv.out() != realm.getOutputStream()) {
-            realm.setOutputWriter(null, newEnv.out());
+    /**
+     * Check for options that differ from the expected options and do not support patching, in which
+     * case we cannot use the pre-initialized context for faster startup.
+     */
+    private static boolean optionsAllowPreInitializedContext(Env preinitEnv, Env env) {
+        OptionValues preinitOptions = preinitEnv.getOptions();
+        OptionValues options = env.getOptions();
+        if (!preinitOptions.hasSetOptions() && !options.hasSetOptions()) {
+            return true;
+        } else if (preinitOptions.equals(options)) {
+            return true;
+        } else {
+            assert preinitOptions.getDescriptors().equals(options.getDescriptors());
+            Collection<OptionKey<?>> ignoredOptions = Arrays.asList(PREINIT_CONTEXT_PATCHABLE_OPTIONS);
+            for (OptionDescriptor descriptor : options.getDescriptors()) {
+                OptionKey<?> key = descriptor.getKey();
+                if (preinitOptions.hasBeenSet(key) || options.hasBeenSet(key)) {
+                    if (ignoredOptions.contains(key)) {
+                        continue;
+                    }
+                    if (!preinitOptions.get(key).equals(options.get(key))) {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
-        if (newEnv.err() != realm.getErrorStream()) {
-            realm.setErrorWriter(null, newEnv.err());
-        }
-
-        if (JSContextOptions.TIME_ZONE.hasBeenSet(newEnv.getOptions())) {
-            context.setLocalTimeZoneId(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(newEnv.getOptions())).toZoneId());
-        }
-
-        context.setInteropRuntime(interopRuntime());
-        realm.setArguments(newEnv.getApplicationArguments());
-
-        realm.addOptionalGlobals();
-        if (((GraalJSParserOptions) context.getParserOptions()).isScripting()) {
-            realm.addScriptingObjects();
-        }
-        return true;
     }
 
     @Override

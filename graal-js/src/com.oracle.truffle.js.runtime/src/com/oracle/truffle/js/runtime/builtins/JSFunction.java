@@ -59,7 +59,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -665,13 +664,28 @@ public final class JSFunction extends JSBuiltinObject {
         return obj;
     }
 
-    private static void addRestrictedFunctionProperties(JSRealm realm, DynamicObject obj) {
-        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, CALLER, realm.getThrowerFunction(), realm.getThrowerFunction());
-        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction());
+    public static void addRestrictedFunctionProperties(JSRealm realm, DynamicObject obj) {
+        if (!realm.getEnv().isPreInitialization()) {
+            // Do not request the thrower function during context pre-initialization.
+            // Constructing the thrower functions triggers the setup of the shape of anonymous
+            // functions. However, the shape of anonymous functions depends on the v8-compat option.
+            // Therefore, when using pre-initialized contexts, we defer this part of the setup
+            // to context-patching time.
+            JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, CALLER, realm.getThrowerFunction(), realm.getThrowerFunction());
+            JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction());
+        }
+    }
+
+    public static JSFunctionData createNamedEmptyFunctionData(JSContext context, String name) {
+        return JSFunctionData.createCallOnly(context, context.getEmptyFunctionCallTarget(), 0, name);
     }
 
     public static JSFunctionData createEmptyFunctionData(JSContext context) {
-        return JSFunctionData.createCallOnly(context, context.getEmptyFunctionCallTarget(), 0, "");
+        return createNamedEmptyFunctionData(context, "");
+    }
+
+    public static DynamicObject createNamedEmptyFunction(JSRealm realm, String name) {
+        return JSFunction.create(realm, createNamedEmptyFunctionData(realm.getContext(), name));
     }
 
     public static DynamicObject createEmptyFunction(JSRealm realm) {
@@ -749,14 +763,8 @@ public final class JSFunction extends JSBuiltinObject {
      */
     private static Shape makeNonStrictFunctionShape(Shape shape, JSContext context) {
         Shape nonStrictShape = shape;
-        if (context.isOptionV8CompatibilityMode()) {
-            nonStrictShape = nonStrictShape.addProperty(JSObjectUtil.makeProxyProperty(ARGUMENTS, new ArgumentsProxyProperty(), JSAttributes.notConfigurableNotEnumerableNotWritable()));
-            nonStrictShape = nonStrictShape.addProperty(JSObjectUtil.makeProxyProperty(CALLER, new CallerProxyProperty(), JSAttributes.notConfigurableNotEnumerableNotWritable()));
-        } else {
-            Location valueLocation = JSObjectUtil.createConstantLocation(Undefined.instance);
-            nonStrictShape = nonStrictShape.addProperty(JSObjectUtil.makeDataProperty(ARGUMENTS, valueLocation, JSAttributes.notConfigurableNotEnumerableNotWritable()));
-            nonStrictShape = nonStrictShape.addProperty(JSObjectUtil.makeDataProperty(CALLER, valueLocation, JSAttributes.notConfigurableNotEnumerableNotWritable()));
-        }
+        nonStrictShape = nonStrictShape.addProperty(JSObjectUtil.makeProxyProperty(ARGUMENTS, new ArgumentsProxyProperty(context), JSAttributes.notConfigurableNotEnumerableNotWritable()));
+        nonStrictShape = nonStrictShape.addProperty(JSObjectUtil.makeProxyProperty(CALLER, new CallerProxyProperty(context), JSAttributes.notConfigurableNotEnumerableNotWritable()));
         return nonStrictShape;
     }
 
@@ -1017,9 +1025,19 @@ public final class JSFunction extends JSBuiltinObject {
 
     private static class ArgumentsProxyProperty implements PropertyProxy {
 
+        private final JSContext context;
+
+        ArgumentsProxyProperty(JSContext context) {
+            this.context = context;
+        }
+
         @Override
         public Object get(DynamicObject thiz) {
-            return JSRuntime.toJSNull(createArguments(thiz));
+            if (context.isOptionV8CompatibilityMode()) {
+                return JSRuntime.toJSNull(createArguments(thiz));
+            } else {
+                return Undefined.instance;
+            }
         }
 
         @TruffleBoundary
@@ -1048,9 +1066,19 @@ public final class JSFunction extends JSBuiltinObject {
 
     private static class CallerProxyProperty implements PropertyProxy {
 
+        private final JSContext context;
+
+        CallerProxyProperty(JSContext context) {
+            this.context = context;
+        }
+
         @Override
         public Object get(DynamicObject thiz) {
-            return JSRuntime.toJSNull(findCaller(thiz));
+            if (context.isOptionV8CompatibilityMode()) {
+                return JSRuntime.toJSNull(findCaller(thiz));
+            } else {
+                return Undefined.instance;
+            }
         }
 
         @TruffleBoundary

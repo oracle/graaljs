@@ -90,6 +90,7 @@ public final class JSError extends JSBuiltinObject {
     private static final Property MESSAGE_PROPERTY;
 
     // CallSite
+    private static final String CALL_SITE_CLASS_NAME = "CallSite";
     public static final String CALL_SITE_PROTOTYPE_NAME = "CallSite.prototype";
     public static final HiddenKey STACK_TRACE_ELEMENT_PROPERTY_NAME = new HiddenKey("StackTraceElement");
     private static final Property STACK_TRACE_ELEMENT_PROPERTY;
@@ -223,7 +224,7 @@ public final class JSError extends JSBuiltinObject {
 
     public static JSConstructor createCallSiteConstructor(JSRealm realm) {
         JSContext context = realm.getContext();
-        DynamicObject constructor = JSFunction.createEmptyFunction(realm);
+        DynamicObject constructor = JSFunction.createNamedEmptyFunction(realm, CALL_SITE_CLASS_NAME);
         DynamicObject prototype = createCallSitePrototype(realm);
         JSObjectUtil.putConstructorProperty(context, prototype, constructor);
         JSObjectUtil.putConstructorPrototypeProperty(context, constructor, prototype);

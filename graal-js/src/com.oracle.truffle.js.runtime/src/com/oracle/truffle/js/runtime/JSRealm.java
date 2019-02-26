@@ -49,7 +49,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import java.util.function.Consumer;
 
 import org.graalvm.options.OptionValues;
 
@@ -226,8 +225,8 @@ public class JSRealm {
     private final DynamicObject asyncGeneratorObjectPrototype;
     private final JSConstructor asyncGeneratorFunctionConstructor;
 
-    private final DynamicObject throwerFunction;
-    private final Accessor throwerAccessor;
+    private DynamicObject throwerFunction;
+    private Accessor throwerAccessor;
 
     private final JSConstructor promiseConstructor;
 
@@ -293,9 +292,6 @@ public class JSRealm {
 
         this.objectFactories = context.newObjectFactoryRealmData();
 
-        this.throwerFunction = createThrowerFunction();
-        this.throwerAccessor = new Accessor(throwerFunction, throwerFunction);
-
         if (context.isOptionAnnexB()) {
             putProtoAccessorProperty(this);
         }
@@ -357,21 +353,12 @@ public class JSRealm {
             this.simdTypeConstructors = null;
         }
 
-        if (context.isOptionIntl402()) {
-            this.collatorConstructor = JSCollator.createConstructor(this);
-            this.numberFormatConstructor = JSNumberFormat.createConstructor(this);
-            this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
-            this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
-            this.listFormatConstructor = JSListFormat.createConstructor(this);
-            this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
-        } else {
-            this.collatorConstructor = null;
-            this.numberFormatConstructor = null;
-            this.dateTimeFormatConstructor = null;
-            this.pluralRulesConstructor = null;
-            this.listFormatConstructor = null;
-            this.relativeTimeFormatConstructor = null;
-        }
+        this.collatorConstructor = JSCollator.createConstructor(this);
+        this.numberFormatConstructor = JSNumberFormat.createConstructor(this);
+        this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
+        this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
+        this.listFormatConstructor = JSListFormat.createConstructor(this);
+        this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
 
         this.iteratorPrototype = createIteratorPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
@@ -680,11 +667,16 @@ public class JSRealm {
     }
 
     public final DynamicObject getThrowerFunction() {
+        if (throwerFunction == null) {
+            throwerFunction = createThrowerFunction();
+        }
         return throwerFunction;
     }
 
     public final Accessor getThrowerAccessor() {
-        assert throwerAccessor != null;
+        if (throwerAccessor == null) {
+            throwerAccessor = new Accessor(getThrowerFunction(), getThrowerFunction());
+        }
         return throwerAccessor;
     }
 
@@ -751,18 +743,167 @@ public class JSRealm {
         long time = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
 
         DynamicObject global = getGlobalObject();
-        putGlobalProperty(global, JSUserObject.CLASS_NAME, getObjectConstructor());
-        putGlobalProperty(global, JSFunction.CLASS_NAME, getFunctionConstructor());
-        putGlobalProperty(global, JSArray.CLASS_NAME, getArrayConstructor().getFunctionObject());
-        putGlobalProperty(global, JSString.CLASS_NAME, getStringConstructor().getFunctionObject());
-        putGlobalProperty(global, JSDate.CLASS_NAME, getDateConstructor().getFunctionObject());
-        putGlobalProperty(global, JSNumber.CLASS_NAME, getNumberConstructor().getFunctionObject());
-        putGlobalProperty(global, JSBigInt.CLASS_NAME, getBigIntConstructor().getFunctionObject());
-        putGlobalProperty(global, JSBoolean.CLASS_NAME, getBooleanConstructor().getFunctionObject());
-        putGlobalProperty(global, JSRegExp.CLASS_NAME, getRegExpConstructor().getFunctionObject());
-        putGlobalProperty(global, JSMath.CLASS_NAME, mathObject);
-        putGlobalProperty(global, JSON.CLASS_NAME, JSON.create(this));
+        putGlobalProperty(JSUserObject.CLASS_NAME, getObjectConstructor());
+        putGlobalProperty(JSFunction.CLASS_NAME, getFunctionConstructor());
+        putGlobalProperty(JSArray.CLASS_NAME, getArrayConstructor().getFunctionObject());
+        putGlobalProperty(JSString.CLASS_NAME, getStringConstructor().getFunctionObject());
+        putGlobalProperty(JSDate.CLASS_NAME, getDateConstructor().getFunctionObject());
+        putGlobalProperty(JSNumber.CLASS_NAME, getNumberConstructor().getFunctionObject());
+        putGlobalProperty(JSBigInt.CLASS_NAME, getBigIntConstructor().getFunctionObject());
+        putGlobalProperty(JSBoolean.CLASS_NAME, getBooleanConstructor().getFunctionObject());
+        putGlobalProperty(JSRegExp.CLASS_NAME, getRegExpConstructor().getFunctionObject());
+        putGlobalProperty(JSMath.CLASS_NAME, mathObject);
+        putGlobalProperty(JSON.CLASS_NAME, JSON.create(this));
 
+        JSObjectUtil.putDataProperty(context, global, JSRuntime.NAN_STRING, Double.NaN);
+        JSObjectUtil.putDataProperty(context, global, JSRuntime.INFINITY_STRING, Double.POSITIVE_INFINITY);
+        JSObjectUtil.putDataProperty(context, global, Undefined.NAME, Undefined.instance);
+
+        JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME);
+
+        this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
+        this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
+        this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
+
+        for (JSErrorType type : JSErrorType.values()) {
+            putGlobalProperty(type.name(), getErrorConstructor(type).getFunctionObject());
+        }
+
+        putGlobalProperty(JSArrayBuffer.CLASS_NAME, getArrayBufferConstructor().getFunctionObject());
+        for (TypedArrayFactory factory : TypedArray.factories()) {
+            putGlobalProperty(factory.getName(), getArrayBufferViewConstructor(factory).getFunctionObject());
+        }
+        putGlobalProperty(JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
+
+        if (context.getContextOptions().isSIMDjs()) {
+            DynamicObject simdObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+            for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
+                JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
+            }
+            putGlobalProperty(JSSIMD.SIMD_OBJECT_NAME, simdObject);
+        }
+
+        if (context.isOptionNashornCompatibilityMode()) {
+            initGlobalNashornExtensions();
+        }
+        if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
+            JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
+                            lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
+        }
+        if (context.getContextOptions().isPrint()) {
+            initGlobalPrintExtensions();
+        }
+        if (context.getContextOptions().isPolyglotBuiltin()) {
+            setupPolyglot();
+        }
+        if (context.isOptionDebugBuiltin()) {
+            putGlobalProperty(JSTruffleOptions.DebugPropertyName, createDebugObject());
+        }
+        if (JSTruffleOptions.Test262Mode) {
+            putGlobalProperty(JSTest262.GLOBAL_PROPERTY_NAME, JSTest262.create(this));
+        }
+        if (JSTruffleOptions.TestV8Mode) {
+            putGlobalProperty(JSTestV8.CLASS_NAME, JSTestV8.create(this));
+        }
+        if (context.getEcmaScriptVersion() >= 6) {
+            Object parseInt = JSObject.get(global, "parseInt");
+            Object parseFloat = JSObject.get(global, "parseFloat");
+            putProperty(getNumberConstructor().getFunctionObject(), "parseInt", parseInt);
+            putProperty(getNumberConstructor().getFunctionObject(), "parseFloat", parseFloat);
+
+            putGlobalProperty(JSMap.CLASS_NAME, getMapConstructor().getFunctionObject());
+            putGlobalProperty(JSSet.CLASS_NAME, getSetConstructor().getFunctionObject());
+            putGlobalProperty(JSWeakMap.CLASS_NAME, getWeakMapConstructor().getFunctionObject());
+            putGlobalProperty(JSWeakSet.CLASS_NAME, getWeakSetConstructor().getFunctionObject());
+            putGlobalProperty(JSSymbol.CLASS_NAME, getSymbolConstructor().getFunctionObject());
+            setupPredefinedSymbols(getSymbolConstructor().getFunctionObject());
+
+            DynamicObject reflectObject = createReflect();
+            putGlobalProperty(REFLECT_CLASS_NAME, reflectObject);
+            this.reflectApplyFunctionObject = JSObject.get(reflectObject, "apply");
+            this.reflectConstructFunctionObject = JSObject.get(reflectObject, "construct");
+
+            putGlobalProperty(JSProxy.CLASS_NAME, getProxyConstructor().getFunctionObject());
+            putGlobalProperty(JSPromise.CLASS_NAME, getPromiseConstructor());
+        }
+
+        if (context.isOptionSharedArrayBuffer()) {
+            putGlobalProperty(SHARED_ARRAY_BUFFER_CLASS_NAME, getSharedArrayBufferConstructor().getFunctionObject());
+        }
+        if (context.isOptionAtomics()) {
+            putGlobalProperty(ATOMICS_CLASS_NAME, createAtomics());
+        }
+        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
+            putGlobalProperty("globalThis", global);
+        }
+        if (context.getContextOptions().isGraalBuiltin()) {
+            putGraalObject();
+        }
+        if (context.getContextOptions().isPerformance()) {
+            putGlobalProperty(PERFORMANCE_CLASS_NAME, createPerformance());
+        }
+        if (JSTruffleOptions.ProfileTime) {
+            System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
+        }
+    }
+
+    private void initGlobalNashornExtensions() {
+        assert getContext().isOptionNashornCompatibilityMode();
+        putGlobalProperty(JSAdapter.CLASS_NAME, jsAdapterConstructor.getFunctionObject());
+        putGlobalProperty("exit", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exit"));
+        putGlobalProperty("quit", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "quit"));
+        DynamicObject parseToJSON = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "parseToJSON");
+        putGlobalProperty("parseToJSON", parseToJSON);
+    }
+
+    private void initGlobalPrintExtensions() {
+        putGlobalProperty("print", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "print"));
+        putGlobalProperty("printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
+    }
+
+    private void addLoadGlobals() {
+        if (getContext().getContextOptions().isLoad()) {
+            putGlobalProperty("load", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "load"));
+            putGlobalProperty("loadWithNewGlobal", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "loadWithNewGlobal"));
+        }
+    }
+
+    /**
+     * Add optional global properties. Used by initializeContext and patchContext.
+     */
+    public void addOptionalGlobals() {
+        if (getEnv().isPreInitialization()) {
+            return;
+        }
+
+        addGlobalGlobal();
+        addShellGlobals();
+        addScriptingGlobals();
+        addIntlGlobal();
+        addLoadGlobals();
+        addConsoleGlobals();
+
+        if (isJavaInteropEnabled()) {
+            setupJavaInterop();
+        }
+    }
+
+    private void addGlobalGlobal() {
+        if (getContext().getContextOptions().isGlobalProperty() && !context.isOptionV8CompatibilityMode()) {
+            putGlobalProperty("global", getGlobalObject());
+        }
+    }
+
+    private void addShellGlobals() {
+        if (getContext().getContextOptions().isShell()) {
+            getContext().getFunctionLookup().iterateBuiltinFunctions(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, (Builtin builtin) -> {
+                JSFunctionData functionData = builtin.createFunctionData(getContext());
+                putGlobalProperty(builtin.getKey(), JSFunction.create(JSRealm.this, functionData), builtin.getAttributeFlags());
+            });
+        }
+    }
+
+    private void addIntlGlobal() {
         if (context.isOptionIntl402()) {
             DynamicObject intlObject = JSIntl.create(this);
             DynamicObject collatorFn = getCollatorConstructor().getFunctionObject();
@@ -777,157 +918,12 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
-            putGlobalProperty(global, JSIntl.CLASS_NAME, intlObject);
-        }
 
-        JSObjectUtil.putDataProperty(context, global, JSRuntime.NAN_STRING, Double.NaN);
-        JSObjectUtil.putDataProperty(context, global, JSRuntime.INFINITY_STRING, Double.POSITIVE_INFINITY);
-        JSObjectUtil.putDataProperty(context, global, Undefined.NAME, Undefined.instance);
-
-        JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME);
-
-        this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
-        this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
-        this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
-
-        for (JSErrorType type : JSErrorType.values()) {
-            putGlobalProperty(global, type.name(), getErrorConstructor(type).getFunctionObject());
-        }
-
-        putGlobalProperty(global, JSArrayBuffer.CLASS_NAME, getArrayBufferConstructor().getFunctionObject());
-        for (TypedArrayFactory factory : TypedArray.factories()) {
-            putGlobalProperty(global, factory.getName(), getArrayBufferViewConstructor(factory).getFunctionObject());
-        }
-        putGlobalProperty(global, JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
-
-        if (context.getContextOptions().isSIMDjs()) {
-            DynamicObject simdObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
-            for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
-                JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
-            }
-            putGlobalProperty(global, JSSIMD.SIMD_OBJECT_NAME, simdObject);
-        }
-
-        if (context.isOptionNashornCompatibilityMode()) {
-            initGlobalNashornExtensions(global);
-        }
-        if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
-            JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
-                            lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
-        }
-        if (context.getContextOptions().isPrint()) {
-            initGlobalPrintExtensions(global);
-        }
-        if (context.getContextOptions().isLoad()) {
-            initGlobalLoadExtensions(global);
-        }
-        if (context.getContextOptions().isPolyglotBuiltin()) {
-            setupPolyglot(global);
-        }
-        if (context.isOptionDebugBuiltin()) {
-            putGlobalProperty(global, JSTruffleOptions.DebugPropertyName, createDebugObject());
-        }
-        if (JSTruffleOptions.Test262Mode) {
-            putGlobalProperty(global, JSTest262.GLOBAL_PROPERTY_NAME, JSTest262.create(this));
-        }
-        if (JSTruffleOptions.TestV8Mode) {
-            putGlobalProperty(global, JSTestV8.CLASS_NAME, JSTestV8.create(this));
-        }
-        if (context.getEcmaScriptVersion() >= 6) {
-            Object parseInt = JSObject.get(global, "parseInt");
-            Object parseFloat = JSObject.get(global, "parseFloat");
-            putGlobalProperty(getNumberConstructor().getFunctionObject(), "parseInt", parseInt);
-            putGlobalProperty(getNumberConstructor().getFunctionObject(), "parseFloat", parseFloat);
-
-            putGlobalProperty(global, JSMap.CLASS_NAME, getMapConstructor().getFunctionObject());
-            putGlobalProperty(global, JSSet.CLASS_NAME, getSetConstructor().getFunctionObject());
-            putGlobalProperty(global, JSWeakMap.CLASS_NAME, getWeakMapConstructor().getFunctionObject());
-            putGlobalProperty(global, JSWeakSet.CLASS_NAME, getWeakSetConstructor().getFunctionObject());
-            putGlobalProperty(global, JSSymbol.CLASS_NAME, getSymbolConstructor().getFunctionObject());
-            setupPredefinedSymbols(getSymbolConstructor().getFunctionObject());
-
-            DynamicObject reflectObject = createReflect();
-            putGlobalProperty(global, REFLECT_CLASS_NAME, reflectObject);
-            this.reflectApplyFunctionObject = JSObject.get(reflectObject, "apply");
-            this.reflectConstructFunctionObject = JSObject.get(reflectObject, "construct");
-
-            putGlobalProperty(global, JSProxy.CLASS_NAME, getProxyConstructor().getFunctionObject());
-            putGlobalProperty(global, JSPromise.CLASS_NAME, getPromiseConstructor());
-        }
-
-        if (context.isOptionSharedArrayBuffer()) {
-            putGlobalProperty(global, SHARED_ARRAY_BUFFER_CLASS_NAME, getSharedArrayBufferConstructor().getFunctionObject());
-        }
-        if (context.isOptionAtomics()) {
-            putGlobalProperty(global, ATOMICS_CLASS_NAME, createAtomics());
-        }
-        if (getEnv() != null && JSContextOptions.GLOBAL_PROPERTY.getValue(getEnv().getOptions()) && !context.isOptionV8CompatibilityMode()) {
-            putGlobalProperty(global, "global", global);
-        }
-        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
-            putGlobalProperty(global, "globalThis", global);
-        }
-        if (context.getContextOptions().isGraalBuiltin()) {
-            putGraalObject(global);
-        }
-        if (context.getContextOptions().isConsole()) {
-            putConsoleObject(global);
-        }
-        if (context.getContextOptions().isPerformance()) {
-            putGlobalProperty(global, PERFORMANCE_CLASS_NAME, createPerformance());
-        }
-        if (JSTruffleOptions.ProfileTime) {
-            System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
+            putGlobalProperty(JSIntl.CLASS_NAME, intlObject);
         }
     }
 
-    private void initGlobalNashornExtensions(DynamicObject global) {
-        assert getContext().isOptionNashornCompatibilityMode();
-        putGlobalProperty(global, JSAdapter.CLASS_NAME, jsAdapterConstructor.getFunctionObject());
-        putGlobalProperty(global, "exit", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exit"));
-        putGlobalProperty(global, "quit", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "quit"));
-        DynamicObject parseToJSON = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "parseToJSON");
-        JSObjectUtil.putOrSetDataProperty(getContext(), global, "parseToJSON", parseToJSON, JSAttributes.getDefaultNotEnumerable());
-    }
-
-    private void initGlobalScriptingExtensions(DynamicObject global) {
-        JSObjectUtil.putOrSetDataProperty(getContext(), global, "$EXEC", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putOrSetDataProperty(getContext(), global, "readFully", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readFully"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putOrSetDataProperty(getContext(), global, "readLine", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readLine"), JSAttributes.getDefaultNotEnumerable());
-    }
-
-    private void initGlobalPrintExtensions(DynamicObject global) {
-        putGlobalProperty(global, "print", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "print"));
-        putGlobalProperty(global, "printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
-    }
-
-    private void initGlobalLoadExtensions(DynamicObject global) {
-        putGlobalProperty(global, "load", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "load"));
-        putGlobalProperty(global, "loadWithNewGlobal", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "loadWithNewGlobal"));
-    }
-
-    /**
-     * Add or set optional global properties. Used by initializeContext and patchContext.
-     */
-    public void addOptionalGlobals() {
-        if (getEnv().isPreInitialization()) {
-            return;
-        }
-        if (getContext().getContextOptions().isShell()) {
-            getContext().getFunctionLookup().iterateBuiltinFunctions(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, new Consumer<Builtin>() {
-                @Override
-                public void accept(Builtin builtin) {
-                    JSFunctionData functionData = builtin.createFunctionData(getContext());
-                    JSObjectUtil.putOrSetDataProperty(getContext(), getGlobalObject(), builtin.getKey(), JSFunction.create(JSRealm.this, functionData), builtin.getAttributeFlags());
-                }
-            });
-        }
-        if (isJavaInteropEnabled()) {
-            setupJavaInterop(getGlobalObject());
-        }
-    }
-
-    private void putGraalObject(DynamicObject global) {
+    private void putGraalObject() {
         DynamicObject graalObject = JSUserObject.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
         JSObjectUtil.putDataProperty(context, graalObject, "language", AbstractJavaScriptLanguage.NAME, flags);
@@ -936,7 +932,7 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION, flags);
         }
         JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
-        putGlobalProperty(global, "Graal", graalObject);
+        putGlobalProperty("Graal", graalObject);
     }
 
     private static JSFunctionData isGraalRuntimeFunction(JSContext context) {
@@ -960,8 +956,16 @@ public class JSRealm {
     /**
      * Convenience method for defining global data properties with default attributes.
      */
-    private void putGlobalProperty(DynamicObject global, String name, Object value) {
-        JSObjectUtil.putDataProperty(context, global, name, value, JSAttributes.getDefaultNotEnumerable());
+    private void putGlobalProperty(Object key, Object value) {
+        putGlobalProperty(key, value, JSAttributes.getDefaultNotEnumerable());
+    }
+
+    private void putGlobalProperty(Object key, Object value, int attributes) {
+        JSObjectUtil.putDataProperty(getContext(), getGlobalObject(), key, value, attributes);
+    }
+
+    private void putProperty(DynamicObject receiver, Object key, Object value) {
+        JSObjectUtil.putDataProperty(getContext(), receiver, key, value, JSAttributes.getDefaultNotEnumerable());
     }
 
     private static void setupPredefinedSymbols(DynamicObject symbolFunction) {
@@ -991,7 +995,7 @@ public class JSRealm {
         return getEnv() != null && getEnv().isHostLookupAllowed();
     }
 
-    private void setupJavaInterop(DynamicObject global) {
+    private void setupJavaInterop() {
         assert isJavaInteropEnabled();
         DynamicObject java = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, java, Symbol.SYMBOL_TO_STRING_TAG, JAVA_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
@@ -999,38 +1003,41 @@ public class JSRealm {
         if (context.isOptionNashornCompatibilityMode()) {
             JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME_NASHORN_COMPAT);
         }
-        putGlobalProperty(global, JAVA_CLASS_NAME, java);
+        putGlobalProperty(JAVA_CLASS_NAME, java);
 
         if (getEnv() != null && getEnv().isHostLookupAllowed()) {
             if (JSContextOptions.JAVA_PACKAGE_GLOBALS.getValue(getEnv().getOptions())) {
-                putGlobalProperty(global, "Packages", JavaPackage.createInit(this, ""));
-                putGlobalProperty(global, "java", JavaPackage.createInit(this, "java"));
-                putGlobalProperty(global, "javafx", JavaPackage.createInit(this, "javafx"));
-                putGlobalProperty(global, "javax", JavaPackage.createInit(this, "javax"));
-                putGlobalProperty(global, "com", JavaPackage.createInit(this, "com"));
-                putGlobalProperty(global, "org", JavaPackage.createInit(this, "org"));
-                putGlobalProperty(global, "edu", JavaPackage.createInit(this, "edu"));
+                putGlobalProperty("Packages", JavaPackage.createInit(this, ""));
+                putGlobalProperty("java", JavaPackage.createInit(this, "java"));
+                putGlobalProperty("javafx", JavaPackage.createInit(this, "javafx"));
+                putGlobalProperty("javax", JavaPackage.createInit(this, "javax"));
+                putGlobalProperty("com", JavaPackage.createInit(this, "com"));
+                putGlobalProperty("org", JavaPackage.createInit(this, "org"));
+                putGlobalProperty("edu", JavaPackage.createInit(this, "edu"));
             }
 
             if (context.isOptionNashornCompatibilityMode()) {
-                putGlobalProperty(global, JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
+                putGlobalProperty(JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
             }
         }
     }
 
-    private void setupPolyglot(DynamicObject global) {
+    private void setupPolyglot() {
         DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_CLASS_NAME);
         if (getContext().isOptionDebugBuiltin()) {
             JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_INTERNAL_CLASS_NAME);
         }
-        putGlobalProperty(global, POLYGLOT_CLASS_NAME, obj);
+        putGlobalProperty(POLYGLOT_CLASS_NAME, obj);
     }
 
-    private void putConsoleObject(DynamicObject global) {
-        DynamicObject console = JSUserObject.createInit(this);
-        JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
-        putGlobalProperty(global, "console", console);
+    private void addConsoleGlobals() {
+        if (context.getContextOptions().isConsole()) {
+            DynamicObject console = JSUserObject.createInit(this);
+            JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
+
+            putGlobalProperty("console", console);
+        }
     }
 
     private DynamicObject createPerformance() {
@@ -1138,47 +1145,52 @@ public class JSRealm {
      * the script, an {@code $ARG} array with arguments to the script, an {@code $ENV} object with
      * environment variables, and an {@code $EXEC} function to execute external code.
      */
-    public void addScriptingObjects() {
+    private void addScriptingGlobals() {
         CompilerAsserts.neverPartOfCompilation();
-        DynamicObject globalObj = getGlobalObject();
 
-        // $OPTIONS
-        String timezone = context.getLocalTimeZoneId().getId();
-        DynamicObject timezoneObj = JSUserObject.create(context, this);
-        JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
+        if (getContext().getParserOptions().isScripting()) {
+            // $OPTIONS
+            String timezone = context.getLocalTimeZoneId().getId();
+            DynamicObject timezoneObj = JSUserObject.create(context, this);
+            JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
 
-        DynamicObject optionsObj = JSUserObject.create(context, this);
-        JSObjectUtil.putDataProperty(context, optionsObj, "_timezone", timezoneObj, JSAttributes.configurableEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, optionsObj, "_scripting", true, JSAttributes.configurableEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, optionsObj, "_compile_only", false, JSAttributes.configurableEnumerableWritable());
+            DynamicObject optionsObj = JSUserObject.create(context, this);
+            JSObjectUtil.putDataProperty(context, optionsObj, "_timezone", timezoneObj, JSAttributes.configurableEnumerableWritable());
+            JSObjectUtil.putDataProperty(context, optionsObj, "_scripting", true, JSAttributes.configurableEnumerableWritable());
+            JSObjectUtil.putDataProperty(context, optionsObj, "_compile_only", false, JSAttributes.configurableEnumerableWritable());
 
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$OPTIONS", optionsObj, JSAttributes.configurableNotEnumerableWritable());
+            putGlobalProperty("$OPTIONS", optionsObj, JSAttributes.configurableNotEnumerableWritable());
 
-        // $ARG
-        DynamicObject argObj = JSArray.createConstant(context, getEnv().getApplicationArguments());
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ARG", argObj, JSAttributes.configurableNotEnumerableWritable());
+            // $ARG
+            DynamicObject arguments = JSArray.createConstant(context, getEnv().getApplicationArguments());
 
-        // $ENV
-        DynamicObject envObj = JSUserObject.create(context, this);
-        Map<String, String> sysenv = System.getenv();
-        for (Map.Entry<String, String> entry : sysenv.entrySet()) {
-            JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
+            putGlobalProperty("$ARG", arguments, JSAttributes.configurableNotEnumerableWritable());
+
+            // $ENV
+            DynamicObject envObj = JSUserObject.create(context, this);
+            Map<String, String> sysenv = System.getenv();
+            for (Map.Entry<String, String> entry : sysenv.entrySet()) {
+                JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
+            }
+
+            putGlobalProperty("$ENV", envObj, JSAttributes.configurableNotEnumerableWritable());
+
+            // $EXEC
+            putGlobalProperty("$EXEC", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec"));
+            putGlobalProperty("readFully", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readFully"));
+            putGlobalProperty("readLine", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readLine"));
+
+            // $OUT, $ERR, $EXIT
+            putGlobalProperty("$EXIT", Undefined.instance);
+            putGlobalProperty("$OUT", Undefined.instance);
+            putGlobalProperty("$ERR", Undefined.instance);
         }
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ENV", envObj, JSAttributes.configurableNotEnumerableWritable());
-
-        // $EXEC
-        initGlobalScriptingExtensions(globalObj);
-
-        // $OUT, $ERR, $EXIT
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$EXIT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$OUT", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putOrSetDataProperty(context, globalObj, "$ERR", Undefined.instance, JSAttributes.getDefaultNotEnumerable());
     }
 
     public void setRealmBuiltinObject(DynamicObject realmBuiltinObject) {
         if (this.realmBuiltinObject == null && realmBuiltinObject != null) {
             this.realmBuiltinObject = realmBuiltinObject;
-            putGlobalProperty(globalObject, "Realm", realmBuiltinObject);
+            putGlobalProperty("Realm", realmBuiltinObject);
         }
     }
 
@@ -1203,8 +1215,8 @@ public class JSRealm {
     }
 
     public void setArguments(Object[] arguments) {
-        JSObjectUtil.putOrSetDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, arguments),
-                        context.isOptionV8CompatibilityMode() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.defineDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, arguments),
+                        context.isOptionV8CompatibilityModeInContextInit() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
     }
 
     public JSConstructor getJSAdapterConstructor() {
@@ -1215,12 +1227,39 @@ public class JSRealm {
         return truffleLanguageEnv;
     }
 
-    public void patchTruffleLanguageEnv(TruffleLanguage.Env env) {
+    public boolean patchContext(TruffleLanguage.Env newEnv) {
         CompilerAsserts.neverPartOfCompilation();
-        Objects.requireNonNull(env, "New env cannot be null.");
-        truffleLanguageEnv = env;
-        context.setAllocationReporter(env);
-        context.getContextOptions().setOptionValues(env.getOptions());
+        Objects.requireNonNull(newEnv, "New env cannot be null.");
+
+        truffleLanguageEnv = newEnv;
+        getContext().setAllocationReporter(newEnv);
+        getContext().getContextOptions().setOptionValues(newEnv.getOptions());
+
+        if (newEnv.out() != getOutputStream()) {
+            setOutputWriter(null, newEnv.out());
+        }
+        if (newEnv.err() != getErrorStream()) {
+            setErrorWriter(null, newEnv.err());
+        }
+
+        setArguments(newEnv.getApplicationArguments());
+
+        // During context pre-initialization, optional globals are not added to global
+        // environment. During context-patching time, we are obliged to call addOptionalGlobals
+        // to add any necessary globals.
+        addOptionalGlobals();
+
+        // Reflect any changes to the timezone option.
+        context.setLocalTimeZoneFromOptions(newEnv.getOptions());
+
+        // Perform the deferred part of setting up properties in the function prototype.
+        // Taken from JSFunction#fillFunctionPrototype, which is called from the JSRealm
+        // constructor.
+        if (getContext().getEcmaScriptVersion() >= 6) {
+            JSFunction.addRestrictedFunctionProperties(this, getFunctionPrototype());
+        }
+
+        return true;
     }
 
     @TruffleBoundary

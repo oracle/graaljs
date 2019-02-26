@@ -47,6 +47,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -137,12 +138,14 @@ import com.oracle.truffle.regex.CachingRegexEngine;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
+import org.graalvm.options.OptionValues;
 
 public class JSContext {
     private final Evaluator evaluator;
     private final JSFunctionLookup functionLookup;
 
     private final AbstractJavaScriptLanguage language;
+    private TruffleLanguage.Env truffleLanguageEnv;
 
     private final Shape emptyShape;
     private final Shape emptyShapePrototypeInObject;
@@ -376,12 +379,14 @@ public class JSContext {
         this.contextOptions = contextOptions;
 
         if (env != null) { // env could still be null
-            this.contextOptions.setOptionValues(env.getOptions());
             setAllocationReporter(env);
+            this.contextOptions.setOptionValues(env.getOptions());
+            this.setLocalTimeZoneFromOptions(env.getOptions());
         }
 
         this.language = lang;
         this.contextRef = lang.getContextReference();
+        this.truffleLanguageEnv = env;
 
         this.emptyShape = createEmptyShape();
         this.emptyShapePrototypeInObject = createEmptyShapePrototypeInObject();
@@ -501,13 +506,12 @@ public class JSContext {
         this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, ordinaryObjectShapeSupplier);
 
-        boolean intl402 = isOptionIntl402();
-        this.collatorFactory = intl402 ? builder.create(JSCollator.INSTANCE) : null;
-        this.numberFormatFactory = intl402 ? builder.create(JSNumberFormat.INSTANCE) : null;
-        this.dateTimeFormatFactory = intl402 ? builder.create(JSDateTimeFormat.INSTANCE) : null;
-        this.pluralRulesFactory = intl402 ? builder.create(JSPluralRules.INSTANCE) : null;
-        this.listFormatFactory = intl402 ? builder.create(JSListFormat.INSTANCE) : null;
-        this.relativeTimeFormatFactory = intl402 ? builder.create(JSRelativeTimeFormat.INSTANCE) : null;
+        this.collatorFactory = builder.create(JSCollator.INSTANCE);
+        this.numberFormatFactory = builder.create(JSNumberFormat.INSTANCE);
+        this.dateTimeFormatFactory = builder.create(JSDateTimeFormat.INSTANCE);
+        this.pluralRulesFactory = builder.create(JSPluralRules.INSTANCE);
+        this.listFormatFactory = builder.create(JSListFormat.INSTANCE);
+        this.relativeTimeFormatFactory = builder.create(JSRelativeTimeFormat.INSTANCE);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
@@ -590,6 +594,7 @@ public class JSContext {
             singleRealmAssumption.invalidate("single realm assumption");
         }
 
+        truffleLanguageEnv = env;
         JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
         if (realmList != null) {
@@ -631,8 +636,10 @@ public class JSContext {
         return JSShape.makeEmptyRoot(JSObject.LAYOUT, JSGlobalObject.INSTANCE, this);
     }
 
-    public void setLocalTimeZoneId(ZoneId zoneId) {
-        localTimeZoneHolder = new LocalTimeZoneHolder(zoneId);
+    public void setLocalTimeZoneFromOptions(OptionValues options) {
+        if (JSContextOptions.TIME_ZONE.hasBeenSet(options)) {
+            localTimeZoneHolder = new LocalTimeZoneHolder(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(options)).toZoneId());
+        }
     }
 
     private LocalTimeZoneHolder getLocalTimeZoneHolder() {
@@ -1014,6 +1021,10 @@ public class JSContext {
         return language;
     }
 
+    private TruffleLanguage.Env getEnv() {
+        return truffleLanguageEnv;
+    }
+
     public CallTarget getEmptyFunctionCallTarget() {
         return emptyFunctionCallTarget;
     }
@@ -1207,6 +1218,7 @@ public class JSContext {
     }
 
     public boolean isOptionIntl402() {
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option intl-402 accessed during context pre-initialization.";
         return contextOptions.isIntl402();
     }
 
@@ -1215,6 +1227,7 @@ public class JSContext {
     }
 
     public boolean isOptionArraySortInherited() {
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option array-sort-inherited accessed during context pre-initialization.";
         return contextOptions.isArraySortInherited();
     }
 
@@ -1227,6 +1240,17 @@ public class JSContext {
     }
 
     public boolean isOptionV8CompatibilityMode() {
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option v8-compat accessed during context pre-initialization.";
+        return contextOptions.isV8CompatibilityMode();
+    }
+
+    /**
+     * Returns whether the v8-compat option is set or not. This method is the same as
+     * {@link #isOptionV8CompatibilityMode()}, but it does not trigger an assertion error when used
+     * during context pre-initialization. It is meant to be used for taking decisions which can be
+     * undone during context-patching.
+     */
+    public boolean isOptionV8CompatibilityModeInContextInit() {
         return contextOptions.isV8CompatibilityMode();
     }
 
@@ -1239,6 +1263,7 @@ public class JSContext {
     }
 
     public boolean isOptionDirectByteBuffer() {
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option direct-byte-buffer accessed during context pre-initialization.";
         return contextOptions.isDirectByteBuffer();
     }
 
@@ -1255,6 +1280,7 @@ public class JSContext {
     }
 
     public long getTimerResolution() {
+        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option timer-resolution accessed during context pre-initialization.";
         return contextOptions.getTimerResolution();
     }
 
