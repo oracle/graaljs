@@ -44,11 +44,10 @@ import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.graalvm.options.OptionCategory;
@@ -282,16 +281,28 @@ public final class JSContextOptions {
         this.annexB = readBooleanOption(ANNEX_B, ANNEX_B_NAME);
         this.intl402 = readBooleanOption(INTL_402, INTL_402_NAME);
         this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME);
-        this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, arraySortInheritedCyclicAssumption);
+        this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, msg -> {
+            arraySortInheritedCyclicAssumption.invalidate(msg);
+            arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
+        });
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME);
         this.atomics = readBooleanOption(ATOMICS, ATOMICS_NAME);
-        this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, v8CompatibilityModeCyclicAssumption);
+        this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, msg -> {
+            v8CompatibilityModeCyclicAssumption.invalidate(msg);
+            v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
+        });
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
-        this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, directByteBufferCyclicAssumption);
+        this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, msg -> {
+            directByteBufferCyclicAssumption.invalidate(msg);
+            directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
+        });
         this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
         this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
-        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, timerResolutionCyclicAssumption);
+        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, msg -> {
+            timerResolutionCyclicAssumption.invalidate(msg);
+            timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
+        });
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME);
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME);
         this.disableEval = readBooleanOption(DISABLE_EVAL, DISABLE_EVAL_NAME);
@@ -304,10 +315,10 @@ public final class JSContextOptions {
         this.simdjs = readBooleanOption(SIMDJS, SIMDJS_NAME);
     }
 
-    private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, CyclicAssumption assumption) {
+    private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
         boolean newValue = readBooleanOption(key, name);
         if (oldValue != newValue) {
-            assumption.invalidate(String.format("Option %s was changed from %b to %b.", name, oldValue, newValue));
+            invalidate.accept(String.format("Option %s was changed from %b to %b.", name, oldValue, newValue));
         }
         return newValue;
     }
@@ -340,10 +351,10 @@ public final class JSContextOptions {
         return Integer.getInteger("polyglot." + name, key.getDefaultValue());
     }
 
-    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, CyclicAssumption assumption) {
+    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Consumer<String> invalidate) {
         long newValue = readLongOption(key, name);
         if (oldValue != newValue) {
-            assumption.invalidate(String.format("Option %s was changed from %d to %d.", name, oldValue, newValue));
+            invalidate.accept(String.format("Option %s was changed from %d to %d.", name, oldValue, newValue));
         }
         return newValue;
     }
@@ -432,8 +443,6 @@ public final class JSContextOptions {
         try {
             arraySortInheritedCurrentAssumption.check();
         } catch (InvalidAssumptionException e) {
-            arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
-            CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return arraySortInherited;
     }
@@ -456,8 +465,6 @@ public final class JSContextOptions {
         try {
             v8CompatibilityModeCurrentAssumption.check();
         } catch (InvalidAssumptionException e) {
-            v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
-            CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return v8CompatibilityMode;
     }
@@ -474,8 +481,6 @@ public final class JSContextOptions {
         try {
             directByteBufferCurrentAssumption.check();
         } catch (InvalidAssumptionException e) {
-            directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
-            CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return directByteBuffer;
     }
@@ -488,8 +493,6 @@ public final class JSContextOptions {
         try {
             timerResolutionCurrentAssumption.check();
         } catch (InvalidAssumptionException e) {
-            timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
-            CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return timerResolution;
     }
@@ -691,5 +694,4 @@ public final class JSContextOptions {
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
     }
-
 }
