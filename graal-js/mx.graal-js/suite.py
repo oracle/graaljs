@@ -1,10 +1,10 @@
 suite = {
-  "mxversion" : "5.180.0",
+  "mxversion" : "5.210.4",
 
   "name" : "graal-js",
 
-  "version" : "1.0.0-rc12",
-  "release" : True,
+  "version" : "1.0.0-rc13",
+  "release" : False,
   "groupId" : "org.graalvm.js",
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "385201b14d38d5f204c8a9ae24f0ce188cd7b960",
+           "version" : "db971f7497b5527f63f140e069bad7481a30143a",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},

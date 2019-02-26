@@ -93,17 +93,17 @@ public final class ConstantByteArray extends AbstractConstantArray {
 
     @Override
     public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return createWriteableInt(object, index, HolesIntArray.HOLE_VALUE, ProfileHolder.empty()).deleteElementImpl(object, index, strict, condition);
+        return createWriteableInt(object, index, HolesIntArray.HOLE_VALUE, condition, ProfileHolder.empty()).deleteElementImpl(object, index, strict, condition);
     }
 
     @Override
     public ScriptArray setLengthImpl(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        return createWriteableInt(object, length - 1, HolesIntArray.HOLE_VALUE, ProfileHolder.empty()).setLengthImpl(object, length, condition, profile);
+        return createWriteableInt(object, length - 1, HolesIntArray.HOLE_VALUE, condition, ProfileHolder.empty()).setLengthImpl(object, length, condition, profile);
     }
 
     @Override
-    public ZeroBasedIntArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
-        int[] intCopy = ArrayCopy.byteToInt(getArray(object));
+    public ZeroBasedIntArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
+        int[] intCopy = ArrayCopy.byteToInt(getArray(object, condition));
         ZeroBasedIntArray newArray = ZeroBasedIntArray.makeZeroBasedIntArray(object, intCopy.length, intCopy.length, intCopy, integrityLevel);
         if (JSTruffleOptions.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -112,8 +112,8 @@ public final class ConstantByteArray extends AbstractConstantArray {
     }
 
     @Override
-    public ZeroBasedDoubleArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
-        double[] doubleCopy = ArrayCopy.byteToDouble(getArray(object));
+    public ZeroBasedDoubleArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
+        double[] doubleCopy = ArrayCopy.byteToDouble(getArray(object, condition));
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSTruffleOptions.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -122,13 +122,13 @@ public final class ConstantByteArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, condition, profile);
     }
 
     @Override
-    public ZeroBasedObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
-        Object[] doubleCopy = ArrayCopy.byteToObject(getArray(object));
+    public ZeroBasedObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
+        Object[] doubleCopy = ArrayCopy.byteToObject(getArray(object, condition));
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSTruffleOptions.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);

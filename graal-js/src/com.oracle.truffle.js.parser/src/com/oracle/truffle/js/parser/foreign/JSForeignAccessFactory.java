@@ -559,7 +559,7 @@ public class JSForeignAccessFactory {
     @Resolve(message = "com.oracle.truffle.js.parser.foreign.JSForeignAccessExtraMessages.GetJSONConvertedMessage")
     abstract static class GetJSONConvertedMR extends Node {
 
-        private static final String KEY = "toJSON";
+        private static final String TO_JSON_PROPERTY = "toJSON";
 
         @Child private ReadElementNode readNode;
         @Child private JSFunctionCallNode callToJSONFunction;
@@ -570,7 +570,7 @@ public class JSForeignAccessFactory {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     readNode = insert(ReadElementNode.create(JSObject.getJSContext(target)));
                 }
-                Object toJSON = readNode.executeWithTargetAndIndex(target, KEY);
+                Object toJSON = readNode.executeWithTargetAndIndex(target, TO_JSON_PROPERTY);
                 if (JSFunction.isJSFunction(toJSON)) {
                     if (callToJSONFunction == null) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();

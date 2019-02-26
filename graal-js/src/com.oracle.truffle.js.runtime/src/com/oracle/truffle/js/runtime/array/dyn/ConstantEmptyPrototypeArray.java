@@ -71,27 +71,27 @@ public final class ConstantEmptyPrototypeArray extends AbstractConstantEmptyArra
     }
 
     @Override
-    public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
+    public AbstractIntArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
-        return super.createWriteableInt(object, index, value, profile);
+        return super.createWriteableInt(object, index, value, condition, profile);
     }
 
     @Override
-    public AbstractDoubleArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
+    public AbstractDoubleArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
-        return super.createWriteableDouble(object, index, value, profile);
+        return super.createWriteableDouble(object, index, value, condition, profile);
     }
 
     @Override
-    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
+    public AbstractJSObjectArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
-        return super.createWriteableJSObject(object, index, value, profile);
+        return super.createWriteableJSObject(object, index, value, condition, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
+    public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
         getArrayPrototypeNoElementsAssumption(object).invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
-        return super.createWriteableObject(object, index, value, profile);
+        return super.createWriteableObject(object, index, value, condition, profile);
     }
 
     @Override

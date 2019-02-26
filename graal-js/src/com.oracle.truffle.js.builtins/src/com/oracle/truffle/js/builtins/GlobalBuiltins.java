@@ -1220,19 +1220,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Specialization
-        protected Object loadMap(VirtualFrame frame, Map<?, ?> map,
-                        @Cached("create()") JSToStringNode sourceToStringNode) {
-            JSRealm realm = realmNode.execute(frame);
-            if (Boundaries.mapContainsKey(map, EVAL_OBJ_FILE_NAME) && Boundaries.mapContainsKey(map, EVAL_OBJ_SOURCE)) {
-                Object scriptNameObj = Boundaries.mapGet(map, EVAL_OBJ_FILE_NAME);
-                Object sourceObj = Boundaries.mapGet(map, EVAL_OBJ_SOURCE);
-                return evalImpl(realm, toString1(scriptNameObj), sourceToStringNode.executeString(sourceObj));
-            } else {
-                throw cannotLoadScript(map);
-            }
-        }
-
         @Specialization(guards = "isFallback(fileName)")
         protected Object loadConvertToString(VirtualFrame frame, Object fileName) {
             return loadString(frame, toString1(fileName));
@@ -1248,12 +1235,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromURI(String resource) {
-            if (resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_FX)) {
-                if (JSTruffleOptions.SubstrateVM) {
-                    return null;
-                } else {
-                    return sourceFromResourceURL(resource);
-                }
+            if (!JSTruffleOptions.SubstrateVM &&
+                            (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {
+                return sourceFromResourceURL(resource);
             }
 
             try {
@@ -1265,14 +1249,17 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromResourceURL(String resource) {
-            assert !JSTruffleOptions.SubstrateVM;
             InputStream stream = null;
-            if (resource.startsWith(LOAD_CLASSPATH)) {
-                stream = ClassLoader.getSystemResourceAsStream(resource.substring(LOAD_CLASSPATH.length()));
-            } else if (getContext().isOptionNashornCompatibilityMode() && resource.startsWith(LOAD_NASHORN) && (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS))) {
-                stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
-            } else if (resource.startsWith(LOAD_FX)) {
-                stream = ClassLoader.getSystemResourceAsStream(NASHORN_BASE_PATH + FX_RESOURCES_PATH + resource.substring(LOAD_FX.length()));
+            if (getContext().isOptionNashornCompatibilityMode() && resource.startsWith(LOAD_NASHORN)) {
+                if (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS)) {
+                    stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
+                }
+            } else if (!JSTruffleOptions.SubstrateVM) {
+                if (resource.startsWith(LOAD_CLASSPATH)) {
+                    stream = ClassLoader.getSystemResourceAsStream(resource.substring(LOAD_CLASSPATH.length()));
+                } else if (resource.startsWith(LOAD_FX)) {
+                    stream = ClassLoader.getSystemResourceAsStream(NASHORN_BASE_PATH + FX_RESOURCES_PATH + resource.substring(LOAD_FX.length()));
+                }
             }
             if (stream != null) {
                 try {
@@ -1373,8 +1360,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     }
 
     /**
-     * Non-standard readline() and readLine() to provide compatibility with V8 and Nashorn,
-     * respectively.
+     * Non-standard readline() for V8 compatibility, and readLine(prompt) for Nashorn compatibility
+     * (only available in nashorn-compat mode with scripting enabled).
+     *
+     * The prompt argument is only accepted and printed by Nashorn's variant.
      */
     public abstract static class JSGlobalReadLineNode extends JSGlobalOperation {
 
@@ -1392,17 +1381,18 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        private static String doReadLine(String promptString) {
+        private String doReadLine(String promptString) {
             if (promptString != null) {
-                System.out.println(promptString);
+                getContext().getRealm().getOutputWriter().print(promptString);
             }
             try {
-                final BufferedReader inReader = new BufferedReader(new InputStreamReader(System.in));
+                final BufferedReader inReader = new BufferedReader(new InputStreamReader(getContext().getRealm().getEnv().in()));
                 return inReader.readLine();
             } catch (Exception ex) {
                 throw Errors.createError(ex.getMessage());
             }
         }
+
     }
 
     static Object getFileFromArgument(Object arg, TruffleLanguage.Env env) {
@@ -1411,10 +1401,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             String path;
             if (JSRuntime.isString(arg)) {
                 path = arg.toString();
-            } else if (!JSTruffleOptions.SubstrateVM && env.isHostObject(arg) && env.asHostObject(arg) instanceof File) {
+            } else if (env.isHostObject(arg) && env.asHostObject(arg) instanceof File) {
                 return verifyFile((File) env.asHostObject(arg));
-            } else if (JSTruffleOptions.NashornJavaInterop && arg instanceof File) {
-                return verifyFile((File) arg);
             } else {
                 path = JSRuntime.toString(arg);
             }

@@ -127,10 +127,6 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             super(context, builtin);
         }
 
-        protected static RuntimeException typeErrorSetExpected() {
-            throw Errors.createTypeError("Set expected");
-        }
-
         protected Object normalize(Object value) {
             if (normalizeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -157,7 +153,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization(guards = "!isJSSet(thisObj)")
         protected static DynamicObject notSet(@SuppressWarnings("unused") Object thisObj) {
-            throw typeErrorSetExpected();
+            throw Errors.createTypeErrorSetExpected();
         }
     }
 
@@ -179,7 +175,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
         protected static boolean notSet(Object thisObj, Object key) {
-            throw typeErrorSetExpected();
+            throw Errors.createTypeErrorSetExpected();
         }
     }
 
@@ -202,7 +198,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
         protected static DynamicObject notSet(Object thisObj, Object key) {
-            throw typeErrorSetExpected();
+            throw Errors.createTypeErrorSetExpected();
         }
     }
 
@@ -224,7 +220,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
         protected boolean hasNoObject(Object thisObj, Object key) {
-            throw typeErrorSetExpected();
+            throw Errors.createTypeErrorSetExpected();
         }
     }
 
@@ -258,7 +254,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
         protected static Object forEachFunctionNoSet(Object thisObj, Object callback, Object thisArg) {
-            throw typeErrorSetExpected();
+            throw Errors.createTypeErrorSetExpected();
         }
 
         private void forEachIntl(DynamicObject thisObj, Object thisArg, DynamicObject callbackObj) {

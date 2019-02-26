@@ -425,25 +425,33 @@
       'include_dirs': [
         '..',
         '../../uv/include',
-        '<(graalvm)/include/',
+        '<(java_home)/include/',
         '<(DEPTH)',
         '<(SHARED_INTERMEDIATE_DIR)'
       ],
       'conditions': [
         ['OS=="linux"', {
           'include_dirs+': [
-            '<(graalvm)/include/linux/',
+            '<(java_home)/include/linux/',
+          ],
+        }],
+        ['OS=="win"', {
+          'include_dirs+': [
+            '<(java_home)/include/win32/',
           ],
         }],
         ['OS=="solaris"', {
           'include_dirs+': [
-            '<(graalvm)/include/solaris/',
+            '<(java_home)/include/solaris/',
           ],
         }],
         ['OS=="mac"', {
           'include_dirs+': [
-            '<(graalvm)/include/darwin/',
+            '<(java_home)/include/darwin/',
           ],
+        }],
+        ['OS != "win"', {
+          'defines': [ '__POSIX__' ],
         }],
       ],
       'link_settings': {
@@ -457,27 +465,32 @@
           }],
           ['OS=="linux" and target_arch=="x64"', {
             'libraries': [
-              '-L<(graalvm)/jre/lib/amd64/server -L<(graalvm)/jre/lib/amd64',
+              '-L<(java_home)/jre/lib/amd64/server -L<(java_home)/jre/lib/amd64',
               "-Wl,-rpath='$$ORIGIN/../../../../lib/amd64/'",
               "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/amd64/'",
             ],
           }],
           ['OS=="solaris" or (OS=="linux" and target_arch=="sparcv9")', {
             'libraries': [
-              '-L<(graalvm)/jre/lib/sparcv9/server -L<(graalvm)/jre/lib/sparcv9',
+              '-L<(java_home)/jre/lib/sparcv9/server -L<(java_home)/jre/lib/sparcv9',
               "-Wl,-rpath='$$ORIGIN/../../../../lib/sparcv9/'",
               "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/sparcv9/'",
             ],
           }],
           ['OS=="mac"', {
             'libraries': [
-              '-L<(graalvm)/jre/lib/server -L<(graalvm)/jre/lib',
+              '-L<(java_home)/jre/lib/server -L<(java_home)/jre/lib',
               "-Wl,-rpath,'@loader_path/../../../../lib/'",
               "-Wl,-rpath,'@loader_path/../../../../jre/lib/'",
               "-Wl,-rpath,'@loader_path/../../../../jre/languages/R/lib/'",
             ],
           }],
-          ['1 == 1', {
+          ['OS == "win"', {
+            'libraries': [
+              '-lDbghelp',
+            ],
+          }],
+          ['OS != "win"', {
             'libraries': [
               '-ljsig',
               '-ldl',
@@ -525,6 +538,7 @@
         '../src/graal/graal_proxy.cc',
         '../src/graal/graal_regexp.cc',
         '../src/graal/graal_script.cc',
+        '../src/graal/graal_script_or_module.cc',
         '../src/graal/graal_set.cc',
         '../src/graal/graal_stack_frame.cc',
         '../src/graal/graal_stack_trace.cc',

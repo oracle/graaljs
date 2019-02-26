@@ -28,14 +28,7 @@ const {
 const { isArrayBufferView } = require('internal/util/types');
 const debug = util.debuglog('child_process');
 const { Buffer } = require('buffer');
-if (process.__node_cluster_threading) {
-  var vPipe = require('internal/graal/thread_pipe_wrap').Pipe;
-} else {
-  var vPipe = internalBinding('pipe_wrap').Pipe;
-}
-const Pipe = vPipe;
-const { constants: PipeConstants } = internalBinding('pipe_wrap');
-
+const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
 const {
   ERR_INVALID_ARG_VALUE,
   ERR_CHILD_PROCESS_IPC_REQUIRED,

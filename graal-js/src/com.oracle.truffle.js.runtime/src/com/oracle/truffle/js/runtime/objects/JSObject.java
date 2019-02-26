@@ -337,9 +337,18 @@ public final class JSObject {
         return JSObject.getJSClass(obj).set(obj, key, value, receiver, isStrict);
     }
 
+    @TruffleBoundary
+    public static boolean setWithReceiver(DynamicObject obj, long index, Object value, Object receiver, boolean isStrict) {
+        return JSObject.getJSClass(obj).set(obj, index, value, receiver, isStrict);
+    }
+
     public static boolean setWithReceiver(DynamicObject obj, Object key, Object value, Object receiver, boolean isStrict, JSClassProfile classProfile) {
         assert JSRuntime.isPropertyKey(key);
         return classProfile.getJSClass(obj).set(obj, key, value, receiver, isStrict);
+    }
+
+    public static boolean setWithReceiver(DynamicObject obj, long index, Object value, Object receiver, boolean isStrict, JSClassProfile classProfile) {
+        return classProfile.getJSClass(obj).set(obj, index, value, receiver, isStrict);
     }
 
     @TruffleBoundary

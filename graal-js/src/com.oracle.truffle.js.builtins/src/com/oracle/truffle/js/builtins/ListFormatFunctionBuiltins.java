@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.js.builtins.CollatorFunctionBuiltinsFactory.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 
 /**
- * Contains builtins for {@linkplain JSListFormat} function (constructor).
+ * Contains built-ins for {@linkplain JSListFormat} function (constructor).
  */
 public final class ListFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ListFormatFunctionBuiltins.ListFormatFunction> {
     protected ListFormatFunctionBuiltins() {
@@ -73,7 +73,7 @@ public final class ListFormatFunctionBuiltins extends JSBuiltinsContainer.Switch
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ListFormatFunction builtinEnum) {
         switch (builtinEnum) {
             case supportedLocalesOf:
-                return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }

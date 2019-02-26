@@ -57,5 +57,9 @@ public abstract class DeclareGlobalNode extends JavaScriptBaseNode {
         return false;
     }
 
+    public boolean isGlobalFunctionDeclaration() {
+        return false;
+    }
+
     protected abstract DeclareGlobalNode copyUninitialized();
 }

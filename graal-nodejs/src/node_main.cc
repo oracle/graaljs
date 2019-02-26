@@ -22,7 +22,10 @@
 #include "node.h"
 #include <stdlib.h>
 #include <stdio.h>
+
+#ifdef __POSIX__
 #include <pthread.h>
+#endif
 
 #ifdef _WIN32
 #include <windows.h>

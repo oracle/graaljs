@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.Map;
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.Assumption;
@@ -80,22 +79,14 @@ import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.interop.Converters;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
-import com.oracle.truffle.js.runtime.interop.JavaAccess;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMember;
-import com.oracle.truffle.js.runtime.interop.JavaSetter;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -896,41 +887,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    public static final class JavaStaticFieldPropertySetNode extends LinkedPropertySetNode {
-        private final boolean allowReflection;
-
-        public JavaStaticFieldPropertySetNode(Object key, ReceiverCheckNode receiverCheck, boolean allowReflection) {
-            super(receiverCheck);
-            this.allowReflection = allowReflection;
-            assert key instanceof String;
-        }
-
-        @Override
-        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            JavaClass type = (JavaClass) thisObj;
-            JavaMember member = type.getMember((String) root.getKey(), JavaClass.STATIC, JavaClass.SETTER, allowReflection);
-            if (member instanceof JavaSetter) {
-                ((JavaSetter) member).setValue(null, value);
-            }
-            return true;
-        }
-    }
-
-    public static final class JavaSetterPropertySetNode extends LinkedPropertySetNode {
-        @Child private JSFunctionCallNode.JavaMethodCallNode methodCall;
-
-        public JavaSetterPropertySetNode(ReceiverCheckNode receiverCheck, JavaSetter setter) {
-            super(receiverCheck);
-            this.methodCall = JSFunctionCallNode.JavaMethodCallNode.create(setter);
-        }
-
-        @Override
-        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            methodCall.executeCall(JSArguments.createOneArg(thisObj, null, value));
-            return true;
-        }
-    }
-
     /**
      * If object is undefined or null, throw TypeError.
      */
@@ -1004,7 +960,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isStrictSymbol = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isForeignObject = ConditionProfile.createBinaryProfile();
-        @CompilerDirectives.CompilationFinal private Converters.Converter converter;
 
         public GenericPropertySetNode(JSContext context) {
             super(null);
@@ -1017,14 +972,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 setValueInDynamicObject(thisObj, value, receiver, root);
             } else if (isStrictSymbol.profile(root.isStrict() && thisObj instanceof Symbol)) {
                 throw Errors.createTypeError("Cannot create property on symbol", this);
-            } else if (root.getContext().isOptionNashornCompatibilityMode() && thisObj instanceof Map) {
-                if (converter == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    converter = Converters.JS_TO_JAVA_CONVERTER;
-                }
-                @SuppressWarnings("unchecked")
-                Map<Object, Object> map = (Map<Object, Object>) thisObj;
-                Boundaries.mapPut(map, root.getKey(), converter.convert(value));
             } else if (isForeignObject.profile(JSGuards.isForeignObject(thisObj))) {
                 if (foreignSetNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1269,37 +1216,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    public static final class MapPropertySetNode extends LinkedPropertySetNode {
-        private final Converters.Converter converter;
-
-        public MapPropertySetNode(ReceiverCheckNode receiverCheck) {
-            super(receiverCheck);
-            this.converter = Converters.JS_TO_JAVA_CONVERTER;
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            Boundaries.mapPut((Map<Object, Object>) thisObj, root.getKey(), converter.convert(value));
-            return true;
-        }
-    }
-
-    public static final class JSJavaWrapperPropertySetNode extends LinkedPropertySetNode {
-        @Child private PropertySetNode nested;
-
-        public JSJavaWrapperPropertySetNode(Object key, boolean isGlobal, boolean isStrict, boolean setOwnProperty, JSContext context) {
-            super(new JSClassCheckNode(JSJavaWrapper.getJSClassInstance()));
-            this.nested = createImpl(key, isGlobal, context, isStrict, setOwnProperty, JSAttributes.getDefault());
-        }
-
-        @Override
-        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            nested.setValue(JSJavaWrapper.getWrapped((DynamicObject) thisObj), value, receiver);
-            return true;
-        }
-    }
-
     /**
      * Make a cache for a JSObject with this property map and requested property.
      *
@@ -1437,58 +1353,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @Override
     protected SetCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth) {
-        if (!JSTruffleOptions.NashornJavaInterop) {
-            return null;
-        }
-        return createJavaPropertyNodeMaybe0(thisObj);
-    }
-
-    /* In a separate method for Substrate VM support. */
-    private SetCacheNode createJavaPropertyNodeMaybe0(Object thisObj) {
-        if (!(JSObject.isDynamicObject(thisObj))) {
-            if (hasSettableField(thisObj) && key instanceof String) {
-                if (thisObj instanceof JavaClass) {
-                    return new JavaStaticFieldPropertySetNode(key, new InstanceofCheckNode(thisObj.getClass(), context), JavaAccess.isReflectionAllowed(context));
-                } else {
-                    return new JavaSetterPropertySetNode(new InstanceofCheckNode(thisObj.getClass(), context), getSetter(thisObj));
-                }
-            } else if (thisObj instanceof java.util.Map) {
-                return new MapPropertySetNode(new InstanceofCheckNode(thisObj.getClass(), context));
-            }
-        } else {
-            if (JSJavaWrapper.isJSJavaWrapper(thisObj)) {
-                return new JSJavaWrapperPropertySetNode(key, isGlobal(), isStrict(), isOwnProperty(), context);
-            }
-        }
         return null;
-    }
-
-    private boolean hasSettableField(Object thisObj) {
-        if (thisObj == null) {
-            return false;
-        }
-        if (!(key instanceof String)) {
-            // could be Symbol!
-            return false;
-        }
-        if (thisObj instanceof JavaClass) {
-            return getStaticSetter((JavaClass) thisObj) != null;
-        } else {
-            return getSetter(thisObj) != null;
-        }
-    }
-
-    private JavaSetter getStaticSetter(JavaClass thisObj) {
-        JavaMember member = thisObj.getMember((String) key, JavaClass.STATIC, JavaClass.SETTER, JavaAccess.isReflectionAllowed(context));
-        assert member == null || member instanceof JavaSetter;
-        return (member != null) ? (JavaSetter) member : null;
-    }
-
-    private JavaSetter getSetter(Object thisObj) {
-        assert !(thisObj instanceof JavaClass);
-        JavaClass javaClass = JavaClass.forClass(thisObj.getClass());
-        JavaMember member = javaClass.getMember((String) key, JavaClass.INSTANCE, JavaClass.SETTER, JavaAccess.isReflectionAllowed(context));
-        return (JavaSetter) member;
     }
 
     @Override

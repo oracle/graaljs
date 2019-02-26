@@ -1,5 +1,5 @@
 {
-  local labsjdk8 = {name: 'labsjdk', version: '8u172-jvmci-0.48', platformspecific: true},
+  local labsjdk8 = {name: 'labsjdk', version: '8u192-jvmci-0.54', platformspecific: true},
 
   local oraclejdk11 = {name : 'oraclejdk', version : "11+20", platformspecific: true},
 
@@ -65,6 +65,6 @@
       // for compatibility with macOS El Capitan
       MACOSX_DEPLOYMENT_TARGET: '10.11',
     },
-    capabilities: ['darwin_sierra', 'amd64'],
+    capabilities: ['darwin', 'amd64'],
   },
 }

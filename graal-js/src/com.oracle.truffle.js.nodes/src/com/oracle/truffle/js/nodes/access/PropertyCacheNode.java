@@ -883,7 +883,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             Shape depthShape = shape;
             DynamicObject depthProto = thisObj;
             for (int i = 0; i < depth; i++) {
-                Assumption stablePrototypeAssumption = depth == 0 ? null : JSShape.getPrototypeAssumption(depthShape);
+                Assumption stablePrototypeAssumption = JSShape.getPrototypeAssumption(depthShape);
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
                 shapeCheckNodes[i] = new AssumptionShapeCheckNode(depthShape, key, context, true, stablePrototypeAssumption);
@@ -1395,7 +1395,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected static final DynamicObject wrapPrimitive(Object thisObject, JSContext context) {
         // wrap primitives for lookup
-        return JSRuntime.toObjectFromPrimitive(context, thisObject, false);
+        Object wrapper = JSRuntime.toObjectFromPrimitive(context, thisObject, false);
+        return JSObject.isDynamicObject(wrapper) ? (DynamicObject) wrapper : null;
     }
 
     protected final AbstractShapeCheckNode createShapeCheckNode(Shape shape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal, boolean isDefine) {

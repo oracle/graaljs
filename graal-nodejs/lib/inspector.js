@@ -14,8 +14,9 @@ const util = require('util');
 const { Connection, open, url } = process.binding('inspector');
 const { originalConsole } = require('internal/process/per_thread');
 
-if (!Connection)
-  throw new ERR_INSPECTOR_NOT_AVAILABLE();
+// No native inspector available. No problem, we do not use it, see the end of this script.
+//if (!Connection)
+//  throw new ERR_INSPECTOR_NOT_AVAILABLE();
 
 const connectionSymbol = Symbol('connectionProperty');
 const messageCallbacksSymbol = Symbol('messageCallbacks');
@@ -106,3 +107,6 @@ module.exports = {
   console: originalConsole,
   Session
 };
+
+// Use the mockup provided by 'inspect' instrument
+module.exports = arguments[arguments.length - 1];

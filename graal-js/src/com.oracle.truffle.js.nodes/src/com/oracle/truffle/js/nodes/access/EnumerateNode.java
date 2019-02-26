@@ -72,7 +72,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.EnumerateIterator;
@@ -116,7 +115,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return EnumerateNodeGen.create(context, values, cloneUninitialized(targetNode));
     }
 
-    @Specialization(guards = {"isJSType(iteratedObject)", "!isJSAdapter(iteratedObject)", "!isJSJavaWrapper(iteratedObject)"})
+    @Specialization(guards = {"isJSType(iteratedObject)", "!isJSAdapter(iteratedObject)"})
     protected DynamicObject doEnumerateObject(DynamicObject iteratedObject,
                     @Cached("createBinaryProfile()") ConditionProfile isObject) {
         Iterator<?> iterator;
@@ -159,12 +158,6 @@ public abstract class EnumerateNode extends JavaScriptNode {
 
     EnumerateNode createValues() {
         return create(context, null, true);
-    }
-
-    @Specialization(guards = "isJSJavaWrapper(iteratedObject)")
-    protected DynamicObject doEnumerateJava(DynamicObject iteratedObject) {
-        Iterator<?> iterator = (values ? JSJavaWrapper.getValues(iteratedObject) : JSObject.ownPropertyKeys(iteratedObject)).iterator();
-        return newEnumerateIterator(context, iterator);
     }
 
     @Specialization(guards = {"isForeignObject(iteratedObject)"})

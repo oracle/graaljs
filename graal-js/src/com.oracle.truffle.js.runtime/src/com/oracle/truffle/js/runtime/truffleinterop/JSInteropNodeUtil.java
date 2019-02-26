@@ -330,17 +330,7 @@ public final class JSInteropNodeUtil {
     }
 
     @TruffleBoundary
-    public static boolean isExecutable(TruffleObject obj, Node isExecutableNode) {
-        return ForeignAccess.sendIsExecutable(isExecutableNode, obj);
-    }
-
-    @TruffleBoundary
     public static boolean isInstantiable(TruffleObject obj) {
         return ForeignAccess.sendIsInstantiable(getIsInstantiableNode(), obj);
-    }
-
-    @TruffleBoundary
-    public static boolean isInstantiable(TruffleObject obj, Node isInstantiableNode) {
-        return ForeignAccess.sendIsInstantiable(isInstantiableNode, obj);
     }
 }

@@ -401,7 +401,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         String propertyName = null;
         while (current != Null.instance) {
             if (JSProxy.isProxy(current)) {
-                return JSObject.setWithReceiver(current, Boundaries.stringValueOf(index), value, receiver, false);
+                return JSObject.setWithReceiver(current, index, value, receiver, false);
             }
             if (canHaveReadOnlyOrAccessorProperties(current)) {
                 if (JSObject.hasOwnProperty(current, index)) {
@@ -488,14 +488,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(propIdx));
     }
 
-    private static long findNextEnumerable(DynamicObject object, ScriptArray array, long index, boolean showNonEnumerable) {
-        if (!showNonEnumerable) {
-            return findNextEnumerableIntl(object, array, index);
-        }
-        return index;
-    }
-
-    private static long findNextEnumerableIntl(DynamicObject object, ScriptArray array, long indexParam) {
+    private static long findNextEnumerable(DynamicObject object, ScriptArray array, long indexParam) {
         long index = indexParam;
         while ((!array.hasElement(object, index) || !array.isEnumerable(object, index)) && index <= array.lastElementIndex(object)) {
             index = array.nextElementIndex(object, index);
@@ -518,10 +511,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         }
         List<Object> list = new ArrayList<>((int) len);
 
-        long currentIndex = findNextEnumerable(thisObj, array, array.firstElementIndex(thisObj), false);
+        long currentIndex = findNextEnumerable(thisObj, array, array.firstElementIndex(thisObj));
         while (currentIndex <= array.lastElementIndex(thisObj)) {
             list.add(Boundaries.stringValueOf(currentIndex));
-            currentIndex = findNextEnumerable(thisObj, array, array.nextElementIndex(thisObj, currentIndex), false);
+            currentIndex = findNextEnumerable(thisObj, array, array.nextElementIndex(thisObj, currentIndex));
         }
 
         List<Object> keyList = thisObj.getShape().getKeyList();

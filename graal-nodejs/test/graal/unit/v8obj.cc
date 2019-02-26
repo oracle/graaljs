@@ -45,7 +45,7 @@
 
 #ifdef SUITE_INTERNALS
 
-bool EntropySourceFunction(unsigned char* buffer, unsigned long size) {
+bool EntropySourceFunction(unsigned char* buffer, size_t size) {
     for (unsigned long i = 0; i < size; i++) {
         buffer[i] = 'a';
     }

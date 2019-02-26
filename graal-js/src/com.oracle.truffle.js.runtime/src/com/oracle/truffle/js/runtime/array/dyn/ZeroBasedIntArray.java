@@ -214,4 +214,9 @@ public final class ZeroBasedIntArray extends AbstractIntArray {
     protected ZeroBasedIntArray withIntegrityLevel(int newIntegrityLevel) {
         return new ZeroBasedIntArray(newIntegrityLevel, cache);
     }
+
+    @Override
+    public long nextElementIndex(DynamicObject object, long index, boolean condition) {
+        return nextElementIndexZeroBased(object, index, condition);
+    }
 }

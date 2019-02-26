@@ -46,9 +46,12 @@
 #include "graal_handle_content.h"
 #include "include/v8.h"
 #include "jni.h"
-#include <pthread.h>
 #include <string.h>
 #include <vector>
+
+#ifdef __POSIX__
+#include <pthread.h>
+#endif
 
 #define JNI_CALL_HELPER(semicolon, equals, return_type, variable, isolate, id, type, ...) \
     return_type variable semicolon \
@@ -194,6 +197,7 @@ enum GraalAccessMethod {
     isolate_enable_promise_hook,
     isolate_enable_promise_reject_callback,
     isolate_enable_import_meta_initializer,
+    isolate_enable_import_module_dynamically,
     isolate_enter,
     isolate_exit,
     template_set,
@@ -294,6 +298,7 @@ enum GraalAccessMethod {
     module_get_namespace,
     module_get_identity_hash,
     module_get_exception,
+    script_or_module_get_resource_name,
     value_serializer_new,
     value_serializer_release,
     value_serializer_size,
@@ -344,7 +349,7 @@ public:
     GraalIsolate(JavaVM* jvm, JNIEnv* env);
     v8::Local<v8::Value> ThrowException(v8::Local<v8::Value> exception);
     bool AddMessageListener(v8::MessageCallback callback, v8::Local<v8::Value> data);
-    void SendMessage(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
+    void NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
     void SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback);
     bool AbortOnUncaughtExceptionCallbackValue();
     v8::Local<v8::Value> InternalFieldKey(int index);
@@ -364,6 +369,8 @@ public:
     void NotifyPromiseRejectCallback(v8::PromiseRejectMessage message);
     void SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback);
     void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
+    void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier);
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
     void RunMicrotasks();
     void Enter();
@@ -511,7 +518,7 @@ public:
         return stack_check_enabled_;
     }
 
-    bool StackOverflowCheck(long stack_top);
+    bool StackOverflowCheck(intptr_t stack_top);
 
     void FindDynamicObjectFields(jobject context);
 
@@ -559,6 +566,8 @@ public:
     }
 
     static void InitThreadLocals();
+    static void SetEnv(const char * name, const char * value);
+    static void UnsetEnv(const char * name);
 
     // Valid values of mode
     static const int kModeDefault = 0;
@@ -607,8 +616,8 @@ private:
     int try_catch_count_;
     int function_template_count_;
     bool stack_check_enabled_;
-    long stack_bottom_;
-    long stack_size_limit_;
+    intptr_t stack_bottom_;
+    size_t stack_size_limit_;
     bool main_;
     double return_value_;
     static bool abort_on_uncaught_exception_;
@@ -620,7 +629,7 @@ private:
     }
 
     void SetJNIField(GraalAccessField id, jobject holder_class, jobject field_name, const char* sig);
-    void InitStackOverflowCheck(long stack_bottom);
+    void InitStackOverflowCheck(intptr_t stack_bottom);
     void RemoveCallback(std::vector<std::tuple<GCCallbackType, void*, void*>>&vector, void* callback);
 
     GraalNumber* CachedNumber(int value);
@@ -631,7 +640,11 @@ private:
     friend class GraalFunction;
     friend class v8::Isolate;
 
+#ifdef __POSIX__
     pthread_mutex_t lock_;
+#else
+    void* lock_;
+#endif
     v8::Locker* lock_owner_;
     friend class v8::Locker;
     friend class v8::Unlocker;
@@ -645,6 +658,7 @@ private:
     v8::PromiseHook promise_hook_;
     v8::PromiseRejectCallback promise_reject_callback_;
     v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
+    v8::HostImportModuleDynamicallyCallback import_module_dynamically;
 };
 
 #endif /* GRAAL_ISOLATE_H_ */

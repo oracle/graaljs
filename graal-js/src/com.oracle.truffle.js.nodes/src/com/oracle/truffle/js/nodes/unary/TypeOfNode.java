@@ -54,8 +54,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -69,8 +67,6 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
-import com.oracle.truffle.js.runtime.interop.JavaMethod;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
@@ -167,16 +163,6 @@ public abstract class TypeOfNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected String doJavaClass(JavaClass operand) {
-        return JavaClass.TYPE_NAME;
-    }
-
-    @Specialization
-    protected String doJavaMethod(JavaMethod operand) {
-        return JavaMethod.TYPE_NAME;
-    }
-
-    @Specialization
     protected String doSymbol(Symbol operand) {
         return JSSymbol.TYPE_NAME;
     }
@@ -206,7 +192,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return JSUserObject.TYPE_NAME;
     }
 
-    @Specialization(guards = {"isJavaObject(operand)", "!isJavaClass(operand)", "!isJavaMethod(operand)"}, replaces = "doOtherCached")
+    @Specialization(guards = {"isJavaObject(operand)"}, replaces = "doOtherCached")
     protected String doOther(Object operand) {
         return JSUserObject.TYPE_NAME;
     }

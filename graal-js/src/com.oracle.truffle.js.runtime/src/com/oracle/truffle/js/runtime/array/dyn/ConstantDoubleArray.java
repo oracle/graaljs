@@ -93,22 +93,22 @@ public final class ConstantDoubleArray extends AbstractConstantArray {
 
     @Override
     public ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict, boolean condition) {
-        return createWriteableDouble(object, index, HolesDoubleArray.HOLE_VALUE_DOUBLE, ProfileHolder.empty()).deleteElementImpl(object, index, condition, condition);
+        return createWriteableDouble(object, index, HolesDoubleArray.HOLE_VALUE_DOUBLE, condition, ProfileHolder.empty()).deleteElementImpl(object, index, condition, condition);
     }
 
     @Override
     public ScriptArray setLengthImpl(DynamicObject object, long length, boolean condition, ProfileHolder profile) {
-        return createWriteableDouble(object, length - 1, HolesDoubleArray.HOLE_VALUE_DOUBLE, ProfileHolder.empty()).setLengthImpl(object, length, condition, profile);
+        return createWriteableDouble(object, length - 1, HolesDoubleArray.HOLE_VALUE_DOUBLE, condition, ProfileHolder.empty()).setLengthImpl(object, length, condition, profile);
     }
 
     @Override
-    public ZeroBasedDoubleArray createWriteableInt(DynamicObject object, long index, int value, ProfileHolder profile) {
-        return createWriteableDouble(object, index, value, profile);
+    public ZeroBasedDoubleArray createWriteableInt(DynamicObject object, long index, int value, boolean condition, ProfileHolder profile) {
+        return createWriteableDouble(object, index, value, condition, profile);
     }
 
     @Override
-    public ZeroBasedDoubleArray createWriteableDouble(DynamicObject object, long index, double value, ProfileHolder profile) {
-        double[] doubleCopy = ArrayCopy.doubleToDouble(getArray(object));
+    public ZeroBasedDoubleArray createWriteableDouble(DynamicObject object, long index, double value, boolean condition, ProfileHolder profile) {
+        double[] doubleCopy = ArrayCopy.doubleToDouble(getArray(object, condition));
         ZeroBasedDoubleArray newArray = ZeroBasedDoubleArray.makeZeroBasedDoubleArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSTruffleOptions.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -117,13 +117,13 @@ public final class ConstantDoubleArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractWritableArray createWriteableJSObject(DynamicObject object, long index, DynamicObject value, boolean condition, ProfileHolder profile) {
+        return createWriteableObject(object, index, value, condition, profile);
     }
 
     @Override
-    public ZeroBasedObjectArray createWriteableObject(DynamicObject object, long index, Object value, ProfileHolder profile) {
-        Object[] doubleCopy = ArrayCopy.doubleToObject(getArray(object));
+    public ZeroBasedObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
+        Object[] doubleCopy = ArrayCopy.doubleToObject(getArray(object, condition));
         ZeroBasedObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, doubleCopy.length, doubleCopy.length, doubleCopy, integrityLevel);
         if (JSTruffleOptions.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);

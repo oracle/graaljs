@@ -51,10 +51,10 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 public class IteratorCloseWrapperNode extends JavaScriptNode implements ResumableNode {
-    @Child private JavaScriptNode block;
-    @Child private JavaScriptNode iterator;
-    @Child private IteratorCloseNode iteratorClose;
-    @Child private JavaScriptNode done;
+    @Child private JavaScriptNode blockNode;
+    @Child private JavaScriptNode iteratorNode;
+    @Child private IteratorCloseNode iteratorCloseNode;
+    @Child private JavaScriptNode doneNode;
     private final JSContext context;
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
@@ -63,9 +63,9 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
 
     protected IteratorCloseWrapperNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done) {
         this.context = context;
-        this.block = block;
-        this.iterator = iterator;
-        this.done = done;
+        this.blockNode = block;
+        this.iteratorNode = iterator;
+        this.doneNode = done;
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done) {
@@ -76,7 +76,7 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
     public Object execute(VirtualFrame frame) {
         Object result;
         try {
-            result = block.execute(frame);
+            result = blockNode.execute(frame);
         } catch (YieldException e) {
             throw e;
         } catch (ControlFlowException e) {
@@ -103,11 +103,11 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
     }
 
     private boolean isDone(VirtualFrame frame) {
-        return done.execute(frame) == Boolean.TRUE;
+        return doneNode.execute(frame) == Boolean.TRUE;
     }
 
     private IteratorRecord getIteratorRecord(VirtualFrame frame) {
-        return (IteratorRecord) iterator.execute(frame);
+        return (IteratorRecord) iteratorNode.execute(frame);
     }
 
     @Override
@@ -116,15 +116,15 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
     }
 
     private IteratorCloseNode iteratorClose() {
-        if (iteratorClose == null) {
+        if (iteratorCloseNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            iteratorClose = insert(IteratorCloseNode.create(context));
+            iteratorCloseNode = insert(IteratorCloseNode.create(context));
         }
-        return iteratorClose;
+        return iteratorCloseNode;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new IteratorCloseWrapperNode(context, cloneUninitialized(block), cloneUninitialized(iterator), cloneUninitialized(done));
+        return new IteratorCloseWrapperNode(context, cloneUninitialized(blockNode), cloneUninitialized(iteratorNode), cloneUninitialized(doneNode));
     }
 }

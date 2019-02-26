@@ -173,4 +173,9 @@ public final class ZeroBasedObjectArray extends AbstractObjectArray {
     protected ZeroBasedObjectArray withIntegrityLevel(int newIntegrityLevel) {
         return new ZeroBasedObjectArray(newIntegrityLevel, cache);
     }
+
+    @Override
+    public long nextElementIndex(DynamicObject object, long index, boolean condition) {
+        return nextElementIndexZeroBased(object, index, condition);
+    }
 }

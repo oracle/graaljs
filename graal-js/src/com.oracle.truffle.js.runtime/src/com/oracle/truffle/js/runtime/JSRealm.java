@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSIntl;
-import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
@@ -98,6 +97,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
@@ -118,6 +118,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -137,7 +138,6 @@ public class JSRealm {
     public static final String ARGUMENTS_NAME = "arguments";
     public static final String JAVA_CLASS_NAME = "Java";
     public static final String JAVA_CLASS_NAME_NASHORN_COMPAT = "JavaNashornCompat";
-    private static final String JAVA_WORKER_PROPERTY_NAME = "Worker";
     public static final String PERFORMANCE_CLASS_NAME = "performance";
     public static final String DEBUG_CLASS_NAME = "Debug";
     public static final String CONSOLE_CLASS_NAME = "Console";
@@ -173,6 +173,7 @@ public class JSRealm {
     private final JSConstructor pluralRulesConstructor;
     private final JSConstructor listFormatConstructor;
     private final JSConstructor dateTimeFormatConstructor;
+    private final JSConstructor relativeTimeFormatConstructor;
     private final JSConstructor dateConstructor;
     @CompilationFinal(dimensions = 1) private final JSConstructor[] errorConstructors;
     private final JSConstructor callSiteConstructor;
@@ -214,7 +215,6 @@ public class JSRealm {
     private final DynamicObject enumerateIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
-    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] simdTypeFactories;
 
     private final JSConstructor generatorFunctionConstructor;
     private final DynamicObject generatorObjectPrototype;
@@ -232,8 +232,6 @@ public class JSRealm {
     private final JSConstructor promiseConstructor;
 
     private DynamicObject javaPackageToPrimitiveFunction;
-
-    private final JSConstructor javaInteropWorkerConstructor;
 
     private final DynamicObject arrayProtoValuesIterator;
     @CompilationFinal private DynamicObject typedArrayConstructor;
@@ -352,12 +350,10 @@ public class JSRealm {
         initializeTypedArrayConstructors();
         this.dataViewConstructor = JSDataView.createConstructor(this);
 
-        if (JSTruffleOptions.SIMDJS) {
-            this.simdTypeFactories = new JSObjectFactory[SIMDType.FACTORIES.length];
+        if (context.getContextOptions().isSIMDjs()) {
             this.simdTypeConstructors = new JSConstructor[SIMDType.FACTORIES.length];
             initializeSIMDTypeConstructors();
         } else {
-            this.simdTypeFactories = null;
             this.simdTypeConstructors = null;
         }
 
@@ -367,18 +363,15 @@ public class JSRealm {
             this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
             this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
             this.listFormatConstructor = JSListFormat.createConstructor(this);
+            this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
         } else {
             this.collatorConstructor = null;
             this.numberFormatConstructor = null;
             this.dateTimeFormatConstructor = null;
             this.pluralRulesConstructor = null;
             this.listFormatConstructor = null;
+            this.relativeTimeFormatConstructor = null;
         }
-
-        boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
-        boolean nashornJavaInterop = isJavaInteropAvailable() && (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
-        this.jsAdapterConstructor = nashornCompat ? JSAdapter.createConstructor(this) : null;
-        this.javaImporterConstructor = nashornJavaInterop ? JavaImporter.createConstructor(this) : null;
 
         this.iteratorPrototype = createIteratorPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
@@ -409,7 +402,9 @@ public class JSRealm {
         this.asyncGeneratorFunctionConstructor = es9 ? JSFunction.createAsyncGeneratorFunctionConstructor(this) : null;
         this.asyncGeneratorObjectPrototype = es9 ? (DynamicObject) asyncGeneratorFunctionConstructor.getPrototype().get(JSObject.PROTOTYPE, null) : null;
 
-        this.javaInteropWorkerConstructor = isJavaInteropAvailable() ? JSJavaWorkerBuiltin.createWorkerConstructor(this) : null;
+        boolean nashornCompat = context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
+        this.jsAdapterConstructor = nashornCompat ? JSAdapter.createConstructor(this) : null;
+        this.javaImporterConstructor = nashornCompat ? JavaImporter.createConstructor(this) : null;
 
         this.outputStream = System.out;
         this.errorStream = System.err;
@@ -429,7 +424,7 @@ public class JSRealm {
     }
 
     private void initializeSIMDTypeConstructors() {
-        assert JSTruffleOptions.SIMDJS;
+        assert context.getContextOptions().isSIMDjs();
         JSConstructor taConst = JSSIMD.createSIMDTypeConstructor(this);
         simdTypeConstructor = taConst.getFunctionObject();
         simdTypePrototype = taConst.getPrototype();
@@ -531,6 +526,10 @@ public class JSRealm {
 
     public final JSConstructor getListFormatConstructor() {
         return listFormatConstructor;
+    }
+
+    public final JSConstructor getRelativeTimeFormatConstructor() {
+        return relativeTimeFormatConstructor;
     }
 
     public final JSConstructor getDateTimeFormatConstructor() {
@@ -771,11 +770,13 @@ public class JSRealm {
             DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor().getFunctionObject();
             DynamicObject pluralRulesFn = getPluralRulesConstructor().getFunctionObject();
             DynamicObject listFormatFn = getListFormatConstructor().getFunctionObject();
+            DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor().getFunctionObject();
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
             putGlobalProperty(global, JSIntl.CLASS_NAME, intlObject);
         }
 
@@ -799,7 +800,7 @@ public class JSRealm {
         }
         putGlobalProperty(global, JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
 
-        if (JSTruffleOptions.SIMDJS) {
+        if (context.getContextOptions().isSIMDjs()) {
             DynamicObject simdObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
             for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
                 JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
@@ -823,14 +824,11 @@ public class JSRealm {
         if (context.getContextOptions().isPolyglotBuiltin()) {
             setupPolyglot(global);
         }
-        if (isJavaInteropAvailable() && isJavaInteropEnabled()) {
-            setupJavaInterop(global);
-        }
         if (context.isOptionDebugBuiltin()) {
             putGlobalProperty(global, JSTruffleOptions.DebugPropertyName, createDebugObject());
         }
         if (JSTruffleOptions.Test262Mode) {
-            putGlobalProperty(global, JSTest262.CLASS_NAME, JSTest262.create(this));
+            putGlobalProperty(global, JSTest262.GLOBAL_PROPERTY_NAME, JSTest262.create(this));
         }
         if (JSTruffleOptions.TestV8Mode) {
             putGlobalProperty(global, JSTestV8.CLASS_NAME, JSTestV8.create(this));
@@ -912,6 +910,9 @@ public class JSRealm {
      * Add or set optional global properties. Used by initializeContext and patchContext.
      */
     public void addOptionalGlobals() {
+        if (getEnv().isPreInitialization()) {
+            return;
+        }
         if (getContext().getContextOptions().isShell()) {
             getContext().getFunctionLookup().iterateBuiltinFunctions(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, new Consumer<Builtin>() {
                 @Override
@@ -920,6 +921,9 @@ public class JSRealm {
                     JSObjectUtil.putOrSetDataProperty(getContext(), getGlobalObject(), builtin.getKey(), JSFunction.create(JSRealm.this, functionData), builtin.getAttributeFlags());
                 }
             });
+        }
+        if (isJavaInteropEnabled()) {
+            setupJavaInterop(getGlobalObject());
         }
     }
 
@@ -953,10 +957,6 @@ public class JSRealm {
         return simdTypeConstructors[factory.getFactoryIndex()];
     }
 
-    public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
-        return simdTypeFactories[factory.getFactoryIndex()];
-    }
-
     /**
      * Convenience method for defining global data properties with default attributes.
      */
@@ -985,31 +985,20 @@ public class JSRealm {
     }
 
     /**
-     * Can we do Java interop in principle.
-     */
-    static boolean isJavaInteropAvailable() {
-        return !JSTruffleOptions.SubstrateVM;
-    }
-
-    /**
-     * Is Java interop actually enabled.
+     * Is Java interop enabled in this Context.
      */
     public boolean isJavaInteropEnabled() {
-        assert isJavaInteropAvailable();
         return getEnv() != null && getEnv().isHostLookupAllowed();
     }
 
     private void setupJavaInterop(DynamicObject global) {
-        if (!isJavaInteropAvailable()) {
-            return;
-        }
+        assert isJavaInteropEnabled();
         DynamicObject java = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, java, Symbol.SYMBOL_TO_STRING_TAG, JAVA_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME);
-        if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
+        if (context.isOptionNashornCompatibilityMode()) {
             JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME_NASHORN_COMPAT);
         }
-        JSObjectUtil.putDataProperty(context, java, JAVA_WORKER_PROPERTY_NAME, getJavaInteropWorkerConstructor().getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
         putGlobalProperty(global, JAVA_CLASS_NAME, java);
 
         if (getEnv() != null && getEnv().isHostLookupAllowed()) {
@@ -1023,7 +1012,7 @@ public class JSRealm {
                 putGlobalProperty(global, "edu", JavaPackage.createInit(this, "edu"));
             }
 
-            if (context.isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop) {
+            if (context.isOptionNashornCompatibilityMode()) {
                 putGlobalProperty(global, JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
             }
         }
@@ -1220,10 +1209,6 @@ public class JSRealm {
 
     public JSConstructor getJSAdapterConstructor() {
         return jsAdapterConstructor;
-    }
-
-    public JSConstructor getJavaInteropWorkerConstructor() {
-        return javaInteropWorkerConstructor;
     }
 
     public TruffleLanguage.Env getEnv() {
@@ -1440,11 +1425,18 @@ public class JSRealm {
                 private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
 
                 @Override
-                public JSModuleRecord resolveImportedModule(JSModuleRecord referencingModule, String specifier) {
+                public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
+                    String refPath = referrer == null ? null : referrer.getSource().getPath();
                     try {
-                        TruffleFile refFile = getEnv().getTruffleFile(getPath(referencingModule.getSource())).getCanonicalFile();
-                        TruffleFile moduleFile = refFile.resolveSibling(specifier);
-                        String canonicalPath = moduleFile.getCanonicalFile().getPath();
+                        TruffleFile moduleFile;
+                        if (refPath == null) {
+                            // Importing module source does not originate from a file.
+                            moduleFile = getEnv().getTruffleFile(specifier).getCanonicalFile();
+                        } else {
+                            TruffleFile refFile = getEnv().getTruffleFile(refPath);
+                            moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
+                        }
+                        String canonicalPath = moduleFile.getPath();
                         JSModuleRecord existingModule = moduleMap.get(canonicalPath);
                         if (existingModule != null) {
                             return existingModule;
@@ -1458,27 +1450,22 @@ public class JSRealm {
                     }
                 }
 
-                private String getPath(Source source) {
-                    String path = source.getPath();
-                    if (path == null) {
-                        path = source.getName();
-                    }
-                    return path;
-                }
-
                 @Override
                 public JSModuleRecord loadModule(Source source) {
-                    String path = getPath(source);
-                    String canoncialPath = path;
-                    try {
-                        TruffleFile moduleFile = getEnv().getTruffleFile(path);
-                        canoncialPath = moduleFile.getCanonicalFile().getPath();
-                    } catch (IOException e) {
-                        throw Errors.createErrorFromException(e);
-                    } catch (SecurityException e) {
-                        // ignore: might be a literal source that does not exist on the file system.
+                    String path = source.getPath();
+                    String canonicalPath;
+                    if (path == null) {
+                        // Source does not originate from a file.
+                        canonicalPath = source.getName();
+                    } else {
+                        try {
+                            TruffleFile moduleFile = getEnv().getTruffleFile(path);
+                            canonicalPath = moduleFile.getCanonicalFile().getPath();
+                        } catch (IOException | SecurityException e) {
+                            throw Errors.createErrorFromException(e);
+                        }
                     }
-                    return moduleMap.computeIfAbsent(canoncialPath, (key) -> getContext().getEvaluator().parseModule(getContext(), source, this));
+                    return moduleMap.computeIfAbsent(canonicalPath, (key) -> getContext().getEvaluator().parseModule(getContext(), source, this));
                 }
             };
         }

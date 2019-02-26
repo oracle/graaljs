@@ -74,16 +74,16 @@ import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
-    @Child private PropertyGetNode getGeneratorState;
-    @Child private PropertySetNode setGeneratorState;
+    @Child private PropertyGetNode getGeneratorStateNode;
+    @Child private PropertySetNode setGeneratorStateNode;
     @Child private PropertyGetNode getAsyncGeneratorQueueNode;
     @Child private JSFunctionCallNode callPromiseResolveNode;
     @Child private PerformPromiseThenNode performPromiseThenNode;
-    @Child private NewPromiseCapabilityNode newPromiseCapability;
+    @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private AsyncGeneratorResolveNode asyncGeneratorResolveNode;
     @Child private AsyncGeneratorRejectNode asyncGeneratorRejectNode;
-    @Child private PropertySetNode setGenerator;
-    @Child private PropertySetNode setPromiseIsHandled;
+    @Child private PropertySetNode setGeneratorNode;
+    @Child private PropertySetNode setPromiseIsHandledNode;
     @Child private PromiseResolveNode promiseResolveNode;
     private final ConditionProfile abruptProf = ConditionProfile.createBinaryProfile();
     protected final JSContext context;
@@ -92,8 +92,8 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
 
     protected AsyncGeneratorResumeNextNode(JSContext context) {
         this.context = context;
-        this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
-        this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
+        this.getGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
+        this.setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
         this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
         this.asyncGeneratorResolveNode = AsyncGeneratorResolveNode.create(context);
     }
@@ -109,7 +109,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     @SuppressWarnings("unchecked")
     public final Object execute(VirtualFrame frame, DynamicObject generator) {
         for (;;) {
-            AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorState.getValue(generator);
+            AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorStateNode.getValue(generator);
             assert state != AsyncGeneratorState.Executing;
             if (state == AsyncGeneratorState.AwaitingReturn) {
                 return Undefined.instance;
@@ -121,12 +121,12 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
             AsyncGeneratorRequest next = queue.peekFirst();
             if (abruptProf.profile(next.isAbruptCompletion())) {
                 if (state == AsyncGeneratorState.SuspendedStart) {
-                    setGeneratorState.setValue(generator, state = AsyncGeneratorState.Completed);
+                    setGeneratorStateNode.setValue(generator, state = AsyncGeneratorState.Completed);
                 }
                 if (state == AsyncGeneratorState.Completed) {
                     if (next.isReturn()) {
                         enterReturnBranch();
-                        setGeneratorState.setValue(generator, AsyncGeneratorState.AwaitingReturn);
+                        setGeneratorStateNode.setValue(generator, AsyncGeneratorState.AwaitingReturn);
                         DynamicObject promise = promiseResolve(next.getCompletionValue());
                         DynamicObject onFulfilled = createAsyncGeneratorReturnProcessorFulfilledFunction(generator);
                         DynamicObject onRejected = createAsyncGeneratorReturnProcessorRejectedFunction(generator);
@@ -147,7 +147,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                 continue; // Perform ! AsyncGeneratorResumeNext(generator).
             }
             assert state == AsyncGeneratorState.SuspendedStart || state == AsyncGeneratorState.SuspendedYield;
-            setGeneratorState.setValue(generator, state = AsyncGeneratorState.Executing);
+            setGeneratorStateNode.setValue(generator, state = AsyncGeneratorState.Executing);
             return performResumeNext(generator, next.getCompletion());
         }
     }
@@ -196,32 +196,32 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     }
 
     private void enterReturnBranch() {
-        if (performPromiseThenNode == null || setGenerator == null || setPromiseIsHandled == null) {
+        if (performPromiseThenNode == null || setGeneratorNode == null || setPromiseIsHandledNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.performPromiseThenNode = insert(PerformPromiseThenNode.create(context));
-            this.setGenerator = insert(PropertySetNode.createSetHidden(RETURN_PROCESSOR_GENERATOR, context));
-            this.setPromiseIsHandled = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context));
+            this.setGeneratorNode = insert(PropertySetNode.createSetHidden(RETURN_PROCESSOR_GENERATOR, context));
+            this.setPromiseIsHandledNode = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context));
         }
     }
 
     private PromiseCapabilityRecord newPromiseCapability() {
-        if (newPromiseCapability == null) {
+        if (newPromiseCapabilityNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            newPromiseCapability = insert(NewPromiseCapabilityNode.create(context));
+            newPromiseCapabilityNode = insert(NewPromiseCapabilityNode.create(context));
         }
-        return newPromiseCapability.executeDefault();
+        return newPromiseCapabilityNode.executeDefault();
     }
 
     private PromiseCapabilityRecord newThrowawayCapability() {
         if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
             return null;
         }
-        if (setPromiseIsHandled == null) {
+        if (setPromiseIsHandledNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            setPromiseIsHandled = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context));
+            setPromiseIsHandledNode = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context));
         }
         PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
-        setPromiseIsHandled.setValueBoolean(throwawayCapability.getPromise(), true);
+        setPromiseIsHandledNode.setValueBoolean(throwawayCapability.getPromise(), true);
         return throwawayCapability;
     }
 
@@ -235,7 +235,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     private DynamicObject createAsyncGeneratorReturnProcessorFulfilledFunction(DynamicObject generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncGeneratorReturnFulfilled, (c) -> createAsyncGeneratorReturnProcessorFulfilledImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
-        setGenerator.setValue(function, generator);
+        setGeneratorNode.setValue(function, generator);
         return function;
     }
 
@@ -262,7 +262,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
     private DynamicObject createAsyncGeneratorReturnProcessorRejectedFunction(DynamicObject generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncGeneratorReturnRejected, (c) -> createAsyncGeneratorReturnProcessorRejectedImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
-        setGenerator.setValue(function, generator);
+        setGeneratorNode.setValue(function, generator);
         return function;
     }
 

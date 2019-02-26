@@ -118,10 +118,6 @@
     "status" : "SKIP",
     "comment" : "multi-threaded test"
   }, {
-    "filePath" : "basic/javaexceptions.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
     "filePath" : "basic/javaimporter.js",
     "status" : "FAIL",
     "comment" : "Java interop migration"

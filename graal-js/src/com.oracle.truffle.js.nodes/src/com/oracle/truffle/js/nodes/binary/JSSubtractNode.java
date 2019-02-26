@@ -64,7 +64,7 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right, boolean truncate) {
         if (right instanceof JSConstantNumericUnitNode) {
-            return JSAddSubNumericUnitNodeGen.create(left, false, truncate);
+            return JSAddSubNumericUnitNode.create(left, false, truncate);
         }
         return JSSubtractNodeGen.create(truncate, left, right);
     }

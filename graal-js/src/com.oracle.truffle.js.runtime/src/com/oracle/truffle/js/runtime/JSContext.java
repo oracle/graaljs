@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
-import com.oracle.truffle.js.runtime.builtins.JSJavaWorkerBuiltin;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
@@ -106,6 +105,8 @@ import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.JSSIMD;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -116,9 +117,6 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
-import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker;
-import com.oracle.truffle.js.runtime.interop.DefaultJavaInteropWorker.DefaultMainWorker;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.interop.JavaImporter;
 import com.oracle.truffle.js.runtime.interop.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
@@ -129,6 +127,7 @@ import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.JSShapeData;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
@@ -199,7 +198,6 @@ public class JSContext {
     private final TimeProfiler timeProfiler;
 
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
-    private final JSObjectFactory.BoundProto javaWrapperFactory;
 
     /** The RegExp engine, as obtained from RegexLanguage. */
     private TruffleObject regexEngine;
@@ -212,6 +210,8 @@ public class JSContext {
 
     private ImportMetaInitializer importMetaInitializer;
     private final Assumption importMetaInitializerNotUsedAssumption;
+    private ImportModuleDynamicallyCallback importModuleDynamicallyCallback;
+    private final Assumption importModuleDynamicallyCallbackNotUsedAssumption;
 
     private final CallTarget emptyFunctionCallTarget;
     private final CallTarget speciesGetterFunctionCallTarget;
@@ -243,6 +243,7 @@ public class JSContext {
         PromiseCatchFinally,
         PromiseValueThunk,
         PromiseThrower,
+        ImportModuleDynamically,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
@@ -287,13 +288,6 @@ public class JSContext {
      * Initialized after engine creation either by some testing harness or by node.
      */
     @CompilationFinal private JSAgent agent;
-
-    /**
-     * Java Interop Workers factory.
-     */
-    @CompilationFinal private EcmaAgent mainWorker;
-    @CompilationFinal private EcmaAgent.Factory javaInteropWorkersFactory;
-    @CompilationFinal private boolean shouldProcessJavaInteropAsyncTasks = true;
 
     private final JSContextOptions contextOptions;
 
@@ -366,12 +360,14 @@ public class JSContext {
     private final JSObjectFactory pluralRulesFactory;
     private final JSObjectFactory dateTimeFormatFactory;
     private final JSObjectFactory listFormatFactory;
+    private final JSObjectFactory relativeTimeFormatFactory;
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
-    private final JSObjectFactory javaInteropWorkerObjectFactory;
     private final JSObjectFactory jsAdapterFactory;
     private final JSObjectFactory dictionaryObjectFactory;
+
+    @CompilationFinal(dimensions = 1) private final JSObjectFactory[] simdTypeFactories;
 
     private final int factoryCount;
 
@@ -410,6 +406,7 @@ public class JSContext {
         this.promiseHookNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseHookNotUsedAssumption");
         this.promiseRejectionTrackerNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseRejectionTrackerNotUsedAssumption");
         this.importMetaInitializerNotUsedAssumption = Truffle.getRuntime().createAssumption("importMetaInitializerNotUsedAssumption");
+        this.importModuleDynamicallyCallbackNotUsedAssumption = Truffle.getRuntime().createAssumption("importModuleDynamicallyCallbackNotUsedAssumption");
 
         this.emptyFunctionCallTarget = createEmptyFunctionCallTarget(lang);
         this.speciesGetterFunctionCallTarget = createSpeciesGetterFunctionCallTarget(lang);
@@ -417,7 +414,6 @@ public class JSContext {
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
         this.timeProfiler = JSTruffleOptions.ProfileTime ? new TimeProfiler() : null;
-        this.javaWrapperFactory = JSTruffleOptions.NashornJavaInterop ? JSObjectFactory.createBound(this, Null.instance, JSJavaWrapper.makeShape(this).createFactory()) : null;
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
@@ -436,7 +432,7 @@ public class JSContext {
         this.protoGetterFunctionData = annexB ? protoGetterFunction() : null;
         this.protoSetterFunctionData = annexB ? protoSetterFunction() : null;
 
-        this.isMultiContext = lang != null && lang.isMultiContext();
+        this.isMultiContext = lang.isMultiContext();
 
         // shapes and factories
         PrototypeSupplier objectPrototypeSupplier = JSUserObject.INSTANCE;
@@ -511,13 +507,17 @@ public class JSContext {
         this.dateTimeFormatFactory = intl402 ? builder.create(JSDateTimeFormat.INSTANCE) : null;
         this.pluralRulesFactory = intl402 ? builder.create(JSPluralRules.INSTANCE) : null;
         this.listFormatFactory = intl402 ? builder.create(JSListFormat.INSTANCE) : null;
+        this.relativeTimeFormatFactory = intl402 ? builder.create(JSRelativeTimeFormat.INSTANCE) : null;
 
+        this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
-        boolean nashornJavaInterop = JSRealm.isJavaInteropAvailable() && (isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornJavaInterop);
-        this.javaImporterFactory = nashornJavaInterop ? builder.create(JavaImporter.instance()) : null;
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
-        this.javaPackageFactory = JSRealm.isJavaInteropAvailable() ? builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape) : null;
-        this.javaInteropWorkerObjectFactory = JSRealm.isJavaInteropAvailable() ? builder.create(JSJavaWorkerBuiltin.INSTANCE) : null;
+        this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
+
+        this.simdTypeFactories = new JSObjectFactory[SIMDType.factories().length];
+        for (SIMDType.SIMDTypeFactory<? extends SIMDType> factory : SIMDType.factories()) {
+            simdTypeFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSSIMD.makeInitialSIMDShape(c, p));
+        }
 
         this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
@@ -712,11 +712,6 @@ public class JSContext {
                 }
             }
 
-            // In node.js-mode, tasks are processed by the uv loop.
-            if (shouldProcessJavaInteropAsyncTasks) {
-                queueContainsJobs = processJavaInteropAsyncTasks();
-            }
-
             // If a job was executed, it might have scheduled other tasks.
         } while (queueContainsJobs);
     }
@@ -902,6 +897,10 @@ public class JSContext {
         return listFormatFactory;
     }
 
+    public final JSObjectFactory getRelativeTimeFormatFactory() {
+        return relativeTimeFormatFactory;
+    }
+
     public final JSObjectFactory getDateTimeFormatFactory() {
         return dateTimeFormatFactory;
     }
@@ -918,12 +917,8 @@ public class JSContext {
         return javaPackageFactory;
     }
 
-    public final JSObjectFactory.BoundProto getJavaWrapperFactory() {
-        return javaWrapperFactory;
-    }
-
     public JSObjectFactory getSIMDTypeFactory(SIMDTypeFactory<? extends SIMDType> factory) {
-        return getRealm().getSIMDTypeFactory(factory);
+        return simdTypeFactories[factory.getFactoryIndex()];
     }
 
     public JSObjectFactory getDictionaryObjectFactory() {
@@ -1267,41 +1262,6 @@ public class JSContext {
         return contextOptions.isAwaitOptimization();
     }
 
-    public void initializeJavaInteropWorkers(EcmaAgent workerMain, EcmaAgent.Factory workerFactory) {
-        assert mainWorker == null && javaInteropWorkersFactory == null;
-        mainWorker = workerMain;
-        javaInteropWorkersFactory = workerFactory;
-        shouldProcessJavaInteropAsyncTasks = false;
-    }
-
-    public EcmaAgent.Factory getJavaInteropWorkerFactory() {
-        if (javaInteropWorkersFactory == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            javaInteropWorkersFactory = new DefaultJavaInteropWorker.Factory((DefaultMainWorker) getMainWorker());
-            // As soon as we load Java interop, we know we will use promises.
-            invalidatePromiseQueueNotUsedAssumption();
-        }
-        return javaInteropWorkersFactory;
-    }
-
-    public JSObjectFactory getJavaInteropWorkerObjectFactory() {
-        return javaInteropWorkerObjectFactory;
-    }
-
-    public EcmaAgent getMainWorker() {
-        if (mainWorker == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            mainWorker = new DefaultMainWorker();
-        }
-        return mainWorker;
-    }
-
-    public boolean processJavaInteropAsyncTasks() {
-        assert shouldProcessJavaInteropAsyncTasks;
-        DefaultMainWorker main = (DefaultMainWorker) getMainWorker();
-        return main.processPendingTasks();
-    }
-
     public final void setPromiseRejectionTracker(PromiseRejectionTracker tracker) {
         invalidatePromiseRejectionTrackerNotUsedAssumption();
         this.promiseRejectionTracker = tracker;
@@ -1402,20 +1362,42 @@ public class JSContext {
     }
 
     public final void setImportMetaInitializer(ImportMetaInitializer importMetaInitializer) {
-        invalidateImportMetaInitializerNotUsedAssumption();
+        importMetaInitializerNotUsedAssumption.invalidate("ImportMetaInitializer unused");
         this.importMetaInitializer = importMetaInitializer;
     }
 
-    private void invalidateImportMetaInitializerNotUsedAssumption() {
-        if (importMetaInitializerNotUsedAssumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            importMetaInitializerNotUsedAssumption.invalidate("ImportMetaInitializer unused");
+    public final boolean hasImportMetaInitializerBeenSet() {
+        return !importMetaInitializerNotUsedAssumption.isValid();
+    }
+
+    @TruffleBoundary
+    public final void notifyImportMetaInitializer(DynamicObject importMeta, JSModuleRecord module) {
+        if (importMetaInitializer != null) {
+            importMetaInitializer.initializeImportMeta(importMeta, module);
         }
     }
 
-    public final void notifyImportMetaInitializer(DynamicObject importMeta, JSModuleRecord module) {
-        if (!importMetaInitializerNotUsedAssumption.isValid() && importMetaInitializer != null) {
-            importMetaInitializer.initializeImportMeta(importMeta, module);
+    public final void setImportModuleDynamicallyCallback(ImportModuleDynamicallyCallback callback) {
+        importModuleDynamicallyCallbackNotUsedAssumption.invalidate();
+        this.importModuleDynamicallyCallback = callback;
+    }
+
+    public final boolean hasImportModuleDynamicallyCallbackBeenSet() {
+        return !importModuleDynamicallyCallbackNotUsedAssumption.isValid();
+    }
+
+    /**
+     * Invokes the HostImportModuleDynamically (and FinishDynamicImport) callback. Returns a promise
+     * of dynamic import completion or {@null} if no callback is installed or the callback failed.
+     *
+     * @return the callback result (a promise or {@code null}).
+     */
+    @TruffleBoundary
+    public final DynamicObject hostImportModuleDynamically(JSRealm realm, ScriptOrModule referrer, String specifier) {
+        if (importModuleDynamicallyCallback != null) {
+            return importModuleDynamicallyCallback.importModuleDynamically(realm, referrer, specifier);
+        } else {
+            return null;
         }
     }
 
@@ -1545,37 +1527,22 @@ public class JSContext {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = JSRuntime.toObject(JSContext.this, JSArguments.getThisObject(arguments));
+                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments));
                 if (JSArguments.getUserArgumentCount(arguments) < 1) {
                     return Undefined.instance;
                 }
                 Object value = JSArguments.getUserArgument(arguments, 0);
-
-                DynamicObject current = JSObject.getPrototype(thisObj);
-                if (current == value) {
-                    return Undefined.instance; // true in OrdinarySetPrototype
-                }
-                if (!JSObject.isExtensible(thisObj)) {
-                    throwCannotSetNonExtensibleProtoError(thisObj);
-                }
-
-                if (!(JSObject.isDynamicObject(value)) || value == Undefined.instance) {
+                if (!JSObject.isJSObject(value) || value == Undefined.instance) {
                     return Undefined.instance;
                 }
+                if (!JSObject.isJSObject(obj)) {
+                    return Undefined.instance;
+                }
+                DynamicObject thisObj = (DynamicObject) obj;
                 if (!JSObject.setPrototype(thisObj, (DynamicObject) value)) {
-                    throwCannotSetProtoError(thisObj);
+                    throw Errors.createTypeErrorCannotSetProto(thisObj, (DynamicObject) value);
                 }
                 return Undefined.instance;
-            }
-
-            @TruffleBoundary
-            private void throwCannotSetNonExtensibleProtoError(DynamicObject thisObj) {
-                throw Errors.createTypeError("Cannot set __proto__ of non-extensible " + JSObject.defaultToString(thisObj));
-            }
-
-            @TruffleBoundary
-            private void throwCannotSetProtoError(DynamicObject thisObj) {
-                throw Errors.createTypeError("Cannot set __proto__ of " + JSObject.defaultToString(thisObj));
             }
         });
         return JSFunctionData.createCallOnly(this, callTarget, 0, "set " + JSObject.PROTO);
@@ -1585,8 +1552,11 @@ public class JSContext {
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                Object obj = JSArguments.getThisObject(frame.getArguments());
-                return JSObject.getPrototype(JSRuntime.toObject(JSContext.this, obj));
+                Object obj = JSRuntime.toObject(JSContext.this, JSArguments.getThisObject(frame.getArguments()));
+                if (JSObject.isJSObject(obj)) {
+                    return JSObject.getPrototype((DynamicObject) obj);
+                }
+                return Null.instance;
             }
         });
         return JSFunctionData.createCallOnly(this, callTarget, 0, "get " + JSObject.PROTO);

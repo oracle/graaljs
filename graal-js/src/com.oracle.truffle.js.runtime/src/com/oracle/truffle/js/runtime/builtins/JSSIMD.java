@@ -182,4 +182,12 @@ public final class JSSIMD extends JSBuiltinObject {
         JSObjectUtil.putConstructorProperty(context, prototype, ctor);
         return prototype;
     }
+
+    public static Shape makeInitialSIMDShape(JSContext ctx, DynamicObject prototype) {
+        Shape childTree = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, ctx);
+        // hidden properties
+        childTree = childTree.addProperty(SIMD_TYPE_PROPERTY);
+        childTree = childTree.addProperty(ARRAY_PROPERTY);
+        return childTree;
+    }
 }

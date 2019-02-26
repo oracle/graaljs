@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,8 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class BinaryOperationTest extends FineGrainedAccessTest {
 
@@ -196,6 +198,56 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
     @Test
     public void desugaredBinarystrictNeq() {
         binaryOperationTest("!==", "!", "===");
+    }
+
+    @Test
+    public void undefinedEqNullLeft() {
+        testBinExpOnly("var foo = undefined; foo == null;",
+                        Undefined.instance,
+                        Null.instance);
+    }
+
+    @Test
+    public void nullEqUndefinedLeft() {
+        testBinExpOnly("var foo = null; foo == undefined;",
+                        Null.instance,
+                        Undefined.instance);
+    }
+
+    @Test
+    public void nullEqUndefinedRight() {
+        testBinExpOnly("var foo = null; undefined == foo;",
+                        Undefined.instance,
+                        Null.instance);
+    }
+
+    @Test
+    public void undefinedEqNullRight() {
+        testBinExpOnly("var foo = undefined; null == foo;",
+                        Null.instance,
+                        Undefined.instance);
+    }
+
+    @Test
+    public void undefinedEqUndefined() {
+        testBinExpOnly("var foo = undefined; undefined == foo;",
+                        Undefined.instance,
+                        Undefined.instance);
+    }
+
+    @Test
+    public void nullEqNull() {
+        testBinExpOnly("var foo = null; null == foo;",
+                        Null.instance,
+                        Null.instance);
+    }
+
+    private void testBinExpOnly(String src, Object firstValue, Object secondValue) {
+        evalWithTag(src, BinaryExpressionTag.class);
+        enter(BinaryExpressionTag.class, (e, binary) -> {
+            binary.input(firstValue);
+            binary.input(secondValue);
+        }).exit();
     }
 
     private void binaryOperationTest(String srcOperator, String unOperator, String binOperator) {

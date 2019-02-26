@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,16 +83,17 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
-        this.getStyleOption = GetStringOptionNode.create(context, "style", new String[]{"decimal", "percent", "currency"}, "decimal");
-        this.getCurrencyOption = GetStringOptionNode.create(context, "currency", null, null);
-        this.getCurrencyDisplayOption = GetStringOptionNode.create(context, "currencyDisplay", new String[]{"code", "symbol", "name"}, "symbol");
-        this.getUseGroupingOption = GetBooleanOptionNode.create(context, "useGrouping", true);
-        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, "minimumIntegerDigits", 21);
-        this.getMinSignificantDigitsOption = PropertyGetNode.create("minimumSignificantDigits", false, context);
-        this.getMaxSignificantDigitsOption = PropertyGetNode.create("maximumSignificantDigits", false, context);
-        this.getMinFracDigitsOption = GetNumberOptionNode.create(context, "minimumFractionDigits", 21);
-        this.getMaxFracDigitsOption = GetNumberOptionNode.create(context, "maximumFractionDigits", 20);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
+                        new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.DECIMAL, IntlUtil.PERCENT, IntlUtil.CURRENCY}, IntlUtil.DECIMAL);
+        this.getCurrencyOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY, null, null);
+        this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.CURRENCY_DISPLAY, new String[]{IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NAME}, IntlUtil.SYMBOL);
+        this.getUseGroupingOption = GetBooleanOptionNode.create(context, IntlUtil.USE_GROUPING, true);
+        this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_INTEGER_DIGITS, 21);
+        this.getMinSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MINIMUM_SIGNIFICANT_DIGITS, false, context);
+        this.getMaxSignificantDigitsOption = PropertyGetNode.create(IntlUtil.MAXIMUM_SIGNIFICANT_DIGITS, false, context);
+        this.getMinFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_FRACTION_DIGITS, 21);
+        this.getMaxFracDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MAXIMUM_FRACTION_DIGITS, 20);
         this.getMnsdDNO = DefaultNumberOptionNode.create(21, 1);
         this.getMxsdDNO = DefaultNumberOptionNode.create(21, 21);
     }
@@ -130,9 +131,9 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             if (currencyCode != null && !JSNumberFormat.isWellFormedCurrencyCode(currencyCode)) {
                 throw Errors.createRangeErrorCurrencyNotWellFormed(currencyCode);
             }
-            if (optStyle.equals("currency")) {
+            if (optStyle.equals(IntlUtil.CURRENCY)) {
                 if (currencyCode == null) {
-                    throw Errors.createTypeError("Currency can not be undefined when style is \"currency\"");
+                    throw Errors.createTypeErrorFormat("Currency can not be undefined when style is \"%s\"", IntlUtil.CURRENCY);
                 } else {
                     state.currency = IntlUtil.toUpperCase(currencyCode);
                 }
@@ -140,11 +141,11 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             int cDigits = JSNumberFormat.currencyDigits(state.currency);
             int mnfdDefault = cDigits;
             int mxfdDefault = cDigits;
-            if (state.style.equals("currency")) {
+            if (state.style.equals(IntlUtil.CURRENCY)) {
                 state.currencyDisplay = optCurrencyDisplay;
             } else {
                 mnfdDefault = 0;
-                if (state.style.equals("percent")) {
+                if (state.style.equals(IntlUtil.PERCENT)) {
                     mxfdDefault = 0;
                 } else {
                     mxfdDefault = 3;

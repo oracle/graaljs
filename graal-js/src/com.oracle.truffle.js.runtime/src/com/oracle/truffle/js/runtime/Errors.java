@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -83,6 +84,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorFormat(String message, Node originatingNode, Object... args) {
+        return JSException.create(JSErrorType.RangeError, String.format(message, args), originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createURIError(String message) {
         return JSException.create(JSErrorType.URIError, message);
     }
@@ -100,11 +106,6 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeError(String message, Node originatingNode) {
         return JSException.create(JSErrorType.TypeError, message, originatingNode);
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorDateTimeFormatExpected() {
-        return createTypeError("DateTimeFormat object expected.");
     }
 
     @TruffleBoundary
@@ -144,13 +145,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNumberFormatExpected() {
-        return createTypeError("NumberFormat object expected.");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorPluralRulesExpected() {
-        return createTypeError("PluralRules object expected.");
+    public static JSException createTypeErrorTypeXExpected(String type) {
+        return createTypeErrorFormat("%s object expected.", type);
     }
 
     @TruffleBoundary
@@ -159,8 +155,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorListFormatExpected() {
-        return createTypeError("ListFormat object expected.");
+    public static JSException createTypeErrorMethodCalledOnNonObjectOrWrongType(String method) {
+        return createTypeErrorFormat("Method %s called on a non-object or on a wrong type of object.", method);
     }
 
     @TruffleBoundary
@@ -176,6 +172,11 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createSyntaxError(String message, SourceSection sourceLocation, boolean isIncompleteSource) {
         return JSException.create(JSErrorType.SyntaxError, message, sourceLocation, isIncompleteSource);
+    }
+
+    @TruffleBoundary
+    public static JSException createSyntaxErrorVariableAlreadyDeclared(String varName) {
+        return Errors.createSyntaxError("Variable \"" + varName + "\" has already been declared");
     }
 
     @TruffleBoundary
@@ -282,8 +283,14 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorProtoCycle(DynamicObject thisObj) {
-        return Errors.createTypeError("Cannot create__proto__ cycle for " + JSObject.defaultToString(thisObj));
+    public static JSException createTypeErrorCannotSetProto(DynamicObject thisObj, DynamicObject proto) {
+        if (!JSBuiltinObject.checkProtoCycle(thisObj, proto)) {
+            if (JSObject.getJSContext(thisObj).isOptionNashornCompatibilityMode()) {
+                return Errors.createTypeError("Cannot create__proto__ cycle for " + JSObject.defaultToString(thisObj));
+            }
+            return Errors.createTypeError("Cyclic __proto__ value");
+        }
+        throw Errors.createTypeError("Cannot set __proto__ of non-extensible " + JSObject.defaultToString(thisObj));
     }
 
     @TruffleBoundary
@@ -309,6 +316,11 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorNotExtensible(DynamicObject thisObj, Object key) {
         return Errors.createTypeError("Cannot add new property " + keyToString(key) + " to non-extensible " + JSObject.defaultToString(thisObj));
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorSetNonObjectReceiver(Object receiver, Object key) {
+        return Errors.createTypeError("Cannot add property " + keyToString(key) + " to non-object " + JSRuntime.safeToString(receiver));
     }
 
     @TruffleBoundary
@@ -389,8 +401,33 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorCannotDeclareGlobalFunction(String varName) {
+        return Errors.createTypeError("Cannot declare global function '" + varName + "'");
+    }
+
+    @TruffleBoundary
     public static JSException createRangeErrorCurrencyNotWellFormed(String currencyCode) {
         return createRangeError(String.format("Currency, %s, is not well formed.", currencyCode));
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorInvalidUnitArgument(String functionName, String unit) {
+        return createRangeError(String.format("Invalid unit argument for %s() '%s'", functionName, unit));
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorMapExpected() {
+        return Errors.createTypeError("Map expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorSetExpected() {
+        return Errors.createTypeError("Set expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorSymbolExpected() {
+        return Errors.createTypeError("Symbol expected");
     }
 
     @TruffleBoundary
@@ -603,4 +640,10 @@ public final class Errors {
     public static JSException createEvalDisabled() {
         return Errors.createEvalError("dynamic evaluation of code is disabled.");
     }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorIteratorResultNotObject(Object value, Node originatingNode) {
+        return Errors.createTypeError("Iterator result " + JSRuntime.safeToString(value) + " is not an object", originatingNode);
+    }
+
 }

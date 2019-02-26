@@ -2016,10 +2016,6 @@ void SetupProcessObject(Environment* env,
     env->SetMethod(process, "abort", Abort);
     env->SetMethod(process, "chdir", Chdir);
     env->SetMethod(process, "umask", Umask);
-
-#ifdef GRAAL_ENABLE_THREADING
-  env->SetMethod(process, "_graalThreadingInit", GraalThreadingInit);
-#endif
   }
   env->SetMethod(process, "_getActiveRequests", GetActiveRequests);
   env->SetMethod(process, "_getActiveHandles", GetActiveHandles);
@@ -3075,6 +3071,14 @@ int Start(int argc, char** argv) {
 
 // GRAAL EXTENSIONS
 
+static void os_setenv(const char * name, const char * value) {
+#ifdef __POSIX__
+    setenv(name, value, 1);
+#else
+    _putenv_s(name, value);
+#endif
+}
+
 long GraalArgumentsPreprocessing(int argc, char *argv[]) {
   long result = -1;
   for (int i = 1; i < argc; i++) {
@@ -3094,9 +3098,9 @@ long GraalArgumentsPreprocessing(int argc, char *argv[]) {
     }
     if (classpath != nullptr) {
       if (classpath[0] == '=') {
-        setenv("NODE_JVM_CLASSPATH", classpath + 1, 1);
+        os_setenv("NODE_JVM_CLASSPATH", classpath + 1);
       } else if (classpath[0] == 0 && i + 1 < argc) {
-        setenv("NODE_JVM_CLASSPATH", argv[++i], 1);
+        os_setenv("NODE_JVM_CLASSPATH", argv[++i]);
         // Hack: replace the argument with the classpath by a string full of '-'.
         // This ensures that it looks like an option (i.e. is passed to JS engine
         // options, i.e., is not considered to be a name of the script to execute).
@@ -3133,14 +3137,6 @@ long GraalArgumentsPreprocessing(int argc, char *argv[]) {
   }
   return result;
 }
-
-#ifdef GRAAL_ENABLE_THREADING
-#include "graal/graal_threading.h"
-
-void GraalThreadingInit(const FunctionCallbackInfo<Value>& args) {
-  graal::threading::RegisterNativeCallbacks();
-}
-#endif
 
 // Call built-in modules' _register_<module name> function to
 // do module registration explicitly.

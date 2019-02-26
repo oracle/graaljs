@@ -184,4 +184,9 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
     protected ZeroBasedDoubleArray withIntegrityLevel(int newIntegrityLevel) {
         return new ZeroBasedDoubleArray(newIntegrityLevel, cache);
     }
+
+    @Override
+    public long nextElementIndex(DynamicObject object, long index, boolean condition) {
+        return nextElementIndexZeroBased(object, index, condition);
+    }
 }

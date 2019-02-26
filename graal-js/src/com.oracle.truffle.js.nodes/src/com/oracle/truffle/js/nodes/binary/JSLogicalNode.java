@@ -41,17 +41,27 @@
 package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.control.ResumableNode;
+import com.oracle.truffle.js.nodes.control.YieldException;
 
-public abstract class JSLogicalNode extends JSBinaryNode {
+public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNode {
+
+    private static final int RESUME_RIGHT = 1;
+    private static final int RESUME_UNEXECUTED = 0;
+
+    private final boolean negate;
+
     @Child private JSToBooleanNode toBooleanCast;
 
     protected final ConditionProfile canShortCircuit = ConditionProfile.createBinaryProfile();
 
-    public JSLogicalNode(JavaScriptNode left, JavaScriptNode right) {
+    public JSLogicalNode(JavaScriptNode left, JavaScriptNode right, boolean negate) {
         super(left, right);
+        this.negate = negate;
     }
 
     protected boolean toBoolean(Object operand) {
@@ -59,6 +69,45 @@ public abstract class JSLogicalNode extends JSBinaryNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toBooleanCast = insert(JSToBooleanNode.create());
         }
-        return toBooleanCast.executeBoolean(operand);
+        boolean value = toBooleanCast.executeBoolean(operand);
+        return negate ? !value : value;
+    }
+
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        Object leftValue = getLeft().execute(frame);
+        boolean leftAsBoolean = toBoolean(leftValue);
+        if (canShortCircuit.profile(leftAsBoolean)) {
+            return leftValue;
+        } else {
+            return getRight().execute(frame);
+        }
+    }
+
+    @Override
+    public Object resume(VirtualFrame frame) {
+        int state = getStateAsIntAndReset(frame);
+        if (state == RESUME_UNEXECUTED) {
+            Object leftValue = getLeft().execute(frame);
+            boolean leftAsBoolean = toBoolean(leftValue);
+            if (canShortCircuit.profile(leftAsBoolean)) {
+                return leftValue;
+            } else {
+                try {
+                    return getRight().execute(frame);
+                } catch (YieldException e) {
+                    setState(frame, RESUME_RIGHT);
+                    throw e;
+                }
+            }
+        } else {
+            assert state == RESUME_RIGHT;
+            try {
+                return getRight().execute(frame);
+            } catch (YieldException e) {
+                setState(frame, RESUME_RIGHT);
+                throw e;
+            }
+        }
     }
 }

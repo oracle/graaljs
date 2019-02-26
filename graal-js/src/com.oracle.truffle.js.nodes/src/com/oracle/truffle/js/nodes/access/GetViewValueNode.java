@@ -74,7 +74,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
         this.viewNode = view;
         this.requestIndexNode = requestIndex;
         this.isLittleEndianNode = isLittleEndian;
-        this.toBooleanNode = factory.bytesPerElement() == 1 ? null : JSToBooleanNode.create();
+        this.toBooleanNode = factory.getBytesPerElement() == 1 ? null : JSToBooleanNode.create();
     }
 
     static TypedArrayFactory typedArrayFactoryFromType(String type) {
@@ -100,7 +100,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
         DynamicObject dataView = (DynamicObject) view;
         DynamicObject buffer = JSDataView.getArrayBuffer(dataView);
         long getIndex = toIndexNode.executeLong(requestIndex);
-        boolean isLittleEndian = factory.bytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
+        boolean isLittleEndian = factory.getBytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
 
         if (!context.getTypedArrayNotDetachedAssumption().isValid()) {
             if (JSArrayBuffer.isDetachedBuffer(buffer)) {
@@ -110,7 +110,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
         }
 
         int viewLength = JSDataView.typedArrayGetLength(dataView);
-        int elementSize = factory.bytesPerElement();
+        int elementSize = factory.getBytesPerElement();
         if (getIndex + elementSize > viewLength) {
             errorBranch.enter();
             throw Errors.createRangeError("index + elementSize > viewLength");

@@ -90,7 +90,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFuncti
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSAdapterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSProxyNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaImporterNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaInteropWorkerNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructListFormatNodeGen;
@@ -98,6 +97,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumber
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructObjectNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructPluralRulesNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRegExpNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRelativeTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
@@ -125,6 +125,7 @@ import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
@@ -147,10 +148,10 @@ import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeListFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
+import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -186,6 +187,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -197,7 +199,6 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.WeakMap;
@@ -226,6 +227,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         ListFormat(0),
         PluralRules(0),
         DateTimeFormat(0),
+        RelativeTimeFormat(0),
 
         Error(1),
         RangeError(1),
@@ -266,18 +268,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         // non-standard (Nashorn) extensions
         JSAdapter(1),
-        JavaImporter(1) {
-            @Override
-            public boolean isEnabled() {
-                return !JSTruffleOptions.SubstrateVM;
-            }
-        },
-        JavaInteropWorker(1) {
-            @Override
-            public boolean isEnabled() {
-                return !JSTruffleOptions.SubstrateVM;
-            }
-        };
+        JavaImporter(1);
 
         private final int length;
 
@@ -366,6 +357,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructDateTimeFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
                                 : ConstructDateTimeFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
                                 : CallDateTimeFormatNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case RelativeTimeFormat:
+                return construct ? (newTarget
+                                ? ConstructRelativeTimeFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                : ConstructRelativeTimeFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                                : createCallRequiresNew(context, builtin);
             case Object:
                 if (newTarget) {
                     return ConstructObjectNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context));
@@ -505,20 +501,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             case JSAdapter:
                 return ConstructJSAdapterNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
-
-            default:
-                if (!JSTruffleOptions.SubstrateVM) {
-                    switch (builtinEnum) {
-                        case JavaImporter:
-                            return ConstructJavaImporterNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
-                        case JavaInteropWorker:
-                            if (construct) {
-                                return ConstructJavaInteropWorkerNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                            } else {
-                                return createCallRequiresNew(context, builtin);
-                            }
-                    }
-                }
+            case JavaImporter:
+                return ConstructJavaImporterNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
         }
         return null;
 
@@ -1082,6 +1066,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getListFormatConstructor().getPrototype();
+        }
+    }
+
+    public abstract static class ConstructRelativeTimeFormatNode extends ConstructWithNewTargetNode {
+
+        @Child InitializeRelativeTimeFormatNode initializeRelativeTimeFormatNode;
+
+        public ConstructRelativeTimeFormatNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+            initializeRelativeTimeFormatNode = InitializeRelativeTimeFormatNode.createInitalizeRelativeTimeFormatNode(context);
+        }
+
+        @Specialization
+        protected DynamicObject constructRelativeTimeFormat(DynamicObject newTarget, Object locales, Object options) {
+            DynamicObject listFormat = swapPrototype(JSRelativeTimeFormat.create(getContext()), newTarget);
+            return initializeRelativeTimeFormatNode.executeInit(listFormat, locales, options);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getRelativeTimeFormatConstructor().getPrototype();
         }
     }
 
@@ -1709,7 +1714,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected DynamicObject constructJavaImporter(Object... args) {
+        protected DynamicObject constructJavaImporter(Object[] args) {
             SimpleArrayList<DynamicObject> pkgs = new SimpleArrayList<>(args.length);
             for (Object pkg : args) {
                 if (JavaPackage.isJavaPackage(pkg)) {
@@ -1785,7 +1790,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class ConstructMapNode extends JSConstructIterableOperation {
 
-        private final JSClassProfile classProfile = JSClassProfile.create();
+        private @Child ReadElementNode readElementNode;
 
         public ConstructMapNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -1820,11 +1825,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object nextItem = getIteratorValue((DynamicObject) next);
                         if (!JSObject.isDynamicObject(nextItem)) {
                             errorBranch.enter();
-                            throw Errors.createTypeError("not an object in iterator");
+                            throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                         }
-                        DynamicObject nextItemObj = (DynamicObject) (nextItem);
-                        Object k = JSObject.get(nextItemObj, 0, classProfile);
-                        Object v = JSObject.get(nextItemObj, 1, classProfile);
+                        Object k = readElement(nextItem, 0);
+                        Object v = readElement(nextItem, 1);
                         call(mapObj, adderFn, new Object[]{k, v});
                     }
                 } catch (Exception ex) {
@@ -1834,25 +1838,19 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
         }
 
+        private Object readElement(Object target, int index) {
+            if (readElementNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readElementNode = insert(ReadElementNode.create(getContext()));
+            }
+            return readElementNode.executeWithTargetAndIndex(target, index);
+        }
+
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getMapConstructor().getPrototype();
         }
 
-    }
-
-    public abstract static class ConstructJavaInteropWorkerNode extends JSBuiltinNode {
-        public ConstructJavaInteropWorkerNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected DynamicObject constructWorker() {
-            JSContext context = getContext();
-            EcmaAgent agent = context.getJavaInteropWorkerFactory().createAgent(context.getMainWorker());
-            DynamicObject worker = JSObject.create(context, context.getJavaInteropWorkerObjectFactory(), agent);
-            return worker;
-        }
     }
 
     public abstract static class ConstructSetNode extends JSConstructIterableOperation {

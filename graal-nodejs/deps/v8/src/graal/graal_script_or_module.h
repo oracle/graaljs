@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,32 +39,21 @@
  * SOFTWARE.
  */
 
-var assert = require('assert');
-var module = require('./_unit');
+#ifndef GRAAL_SCRIPT_OR_MODULE_H_
+#define GRAAL_SCRIPT_OR_MODULE_H_
 
-describe('Java interop threads', function() {
-    if (typeof Java !== 'object') {
-        // no interop
-        return;
-    }
-    it('can create and kill a worker', function(done) {
-        var worker = new Java.Worker();
-        worker.terminate();
-        done();
-    });
-    it('can start, consume result, and complete', function (done) {
-        // Original Node.js 6.x does not support async function
-        // => keeping the code of this test in string literal so that
-        // the unit tests do not fail with syntax error on the original Node.js
-        var code =
-                "(async function foo() {" +
-                "    var method = Java.type('java.lang.Thread').currentThread;" +
-                "    var worker = new Java.Worker();" +
-                "    var result = await worker.submit(method);" +
-                "    assert(result.getName().contains('thread'));" +
-                "    worker.terminate();" +
-                "    done();" +
-                "})();";
-        eval(code);
-    });
-});
+#include "graal_handle_content.h"
+
+class GraalIsolate;
+
+class GraalScriptOrModule : public GraalHandleContent {
+public:
+    GraalScriptOrModule(GraalIsolate* isolate, jobject java_object);
+
+    v8::Local<v8::Value> GetResourceName();
+
+protected:
+    GraalHandleContent* CopyImpl(jobject java_object_copy) override;
+};
+
+#endif /* GRAAL_SCRIPT_OR_MODULE_H_ */

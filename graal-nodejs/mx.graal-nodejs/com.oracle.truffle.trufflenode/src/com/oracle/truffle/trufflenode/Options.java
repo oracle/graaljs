@@ -89,8 +89,8 @@ public final class Options {
         if (launcherCommonPath == null) {
             launcherCommonPath = javaHome + "/lib/graalvm/launcher-common.jar";
         }
-        URL truffleNodeURL = new URL("file://" + truffleNodePath);
-        URL launcherCommonURL = new URL("file://" + launcherCommonPath);
+        URL truffleNodeURL = new URL("file:" + truffleNodePath);
+        URL launcherCommonURL = new URL("file:" + launcherCommonPath);
         ClassLoader loader = new URLClassLoader(new URL[]{launcherCommonURL, truffleNodeURL}, null);
         return (Class<Function<String[], Object[]>>) loader.loadClass("com.oracle.truffle.trufflenode.Options$OptionsParser");
     }

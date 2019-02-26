@@ -207,15 +207,16 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
             }
             String path = source.getPath();
             path = (path == null) ? source.getName() : path;
+            if (path.startsWith("file:")) {
+                path = path.substring("file:".length());
+            }
             if (File.separatorChar == '\\' && path.startsWith("/")) {
                 // on Windows, remove first "/" from /c:/test/dir/ style paths
                 path = path.substring(1);
             }
-            if (path.startsWith("file:")) {
-                path = path.substring("file:".length());
-            }
             Path filePath = Paths.get(path).toAbsolutePath();
-            String dirPath = filePath.getParent().toString();
+            Path parentPath = filePath.getParent();
+            String dirPath = (parentPath == null) ? "" : parentPath.toString();
             if (!dirPath.isEmpty() && !(dirPath.charAt(dirPath.length() - 1) == '/' || dirPath.charAt(dirPath.length() - 1) == File.separatorChar)) {
                 dirPath += File.separatorChar;
             }

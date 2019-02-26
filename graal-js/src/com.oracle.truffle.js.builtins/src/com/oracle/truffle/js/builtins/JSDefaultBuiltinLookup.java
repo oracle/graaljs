@@ -174,29 +174,25 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new DebugBuiltins());
         defineBuiltins(new PerformanceBuiltins());
         defineBuiltins(new RealmFunctionBuiltins());
-        if (!JSTruffleOptions.SubstrateVM) {
-            defineJavaInterop();
-        }
+        defineJavaInterop();
         if (JSTruffleOptions.ProfileTime) {
             System.out.println("JSDefaultBuiltinLookup: " + (System.nanoTime() - time) / 1000000);
         }
-        if (JSTruffleOptions.SIMDJS) {
-            defineBuiltins(new SIMDBuiltins());
-            defineBuiltins(new SIMDTypePrototypeBuiltins());
 
-            for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
-                SIMDType t = factory.createSimdType();
-                if (t.getClass().equals(SIMDFloat32x4.class)) {
-                    defineBuiltins(new SIMDFloatFunctionBuiltins(factory.getName(), t));
-                } else if (t.getClass().equals(SIMDBool32x4.class) || t.getClass().equals(SIMDBool16x8.class) || t.getClass().equals(SIMDBool8x16.class)) {
-                    defineBuiltins(new SIMDBoolFunctionBuiltins(factory.getName(), t));
-                } else if (t.getClass().equals(SIMDInt16x8.class) || t.getClass().equals(SIMDInt8x16.class) || t.getClass().equals(SIMDUint16x8.class) || t.getClass().equals(SIMDUint8x16.class)) {
-                    defineBuiltins(new SIMDSmallIntFunctionBuiltins(factory.getName(), t));
-                } else if (t.getClass().equals(SIMDInt32x4.class) || t.getClass().equals(SIMDUint32x4.class)) {
-                    defineBuiltins(new SIMDIntFunctionBuiltins(factory.getName(), t));
-                } else {
-                    defineBuiltins(new SIMDTypeFunctionBuiltins(factory.getName(), t));
-                }
+        defineBuiltins(new SIMDBuiltins());
+        defineBuiltins(new SIMDTypePrototypeBuiltins());
+        for (SIMDTypeFactory<? extends SIMDType> factory : SIMDType.FACTORIES) {
+            SIMDType t = factory.createSimdType();
+            if (t.getClass().equals(SIMDFloat32x4.class)) {
+                defineBuiltins(new SIMDFloatFunctionBuiltins(factory.getName(), t));
+            } else if (t.getClass().equals(SIMDBool32x4.class) || t.getClass().equals(SIMDBool16x8.class) || t.getClass().equals(SIMDBool8x16.class)) {
+                defineBuiltins(new SIMDBoolFunctionBuiltins(factory.getName(), t));
+            } else if (t.getClass().equals(SIMDInt16x8.class) || t.getClass().equals(SIMDInt8x16.class) || t.getClass().equals(SIMDUint16x8.class) || t.getClass().equals(SIMDUint8x16.class)) {
+                defineBuiltins(new SIMDSmallIntFunctionBuiltins(factory.getName(), t));
+            } else if (t.getClass().equals(SIMDInt32x4.class) || t.getClass().equals(SIMDUint32x4.class)) {
+                defineBuiltins(new SIMDIntFunctionBuiltins(factory.getName(), t));
+            } else {
+                defineBuiltins(new SIMDTypeFunctionBuiltins(factory.getName(), t));
             }
         }
 
@@ -211,13 +207,13 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         defineBuiltins(new DateTimeFormatFunctionBuiltins());
         defineBuiltins(new PluralRulesPrototypeBuiltins());
         defineBuiltins(new PluralRulesFunctionBuiltins());
+        defineBuiltins(new RelativeTimeFormatPrototypeBuiltins());
+        defineBuiltins(new RelativeTimeFormatFunctionBuiltins());
         defineBuiltins(new IntlBuiltins());
     }
 
-    /* In a separate method for Substrate VM support. */
     private void defineJavaInterop() {
         defineBuiltins(new JavaBuiltins());
-        defineBuiltins(new JavaInteropWorkerPrototypeBuiltins());
         defineBuiltins(new JavaNashornCompatBuiltins());
     }
 }

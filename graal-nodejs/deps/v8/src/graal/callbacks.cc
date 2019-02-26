@@ -42,16 +42,28 @@
 // Call-backs from Java to C++
 
 #include "callbacks.h"
+#include "graal_array.h"
+#include "graal_array_buffer.h"
+#include "graal_array_buffer_view.h"
+#include "graal_boolean.h"
 #include "graal_context.h"
+#include "graal_date.h"
+#include "graal_function.h"
 #include "graal_function_callback_info.h"
 #include "graal_isolate.h"
+#include "graal_map.h"
 #include "graal_missing_primitive.h"
 #include "graal_module.h"
+#include "graal_number.h"
 #include "graal_object.h"
 #include "graal_promise.h"
+#include "graal_proxy.h"
 #include "graal_property_callback_info.h"
+#include "graal_set.h"
 #include "graal_string.h"
+#include "graal_symbol.h"
 #include "graal_external.h"
+#include "graal_script_or_module.h"
 #include "jni.h"
 #include "uv.h"
 #include "../../../../mxbuild/trufflenode/coremodules/node_snapshots.h"
@@ -92,6 +104,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("notifyPromiseRejectionTracker", "(Ljava/lang/Object;ILjava/lang/Object;)V", &GraalNotifyPromiseRejectionTracker),
     CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
     CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
+    CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
     CALLBACK("writeHostObject", "(JLjava/lang/Object;)V", &GraalWriteHostObject),
     CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
     CALLBACK("throwDataCloneError", "(JLjava/lang/String;)V", &GraalThrowDataCloneError),
@@ -125,7 +138,7 @@ bool RegisterCallbacks(JNIEnv* env, jclass callback_class) {
 }
 
 jobject GraalExecuteFunction(JNIEnv* env, GraalIsolate* isolate, jint id, GraalFunctionCallbackArguments& args, jobject java_context) {
-    if (isolate->StackOverflowCheckEnabled() && isolate->StackOverflowCheck((long) &env)) { return nullptr; }
+    if (isolate->StackOverflowCheckEnabled() && isolate->StackOverflowCheck((intptr_t) &env)) { return nullptr; }
     bool context_mismatch = !isolate->GetJNIEnv()->IsSameObject(isolate->CurrentJavaContext(), java_context);
     v8::Local<v8::Context> context;
     if (context_mismatch) {
@@ -189,12 +202,32 @@ GraalValue* AllocateNewTarget(GraalIsolate* isolate, jobject new_target, void* p
     }
 }
 
+// Maximum size of GraalValue (excluding referenced objects) returned
+// by GraalValue::FromJavaObject - used to reserve enough memory when the value
+// is allocated on stack
+static const int MAX_SIZE =
+    (std::max)(sizeof(GraalArray),
+    (std::max)(sizeof(GraalArrayBuffer),
+    (std::max)(sizeof(GraalArrayBufferView),
+    (std::max)(sizeof(GraalBoolean),
+    (std::max)(sizeof(GraalDate),
+    (std::max)(sizeof(GraalExternal),
+    (std::max)(sizeof(GraalFunction),
+    (std::max)(sizeof(GraalMap),
+    (std::max)(sizeof(GraalNumber),
+    (std::max)(sizeof(GraalObject),
+    (std::max)(sizeof(GraalPromise),
+    (std::max)(sizeof(GraalProxy),
+    (std::max)(sizeof(GraalSet),
+    (std::max)(sizeof(GraalString),
+    sizeof(GraalSymbol)))))))))))))));
+
 jobject GraalExecuteFunction0(JNIEnv* env, jclass nativeAccess, jint id,
         jobject this_object, jint this_type, jobject new_target,
         jobject java_context) {
     GraalIsolate* isolate = CurrentIsolateChecked();
     std::array<GraalValue*, 1> values;
-    char memory[2][GraalValue::MAX_SIZE];
+    char memory[2][MAX_SIZE];
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[0]);
     GraalValue* graal_new_target = AllocateNewTarget(isolate, new_target, memory[1]);
     GraalValue* graal_data = isolate->GetFunctionTemplateData(id);
@@ -209,7 +242,7 @@ jobject GraalExecuteFunction1(JNIEnv* env, jclass nativeAccess, jint id,
     GraalIsolate* isolate = CurrentIsolateChecked();
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 2> values;
-    char memory[3][GraalValue::MAX_SIZE];
+    char memory[3][MAX_SIZE];
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[1]);
@@ -227,7 +260,7 @@ jobject GraalExecuteFunction2(JNIEnv* env, jclass nativeAccess, jint id,
     GraalIsolate* isolate = CurrentIsolateChecked();
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 3> values;
-    char memory[4][GraalValue::MAX_SIZE];
+    char memory[4][MAX_SIZE];
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
@@ -247,7 +280,7 @@ jobject GraalExecuteFunction3(JNIEnv* env, jclass nativeAccess, jint id,
     GraalIsolate* isolate = CurrentIsolateChecked();
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 4> values;
-    char memory[5][GraalValue::MAX_SIZE];
+    char memory[5][MAX_SIZE];
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
@@ -269,7 +302,7 @@ jobject GraalExecuteFunction4(JNIEnv* env, jclass nativeAccess, jint id,
     GraalIsolate* isolate = CurrentIsolateChecked();
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 5> values;
-    char memory[6][GraalValue::MAX_SIZE];
+    char memory[6][MAX_SIZE];
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
@@ -293,7 +326,7 @@ jobject GraalExecuteFunction5(JNIEnv* env, jclass nativeAccess, jint id,
     GraalIsolate* isolate = CurrentIsolateChecked();
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 6> values;
-    char memory[7][GraalValue::MAX_SIZE];
+    char memory[7][MAX_SIZE];
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
@@ -319,7 +352,7 @@ jobject GraalExecuteFunction6(JNIEnv* env, jclass nativeAccess, jint id,
     GraalIsolate* isolate = CurrentIsolateChecked();
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 7> values;
-    char memory[8][GraalValue::MAX_SIZE];
+    char memory[8][MAX_SIZE];
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
@@ -567,9 +600,17 @@ void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong d
     }
 }
 
-extern "C" void uv_close(uv_handle_t* handle, uv_close_cb close_cb) __attribute__((weak));
-extern "C" int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) __attribute__((weak));
-extern "C" int uv_async_send(uv_async_t* handle) __attribute__((weak));
+#ifdef __POSIX__
+#define WEAK_ATTRIBUTE  __attribute__((weak))
+#else
+#define WEAK_ATTRIBUTE
+#endif
+
+extern "C" void uv_close(uv_handle_t* handle, uv_close_cb close_cb) WEAK_ATTRIBUTE;
+extern "C" int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) WEAK_ATTRIBUTE;
+extern "C" int uv_async_send(uv_async_t* handle) WEAK_ATTRIBUTE;
+
+#undef WEAK_ATTRIBUTE
 
 void GraalHandleClosed(uv_handle_t* handle) {
     free(handle);
@@ -682,6 +723,24 @@ jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong call
         v8::Local<v8::Module> v8_module = v8_result.ToLocalChecked();
         GraalModule* graal_module = reinterpret_cast<GraalModule*> (*v8_module);
         return env->NewLocalRef(graal_module->GetJavaObject());
+    }
+}
+
+jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_referrer, jstring java_specifier) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    GraalContext* graal_context = new GraalContext(graal_isolate, java_context);
+    GraalScriptOrModule* graal_referrer = new GraalScriptOrModule(graal_isolate, java_referrer);
+    GraalString* graal_specifier = new GraalString(graal_isolate, java_specifier);
+    v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
+    v8::Local<v8::ScriptOrModule> v8_referrer = reinterpret_cast<v8::ScriptOrModule*> (graal_referrer);
+    v8::Local<v8::String> v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
+    v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleDynamically(v8_context, v8_referrer, v8_specifier);
+    if (v8_result.IsEmpty()) {
+        return NULL;
+    } else {
+        v8::Local<v8::Promise> v8_promise = v8_result.ToLocalChecked();
+        GraalPromise* graal_promise = reinterpret_cast<GraalPromise*> (*v8_promise);
+        return env->NewLocalRef(graal_promise->GetJavaObject());
     }
 }
 

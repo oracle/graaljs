@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.js.nodes.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.NodeInterface;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 
 public interface WriteNode extends NodeInterface {
     Object executeWrite(VirtualFrame frame, Object value);

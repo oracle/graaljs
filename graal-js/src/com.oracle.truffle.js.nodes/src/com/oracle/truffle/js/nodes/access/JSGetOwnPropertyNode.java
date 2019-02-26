@@ -69,7 +69,6 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
 
     @Child private ToArrayIndexNode toArrayIndexNode;
-    @Child private PropertyGetNode propertyGetNode;
     private final BranchProfile exceptional1 = BranchProfile.create();
     private final ValueProfile typeProfile = ValueProfile.createClassProfile();
     @CompilationFinal private boolean seenNonArrayIndex = false;

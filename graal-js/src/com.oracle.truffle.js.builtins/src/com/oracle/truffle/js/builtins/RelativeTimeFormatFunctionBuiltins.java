@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,50 +38,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.js.builtins;
 
-//according to test262/INTERPRET.md
-// see also DebugJSAgent.java
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 
-var $262 = {};
-
-$262.createRealm = function createRealm() {
-    var newGlobalObj = Test262.createRealm();
-    newGlobalObj.$262 = {};
-    newGlobalObj.$262.detachArrayBuffer = $262.detachArrayBuffer;
-    newGlobalObj.$262.evalScript = $262.evalScript;
-    newGlobalObj.$262.global = newGlobalObj;
-    return newGlobalObj.$262;
-};
-
-$262.detachArrayBuffer = function detachArrayBuffer(buffer) {
-    Test262.typedArrayDetachBuffer(buffer);
-}
-
-$262.evalScript = function evalScript(string) {
-    return eval(string);
-}
-
-$262.global = this;
-
-$262.agent = {
-    start: function agentStart(string) {
-        // Will create $262.agent for the new agent.
-        return Test262.agentStart(string);
-    },
-
-    broadcast: function agentBroadcast(sab, num) {
-        return Test262.agentBroadcast(sab, num);
-    },
-
-    getReport: function agentGetReport(string) {
-        return Test262.agentGetReport(string);
-    },
-
-    sleep: function agentSleep(time) {
-        return Test262.agentSleep(time);
-    },
-
-    monotonicNow: function agentMonotonicNow() {
-        return Test262.agentMonotonicNow();
+/**
+ * Contains built-ins for {@linkplain JSRelativeTimeFormat} function (constructor).
+ */
+public final class RelativeTimeFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<RelativeTimeFormatFunctionBuiltins.RelativeTimeFormatFunction> {
+    protected RelativeTimeFormatFunctionBuiltins() {
+        super(JSRelativeTimeFormat.CLASS_NAME, RelativeTimeFormatFunction.class);
     }
-};
+
+    public enum RelativeTimeFormatFunction implements BuiltinEnum<RelativeTimeFormatFunction> {
+        supportedLocalesOf(1);
+
+        private final int length;
+
+        RelativeTimeFormatFunction(int length) {
+            this.length = length;
+        }
+
+        @Override
+        public int getLength() {
+            return length;
+        }
+    }
+
+    @Override
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, RelativeTimeFormatFunction builtinEnum) {
+        switch (builtinEnum) {
+            case supportedLocalesOf:
+                return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+        }
+        return null;
+    }
+}

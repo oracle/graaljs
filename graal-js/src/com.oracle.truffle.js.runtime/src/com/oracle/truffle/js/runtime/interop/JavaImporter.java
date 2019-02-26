@@ -49,7 +49,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
@@ -67,9 +66,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     private static final HiddenKey PACKAGES_ID = new HiddenKey("packages");
     static final Property PACKAGES_PROPERTY;
 
-    static class LazyState {
-        static final JavaImporter INSTANCE = new JavaImporter();
-    }
+    private static final JavaImporter INSTANCE = new JavaImporter();
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
@@ -95,19 +92,6 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     public static DynamicObject create(JSContext context, DynamicObject[] value) {
-        if (!JSTruffleOptions.SubstrateVM) {
-            return doCreate(context, value);
-        } else {
-            /*
-             * This path should never be reached when JavaInterop is disabled. To help the static
-             * analysis of Substrate VM, we throw an exception.
-             */
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    /* In a separate method for Substrate VM support. */
-    private static DynamicObject doCreate(JSContext context, DynamicObject[] value) {
         DynamicObject obj = JSObject.create(context, context.getJavaImporterFactory(), new Object[]{value});
         assert isJavaImporter(obj);
         return obj;
@@ -118,15 +102,6 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     public static boolean isJavaImporter(DynamicObject obj) {
-        if (!JSTruffleOptions.SubstrateVM) {
-            return isJavaImporter0(obj);
-        } else {
-            return false;
-        }
-    }
-
-    /* In a separate method for Substrate VM support. */
-    private static boolean isJavaImporter0(DynamicObject obj) {
         return isInstance(obj, instance());
     }
 
@@ -140,7 +115,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
         if (name instanceof String) {
             DynamicObject[] packages = getPackages(store);
             for (DynamicObject pkg : packages) {
-                Object found = JavaPackage.getClass(pkg, (String) name, JSTruffleOptions.NashornJavaInterop ? JavaClass.class : Object.class);
+                Object found = JavaPackage.getClass(pkg, (String) name, Object.class);
                 if (found != null) {
                     return found;
                 }
@@ -150,19 +125,6 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     public static DynamicObject[] getPackages(DynamicObject importer) {
-        if (!JSTruffleOptions.SubstrateVM) {
-            return getWrapped0(importer);
-        } else {
-            /*
-             * This path should never be reached when JavaInterop is disabled. To help the static
-             * analysis of Substrate VM, we throw an exception.
-             */
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    /* In a separate method for Substrate VM support. */
-    private static DynamicObject[] getWrapped0(DynamicObject importer) {
         assert JavaImporter.isJavaImporter(importer);
         return (DynamicObject[]) PACKAGES_PROPERTY.get(importer, isJavaImporter(importer));
     }
@@ -193,7 +155,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     public static JavaImporter instance() {
-        return LazyState.INSTANCE;
+        return INSTANCE;
     }
 
     @Override

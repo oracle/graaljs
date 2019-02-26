@@ -843,7 +843,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile emptyInput = ConditionProfile.createBinaryProfile();
         private final ConditionProfile emptySeparator = ConditionProfile.createBinaryProfile();
         private final ConditionProfile zeroLimit = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile match = ConditionProfile.createCountingProfile();
+        private final ConditionProfile matchProfile = ConditionProfile.createCountingProfile();
         private final BranchProfile isUndefinedBranch = BranchProfile.create();
         private final BranchProfile isStringBranch = BranchProfile.create();
         private final BranchProfile isRegexpBranch = BranchProfile.create();
@@ -954,7 +954,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             private static Object[] regularSplit(String input, int limit, String separator, JSStringSplitNode parent) {
                 int end = input.indexOf(separator);
-                if (parent.match.profile(end == -1)) {
+                if (parent.matchProfile.profile(end == -1)) {
                     return new Object[]{input};
                 }
                 return regularSplitIntl(input, limit, separator, end, parent);
@@ -1002,12 +1002,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             private static Object[] splitEmptyString(DynamicObject regExp, JSStringSplitNode parent) {
                 TruffleObject result = parent.matchIgnoreLastIndex(regExp, "", 0);
-                return parent.match.profile(parent.getResultAccessor().isMatch(result)) ? EMPTY_SPLITS : SINGLE_ZERO_LENGTH_SPLIT;
+                return parent.matchProfile.profile(parent.getResultAccessor().isMatch(result)) ? EMPTY_SPLITS : SINGLE_ZERO_LENGTH_SPLIT;
             }
 
             private static Object[] splitNonEmptyString(String input, int limit, DynamicObject regExp, JSStringSplitNode parent) {
                 TruffleObject result = parent.matchIgnoreLastIndex(regExp, input, 0);
-                if (parent.match.profile(!parent.getResultAccessor().isMatch(result))) {
+                if (parent.matchProfile.profile(!parent.getResultAccessor().isMatch(result))) {
                     return new Object[]{input};
                 }
                 SimpleArrayList<Object> splits = new SimpleArrayList<>();

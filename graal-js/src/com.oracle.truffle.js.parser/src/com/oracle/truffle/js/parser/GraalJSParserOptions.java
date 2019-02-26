@@ -65,7 +65,7 @@ public final class GraalJSParserOptions implements ParserOptions {
     private static final String SCRIPTING_HELP = "enable scripting features (Nashorn compatibility option)";
 
     public static final String SHEBANG_NAME = JS_OPTION_PREFIX + "shebang";
-    private static final OptionKey<Boolean> SHEBANG = new OptionKey<>(true);
+    private static final OptionKey<Boolean> SHEBANG = new OptionKey<>(false);
     private static final String SHEBANG_HELP = "support files starting with #!";
 
     public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
@@ -81,8 +81,6 @@ public final class GraalJSParserOptions implements ParserOptions {
     private static final String FUNCTION_STATEMENT_ERROR_HELP = "Treat hoistable function statements in blocks as an error (in ES5 mode)";
 
     private final boolean strict;
-    // Note: disregarding the value of the scripting option, scripting mode might be forced by
-    // GraalJSParserHelper when the file begins with a '#' char
     private final boolean scripting;
     private final boolean shebang;
     private final int ecmaScriptVersion;

@@ -58,6 +58,7 @@ set link_module=
 set no_cctest=
 set openssl_no_asm=
 set doc=
+set java_home=
 
 :next-arg
 if "%1"=="" goto args-done
@@ -128,6 +129,7 @@ if /i "%1"=="link-module"   set "link_module= --link-module=%2%link_module%"&got
 if /i "%1"=="no-cctest"     set no_cctest=1&goto arg-ok
 if /i "%1"=="openssl-no-asm"   set openssl_no_asm=1&goto arg-ok
 if /i "%1"=="doc"           set doc=1&goto arg-ok
+if /i "%1"=="java-home"     set "java_home=%2"&goto arg-ok-2
 
 echo Error: invalid command line option `%1`.
 exit /b 1
@@ -179,6 +181,7 @@ if defined i18n_arg         set configure_flags=%configure_flags% --with-intl=%i
 if defined config_flags     set configure_flags=%configure_flags% %config_flags%
 if defined target_arch      set configure_flags=%configure_flags% --dest-cpu=%target_arch%
 if defined openssl_no_asm   set configure_flags=%configure_flags% --openssl-no-asm
+if defined java_home        set configure_flags=%configure_flags% --java-home=%java_home% --without-dtrace
 if defined DEBUG_HELPER     set configure_flags=%configure_flags% --verbose
 
 if not exist "%~dp0deps\icu" goto no-depsicu
@@ -475,7 +478,7 @@ for /d %%F in (test\addons\??_*) do (
   rd /s /q %%F
 )
 :: generate
-"%node_exe%" tools\doc\addon-verify.js
+rem "%node_exe%" tools\doc\addon-verify.js
 if %errorlevel% neq 0 exit /b %errorlevel%
 :: building addons
 setlocal

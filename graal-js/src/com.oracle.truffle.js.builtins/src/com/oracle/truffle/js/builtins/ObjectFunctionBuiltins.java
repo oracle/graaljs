@@ -62,6 +62,7 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectAssign
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectCreateNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectDefinePropertiesNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectDefinePropertyNodeGen;
+import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectFromEntriesNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectGetOwnPropertyDescriptorNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectGetOwnPropertyDescriptorsNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectGetOwnPropertyNamesOrSymbolsNodeGen;
@@ -77,7 +78,13 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectValues
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.IteratorStepNode;
+import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
@@ -88,11 +95,13 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -136,7 +145,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         // ES8
         getOwnPropertyDescriptors(1),
         values(1),
-        entries(1);
+        entries(1),
+
+        // ES2019
+        fromEntries(1);
 
         private final int length;
 
@@ -154,7 +166,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (EnumSet.of(is, getOwnPropertySymbols, assign).contains(this)) {
                 return 6;
             } else if (EnumSet.of(getOwnPropertyDescriptors, values, entries).contains(this)) {
-                return 8;
+                return JSTruffleOptions.ECMAScript2017;
+            } else if (this == fromEntries) {
+                return JSTruffleOptions.ECMAScript2019;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -204,6 +218,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return ObjectValuesOrEntriesNodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case entries:
                 return ObjectValuesOrEntriesNodeGen.create(context, builtin, true, args().fixedArgs(1).createArgumentNodes(context));
+            case fromEntries:
+                return ObjectFromEntriesNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -790,6 +806,72 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             }
             return properties;
+        }
+    }
+
+    public abstract static class ObjectFromEntriesNode extends ObjectOperation {
+        @Child private RequireObjectCoercibleNode requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
+        @Child private GetIteratorNode getIteratorNode;
+        @Child private IteratorStepNode iteratorStepNode;
+        @Child private IteratorValueNode iteratorValueNode;
+        @Child private IsObjectNode isObjectNode = IsObjectNode.create();
+        @Child private IteratorCloseNode iteratorCloseNode;
+        @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
+        @Child private ReadElementNode readElementNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
+
+        public ObjectFromEntriesNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.getIteratorNode = GetIteratorNode.create(context);
+            this.iteratorStepNode = IteratorStepNode.create(context);
+            this.iteratorValueNode = IteratorValueNode.create(context);
+            this.readElementNode = ReadElementNode.create(context);
+        }
+
+        @Specialization
+        protected DynamicObject entries(Object iterable) {
+            requireObjectCoercibleNode.execute(iterable);
+            DynamicObject obj = JSUserObject.create(getContext());
+            return addEntriesFromIterable(obj, iterable);
+        }
+
+        private DynamicObject addEntriesFromIterable(DynamicObject target, Object iterable) {
+            assert !JSRuntime.isNullOrUndefined(target);
+            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            try {
+                while (true) {
+                    Object next = iteratorStepNode.execute(iteratorRecord);
+                    if (next == Boolean.FALSE) {
+                        return target;
+                    }
+                    Object nextItem = iteratorValueNode.execute((DynamicObject) next);
+                    if (!isObjectNode.executeBoolean(nextItem)) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
+                    }
+                    Object k = readElementNode.executeWithTargetAndIndex(nextItem, 0);
+                    Object v = readElementNode.executeWithTargetAndIndex(nextItem, 1);
+                    createDataPropertyOnObject(target, k, v);
+                }
+            } catch (Exception ex) {
+                errorBranch.enter();
+                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                throw ex;
+            }
+        }
+
+        private void createDataPropertyOnObject(DynamicObject thisObject, Object key, Object value) {
+            assert JSRuntime.isObject(thisObject);
+            Object propertyKey = toPropertyKeyNode.execute(key);
+            JSRuntime.createDataPropertyOrThrow(thisObject, propertyKey, value);
+        }
+
+        private void iteratorCloseAbrupt(DynamicObject iterator) {
+            if (iteratorCloseNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
+            }
+            iteratorCloseNode.executeAbrupt(iterator);
         }
     }
 

@@ -81,10 +81,6 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
                 errorBranch.enter();
                 throw Errors.createTypeError("SharedArrayBuffer expected");
             }
-            if (!JSSharedArrayBuffer.hasArrayBufferData(thisObj)) {
-                errorBranch.enter();
-                throw Errors.createTypeError("cannot slice a null buffer");
-            }
             if (resObj == thisObj) {
                 errorBranch.enter();
                 throw Errors.createTypeError("SameValue(new, O) is forbidden");

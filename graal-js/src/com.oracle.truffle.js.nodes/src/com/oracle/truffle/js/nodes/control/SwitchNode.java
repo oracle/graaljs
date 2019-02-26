@@ -110,7 +110,7 @@ public final class SwitchNode extends StatementNode {
             JavaScriptNode[] newCaseExpressions = new JavaScriptNode[caseExpressions.length];
             for (int i = 0; i < caseExpressions.length; i++) {
                 InstrumentableNode materialized = caseExpressions[i].materializeInstrumentableNodes(materializedTags);
-                newCaseExpressions[i] = JSTaggedExecutionNode.createFor((JavaScriptNode) materialized, ControlFlowBranchTag.class,
+                newCaseExpressions[i] = JSTaggedExecutionNode.createForInput((JavaScriptNode) materialized, ControlFlowBranchTag.class,
                                 JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
             }
             JavaScriptNode[] newStatements = new JavaScriptNode[statements.length];

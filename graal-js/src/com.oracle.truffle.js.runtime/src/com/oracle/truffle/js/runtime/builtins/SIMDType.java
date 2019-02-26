@@ -603,11 +603,11 @@ public abstract class SIMDType {
             return simdType;
         }
 
-        public int bytesPerElement() {
+        public int getBytesPerElement() {
             return bytesPerElement;
         }
 
-        public int numberOfElements() {
+        public int getNumberOfElements() {
             return numberOfElements;
         }
 
@@ -634,5 +634,9 @@ public abstract class SIMDType {
             factories[i].factoryIndex = i;
         }
         return factories;
+    }
+
+    public static SIMDTypeFactory<? extends SIMDType>[] factories() {
+        return FACTORIES;
     }
 }

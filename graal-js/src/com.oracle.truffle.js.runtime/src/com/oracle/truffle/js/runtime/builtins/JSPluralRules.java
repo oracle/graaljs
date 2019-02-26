@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSPluralRules extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -129,7 +130,7 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
 
     @TruffleBoundary
     public static void setupInternalPluralRulesAndNumberFormat(InternalState state) {
-        state.pluralRules = PluralRules.forLocale(state.javaLocale, state.type.equals("ordinal") ? PluralType.ORDINAL : PluralType.CARDINAL);
+        state.pluralRules = PluralRules.forLocale(state.javaLocale, state.type.equals(IntlUtil.ORDINAL) ? PluralType.ORDINAL : PluralType.CARDINAL);
         state.pluralCategories.addAll(state.pluralRules.getKeywords());
         state.numberFormat = NumberFormat.getInstance(state.javaLocale);
     }
@@ -158,14 +159,14 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
 
     public static class InternalState extends JSNumberFormat.BasicInternalState {
 
-        public String type = "cardinal";
+        public String type = IntlUtil.CARDINAL;
         public PluralRules pluralRules;
         public List<Object> pluralCategories = new LinkedList<>();
 
         @Override
         void fillResolvedOptions(JSContext context, DynamicObject result) {
-            JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "type", type, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.TYPE, type, JSAttributes.getDefault());
             super.fillResolvedOptions(context, result);
             JSObjectUtil.defineDataProperty(result, "pluralCategories", JSRuntime.createArrayFromList(context, pluralCategories), JSAttributes.getDefault());
         }

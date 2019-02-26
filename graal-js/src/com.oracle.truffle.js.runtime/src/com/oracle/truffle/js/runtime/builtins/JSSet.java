@@ -135,7 +135,7 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
                 if (JSSet.isJSSet(obj)) {
                     return JSSet.getSetSize((DynamicObject) obj);
                 } else {
-                    throw Errors.createTypeError("Set expected");
+                    throw Errors.createTypeErrorSetExpected();
                 }
             }
         });

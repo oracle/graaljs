@@ -87,6 +87,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     public static DynamicObject createSharedArrayBuffer(JSContext context, ByteBuffer buffer) {
+        assert buffer != null;
         DynamicObject obj = JSObject.create(context, context.getSharedArrayBufferFactory(), buffer, new JSAgentWaiterList());
         assert isJSSharedArrayBuffer(obj);
         return obj;
@@ -95,7 +96,7 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject ctor) {
         JSContext context = realm.getContext();
-        DynamicObject arrayBufferPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), INSTANCE);
+        DynamicObject arrayBufferPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         putConstructorProperty(context, arrayBufferPrototype, ctor);
         putFunctionsFromContainer(realm, arrayBufferPrototype, PROTOTYPE_NAME);
         /* ECMA2017 24.2.4.1 get SharedArrayBuffer.prototype.byteLength */
@@ -110,11 +111,8 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = JSArguments.getThisObject(frame.getArguments());
-                if (JSObject.isDynamicObject(obj)) {
-                    DynamicObject buffer = (DynamicObject) obj;
-                    if (hasArrayBufferData(buffer) && isJSSharedArrayBuffer(buffer)) {
-                        return JSArrayBuffer.getDirectByteLength(buffer);
-                    }
+                if (isJSSharedArrayBuffer(obj)) {
+                    return JSArrayBuffer.getDirectByteLength((DynamicObject) obj);
                 }
                 throw Errors.createTypeErrorIncompatibleReceiver(obj);
             }
@@ -151,26 +149,21 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
         return isInstance(obj, INSTANCE);
     }
 
-    public static boolean hasArrayBufferData(DynamicObject obj) {
-        Object maybeBuffer = BYTE_BUFFER_PROPERTY.get(obj, isJSSharedArrayBuffer(obj));
-        return maybeBuffer != null && maybeBuffer instanceof ByteBuffer;
-    }
-
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
         return getDirectByteBuffer(thisObj, isJSSharedArrayBuffer(thisObj));
     }
 
     public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj, boolean condition) {
-        assert JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
+        assert isJSSharedArrayBuffer(thisObj);
         return DirectByteBufferHelper.cast((ByteBuffer) BYTE_BUFFER_PROPERTY.get(thisObj, condition));
     }
 
     public static JSAgentWaiterList getWaiterList(DynamicObject thisObj) {
-        return (JSAgentWaiterList) BUFFER_WAIT_LIST.get(thisObj, JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj));
+        return (JSAgentWaiterList) BUFFER_WAIT_LIST.get(thisObj, isJSSharedArrayBuffer(thisObj));
     }
 
     public static JSAgentWaiterList getWaiterList(DynamicObject thisObj, boolean condition) {
-        assert JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
+        assert isJSSharedArrayBuffer(thisObj);
         return (JSAgentWaiterList) BUFFER_WAIT_LIST.get(thisObj, condition);
     }
 

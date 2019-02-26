@@ -68,8 +68,9 @@ public class ExecutorsTest {
     @Test
     public void fixedThreadPool() {
         final Engine engine = Engine.create();
+        final ExecutorService pool = Executors.newFixedThreadPool(4);
+
         try {
-            final ExecutorService pool = Executors.newFixedThreadPool(4);
             final ThreadLocal<Context> tl = ThreadLocal.withInitial(new Supplier<Context>() {
 
                 @Override
@@ -104,6 +105,7 @@ public class ExecutorsTest {
             }
         } finally {
             engine.close();
+            pool.shutdown();
         }
     }
 

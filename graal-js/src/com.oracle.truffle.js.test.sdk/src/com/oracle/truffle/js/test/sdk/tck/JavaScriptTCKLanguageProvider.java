@@ -240,7 +240,6 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // for in
         res.add(createStatement(context, "for-in", "for (let k in {1});",
                         TypeDescriptor.NULL,
-                        JavaScriptVerifier.unsupportedDynamicObjectVerifier(null),
                         ANY));
         // for of
         final TypeDescriptor noType = TypeDescriptor.intersection();
@@ -257,7 +256,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
                         TypeDescriptor.NULL,
-                        JavaScriptVerifier.hasKeysVerifier(JavaScriptVerifier.unsupportedDynamicObjectVerifier(null)),
+                        JavaScriptVerifier.hasKeysVerifier(null),
                         TypeDescriptor.ANY));
 
         // switch
@@ -308,8 +307,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         res.add(createInlineSnippet(
                         context,
                         "resources/recursion.js",
-                        23,
-                        33,
+                        63,
+                        73,
                         "resources/recursion_inline1.js"));
         res.add(createInlineSnippet(
                         context,
@@ -536,29 +535,6 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         }
 
         /**
-         * Creates a {@link ResultVerifier} ignoring errors caused unsupported foreign
-         * DynamicObjects. Use this verifier in case the operator accepts foreign Objects but not
-         * foreign DynamicObjects.
-         *
-         * @param next the next {@link ResultVerifier} to be called, null for last one
-         * @return the {@link ResultVerifier}
-         */
-        static ResultVerifier unsupportedDynamicObjectVerifier(ResultVerifier next) {
-            return new JavaScriptVerifier(next) {
-                @Override
-                public void accept(SnippetRun snippetRun) throws PolyglotException {
-                    final PolyglotException exception = snippetRun.getException();
-                    if (exception != null) {
-                        if ("TypeError: Foreign DynamicObjects not supported".equals(exception.getMessage())) {
-                            return;
-                        }
-                    }
-                    super.accept(snippetRun);
-                }
-            };
-        }
-
-        /**
          * Creates a {@link ResultVerifier} ignoring errors caused by missing iterator method. Use
          * this verifier in case the operator accepts arbitrary foreign Objects for iteration but
          * requires iterator for JSObject.
@@ -573,9 +549,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     if (snippetRun.getException() != null) {
                         final Value param = snippetRun.getParameters().get(0);
                         final Value paramMeta = param.getMetaObject();
-                        final boolean jsObject = paramMeta.hasMember("type") &&
-                                        "object".equals(param.getMetaObject().getMember("type").asString()) &&
-                                        paramMeta.hasMember("className");
+                        final String type = paramMeta.hasMember("type") ? paramMeta.getMember("type").asString() : null;
+                        final boolean jsObject = type != null && ("object".equals(type) || "function".equals(type)) && paramMeta.hasMember("className");
                         boolean hasIterator = false;
                         try {
                             hasIterator = !context.eval(ID, "(function(a) {return a[Symbol.iterator];})").execute(param).isNull();

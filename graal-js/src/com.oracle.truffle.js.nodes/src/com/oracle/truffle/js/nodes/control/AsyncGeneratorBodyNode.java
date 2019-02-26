@@ -61,7 +61,6 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -168,12 +167,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     @Child private PropertySetNode setGeneratorContext;
     @Child private PropertySetNode setGeneratorTarget;
     @Child private PropertySetNode setGeneratorQueue;
-
-    @Child private PropertyGetNode getPromise;
-    @Child private PropertyGetNode getPromiseReject;
-    @Child private JSFunctionCallNode createPromiseCapability;
-    @Child private JSFunctionCallNode executePromiseMethod;
-    @Child private PropertySetNode setAsyncContext;
 
     @CompilationFinal RootCallTarget resumeTarget;
     private final JSContext context;

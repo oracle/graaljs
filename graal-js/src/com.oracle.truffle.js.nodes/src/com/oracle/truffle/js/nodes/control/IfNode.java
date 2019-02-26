@@ -97,10 +97,10 @@ public final class IfNode extends StatementNode implements ResumableNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (hasMaterializationTag(materializedTags) && materializationNeeded()) {
-            JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createFor(elsePart, JSTags.ControlFlowBlockTag.class) : null;
-            JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createFor(thenPart, JSTags.ControlFlowBlockTag.class) : null;
-            JavaScriptNode newCondition = JSTaggedExecutionNode.createFor(condition, ControlFlowBranchTag.class,
+            JavaScriptNode newCondition = JSTaggedExecutionNode.createForInput(condition, ControlFlowBranchTag.class,
                             JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
+            JavaScriptNode newThenPart = thenPart != null ? JSTaggedExecutionNode.createForInput(thenPart, JSTags.ControlFlowBlockTag.class) : null;
+            JavaScriptNode newElsePart = elsePart != null ? JSTaggedExecutionNode.createForInput(elsePart, JSTags.ControlFlowBlockTag.class) : null;
             JavaScriptNode newIf = IfNode.create(newCondition, newThenPart, newElsePart);
             transferSourceSectionAndTags(this, newIf);
             return newIf;

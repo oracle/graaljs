@@ -56,12 +56,13 @@ import com.oracle.truffle.js.annotations.GenerateDecoder;
 import com.oracle.truffle.js.annotations.GenerateProxy;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorNextNode;
+import com.oracle.truffle.js.nodes.access.CompoundWriteElementNode;
 import com.oracle.truffle.js.nodes.access.CopyDataPropertiesNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalFunctionNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalVariableNode;
-import com.oracle.truffle.js.nodes.access.DoWithNode;
+import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.EnumerateNode;
 import com.oracle.truffle.js.nodes.access.FrameSlotNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
@@ -98,6 +99,7 @@ import com.oracle.truffle.js.nodes.access.RegExpLiteralNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode.RequireObjectCoercibleWrapperNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
+import com.oracle.truffle.js.nodes.access.WithTargetNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
@@ -188,6 +190,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
 import com.oracle.truffle.js.nodes.function.NewTargetRootNode;
 import com.oracle.truffle.js.nodes.function.SpreadArgumentNode;
+import com.oracle.truffle.js.nodes.promise.ImportCallNode;
 import com.oracle.truffle.js.nodes.unary.JSComplementNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryMinusNode;
@@ -278,7 +281,7 @@ public class NodeFactory {
         }
     }
 
-    public JavaScriptNode numericConversion(JavaScriptNode operand) {
+    public JavaScriptNode createToNumeric(JavaScriptNode operand) {
         return JSToNumericNode.create(operand);
     }
 
@@ -544,7 +547,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createFunctionCall(@SuppressWarnings("unused") JSContext context, JavaScriptNode expression, JavaScriptNode[] arguments) {
-        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof DoWithNode) {
+        if (expression instanceof PropertyNode || expression instanceof ReadElementNode || expression instanceof WithVarWrapperNode) {
             if (expression instanceof PropertyNode) {
                 ((PropertyNode) expression).setMethod();
             }
@@ -619,6 +622,11 @@ public class NodeFactory {
 
     public WriteElementNode createWriteElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSContext context, boolean isStrict) {
         return WriteElementNode.create(targetNode, indexNode, valueNode, context, isStrict);
+    }
+
+    public WriteElementNode createCompoundWriteElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSWriteFrameSlotNode writeIndex, JSContext context,
+                    boolean isStrict) {
+        return CompoundWriteElementNode.create(targetNode, indexNode, valueNode, writeIndex, context, isStrict);
     }
 
     public WriteElementNode createWriteElementNode(JSContext context, boolean throwError) {
@@ -909,6 +917,14 @@ public class NodeFactory {
         return WithNode.create(expression, statement);
     }
 
+    public JavaScriptNode createWithVarWrapper(String propertyName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+        return WithVarWrapperNode.create(propertyName, withTarget, withAccessNode, globalDelegate);
+    }
+
+    public JavaScriptNode createWithTarget(JSContext context, String propertyName, JavaScriptNode withVariable) {
+        return WithTargetNode.create(context, propertyName, withVariable);
+    }
+
     public JavaScriptRootNode createNewTargetConstruct(CallTarget callTarget) {
         return NewTargetRootNode.createNewTargetConstruct(callTarget);
     }
@@ -1069,6 +1085,10 @@ public class NodeFactory {
                 return copy();
             }
         };
+    }
+
+    public JavaScriptNode createImportCall(JSContext context, JavaScriptNode argument, JavaScriptNode activeScriptOrModule) {
+        return ImportCallNode.create(context, argument, activeScriptOrModule);
     }
 
     public JavaScriptNode createCopyDataProperties(JSContext context, JavaScriptNode targetObj, JavaScriptNode source, JavaScriptNode excludedNames) {

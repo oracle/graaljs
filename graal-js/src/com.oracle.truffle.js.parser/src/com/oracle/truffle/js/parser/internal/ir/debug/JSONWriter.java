@@ -192,11 +192,11 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         comma();
 
         property("left");
-        binaryNode.lhs().accept(this);
+        binaryNode.getLhs().accept(this);
         comma();
 
         property("right");
-        binaryNode.rhs().accept(this);
+        binaryNode.getRhs().accept(this);
 
         return leave();
     }

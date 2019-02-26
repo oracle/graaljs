@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,52 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-function Process() {}
+package com.oracle.truffle.js.runtime.objects;
 
-Process.prototype.spawn = function(options) {
-	var N = Java.type("com.oracle.truffle.trufflenode.threading.GraalJSInstanceRunner");
-	// Open an IPC server on *this* process
-	var uid = N.newLoopId.incrementAndGet();
-	options.ipc.initServerIPC(uid);
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.runtime.JSContext;
 
-	var stringArray = Java.type("java.lang.String[]");
-	var javaArgs = new stringArray(options.args.length-1);
+/**
+ * Script or Module Record.
+ */
+public class ScriptOrModule {
+    protected final JSContext context;
+    protected final Source source;
 
-	for (var a=0; a<options.args.length-1; a++) {
-		javaArgs[a] = options.args[a+1];
-	}
+    public ScriptOrModule(JSContext context, Source source) {
+        this.context = context;
+        this.source = source;
+    }
 
-	var newEnv = {};
-	Object.keys(process.env).forEach(function(envKey) {
-		var val = process.env[envKey];
-		if (typeof val === 'string') {
-			newEnv[envKey] = val;
-		}
-	});
-	options.envPairs.forEach(function(envVar) {
-		var idx = envVar.indexOf("=");
-		if (idx != -1) {
-			var key = envVar.substring(0,idx);
-			newEnv[key] = envVar.substring(idx+1, envVar.length);
-		}
-	});
-	newEnv.NODE_UNIQUE_ID = uid;
-	newEnv.NODE_CHANNEL_FD = uid;
+    public final JSContext getContext() {
+        return context;
+    }
 
-	// Start a worker event loop (will connect to our IPC pipe)
-	N.startInNewThread(javaArgs, newEnv);
-	// All good
-	return 0;
-}
-
-Process.prototype.send = function() {
-	throw "Not implemented";
-}
-
-Process.prototype.kill = function() {
-	throw "Not implemented";
-}
-
-module.exports = {
-	Process : Process
+    public final Source getSource() {
+        return source;
+    }
 }

@@ -265,11 +265,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                     return exceptionObject;
                 }
 
-                if (JSTruffleOptions.NashornJavaInterop) {
-                    return ex;
-                } else {
-                    return context.getRealm().getEnv().asGuestValue(ex);
-                }
+                return context.getRealm().getEnv().asGuestValue(ex);
             }
         }
 

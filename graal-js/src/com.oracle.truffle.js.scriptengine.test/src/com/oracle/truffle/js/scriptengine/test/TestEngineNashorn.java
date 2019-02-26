@@ -63,10 +63,11 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
 
-import org.junit.Ignore;
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
 import com.oracle.truffle.js.scriptengine.GraalJSEngineFactory;
+import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
 
 /**
  * Tests for JSR-223 script engine from the Nashorn test suite.
@@ -77,6 +78,10 @@ public class TestEngineNashorn {
 
     private ScriptEngine getEngine() {
         return manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
+    }
+
+    private static ScriptEngine getEngineNashornCompat() {
+        return GraalJSScriptEngine.create(null, Context.newBuilder("js").allowHostAccess(true).option("js.nashorn-compat", "true"));
     }
 
     private static void invertedAssertEquals(Object actual, Object expected) {
@@ -100,13 +105,9 @@ public class TestEngineNashorn {
         }
     }
 
-    /**
-     * We do not yet support JavaImporter.
-     */
-    @Ignore
     @Test
     public void argumentsWithTest() {
-        final ScriptEngine e = getEngine();
+        final ScriptEngine e = getEngineNashornCompat();
 
         String[] args = new String[]{"hello", "world"};
         try {
@@ -476,8 +477,9 @@ public class TestEngineNashorn {
         String script = "function test(template, model) {" +
                         "  var data = {};" +
                         "  for (var k in model) {" +
-                        "    if (model[k] instanceof Java.type('java.lang.Iterable')) {" +
-                        "      data[k] = Java.from(model[k]);" +
+                        "    var value = model.get(k);" +
+                        "    if (value instanceof Java.type('java.lang.Iterable')) {" +
+                        "      data[k] = Java.from(value);" +
                         "      return 'ok';" +
                         "    }" +
                         "  }" +

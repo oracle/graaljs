@@ -90,7 +90,7 @@ public class JSTruffleOptions {
 
     // Runtime options
     public static final boolean LazyStrings = booleanOption("LazyStrings", true);
-    public static final boolean RestrictForceSplittingBuiltins = booleanOption("RestrictForceSplittingBuiltins", false);
+    public static final boolean RestrictForceSplittingBuiltins = booleanOption("RestrictForceSplittingBuiltins", true);
     public static final int MinLazyStringLength = integerOption("MinLazyStringLength", 20);
     public static final int ConcatToLeafLimit = integerOption("ConcatToLeafLimit", MinLazyStringLength / 2);
     public static final int MaxLoadCacheLength = integerOption("MaxLoadCacheLength", 0);
@@ -128,13 +128,11 @@ public class JSTruffleOptions {
     public static final int ECMAScript2017 = 8;
     public static final int ECMAScript2018 = 9;
     public static final int ECMAScript2019 = 10;
-    private static final int LatestECMAScriptVersion = ECMAScript2019;
+    public static final int ECMAScript2020 = 11;
+    private static final int LatestECMAScriptVersion = ECMAScript2020;
     public static final int MaxECMAScriptVersion = integerOption("ECMAScriptVersion", LatestECMAScriptVersion);
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true);
-
-    /** Java implementation of SIMD.js. */
-    public static final boolean SIMDJS = booleanOption("SIMDJS", false);
 
     // Nashorn extensions
     public static final boolean NashornCompatibilityMode = booleanOption("NashornCompatibilityMode", false);
@@ -157,10 +155,7 @@ public class JSTruffleOptions {
     public static final String HeapDumpFileName = stringOption("HeapDumpFileName", null);
 
     // Java Interop options
-    public static final boolean NashornJavaInterop = !SubstrateVM && booleanOption("NashornJavaInterop", false);
-    public static final boolean JavaCallCache = booleanOption("JavaCallCache", true);
     public static final boolean SingleThreaded = booleanOption("SingleThreaded", false);
-    public static final boolean JavaConvertersAsMethodHandles = booleanOption("JavaConvertersAsMethodHandles", false);
 
     // Tracing
     public static final boolean TracePolymorphicPropertyAccess = booleanOption("TracePolymorphicPropertyAccess", false);

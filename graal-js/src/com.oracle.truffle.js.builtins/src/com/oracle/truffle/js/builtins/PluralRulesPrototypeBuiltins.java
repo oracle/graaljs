@@ -99,7 +99,7 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Fallback
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeErrorPluralRulesExpected();
+            throw Errors.createTypeErrorTypeXExpected(JSPluralRules.CLASS_NAME);
         }
     }
 
@@ -117,7 +117,7 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Fallback
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value) {
-            throw Errors.createTypeErrorPluralRulesExpected();
+            throw Errors.createTypeErrorTypeXExpected(JSPluralRules.CLASS_NAME);
         }
     }
 }

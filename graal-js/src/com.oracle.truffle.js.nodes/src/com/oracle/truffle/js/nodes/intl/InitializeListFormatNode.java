@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,9 +66,10 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
-        this.getTypeOption = GetStringOptionNode.create(context, "type", new String[]{"conjunction", "disjunction", "unit"}, "conjunction");
-        this.getStyleOption = GetStringOptionNode.create(context, "style", new String[]{"long", "short", "narrow"}, "long");
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, "localeMatcher", new String[]{"lookup", "best fit"}, "best fit");
+        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.CONJUNCTION, IntlUtil.DISJUNCTION, IntlUtil.UNIT}, IntlUtil.CONJUNCTION);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW}, IntlUtil.LONG);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
+                        new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
     }
 
     public abstract DynamicObject executeInit(DynamicObject collator, Object locales, Object options);
@@ -94,9 +95,9 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
             String optStyle = getStyleOption.executeValue(options);
             getLocaleMatcherOption.executeValue(options);
 
-            if ("narrow".equals(optStyle) && !"unit".equals(optType)) {
-                throw Errors.createRangeError(
-                                "When style is 'narrow', 'unit' is the only allowed value for the type option.", this);
+            if (IntlUtil.NARROW.equals(optStyle) && !IntlUtil.UNIT.equals(optType)) {
+                throw Errors.createRangeErrorFormat(
+                                "When style is '%s', 'unit' is the only allowed value for the type option.", this, IntlUtil.NARROW);
             }
 
             state.initialized = true;

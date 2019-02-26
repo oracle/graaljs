@@ -1,6 +1,6 @@
 
 suite = {
-  "mxversion" : "5.170.3",
+  "mxversion" : "5.210.4",
   "name" : "graal-nodejs",
   "versionConflictResolution" : "latest",
 
@@ -47,8 +47,20 @@ suite = {
         "coremodules",
       ],
       "class" : "GraalNodeJsProject",
-      "results" : ["Release/node"],
-      "output" : "out"
+      "os_arch": {
+        "windows": {
+          "<others>": {
+            "results" : ["node.exe"],
+            "output" : "Release"
+          },
+        },
+        "<others>": {
+          "<others>": {
+            "results" : ["Release/node"],
+            "output" : "out"
+          },
+        },
+      },
     },
     "com.oracle.truffle.trufflenode" : {
       "subDir" : "mx.graal-nodejs",
@@ -111,17 +123,39 @@ suite = {
       "native" : True,
       "platformDependent" : True,
       "description" : "Graal.nodejs support distribution for the GraalVM",
-      "layout" : {
-        "./" : [
-          "file:deps/npm",
-          "file:out/headers/*",
-        ],
-        "NODE_README.md" : "file:README.md",
-        "bin/" : [
-          "dependency:trufflenodeNative/Release/node"
-        ],
-        "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
-        "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
+      "os_arch": {
+        "windows": {
+          "<others>": {
+            "layout" : {
+              "./" : [
+                "file:deps/npm",
+                "file:out/headers/*",
+              ],
+              "NODE_README.md" : "file:README.md",
+              "bin/" : [
+                "dependency:trufflenodeNative/node.exe"
+              ],
+              "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
+              "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
+            },
+          },
+        },
+        "<others>": {
+          "<others>": {
+            "layout" : {
+              "./" : [
+                "file:deps/npm",
+                "file:out/headers/*",
+              ],
+              "NODE_README.md" : "file:README.md",
+              "bin/" : [
+                "dependency:trufflenodeNative/Release/node"
+              ],
+              "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
+              "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
+            },
+          },
+        },
       },
     },
   },

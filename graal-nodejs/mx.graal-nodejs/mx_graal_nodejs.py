@@ -30,11 +30,10 @@ import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, shutil, tarfile, tempfile
 
 import mx_graal_nodejs_benchmark
 
-from mx import BinarySuite, VC
+from mx import BinarySuite
 from mx_gate import Task
 from argparse import ArgumentParser
-from os import remove, symlink, unlink
-from os.path import exists, join, isdir, isfile, islink
+from os.path import exists, join
 
 _suite = mx.suite('graal-nodejs')
 _currentOs = mx.get_os()
@@ -50,6 +49,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     with Task('UnitTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.unitTests]) as t:
         if t:
+            _setEnvVar('NODE_JVM_CLASSPATH', mx.distribution('graal-js:TRUFFLE_JS_TESTS').path)
             commonArgs = ['-ea', '-esa']
             unitTestDir = join('test', 'graal')
             mx.run(['rm', '-rf', 'node_modules', 'build'], cwd=unitTestDir)
@@ -77,30 +77,42 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
-def _build(args, debug, shared_library, threading, parallelism, debug_mode, output_dir):
-    _mxrun(['./configure',
-            '--partly-static',
-            '--build-only-native',
-            '--without-dtrace',
-            '--without-snapshot',
-            '--shared-graalvm', _getJdkHome(),
-            '--shared-trufflejs', mx.distribution('graal-js:GRAALJS').path
-        ] + debug + shared_library + threading,
-        cwd=_suite.dir, verbose=True)
+def python_cmd():
+    if _currentOs is 'windows':
+        return 'python.exe'
+    else:
+        return join(_suite.mxDir, 'python2', 'python')
 
-    verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
-    _mxrun([mx.gmake_cmd(), '-j%d' % parallelism, verbose], cwd=_suite.dir, verbose=True)
+def _build(args, debug, shared_library, parallelism, debug_mode, output_dir):
+    if _currentOs is 'windows':
+        _mxrun([join('.', 'vcbuild.bat'),
+                'projgen',
+                'no-cctest',
+                'noetw',
+                'nosnapshot',
+                'java-home', _getJdkHome()
+            ] + debug + shared_library,
+            cwd=_suite.dir, verbose=True)
+    else:
+        _mxrun([join('.', 'configure'),
+                '--partly-static',
+                '--without-dtrace',
+                '--without-snapshot',
+                '--java-home', _getJdkHome()
+            ] + debug + shared_library,
+            cwd=_suite.dir, verbose=True)
+
+        verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
+        _mxrun([mx.gmake_cmd(), '-j%d' % parallelism, verbose], cwd=_suite.dir, verbose=True)
 
     # put headers for native modules into out/headers
     _setEnvVar('HEADERS_ONLY', '1')
     out = None if mx.get_opts().verbose else open(os.devnull, 'w')
-    _mxrun([join(_suite.mxDir, 'python2', 'python'), 'tools/install.py', 'install', 'out/headers', '/'], out=out)
+    _mxrun([python_cmd(), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out)
 
     if _currentOs == 'darwin':
         nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
         _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), nodePath], verbose=True)
-
-    _createSymLinks()
 
 class GraalNodeJsProject(mx.NativeProject):
     def __init__(self, suite, name, deps, workingSets, results, output, **args):
@@ -130,17 +142,21 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         debugMode = hasattr(self.args, 'debug') and self.args.debug
         debug = ['--debug'] if debugMode else []
         sharedlibrary = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
-        threading = ['--enable-threading'] if hasattr(self.args, 'threading') and self.args.threading else []
 
-        _build(args=[], debug=debug, shared_library=sharedlibrary, threading=threading, parallelism=self.parallelism, debug_mode=debugMode, output_dir=self.subject.output)
+        _build(args=[], debug=debug, shared_library=sharedlibrary, parallelism=self.parallelism, debug_mode=debugMode, output_dir=self.subject.output)
 
     def needsBuild(self, newestInput):
         return (True, None) # Let make decide
 
     def clean(self, forBuild=False):
         if not forBuild:
-            mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
-            _deleteTruffleNode()
+            if _currentOs is 'windows':
+                mx.run([join('.', 'vcbuild.bat'),
+                        'clean',
+                        'java-home', _getJdkHome()
+                    ], cwd=_suite.dir)
+            else:
+                mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
 
 class GraalNodeJsArchiveProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):
@@ -184,12 +200,12 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
 
     def newestInput(self):
         relInputPaths = [join('lib', m) for m in self.modulesToSnapshot()] + \
-                        ['mx.graal-nodejs/mx_graal_nodejs.py',
-                         'tools/js2c.py',
-                         'tools/expand-js-macros.py',
-                         'tools/snapshot2c.py',
-                         'src/notrace_macros.py',
-                         'src/noperfctr_macros.py']
+                        [join('mx.graal-nodejs', 'mx_graal_nodejs.py'),
+                         join('tools', 'js2c.py'),
+                         join('tools', 'expand-js-macros.py'),
+                         join('tools', 'snapshot2c.py'),
+                         join('src', 'notrace_macros.py'),
+                         join('src', 'noperfctr_macros.py')]
         absInputPaths = [join(_suite.dir, p) for p in relInputPaths]
         return mx.TimeStampFile.newest(absInputPaths)
 
@@ -212,10 +228,10 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
 
         brokenModules = [
             'assert.js',                          # Uses await
-            'internal/errors.js',                 # Uses JSFunction.HOME_OBJECT_ID
-            'internal/fs/promises.js',            # Uses await
-            'internal/modules/esm/module_map.js', # Uses JSFunction.HOME_OBJECT_ID
-            'internal/readline.js',               # Uses yield
+            join('internal', 'errors.js'),        # Uses JSFunction.HOME_OBJECT_ID
+            join('internal', 'fs', 'promises.js'),# Uses await
+            join('internal', 'modules', 'esm', 'module_map.js'),# Uses JSFunction.HOME_OBJECT_ID
+            join('internal', 'readline.js'),      # Uses yield
             'vm.js',                              # Uses JSFunction.HOME_OBJECT_ID
         ]
 
@@ -231,7 +247,6 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
     def build(self):
         outputDir = self.subject.output_dir()
         snapshotToolDistribution = 'graal-js:TRUFFLE_JS_SNAPSHOT_TOOL'
-        pythonCmd = join(_suite.mxDir, 'python2/python')
 
         moduleSet = self.modulesToSnapshot()
 
@@ -241,19 +256,19 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         macroFiles = []
         # performance counters are enabled by default only on Windows
         if _currentOs is not 'windows':
-            macroFiles.append('src/noperfctr_macros.py')
+            macroFiles.append(join('src', 'noperfctr_macros.py'))
         # DTrace is disabled explicitly by the --without-dtrace option
         # ETW is enabled by default only on Windows
         if _currentOs is not 'windows':
-            macroFiles.append('src/notrace_macros.py')
+            macroFiles.append(join('src', 'notrace_macros.py'))
 
-        mx.run([pythonCmd, 'tools/expand-js-modules.py', outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
+        mx.run([python_cmd(), join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
                cwd=_suite.dir)
         if not (hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac):
             mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]), mx.distribution(snapshotToolDistribution).mainClass,
                      '--binary', '--outdir=' + outputDirBin, '--indir=' + outputDirBin] + ['--file=' + m for m in moduleSet],
                     cwd=outputDirBin)
-        mx.run([pythonCmd, join(_suite.dir, 'tools/snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
+        mx.run([python_cmd(), join(_suite.dir, 'tools', 'snapshot2c.py'), 'node_snapshots.h'] + [join('lib', m + '.bin') for m in moduleSet],
                cwd=outputDir)
 
     def clean(self, forBuild=False):
@@ -277,10 +292,10 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     mode, vmArgs, progArgs = setupNodeEnvironment(args)
     if mode == 'Debug':
         progArgs += ['-m', 'debug']
-    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs'] + vmArgs))
+    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs', '-Xmx4g'] + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
-    return mx.run([join(_suite.mxDir, 'python2', 'python'), 'tools/test.py'] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
+    return mx.run([python_cmd(), join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath(additionalPath=None):
     javaHome = _getJdkHome()
@@ -303,6 +318,17 @@ def setLibraryPath(additionalPath=None):
     _setEnvVar('LD_LIBRARY_PATH', libraryPath)
 
 def setupNodeEnvironment(args, add_graal_vm_args=True):
+    args = args if args else []
+    mode, vmArgs, progArgs = _parseArgs(args)
+    setLibraryPath()
+
+    if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None:
+        _prepare_svm_env()
+        return mode, vmArgs, progArgs
+
+    if mx.suite('vm', fatalIfMissing=False) is not None or mx.suite('substratevm', fatalIfMissing=False) is not None:
+        mx.warn("Running on the JVM.\nIf you want to run on SubstrateVM, you need to dynamically import both '/substratevm' and '/vm'.\nExample: 'mx --env svm node'")
+
     javaHome = _getJdkHome()
     _setEnvVar('JAVA_HOME', javaHome)
     if mx.suite('compiler', fatalIfMissing=False) is None:
@@ -310,15 +336,12 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         _setEnvVar('TRUFFLE_JAR_PATH', mx.distribution('truffle:TRUFFLE_API').path)
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
     _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
-    _setEnvVar('NODE_JVM_CLASSPATH', mx.classpath(['TRUFFLENODE']
-            + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])))
-    setLibraryPath()
+    node_jvm_cp = (os.environ['NODE_JVM_CLASSPATH'] + os.pathsep) if 'NODE_JVM_CLASSPATH' in os.environ else ''
+    node_cp = node_jvm_cp + mx.classpath(['TRUFFLENODE'] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
+    _setEnvVar('NODE_JVM_CLASSPATH', node_cp)
 
     prevPATH = os.environ['PATH']
     _setEnvVar('PATH', "%s:%s" % (join(_suite.mxDir, 'fake_launchers'), prevPATH))
-
-    args = args if args else []
-    mode, vmArgs, progArgs = _parseArgs(args)
 
     if add_graal_vm_args:
         if mx.suite('graal-enterprise', fatalIfMissing=False):
@@ -339,17 +362,24 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 def makeInNodeEnvironment(args):
     argGroups = setupNodeEnvironment(args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(argGroups[1]))
-    makeCmd = mx.gmake_cmd()
-    if _currentOs == 'solaris':
-        # we have to use GNU make and cp because the Solaris versions
-        # do not support options used by Node.js Makefile and gyp files
-        _setEnvVar('MAKE', makeCmd)
-        _mxrun(['sh', '-c', 'ln -s `which gcp` ' + join(_suite.dir, 'cp')])
-        prevPATH = os.environ['PATH']
-        _setEnvVar('PATH', "%s:%s" % (_suite.dir, prevPATH))
-    _mxrun([makeCmd] + argGroups[2], cwd=_suite.dir)
-    if _currentOs == 'solaris':
-        _mxrun(['rm', 'cp'])
+    if _currentOs is 'windows':
+        _mxrun([join('.', 'vcbuild.bat'),
+                'noprojgen',
+                'nobuild',
+                'java-home', _getJdkHome()
+            ] + argGroups[2], cwd=_suite.dir)
+    else:
+        makeCmd = mx.gmake_cmd()
+        if _currentOs == 'solaris':
+            # we have to use GNU make and cp because the Solaris versions
+            # do not support options used by Node.js Makefile and gyp files
+            _setEnvVar('MAKE', makeCmd)
+            _mxrun(['sh', '-c', 'ln -s `which gcp` ' + join(_suite.dir, 'cp')])
+            prevPATH = os.environ['PATH']
+            _setEnvVar('PATH', "%s:%s" % (_suite.dir, prevPATH))
+        _mxrun([makeCmd] + argGroups[2], cwd=_suite.dir)
+        if _currentOs == 'solaris':
+            _mxrun(['rm', 'cp'])
 
 def prepareNodeCmdLine(args, add_graal_vm_args=True):
     '''run a Node.js program or shell
@@ -357,7 +387,11 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
     '''
     mode, vmArgs, progArgs = setupNodeEnvironment(args, add_graal_vm_args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
-    return [join(_suite.dir, 'out', mode, 'node')] + progArgs
+
+    if _currentOs is 'windows':
+        return [join(_suite.dir, mode, 'node.exe')] + progArgs
+    else:
+        return [join(_suite.dir, 'out', mode, 'node')] + progArgs
 
 def parse_js_args(args):
     vmArgs, progArgs = mx_graal_js.parse_js_args(args)
@@ -376,33 +410,6 @@ def _mxrun(args, cwd=_suite.dir, verbose=False, out=None):
     status = mx.run(args, nonZeroIsFatal=False, cwd=cwd, out=out)
     if status:
         mx.abort(status)
-
-def _createSymLinks():
-    def _createSymLinkToTruffleNode(dest):
-        if not exists(dest):
-            symlink(join(_suite.dir, mx.distribution('TRUFFLENODE').path), dest)
-
-    # create symbolic links to trufflenode.jar
-    _createSymLinkToTruffleNode(join(_suite.dir, 'trufflenode.jar'))
-    for mode in ['Debug', 'Release']:
-        destDir = join(_suite.dir, 'out', mode)
-        if exists(destDir):
-            _createSymLinkToTruffleNode(join(destDir, 'trufflenode.jar'))
-
-def _deleteTruffleNode():
-    def _delete(path):
-        if islink(path):
-            unlink(path)
-        elif isfile(path):
-            mx.logv('Warning! %s is a file, not a symlink, and will be deleted' % path)
-            remove(path)
-        elif isdir(path):
-            mx.logv('Warning! %s is a directory, not a symlink, and will be deleted' % path)
-            shutil.rmtree(path)
-
-    _delete(join(_suite.dir, 'out'))
-    _delete(join(_suite.dir, 'node'))
-    _delete(join(_suite.dir, 'trufflenode.jar'))
 
 def _setEnvVar(name, val):
     if val:
@@ -456,40 +463,13 @@ def overrideBuild():
 if _suite.primary:
     overrideBuild()
 
-def _import_substratevm():
-    try:
-        import mx_substratevm
-        return mx_substratevm
-    except:
-        mx.abort("Cannot import 'mx_substratevm'. Did you forget to dynamically import SubstrateVM?")
-
-def buildSvmImage(args):
-    """build a shared SubstrateVM library to run Graal.nodejs"""
-    _svm = _import_substratevm()
-    _svm.flag_suitename_map['nodejs'] = ('graal-nodejs', ['TRUFFLENODE'], ['TRUFFLENODE_GRAALVM_SUPPORT'], 'js')
-    _js_version = VC.get_vc(_suite.vc_dir).parent(_suite.vc_dir)
-    mx.logv('Fetch JS version {}'.format(_js_version))
-    for _lang in ['js', 'nodejs']:
-        _svm.truffle_language_ensure(_lang, _js_version)
-    _svm.native_image_on_jvm(['-H:+EnforceMaxRuntimeCompileMethods', '--language:nodejs', '-H:JNIConfigurationResources=svmnodejs.jniconfig'] + args)
-
 def _prepare_svm_env():
-    setLibraryPath()
-    _setEnvVar('NODE_JVM_LIB', join(_suite.dir, mx.add_lib_suffix('nodejs')))
+    import mx_vm
+    libpolyglot = join(mx_vm.graalvm_home(), 'jre', 'lib', 'polyglot', mx.add_lib_suffix(mx.add_lib_prefix('polyglot')))
+    if not exists(libpolyglot):
+        mx.abort("Cannot find polyglot library. Did you forget to build it using 'mx --env svm build'?")
+    _setEnvVar('NODE_JVM_LIB', libpolyglot)
     _setEnvVar('ICU4J_DATA_PATH', join(mx.suite('graal-js').dir, 'lib', 'icu4j', 'icudt'))
-
-def testsvmnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
-    _prepare_svm_env()
-    return mx.run([join(_suite.mxDir, 'python2', 'python'), 'tools/test.py'] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
-
-def svmnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
-    """run Graal.nodejs on SubstrateVM"""
-    _prepare_svm_env()
-    return mx.run([join(_suite.dir, 'node')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
-
-def svmnpm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
-    """run 'npm' with Graal.nodejs on SubstrateVM"""
-    return svmnode([join(_suite.dir, 'deps', 'npm', 'bin', 'npm-cli.js')] + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
@@ -504,8 +484,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     truffle_jars=['graal-nodejs:TRUFFLENODE'],
     support_distributions=['graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
     provided_executables=[
-        'bin/node',
-        'bin/npm',
+        join('bin', 'node'),
+        join('bin', 'npm'),
     ],
     polyglot_lib_build_args=[
         "-H:JNIConfigurationResources=svmnodejs.jniconfig",
@@ -523,8 +503,4 @@ mx.update_commands(_suite, {
     'node-gyp' : [node_gyp, ''],
     'testnode' : [testnode, ''],
     'makeinnodeenv' : [makeInNodeEnvironment, ''],
-    'buildsvmimage' : [buildSvmImage, ''],
-    'svmnode' : [svmnode, ''],
-    'svmnpm' : [svmnpm, ''],
-    'testsvmnode' : [testsvmnode, ''],
 })

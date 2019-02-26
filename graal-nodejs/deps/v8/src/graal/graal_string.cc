@@ -470,7 +470,7 @@ v8::Local<v8::String> GraalString::NewExternal(v8::Isolate* isolate, v8::String:
     v8::Local<v8::String> result = GraalString::NewFromOneByte(isolate, (const unsigned char*) resource->data(), v8::String::kNormalString, resource->length());
     if (!result.IsEmpty()) {
         GraalString* graal_string = reinterpret_cast<GraalString*> (*result);
-        JNI_CALL_VOID(isolate, GraalAccessMethod::string_external_resource_callback, graal_string->GetJavaObject(), (long) resource, (jlong) & ExternalResourceDeallocator);
+        JNI_CALL_VOID(isolate, GraalAccessMethod::string_external_resource_callback, graal_string->GetJavaObject(), (jlong) resource, (jlong) & ExternalResourceDeallocator);
     }
     return result;
 }
@@ -479,7 +479,7 @@ v8::Local<v8::String> GraalString::NewExternal(v8::Isolate* isolate, v8::String:
     v8::Local<v8::String> result = GraalString::NewFromTwoByte(isolate, resource->data(), v8::String::kNormalString, resource->length());
     if (!result.IsEmpty()) {
         GraalString* graal_string = reinterpret_cast<GraalString*> (*result);
-        JNI_CALL_VOID(isolate, GraalAccessMethod::string_external_resource_callback, graal_string->GetJavaObject(), (long) resource, (jlong) & ExternalResourceDeallocator);
+        JNI_CALL_VOID(isolate, GraalAccessMethod::string_external_resource_callback, graal_string->GetJavaObject(), (jlong) resource, (jlong) & ExternalResourceDeallocator);
     }
     return result;
 }

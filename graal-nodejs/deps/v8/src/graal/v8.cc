@@ -65,6 +65,7 @@
 #include "graal_symbol.h"
 #include "graal_unbound_script.h"
 #include "graal_value.h"
+#include "graal_script_or_module.h"
 #include "v8.h"
 #include "v8-profiler.h"
 #include "libplatform/v8-tracing.h"
@@ -495,7 +496,11 @@ namespace v8 {
 
     void Locker::Initialize(Isolate* isolate) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+#ifdef __POSIX__
         pthread_mutex_lock(&graal_isolate->lock_);
+#else
+        WaitForSingleObject(graal_isolate->lock_, INFINITE);
+#endif
         graal_isolate->lock_owner_ = this;
         isolate_ = reinterpret_cast<internal::Isolate*> (isolate);
     }
@@ -508,7 +513,11 @@ namespace v8 {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
         if (graal_isolate->lock_owner_ == this) {
             graal_isolate->lock_owner_ = nullptr;
+#ifdef __POSIX__
             pthread_mutex_unlock(&graal_isolate->lock_);
+#else
+            ReleaseMutex(graal_isolate->lock_);
+#endif
         }
     }
 
@@ -516,7 +525,11 @@ namespace v8 {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         if (graal_isolate->lock_owner_ != nullptr) {
             graal_isolate->lock_owner_ = nullptr;
+#ifdef __POSIX__
             pthread_mutex_unlock(&graal_isolate->lock_);
+#else
+            ReleaseMutex(graal_isolate->lock_);
+#endif
         }
     }
 
@@ -982,7 +995,7 @@ namespace v8 {
                 Local<Value> exception = Exception();
                 Local<v8::Message> message = Message();
                 env->ExceptionClear();
-                graal_isolate->SendMessage(message, exception, java_exception);
+                graal_isolate->NotifyMessageListener(message, exception, java_exception);
             } else if (REPORT_CAUGHT_EXCEPTIONS) {
                 env->ExceptionDescribe();
             } else {
@@ -1211,7 +1224,7 @@ namespace v8 {
             if (existing != NULL) {
                 vm_args.append(" ").append(existing);
             }
-            setenv("NODE_JVM_OPTIONS", vm_args.c_str(), 1);
+            GraalIsolate::SetEnv("NODE_JVM_OPTIONS", vm_args.c_str());
         }
 
         GraalIsolate::SetMode(use_jvm ? GraalIsolate::kModeJVM : (use_native ? GraalIsolate::kModeNative : GraalIsolate::kModeDefault));
@@ -2836,7 +2849,7 @@ namespace v8 {
     }
 
     void Isolate::SetHostImportModuleDynamicallyCallback(HostImportModuleDynamicallyCallback callback) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->SetImportModuleDynamicallyCallback(callback);
     }
 
     void Isolate::SetHostInitializeImportMetaObjectCallback(HostInitializeImportMetaObjectCallback callback) {
@@ -2844,8 +2857,7 @@ namespace v8 {
     }
 
     Local<Value> ScriptOrModule::GetResourceName() {
-        TRACE
-        return Local<Value>();
+        return reinterpret_cast<GraalScriptOrModule*> (this)->GetResourceName();
     }
 
     Local<BigInt> BigInt::New(Isolate* isolate, int64_t value) {
@@ -3068,6 +3080,19 @@ namespace v8 {
     ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCacheForFunction(Local<Function> function) {
         TRACE
         return nullptr;
+    }
+
+    bool ScriptCompiler::ExternalSourceStream::SetBookmark() {
+        TRACE
+        return false;
+    }
+
+    void ScriptCompiler::ExternalSourceStream::ResetToBookmark() {
+        TRACE
+    }
+
+    SnapshotCreator::SnapshotCreator(const intptr_t* external_references, StartupData* existing_blob) {
+        TRACE
     }
 
     void Object::CheckCast(v8::Value* obj) {}

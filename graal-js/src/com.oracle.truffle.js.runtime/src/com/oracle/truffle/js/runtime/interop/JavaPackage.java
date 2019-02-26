@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
@@ -73,7 +72,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 public final class JavaPackage extends JSBuiltinObject {
     public static final String TYPE_NAME = "object";
     public static final String CLASS_NAME = "JavaPackage";
-    public static final JavaPackage INSTANCE = JSTruffleOptions.SubstrateVM ? null : new JavaPackage();
+    public static final JavaPackage INSTANCE = new JavaPackage();
     private static final Property PACKAGE_PROPERTY;
     private static final HiddenKey PACKAGE_NAME_ID = new HiddenKey("packageName");
 
@@ -83,7 +82,6 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     private JavaPackage() {
-        assert !JSTruffleOptions.SubstrateVM;
     }
 
     public static DynamicObject create(JSRealm realm, String packageName) {
@@ -134,8 +132,6 @@ public final class JavaPackage extends JSBuiltinObject {
             if (clazz instanceof Class<?>) {
                 if (returnType == Class.class) {
                     return returnType.cast(clazz);
-                } else if (returnType == JavaClass.class) {
-                    return returnType.cast(JavaClass.forClass((Class<?>) clazz));
                 } else {
                     return returnType.cast(javaType);
                 }
@@ -149,14 +145,14 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     public static Object getJavaClassOrConstructorOrSubPackage(JSContext context, DynamicObject thisObj, String name) {
-        if (JSTruffleOptions.NashornJavaInterop && Boundaries.stringEndsWith(name, ")")) {
+        if (context.isOptionNashornCompatibilityMode() && Boundaries.stringEndsWith(name, ")")) {
             // constructor directly? e.g. java.awt["Color(int,int,int)"]
             int openParen = name.indexOf('(');
             if (openParen != -1) {
                 String className = Boundaries.substring(name, 0, openParen);
-                JavaClass javaClass = getClass(thisObj, className, JavaClass.class);
+                Object javaClass = getClass(thisObj, className, Object.class);
                 if (javaClass != null) {
-                    return javaClass.getBestConstructor(Boundaries.substring(name, openParen + 1, name.length() - 1));
+                    return javaClass;
                 } else {
                     throw Errors.createTypeErrorFormat("No such Java class: %s", prependPackageName(thisObj, className));
                 }
@@ -166,7 +162,7 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     private static Object getJavaClassOrSubPackage(JSRealm realm, DynamicObject thisObj, String name) {
-        Object javaClass = getClass(thisObj, name, JSTruffleOptions.NashornJavaInterop ? JavaClass.class : Object.class);
+        Object javaClass = getClass(thisObj, name, Object.class);
         if (javaClass != null) {
             return javaClass;
         }

@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -119,7 +118,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.interop.JSJavaWrapper;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -175,10 +173,10 @@ public class WriteElementNode extends JSTargetableNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded() && materializedTags.contains(WriteElementExpressionTag.class)) {
-            JavaScriptNode clonedTarget = targetNode.hasSourceSection() ? cloneUninitialized(targetNode) : JSTaggedExecutionNode.createFor(targetNode, this, ExpressionTag.class);
-            JavaScriptNode clonedIndex = indexNode.hasSourceSection() ? cloneUninitialized(indexNode) : JSTaggedExecutionNode.createFor(indexNode, this, ExpressionTag.class);
-            JavaScriptNode clonedValue = valueNode.hasSourceSection() ? cloneUninitialized(valueNode) : JSTaggedExecutionNode.createFor(valueNode, this, ExpressionTag.class);
-            JavaScriptNode cloned = WriteElementNode.create(clonedTarget, clonedIndex, clonedValue, getContext(), isStrict(), writeOwn());
+            JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
+            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
+            JavaScriptNode clonedValue = valueNode == null || valueNode.hasSourceSection() ? valueNode : JSTaggedExecutionNode.createForInput(valueNode, this);
+            WriteElementNode cloned = createMaterialized(clonedTarget, clonedIndex, clonedValue);
             transferSourceSectionAndTags(this, cloned);
             return cloned;
         }
@@ -187,7 +185,11 @@ public class WriteElementNode extends JSTargetableNode {
 
     private boolean materializationNeeded() {
         // Materialization is needed only if we don't have source sections.
-        return !(targetNode.hasSourceSection() && indexNode.hasSourceSection() && valueNode.hasSourceSection());
+        return (targetNode != null && !targetNode.hasSourceSection()) || (indexNode != null && !indexNode.hasSourceSection()) || (valueNode != null && !valueNode.hasSourceSection());
+    }
+
+    protected WriteElementNode createMaterialized(JavaScriptNode newTarget, JavaScriptNode newIndex, JavaScriptNode newValue) {
+        return WriteElementNode.create(newTarget, newIndex, newValue, getContext(), isStrict(), writeOwn());
     }
 
     @Override
@@ -295,19 +297,19 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    protected final Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index) {
+    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index) {
         Object value = valueNode.execute(frame);
         executeWithTargetAndIndexAndValue(target, index, value);
         return value;
     }
 
-    protected final Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index) {
+    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index) {
         Object value = valueNode.execute(frame);
         executeWithTargetAndIndexAndValue(target, index, value);
         return value;
     }
 
-    protected final int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
+    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
         try {
             int value = valueNode.executeInt(frame);
             executeWithTargetAndIndexAndValue(target, index, value);
@@ -318,7 +320,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    protected final int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
+    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
         try {
             int value = valueNode.executeInt(frame);
             executeWithTargetAndIndexAndValue(target, index, (Object) value);
@@ -329,7 +331,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    protected final double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
+    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
         try {
             double value = valueNode.executeDouble(frame);
             executeWithTargetAndIndexAndValue(target, index, value);
@@ -340,7 +342,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    protected final double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
+    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
         try {
             double value = valueNode.executeDouble(frame);
             executeWithTargetAndIndexAndValue(target, index, (Object) value);
@@ -423,7 +425,7 @@ public class WriteElementNode extends JSTargetableNode {
                 assert JSRuntime.isForeignObject(target);
                 return new TruffleObjectWriteElementTypeCacheNode(context, isStrict, (Class<? extends TruffleObject>) target.getClass(), writeOwn);
             } else {
-                assert JSTruffleOptions.NashornJavaInterop : target;
+                assert JSRuntime.isJavaPrimitive(target);
                 return new JavaObjectWriteElementTypeCacheNode(context, isStrict, target.getClass(), writeOwn);
             }
         }
@@ -566,12 +568,10 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
-            JSObject.set(JSJavaWrapper.create(context, target), index, value, isStrict);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
-            JSObject.set(JSJavaWrapper.create(context, target), index, value, isStrict);
         }
 
         @Override
@@ -847,16 +847,16 @@ public class WriteElementNode extends JSTargetableNode {
                 ScriptArray newArray;
                 if (value instanceof Integer) {
                     inBoundsIntBranch.enter();
-                    newArray = constantArray.createWriteableInt(target, index, (int) value, createWritableProfile);
+                    newArray = constantArray.createWriteableInt(target, index, (int) value, arrayCondition, createWritableProfile);
                 } else if (value instanceof Double) {
                     inBoundsDoubleBranch.enter();
-                    newArray = constantArray.createWriteableDouble(target, index, (double) value, createWritableProfile);
+                    newArray = constantArray.createWriteableDouble(target, index, (double) value, arrayCondition, createWritableProfile);
                 } else if (JSObject.isDynamicObject(value)) {
                     inBoundsJSObjectBranch.enter();
-                    newArray = constantArray.createWriteableJSObject(target, index, (DynamicObject) value, createWritableProfile);
+                    newArray = constantArray.createWriteableJSObject(target, index, (DynamicObject) value, arrayCondition, createWritableProfile);
                 } else {
                     inBoundsObjectBranch.enter();
-                    newArray = constantArray.createWriteableObject(target, index, value, createWritableProfile);
+                    newArray = constantArray.createWriteableObject(target, index, value, arrayCondition, createWritableProfile);
                 }
                 setArrayAndWrite(newArray, target, index, value, arrayCondition);
             } else {
@@ -967,7 +967,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             AbstractDoubleArray doubleArray = (AbstractDoubleArray) cast(array);
-            double doubleValue = 0.0; // dummy
+            double doubleValue;
             if (value instanceof Double) {
                 doubleValueBranch.enter();
                 doubleValue = (double) value;
@@ -1185,7 +1185,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             HolesDoubleArray holesDoubleArray = (HolesDoubleArray) cast(array);
-            double doubleValue = 0.0; // dummy
+            double doubleValue;
             if (value instanceof Double) {
                 doubleValueBranch.enter();
                 doubleValue = (double) value;
@@ -1391,7 +1391,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class Uint8ClampedArrayWriteElementCacheNode extends AbstractTypedIntArrayWriteElementCacheNode {
-        private final ConditionProfile toInt = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile toIntProfile = ConditionProfile.createBinaryProfile();
         @Child private JSToDoubleNode toDoubleNode;
 
         Uint8ClampedArrayWriteElementCacheNode(JSContext context, boolean isStrict, ScriptArray arrayType, boolean writeOwn, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1400,7 +1400,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected int toInt(Object value) {
-            if (toInt.profile(value instanceof Integer)) {
+            if (toIntProfile.profile(value instanceof Integer)) {
                 return (int) value;
             } else {
                 double doubleValue = toDouble(value);
@@ -1418,7 +1418,7 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class Uint32ArrayWriteElementCacheNode extends AbstractTypedIntArrayWriteElementCacheNode {
-        private final ConditionProfile toInt = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile toIntProfile = ConditionProfile.createBinaryProfile();
         @Child private JSToNumberNode toNumberNode;
 
         Uint32ArrayWriteElementCacheNode(JSContext context, boolean isStrict, ScriptArray arrayType, boolean writeOwn, ArrayWriteElementCacheNode arrayCacheNext) {
@@ -1427,7 +1427,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected int toInt(Object value) {
-            if (toInt.profile(value instanceof Integer)) {
+            if (toIntProfile.profile(value instanceof Integer)) {
                 return (int) value;
             } else {
                 return (int) JSRuntime.toUInt32(toNumber(value));
@@ -1512,7 +1512,7 @@ public class WriteElementNode extends JSTargetableNode {
                 }
             }
             stringIndexBranch.enter();
-            JSObject.set(JSString.create(context, charSequence), toPropertyKey(index), value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSString.create(context, charSequence), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
@@ -1525,7 +1525,7 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return;
             } else {
-                JSObject.set(JSString.create(context, charSequence), index, value, isStrict, classProfile);
+                JSObject.setWithReceiver(JSString.create(context, charSequence), index, value, target, isStrict, classProfile);
             }
         }
 
@@ -1546,13 +1546,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
             Number number = (Number) target;
-            JSObject.set(JSNumber.create(context, number), toPropertyKey(index), value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSNumber.create(context, number), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
             Number number = (Number) target;
-            JSObject.set(JSNumber.create(context, number), index, value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSNumber.create(context, number), index, value, target, isStrict, classProfile);
         }
 
         @Override
@@ -1569,13 +1569,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
             Boolean bool = (Boolean) target;
-            JSObject.set(JSBoolean.create(context, bool), toPropertyKey(index), value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSBoolean.create(context, bool), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
             Boolean bool = (Boolean) target;
-            JSObject.set(JSBoolean.create(context, bool), index, value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSBoolean.create(context, bool), index, value, target, isStrict, classProfile);
         }
 
         @Override
@@ -1621,13 +1621,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
             BigInt bigInt = (BigInt) target;
-            JSObject.set(JSBigInt.create(context, bigInt), toPropertyKey(index), value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSBigInt.create(context, bigInt), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
             BigInt bigInt = (BigInt) target;
-            JSObject.set(JSBigInt.create(context, bigInt), index, value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSBigInt.create(context, bigInt), index, value, target, isStrict, classProfile);
         }
 
         @Override

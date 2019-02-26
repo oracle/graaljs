@@ -136,7 +136,7 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
                 } else if (JSSymbol.isJSSymbol(obj)) {
                     return JSSymbol.getSymbolData((DynamicObject) obj);
                 } else {
-                    throw Errors.createTypeError("Symbol expected");
+                    throw Errors.createTypeErrorSymbolExpected();
                 }
             }
         });
@@ -154,7 +154,7 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
                 } else if (isJSSymbol(obj)) {
                     return JSSymbol.getSymbolData((DynamicObject) obj).getDescription();
                 } else {
-                    throw Errors.createTypeError("Symbol expected");
+                    throw Errors.createTypeErrorSymbolExpected();
                 }
             }
         });

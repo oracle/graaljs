@@ -87,13 +87,17 @@ public class ProducerConsumerTest {
         public void run() {
             Context cx = Context.create("js");
             cx.getBindings("js").putMember("queue", queue);
-            sent = cx.eval("js", " var sent = 0;" +
-                            "for(var i = 0; i < 127; i++) {" +
-                            "   queue.put(JSON.stringify({message:i}));" +
-                            "   sent++;" +
-                            "};" +
-                            "queue.put(JSON.stringify({message:'byebye'}));" +
-                            "++sent;").asInt();
+            try {
+                sent = cx.eval("js", " var sent = 0;" +
+                                "for(var i = 0; i < 127; i++) {" +
+                                "   queue.put(JSON.stringify({message:i}));" +
+                                "   sent++;" +
+                                "};" +
+                                "queue.put(JSON.stringify({message:'byebye'}));" +
+                                "++sent;").asInt();
+            } finally {
+                cx.close();
+            }
         }
 
     }
@@ -111,13 +115,17 @@ public class ProducerConsumerTest {
         public void run() {
             Context cx = Context.create("js");
             cx.getBindings("js").putMember("queue", queue);
-            received = cx.eval("js", "var received = 0;" +
-                            "do {" +
-                            "   var str = queue.take();" +
-                            "   received++;" +
-                            "   var m = JSON.parse(str);" +
-                            "} while (m.message != 'byebye');" +
-                            "received;").asInt();
+            try {
+                received = cx.eval("js", "var received = 0;" +
+                                "do {" +
+                                "   var str = queue.take();" +
+                                "   received++;" +
+                                "   var m = JSON.parse(str);" +
+                                "} while (m.message != 'byebye');" +
+                                "received;").asInt();
+            } finally {
+                cx.close();
+            }
         }
     }
 }

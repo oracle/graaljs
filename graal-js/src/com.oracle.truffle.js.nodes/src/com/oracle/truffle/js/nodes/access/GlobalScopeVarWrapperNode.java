@@ -46,6 +46,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
+import com.oracle.truffle.js.runtime.Errors;
 
 /**
  * Wrapper around a global property access that handles potential lexical declarations shadowing
@@ -107,7 +108,7 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
 
     @Override
     public Object executeWrite(VirtualFrame frame, Object value) {
-        throw new UnsupportedOperationException();
+        throw Errors.shouldNotReachHere();
     }
 
     @Override

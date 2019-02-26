@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,10 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.interop;
 
-import java.lang.reflect.*;
+#include "graal_context.h"
+#include "graal_isolate.h"
+#include "graal_script_or_module.h"
+#include "graal_value.h"
 
-public interface JavaMember extends Member {
-    boolean isStatic();
+GraalScriptOrModule::GraalScriptOrModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
+}
+
+GraalHandleContent* GraalScriptOrModule::CopyImpl(jobject java_object_copy) {
+    return new GraalScriptOrModule(Isolate(), java_object_copy);
+}
+
+v8::Local<v8::Value> GraalScriptOrModule::GetResourceName() {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_resource_name, graal_isolate, GraalAccessMethod::script_or_module_get_resource_name, Object, GetJavaObject());
+    GraalValue* graal_resource_name = GraalValue::FromJavaObject(graal_isolate, java_resource_name);
+    return reinterpret_cast<v8::Value*> (graal_resource_name);
 }

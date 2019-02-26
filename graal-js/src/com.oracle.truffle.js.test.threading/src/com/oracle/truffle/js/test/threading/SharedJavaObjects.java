@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,8 +38,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.interop;
+package com.oracle.truffle.js.test.threading;
 
-public interface JavaGetter extends JavaMember {
-    Object getValue(Object obj);
+import static org.junit.Assert.assertEquals;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.graalvm.polyglot.Context;
+import org.junit.Test;
+
+public class SharedJavaObjects {
+
+    /**
+     * Polyglot language bindings can be used to share Java objects between JS Contexts.
+     */
+    @Test(timeout = 30000)
+    public void valueInTwoThreads() throws InterruptedException {
+        final Context cx1 = Context.create("js");
+        final Context cx2 = Context.create("js");
+        final AtomicInteger counter = new AtomicInteger(200);
+
+        try {
+            cx1.getBindings("js").putMember("counter", counter);
+            cx2.getBindings("js").putMember("counter", counter);
+
+            Thread thread = new Thread(new Runnable() {
+
+                @Override
+                public void run() {
+                    int dec = 100;
+                    while (dec-- != 0) {
+                        cx1.eval("js", "counter.decrementAndGet()");
+                    }
+                }
+            });
+            thread.start();
+            int dec = 100;
+            while (dec-- != 0) {
+                cx2.eval("js", "counter.decrementAndGet()");
+            }
+            thread.join();
+            assertEquals(counter.get(), 0);
+        } finally {
+            cx1.close();
+            cx2.close();
+        }
+    }
+
 }

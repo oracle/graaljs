@@ -136,6 +136,10 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
         Locale strippedLocale = selectedLocale.stripExtensions();
+        if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
+            selectedLocale = Locale.getDefault();
+            strippedLocale = selectedLocale.stripExtensions();
+        }
         state.locale = strippedLocale.toLanguageTag();
         state.javaLocale = strippedLocale;
     }
@@ -144,17 +148,17 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     public static void setupInternalListFormatter(InternalState state) {
         state.javaLocale = Locale.forLanguageTag(state.locale);
         String lfStyle = null;
-        if (state.type.equals("conjunction")) {
-            lfStyle = "standard";
-        } else if (state.type.equals("disjunction")) {
-            lfStyle = "or";
-        } else if (state.type.equals("unit")) {
-            if (state.style.equals("narrow")) {
-                lfStyle = "unit-narrow";
-            } else if (state.style.equals("short")) {
-                lfStyle = "unit-short";
+        if (state.type.equals(IntlUtil.CONJUNCTION)) {
+            lfStyle = IntlUtil.STANDARD;
+        } else if (state.type.equals(IntlUtil.DISJUNCTION)) {
+            lfStyle = IntlUtil.OR;
+        } else if (state.type.equals(IntlUtil.UNIT)) {
+            if (state.style.equals(IntlUtil.NARROW)) {
+                lfStyle = IntlUtil.UNIT_NARROW;
+            } else if (state.style.equals(IntlUtil.SHORT)) {
+                lfStyle = IntlUtil.UNIT_SHORT;
             } else {
-                lfStyle = "unit";
+                lfStyle = IntlUtil.UNIT;
             }
         }
         state.listFormatter = createFormatter(state.javaLocale, lfStyle);
@@ -187,17 +191,17 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
         for (String element : list) {
             int nextOffset = offsets[idx++];
             if (i < nextOffset) { // literal
-                resultParts.add(IntlUtil.makePart(context, "literal", formatted.substring(i, nextOffset)));
+                resultParts.add(IntlUtil.makePart(context, IntlUtil.LITERAL, formatted.substring(i, nextOffset)));
                 i = nextOffset;
             }
             if (i == nextOffset) { // element
                 int elemLength = element.length();
-                resultParts.add(IntlUtil.makePart(context, "element", formatted.substring(i, i + elemLength)));
+                resultParts.add(IntlUtil.makePart(context, IntlUtil.ELEMENT, formatted.substring(i, i + elemLength)));
                 i += elemLength;
             }
         }
         if (i < formatted.length()) {
-            resultParts.add(IntlUtil.makePart(context, "literal", formatted.substring(i, formatted.length())));
+            resultParts.add(IntlUtil.makePart(context, IntlUtil.LITERAL, formatted.substring(i, formatted.length())));
         }
         return JSArray.createConstant(context, resultParts.toArray());
     }
@@ -210,14 +214,14 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
         public String locale;
         public Locale javaLocale;
 
-        public String type = "conjunction";
-        public String style = "long";
+        public String type = IntlUtil.CONJUNCTION;
+        public String style = IntlUtil.LONG;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
-            JSObjectUtil.defineDataProperty(result, "locale", locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "type", type, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, "style", style, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.TYPE, type, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
             return result;
         }
     }

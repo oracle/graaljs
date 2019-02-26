@@ -241,7 +241,7 @@ public enum TokenType {
     private final boolean isLeftAssociative;
 
     /** Cache values to avoid cloning. */
-    private static final TokenType[] values;
+    private static final TokenType[] tokenValues;
 
     TokenType(final TokenKind kind, final String name) {
         next              = null;
@@ -322,7 +322,7 @@ public enum TokenType {
     }
 
     static TokenType[] getValues() {
-       return values;
+       return tokenValues;
     }
 
     @Override
@@ -365,6 +365,6 @@ public enum TokenType {
 
     static {
         // Avoid cloning of enumeration.
-        values = TokenType.values();
+        tokenValues = TokenType.values();
     }
 }

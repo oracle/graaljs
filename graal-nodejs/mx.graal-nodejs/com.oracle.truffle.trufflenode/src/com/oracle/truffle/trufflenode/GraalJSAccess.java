@@ -139,6 +139,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.ImportMetaInitializer;
+import com.oracle.truffle.js.runtime.ImportModuleDynamicallyCallback;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -193,6 +194,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -206,7 +208,6 @@ import com.oracle.truffle.trufflenode.info.PropertyHandler;
 import com.oracle.truffle.trufflenode.info.Script;
 import com.oracle.truffle.trufflenode.info.UnboundScript;
 import com.oracle.truffle.trufflenode.info.Value;
-import com.oracle.truffle.trufflenode.interop.GraalJSJavaInteropMainWorker;
 import com.oracle.truffle.trufflenode.node.ExecuteNativeFunctionNode;
 import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
@@ -275,7 +276,7 @@ public final class GraalJSAccess {
     private static final TRegexUtil.TRegexCompiledRegexAccessor STATIC_COMPILED_REGEX_ACCESSOR = TRegexUtil.TRegexCompiledRegexAccessor.create();
     private static final TRegexUtil.TRegexFlagsAccessor STATIC_FLAGS_ACCESSOR = TRegexUtil.TRegexFlagsAccessor.create();
 
-    private GraalJSAccess(String[] args, long loopAddress) throws Exception {
+    private GraalJSAccess(String[] args) throws Exception {
         try {
             Options options = Options.parseArguments(prepareArguments(args));
             Context.Builder contextBuilder = options.getContextBuilder();
@@ -284,6 +285,10 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
             contextBuilder.option(JSContextOptions.INTL_402_NAME, "true");
             contextBuilder.option(GraalJSParserOptions.SYNTAX_EXTENSIONS_NAME, "false");
+            // Node.js does not have global load property
+            contextBuilder.option(JSContextOptions.LOAD_NAME, "false");
+            // Node.js provides its own console
+            contextBuilder.option(JSContextOptions.CONSOLE_NAME, "false");
 
             exposeGC = options.isGCExposed();
             evaluator = contextBuilder.build();
@@ -296,12 +301,12 @@ public final class GraalJSAccess {
         mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         mainJSContext = mainJSRealm.getContext();
         assert mainJSContext != null : "JSContext initialized";
-        GraalJSJavaInteropMainWorker worker = new GraalJSJavaInteropMainWorker(this, loopAddress);
-        mainJSContext.initializeJavaInteropWorkers(worker, worker);
         agent = new NodeJSAgent();
         mainJSContext.setJSAgent(agent);
         deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
+        // Disallow importing dynamically unless ESM Loader (--experimental-modules) is enabled.
+        isolateEnableImportModuleDynamically(false);
     }
 
     private static String[] prepareArguments(String[] args) {
@@ -316,8 +321,8 @@ public final class GraalJSAccess {
         return mergedArgs;
     }
 
-    public static Object create(String[] args, long loopAddress) throws Exception {
-        return new GraalJSAccess(args, loopAddress);
+    public static Object create(String[] args) throws Exception {
+        return new GraalJSAccess(args);
     }
 
     public Object undefinedInstance() {
@@ -369,9 +374,6 @@ public final class GraalJSAccess {
             return BIG_INT_VALUE;
         } else if (value instanceof Boolean) {
             return ((Boolean) value).booleanValue() ? BOOLEAN_VALUE_TRUE : BOOLEAN_VALUE_FALSE;
-        }
-        if (JSTruffleOptions.NashornJavaInterop) {
-            return ORDINARY_OBJECT;
         }
         if (value instanceof Throwable) {
             valueTypeError(value);
@@ -1777,31 +1779,30 @@ public final class GraalJSAccess {
     private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
         String moduleName = node.getRootNode().getSourceSection().getSource().getName();
+        Object extraArgument;
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
-            Object[] extendedArgs = new Object[userArgs.length + 1];
-            System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-            extendedArgs[userArgs.length] = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(node) : Undefined.instance;
-            return extendedArgs;
+            extraArgument = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(node) : Undefined.instance;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
             JSContext context = node.getContext();
             CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(this));
             JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
             DynamicObject setBreakPoint = JSFunction.create(context.getRealm(), setBreakPointData);
-            Object[] extendedArgs = new Object[userArgs.length + 1];
-            System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-            extendedArgs[userArgs.length] = setBreakPoint;
-            return extendedArgs;
+            extraArgument = setBreakPoint;
         } else if ("internal/worker.js".equals(moduleName)) {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
-            Object[] extendedArgs = new Object[userArgs.length + 1];
-            System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
-            extendedArgs[userArgs.length] = SharedMemMessagingBindings.createInitFunction(this, node);
-            return extendedArgs;
+            extraArgument = SharedMemMessagingBindings.createInitFunction(this, node);
+        } else if ("inspector.js".equals(moduleName)) {
+            TruffleObject inspector = lookupInstrument("inspect", TruffleObject.class);
+            extraArgument = (inspector == null) ? Undefined.instance : inspector;
         } else {
             return userArgs;
         }
+        Object[] extendedArgs = new Object[userArgs.length + 1];
+        System.arraycopy(userArgs, 0, extendedArgs, 0, userArgs.length);
+        extendedArgs[userArgs.length] = extraArgument;
+        return extendedArgs;
     }
 
     public Object scriptGetUnboundScript(Object script) {
@@ -2268,7 +2269,7 @@ public final class GraalJSAccess {
     public <T> T lookupInstrument(String instrumentId, Class<T> instrumentClass) {
         TruffleLanguage.Env env = envForInstruments;
         InstrumentInfo info = env.getInstruments().get(instrumentId);
-        return env.lookup(info, instrumentClass);
+        return (info == null) ? null : env.lookup(info, instrumentClass);
     }
 
     private boolean createChildContext;
@@ -2288,9 +2289,8 @@ public final class GraalJSAccess {
         }
         realm.setEmbedderData(new RealmData());
         DynamicObject global = realm.getGlobalObject();
-        // Node.js does not have global arguments and load properties
+        // Node.js does not have global arguments property
         global.delete(JSRealm.ARGUMENTS_NAME);
-        global.delete("load");
         if (exposeGC) {
             contextExposeGC(realm);
         }
@@ -2585,14 +2585,18 @@ public final class GraalJSAccess {
         mainJSContext.setImportMetaInitializer(initializer);
     }
 
+    public void isolateEnableImportModuleDynamically(boolean enable) {
+        ImportModuleDynamicallyCallback callback = enable ? new ImportModuleDynamicallyCallback() {
+            @Override
+            public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, String specifier) {
+                return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, specifier);
+            }
+        } : null;
+        mainJSContext.setImportModuleDynamicallyCallback(callback);
+    }
+
     private void exit(int status) {
-        try {
-            evaluator.close();
-        } catch (Throwable throwable) {
-            throwable.printStackTrace();
-        } finally {
-            System.exit(status);
-        }
+        System.exit(status);
     }
 
     public void isolateEnterPolyglotEngine(long callback, long isolate, long param1, long param2, long args, long execArgs) {
@@ -2938,6 +2942,11 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
+    public String scriptOrModuleGetResourceName(Object scriptOrModule) {
+        ScriptOrModule record = (ScriptOrModule) scriptOrModule;
+        return record.getSource().getName();
+    }
+
     public Object valueSerializerNew(long delegatePointer) {
         return new Serializer(mainJSContext, this, delegatePointer);
     }
@@ -3138,7 +3147,7 @@ public final class GraalJSAccess {
     }
 
     static class ESModuleLoader implements JSModuleLoader {
-        private final Map<JSModuleRecord, Map<String, JSModuleRecord>> cache = new HashMap<>();
+        private final Map<ScriptOrModule, Map<String, JSModuleRecord>> cache = new HashMap<>();
         private long resolver;
 
         void setResolver(long resolver) {
@@ -3146,7 +3155,7 @@ public final class GraalJSAccess {
         }
 
         @Override
-        public JSModuleRecord resolveImportedModule(JSModuleRecord referrer, String specifier) {
+        public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
             Map<String, JSModuleRecord> referrerCache = cache.get(referrer);
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();

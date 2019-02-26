@@ -139,17 +139,21 @@ public final class SIMDTypePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             Object element0 = simdArray[0];
 
             if (element0 != null && element0 != Undefined.instance) {
-                sb.append(JSRuntime.toString(element0)); // toString(frame, element0));
+                sb.append(JSRuntime.toString(toDouble(element0)));
             }
 
             for (int k = 1; k < len; k++) {
                 sb.append(sep);
                 Object element = simdArray[k];
                 if (element != null && element != Undefined.instance) {
-                    sb.append(JSRuntime.toString(element)); // ;toString(frame, element));
+                    sb.append(JSRuntime.toString(toDouble(element)));
                 }
             }
             return sb.toString();
+        }
+
+        private static double toDouble(Object element) {
+            return ((Number) element).doubleValue();
         }
 
         @Specialization
@@ -161,7 +165,6 @@ public final class SIMDTypePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public abstract static class SIMDToLocaleStringNode extends SIMDToStringNode {
-        @Child private JSToStringNode toStringNode;
 
         protected SIMDToLocaleStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -171,23 +174,23 @@ public final class SIMDTypePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return SIMDToLocaleStringNodeGen.create(context, builtin, createArgumentNodes);
         }
 
-        private JSFunctionCallNode callToLocaleString;
-        private PropertyGetNode getToLocaleString;
+        private JSFunctionCallNode callToLocaleStringNode;
+        private PropertyGetNode getToLocaleStringNode;
 
         @SuppressWarnings("unused")
         private Object callToLocaleString(VirtualFrame frame, Object nextElement) {
-            if (getToLocaleString == null) {
+            if (getToLocaleStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getToLocaleString = insert(PropertyGetNode.create("toLocaleString", false, getContext()));
-                callToLocaleString = insert(JSFunctionCallNode.create(false));
+                getToLocaleStringNode = insert(PropertyGetNode.create("toLocaleString", false, getContext()));
+                callToLocaleStringNode = insert(JSFunctionCallNode.create(false));
             }
 
-            Object toLocaleString = getToLocaleString.getValue(nextElement);
+            Object toLocaleString = getToLocaleStringNode.getValue(nextElement);
 
             if (!JSFunction.isJSFunction(toLocaleString)) {
                 return nextElement;
             }
-            return callToLocaleString.executeCall(JSArguments.create(nextElement, toLocaleString));
+            return callToLocaleStringNode.executeCall(JSArguments.create(nextElement, toLocaleString));
         }
 
         @Override

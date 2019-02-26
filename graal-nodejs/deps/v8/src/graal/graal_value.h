@@ -120,10 +120,6 @@ public:
     bool Equals(v8::Local<v8::Value> that) const;
     bool StrictEquals(v8::Local<v8::Value> that) const;
     bool InstanceOf(v8::Local<v8::Object> object);
-    // Maximum size of GraalValue (excluding referenced objects) returned
-    // by FromJavaObject - used to reserve enough memory when the value
-    // is allocated on stack
-    static const int MAX_SIZE;
 };
 
 #endif /* GRAAL_VALUE_H_ */

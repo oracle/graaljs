@@ -200,6 +200,10 @@ public class Parser extends AbstractParser {
 
     private static final String FUNCTION_PARAMETER_CONTEXT = "function parameter";
     private static final String CATCH_PARAMETER_CONTEXT = "catch parameter";
+    private static final String IMPORTED_BINDING_CONTEXT = "imported binding";
+    private static final String CLASS_NAME_CONTEXT = "class name";
+    private static final String VARIABLE_NAME_CONTEXT = "variable name";
+    private static final String ASSIGNMENT_TARGET_CONTEXT = "assignment target";
 
     private static final boolean ES6_FOR_OF = Options.getBooleanProperty("parser.for.of", true);
     private static final boolean ES6_CLASS = Options.getBooleanProperty("parser.class", true);
@@ -288,8 +292,8 @@ public class Parser extends AbstractParser {
         this.defaultNames = new ArrayList<>();
         this.env = env;
         this.namespace = new Namespace(env.getNamespace());
-        this.scripting = env.scripting;
-        this.shebang = env.shebang;
+        this.scripting = env.scripting && env.syntaxExtensions;
+        this.shebang = env.shebang || scripting;
         if (this.scripting) {
             this.lineInfoReceiver = new Lexer.LineInfoReceiver() {
                 @Override
@@ -344,7 +348,7 @@ public class Parser extends AbstractParser {
      */
     private void prepareLexer(final int startPos, final int len) {
         stream = new TokenStream();
-        lexer  = new Lexer(source, startPos, len, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions, reparsedFunction != null);
+        lexer  = new Lexer(source, startPos, len, stream, scripting, isES6(), shebang, reparsedFunction != null);
         lexer.line = lexer.pendingLine = lineOffset + 1;
         line = lineOffset;
     }
@@ -441,7 +445,7 @@ public class Parser extends AbstractParser {
     public void parseFormalParameterList() {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions);
+            lexer  = new Lexer(source, stream, scripting, isES6(), shebang);
 
             scanFirstToken();
 
@@ -462,7 +466,7 @@ public class Parser extends AbstractParser {
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting && env.syntaxExtensions, isES6(), shebang && env.syntaxExtensions);
+            lexer  = new Lexer(source, stream, scripting, isES6(), shebang);
             final int functionLine = line;
 
             scanFirstToken();
@@ -720,21 +724,6 @@ loop:
     }
 
     /**
-     * Detect calls to special functions.
-     * @param ident Called function.
-     */
-    private void detectSpecialFunction(final IdentNode ident) {
-        final String name = ident.getName();
-
-        if (EVAL_NAME.equals(name)) {
-            markEval(lc);
-        } else if (SUPER.getName().equals(name)) {
-            assert ident.isDirectSuper();
-            markSuperCall(lc);
-        }
-    }
-
-    /**
      * Detect use of special properties.
      * @param ident Referenced property.
      */
@@ -764,10 +753,10 @@ loop:
     }
 
     /**
-     * ES2019 or newer.
+     * ES2020 or newer.
      */
-    private boolean isES2019() {
-        return env.ecmaScriptVersion >= 10;
+    private boolean isES2020() {
+        return env.ecmaScriptVersion >= 11;
     }
 
     private static boolean isArguments(final String name) {
@@ -821,12 +810,12 @@ loop:
                 if (ident.isMetaProperty()) {
                     return referenceError(lhs, rhs, true);
                 }
-                verifyStrictIdent(ident, "assignment");
+                verifyStrictIdent(ident, ASSIGNMENT_TARGET_CONTEXT);
                 break;
             } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
                 break;
             } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs)) {
-                verifyDestructuringAssignmentPattern(lhs, "assignment");
+                verifyDestructuringAssignmentPattern(lhs, ASSIGNMENT_TARGET_CONTEXT);
                 break;
             } else {
                 return referenceError(lhs, rhs, env.earlyLvalueError);
@@ -1319,7 +1308,7 @@ loop:
 
         IdentNode className = null;
         if (!defaultExport || isBindingIdentifier()) {
-            className = bindingIdentifier("class name", yield, await);
+            className = bindingIdentifier(yield, await, CLASS_NAME_CONTEXT);
         }
 
         Expression classExpression = classTail(classLineNumber, classToken, className, yield, await);
@@ -1349,7 +1338,7 @@ loop:
 
         IdentNode className = null;
         if (isBindingIdentifier()) {
-            className = bindingIdentifier("class name", yield, await);
+            className = bindingIdentifier(yield, await, CLASS_NAME_CONTEXT);
         }
 
         return classTail(classLineNumber, classToken, className, yield, await);
@@ -1723,20 +1712,26 @@ loop:
      * @param ident         Identifier that is verified
      * @param contextString String used in error message to give context to the user
      */
-    private void verifyStrictIdent(final IdentNode ident, final String contextString) {
+    private void verifyStrictIdent(final IdentNode ident, final String contextString, final boolean bindingIdentifier) {
         if (isStrictMode) {
-            switch (ident.getName()) {
-            case "eval":
-            case "arguments":
-                throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
-            default:
-                break;
+            if (bindingIdentifier) {
+                switch (ident.getName()) {
+                case "eval":
+                case "arguments":
+                    throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
+                default:
+                    break;
+                }
             }
 
             if (isFutureStrictName(ident)) {
                 throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
             }
         }
+    }
+
+    private void verifyStrictIdent(final IdentNode ident, final String contextString) {
+        verifyStrictIdent(ident, contextString, true);
     }
 
     /**
@@ -1837,15 +1832,14 @@ loop:
             final long varToken = Token.recast(token, varType);
 
             // Get name of var.
-            final String contextString = "variable name";
-            final Expression binding = bindingIdentifierOrPattern(contextString);
+            final Expression binding = bindingIdentifierOrPattern(VARIABLE_NAME_CONTEXT);
             final boolean isDestructuring = !(binding instanceof IdentNode);
             if (isDestructuring) {
                 final int finalVarFlags = varFlags | VarNode.IS_DESTRUCTURING;
                 verifyDestructuringBindingPattern(binding, new Consumer<IdentNode>() {
                     @Override
                     public void accept(IdentNode identNode) {
-                        verifyStrictIdent(identNode, contextString);
+                        verifyStrictIdent(identNode, VARIABLE_NAME_CONTEXT);
                         if (varType != VAR && identNode.getName().equals(LET.getName())) {
                             throw error(AbstractParser.message("let.lexical.binding")); // ES8 13.3.1.1
                         }
@@ -1932,28 +1926,27 @@ loop:
         return type == IDENT || type.isContextualKeyword() || isNonStrictModeIdent();
     }
 
-    /**
-     * IdentifierReference or LabelIdentifier.
-     */
-    private IdentNode identifier(boolean yield, boolean await) {
+    private IdentNode identifier(boolean yield, boolean await, String contextString, boolean bindingIdentifier) {
         final IdentNode ident = getIdent();
         verifyIdent(ident, yield, await);
+        verifyStrictIdent(ident, contextString, bindingIdentifier);
         return ident;
     }
 
-    private IdentNode identifier() {
-        return identifier(inGeneratorFunction(), inAsyncFunction());
+    private IdentNode identifierReference(boolean yield, boolean await) {
+        return identifier(yield, await, "IdentifierReference", false);
+    }
+
+    private IdentNode labelIdentifier() {
+        return identifier(inGeneratorFunction(), inAsyncFunction(), "LabelIdentifier", false);
     }
 
     private boolean isBindingIdentifier() {
         return type == IDENT || type.isContextualKeyword() || isNonStrictModeIdent();
     }
 
-    private IdentNode bindingIdentifier(String contextString, boolean yield, boolean await) {
-        final IdentNode ident = getIdent();
-        verifyIdent(ident, yield, await);
-        verifyStrictIdent(ident, contextString);
-        return ident;
+    private IdentNode bindingIdentifier(boolean yield, boolean await, String contextString) {
+        return identifier(yield, await, contextString, true);
     }
 
     private Expression bindingPattern(boolean yield, boolean await) {
@@ -1966,16 +1959,16 @@ loop:
         }
     }
 
-    private Expression bindingIdentifierOrPattern(String contextString, boolean yield, boolean await) {
+    private Expression bindingIdentifierOrPattern(boolean yield, boolean await, String contextString) {
         if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
-            return bindingIdentifier(contextString, yield, await);
+            return bindingIdentifier(yield, await, contextString);
         } else {
             return bindingPattern(yield, await);
         }
     }
 
     private Expression bindingIdentifierOrPattern(String contextString) {
-        return bindingIdentifierOrPattern(contextString, inGeneratorFunction(), inAsyncFunction());
+        return bindingIdentifierOrPattern(inGeneratorFunction(), inAsyncFunction(), contextString);
     }
 
     private abstract class VerifyDestructuringPatternNodeVisitor extends NodeVisitor<LexicalContext> {
@@ -2052,7 +2045,7 @@ loop:
         @Override
         public boolean enterBinaryNode(BinaryNode binaryNode) {
             if (binaryNode.isTokenType(ASSIGN)) {
-                binaryNode.lhs().accept(this);
+                binaryNode.getLhs().accept(this);
                 // Initializer(rhs) can be any AssignmentExpression
                 return false;
             } else {
@@ -2494,7 +2487,7 @@ loop:
             break;
 
         default:
-            final IdentNode ident = identifier();
+            final IdentNode ident = labelIdentifier();
             labelNode = lc.findLabel(ident.getName());
 
             if (labelNode == null) {
@@ -2542,7 +2535,7 @@ loop:
             break;
 
         default:
-            final IdentNode ident = identifier();
+            final IdentNode ident = labelIdentifier();
             labelNode = lc.findLabel(ident.getName());
 
             if (labelNode == null) {
@@ -2839,7 +2832,7 @@ loop:
         // Capture label token.
         final long labelToken = token;
         // Get label ident.
-        final IdentNode ident = identifier();
+        final IdentNode ident = labelIdentifier();
 
         expect(COLON);
 
@@ -3078,7 +3071,7 @@ loop:
             markThis(lc);
             return new IdentNode(primaryToken, finish, name).setIsThis();
         case IDENT:
-            final IdentNode ident = identifier(yield, await);
+            final IdentNode ident = identifierReference(yield, await);
             if (ident == null) {
                 break;
             }
@@ -3131,7 +3124,7 @@ loop:
                 return getLiteral();
             }
             if (type.isContextualKeyword() || isNonStrictModeIdent()) {
-                return identifier(yield, await);
+                return identifierReference(yield, await);
             }
             break;
         }
@@ -3586,22 +3579,8 @@ loop:
         final Expression propertyName = propertyName(yield, await);
         final IdentNode setterName = createMethodNameIdent(propertyName, "set ");
         expect(LPAREN);
-        // be sloppy and allow missing setter parameter even though
-        // spec does not permit it!
-        final IdentNode argIdent;
-        if (isBindingIdentifier()) {
-            argIdent = bindingIdentifier("setter argument", false, false);
-        } else {
-            argIdent = null;
-        }
-        expect(RPAREN);
-        final List<IdentNode> parameters = new ArrayList<>();
-        if (argIdent != null) {
-            parameters.add(argIdent);
-        }
 
-
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setterName, getSetToken, FunctionNode.Kind.SETTER, functionLine, parameters, parameters.size());
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(setterName, getSetToken, FunctionNode.Kind.SETTER, functionLine);
         functionNode.setFlag(FunctionNode.IS_METHOD);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
@@ -3610,7 +3589,16 @@ loop:
 
         Block functionBody;
         try {
+            if (!env.syntaxExtensions || type != RPAREN) {
+                formalParameter(yield, await);
+            } // else Nashorn allows no-argument setters
+            expect(RPAREN);
+
             functionBody = functionBody(functionNode);
+
+            if (functionNode.getParameterBlock() != null) {
+                functionBody = wrapParameterBlock(functionNode.getParameterBlock(), functionBody);
+            }
         } finally {
             lc.pop(functionNode);
         }
@@ -3729,11 +3717,6 @@ loop:
             boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC);
             final List<Expression> arguments = optimizeList(argumentList(yield, await, async));
 
-            // Catch special functions.
-            if (lhs instanceof IdentNode) {
-                detectSpecialFunction((IdentNode) lhs);
-            }
-
             if (async) {
                 if (type == ARROW && checkNoLineTerminator()) {
                     // async () => ...
@@ -3751,7 +3734,21 @@ loop:
                 }
             }
 
-            lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
+            // Catch special functions.
+            boolean eval = false;
+            if (lhs instanceof IdentNode) {
+                final IdentNode ident = (IdentNode) lhs;
+                final String name = ident.getName();
+                if (EVAL_NAME.equals(name)) {
+                    markEval(lc);
+                    eval = true;
+                } else if (SUPER.getName().equals(name)) {
+                    assert ident.isDirectSuper();
+                    markSuperCall(lc);
+                }
+            }
+
+            lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, eval);
         }
 
 loop:
@@ -3839,6 +3836,9 @@ loop:
             } else {
                 throw error(AbstractParser.message("expected.target"), token);
             }
+        } else if (type == IMPORT && isES2020() && lookahead() == LPAREN) {
+            // new cannot be used with import()
+            throw error(AbstractParser.message("expected.operand", IMPORT.getName()), token);
         }
 
         // Get function base.
@@ -3958,8 +3958,8 @@ loop:
             // fall through
 
         case IMPORT:
-            if (isES2019() && type == IMPORT) {
-                lhs = importExpression();
+            if (isES2020() && type == IMPORT) {
+                lhs = importExpression(yield, await);
                 break;
             }
             // fall through
@@ -4019,7 +4019,7 @@ loop:
                 final int callLine = line;
                 final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                lhs = new CallNode(callLine, callToken, finish, lhs, arguments, false);
+                lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
 
                 break;
             }
@@ -4031,8 +4031,10 @@ loop:
         return lhs;
     }
 
-    private Expression importExpression() {
+    private Expression importExpression(boolean yield, boolean await) {
         final long importToken = token;
+        final int importLine = line;
+        final int importStart = start;
         assert type == IMPORT;
         next();
         if (type == PERIOD) {
@@ -4048,6 +4050,13 @@ loop:
             } else {
                 throw error(AbstractParser.message("unexpected.ident", meta), token);
             }
+        } else if (type == LPAREN) {
+            next();
+            Expression argument = assignmentExpression(true, yield, await);
+            expect(RPAREN);
+
+            IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), IMPORT.getName());
+            return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, Collections.singletonList(argument));
         } else {
             throw error(AbstractParser.message("expected.operand", IMPORT.getName()), importToken);
         }
@@ -4192,7 +4201,7 @@ loop:
         if (isBindingIdentifier()) {
             boolean yield = (!isStatement && generator) || (isStatement && inGeneratorFunction());
             boolean await = (!isStatement && async) || (isStatement && inAsyncFunction());
-            name = bindingIdentifier("function name", yield, await);
+            name = bindingIdentifier(yield, await, "function name");
         } else if (isStatement) {
             // Nashorn extension: anonymous function statements.
             // Do not allow anonymous function statement if extensions
@@ -4273,7 +4282,7 @@ loop:
             }
 
             // mark ES6 block functions as lexically scoped
-            final int     varFlags = (topLevel || !useBlockScope()) ? 0 : VarNode.IS_LET;
+            final int     varFlags = ((topLevel && !isModule) || !useBlockScope()) ? 0 : VarNode.IS_LET;
             final VarNode varNode  = new VarNode(functionLine, functionToken, finish, name, function, varFlags);
             if (topLevel) {
                 functionDeclarations.add(varNode);
@@ -4372,6 +4381,79 @@ loop:
         formalParameterList(RPAREN, yield, async);
     }
 
+    private void formalParameter(final boolean yield, final boolean await) {
+        if (type == YIELD && yield || isAwait() && await) {
+            throw error(expectMessage(IDENT));
+        }
+
+        final ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+        final long paramToken = token;
+        final int paramLine = line;
+        IdentNode ident;
+        if (isBindingIdentifier() || !(ES6_DESTRUCTURING && isES6())) {
+            ident = bindingIdentifier(yield, await, FUNCTION_PARAMETER_CONTEXT);
+
+            if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
+                next();
+
+                if (type == YIELD && yield || isAwait() && await) {
+                    // error: yield in default expression
+                    throw error(expectMessage(IDENT));
+                }
+
+                // default parameter
+                Expression initializer = assignmentExpression(true, yield, await);
+
+                if (currentFunction != null) {
+                    addDefaultParameter(paramToken, finish, paramLine, ident, initializer, currentFunction);
+                }
+            } else {
+                if (currentFunction != null) {
+                    currentFunction.addParameter(ident);
+                }
+            }
+        } else {
+            final Expression pattern = bindingPattern(yield, await);
+            // Introduce synthetic temporary parameter to capture the object to be destructured.
+            verifyDestructuringParameterBindingPattern(pattern, paramToken, paramLine);
+
+            Expression initializer = null;
+            if (type == ASSIGN) {
+                next();
+                // binding pattern with initializer
+                initializer = assignmentExpression(true, yield, await);
+            }
+
+            if (currentFunction != null) {
+                addDestructuringParameter(paramToken, finish, paramLine, pattern, initializer, currentFunction, false);
+            }
+        }
+    }
+
+    private void functionRestParameter(final TokenType endType, final boolean yield, final boolean await) {
+        final long paramToken = token;
+        final int paramLine = line;
+        final ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+
+        final Expression pattern = bindingIdentifierOrPattern(yield, await, FUNCTION_PARAMETER_CONTEXT);
+        if (pattern instanceof IdentNode) {
+            IdentNode ident = ((IdentNode) pattern).setIsRestParameter();
+
+            if (currentFunction != null) {
+                currentFunction.addParameter(ident);
+            }
+        } else {
+            verifyDestructuringParameterBindingPattern(pattern, paramToken, paramLine);
+
+            if (currentFunction != null) {
+                addDestructuringParameter(paramToken, finish, paramLine, pattern, null, currentFunction, true);
+            }
+        }
+
+        // rest parameter must be last
+        expectDontAdvance(endType);
+    }
+
     /**
      * Parse function parameter list.
      * Same as the other method of the same name - except that the end
@@ -4382,7 +4464,6 @@ loop:
      *      FormalParameterList , Identifier
      */
     private void formalParameterList(final TokenType endType, final boolean yield, final boolean await) {
-        final ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
         // Track commas.
         boolean first = true;
 
@@ -4398,65 +4479,13 @@ loop:
                 first = false;
             }
 
-            boolean restParameter = false;
             if (ES6_REST_PARAMETER && type == ELLIPSIS && isES6()) {
                 next();
-                restParameter = true;
+                functionRestParameter(endType, yield, await);
+                break;
             }
 
-            if (type == YIELD && yield || isAwait() && await) {
-                throw error(expectMessage(IDENT));
-            }
-
-            final long paramToken = token;
-            final int paramLine = line;
-            IdentNode ident;
-            if (isBindingIdentifier() || restParameter || !(ES6_DESTRUCTURING && isES6())) {
-                ident = bindingIdentifier(FUNCTION_PARAMETER_CONTEXT, yield, await);
-
-                if (restParameter) {
-                    ident = ident.setIsRestParameter();
-                    // rest parameter must be last
-                    expectDontAdvance(endType);
-                }
-                if (type == ASSIGN && (ES6_DEFAULT_PARAMETER && isES6())) {
-                    next();
-
-                    if (type == YIELD && yield || isAwait() && await) {
-                        // error: yield in default expression
-                        throw error(expectMessage(IDENT));
-                    }
-
-                    // default parameter
-                    Expression initializer = assignmentExpression(true, yield, await);
-
-                    if (currentFunction != null) {
-                        addDefaultParameter(paramToken, finish, paramLine, ident, initializer, currentFunction);
-                    }
-                } else {
-                    if (currentFunction != null) {
-                        currentFunction.addParameter(ident);
-                    }
-                }
-                if (restParameter) {
-                    break;
-                }
-            } else {
-                final Expression pattern = bindingPattern(yield, await);
-                // Introduce synthetic temporary parameter to capture the object to be destructured.
-                verifyDestructuringParameterBindingPattern(pattern, paramToken, paramLine);
-
-                Expression initializer = null;
-                if (type == ASSIGN) {
-                    next();
-                    // binding pattern with initializer
-                    initializer = assignmentExpression(true, yield, await);
-                }
-
-                if (currentFunction != null) {
-                    addDestructuringParameter(paramToken, finish, paramLine, pattern, initializer, currentFunction);
-                }
-            }
+            formalParameter(yield, await);
         }
     }
 
@@ -4472,13 +4501,13 @@ loop:
         function.addDefaultParameter(new VarNode(paramLine, Token.recast(paramToken, LET), paramFinish, target, value, VarNode.IS_LET));
     }
 
-    private void addDestructuringParameter(long paramToken, int paramFinish, int paramLine, Expression target, Expression initializer, ParserContextFunctionNode function) {
+    private void addDestructuringParameter(long paramToken, int paramFinish, int paramLine, Expression target, Expression initializer, ParserContextFunctionNode function, boolean isRest) {
         assert isDestructuringLhs(target);
         // desugar to: target := (param === undefined) ? initializer : param;
         // we use an special positional parameter node not subjected to TDZ rules;
         // thereby, we forego the need for a synthethic param symbol to refer to the passed value.
         final int paramIndex = function.getParameterCount();
-        final ParameterNode param = new ParameterNode(paramToken, paramFinish, paramIndex);
+        final ParameterNode param = new ParameterNode(paramToken, paramFinish, paramIndex, isRest);
         final Expression value;
         if (initializer == null) {
             value = param; // binding pattern without initializer
@@ -4517,7 +4546,6 @@ loop:
      * @return function node (body.)
      */
     private Block functionBody(final ParserContextFunctionNode functionNode) {
-        long lastToken = 0L;
         ParserContextBlockNode body = null;
         final long bodyToken = token;
         Block functionBody;
@@ -4542,7 +4570,7 @@ loop:
 
                 // just expression as function body
                 final Expression expr = assignmentExpression(true);
-                lastToken = previousToken;
+                long lastToken = previousToken;
                 functionNode.setLastToken(previousToken);
                 assert lc.getCurrentBlock() == lc.getFunctionBody(functionNode);
                 // EOL uses length field to store the line number
@@ -4571,7 +4599,6 @@ loop:
                         functionDeclarations = prevFunctionDecls;
                     }
 
-                    lastToken = token;
                     if (parseBody) {
                         // Since the lexer can read ahead and lexify some number of tokens in advance and have
                         // them buffered in the TokenStream, we need to produce a lexer state as it was just
@@ -4664,7 +4691,7 @@ loop:
         }
 
         stream.reset();
-        lexer = parserState.createLexer(source, lexer, stream, scripting && env.syntaxExtensions, isES6(), shebang);
+        lexer = parserState.createLexer(source, lexer, stream, scripting, isES6(), shebang);
         line = parserState.line;
         linePosition = parserState.linePosition;
         // Doesn't really matter, but it's safe to treat it as if there were a semicolon before
@@ -5299,9 +5326,9 @@ loop:
             ArrayList<Expression> params = new ArrayList<>();
             Expression car = paramListExpr;
             do {
-                Expression cdr = ((BinaryNode) car).rhs();
+                Expression cdr = ((BinaryNode) car).getRhs();
                 params.add(cdr);
-                car = ((BinaryNode) car).lhs();
+                car = ((BinaryNode) car).getLhs();
             } while (car instanceof BinaryNode && Token.descType(car.getToken()) == COMMARIGHT);
             params.add(car);
 
@@ -5323,19 +5350,17 @@ loop:
         if (param instanceof IdentNode) {
             IdentNode ident = (IdentNode)param;
             verifyStrictIdent(ident, FUNCTION_PARAMETER_CONTEXT);
-            if (currentFunction != null && currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
+            if (currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
             }
-            if (currentFunction != null) {
-                currentFunction.addParameter(ident);
-            }
+            currentFunction.addParameter(ident);
             return;
         }
 
         if (param.isTokenType(ASSIGN)) {
-            Expression lhs = ((BinaryNode) param).lhs();
+            Expression lhs = ((BinaryNode) param).getLhs();
             long paramToken = lhs.getToken();
-            Expression initializer = ((BinaryNode) param).rhs();
+            Expression initializer = ((BinaryNode) param).getRhs();
             if (initializer instanceof IdentNode) {
                 if (((IdentNode) initializer).getName().equals(AWAIT.getName())) {
                     throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
@@ -5350,17 +5375,13 @@ loop:
                 // default parameter
                 IdentNode ident = (IdentNode) lhs;
 
-                if (currentFunction != null) {
-                    addDefaultParameter(paramToken, param.getFinish(), paramLine, ident, initializer, currentFunction);
-                }
+                addDefaultParameter(paramToken, param.getFinish(), paramLine, ident, initializer, currentFunction);
                 return;
             } else if (isDestructuringLhs(lhs)) {
                 // binding pattern with initializer
                 verifyDestructuringParameterBindingPattern(lhs, paramToken, paramLine);
 
-                if (currentFunction != null) {
-                    addDestructuringParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction);
-                }
+                addDestructuringParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction, false);
             }
         } else if (isDestructuringLhs(param)) {
             // binding pattern
@@ -5368,9 +5389,7 @@ loop:
 
             verifyDestructuringParameterBindingPattern(param, paramToken, paramLine);
 
-            if (currentFunction != null) {
-                addDestructuringParameter(paramToken, param.getFinish(), paramLine, param, null, currentFunction);
-            }
+            addDestructuringParameter(paramToken, param.getFinish(), paramLine, param, null, currentFunction, false);
         } else if (param.isTokenType(SPREAD_ARGUMENT)) {
             Expression expression = ((UnaryNode) param).getExpression();
             if (expression instanceof IdentNode && identAtTheEndOfArrowParamList()) {
@@ -5706,8 +5725,8 @@ loop:
                 exportDeclaration(module);
                 break;
             case IMPORT:
-                // Ensure we are parsing an import declaration and not import.meta.
-                if (lookahead() != PERIOD) {
+                // Ensure we are parsing an import declaration and not import.meta or import().
+                if (!isImportExpression()) {
                     importDeclaration(module);
                     break;
                 }
@@ -5718,6 +5737,15 @@ loop:
                 break;
             }
         }
+    }
+
+    private boolean isImportExpression() {
+        assert type == IMPORT;
+        if (!isES2020()) {
+            return false;
+        }
+        TokenType la = lookahead();
+        return la == PERIOD || la == LPAREN;
     }
 
     /**
@@ -5766,7 +5794,7 @@ loop:
                 importEntries = convert(namedImportsNode);
             } else if (isBindingIdentifier()) {
                 // ImportedDefaultBinding
-                IdentNode importedDefaultBinding = bindingIdentifier("ImportedBinding", false, false);
+                IdentNode importedDefaultBinding = bindingIdentifier(false, false, IMPORTED_BINDING_CONTEXT);
                 ImportEntry defaultImport = ImportEntry.importDefault(importedDefaultBinding.getName());
 
                 if (type == COMMARIGHT) {
@@ -5819,7 +5847,7 @@ loop:
 
         expect(AS);
 
-        IdentNode localNameSpace = bindingIdentifier("ImportedBinding", false, false);
+        IdentNode localNameSpace = bindingIdentifier(false, false, IMPORTED_BINDING_CONTEXT);
         return new NameSpaceImportNode(startToken, Token.descPosition(startToken), finish, localNameSpace);
     }
 
@@ -5848,11 +5876,12 @@ loop:
             IdentNode importName = getIdentifierName();
             if (type == AS) {
                 next();
-                IdentNode localName = bindingIdentifier("ImportedBinding", false, false);
+                IdentNode localName = bindingIdentifier(false, false, IMPORTED_BINDING_CONTEXT);
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
                 //importEntries.add(ImportEntry.importSpecifier(importName.getName(), localName.getName()));
             } else if (bindingIdentifier) {
-                verifyStrictIdent(importName, "ImportedBinding");
+                verifyIdent(importName, false, false);
+                verifyStrictIdent(importName, IMPORTED_BINDING_CONTEXT);
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, importName, null));
                 //importEntries.add(ImportEntry.importSpecifier(importName.getName()));
             } else {
@@ -6042,18 +6071,14 @@ loop:
         long reservedWordToken = 0L;
         while (type != RBRACE) {
             long nameToken = token;
-            IdentNode localName;
-            if (isIdentifier()) {
-                localName = identifier(false, false);
-            } else if (isReservedWord()) {
+            TokenType nameType = type;
+            IdentNode localName = getIdentifierName();
+            if (isReservedWord(nameType) || (isEscapedIdent(localName) && (isReservedWordSequence(localName.getName()) || isFutureStrictName(localName)))) {
                 // Reserved words are allowed iff the ExportClause is followed by a FromClause.
                 // Remember the first reserved word and throw an error if this is not the case.
                 if (reservedWordToken == 0L) {
-                    reservedWordToken = token;
+                    reservedWordToken = nameToken;
                 }
-                localName = getIdentifierName();
-            } else {
-                throw error(expectMessage(IDENT));
             }
             if (type == AS) {
                 next();
@@ -6079,7 +6104,7 @@ loop:
         return new ExportClauseNode(startToken, Token.descPosition(startToken), finish, optimizeList(exports));
     }
 
-    private boolean isReservedWord() {
+    private static boolean isReservedWord(TokenType type) {
         return type.getKind() == TokenKind.KEYWORD || type.getKind() == TokenKind.FUTURE || type.getKind() == TokenKind.FUTURESTRICT;
     }
 

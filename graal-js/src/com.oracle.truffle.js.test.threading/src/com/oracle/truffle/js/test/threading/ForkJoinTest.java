@@ -62,6 +62,7 @@ public class ForkJoinTest {
         final ForkJoinPool pool = new ForkJoinPool();
         int result = pool.invoke(new GraaljsFibTask(13, tl));
         assertEquals(result, 233);
+        pool.shutdown();
     }
 
     private final Engine engine = Engine.create();

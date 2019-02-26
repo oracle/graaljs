@@ -103,7 +103,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
             }
         }
         if (right instanceof JSConstantNumericUnitNode) {
-            return JSAddSubNumericUnitNodeGen.create(left, true, truncate);
+            return JSAddSubNumericUnitNode.create(left, true, truncate);
         }
         return JSAddNodeGen.create(truncate, left, right);
     }
@@ -135,7 +135,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     }
 
     static Object doIntOverflowStaticLong(long result) {
-        if (Integer.MAX_VALUE <= result && result <= Integer.MIN_VALUE) {
+        if (JSRuntime.longIsRepresentableAsInt(result)) {
             return (int) result;
         } else if (JSRuntime.isSafeInteger(result)) {
             return LargeInteger.valueOf(result);

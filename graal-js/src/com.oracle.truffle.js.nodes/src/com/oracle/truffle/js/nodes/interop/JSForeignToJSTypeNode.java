@@ -52,9 +52,7 @@ import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
-import com.oracle.truffle.js.runtime.interop.JavaClass;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 
@@ -139,13 +137,6 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
                 Object object = env.asHostObject(value);
                 if (object == null) {
                     return Null.instance;
-                }
-                if (JSTruffleOptions.NashornJavaInterop) {
-                    if (object instanceof Class) {
-                        return JavaClass.forClass((Class<?>) object);
-                    } else {
-                        return object;
-                    }
                 }
             }
         }
