@@ -1389,7 +1389,11 @@ public final class JSRuntime {
     }
 
     public static boolean isForeignObject(Object value) {
-        return value instanceof TruffleObject && !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof LargeInteger) &&
+        return value instanceof TruffleObject && isForeignObject((TruffleObject) value);
+    }
+
+    public static boolean isForeignObject(TruffleObject value) {
+        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof LargeInteger) &&
                         !(value instanceof BigInt);
     }
 

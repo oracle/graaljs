@@ -234,7 +234,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             return JSRuntime.toString(valueObj);
         } else if (builtinClass == JSBoolean.INSTANCE) {
             return JSBoolean.valueOf(valueObj);
-        } else if (JSRuntime.isCallable(valueObj)) {
+        } else if (JSRuntime.isCallableIsJSObject(valueObj)) {
             return Undefined.instance;
         }
         return valueObj;
