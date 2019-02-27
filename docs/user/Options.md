@@ -61,6 +61,14 @@ Graal.js implements features from the latest specification and thus sets the def
 For production settings, it is recommended to set the `ecmascript-version` to an existing, finalized version of the specification.
 The versions are numbered with ascending integer values, with `5` for ECMAScript 5.x, `6` for ECMAScript 2015 (formerly ECMAScript 6), and counting from there.
 
+* `5` for ECMAScript 5.x
+* `6` for ECMAScript 2015
+* `7` for ECMAScript 2016
+* `8` for ECMAScript 2017
+* `9` for ECMAScript 2018
+* `10` for ECMAScript 2019
+* `11` for ECMAScript 2020 (currently in draft stage, not fully supported by Graal JavaScript)
+
 ### intl-402
 
 Enable ECMAScript's [Internationalization API](https://tc39.github.io/ecma402/).
