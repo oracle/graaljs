@@ -1323,6 +1323,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private final boolean asyncFunction;
         @Child private JSToStringNode toStringNode;
         @Child private CreateDynamicFunctionNode functionNode;
+        private ConditionProfile argsLengthProfile = ConditionProfile.createBinaryProfile();
 
         public ConstructFunctionNode(JSContext context, JSBuiltin builtin, boolean generatorFunction, boolean asyncFunction, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -1339,7 +1340,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 params[i] = toStringNode.executeString(args[i]);
             }
             String body = args.length > 0 ? toStringNode.executeString(args[args.length - 1]) : "";
-            String paramList = args.length > 1 ? join(params) : "";
+            String paramList = argsLengthProfile.profile(args.length > 1) ? join(params) : "";
             return swapPrototype(functionNode.executeFunction(paramList, body), newTarget);
         }
 
