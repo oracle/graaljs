@@ -55,10 +55,11 @@ import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -78,6 +79,101 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static final String JS_SYNTAX_EXTENSIONS_OPTION = "js.syntax-extensions";
     private static final String JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION = "js.script-engine-global-scope-import";
     public static final String SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME = "importScriptEngineGlobalBindings";
+    private static final String NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY = "polyglot.js.nashorn-compat";
+    public static final String MAGIC_OPTION_PREFIX = "polyglot.js.";
+
+    interface MagicBindingsOptionSetter {
+
+        String getOptionKey();
+
+        Context.Builder setOption(Context.Builder builder);
+    }
+
+    private static final MagicBindingsOptionSetter[] MAGIC_OPTION_SETTERS = new MagicBindingsOptionSetter[]{
+                    new MagicBindingsOptionSetter() {
+
+                        @Override
+                        public String getOptionKey() {
+                            return MAGIC_OPTION_PREFIX + "allowHostAccess";
+                        }
+
+                        @Override
+                        public Builder setOption(Builder builder) {
+                            return builder.allowHostAccess(true);
+                        }
+                    },
+                    new MagicBindingsOptionSetter() {
+
+                        @Override
+                        public String getOptionKey() {
+                            return MAGIC_OPTION_PREFIX + "allowNativeAccess";
+                        }
+
+                        @Override
+                        public Builder setOption(Builder builder) {
+                            return builder.allowNativeAccess(true);
+                        }
+                    },
+                    new MagicBindingsOptionSetter() {
+
+                        @Override
+                        public String getOptionKey() {
+                            return MAGIC_OPTION_PREFIX + "allowCreateThread";
+                        }
+
+                        @Override
+                        public Builder setOption(Builder builder) {
+                            return builder.allowCreateThread(true);
+                        }
+                    },
+                    new MagicBindingsOptionSetter() {
+
+                        @Override
+                        public String getOptionKey() {
+                            return MAGIC_OPTION_PREFIX + "allowIO";
+                        }
+
+                        @Override
+                        public Builder setOption(Builder builder) {
+                            return builder.allowIO(true);
+                        }
+                    },
+                    new MagicBindingsOptionSetter() {
+
+                        @Override
+                        public String getOptionKey() {
+                            return MAGIC_OPTION_PREFIX + "allowHostClassLoading";
+                        }
+
+                        @Override
+                        public Builder setOption(Builder builder) {
+                            return builder.allowHostClassLoading(true);
+                        }
+                    },
+                    new MagicBindingsOptionSetter() {
+
+                        @Override
+                        public String getOptionKey() {
+                            return MAGIC_OPTION_PREFIX + "allowAllAccess";
+                        }
+
+                        @Override
+                        public Builder setOption(Builder builder) {
+                            return builder.allowAllAccess(true);
+                        }
+                    }
+    };
+
+    public static final EconomicSet<String> MAGIC_BINDINGS_OPTION_KEYS = EconomicSet.create();
+    static final EconomicMap<String, MagicBindingsOptionSetter> MAGIC_BINDINGS_OPTION_MAP = EconomicMap.create();
+    private static final boolean NASHORN_COMPATIBILITY_MODE = Boolean.getBoolean(NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY);
+
+    static {
+        for (MagicBindingsOptionSetter setter : MAGIC_OPTION_SETTERS) {
+            MAGIC_BINDINGS_OPTION_KEYS.add(setter.getOptionKey());
+            MAGIC_BINDINGS_OPTION_MAP.put(setter.getOptionKey(), setter);
+        }
+    }
 
     private final GraalJSEngineFactory factory;
     private final Context.Builder contextConfig;
@@ -97,18 +193,21 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         Context.Builder contextConfigToUse = contextConfig;
         if (contextConfigToUse == null) {
             // default config
-            contextConfigToUse = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true).allowCreateThread(true).option(JS_SYNTAX_EXTENSIONS_OPTION, "true");
+            if (NASHORN_COMPATIBILITY_MODE) {
+                contextConfigToUse = Context.newBuilder(ID).allowAllAccess(true).option(JS_SYNTAX_EXTENSIONS_OPTION, "true");
+            } else {
+                contextConfigToUse = Context.newBuilder(ID).option(JS_SYNTAX_EXTENSIONS_OPTION, "true");
+            }
         }
         this.factory = new GraalJSEngineFactory(engineToUse);
         this.contextConfig = contextConfigToUse.option(JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION, "true").engine(engineToUse);
-        this.context.setBindings(new GraalJSBindings(createDefaultContext()), ScriptContext.ENGINE_SCOPE);
+        this.context.setBindings(new GraalJSBindings(this.contextConfig), ScriptContext.ENGINE_SCOPE);
     }
 
-    private Context createDefaultContext() {
+    static Context createDefaultContext(Context.Builder builder) {
         DelegatingInputStream in = new DelegatingInputStream();
         DelegatingOutputStream out = new DelegatingOutputStream();
         DelegatingOutputStream err = new DelegatingOutputStream();
-        Context.Builder builder = this.contextConfig;
         builder.in(in).out(out).err(err);
         Context ctx = builder.build();
         ctx.getPolyglotBindings().putMember(OUT_SYMBOL, out);
@@ -159,7 +258,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public Bindings createBindings() {
-        return new GraalJSBindings(createDefaultContext());
+        return new GraalJSBindings(contextConfig);
     }
 
     @Override
@@ -217,7 +316,6 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             return ((GraalJSBindings) engineB);
         } else {
             GraalJSBindings bindings = new GraalJSBindings(createContext(engineB));
-            bindings.clear();
             bindings.putAll(engineB);
             return bindings;
         }
@@ -226,7 +324,19 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private Context createContext(Bindings engineB) {
         Object ctx = engineB.get(POLYGLOT_CONTEXT);
         if (!(ctx instanceof Context)) {
-            ctx = createDefaultContext();
+            Context.Builder builder = contextConfig;
+            for (MagicBindingsOptionSetter optionSetter : MAGIC_OPTION_SETTERS) {
+                Object value = engineB.get(optionSetter.getOptionKey());
+                if (value instanceof Boolean) {
+                    if (((Boolean) value).booleanValue()) {
+                        builder = optionSetter.setOption(builder);
+                        engineB.remove(optionSetter.getOptionKey());
+                    } else {
+                        throw magicOptionValueError(optionSetter.getOptionKey(), value);
+                    }
+                }
+            }
+            ctx = createDefaultContext(builder);
             engineB.put(POLYGLOT_CONTEXT, ctx);
         }
         return (Context) ctx;
@@ -408,4 +518,12 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                     "    }\n" +
                     "    return new Proxy(target, handler);\n" +
                     "}});\n";
+
+    public static IllegalArgumentException magicOptionValueError(String name, Object v) {
+        return new IllegalArgumentException(String.format("failed to set graal-js option \"%s\": expected a boolean value, got \"%s\"", name, v));
+    }
+
+    public static IllegalStateException magicOptionContextInitializedError(String name) {
+        return new IllegalStateException(String.format("failed to set graal-js option \"%s\": js context is already initialized", name));
+    }
 }

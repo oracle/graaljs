@@ -488,6 +488,7 @@ public class TestEngineNashorn {
         Map<String, Object> map = new HashMap<>();
         map.put("title", "Title example");
         map.put("comments", Arrays.asList(new Comment("author1", "content1"), new Comment("author2", "content2"), new Comment("author3", "content3")));
+        e.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.allowHostAccess", true);
         e.eval(script);
         assertEquals("ok", Objects.toString(((Invocable) e).invokeFunction("test", "string", map)));
     }
