@@ -813,11 +813,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         TruffleObject target = getTarget(proxyObj);
         DynamicObject trap = getTrapFromObject(handler, APPLY);
         if (trap == Undefined.instance) {
-            if (JSObject.isJSObject(target)) {
-                return JSRuntime.call(target, holder, arguments);
-            } else {
-                return JSInteropNodeUtil.call(target, arguments);
-            }
+            return JSRuntime.call(target, holder, arguments);
         }
         JSContext ctx = JSObject.getJSContext(proxyObj);
         return JSRuntime.call(trap, handler, new Object[]{target, holder, JSArray.createConstant(ctx, arguments)});

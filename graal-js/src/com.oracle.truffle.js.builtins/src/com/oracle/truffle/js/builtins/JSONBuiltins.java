@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONParseNodeGen;
 import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONStringifyNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSONData;
@@ -60,6 +61,8 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -206,7 +209,10 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         @Child private PropertySetNode setWrapperProperty;
         @Child private JSToIntegerNode toIntegerNode;
         @Child private JSToNumberNode toNumberNode;
+        @Child private JSIsArrayNode isArrayNode;
+        @Child private IsCallableNode isCallableNode;
         private final BranchProfile spaceIsStringBranch = BranchProfile.create();
+        private final ConditionProfile spaceIsUndefinedProfile = ConditionProfile.createBinaryProfile();
 
         protected Object jsonStr(Object jsonData, String key, DynamicObject holder) {
             if (jsonStringifyStringNode == null) {
@@ -214,6 +220,23 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                 jsonStringifyStringNode = insert(JSONStringifyStringNode.create(getContext()));
             }
             return jsonStringifyStringNode.execute(jsonData, key, holder);
+        }
+
+        @Override
+        protected boolean isArray(Object replacer) {
+            if (isArrayNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isArrayNode = insert(JSIsArrayNode.createIsArrayLike());
+            }
+            return isArrayNode.execute(replacer);
+        }
+
+        protected boolean isCallable(Object obj) {
+            if (isCallableNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isCallableNode = insert(IsCallableNode.create());
+            }
+            return isCallableNode.executeBoolean(obj);
         }
 
         @Specialization(guards = "isCallable(replacerFn)")
@@ -254,28 +277,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         private Object stringifyIntl(Object value, Object spaceParam, DynamicObject replacerFnObj, List<String> replacerList) {
-            Object space = spaceParam;
-            if (JSObject.isDynamicObject(space)) {
-                if (JSNumber.isJSNumber(spaceParam)) {
-                    space = toNumber(space);
-                } else if (JSString.isJSString(space)) {
-                    space = toString(space);
-                }
-            }
-            final String gap;
-            if (JSRuntime.isNumber(space)) {
-                if (toIntegerNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    toIntegerNode = insert(JSToIntegerNode.create());
-                }
-                int newSpace = Math.max(0, Math.min(10, toIntegerNode.executeInt(space)));
-                gap = makeGap(newSpace);
-            } else if (JSRuntime.isString(space)) {
-                spaceIsStringBranch.enter();
-                gap = makeGap(JSRuntime.toStringIsString(space));
-            } else {
-                gap = "";
-            }
+            final String gap = spaceIsUndefinedProfile.profile(spaceParam == Undefined.instance) ? "" : getGap(spaceParam);
 
             DynamicObject wrapper = JSUserObject.create(getContext());
             if (setWrapperProperty == null) {
@@ -284,6 +286,30 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             }
             setWrapperProperty.setValue(wrapper, value);
             return jsonStr(new JSONData(gap, replacerFnObj, replacerList), "", wrapper);
+        }
+
+        private String getGap(Object spaceParam) {
+            Object space = spaceParam;
+            if (JSObject.isDynamicObject(space)) {
+                if (JSNumber.isJSNumber(space)) {
+                    space = toNumber(space);
+                } else if (JSString.isJSString(space)) {
+                    space = toString(space);
+                }
+            }
+            if (JSRuntime.isNumber(space)) {
+                if (toIntegerNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    toIntegerNode = insert(JSToIntegerNode.create());
+                }
+                int newSpace = Math.max(0, Math.min(10, toIntegerNode.executeInt(space)));
+                return makeGap(newSpace);
+            } else if (JSRuntime.isString(space)) {
+                spaceIsStringBranch.enter();
+                return makeGap(JSRuntime.toStringIsString(space));
+            } else {
+                return "";
+            }
         }
 
         @TruffleBoundary

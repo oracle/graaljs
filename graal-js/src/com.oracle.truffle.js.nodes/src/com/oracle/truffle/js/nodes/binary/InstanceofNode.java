@@ -198,15 +198,12 @@ public abstract class InstanceofNode extends JSBinaryNode {
         @Child private PropertyGetNode getPrototypeNode;
         @Child private IsBoundFunctionCacheNode boundFuncCacheNode;
         @Child private IsObjectNode isObjectNode;
-        private final BranchProfile invalidPrototypeBranch = BranchProfile.create();
 
         public abstract boolean executeBoolean(Object left, Object right);
 
         protected OrdinaryHasInstanceNode(JSContext context) {
             this.context = context;
-            this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, context);
             this.boundFuncCacheNode = IsBoundFunctionCacheNode.create(context);
-            this.isObjectNode = IsObjectNode.create();
         }
 
         public static OrdinaryHasInstanceNode create(JSContext context) {
@@ -215,10 +212,18 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         // longer name to avoid name-clash
         boolean isObjectLocal(DynamicObject lhs) {
+            if (isObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isObjectNode = insert(IsObjectNode.create());
+            }
             return isObjectNode.executeBoolean(lhs);
         }
 
-        private DynamicObject getConstructorPrototype(DynamicObject rhs) {
+        private DynamicObject getConstructorPrototype(DynamicObject rhs, BranchProfile invalidPrototypeBranch) {
+            if (getPrototypeNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getPrototypeNode = insert(PropertyGetNode.create(JSObject.PROTOTYPE, context));
+            }
             Object proto = getPrototypeNode.getValue(rhs);
             if (!(JSRuntime.isObject(proto))) {
                 invalidPrototypeBranch.enter();
@@ -259,8 +264,9 @@ public abstract class InstanceofNode extends JSBinaryNode {
                         @Cached("create()") BranchProfile firstFalse,
                         @Cached("create()") BranchProfile need2Hops,
                         @Cached("create()") BranchProfile need3Hops,
-                        @Cached("create()") BranchProfile errorBranch) {
-            DynamicObject ctorPrototype = getConstructorPrototype(right);
+                        @Cached("create()") BranchProfile errorBranch,
+                        @Cached("create()") BranchProfile invalidPrototypeBranch) {
+            DynamicObject ctorPrototype = getConstructorPrototype(right, invalidPrototypeBranch);
             if (lessThan4) {
                 DynamicObject proto = getPrototype1Node.executeJSObject(left);
                 if (proto == ctorPrototype) {
@@ -297,8 +303,9 @@ public abstract class InstanceofNode extends JSBinaryNode {
                         @Cached("create()") BranchProfile firstFalse,
                         @Cached("create()") BranchProfile need2Hops,
                         @Cached("create()") BranchProfile need3Hops,
-                        @Cached("create()") BranchProfile errorBranch) {
-            return doJSObject(left, right, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops, errorBranch);
+                        @Cached("create()") BranchProfile errorBranch,
+                        @Cached("create()") BranchProfile invalidPrototypeBranch) {
+            return doJSObject(left, right, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops, errorBranch, invalidPrototypeBranch);
         }
 
         private static boolean doJSObject4(DynamicObject obj, DynamicObject check, GetPrototypeNode getPrototypeNode, BranchProfile errorBranch) {

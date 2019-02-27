@@ -134,7 +134,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             appendNumber(builder, (Number) value);
         } else if (JSRuntime.isBigInt(value)) {
             throw Errors.createTypeError("Do not know how to serialize a BigInt");
-        } else if (JSObject.isJSObject(value) && !JSRuntime.isCallable(value)) {
+        } else if (JSObject.isJSObject(value) && !JSRuntime.isCallableIsJSObject((DynamicObject) value)) {
             TruffleObject valueObj = (TruffleObject) value;
             if (JSRuntime.isArray(valueObj)) {
                 jsonJA(builder, data, valueObj);
@@ -234,7 +234,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             return JSRuntime.toString(valueObj);
         } else if (builtinClass == JSBoolean.INSTANCE) {
             return JSBoolean.valueOf(valueObj);
-        } else if (JSRuntime.isCallable(valueObj)) {
+        } else if (JSRuntime.isCallableIsJSObject(valueObj)) {
             return Undefined.instance;
         }
         return valueObj;

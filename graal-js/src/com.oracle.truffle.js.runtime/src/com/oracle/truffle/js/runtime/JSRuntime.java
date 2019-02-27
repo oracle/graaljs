@@ -1389,7 +1389,11 @@ public final class JSRuntime {
     }
 
     public static boolean isForeignObject(Object value) {
-        return value instanceof TruffleObject && !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof LargeInteger) &&
+        return value instanceof TruffleObject && isForeignObject((TruffleObject) value);
+    }
+
+    public static boolean isForeignObject(TruffleObject value) {
+        return !JSObject.isJSObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof LargeInteger) &&
                         !(value instanceof BigInt);
     }
 
@@ -2230,6 +2234,16 @@ public final class JSRuntime {
             return isCallableProxy((DynamicObject) value);
         } else if (value instanceof TruffleObject) {
             return isCallableForeign((TruffleObject) value);
+        }
+        return false;
+    }
+
+    public static boolean isCallableIsJSObject(DynamicObject value) {
+        assert JSObject.isJSObject(value);
+        if (JSFunction.isJSFunction(value)) {
+            return true;
+        } else if (JSProxy.isProxy(value)) {
+            return isCallableProxy(value);
         }
         return false;
     }
