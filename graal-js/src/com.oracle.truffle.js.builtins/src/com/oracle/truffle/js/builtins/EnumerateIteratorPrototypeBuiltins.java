@@ -97,7 +97,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
         @Child private PropertySetNode setValueNode;
         @Child private PropertySetNode setDoneNode;
         @Child private PropertyGetNode getIteratorNode;
-        @Child private JSForeignToJSTypeNode convertValueNode;
+        @Child private JSForeignToJSTypeNode importValueNode;
         private final BranchProfile errorBranch;
         private final ValueProfile iteratorProfile;
 
@@ -106,7 +106,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
             this.setValueNode = PropertySetNode.create(JSRuntime.VALUE, false, context, false);
             this.setDoneNode = PropertySetNode.create(JSRuntime.DONE, false, context, false);
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
-            this.convertValueNode = JSForeignToJSTypeNode.create();
+            this.importValueNode = JSForeignToJSTypeNode.create();
             this.errorBranch = BranchProfile.create();
             this.iteratorProfile = ValueProfile.createClassProfile();
         }
@@ -121,8 +121,8 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
             Iterator<?> iterator = (Iterator<?>) iteratorProfile.profile(iteratorValue);
             if (Boundaries.iteratorHasNext(iterator)) {
                 Object nextValue = Boundaries.iteratorNext(iterator);
-                nextValue = convertValueNode.executeWithTarget(nextValue);
-                return createIterResultObject(nextValue, false);
+                Object importedValue = importValueNode.executeWithTarget(nextValue);
+                return createIterResultObject(importedValue, false);
             }
             return createIterResultObject(Undefined.instance, true);
         }
