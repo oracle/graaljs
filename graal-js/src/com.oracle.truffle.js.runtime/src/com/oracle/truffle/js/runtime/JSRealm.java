@@ -225,8 +225,8 @@ public class JSRealm {
     private final DynamicObject asyncGeneratorObjectPrototype;
     private final JSConstructor asyncGeneratorFunctionConstructor;
 
-    private DynamicObject throwerFunction;
-    private Accessor throwerAccessor;
+    @CompilationFinal private DynamicObject throwerFunction;
+    @CompilationFinal private Accessor throwerAccessor;
 
     private final JSConstructor promiseConstructor;
 
@@ -668,14 +668,20 @@ public class JSRealm {
 
     public final DynamicObject getThrowerFunction() {
         if (throwerFunction == null) {
-            throwerFunction = createThrowerFunction();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (throwerFunction == null) {
+                throwerFunction = createThrowerFunction();
+            }
         }
         return throwerFunction;
     }
 
     public final Accessor getThrowerAccessor() {
         if (throwerAccessor == null) {
-            throwerAccessor = new Accessor(getThrowerFunction(), getThrowerFunction());
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (throwerAccessor == null) {
+                throwerAccessor = new Accessor(getThrowerFunction(), getThrowerFunction());
+            }
         }
         return throwerAccessor;
     }
@@ -720,6 +726,7 @@ public class JSRealm {
      *
      */
     private DynamicObject createThrowerFunction() {
+        CompilerAsserts.neverPartOfCompilation();
         DynamicObject thrower = JSFunction.create(this, context.throwerFunctionData);
         JSObject.preventExtensions(thrower);
         JSObject.setIntegrityLevel(thrower, true);
