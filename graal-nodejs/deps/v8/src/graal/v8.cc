@@ -68,6 +68,7 @@
 #include "graal_script_or_module.h"
 #include "v8.h"
 #include "v8-profiler.h"
+#include "v8-version-string.h"
 #include "libplatform/v8-tracing.h"
 #include "src/base/once.h"
 #include "src/base/platform/mutex.h"
@@ -1087,8 +1088,7 @@ namespace v8 {
     }
 
     const char* V8::GetVersion() {
-        TRACE
-        return "6.7.0.0-node.0";
+        return V8_VERSION_STRING;
     }
 
     internal::Object** V8::GlobalizeReference(internal::Isolate* isolate, internal::Object** obj) {
