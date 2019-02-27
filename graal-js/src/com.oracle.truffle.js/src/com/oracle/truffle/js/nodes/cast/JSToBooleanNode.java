@@ -163,26 +163,6 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
         return true;
     }
 
-    @Specialization
-    protected boolean doByte(byte value) {
-        return value != 0;
-    }
-
-    @Specialization
-    protected boolean doShort(short value) {
-        return value != 0;
-    }
-
-    @Specialization
-    protected boolean doLong(long value) {
-        return value != 0L;
-    }
-
-    @Specialization
-    protected boolean doFloat(float value) {
-        return value != 0.0f && !Float.isNaN(value);
-    }
-
     @TruffleBoundary
     @Specialization(guards = "isForeignObject(value)")
     protected boolean doForeignObject(TruffleObject value,
