@@ -81,7 +81,6 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -411,7 +410,6 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 objConv = toObject(obj);
             }
             Object toStringFn = getToString.getValue(objConv);
-            JSFunction.checkIsFunction(toStringFn);
             return callNode.executeCall(JSArguments.createZeroArg(obj, toStringFn));
         }
     }

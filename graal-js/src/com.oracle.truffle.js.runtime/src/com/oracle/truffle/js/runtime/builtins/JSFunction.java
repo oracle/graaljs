@@ -851,12 +851,6 @@ public final class JSFunction extends JSBuiltinObject {
         return isInstance(obj, INSTANCE);
     }
 
-    public static void checkIsFunction(Object thisFunction) {
-        if (!isJSFunction(thisFunction)) {
-            throw Errors.createTypeErrorNotAFunction(thisFunction);
-        }
-    }
-
     // ##### Generator functions
 
     public static DynamicObject createGeneratorFunctionPrototype(JSRealm realm, DynamicObject constructor) {

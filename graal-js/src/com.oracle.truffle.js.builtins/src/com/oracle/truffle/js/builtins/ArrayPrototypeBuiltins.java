@@ -1643,7 +1643,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
 
             Object toLocaleString = getToLocaleStringNode.getValue(nextElement);
-            JSFunction.checkIsFunction(toLocaleString);
             return callToLocaleStringNode.executeCall(JSArguments.create(nextElement, toLocaleString, userArguments));
         }
     }
