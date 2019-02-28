@@ -54,6 +54,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -189,7 +190,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     }
 
     protected final Object readElementInBounds(DynamicObject target, long index, boolean arrayCondition) {
-        return readElementNode.executeWithTargetAndArrayAndIndex(target, JSObject.getArray(target, arrayCondition), index, arrayCondition);
+        return readElementNode.executeWithTargetAndArrayAndIndex(target, JSObject.getArray(target, arrayCondition), index, Undefined.instance, arrayCondition);
     }
 
     protected final boolean hasProperty(TruffleObject target, long index) {
