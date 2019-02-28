@@ -64,6 +64,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     @Child protected JSToIntegerNode toInt;
 
     protected final BranchProfile nativePath = BranchProfile.create();
+    protected final BranchProfile errorBranch = BranchProfile.create();
 
     public NIOBufferUTF8WriteNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
@@ -132,6 +133,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         int bufferLen = getLength(target);
 
         if (destOffset > bufferLen || bytes < 0 || destOffset < 0) {
+            errorBranch.enter();
             outOfBoundsFail();
         }
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
@@ -141,6 +143,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
         CoderResult res = doEncode(str, buffer);
         if (cannotEncode(res)) {
+            errorBranch.enter();
             throw new CharacterCodingException();
         }
         return buffer.position() - destOffset;
