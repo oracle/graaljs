@@ -8,6 +8,7 @@ The main focus is on user-observable behavior of the engine.
   In addition to setting the prototype of array-like non-JS objects to `Array.prototype`
   it sets the prototype of executable non-JS objects to `Function.prototype` and
   the prototype of all other non-JS objects to `Object.prototype`.
+* Updated Node.js to version 10.15.2.
 
 ## Version 1.0.0 RC13
 * Made Java interop available in native images. Note that you have to configure the accessible classes and methods at native image build time (see [reflection configuration](https://github.com/oracle/graal/blob/master/substratevm/REFLECTION.md#manual-configuration)).

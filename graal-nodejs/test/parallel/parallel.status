@@ -184,6 +184,8 @@ test-error-reporting               : FAIL
 test-http2-respond-file-fd-invalid : FAIL
 
 [$arch==arm || $arch==arm64]
+# https://github.com/nodejs/node/issues/25028
+test-cli-node-options: PASS,FLAKY
 
 [$system==solaris] # Also applies to SmartOS
 
