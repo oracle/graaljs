@@ -118,7 +118,9 @@ public final class JavaAdapterServices {
         }
 
         final Value fnObj = obj.getMember(name);
-        if (fnObj.canExecute()) {
+        if (fnObj == null) { // member does not exist
+            return null;
+        } else if (fnObj.canExecute()) {
             return fnObj;
         } else if (fnObj.isNull()) { // null or undefined
             return null;
