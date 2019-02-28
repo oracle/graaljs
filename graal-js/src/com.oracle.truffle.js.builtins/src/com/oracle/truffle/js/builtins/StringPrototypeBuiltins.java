@@ -1791,30 +1791,44 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringSubstrNode extends JSStringOperation {
 
+        private final BranchProfile startNegativeBranch = BranchProfile.create();
+        private final BranchProfile finalLenEmptyBranch = BranchProfile.create();
+
         public JSStringSubstrNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected String substr(String thisStr, int start, int length) {
-            int startInt = start;
-            if (startInt < 0) {
-                startInt = Math.max(startInt + thisStr.length(), 0);
-            }
-            int finalLen = within(length, 0, Math.max(0, thisStr.length() - startInt));
-            if (finalLen <= 0) {
-                return "";
-            }
-            return Boundaries.substring(thisStr, startInt, startInt + finalLen);
+        protected String substrInt(String thisStr, int start, int length) {
+            return substrIntl(thisStr, start, length);
         }
 
-        @Specialization
+        @Specialization(guards = "isUndefined(length)")
+        protected String substrLenUndef(String thisStr, int start, @SuppressWarnings("unused") Object length) {
+            return substrIntl(thisStr, start, thisStr.length());
+        }
+
+        @Specialization(replaces = {"substrInt", "substrLenUndef"})
         protected String substr(Object thisObj, Object start, Object length) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
             int startInt = toInteger(start);
             int len = (length == Undefined.instance) ? thisStr.length() : toInteger(length);
-            return substr(thisStr, startInt, len);
+            return substrIntl(thisStr, startInt, len);
+        }
+
+        private String substrIntl(String thisStr, int start, int length) {
+            int startInt = start;
+            if (startInt < 0) {
+                startNegativeBranch.enter();
+                startInt = Math.max(startInt + thisStr.length(), 0);
+            }
+            int finalLen = within(length, 0, Math.max(0, thisStr.length() - startInt));
+            if (finalLen <= 0) {
+                finalLenEmptyBranch.enter();
+                return "";
+            }
+            return Boundaries.substring(thisStr, startInt, startInt + finalLen);
         }
     }
 
