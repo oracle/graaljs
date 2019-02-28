@@ -416,7 +416,6 @@
 
   function setupGlobalConsole() {
     const originalConsole = global.console;
-    const CJSModule = NativeModule.require('internal/modules/cjs/loader');
     // Setup Node.js global.console.
     const wrappedConsole = NativeModule.require('console');
     Object.defineProperty(global, 'console', {
@@ -425,7 +424,7 @@
       value: wrappedConsole,
       writable: true
     });
-    setupInspector(originalConsole, wrappedConsole, CJSModule);
+    setupInspector(originalConsole, wrappedConsole);
   }
 
   function setupGlobalURL() {
@@ -451,10 +450,11 @@
     NativeModule.require('internal/domexception');
   }
 
-  function setupInspector(originalConsole, wrappedConsole, CJSModule) {
+  function setupInspector(originalConsole, wrappedConsole) {
     if (!process.config.variables.v8_enable_inspector) {
       return;
     }
+    const CJSModule = NativeModule.require('internal/modules/cjs/loader');
     const { addCommandLineAPI, consoleCall } = process.binding('inspector');
     // Setup inspector command line API.
     const { makeRequireFunction } =
