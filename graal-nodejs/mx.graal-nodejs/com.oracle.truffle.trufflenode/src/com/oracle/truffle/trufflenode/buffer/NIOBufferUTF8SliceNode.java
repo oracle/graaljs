@@ -53,6 +53,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
@@ -105,9 +106,10 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     }
 
     private Object doSlice(DynamicObject target, int start, int end) throws CharacterCodingException {
-        DynamicObject arrayBuffer = getArrayBuffer(target);
+        boolean isArrayBufferView = JSArrayBufferView.isJSArrayBufferView(target);
+        DynamicObject arrayBuffer = getArrayBuffer(target, isArrayBufferView);
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
-        int byteOffset = getOffset(target);
+        int byteOffset = getOffset(target, isArrayBufferView);
         int actualEnd = end;
         if (end < start) {
             actualEnd = start;
