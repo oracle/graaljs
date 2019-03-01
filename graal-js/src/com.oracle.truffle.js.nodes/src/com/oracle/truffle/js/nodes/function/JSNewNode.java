@@ -187,7 +187,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
         DynamicObject handler = JSProxy.getHandlerChecked(proxy);
         TruffleObject target = JSProxy.getTarget(proxy);
-        DynamicObject trap = JSProxy.getTrapFromObject(handler, JSProxy.CONSTRUCT);
+        TruffleObject trap = JSProxy.getTrapFromObject(handler, JSProxy.CONSTRUCT);
         if (trap == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
                 // Construct(F=target, argumentsList=frame, newTarget=proxy)

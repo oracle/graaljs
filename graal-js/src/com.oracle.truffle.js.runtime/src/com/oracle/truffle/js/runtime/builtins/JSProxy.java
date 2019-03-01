@@ -380,7 +380,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
 
-        DynamicObject deleteFn = getTrapFromObject(handler, DELETE_PROPERTY);
+        TruffleObject deleteFn = getTrapFromObject(handler, DELETE_PROPERTY);
         if (deleteFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
                 return JSObject.delete((DynamicObject) target, propertyKey, isStrict);
@@ -415,7 +415,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         assert JSRuntime.isPropertyKey(key);
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
-        DynamicObject definePropertyFn = getTrapFromObject(handler, DEFINE_PROPERTY);
+        TruffleObject definePropertyFn = getTrapFromObject(handler, DEFINE_PROPERTY);
         if (definePropertyFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
                 return JSObject.defineOwnProperty((DynamicObject) target, key, desc, doThrow);
@@ -496,7 +496,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public boolean preventExtensions(DynamicObject thisObj) {
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
-        DynamicObject preventExtensionsFn = getTrapFromObject(handler, PREVENT_EXTENSIONS);
+        TruffleObject preventExtensionsFn = getTrapFromObject(handler, PREVENT_EXTENSIONS);
         if (preventExtensionsFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
                 return JSObject.preventExtensions((DynamicObject) target);
@@ -520,7 +520,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public boolean isExtensible(DynamicObject thisObj) {
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
-        DynamicObject isExtensibleFn = getTrapFromObject(handler, IS_EXTENSIBLE);
+        TruffleObject isExtensibleFn = getTrapFromObject(handler, IS_EXTENSIBLE);
         if (isExtensibleFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
                 return JSObject.isExtensible((DynamicObject) target);
@@ -585,7 +585,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         return new JSConstructor(proxyConstructor, dummyPrototype);
     }
 
-    public static DynamicObject getTrapFromObject(DynamicObject maybeHandler, String trapName) {
+    public static TruffleObject getTrapFromObject(DynamicObject maybeHandler, String trapName) {
         Object method = JSObject.get(maybeHandler, trapName);
         if (method == Undefined.instance || method == Null.instance) {
             return Undefined.instance;
@@ -593,7 +593,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         if (!JSRuntime.isCallable(method)) {
             throw Errors.createTypeErrorNotAFunction(method);
         }
-        return (DynamicObject) method;
+        return (TruffleObject) method;
     }
 
     @TruffleBoundary
@@ -601,7 +601,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public DynamicObject getPrototypeOf(DynamicObject thisObj) {
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
-        DynamicObject getPrototypeOfFn = getTrapFromObject(handler, GET_PROTOTYPE_OF);
+        TruffleObject getPrototypeOfFn = getTrapFromObject(handler, GET_PROTOTYPE_OF);
         if (getPrototypeOfFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
                 return JSObject.getPrototype((DynamicObject) target);
@@ -635,7 +635,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         assert JSObject.isDynamicObject(newPrototype) || newPrototype == Null.instance;
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
-        DynamicObject setPrototypeOfFn = getTrapFromObject(handler, SET_PROTOTYPE_OF);
+        TruffleObject setPrototypeOfFn = getTrapFromObject(handler, SET_PROTOTYPE_OF);
         if (setPrototypeOfFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
                 return JSObject.setPrototype((DynamicObject) target, newPrototype);
@@ -667,7 +667,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
-        DynamicObject ownKeysFn = getTrapFromObject(handler, OWN_KEYS);
+        TruffleObject ownKeysFn = getTrapFromObject(handler, OWN_KEYS);
         if (ownKeysFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
                 return JSObject.ownPropertyKeys((DynamicObject) target);
@@ -750,7 +750,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         assert JSRuntime.isPropertyKey(propertyKey);
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
-        DynamicObject getOwnPropertyFn = getTrapFromObject(handler, GET_OWN_PROPERTY_DESCRIPTOR);
+        TruffleObject getOwnPropertyFn = getTrapFromObject(handler, GET_OWN_PROPERTY_DESCRIPTOR);
         if (getOwnPropertyFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
                 return JSObject.getOwnProperty((DynamicObject) target, propertyKey);
@@ -810,7 +810,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public static Object call(DynamicObject proxyObj, Object holder, Object[] arguments) {
         DynamicObject handler = getHandlerChecked(proxyObj);
         TruffleObject target = getTarget(proxyObj);
-        DynamicObject trap = getTrapFromObject(handler, APPLY);
+        TruffleObject trap = getTrapFromObject(handler, APPLY);
         if (trap == Undefined.instance) {
             return JSRuntime.call(target, holder, arguments);
         }

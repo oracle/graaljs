@@ -103,7 +103,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
         } else {
             DynamicObject pxHandler = JSProxy.getHandlerChecked(proxy);
             TruffleObject pxTarget = JSProxy.getTarget(proxy);
-            DynamicObject pxTrapFun = (DynamicObject) trapGetter.executeWithTarget(pxHandler);
+            Object pxTrapFun = trapGetter.executeWithTarget(pxHandler);
             Object[] proxyArguments = JSArguments.extractUserArguments(arguments);
             if (pxTrapFunProfile.profile(pxTrapFun == Undefined.instance)) {
                 return callNode.executeCall(JSArguments.create(thisObj, pxTarget, proxyArguments));
@@ -127,7 +127,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
         } else {
             DynamicObject pxHandler = JSProxy.getHandlerChecked(proxy);
             TruffleObject pxTarget = JSProxy.getTarget(proxy);
-            DynamicObject pxTrapFun = (DynamicObject) trapGetter.executeWithTarget(pxHandler);
+            Object pxTrapFun = trapGetter.executeWithTarget(pxHandler);
             Object newTarget = isNewTarget ? JSArguments.getNewTarget(arguments) : proxy;
             Object[] constructorArguments = JSArguments.extractUserArguments(arguments, isNewTarget ? 1 : 0);
             if (pxTrapFunProfile.profile(pxTrapFun == Undefined.instance)) {

@@ -409,7 +409,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
             DynamicObject handler = JSProxy.getHandler(proxyObj);
             TruffleObject pxTarget = JSProxy.getTarget(proxyObj);
-            DynamicObject trap = JSProxy.getTrapFromObject(handler, JSProxy.SET);
+            TruffleObject trap = JSProxy.getTrapFromObject(handler, JSProxy.SET);
 
             Object[] trapArgs = new Object[]{pxTarget, key, value, proxyObj};
             boolean booleanTrapResult = toBooleanNode.executeBoolean(JSRuntime.call(trap, handler, trapArgs));
