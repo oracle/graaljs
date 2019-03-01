@@ -611,7 +611,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         }
 
         Object handlerProto = JSRuntime.call(getPrototypeOfFn, handler, new Object[]{target});
-        if ((!JSObject.isJSObject(handlerProto) && handlerProto != Null.instance) || handlerProto == Undefined.instance) {
+        if (!JSObject.isJSObject(handlerProto) || handlerProto == Undefined.instance) {
             throw Errors.createTypeError("object or null expected");
         }
         DynamicObject handlerProtoObj = (DynamicObject) handlerProto;
