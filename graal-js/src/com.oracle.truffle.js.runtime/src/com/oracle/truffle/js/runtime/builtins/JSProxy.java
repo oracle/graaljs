@@ -52,7 +52,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -232,7 +231,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             }
         }
 
-        Object trapResult = JSFunction.call((DynamicObject) trap, handler, new Object[]{target, propertyKey, receiver});
+        Object trapResult = JSRuntime.call(trap, handler, new Object[]{target, propertyKey, receiver});
         checkProxyGetTrapInvariants(target, propertyKey, trapResult);
         return trapResult;
     }
@@ -297,7 +296,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             }
         }
 
-        Object trapResult = JSFunction.call((DynamicObject) trap, handler, new Object[]{target, propertyKey, value, receiver});
+        Object trapResult = JSRuntime.call(trap, handler, new Object[]{target, propertyKey, value, receiver});
         boolean booleanTrapResult = JSRuntime.toBoolean(trapResult);
         if (!booleanTrapResult) {
             return false;
@@ -361,7 +360,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             return JSObject.hasOwnProperty(target, key);
         }
 
-        boolean trapResult = JSRuntime.toBoolean(JSFunction.call((DynamicObject) trap, handler, new Object[]{target, key}));
+        boolean trapResult = JSRuntime.toBoolean(JSRuntime.call(trap, handler, new Object[]{target, key}));
         if (!trapResult && !isAccessibleProperty(thisObj, key)) {
             throw Errors.createTypeErrorConfigurableExpected();
         }
@@ -389,7 +388,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return JSInteropNodeUtil.remove(target, propertyKey);
             }
         }
-        Object trapResult = JSFunction.call(deleteFn, handler, new Object[]{target, propertyKey});
+        Object trapResult = JSRuntime.call(deleteFn, handler, new Object[]{target, propertyKey});
         boolean booleanTrapResult = JSRuntime.toBoolean(trapResult);
         if (!booleanTrapResult) {
             if (isStrict) {
@@ -427,7 +426,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         }
         JSContext context = JSObject.getJSContext(thisObj);
         DynamicObject descObj = JSRuntime.fromPropertyDescriptor(desc, context);
-        boolean trapResult = JSRuntime.toBoolean(JSFunction.call(JSArguments.create(handler, definePropertyFn, target, key, descObj)));
+        boolean trapResult = JSRuntime.toBoolean(JSRuntime.call(definePropertyFn, handler, new Object[]{target, key, descObj}));
         if (!trapResult) {
             if (doThrow) {
                 // path only hit in V8CompatibilityMode; see JSRuntime.definePropertyOrThrow
@@ -505,7 +504,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return true; // unsupported foreign object
             }
         }
-        Object returnValue = JSFunction.call(preventExtensionsFn, handler, new Object[]{target});
+        Object returnValue = JSRuntime.call(preventExtensionsFn, handler, new Object[]{target});
         boolean booleanTrapResult = JSRuntime.toBoolean(returnValue);
         if (booleanTrapResult && JSObject.isJSObject(target)) {
             boolean targetIsExtensible = JSObject.isExtensible((DynamicObject) target);
@@ -529,7 +528,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return true; // cannot check for foreign objects
             }
         }
-        Object returnValue = JSFunction.call(isExtensibleFn, handler, new Object[]{target});
+        Object returnValue = JSRuntime.call(isExtensibleFn, handler, new Object[]{target});
         boolean booleanTrapResult = JSRuntime.toBoolean(returnValue);
         if (!JSObject.isJSObject(target)) {
             return booleanTrapResult;
@@ -591,7 +590,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         if (method == Undefined.instance || method == Null.instance) {
             return Undefined.instance;
         }
-        if (!JSFunction.isJSFunction(method)) {
+        if (!JSRuntime.isCallable(method)) {
             throw Errors.createTypeErrorNotAFunction(method);
         }
         return (DynamicObject) method;
@@ -611,7 +610,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             }
         }
 
-        Object handlerProto = JSFunction.call(getPrototypeOfFn, handler, new Object[]{target});
+        Object handlerProto = JSRuntime.call(getPrototypeOfFn, handler, new Object[]{target});
         if ((!JSObject.isJSObject(handlerProto) && handlerProto != Null.instance) || handlerProto == Undefined.instance) {
             throw Errors.createTypeError("object or null expected");
         }
@@ -644,7 +643,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return true; // cannot do for foreign Object
             }
         }
-        Object returnValue = JSFunction.call(setPrototypeOfFn, handler, new Object[]{target, newPrototype});
+        Object returnValue = JSRuntime.call(setPrototypeOfFn, handler, new Object[]{target, newPrototype});
         boolean booleanTrapResult = JSRuntime.toBoolean(returnValue);
         if (!booleanTrapResult) {
             return false;
@@ -677,7 +676,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             }
         }
 
-        Object trapResultArray = JSFunction.call(ownKeysFn, handler, new Object[]{target});
+        Object trapResultArray = JSRuntime.call(ownKeysFn, handler, new Object[]{target});
         List<Object> trapResult = JSRuntime.createListFromArrayLikeAllowSymbolString(trapResultArray);
         if (!JSObject.isJSObject(target)) {
             List<Object> uncheckedResultKeys = new ArrayList<>();
@@ -759,7 +758,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return null;
             }
         }
-        Object trapResultObj = checkTrapReturnValue(JSFunction.call(getOwnPropertyFn, handler, new Object[]{target, propertyKey}));
+        Object trapResultObj = checkTrapReturnValue(JSRuntime.call(getOwnPropertyFn, handler, new Object[]{target, propertyKey}));
         if (!JSObject.isJSObject(target)) {
             return JSRuntime.toPropertyDescriptor(trapResultObj);
         }
