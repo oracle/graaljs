@@ -454,7 +454,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
     @TruffleBoundary
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> map = super.getDebugProperties();
-        map.put("value", getValue() instanceof String ? JSRuntime.quote((String) getValue()) : getValue());
+        map.put(JSRuntime.VALUE, getValue() instanceof String ? JSRuntime.quote((String) getValue()) : getValue());
         return map;
     }
 
