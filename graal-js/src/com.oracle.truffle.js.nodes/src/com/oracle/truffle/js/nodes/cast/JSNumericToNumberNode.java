@@ -51,7 +51,7 @@ import com.oracle.truffle.js.runtime.BigInt;
  */
 public abstract class JSNumericToNumberNode extends JavaScriptBaseNode {
 
-    public abstract Object executeObject(Object value);
+    public abstract Number executeNumeric(Object value);
 
     public static JSNumericToNumberNode create() {
         return JSNumericToNumberNodeGen.create();
@@ -63,7 +63,7 @@ public abstract class JSNumericToNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isBigInt(value)")
-    protected static Object doOther(Object value) {
+    protected static Number doOther(Number value) {
         return value;
     }
 }
