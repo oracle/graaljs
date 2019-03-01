@@ -95,7 +95,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
         Object propertyKey = toPropertyKeyNode.execute(key);
         TruffleObject target = JSProxy.getTarget(proxy);
         DynamicObject handler = JSProxy.getHandler(proxy);
-        DynamicObject trapFun = (DynamicObject) trapGetter.executeWithTarget(handler);
+        Object trapFun = trapGetter.executeWithTarget(handler);
         if (trapFunProfile.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
                 return JSObject.hasProperty((DynamicObject) target, propertyKey);
