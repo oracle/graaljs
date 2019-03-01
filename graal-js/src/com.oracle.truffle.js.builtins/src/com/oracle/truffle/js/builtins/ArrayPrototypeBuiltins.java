@@ -1166,6 +1166,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private PropertyNode joinPropertyNode;
         @Child private JSFunctionCallNode callNode;
 
+        private final ConditionProfile isJSObjectProfile = ConditionProfile.createBinaryProfile();
+
         public JSArrayToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.joinPropertyNode = NodeFactory.getInstance(getContext()).createProperty(getContext(), null, "join");
@@ -1190,7 +1192,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSObject.defaultToString((DynamicObject) thisObj);
             }
             TruffleObject arrayObj = toObject(thisObj);
-            if (JSObject.isJSObject(arrayObj)) {
+            if (isJSObjectProfile.profile(JSObject.isJSObject(arrayObj))) {
                 Object join = getJoinProperty(arrayObj);
                 if (isCallable(join)) {
                     return callJoin(arrayObj, join);
