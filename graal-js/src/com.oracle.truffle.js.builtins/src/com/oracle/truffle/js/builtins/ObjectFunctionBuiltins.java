@@ -244,7 +244,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 TruffleObject tobject = toTruffleObject(object);
                 if (JSObject.isJSObject(tobject)) {
-                    return getPrototypeOf((DynamicObject) tobject);
+                    return JSObject.getPrototype((DynamicObject) tobject);
                 } else {
                     if (getContext().getContextOptions().hasForeignObjectPrototype()) {
                         return getForeignObjectPrototype(tobject);
@@ -265,8 +265,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSObject(object)")
-        protected DynamicObject getPrototypeOf(DynamicObject object) {
-            return JSObject.getPrototype(object);
+        protected DynamicObject getPrototypeOf(DynamicObject object,
+                        @Cached("create()") JSClassProfile classProfile) {
+            return JSObject.getPrototype(object, classProfile);
         }
     }
 

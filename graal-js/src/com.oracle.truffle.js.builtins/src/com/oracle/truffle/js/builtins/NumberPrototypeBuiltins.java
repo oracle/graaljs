@@ -225,9 +225,14 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return doubleToString(JSRuntime.doubleValue(n));
         }
 
-        @Specialization(guards = {"isJavaNumber(thisObj)", "!isUndefined(radix)"})
-        protected String toStringPrimitive(Object thisObj, Object radix) {
-            return toStringIntl(JSRuntime.doubleValue((Number) thisObj), radix);
+        @Specialization
+        protected String toStringPrimitiveRadixInt(Number thisObj, int radix) {
+            return toStringIntl(JSRuntime.doubleValue(thisObj), radix);
+        }
+
+        @Specialization(guards = {"!isUndefined(radix)"}, replaces = "toStringPrimitiveRadixInt")
+        protected String toStringPrimitive(Number thisObj, Object radix) {
+            return toStringIntl(JSRuntime.doubleValue(thisObj), radix);
         }
 
         @SuppressWarnings("unused")
@@ -238,6 +243,10 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private String toStringIntl(double numberVal, Object radix) {
             int radixVal = toInteger(radix);
+            return toStringIntl(numberVal, radixVal);
+        }
+
+        private String toStringIntl(double numberVal, int radixVal) {
             if (radixVal < 2 || radixVal > 36) {
                 radixErrorBranch.enter();
                 throw Errors.createRangeError("toString() expects radix in range 2-36");

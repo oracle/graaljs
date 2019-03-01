@@ -61,6 +61,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     private static final int V8MaxStringLength = (1 << 30) - 1 - 24;
 
     protected final BranchProfile nativePath = BranchProfile.create();
+    protected final BranchProfile errorBranch = BranchProfile.create();
 
     public NIOBufferUTF8SliceNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
@@ -117,6 +118,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
             return "";
         }
         if (actualEnd > rawBuffer.capacity() || !oobCheck(start, end)) {
+            errorBranch.enter();
             outOfBoundsFail();
         }
         int length = actualEnd - start;
@@ -125,6 +127,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         }
         int bufferLen = getLength(target);
         if (length > bufferLen) {
+            errorBranch.enter();
             outOfBoundsFail();
         }
         ByteBuffer data = sliceBuffer(rawBuffer, byteOffset);

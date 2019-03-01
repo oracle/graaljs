@@ -1364,6 +1364,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArrayIndexOfNode extends ArrayForEachIndexCallOperation {
         private final boolean isForward;
 
+        @Child private JSToIntegerSpecialNode toIntegerNode;
         private final BranchProfile arrayWithContentBranch = BranchProfile.create();
         private final BranchProfile fromConversionBranch = BranchProfile.create();
 
@@ -1373,8 +1374,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object indexOf(Object thisObj, Object[] args,
-                        @Cached("create()") JSToIntegerSpecialNode toIntegerNode) {
+        protected Object indexOf(Object thisObj, Object[] args) {
             TruffleObject thisJSObject = toObject(thisObj);
             long len = getLength(thisJSObject);
             if (len == 0) {
@@ -1384,7 +1384,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object searchElement = JSRuntime.getArgOrUndefined(args, 0);
             Object fromIndex = JSRuntime.getArgOrUndefined(args, 1);
 
-            long fromIndexValue = isForward() ? calcFromIndexForward(args, len, fromIndex, toIntegerNode) : calcFromIndexBackward(args, len, fromIndex, toIntegerNode);
+            long fromIndexValue = isForward() ? calcFromIndexForward(args, len, fromIndex) : calcFromIndexBackward(args, len, fromIndex);
             if (fromIndexValue < 0) {
                 return -1;
             }
@@ -1392,12 +1392,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         // for indexOf()
-        private long calcFromIndexForward(Object[] args, long len, Object fromIndex, JSToIntegerSpecialNode toIntegerNode) {
+        private long calcFromIndexForward(Object[] args, long len, Object fromIndex) {
             if (args.length <= 1) {
                 return 0;
             } else {
                 fromConversionBranch.enter();
-                long fromIndexValue = toIntegerNode.executeLong(fromIndex);
+                long fromIndexValue = toInteger(fromIndex);
                 if (fromIndexValue > len) {
                     return -1;
                 }
@@ -1410,18 +1410,26 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         // for lastIndexOf()
-        private long calcFromIndexBackward(Object[] args, long len, Object fromIndex, JSToIntegerSpecialNode toIntegerNode) {
+        private long calcFromIndexBackward(Object[] args, long len, Object fromIndex) {
             if (args.length <= 1) {
                 return len - 1;
             } else {
                 fromConversionBranch.enter();
-                long fromIndexInt = toIntegerNode.executeLong(fromIndex);
+                long fromIndexInt = toInteger(fromIndex);
                 if (fromIndexInt >= 0) {
                     return Math.min(fromIndexInt, len - 1);
                 } else {
                     return fromIndexInt + len;
                 }
             }
+        }
+
+        private long toInteger(Object operand) {
+            if (toIntegerNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toIntegerNode = insert(JSToIntegerSpecialNode.create());
+            }
+            return toIntegerNode.executeLong(operand);
         }
 
         @Override
