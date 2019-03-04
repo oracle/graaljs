@@ -378,10 +378,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @TruffleBoundary
         protected DynamicObject intlDefineProperties(DynamicObject obj, DynamicObject descs) {
             List<Pair<Object, PropertyDescriptor>> descriptors = new ArrayList<>();
-            for (Object key : JSObject.ownPropertyKeys(descs)) {
-                PropertyDescriptor keyDesc = JSObject.getOwnProperty(descs, key);
+            JSClass descsClass = JSObject.getJSClass(descs);
+            for (Object key : descsClass.ownPropertyKeys(descs)) {
+                PropertyDescriptor keyDesc = descsClass.getOwnProperty(descs, key);
                 if (keyDesc.getEnumerable()) {
-                    PropertyDescriptor desc = toPropertyDescriptor(JSObject.get(descs, key));
+                    PropertyDescriptor desc = toPropertyDescriptor(descsClass.get(descs, key));
                     Boundaries.listAdd(descriptors, new Pair<>(key, desc));
                 }
             }
@@ -815,13 +816,14 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @TruffleBoundary
         protected List<Object> enumerableOwnProperties(DynamicObject thisObj) {
             JSClass jsclass = JSObject.getJSClass(thisObj);
+            boolean isProxy = JSProxy.isProxy(thisObj);
             List<Object> properties = new ArrayList<>();
             for (Object key : jsclass.ownPropertyKeys(thisObj)) {
                 if (key instanceof String) {
                     PropertyDescriptor desc = jsclass.getOwnProperty(thisObj, key);
                     if (desc != null && desc.getEnumerable()) {
                         // don't call [[Get]] a second time, unless it could have a side affect.
-                        Object value = (desc.isAccessorDescriptor() || JSProxy.isProxy(thisObj)) ? jsclass.get(thisObj, key) : desc.getValue();
+                        Object value = (desc.isAccessorDescriptor() || isProxy) ? jsclass.get(thisObj, key) : desc.getValue();
                         if (entries) {
                             properties.add(JSArray.createConstant(getContext(), new Object[]{key, value}));
                         } else {

@@ -114,11 +114,12 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static boolean checkPropertyIsSettable(TruffleObject truffleTarget, Object key) {
+        assert JSRuntime.isPropertyKey(key);
         if (!JSObject.isJSObject(truffleTarget)) {
             return true; // best guess for foreign TruffleObject
         }
         DynamicObject target = (DynamicObject) truffleTarget;
-        PropertyDescriptor desc = JSObject.getOwnProperty(target, JSRuntime.toPropertyKey(key));
+        PropertyDescriptor desc = JSObject.getOwnProperty(target, key);
         if (desc != null) {
             if (!desc.getConfigurable()) {
                 return false;

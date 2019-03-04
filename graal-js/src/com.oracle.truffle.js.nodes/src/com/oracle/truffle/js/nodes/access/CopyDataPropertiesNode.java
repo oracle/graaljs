@@ -51,6 +51,7 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
@@ -99,7 +100,8 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
 
     @TruffleBoundary
     private static void copyDataProperties(DynamicObject target, DynamicObject from, Object[] excludedItems) {
-        Iterable<Object> ownPropertyKeys = JSObject.ownPropertyKeys(from);
+        JSClass fromClass = JSObject.getJSClass(from);
+        Iterable<Object> ownPropertyKeys = fromClass.ownPropertyKeys(from);
         for (Object nextKey : ownPropertyKeys) {
             boolean found = false;
             if (excludedItems != null) {
@@ -113,9 +115,9 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
                 }
             }
             if (!found) {
-                PropertyDescriptor desc = JSObject.getOwnProperty(from, nextKey);
+                PropertyDescriptor desc = fromClass.getOwnProperty(from, nextKey);
                 if (desc != null && desc.getEnumerable()) {
-                    Object propValue = JSObject.get(from, nextKey);
+                    Object propValue = fromClass.get(from, nextKey);
                     JSRuntime.createDataProperty(target, nextKey, propValue);
                 }
             }
