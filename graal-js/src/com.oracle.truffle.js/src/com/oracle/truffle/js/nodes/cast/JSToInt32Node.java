@@ -133,7 +133,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         return JSRuntime.booleanToNumber(value);
     }
 
-    @Specialization(guards = "isLongFitsInt32(value)")
+    @Specialization(guards = "isLongRepresentableAsInt32(value)")
     protected int doLong(long value) {
         return (int) value;
     }

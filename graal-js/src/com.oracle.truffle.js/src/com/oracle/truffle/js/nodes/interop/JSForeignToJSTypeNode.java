@@ -90,8 +90,13 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization
-    public BigInt fromLong(long value) {
+    @Specialization(guards = "isLongRepresentableAsInt32(value)")
+    public int fromLongToInt(long value) {
+        return (int) value;
+    }
+
+    @Specialization(guards = "!isLongRepresentableAsInt32(value)")
+    public BigInt fromLongToBigInt(long value) {
         return BigInt.valueOf(value);
     }
 

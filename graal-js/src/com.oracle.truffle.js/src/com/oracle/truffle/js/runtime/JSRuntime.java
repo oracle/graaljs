@@ -2764,7 +2764,12 @@ public final class JSRuntime {
         } else if (value instanceof Character) {
             return String.valueOf(value);
         } else if (value instanceof Long) {
-            return BigInt.valueOf((long) value);
+            long longValue = (long) value;
+            if (longIsRepresentableAsInt(longValue)) {
+                return (int) longValue;
+            } else {
+                return BigInt.valueOf(longValue);
+            }
         } else if (value instanceof Byte || value instanceof Short) {
             return ((Number) value).intValue();
         } else if (value instanceof Float) {

@@ -495,7 +495,7 @@ public final class JSGuards {
         return Math.abs(d) >= JSRuntime.TWO32;
     }
 
-    public static boolean isLongFitsInt32(long value) {
+    public static boolean isLongRepresentableAsInt32(long value) {
         return JSRuntime.longIsRepresentableAsInt(value);
     }
 
