@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeGetStackTraceNodeGen;
@@ -112,26 +111,25 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
 
         @Child private PropertyGetNode getNameNode;
         @Child private PropertyGetNode getMessageNode;
+        @Child private JSToStringNode toStringNode;
 
         public ErrorPrototypeToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization(guards = "!isJSObject(thisObj)")
-        protected String toString(Object thisObj,
-                        @Cached("create()") JSToStringNode toStringNode) {
-            String name = toStringNode.executeString(thisObj);
+        protected String toStringNonObject(Object thisObj) {
+            String name = toStringConv(thisObj);
             String message = JSRuntime.stringConcat("Method Error.prototype.toString called on incompatible receiver ", name);
             throw Errors.createTypeError(message, this);
         }
 
         @Specialization(guards = "isJSObject(errorObj)")
-        protected String toString(DynamicObject errorObj, //
-                        @Cached("create()") JSToStringNode toStringNode) {
+        protected String toStringObject(DynamicObject errorObj) {
             Object objName = getName(errorObj);
             Object objMessage = getMessage(errorObj);
-            String strName = (objName == Undefined.instance) ? "Error" : toStringNode.executeString(objName);
-            String strMessage = (objMessage == Undefined.instance) ? "" : toStringNode.executeString(objMessage);
+            String strName = (objName == Undefined.instance) ? "Error" : toStringConv(objName);
+            String strMessage = (objMessage == Undefined.instance) ? "" : toStringConv(objMessage);
             if (strName.length() == 0) {
                 return strMessage;
             }
@@ -139,6 +137,14 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
                 return strName;
             }
             return toStringIntl(strName, strMessage);
+        }
+
+        private String toStringConv(Object value) {
+            if (toStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toStringNode = insert(JSToStringNode.create());
+            }
+            return toStringNode.executeString(value);
         }
 
         @TruffleBoundary
