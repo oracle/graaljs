@@ -103,7 +103,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
             if (JSObject.isJSObject(target)) {
                 boolean result = JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
                 if (isStrict && !result) {
-                    throw Errors.createTypeErrorCannotSetProperty(key, proxy, this);
+                    throw Errors.createTypeErrorCannotSetProperty(propertyKey, proxy, this);
                 }
                 return result;
             } else {

@@ -968,7 +968,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            if (isObject.profile(JSObject.isDynamicObject(thisObj))) {
+            if (isObject.profile(JSObject.isJSObject(thisObj))) {
                 setValueInDynamicObject(thisObj, value, receiver, root);
             } else if (isStrictSymbol.profile(root.isStrict() && thisObj instanceof Symbol)) {
                 throw Errors.createTypeError("Cannot create property on symbol", this);
