@@ -101,6 +101,8 @@ import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -797,13 +799,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSObject(obj)")
-        protected DynamicObject valuesOrEntries(DynamicObject obj) {
+        protected DynamicObject valuesOrEntriesJSObject(DynamicObject obj) {
             List<Object> list = enumerableOwnProperties(obj);
             return JSRuntime.createArrayFromList(getContext(), list);
         }
 
-        @Specialization
-        protected DynamicObject valuesOrEntries(Object obj,
+        @Specialization(replaces = "valuesOrEntriesJSObject")
+        protected DynamicObject valuesOrEntriesGeneric(Object obj,
                         @Cached("createBinaryProfile()") ConditionProfile isJSObjectProfile) {
             TruffleObject thisObj = toTruffleObject(obj);
             List<Object> list = isJSObjectProfile.profile(JSObject.isJSObject(thisObj)) ? enumerableOwnProperties((DynamicObject) thisObj) : enumerableOwnPropertiesForeign(thisObj);
@@ -812,15 +814,16 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @TruffleBoundary
         protected List<Object> enumerableOwnProperties(DynamicObject thisObj) {
+            JSClass jsclass = JSObject.getJSClass(thisObj);
             List<Object> properties = new ArrayList<>();
-            for (Object key : JSObject.ownPropertyKeys(thisObj)) {
+            for (Object key : jsclass.ownPropertyKeys(thisObj)) {
                 if (key instanceof String) {
-                    String propertyKey = (String) key;
-                    PropertyDescriptor desc = JSObject.getOwnProperty(thisObj, propertyKey);
+                    PropertyDescriptor desc = jsclass.getOwnProperty(thisObj, key);
                     if (desc != null && desc.getEnumerable()) {
-                        Object value = JSObject.get(thisObj, propertyKey);
+                        // don't call [[Get]] a second time, unless it could have a side affect.
+                        Object value = (desc.isAccessorDescriptor() || JSProxy.isProxy(thisObj)) ? jsclass.get(thisObj, key) : desc.getValue();
                         if (entries) {
-                            properties.add(JSArray.createConstant(getContext(), new Object[]{propertyKey, value}));
+                            properties.add(JSArray.createConstant(getContext(), new Object[]{key, value}));
                         } else {
                             properties.add(value);
                         }
@@ -847,11 +850,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             List<Object> properties = new ArrayList<>(keysList.size());
             for (Object key : keysList) {
                 assert key instanceof String;
-                String propertyKey = (String) key;
 
-                Object value = JSRuntime.importValue(JSInteropNodeUtil.read(thisObj, propertyKey, readNode));
+                Object value = JSRuntime.importValue(JSInteropNodeUtil.read(thisObj, key, readNode));
                 if (entries) {
-                    properties.add(JSArray.createConstant(getContext(), new Object[]{propertyKey, value}));
+                    properties.add(JSArray.createConstant(getContext(), new Object[]{key, value}));
                 } else {
                     properties.add(value);
                 }
