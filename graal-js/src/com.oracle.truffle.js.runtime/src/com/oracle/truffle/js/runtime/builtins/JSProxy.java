@@ -289,7 +289,11 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object trap = getTrapFromObject(handler, SET);
         if (trap == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
-                return JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
+                boolean result = JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
+                if (isStrict && !result) {
+                    throw Errors.createTypeErrorCannotSetProperty(propertyKey, thisObj, null);
+                }
+                return result;
             } else {
                 JSInteropNodeUtil.write(target, propertyKey, value);
                 return true;

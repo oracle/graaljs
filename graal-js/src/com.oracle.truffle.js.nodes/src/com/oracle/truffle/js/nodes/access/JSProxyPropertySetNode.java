@@ -101,7 +101,11 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
-                return JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
+                boolean result = JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
+                if (isStrict && !result) {
+                    throw Errors.createTypeErrorCannotSetProperty(key, proxy, this);
+                }
+                return result;
             } else {
                 truffleWrite(target, propertyKey, value);
                 return true;
