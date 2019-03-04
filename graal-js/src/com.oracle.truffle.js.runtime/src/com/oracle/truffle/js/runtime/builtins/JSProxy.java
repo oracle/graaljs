@@ -272,24 +272,28 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @TruffleBoundary
     @Override
     public boolean setOwn(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
-        return proxySet(thisObj, Boundaries.stringValueOf(index), value, receiver);
+        return proxySet(thisObj, Boundaries.stringValueOf(index), value, receiver, isStrict);
     }
 
     @TruffleBoundary
     @Override
     public boolean setOwn(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        return proxySet(thisObj, key, value, receiver);
+        return proxySet(thisObj, key, value, receiver, isStrict);
     }
 
     @TruffleBoundary
-    private static boolean proxySet(DynamicObject thisObj, Object propertyKey, Object value, Object receiver) {
+    private static boolean proxySet(DynamicObject thisObj, Object propertyKey, Object value, Object receiver, boolean isStrict) {
         assert JSRuntime.isPropertyKey(propertyKey);
         DynamicObject handler = getHandler(thisObj);
         TruffleObject target = getTarget(thisObj);
         Object trap = getTrapFromObject(handler, SET);
         if (trap == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
-                return JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
+                boolean result = JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
+                if (isStrict && !result) {
+                    throw Errors.createTypeErrorCannotSetProperty(propertyKey, thisObj, null);
+                }
+                return result;
             } else {
                 JSInteropNodeUtil.write(target, propertyKey, value);
                 return true;
@@ -299,10 +303,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object trapResult = JSRuntime.call(trap, handler, new Object[]{target, propertyKey, value, receiver});
         boolean booleanTrapResult = JSRuntime.toBoolean(trapResult);
         if (!booleanTrapResult) {
-            return false;
+            if (isStrict) {
+                throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.SET, propertyKey);
+            } else {
+                return false;
+            }
         }
-        checkProxySetTrapInvariants(thisObj, propertyKey, value);
-        return booleanTrapResult;
+        return checkProxySetTrapInvariants(thisObj, propertyKey, value);
     }
 
     @TruffleBoundary
