@@ -51,7 +51,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 /**
  * Property objects represent the mapping between low-level stores and high-level data. The simplest
@@ -143,7 +142,7 @@ public class JSProperty {
     private static void setValueAccessor(Property property, DynamicObject store, Object thisObj, Object value, boolean isStrict) {
         DynamicObject setter = ((Accessor) property.get(store, false)).getSetter();
         if (setter != Undefined.instance) {
-            JSFunction.call(setter, thisObj, new Object[]{value});
+            JSRuntime.call(setter, thisObj, new Object[]{value});
         } else if (isStrict) {
             throw Errors.createTypeErrorCannotSetAccessorProperty(property.getKey(), store);
         }

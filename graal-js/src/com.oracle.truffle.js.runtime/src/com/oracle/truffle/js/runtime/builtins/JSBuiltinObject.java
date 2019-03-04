@@ -343,7 +343,7 @@ public abstract class JSBuiltinObject extends JSClass {
         assert desc.isAccessorDescriptor();
         DynamicObject setter = (DynamicObject) desc.getSet();
         if (setter != Undefined.instance) {
-            JSFunction.call(setter, receiver, new Object[]{value});
+            JSRuntime.call(setter, receiver, new Object[]{value});
         } else if (isStrict) {
             throw Errors.createTypeErrorCannotSetAccessorProperty(propertyKey, thisObj);
         }
