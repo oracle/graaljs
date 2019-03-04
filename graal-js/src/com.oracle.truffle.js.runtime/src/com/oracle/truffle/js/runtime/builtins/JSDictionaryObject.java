@@ -123,7 +123,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
         if (property.isAccessorDescriptor()) {
             DynamicObject getter = (DynamicObject) property.getGet();
             if (getter != Undefined.instance) {
-                return JSFunction.call(getter, receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                return JSRuntime.call(getter, receiver, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             } else {
                 return Undefined.instance;
             }
@@ -194,7 +194,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
         if (property.isAccessorDescriptor()) {
             DynamicObject setter = (DynamicObject) property.getSet();
             if (setter != Undefined.instance) {
-                JSFunction.call(setter, thisObj, new Object[]{value});
+                JSRuntime.call(setter, thisObj, new Object[]{value});
             } else if (isStrict) {
                 throw Errors.createTypeErrorCannotSetAccessorProperty(key, store);
             }
