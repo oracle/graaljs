@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -51,6 +52,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 @SuppressWarnings("unused")
 @ImportStatic(JSPromise.class)
@@ -58,9 +60,13 @@ public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getPromiseState;
     @Child private PropertyGetNode getPromiseResult;
 
+    private static final UnwrapPromiseNode UNCACHED = create(null);
+
     protected UnwrapPromiseNode(JSContext context) {
-        this.getPromiseState = PropertyGetNode.createGetHidden(JSPromise.PROMISE_STATE, context);
-        this.getPromiseResult = PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context);
+        if (context != null) {
+            this.getPromiseState = PropertyGetNode.createGetHidden(JSPromise.PROMISE_STATE, context);
+            this.getPromiseResult = PropertyGetNode.createGetHidden(JSPromise.PROMISE_RESULT, context);
+        }
     }
 
     public static UnwrapPromiseNode create(JSContext context) {
@@ -68,6 +74,9 @@ public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
     }
 
     public final Object execute(DynamicObject promise) {
+        if (getPromiseState == null) {
+            return doUncached(promise);
+        }
         int promiseState;
         try {
             promiseState = getPromiseState.getValueInt(promise);
@@ -76,6 +85,11 @@ public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
         }
         Object promiseResult = getPromiseResult.getValue(promise);
         return execute(promise, promiseState, promiseResult);
+    }
+
+    @TruffleBoundary
+    private Object doUncached(DynamicObject promise) {
+        return execute(promise, (int) promise.get(JSPromise.PROMISE_STATE), promise.get(JSPromise.PROMISE_RESULT));
     }
 
     protected abstract Object execute(DynamicObject promise, int promiseState, Object promiseResult);
@@ -93,5 +107,9 @@ public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
     @Specialization(guards = "promiseState == PENDING")
     protected static Object pending(DynamicObject promise, int promiseState, Object promiseResult) {
         throw Errors.createTypeError("Attempt to unwrap pending promise");
+    }
+
+    public static UnwrapPromiseNode getUncached() {
+        return UNCACHED;
     }
 }

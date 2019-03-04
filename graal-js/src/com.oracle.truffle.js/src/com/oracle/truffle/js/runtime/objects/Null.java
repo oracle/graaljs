@@ -103,6 +103,7 @@ public final class Null {
             return "DynamicObject<" + defaultToString(object) + ">@" + Integer.toHexString(hashCode(object));
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public ForeignAccess getForeignAccessFactory(DynamicObject object) {
             return NullOrUndefinedForeignAccessFactory.getForeignAccess();

@@ -42,10 +42,15 @@ package com.oracle.truffle.js.nodes.instrumentation;
 
 import java.util.Map;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public class NodeObjectDescriptorKeys implements TruffleObject {
+@ExportLibrary(InteropLibrary.class)
+public final class NodeObjectDescriptorKeys implements TruffleObject {
 
     private final Object[] keys;
 
@@ -53,20 +58,28 @@ public class NodeObjectDescriptorKeys implements TruffleObject {
         this.keys = from.keySet().toArray();
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return NodeObjectDescriptorKeysFactoryForeign.ACCESS;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
     }
 
-    public Object getKeyAt(int pos) {
-        return keys[pos];
-    }
-
-    public int size() {
+    @ExportMessage
+    long getArraySize() {
         return keys.length;
     }
 
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof NodeObjectDescriptorKeys;
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < getArraySize();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object readArrayElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        return keys[(int) index];
     }
 }

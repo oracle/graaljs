@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -58,11 +59,16 @@ import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
  *
  * @see JSRuntime#importValue(Object)
  */
+@GenerateUncached
 public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
     public abstract Object executeWithTarget(Object target);
 
     public static JSForeignToJSTypeNode create() {
         return JSForeignToJSTypeNodeGen.create();
+    }
+
+    public static JSForeignToJSTypeNode getUncached() {
+        return JSForeignToJSTypeNodeGen.getUncached();
     }
 
     @Specialization

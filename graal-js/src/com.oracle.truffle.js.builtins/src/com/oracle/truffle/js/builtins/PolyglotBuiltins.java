@@ -470,7 +470,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object write(TruffleObject obj, Object name, Object value,
                         @Cached("createWrite()") Node write,
-                        @Cached("create()") ExportValueNode exportValue) {
+                        @Cached ExportValueNode exportValue) {
             try {
                 Object identifier = exportValue.executeWithTarget(name, Undefined.instance);
                 Object convertedValue = exportValue.executeWithTarget(value, Undefined.instance);
@@ -497,7 +497,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object remove(TruffleObject obj, Object key,
                         @Cached("createRemove()") Node remove,
-                        @Cached("create()") ExportValueNode exportValue) {
+                        @Cached ExportValueNode exportValue) {
             try {
                 Object exportedKey = exportValue.executeWithTarget(key, Undefined.instance);
                 return ForeignAccess.sendRemove(remove, obj, exportedKey);
@@ -556,7 +556,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object execute(TruffleObject obj, Object[] arguments,
                         @Cached("createCall()") Node execute,
-                        @Cached("create()") ExportValueNode exportValue) {
+                        @Cached ExportValueNode exportValue) {
             try {
                 TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
                 Object[] convertedArgs = new Object[arguments.length];
@@ -586,7 +586,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object doNew(TruffleObject obj, Object[] arguments,
                         @Cached("createNew()") Node newNode,
-                        @Cached("create()") ExportValueNode exportValue) {
+                        @Cached ExportValueNode exportValue) {
             try {
                 TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
                 Object[] convertedArgs = new Object[arguments.length];

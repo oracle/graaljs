@@ -68,7 +68,7 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
@@ -329,19 +329,34 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     } else {
                         return "JavaObject[" + clazz.getTypeName() + "]";
                     }
-                } else if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), truffleObject)) {
-                    return "null";
-                } else if (ForeignAccess.sendIsPointer(Message.IS_POINTER.createNode(), truffleObject)) {
-                    long pointer = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), truffleObject);
-                    return "Pointer[0x" + Long.toHexString(pointer) + "]";
-                } else if (ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), truffleObject)) {
-                    return "Array" + foreignArrayToString(realm, truffleObject, depth);
-                } else if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), truffleObject)) {
-                    return "Executable";
-                } else if (ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), truffleObject)) {
-                    return toStringIntl(realm, ForeignAccess.sendUnbox(Message.UNBOX.createNode(), truffleObject), depth);
                 } else {
-                    return "Object" + foreignObjectToString(realm, truffleObject, depth);
+                    InteropLibrary library = InteropLibrary.getFactory().getUncached();
+                    if (library.isNull(truffleObject)) {
+                        return "null";
+                    } else if (library.isPointer(truffleObject)) {
+                        long pointer = library.asPointer(truffleObject);
+                        return "Pointer[0x" + Long.toHexString(pointer) + "]";
+                    } else if (library.hasArrayElements(truffleObject)) {
+                        return "Array" + foreignArrayToString(realm, truffleObject, depth);
+                    } else if (library.isExecutable(truffleObject)) {
+                        return "Executable";
+                    } else if (library.isString(truffleObject)) {
+                        return JSRuntime.safeToString(library.asString(truffleObject));
+                    } else if (library.isBoolean(truffleObject)) {
+                        return JSRuntime.safeToString(library.asBoolean(truffleObject));
+                    } else if (library.isNumber(truffleObject)) {
+                        Object unboxed = "Number";
+                        if (library.fitsInInt(value)) {
+                            unboxed = library.asInt(truffleObject);
+                        } else if (library.fitsInLong(value)) {
+                            unboxed = library.asLong(truffleObject);
+                        } else if (library.fitsInDouble(value)) {
+                            unboxed = library.asDouble(truffleObject);
+                        }
+                        return JSRuntime.safeToString(unboxed);
+                    } else {
+                        return "Object" + foreignObjectToString(realm, truffleObject, depth);
+                    }
                 }
             } catch (Exception e) {
                 return "Object";

@@ -41,16 +41,16 @@
 package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * @see JSSymbol
  */
-@MessageResolution(receiverType = Symbol.class)
+@ExportLibrary(InteropLibrary.class)
 public final class Symbol implements TruffleObject {
     // Predefined symbols, as per ES6 6.1.5.1 Well-Known Symbols (in alphabetical order)
     /**
@@ -164,10 +164,5 @@ public final class Symbol implements TruffleObject {
 
     public static boolean isInstance(TruffleObject object) {
         return object instanceof Symbol;
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return SymbolForeign.ACCESS;
     }
 }

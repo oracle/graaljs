@@ -53,7 +53,13 @@ public final class JSClassProfile extends NodeCloneable {
     @CompilationFinal private JSClass expectedJSClass;
     @CompilationFinal private boolean polymorphicJSClass;
 
+    private static final JSClassProfile UNCACHED = new JSClassProfile(true);
+
     private JSClassProfile() {
+    }
+
+    private JSClassProfile(boolean uncached) {
+        this.polymorphicJSClass = uncached;
     }
 
     public static JSClassProfile create() {
@@ -96,5 +102,9 @@ public final class JSClassProfile extends NodeCloneable {
     @Override
     public String toString() {
         return polymorphicJSClass ? "polymorphic" : Boundaries.stringValueOf(expectedJSClass);
+    }
+
+    public static JSClassProfile getUncached() {
+        return UNCACHED;
     }
 }

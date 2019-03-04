@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
  * @see JSRuntime#exportValue(Object)
  */
 @ImportStatic({JSTruffleOptions.class, JSFunction.class})
+@GenerateUncached
 public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     ExportValueNode() {

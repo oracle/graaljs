@@ -40,40 +40,101 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSProxy;
 
-public class JSInteropExecuteNode extends JavaScriptBaseNode {
-    @Child private JSFunctionCallNode call;
-    @Child private JSForeignToJSTypeNode convertArgsNode;
+public abstract class JSInteropExecuteNode extends JavaScriptBaseNode {
+    private static final Uncached UNCACHED_EXECUTE = new Uncached(false);
+    private static final Uncached UNCACHED_NEW = new Uncached(true);
 
-    protected JSInteropExecuteNode(boolean isNew) {
-        this.call = JSFunctionCallNode.create(isNew);
+    protected JSInteropExecuteNode() {
     }
 
     public static JSInteropExecuteNode createExecute() {
-        return new JSInteropExecuteNode(false);
+        return new Cached(false);
     }
 
     public static JSInteropExecuteNode createNew() {
-        return new JSInteropExecuteNode(true);
+        return new Cached(true);
     }
 
-    public Object execute(DynamicObject function, Object thisArg, Object[] args) {
-        return call.executeCall(JSArguments.create(thisArg, function, prepare(args)));
+    public abstract Object execute(DynamicObject function, Object thisArg, Object[] args) throws UnsupportedMessageException;
+
+    private static class Cached extends JSInteropExecuteNode {
+        @Child private JSFunctionCallNode call;
+        @Child private IsCallableNode isCallableNode;
+        @Child private JSForeignToJSTypeNode convertArgsNode;
+
+        protected Cached(boolean isNew) {
+            this.call = JSFunctionCallNode.create(isNew);
+            this.isCallableNode = IsCallableNode.create();
+            this.convertArgsNode = JSForeignToJSTypeNode.create();
+        }
+
+        @Override
+        public Object execute(DynamicObject function, Object thisArg, Object[] args) throws UnsupportedMessageException {
+            if (!isCallableNode.executeBoolean(function)) {
+                throw UnsupportedMessageException.create();
+            }
+            return call.executeCall(JSArguments.create(thisArg, function, prepare(args)));
+        }
+
+        private Object[] prepare(Object[] shifted) {
+            for (int i = 0; i < shifted.length; i++) {
+                shifted[i] = convertArgsNode.executeWithTarget(shifted[i]);
+            }
+            return shifted;
+        }
     }
 
-    private Object[] prepare(Object[] shifted) {
-        if (convertArgsNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            convertArgsNode = insert(JSForeignToJSTypeNodeGen.create());
+    private static class Uncached extends JSInteropExecuteNode {
+        private final boolean isNew;
+
+        protected Uncached(boolean isNew) {
+            this.isNew = isNew;
         }
-        for (int i = 0; i < shifted.length; i++) {
-            shifted[i] = convertArgsNode.executeWithTarget(shifted[i]);
+
+        @Override
+        public Object execute(DynamicObject function, Object thisArg, Object[] args) throws UnsupportedMessageException {
+            if (!IsCallableNode.getUncached().executeBoolean(function)) {
+                throw UnsupportedMessageException.create();
+            }
+            Object[] preparedArgs = prepare(args);
+            if (isNew) {
+                if (JSFunction.isJSFunction(function)) {
+                    return IndirectCallNode.getUncached().call(JSFunction.getConstructTarget(function), JSArguments.create(thisArg, function, preparedArgs));
+                } else if (JSProxy.isProxy(function)) {
+                    // TODO
+                    throw UnsupportedMessageException.create();
+                } else {
+                    throw UnsupportedMessageException.create();
+                }
+            } else {
+                return JSRuntime.call(function, thisArg, preparedArgs);
+            }
         }
-        return shifted;
+
+        private static Object[] prepare(Object[] shifted) {
+            for (int i = 0; i < shifted.length; i++) {
+                shifted[i] = JSForeignToJSTypeNode.getUncached().executeWithTarget(shifted[i]);
+            }
+            return shifted;
+        }
+    }
+
+    public static JSInteropExecuteNode getUncachedExecute() {
+        return UNCACHED_EXECUTE;
+    }
+
+    public static JSInteropExecuteNode getUncachedNew() {
+        return UNCACHED_NEW;
     }
 }

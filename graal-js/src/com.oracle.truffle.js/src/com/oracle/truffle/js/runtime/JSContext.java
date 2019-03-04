@@ -75,9 +75,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
-import com.oracle.truffle.js.nodes.interop.InteropAsyncFunctionForeign;
-import com.oracle.truffle.js.nodes.interop.InteropBoundFunctionForeign;
-import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -197,7 +194,6 @@ public class JSContext {
 
     private final Object nodeFactory;
 
-    private JSInteropRuntime interopRuntime;
     private final TimeProfiler timeProfiler;
 
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
@@ -529,8 +525,6 @@ public class JSContext {
         this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
         this.factoryCount = builder.finish();
-
-        this.interopRuntime = new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionForeign.ACCESS, InteropAsyncFunctionForeign.ACCESS);
     }
 
     public final JSFunctionLookup getFunctionLookup() {
@@ -736,10 +730,6 @@ public class JSContext {
         if (--interopCallStackDepth == 0) {
             processAllPendingPromiseJobs();
         }
-    }
-
-    public JSInteropRuntime getInteropRuntime() {
-        return interopRuntime;
     }
 
     public TimeProfiler getTimeProfiler() {

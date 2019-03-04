@@ -138,4 +138,10 @@ public abstract class IsCallableNode extends JSUnaryNode {
     protected JavaScriptNode copyUninitialized() {
         return IsCallableNode.create(cloneUninitialized(getOperand()));
     }
+
+    public static IsCallableNode getUncached() {
+        return UNCACHED;
+    }
+
+    private static final IsCallableNode UNCACHED = IsCallableNode.create();
 }

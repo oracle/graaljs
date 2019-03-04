@@ -42,12 +42,16 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * This type represents an integer value, useful for all ranges up to JSRuntime.MAX_SAFE_INTEGER.
  */
+@ExportLibrary(InteropLibrary.class)
 @ValueType
 public final class LargeInteger extends Number implements Comparable<LargeInteger>, TruffleObject {
     private final long value;
@@ -142,8 +146,82 @@ public final class LargeInteger extends Number implements Comparable<LargeIntege
         return object instanceof LargeInteger;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LargeIntegerMessageResolutionForeign.ACCESS;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isNumber() {
+        return true;
+    }
+
+    @ExportMessage
+    boolean fitsInInt() {
+        return longValue() == intValue();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean fitsInDouble() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean fitsInLong() {
+        return true;
+    }
+
+    @ExportMessage
+    int asInt() throws UnsupportedMessageException {
+        if (!fitsInInt()) {
+            throw UnsupportedMessageException.create();
+        }
+        return intValue();
+    }
+
+    @ExportMessage
+    double asDouble() {
+        return doubleValue();
+    }
+
+    @ExportMessage
+    long asLong() {
+        return longValue();
+    }
+
+    @ExportMessage
+    boolean fitsInByte() {
+        return longValue() == byteValue();
+    }
+
+    @ExportMessage
+    boolean fitsInShort() {
+        return longValue() == shortValue();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean fitsInFloat() {
+        return false;
+    }
+
+    @ExportMessage
+    byte asByte() throws UnsupportedMessageException {
+        if (!fitsInByte()) {
+            throw UnsupportedMessageException.create();
+        }
+        return (byte) intValue();
+    }
+
+    @ExportMessage
+    short asShort() throws UnsupportedMessageException {
+        if (!fitsInShort()) {
+            throw UnsupportedMessageException.create();
+        }
+        return (short) intValue();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    float asFloat() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }

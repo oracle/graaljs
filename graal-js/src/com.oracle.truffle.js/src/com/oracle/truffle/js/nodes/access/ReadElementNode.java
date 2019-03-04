@@ -47,6 +47,7 @@ import java.util.concurrent.locks.Lock;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -72,7 +73,6 @@ import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.ExportValueNodeGen;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
@@ -80,6 +80,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -1470,7 +1471,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         TruffleObjectReadElementTypeCacheNode(JSContext context, Class<? extends TruffleObject> targetClass) {
             super(context);
             this.targetClass = targetClass;
-            this.exportKeyNode = ExportValueNodeGen.create();
+            this.exportKeyNode = ExportValueNode.create();
             this.foreignIsNullNode = Message.IS_NULL.createNode();
             this.foreignArrayAccessNode = Message.READ.createNode();
             this.toJSTypeNode = JSForeignToJSTypeNodeGen.create();
@@ -1627,4 +1628,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return indexNode;
     }
 
+    public static ReadElementNode getUncached() {
+        return null;
+    }
+
+    public static ReadElementNode createCachedInterop(ContextReference<JSRealm> contextRef) {
+        return create(contextRef.get().getContext());
+    }
 }
