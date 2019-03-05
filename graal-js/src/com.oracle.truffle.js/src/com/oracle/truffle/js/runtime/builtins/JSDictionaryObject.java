@@ -367,4 +367,9 @@ public final class JSDictionaryObject extends JSBuiltinObject {
     private static EconomicMap<Object, PropertyDescriptor> newHashMap() {
         return EconomicMap.create();
     }
+
+    @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
+    }
 }

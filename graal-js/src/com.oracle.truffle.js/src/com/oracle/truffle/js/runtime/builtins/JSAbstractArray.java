@@ -805,4 +805,9 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
             return JSRuntime.objectToConsoleString(obj, null);
         }
     }
+
+    @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
+    }
 }

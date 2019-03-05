@@ -639,4 +639,8 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         return super.delete(thisObj, key, isStrict);
     }
 
+    @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
+    }
 }

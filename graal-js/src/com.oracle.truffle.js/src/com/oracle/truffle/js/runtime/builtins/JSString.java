@@ -324,6 +324,11 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     }
 
     @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
+    }
+
+    @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key) : key.getClass().getName();
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
@@ -345,10 +350,8 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
      * ES6, 9.4.3.1.1 StringGetIndexProperty (S, P).
      */
     @TruffleBoundary
-    private static PropertyDescriptor stringGetIndexProperty(DynamicObject thisObj, Object property) {
-        if (!JSString.isJSString(thisObj)) {
-            return null;
-        }
+    public static PropertyDescriptor stringGetIndexProperty(DynamicObject thisObj, Object property) {
+        assert JSString.isJSString(thisObj);
         long index = JSRuntime.propertyKeyToArrayIndex(property);
         if (index < 0) {
             return null;

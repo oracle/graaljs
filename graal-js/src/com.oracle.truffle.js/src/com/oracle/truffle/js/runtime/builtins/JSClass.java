@@ -356,4 +356,8 @@ public abstract class JSClass extends ObjectType {
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         throw Errors.shouldNotReachHere(getClass().getName());
     }
+
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
+    }
 }

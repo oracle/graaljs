@@ -501,4 +501,9 @@ public abstract class JSBuiltinObject extends JSClass {
     public String getBuiltinToStringTag(DynamicObject object) {
         return "Object";
     }
+
+    @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return true;
+    }
 }

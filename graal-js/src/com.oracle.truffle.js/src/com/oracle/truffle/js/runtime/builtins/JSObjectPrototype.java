@@ -175,6 +175,11 @@ public final class JSObjectPrototype extends JSBuiltinObject {
         return JSAbstractArray.ordinaryGetOwnPropertyArray(thisObj, key);
     }
 
+    @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
+    }
+
     /**
      * 9.4.7.2 SetImmutablePrototype ( O, V ).
      */
