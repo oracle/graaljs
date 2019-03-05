@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser;
+package com.oracle.truffle.js.runtime.objects;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -85,9 +85,6 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
-import com.oracle.truffle.js.runtime.objects.Dead;
-import com.oracle.truffle.js.runtime.objects.JSProperty;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class JSScope {
 
