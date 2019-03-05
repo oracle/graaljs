@@ -1021,9 +1021,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "mjsunit/html-comments.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/icu-date-lord-howe.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"

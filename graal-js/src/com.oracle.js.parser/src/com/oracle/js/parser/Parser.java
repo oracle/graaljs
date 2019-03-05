@@ -348,7 +348,7 @@ public class Parser extends AbstractParser {
      */
     private void prepareLexer(final int startPos, final int len) {
         stream = new TokenStream();
-        lexer  = new Lexer(source, startPos, len, stream, scripting, isES6(), shebang, reparsedFunction != null);
+        lexer  = new Lexer(source, startPos, len, stream, scripting, isES6(), shebang, isModule, reparsedFunction != null);
         lexer.line = lexer.pendingLine = lineOffset + 1;
         line = lineOffset;
     }
@@ -418,7 +418,11 @@ public class Parser extends AbstractParser {
      * @return function node resulting from successful parse
      */
     public FunctionNode parseModule(final String moduleName, final int startPos, final int len) {
+        boolean oldModule = isModule;
+        boolean oldStrictMode = isStrictMode;
         try {
+            isModule = true;
+            isStrictMode = true; // Module code is always strict mode code. (ES6 10.2.1)
             prepareLexer(startPos, len);
 
             scanFirstToken();
@@ -428,6 +432,9 @@ public class Parser extends AbstractParser {
             handleParseException(e);
 
             return null;
+        } finally {
+            isStrictMode = oldStrictMode;
+            isModule = oldModule;
         }
     }
 
@@ -445,7 +452,7 @@ public class Parser extends AbstractParser {
     public void parseFormalParameterList() {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting, isES6(), shebang);
+            lexer  = new Lexer(source, stream, scripting, isES6(), shebang, isModule);
 
             scanFirstToken();
 
@@ -466,7 +473,7 @@ public class Parser extends AbstractParser {
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting, isES6(), shebang);
+            lexer  = new Lexer(source, stream, scripting, isES6(), shebang, isModule);
             final int functionLine = line;
 
             scanFirstToken();
@@ -4691,7 +4698,7 @@ loop:
         }
 
         stream.reset();
-        lexer = parserState.createLexer(source, lexer, stream, scripting, isES6(), shebang);
+        lexer = parserState.createLexer(source, lexer, stream, scripting, isES6(), shebang, isModule);
         line = parserState.line;
         linePosition = parserState.linePosition;
         // Doesn't really matter, but it's safe to treat it as if there were a semicolon before
@@ -4717,8 +4724,8 @@ loop:
             this.linePosition = linePosition;
         }
 
-        Lexer createLexer(final Source source, final Lexer lexer, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang) {
-            final Lexer newLexer = new Lexer(source, position, lexer.limit - position, stream, scripting, es6, shebang, true);
+        Lexer createLexer(final Source source, final Lexer lexer, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule) {
+            final Lexer newLexer = new Lexer(source, position, lexer.limit - position, stream, scripting, es6, shebang, isModule, true);
             newLexer.restoreState(new Lexer.State(position, Integer.MAX_VALUE, line, -1, linePosition, SEMICOLON));
             return newLexer;
         }
@@ -5654,51 +5661,41 @@ loop:
      *      ModuleItemList
      */
     private FunctionNode module(final String moduleName) {
-        boolean oldModule = isModule;
-        boolean oldStrictMode = isStrictMode;
+        // Make a pseudo-token for the script holding its start and length.
+        int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
+        final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
+        final int  functionLine  = line;
+
+        final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), moduleName);
+        final ParserContextFunctionNode script = createParserContextFunctionNode(
+                        ident,
+                        functionToken,
+                        FunctionNode.Kind.MODULE,
+                        functionLine,
+                        Collections.<IdentNode>emptyList(), 0);
+        lc.push(script);
+
+        final ParserContextModuleNode module = new ParserContextModuleNode(moduleName);
+        final ParserContextBlockNode body = newBlock();
+        functionDeclarations = new ArrayList<>();
+
         try {
-            isModule = true;
-            isStrictMode = true; // Module code is always strict mode code. (ES6 10.2.1)
-
-            // Make a pseudo-token for the script holding its start and length.
-            int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
-            final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
-            final int  functionLine  = line;
-
-            final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), moduleName);
-            final ParserContextFunctionNode script = createParserContextFunctionNode(
-                            ident,
-                            functionToken,
-                            FunctionNode.Kind.MODULE,
-                            functionLine,
-                            Collections.<IdentNode>emptyList(), 0);
-            lc.push(script);
-
-            final ParserContextModuleNode module = new ParserContextModuleNode(moduleName);
-            final ParserContextBlockNode body = newBlock();
-            functionDeclarations = new ArrayList<>();
-
-            try {
-                moduleBody(module);
-                addFunctionDeclarations(script);
-            } finally {
-                functionDeclarations = null;
-                restoreBlock(body);
-                lc.pop(script);
-            }
-
-            body.setFlag(Block.NEEDS_SCOPE);
-            final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getStatements());
-            script.setLastToken(token);
-
-            expect(EOF);
-
-            script.setModule(module.createModule());
-            return createFunctionNode(script, functionToken, ident, FunctionNode.Kind.MODULE, functionLine, programBody);
+            moduleBody(module);
+            addFunctionDeclarations(script);
         } finally {
-            isStrictMode = oldStrictMode;
-            isModule = oldModule;
+            functionDeclarations = null;
+            restoreBlock(body);
+            lc.pop(script);
         }
+
+        body.setFlag(Block.NEEDS_SCOPE);
+        final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getStatements());
+        script.setLastToken(token);
+
+        expect(EOF);
+
+        script.setModule(module.createModule());
+        return createFunctionNode(script, functionToken, ident, FunctionNode.Kind.MODULE, functionLine, programBody);
     }
 
     /**
