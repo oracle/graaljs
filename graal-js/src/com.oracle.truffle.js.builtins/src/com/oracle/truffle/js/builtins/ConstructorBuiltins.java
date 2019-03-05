@@ -842,30 +842,31 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructRegExp(DynamicObject newTarget, Object pattern, Object flags,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode) {
-            boolean patternIsRegExp = isRegExpNode.executeBoolean(pattern);
+            boolean hasMatchSymbol = isRegExpNode.executeBoolean(pattern);
             if (isCall) {
                 // we are in the "call" case, i.e. NewTarget is undefined (before)
-                if (callIsRegExpProfile.profile(patternIsRegExp && flags == Undefined.instance && JSObject.isJSObject(pattern))) {
+                if (callIsRegExpProfile.profile(hasMatchSymbol && flags == Undefined.instance && JSObject.isJSObject(pattern))) {
                     DynamicObject patternObj = (DynamicObject) pattern;
                     Object patternConstructor = getConstructor(patternObj);
                     if (constructorEquivalentProfile.profile(patternConstructor == getContext().getRealm().getRegExpConstructor().getFunctionObject())) {
                         return patternObj;
                     }
                 }
-                return constructRegExpImpl(pattern, flags, patternIsRegExp);
+                return constructRegExpImpl(pattern, flags, hasMatchSymbol);
             } else {
                 // we are in the "construct" case, i.e. NewTarget is NOT undefined
-                return swapPrototype(constructRegExpImpl(pattern, flags, patternIsRegExp), newTarget);
+                return swapPrototype(constructRegExpImpl(pattern, flags, hasMatchSymbol), newTarget);
             }
 
         }
 
-        protected DynamicObject constructRegExpImpl(Object patternObj, Object flags, boolean patternIsRegExp) {
+        protected DynamicObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol) {
             Object p;
             Object f;
-            if (JSRegExp.isJSRegExp(patternObj)) {
+            boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
+            if (isJSRegExp) {
                 regexpObject.enter();
-                TruffleObject compiledRegex = JSRegExp.getCompiledRegex((DynamicObject) patternObj);
+                TruffleObject compiledRegex = JSRegExp.getCompiledRegexUnchecked((DynamicObject) patternObj, isJSRegExp);
                 if (flags == Undefined.instance) {
                     return getCreateRegExpNode().execute(compiledRegex);
                 } else {
@@ -877,7 +878,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     TruffleObject newCompiledRegex = getCompileRegexNode().compile(TRegexUtil.readPattern(getInteropReadPatternNode(), compiledRegex), flagsStr);
                     return getCreateRegExpNode().execute(newCompiledRegex);
                 }
-            } else if (patternIsRegExp) {
+            } else if (hasMatchSymbol) {
                 regexpMatcherObject.enter();
                 DynamicObject patternJSObj = (DynamicObject) patternObj;
                 p = getSource(patternJSObj);
@@ -1243,7 +1244,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Number callNumber(Object[] args,
                         @Cached("create()") JSToNumericNode toNumericNode,
                         @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
-            return (Number) toNumberFromNumericNode.executeObject(toNumericNode.execute(args[0]));
+            return toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]));
         }
     }
 
@@ -1261,7 +1262,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructNumber(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToNumericNode toNumericNode,
                         @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
-            return swapPrototype(JSNumber.create(getContext(), (Number) toNumberFromNumericNode.executeObject(toNumericNode.execute(args[0]))), newTarget);
+            return swapPrototype(JSNumber.create(getContext(), toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]))), newTarget);
         }
 
         @Override

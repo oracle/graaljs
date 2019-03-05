@@ -101,8 +101,8 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
 
         public EnumerateNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.setValueNode = PropertySetNode.create("value", false, context, false);
-            this.setDoneNode = PropertySetNode.create("done", false, context, false);
+            this.setValueNode = PropertySetNode.create(JSRuntime.VALUE, false, context, false);
+            this.setDoneNode = PropertySetNode.create(JSRuntime.DONE, false, context, false);
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
             this.errorBranch = BranchProfile.create();
             this.iteratorProfile = ValueProfile.createClassProfile();

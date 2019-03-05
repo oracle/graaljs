@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 /**
  * ES6 7.4.4 IteratorValue(iterResult).
@@ -55,7 +56,7 @@ public abstract class IteratorValueNode extends JavaScriptNode {
 
     protected IteratorValueNode(JSContext context, JavaScriptNode iterResultNode) {
         this.iterResultNode = iterResultNode;
-        this.getValueNode = PropertyGetNode.create("value", false, context);
+        this.getValueNode = PropertyGetNode.create(JSRuntime.VALUE, false, context);
     }
 
     public static IteratorValueNode create(JSContext context) {

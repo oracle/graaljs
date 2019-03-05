@@ -167,6 +167,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
+import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -1166,6 +1167,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private PropertyNode joinPropertyNode;
         @Child private JSFunctionCallNode callNode;
 
+        private final ConditionProfile isJSObjectProfile = ConditionProfile.createBinaryProfile();
+
         public JSArrayToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.joinPropertyNode = NodeFactory.getInstance(getContext()).createProperty(getContext(), null, "join");
@@ -1190,7 +1193,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSObject.defaultToString((DynamicObject) thisObj);
             }
             TruffleObject arrayObj = toObject(thisObj);
-            if (JSObject.isJSObject(arrayObj)) {
+            if (isJSObjectProfile.profile(JSObject.isJSObject(arrayObj))) {
                 Object join = getJoinProperty(arrayObj);
                 if (isCallable(join)) {
                     return callJoin(arrayObj, join);
@@ -1669,6 +1672,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile needLoopDeleteBranch = BranchProfile.create();
         private final BranchProfile needFillBranch = BranchProfile.create();
         private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
+        private final JSClassProfile classProfile = JSClassProfile.create();
 
         public JSArraySpliceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1734,7 +1738,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private boolean mustUseElementwise(DynamicObject obj, ScriptArray array) {
-            return array instanceof SparseArray || array.isLengthNotWritable() || JSObject.getPrototype(obj) != getContext().getRealm().getArrayConstructor().getPrototype() ||
+            return array instanceof SparseArray || array.isLengthNotWritable() || JSObject.getPrototype(obj, classProfile) != getContext().getRealm().getArrayConstructor().getPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() || (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
         }
 

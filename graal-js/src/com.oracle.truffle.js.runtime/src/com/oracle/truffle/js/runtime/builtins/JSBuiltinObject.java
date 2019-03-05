@@ -73,6 +73,7 @@ public abstract class JSBuiltinObject extends JSClass {
     protected JSBuiltinObject() {
     }
 
+    @TruffleBoundary
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         return DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, key, desc, doThrow);

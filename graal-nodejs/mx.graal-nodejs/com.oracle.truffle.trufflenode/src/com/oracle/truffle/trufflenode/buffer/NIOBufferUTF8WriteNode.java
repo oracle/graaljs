@@ -56,6 +56,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
@@ -128,8 +129,9 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     private int doWrite(DynamicObject target, String str, int destOffset, int bytes) throws CharacterCodingException {
-        DynamicObject arrayBuffer = getArrayBuffer(target);
-        int bufferOffset = getOffset(target);
+        boolean isArrayBufferView = JSArrayBufferView.isJSArrayBufferView(target);
+        DynamicObject arrayBuffer = getArrayBuffer(target, isArrayBufferView);
+        int bufferOffset = getOffset(target, isArrayBufferView);
         int bufferLen = getLength(target);
 
         if (destOffset > bufferLen || bytes < 0 || destOffset < 0) {
