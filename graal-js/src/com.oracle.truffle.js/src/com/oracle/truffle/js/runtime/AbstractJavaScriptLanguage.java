@@ -43,15 +43,6 @@ package com.oracle.truffle.js.runtime;
 import com.oracle.truffle.api.TruffleLanguage;
 
 public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm> {
-    public static final String TEXT_MIME_TYPE = "text/javascript";
-    public static final String APPLICATION_MIME_TYPE = "application/javascript";
-    public static final String MODULE_MIME_TYPE = "application/javascript+module";
-    public static final String SCRIPT_SOURCE_NAME_SUFFIX = ".js";
-    public static final String MODULE_SOURCE_NAME_SUFFIX = ".mjs";
-
-    public static final String VERSION_NUMBER = "1.0"; // also in GraalJSEngineFactory
-    public static final String NAME = "JavaScript";
-    public static final String ID = "js";
 
     public static JSRealm getCurrentJSRealm() {
         return getCurrentContext(AbstractJavaScriptLanguage.class);

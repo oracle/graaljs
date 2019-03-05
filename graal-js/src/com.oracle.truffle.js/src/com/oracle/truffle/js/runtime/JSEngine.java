@@ -38,26 +38,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes;
+package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.runtime.Evaluator;
-import com.oracle.truffle.js.runtime.JSContext;
+import java.util.ServiceLoader;
 
-public interface NodeEvaluator extends Evaluator {
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
 
-    /**
-     * Loads a script file and compiles it. Returns an executable script object.
-     */
-    ScriptNode loadCompile(JSContext context, Source source);
+public final class JSEngine {
+    private static final JSEngine INSTANCE = new JSEngine();
 
-    /**
-     * Parses a script string. Returns an executable script object.
-     */
-    ScriptNode evalCompile(JSContext context, String sourceCode, String name);
+    private final JSFunctionLookup functionLookup;
+    private final Evaluator parser;
 
-    /**
-     * Parse function using parameter list and body, to be used by the {@code Function} constructor.
-     */
-    ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName);
+    private JSEngine() {
+        this.functionLookup = ServiceLoader.load(JSFunctionLookup.class).iterator().next();
+        this.parser = ServiceLoader.load(Evaluator.class).iterator().next();
+    }
+
+    public static JSEngine getInstance() {
+        return INSTANCE;
+    }
+
+    public Evaluator getEvaluator() {
+        return parser;
+    }
+
+    public JSFunctionLookup getFunctionLookup() {
+        return functionLookup;
+    }
+
+    public Evaluator getParser() {
+        return parser;
+    }
+
+    private JSContext createContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
+        return createContext(language, new GraalJSParserOptions(), env);
+    }
+
+    public JSContext createContext(JavaScriptLanguage language, GraalJSParserOptions parserOptions, TruffleLanguage.Env env) {
+        JSContextOptions contextOptions = new JSContextOptions(parserOptions);
+        return JSContext.createContext(parser, functionLookup, contextOptions, language, env);
+    }
+
+    public JSContext createContext(JavaScriptLanguage language, JSContextOptions contextOptions, TruffleLanguage.Env env) {
+        return JSContext.createContext(parser, functionLookup, contextOptions, language, env);
+    }
+
+    public static JSContext createJSContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
+        return JSEngine.getInstance().createContext(language, env);
+    }
 }

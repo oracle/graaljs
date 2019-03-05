@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.js.parser;
 
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE;
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.SCRIPT_SOURCE_NAME_SUFFIX;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.APPLICATION_MIME_TYPE;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.SCRIPT_SOURCE_NAME_SUFFIX;
 
 import java.io.IOException;
 import java.nio.file.Path;

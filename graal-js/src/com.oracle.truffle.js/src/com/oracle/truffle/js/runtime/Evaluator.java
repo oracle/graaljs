@@ -44,6 +44,8 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -90,4 +92,28 @@ public interface Evaluator {
     Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord);
 
     DynamicObject getModuleNamespace(JSModuleRecord moduleRecord);
+
+    /**
+     * Loads a script file and compiles it. Returns an executable script object.
+     */
+    ScriptNode loadCompile(JSContext context, Source source);
+
+    /**
+     * Parses a script string. Returns an executable script object.
+     */
+    ScriptNode evalCompile(JSContext context, String sourceCode, String name);
+
+    /**
+     * Parse function using parameter list and body, to be used by the {@code Function} constructor.
+     */
+    ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName);
+
+    ScriptNode parseScriptNode(JSContext context, Source source);
+
+    ScriptNode parseScriptNode(JSContext context, String sourceString);
+
+    /**
+     * Creates a script that will be evaluated in a specified lexical context.
+     */
+    JavaScriptNode parseInlineScript(JSContext context, Source source, MaterializedFrame lexicalContextFrame, boolean isStrict);
 }

@@ -48,9 +48,9 @@ import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCurrentN
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmDisposeNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmEvalNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmGlobalNodeGen;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -186,7 +186,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             int realmIndex = toRealmIndexOrThrow(getContext(), index);
             JSRealm jsrealm = getContext().getFromRealmList(realmIndex);
             String sourceText = JSRuntime.toString(code);
-            Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).build();
+            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).build();
             return jsrealm.getContext().getEvaluator().evaluate(jsrealm, this, source);
         }
     }

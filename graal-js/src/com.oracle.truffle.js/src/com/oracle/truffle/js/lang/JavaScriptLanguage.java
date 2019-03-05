@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser;
+package com.oracle.truffle.js.lang;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,9 +62,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -81,9 +78,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
@@ -103,19 +98,18 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpression
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.parser.env.DebugEnvironment;
-import com.oracle.truffle.js.parser.env.Environment;
-import com.oracle.truffle.js.parser.foreign.InteropAsyncFunctionForeign;
-import com.oracle.truffle.js.parser.foreign.InteropBoundFunctionForeign;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign;
+import com.oracle.truffle.js.nodes.interop.InteropAsyncFunctionForeign;
+import com.oracle.truffle.js.nodes.interop.InteropBoundFunctionForeign;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
+import com.oracle.truffle.js.runtime.GraalJSParserOptions;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSEngine;
 import com.oracle.truffle.js.runtime.JSInteropRuntime;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -130,6 +124,7 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSMetaObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSScope;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
@@ -168,6 +163,16 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 JavaScriptLanguage.TEXT_MIME_TYPE,
                 JavaScriptLanguage.MODULE_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.REUSE, dependentLanguages = "regex")
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
+    public static final String TEXT_MIME_TYPE = "text/javascript";
+    public static final String APPLICATION_MIME_TYPE = "application/javascript";
+    public static final String MODULE_MIME_TYPE = "application/javascript+module";
+    public static final String SCRIPT_SOURCE_NAME_SUFFIX = ".js";
+    public static final String MODULE_SOURCE_NAME_SUFFIX = ".mjs";
+
+    public static final String VERSION_NUMBER = "1.0"; // also in GraalJSEngineFactory
+    public static final String NAME = "JavaScript";
+    public static final String ID = "js";
+
     private static final int MAX_TOSTRING_DEPTH = 10;
 
     private volatile JSContext languageContext;
@@ -353,7 +358,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     protected static ScriptNode parseInContext(Source code, JSContext context) {
         long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
         try {
-            return ((JSParser) context.getEvaluator()).parseScriptNode(context, code);
+            return context.getEvaluator().parseScriptNode(context, code);
         } finally {
             if (JSTruffleOptions.ProfileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());
@@ -365,38 +370,12 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     protected static JavaScriptNode parseInline(Source code, JSContext context, MaterializedFrame lexicalContextFrame, boolean strict) {
         long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
         try {
-            Environment env = assembleDebugEnvironment(context, lexicalContextFrame);
-            return ((JSParser) context.getEvaluator()).parseInlineScript(context, code, env, strict);
+            return context.getEvaluator().parseInlineScript(context, code, lexicalContextFrame, strict);
         } finally {
             if (JSTruffleOptions.ProfileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());
             }
         }
-    }
-
-    private static Environment assembleDebugEnvironment(JSContext context, MaterializedFrame lexicalContextFrame) {
-        Environment env = null;
-        ArrayList<FrameDescriptor> frameDescriptors = new ArrayList<>();
-        Frame frame = lexicalContextFrame;
-        while (frame != null && frame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
-            assert isJSArgumentsArray(frame.getArguments());
-            FrameSlot parentSlot;
-            while ((parentSlot = frame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) != null) {
-                frameDescriptors.add(frame.getFrameDescriptor());
-                frame = (Frame) FrameUtil.getObjectSafe(frame, parentSlot);
-            }
-            frameDescriptors.add(frame.getFrameDescriptor());
-            frame = JSArguments.getEnclosingFrame(frame.getArguments());
-        }
-
-        for (int i = frameDescriptors.size() - 1; i >= 0; i--) {
-            env = new DebugEnvironment(env, NodeFactory.getInstance(context), context, frameDescriptors.get(i));
-        }
-        return env;
-    }
-
-    private static boolean isJSArgumentsArray(Object[] arguments) {
-        return arguments != null && arguments.length >= JSArguments.RUNTIME_ARGUMENT_COUNT && JSFunction.isJSFunction(JSArguments.getFunctionObject(arguments));
     }
 
     @Override

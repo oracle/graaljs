@@ -50,7 +50,7 @@ import java.util.Locale;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 
-import com.oracle.truffle.js.parser.JavaScriptLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;

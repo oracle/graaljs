@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.ID;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;

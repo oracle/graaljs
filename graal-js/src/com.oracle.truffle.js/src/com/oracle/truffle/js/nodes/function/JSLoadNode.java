@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -71,7 +70,7 @@ public abstract class JSLoadNode extends JavaScriptBaseNode {
     protected final ScriptNode loadScript(Source source) {
         long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
         try {
-            return ((NodeEvaluator) context.getEvaluator()).loadCompile(context, source);
+            return context.getEvaluator().loadCompile(context, source);
         } finally {
             if (JSTruffleOptions.ProfileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + source.getName());

@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.test.external.suite;
 
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.ID;
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_MIME_TYPE;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 
 import java.io.File;
 import java.io.IOException;

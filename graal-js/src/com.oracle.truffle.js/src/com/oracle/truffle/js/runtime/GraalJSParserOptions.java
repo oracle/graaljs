@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser;
+package com.oracle.truffle.js.runtime;
 
 import static com.oracle.truffle.js.runtime.JSContextOptions.ANNEX_B;
 import static com.oracle.truffle.js.runtime.JSContextOptions.CONST_AS_VAR;
@@ -51,9 +51,6 @@ import static com.oracle.truffle.js.runtime.JSContextOptions.STRICT;
 import static com.oracle.truffle.js.runtime.JSContextOptions.SYNTAX_EXTENSIONS;
 
 import org.graalvm.options.OptionValues;
-
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.ParserOptions;
 
 @SuppressWarnings("hiding")
 public final class GraalJSParserOptions implements ParserOptions {

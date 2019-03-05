@@ -66,7 +66,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -1005,7 +1005,7 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     public static SourceSection createBuiltinSourceSection(String name) {
-        return Source.newBuilder(AbstractJavaScriptLanguage.ID, "", name).internal(true).build().createUnavailableSection();
+        return Source.newBuilder(JavaScriptLanguage.ID, "", name).internal(true).build().createUnavailableSection();
     }
 
     public static boolean isBuiltinSourceSection(SourceSection sourceSection) {

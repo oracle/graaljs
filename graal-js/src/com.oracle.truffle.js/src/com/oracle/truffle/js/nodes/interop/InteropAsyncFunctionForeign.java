@@ -38,14 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser.foreign;
+package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropAsyncFunction;
 
-public final class InteropBoundFunctionForeign extends InteropFunctionForeign {
-    public static final ForeignAccess ACCESS = ForeignAccess.create(InteropBoundFunction.class, new InteropBoundFunctionForeign());
+public final class InteropAsyncFunctionForeign extends InteropFunctionForeign {
+    public static final ForeignAccess ACCESS = ForeignAccess.create(InteropAsyncFunction.class, new InteropAsyncFunctionForeign());
 
-    private InteropBoundFunctionForeign() {
+    private InteropAsyncFunctionForeign() {
     }
 }

@@ -38,21 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser.foreign;
+package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign.ExecuteSubNode;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign.InvokeSubNode;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign.IsInstantiableSubNode;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign.KeyInfoSubNode;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign.KeysSubNode;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign.NewSubNode;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign.ReadSubNode;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign.RemoveSubNode;
-import com.oracle.truffle.js.parser.foreign.JSForeignAccessFactoryForeign.WriteSubNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign.ExecuteSubNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign.InvokeSubNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign.IsInstantiableSubNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign.KeyInfoSubNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign.KeysSubNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign.NewSubNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign.ReadSubNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign.RemoveSubNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign.WriteSubNode;
 
 abstract class InteropFunctionForeign implements StandardFactory {
     @Override

@@ -42,12 +42,12 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -60,7 +60,7 @@ public abstract class NewTargetRootNode extends JavaScriptRootNode {
     @Child protected DirectCallNode callNode;
 
     protected NewTargetRootNode(CallTarget callTarget) {
-        super(((RootCallTarget) callTarget).getRootNode().getLanguage(AbstractJavaScriptLanguage.class), ((RootCallTarget) callTarget).getRootNode().getSourceSection(), null);
+        super(((RootCallTarget) callTarget).getRootNode().getLanguage(JavaScriptLanguage.class), ((RootCallTarget) callTarget).getRootNode().getSourceSection(), null);
         this.callTarget = callTarget;
     }
 

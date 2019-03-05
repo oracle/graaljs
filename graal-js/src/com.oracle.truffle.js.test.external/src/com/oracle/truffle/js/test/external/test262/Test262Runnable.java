@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.test.external.test262;
 
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_MIME_TYPE;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

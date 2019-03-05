@@ -95,13 +95,12 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetach
 import com.oracle.truffle.js.builtins.helper.ClassHistogramElement;
 import com.oracle.truffle.js.builtins.helper.HeapDump;
 import com.oracle.truffle.js.builtins.helper.ObjectSizeCalculator;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -519,7 +518,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected Object printSourceAttribution(String code) {
-            ScriptNode scriptNode = ((NodeEvaluator) getContext().getEvaluator()).evalCompile(getContext(), code, "<eval>");
+            ScriptNode scriptNode = getContext().getEvaluator().evalCompile(getContext(), code, "<eval>");
             return NodeUtil.printSourceAttributionTree(scriptNode.getRootNode());
         }
     }
@@ -743,7 +742,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                         throw Errors.createSyntaxError(String.format("Could not find imported module %s", specifier));
                     }
                     String code = JSRuntime.toString(moduleEntry);
-                    return Source.newBuilder(AbstractJavaScriptLanguage.ID, code, name).build();
+                    return Source.newBuilder(JavaScriptLanguage.ID, code, name).build();
                 }
 
                 @Override

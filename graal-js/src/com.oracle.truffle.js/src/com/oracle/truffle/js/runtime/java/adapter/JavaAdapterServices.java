@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.java.adapter;
 
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.ID;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;

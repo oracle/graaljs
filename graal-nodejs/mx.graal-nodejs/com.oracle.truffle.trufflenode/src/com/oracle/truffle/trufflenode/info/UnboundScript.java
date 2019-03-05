@@ -45,6 +45,7 @@ import java.nio.ByteBuffer;
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 
 /**
@@ -78,13 +79,13 @@ public final class UnboundScript {
         Source source;
         if (isCoreModule(name)) {
             // Core modules are kept in memory (i.e. there is no file that contains the source)
-            source = Source.newBuilder(AbstractJavaScriptLanguage.ID, code, name).build();
+            source = Source.newBuilder(JavaScriptLanguage.ID, code, name).build();
         } else {
             // We have the content already, but we need to associate the Source
             // with the corresponding file so that debugger knows where to add
             // the breakpoints.
             TruffleFile truffleFile = AbstractJavaScriptLanguage.getCurrentEnv().getTruffleFile(name);
-            source = Source.newBuilder(AbstractJavaScriptLanguage.ID, truffleFile).content(code).name(name).build();
+            source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code).name(name).build();
         }
         return source;
     }

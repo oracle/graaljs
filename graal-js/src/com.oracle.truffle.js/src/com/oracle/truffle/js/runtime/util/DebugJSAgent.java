@@ -54,6 +54,7 @@ import org.graalvm.polyglot.Context;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.JSAgent;
@@ -87,7 +88,7 @@ public class DebugJSAgent extends JSAgent {
 
             @Override
             public void run() {
-                Context.Builder contextBuilder = Context.newBuilder(AbstractJavaScriptLanguage.ID);
+                Context.Builder contextBuilder = Context.newBuilder(JavaScriptLanguage.ID);
                 for (OptionDescriptor optionDescriptor : optionValues.getDescriptors()) {
                     if (optionDescriptor.getKey().hasBeenSet(optionValues)) {
                         contextBuilder.option(optionDescriptor.getName(), String.valueOf(optionDescriptor.getKey().getValue(optionValues)));
@@ -97,12 +98,12 @@ public class DebugJSAgent extends JSAgent {
                 Context polyglotContext = contextBuilder.build();
                 polyglotContext.enter();
                 try {
-                    polyglotContext.initialize(AbstractJavaScriptLanguage.ID);
+                    polyglotContext.initialize(JavaScriptLanguage.ID);
 
                     DebugJSAgent debugJSAgent = (DebugJSAgent) AbstractJavaScriptLanguage.getCurrentJSRealm().getContext().getJSAgent();
                     AgentExecutor executor = registerChildAgent(Thread.currentThread(), debugJSAgent);
 
-                    polyglotContext.eval(AbstractJavaScriptLanguage.ID, source);
+                    polyglotContext.eval(JavaScriptLanguage.ID, source);
 
                     barrier.countDown();
 

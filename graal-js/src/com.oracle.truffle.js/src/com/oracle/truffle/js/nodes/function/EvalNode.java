@@ -50,9 +50,9 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -103,7 +103,7 @@ public abstract class EvalNode extends JavaScriptNode {
         if (evalSourceName == null) {
             evalSourceName = Evaluator.EVAL_SOURCE_NAME;
         }
-        return Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceCode.toString(), evalSourceName).build();
+        return Source.newBuilder(JavaScriptLanguage.ID, sourceCode.toString(), evalSourceName).build();
     }
 
     @TruffleBoundary

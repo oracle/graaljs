@@ -65,6 +65,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -933,8 +934,8 @@ public class JSRealm {
     private void putGraalObject() {
         DynamicObject graalObject = JSUserObject.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
-        JSObjectUtil.putDataProperty(context, graalObject, "language", AbstractJavaScriptLanguage.NAME, flags);
-        JSObjectUtil.putDataProperty(context, graalObject, "versionJS", AbstractJavaScriptLanguage.VERSION_NUMBER, flags);
+        JSObjectUtil.putDataProperty(context, graalObject, "language", JavaScriptLanguage.NAME, flags);
+        JSObjectUtil.putDataProperty(context, graalObject, "versionJS", JavaScriptLanguage.VERSION_NUMBER, flags);
         if (GRAALVM_VERSION != null) {
             JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION, flags);
         }
@@ -1487,7 +1488,7 @@ public class JSRealm {
                         if (existingModule != null) {
                             return existingModule;
                         }
-                        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, moduleFile).name(specifier).build();
+                        Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(specifier).build();
                         JSModuleRecord newModule = getContext().getEvaluator().parseModule(getContext(), source, this);
                         moduleMap.put(canonicalPath, newModule);
                         return newModule;
