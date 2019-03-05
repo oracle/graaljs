@@ -45,6 +45,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -52,8 +53,8 @@ class JSFunctionArgumentsNode extends AbstractFunctionArgumentsNode {
 
     @Children protected final JavaScriptNode[] args;
 
-    public static AbstractFunctionArgumentsNode create(JavaScriptNode[] args) {
-        assert args.length <= JSTruffleOptions.MaxFunctionArgumentsLength;
+    public static AbstractFunctionArgumentsNode create(JSContext context, JavaScriptNode[] args) {
+        assert args.length <= context.getFunctionArgumentsLimit();
         for (JavaScriptNode arg : args) {
             if (arg instanceof SpreadArgumentNode) {
                 return new SpreadFunctionArgumentsNode(args);

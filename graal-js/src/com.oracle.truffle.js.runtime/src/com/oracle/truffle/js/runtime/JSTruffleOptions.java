@@ -101,8 +101,6 @@ public class JSTruffleOptions {
     public static final int StringLengthLimit = integerOption("StringLengthLimit", (1 << 28) - 16);
     public static final int MaxTypedArrayLength = integerOption("MaxTypedArrayLength", 0x3fff_ffff);
     public static final int MaxApplyArgumentLength = integerOption("MaxApplyArgumentLength", 10_000_000);
-    // regress-1122.js, regress-605470.js
-    public static final int MaxFunctionArgumentsLength = integerOption("MaxFunctionArgumentsLength", 65535);
     public static final int MaxExpectedPrototypeChainLength = integerOption("MaxExpectedPrototypeChainLength", 32766); // regress-578775.js
     public static final boolean UseSuperOperations = booleanOption("UseSuperOperations", true);
     public static final boolean FastOwnKeys = booleanOption("FastOwnKeys", true);

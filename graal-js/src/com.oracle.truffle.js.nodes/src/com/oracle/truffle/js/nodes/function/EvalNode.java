@@ -173,7 +173,7 @@ public abstract class EvalNode extends JavaScriptNode {
      * to be evaluated for the sake of side-effects.
      */
     public static EvalNode create(JSContext context, Object env, JavaScriptNode sourceArg, JavaScriptNode[] otherArgs, JavaScriptNode functionNode, JavaScriptNode thisObject) {
-        return EvalNodeGen.create(context, env, functionNode, sourceArg, thisObject, otherArgs.length > 0 ? JSFunctionArgumentsNode.create(otherArgs) : null);
+        return EvalNodeGen.create(context, env, functionNode, sourceArg, thisObject, otherArgs.length > 0 ? JSFunctionArgumentsNode.create(context, otherArgs) : null);
     }
 
     @Override
