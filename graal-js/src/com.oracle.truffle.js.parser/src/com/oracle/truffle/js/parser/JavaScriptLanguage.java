@@ -59,7 +59,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -718,6 +718,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
         // Ensure error-related classes are initialized to avoid NoClassDefFoundError
         // during conversion of StackOverflowError to RangeError
-        TruffleStackTraceElement.getStackTrace(Errors.createRangeError(""));
+        TruffleStackTrace.getStackTrace(Errors.createRangeError(""));
     }
 }

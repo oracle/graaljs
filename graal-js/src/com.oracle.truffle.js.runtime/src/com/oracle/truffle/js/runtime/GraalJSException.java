@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
@@ -179,7 +180,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         assert stackTraceLimit > 0;
         // Nashorn does not support skipping of frames
         DynamicObject skipFramesUpTo = JSTruffleOptions.NashornCompatibilityMode ? Undefined.instance : skipUpTo;
-        List<TruffleStackTraceElement> stackTrace = TruffleStackTraceElement.getStackTrace(this);
+        List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(this);
         if (stackTrace == null) {
             return EMPTY_STACK_TRACE;
         }
