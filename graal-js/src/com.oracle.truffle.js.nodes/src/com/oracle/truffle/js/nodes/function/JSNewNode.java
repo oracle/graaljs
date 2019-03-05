@@ -151,7 +151,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     }
 
     public static JSNewNode create(JSContext context, JavaScriptNode function, JavaScriptNode[] arguments) {
-        return JSNewNodeGen.create(context, function, JSFunctionArgumentsNode.create(arguments));
+        return JSNewNodeGen.create(context, function, JSFunctionArgumentsNode.create(context, arguments));
     }
 
     public JavaScriptNode getTarget() {

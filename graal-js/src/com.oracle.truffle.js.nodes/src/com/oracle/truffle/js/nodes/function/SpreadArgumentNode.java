@@ -48,6 +48,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepSpecialNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -55,8 +56,11 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 public final class SpreadArgumentNode extends JavaScriptNode {
     @Child private GetIteratorNode getIteratorNode;
     @Child private IteratorStepSpecialNode iteratorStepNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
+    private final JSContext context;
 
     private SpreadArgumentNode(JSContext context, JavaScriptNode arg) {
+        this.context = context;
         this.getIteratorNode = GetIteratorNode.create(context, arg);
         this.iteratorStepNode = IteratorStepSpecialNode.create(context, null, JSConstantNode.create(null), false);
     }
@@ -83,6 +87,10 @@ public final class SpreadArgumentNode extends JavaScriptNode {
                 args = Arrays.copyOf(args, args.length + (args.length + 1) / 2);
             }
             args[delta + i++] = nextArg;
+            if (i > context.getContextOptions().getFunctionArgumentsLimit()) {
+                errorBranch.enter();
+                throw Errors.createRangeError("spreaded function argument count exceeds limit");
+            }
         }
         return delta + i == args.length ? args : Arrays.copyOf(args, delta + i);
     }

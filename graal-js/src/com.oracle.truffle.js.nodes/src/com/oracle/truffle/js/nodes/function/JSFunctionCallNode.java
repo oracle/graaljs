@@ -153,7 +153,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     public static JSFunctionCallNode createCall(JavaScriptNode function, JavaScriptNode target, JavaScriptNode[] arguments, boolean isNew, boolean isNewTarget) {
-        assert arguments.length <= JSTruffleOptions.MaxFunctionArgumentsLength;
         boolean spread = hasSpreadArgument(arguments);
         if (spread) {
             return new CallSpreadNode(target, function, arguments, createFlags(isNew, isNewTarget));
@@ -167,7 +166,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     public static JSFunctionCallNode createInvoke(JSTargetableNode targetFunction, JavaScriptNode[] arguments, boolean isNew, boolean isNewTarget) {
-        assert arguments.length <= JSTruffleOptions.MaxFunctionArgumentsLength;
         boolean spread = hasSpreadArgument(arguments);
         if (spread) {
             return new InvokeSpreadNode(targetFunction, arguments, createFlags(isNew, isNewTarget));

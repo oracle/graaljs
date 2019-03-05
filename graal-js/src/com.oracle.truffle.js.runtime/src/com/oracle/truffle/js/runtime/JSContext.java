@@ -1284,6 +1284,10 @@ public class JSContext {
         return contextOptions.getTimerResolution();
     }
 
+    public long getFunctionArgumentsLimit() {
+        return contextOptions.getFunctionArgumentsLimit();
+    }
+
     public boolean usePromiseResolve() {
         return contextOptions.isAwaitOptimization();
     }

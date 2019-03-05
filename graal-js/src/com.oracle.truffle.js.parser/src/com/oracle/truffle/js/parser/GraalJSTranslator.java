@@ -346,7 +346,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 currentFunction.setNamedFunctionExpression(functionNode.isNamedFunctionExpression());
 
                 declareParameters(functionNode);
-                if (functionNode.getNumOfParams() > JSTruffleOptions.MaxFunctionArgumentsLength) {
+                if (functionNode.getNumOfParams() > context.getFunctionArgumentsLimit()) {
                     throw Errors.createSyntaxError("function has too many arguments");
                 }
 
@@ -449,7 +449,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             currentFunction.setNeedsParentFrame(needsParentFrame);
 
             declareParameters(functionNode);
-            if (functionNode.getNumOfParams() > JSTruffleOptions.MaxFunctionArgumentsLength) {
+            if (functionNode.getNumOfParams() > context.getFunctionArgumentsLimit()) {
                 throw Errors.createSyntaxError("function has too many arguments");
             }
             functionEnvInit(functionNode);
@@ -2163,7 +2163,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode[] transformArgs(List<Expression> argList) {
         int len = argList.size();
-        if (len > JSTruffleOptions.MaxFunctionArgumentsLength) {
+        if (len > context.getFunctionArgumentsLimit()) {
             throw Errors.createSyntaxError("function has too many parameters");
         }
         JavaScriptNode[] args = javaScriptNodeArray(len);

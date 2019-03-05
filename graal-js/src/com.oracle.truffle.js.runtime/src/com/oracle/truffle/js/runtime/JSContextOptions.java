@@ -279,6 +279,12 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SIMDJS = new OptionKey<>(false);
     @CompilationFinal private boolean simdjs;
 
+    // limit originally from TestV8 regress-1122.js, regress-605470.js
+    public static final String FUNCTION_ARGUMENTS_LIMIT_NAME = JS_OPTION_PREFIX + "function-arguments-limit";
+    @Option(name = FUNCTION_ARGUMENTS_LIMIT_NAME, category = OptionCategory.EXPERT, help = "Maximum number of arguments for functions.") //
+    public static final OptionKey<Long> FUNCTION_ARGUMENTS_LIMIT = new OptionKey<>(65535L);
+    @CompilationFinal private long functionArgumentsLimit;
+
     public JSContextOptions(ParserOptions parserOptions) {
         this.parserOptions = parserOptions;
         cacheOptions();
@@ -337,6 +343,7 @@ public final class JSContextOptions {
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
         this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME);
         this.simdjs = readBooleanOption(SIMDJS, SIMDJS_NAME);
+        this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT, FUNCTION_ARGUMENTS_LIMIT_NAME);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -565,7 +572,11 @@ public final class JSContextOptions {
     }
 
     public boolean isSIMDjs() {
-        return SIMDJS.getValue(optionValues);
+        return simdjs;
+    }
+
+    public long getFunctionArgumentsLimit() {
+        return functionArgumentsLimit;
     }
 
     @Override
@@ -596,6 +607,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
         hash = 53 * hash + (this.hasForeignObjectPrototype ? 1 : 0);
         hash = 53 * hash + (this.simdjs ? 1 : 0);
+        hash = 53 * hash + (int) this.functionArgumentsLimit;
         return hash;
     }
 
@@ -681,6 +693,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.simdjs != other.simdjs) {
+            return false;
+        }
+        if (this.functionArgumentsLimit != other.functionArgumentsLimit) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
