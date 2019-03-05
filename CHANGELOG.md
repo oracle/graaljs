@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC14
 * Option `js.function-arguments-limit` to set an upper bound for function arguments and argument spreading (default: 65535).
+* Support for [HTML-like comments](https://tc39.github.io/ecma262/#sec-html-like-comments) added.
 
 ## Version 1.0.0 RC13
 * Made Java interop available in native images. Note that you have to configure the accessible classes and methods at native image build time (see [reflection configuration](https://github.com/oracle/graal/blob/master/substratevm/REFLECTION.md#manual-configuration)).
