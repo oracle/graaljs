@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -186,7 +185,10 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
     }
 
     static final class DirNameNode extends JSConstantNode {
-        DirNameNode() {
+        private final JSContext context;
+
+        DirNameNode(JSContext context) {
+            this.context = context;
         }
 
         @Override
@@ -210,15 +212,16 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
             if (path.startsWith("file:")) {
                 path = path.substring("file:".length());
             }
-            if (File.separatorChar == '\\' && path.startsWith("/")) {
+            String fileSeparator = context.getRealm().getEnv().getFileNameSeparator();
+            if (fileSeparator.equals("\\") && path.startsWith("/")) {
                 // on Windows, remove first "/" from /c:/test/dir/ style paths
                 path = path.substring(1);
             }
             Path filePath = Paths.get(path).toAbsolutePath();
             Path parentPath = filePath.getParent();
             String dirPath = (parentPath == null) ? "" : parentPath.toString();
-            if (!dirPath.isEmpty() && !(dirPath.charAt(dirPath.length() - 1) == '/' || dirPath.charAt(dirPath.length() - 1) == File.separatorChar)) {
-                dirPath += File.separatorChar;
+            if (!dirPath.isEmpty() && !(dirPath.charAt(dirPath.length() - 1) == '/' || fileSeparator.equals(String.valueOf(dirPath.charAt(dirPath.length() - 1))))) {
+                dirPath += fileSeparator;
             }
             return dirPath;
         }

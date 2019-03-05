@@ -75,7 +75,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
             } else if (propertyName.equals("__FILE__")) {
                 return new GlobalConstantNode(ctx, propertyName, new GlobalConstantNode.FileNameNode());
             } else if (propertyName.equals("__DIR__")) {
-                return new GlobalConstantNode(ctx, propertyName, new GlobalConstantNode.DirNameNode());
+                return new GlobalConstantNode(ctx, propertyName, new GlobalConstantNode.DirNameNode(ctx));
             }
         }
         return new GlobalPropertyNode(ctx, propertyName, null);
