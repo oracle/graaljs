@@ -81,7 +81,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
-import com.oracle.truffle.js.runtime.interop.JavaPackage;
+import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
