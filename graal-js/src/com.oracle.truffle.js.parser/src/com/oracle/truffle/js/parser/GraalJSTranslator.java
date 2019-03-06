@@ -93,6 +93,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.NodeFactory.BinaryOperation;
@@ -157,8 +158,8 @@ import com.oracle.truffle.js.parser.env.FunctionEnvironment.JumpTargetCloseable;
 import com.oracle.truffle.js.parser.env.GlobalEnvironment;
 import com.oracle.truffle.js.parser.env.WithEnvironment;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.GraalJSParserOptions;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -179,8 +180,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     };
 
-    private static final SourceSection unavailableInternalSection = Source.newBuilder(AbstractJavaScriptLanguage.ID, "<internal>", "<internal>").mimeType(
-                    AbstractJavaScriptLanguage.APPLICATION_MIME_TYPE).internal(true).build().createUnavailableSection();
+    private static final SourceSection unavailableInternalSection = Source.newBuilder(JavaScriptLanguage.ID, "<internal>", "<internal>").mimeType(
+                    JavaScriptLanguage.APPLICATION_MIME_TYPE).internal(true).build().createUnavailableSection();
 
     private Environment environment;
     protected final JSContext context;

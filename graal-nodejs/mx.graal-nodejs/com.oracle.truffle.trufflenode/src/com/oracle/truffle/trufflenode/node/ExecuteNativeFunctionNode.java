@@ -49,10 +49,10 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -114,7 +114,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     private static int sourceSectionCounter;
 
     private static SourceSection createSourceSection() {
-        return Source.newBuilder(AbstractJavaScriptLanguage.ID, "", "<native$" + ++sourceSectionCounter + ">").build().createUnavailableSection();
+        return Source.newBuilder(JavaScriptLanguage.ID, "", "<native$" + ++sourceSectionCounter + ">").build().createUnavailableSection();
     }
 
     @Override

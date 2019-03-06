@@ -51,7 +51,7 @@ import java.util.Map;
 
 import org.graalvm.polyglot.Source;
 
-import com.oracle.truffle.js.parser.JavaScriptLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;

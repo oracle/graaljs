@@ -101,8 +101,8 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNode
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.RealmNode;
@@ -115,7 +115,6 @@ import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSLoadNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
@@ -571,7 +570,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             CompilerAsserts.neverPartOfCompilation();
             long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
             try {
-                return ((NodeEvaluator) ctxt.getEvaluator()).evalCompile(ctxt, script, name);
+                return ctxt.getEvaluator().evalCompile(ctxt, script, name);
             } finally {
                 if (JSTruffleOptions.ProfileTime) {
                     ctxt.getTimeProfiler().printElapsed(startTime, "parsing " + name);
@@ -582,7 +581,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected final Source sourceFromURL(URL url) {
             try {
-                return Source.newBuilder(AbstractJavaScriptLanguage.ID, url).name(url.getFile()).build();
+                return Source.newBuilder(JavaScriptLanguage.ID, url).name(url.getFile()).build();
             } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
@@ -591,7 +590,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected final Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
-                return Source.newBuilder(AbstractJavaScriptLanguage.ID, realm.getEnv().getTruffleFile(fileName)).name(fileName).build();
+                return Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getTruffleFile(fileName)).name(fileName).build();
             } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
@@ -600,7 +599,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected final Source sourceFromTruffleFile(TruffleFile file) {
             try {
-                return Source.newBuilder(AbstractJavaScriptLanguage.ID, file).build();
+                return Source.newBuilder(JavaScriptLanguage.ID, file).build();
             } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
@@ -1044,7 +1043,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (sourceName == null) {
                 sourceName = Evaluator.EVAL_SOURCE_NAME;
             }
-            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceText, sourceName).build());
+            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(JavaScriptLanguage.ID, sourceText, sourceName).build());
         }
 
         @Specialization(guards = "!isString(source)")
@@ -1260,7 +1259,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
             if (stream != null) {
                 try {
-                    return Source.newBuilder(AbstractJavaScriptLanguage.ID, new InputStreamReader(stream, StandardCharsets.UTF_8), resource).build();
+                    return Source.newBuilder(JavaScriptLanguage.ID, new InputStreamReader(stream, StandardCharsets.UTF_8), resource).build();
                 } catch (IOException | SecurityException e) {
                 }
             }

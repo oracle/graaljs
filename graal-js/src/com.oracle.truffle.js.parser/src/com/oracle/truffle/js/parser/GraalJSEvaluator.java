@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.parser;
 
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_MIME_TYPE;
-import static com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -65,6 +65,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -73,19 +77,22 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.parser.date.DateParser;
+import com.oracle.truffle.js.parser.env.DebugEnvironment;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.GraalJSParserOptions;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -158,7 +165,7 @@ public final class GraalJSEvaluator implements JSParser {
         code.append(body);
         code.append(JSRuntime.LINE_SEPARATOR);
         code.append("})");
-        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, code.toString(), sourceName).build();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
 
         return parseEval(context, null, null, source, false);
     }
@@ -248,7 +255,7 @@ public final class GraalJSEvaluator implements JSParser {
     public ScriptNode evalCompile(JSContext context, String sourceCode, String name) {
         try {
             context.checkEvalAllowed();
-            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceCode, name).build(), false);
+            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, name).build(), false);
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage());
         }
@@ -292,7 +299,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public ScriptNode parseScriptNode(JSContext context, String sourceCode) {
-        return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceCode, "<unknown>").build(), false);
+        return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "<unknown>").build(), false);
     }
 
     @TruffleBoundary
@@ -662,5 +669,36 @@ public final class GraalJSEvaluator implements JSParser {
             return parseScriptNode(context, source);
         }
         return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) snapshotProvider.apply(NodeFactory.getInstance(context), context, source));
+    }
+
+    @Override
+    public JavaScriptNode parseInlineScript(JSContext context, Source source, MaterializedFrame lexicalContextFrame, boolean isStrict) {
+        Environment env = assembleDebugEnvironment(context, lexicalContextFrame);
+        return parseInlineScript(context, source, env, isStrict);
+    }
+
+    private static Environment assembleDebugEnvironment(JSContext context, MaterializedFrame lexicalContextFrame) {
+        Environment env = null;
+        ArrayList<FrameDescriptor> frameDescriptors = new ArrayList<>();
+        Frame frame = lexicalContextFrame;
+        while (frame != null && frame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
+            assert isJSArgumentsArray(frame.getArguments());
+            FrameSlot parentSlot;
+            while ((parentSlot = frame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) != null) {
+                frameDescriptors.add(frame.getFrameDescriptor());
+                frame = (Frame) FrameUtil.getObjectSafe(frame, parentSlot);
+            }
+            frameDescriptors.add(frame.getFrameDescriptor());
+            frame = JSArguments.getEnclosingFrame(frame.getArguments());
+        }
+
+        for (int i = frameDescriptors.size() - 1; i >= 0; i--) {
+            env = new DebugEnvironment(env, NodeFactory.getInstance(context), context, frameDescriptors.get(i));
+        }
+        return env;
+    }
+
+    private static boolean isJSArgumentsArray(Object[] arguments) {
+        return arguments != null && arguments.length >= JSArguments.RUNTIME_ARGUMENT_COUNT && JSFunction.isJSFunction(JSArguments.getFunctionObject(arguments));
     }
 }

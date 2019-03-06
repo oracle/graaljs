@@ -49,11 +49,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
+
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 public final class Options {
     private final Context.Builder contextBuilder;
@@ -244,7 +246,7 @@ public final class Options {
 
         @Override
         protected String getLanguageId() {
-            return AbstractJavaScriptLanguage.ID;
+            return JavaScriptLanguage.ID;
         }
 
         @Override
