@@ -53,8 +53,9 @@ public final class JSEngine {
     private final Evaluator parser;
 
     private JSEngine() {
-        this.functionLookup = ServiceLoader.load(JSFunctionLookup.class).iterator().next();
-        this.parser = ServiceLoader.load(Evaluator.class).iterator().next();
+        ClassLoader classLoader = getClass().getClassLoader();
+        this.functionLookup = ServiceLoader.load(JSFunctionLookup.class, classLoader).iterator().next();
+        this.parser = ServiceLoader.load(Evaluator.class, classLoader).iterator().next();
     }
 
     public static JSEngine getInstance() {
