@@ -6,6 +6,10 @@ The main focus is on user-observable behavior of the engine.
 ## Version 1.0.0 RC14
 * Option `js.function-arguments-limit` to set an upper bound for function arguments and argument spreading (default: 65535).
 * Support for [HTML-like comments](https://tc39.github.io/ecma262/#sec-html-like-comments) added.
+* Option `js.experimental-array-prototype` has been renamed to `js.experimental-foreign-object-prototype`.
+  In addition to setting the prototype of array-like non-JS objects to `Array.prototype`
+  it sets the prototype of executable non-JS objects to `Function.prototype` and
+  the prototype of all other non-JS objects to `Object.prototype`.
 
 ## Version 1.0.0 RC13
 * Made Java interop available in native images. Note that you have to configure the accessible classes and methods at native image build time (see [reflection configuration](https://github.com/oracle/graal/blob/master/substratevm/REFLECTION.md#manual-configuration)).
@@ -13,10 +17,6 @@ The main focus is on user-observable behavior of the engine.
 * Removed deprecated `NashornJavaInterop` mode.
 * [Object.fromEntries](https://tc39.github.io/proposal-object-from-entries/) proposal implemented.
 * Implemented [import()](https://tc39.github.io/proposal-dynamic-import/) proposal.
-* Option `js.experimental-array-prototype` has been renamed to `js.experimental-foreign-object-prototype`.
-  In addition to setting the prototype of array-like non-JS objects to `Array.prototype`
-  it sets the prototype of executable non-JS objects to `Function.prototype` and
-  the prototype of all other non-JS objects to `Object.prototype`.
 * Updated Node.js to version 10.15.2.
 
 ## Version 1.0.0 RC12
