@@ -74,6 +74,9 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.nodes.interop.InteropAsyncFunctionForeign;
+import com.oracle.truffle.js.nodes.interop.InteropBoundFunctionForeign;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -526,6 +529,8 @@ public class JSContext {
         this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
         this.factoryCount = builder.finish();
+
+        this.interopRuntime = new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionForeign.ACCESS, InteropAsyncFunctionForeign.ACCESS);
     }
 
     public final JSFunctionLookup getFunctionLookup() {
@@ -735,10 +740,6 @@ public class JSContext {
 
     public JSInteropRuntime getInteropRuntime() {
         return interopRuntime;
-    }
-
-    public void setInteropRuntime(JSInteropRuntime interopRuntime) {
-        this.interopRuntime = interopRuntime;
     }
 
     public TimeProfiler getTimeProfiler() {

@@ -98,9 +98,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpression
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
-import com.oracle.truffle.js.nodes.interop.InteropAsyncFunctionForeign;
-import com.oracle.truffle.js.nodes.interop.InteropBoundFunctionForeign;
-import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -110,7 +107,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSEngine;
-import com.oracle.truffle.js.runtime.JSInteropRuntime;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -410,7 +406,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private JSContext newOrParentJSContext(Env env) {
         TruffleContext parent = env.getContext().getParent();
         if (parent == null) {
-            return newJSContext(env);
+            return JSEngine.createJSContext(this, env);
         } else {
             Object prev = parent.enter();
             try {
@@ -419,20 +415,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 parent.leave(prev);
             }
         }
-    }
-
-    private JSContext newJSContext(Env env) {
-        JSContext context = JSEngine.createJSContext(this, env);
-        // The (constant) value for the interopRuntime field has to be provided here post-hoc,
-        // since it is defined in the com.oracle.truffle.js.parser.foreign package. If this package
-        // would be moved to the com.oracle.truffle.js.runtime project, then we would not need
-        // to do this.
-        context.setInteropRuntime(interopRuntime());
-        return context;
-    }
-
-    private static JSInteropRuntime interopRuntime() {
-        return new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionForeign.ACCESS, InteropAsyncFunctionForeign.ACCESS);
     }
 
     @Override
