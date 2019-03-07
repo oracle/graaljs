@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
             stack_size = strtol(stack_size_str, nullptr, 10);
         }
     } else {
-        // stack size specified on the command line (using --jvm/native.Xss<value>)
+        // stack size specified on the command line (using --vm.Xss<value>)
         update_env = true;
     }
     if (stack_size <= 0) {
