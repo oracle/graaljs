@@ -2080,6 +2080,9 @@ loop:
 
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
+                if (identNode.isParenthesized()) {
+                    throw error("Expected a valid binding identifier", identNode.getToken());
+                }
                 identifierCallback.accept(identNode);
                 return false;
             }
@@ -5357,7 +5360,7 @@ loop:
         if (param instanceof IdentNode) {
             IdentNode ident = (IdentNode)param;
             verifyStrictIdent(ident, FUNCTION_PARAMETER_CONTEXT);
-            if (currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
+            if (ident.isParenthesized() || currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
             }
             currentFunction.addParameter(ident);
@@ -5378,7 +5381,7 @@ loop:
                 // was marked as using 'this' from parenthesizedExpressionAndArrowParameterList())
                 currentFunction.setFlag(FunctionNode.USES_THIS);
             }
-            if (lhs instanceof IdentNode) {
+            if (lhs instanceof IdentNode && !lhs.isParenthesized()) {
                 // default parameter
                 IdentNode ident = (IdentNode) lhs;
 
@@ -5389,6 +5392,8 @@ loop:
                 verifyDestructuringParameterBindingPattern(lhs, paramToken, paramLine);
 
                 addDestructuringParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction, false);
+            } else {
+                throw error(AbstractParser.message("invalid.arrow.parameter"), paramToken);
             }
         } else if (isDestructuringLhs(param)) {
             // binding pattern
