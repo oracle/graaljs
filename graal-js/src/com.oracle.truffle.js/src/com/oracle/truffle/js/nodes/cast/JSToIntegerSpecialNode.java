@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -95,6 +96,11 @@ public abstract class JSToIntegerSpecialNode extends JavaScriptBaseNode {
     @Specialization
     protected final long doSymbol(@SuppressWarnings("unused") Symbol value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
+    }
+
+    @Specialization
+    protected final long doBigInt(@SuppressWarnings("unused") BigInt value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
     }
 
     @Specialization
