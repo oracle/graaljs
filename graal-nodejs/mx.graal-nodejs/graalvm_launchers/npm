@@ -26,6 +26,8 @@ for opt in "${@:1}"; do
     case "${opt}" in
         --nodedir=*)
             NODE_DIR="${opt}" ;;
+        --vm*)
+            VM_ARGS+=("${opt}") ;;
         --jvm*)
             VM_ARGS+=("${opt}")
             JVM_USED=1 ;;
@@ -44,19 +46,19 @@ for opt in "${@:1}"; do
 done
 
 # if the user didn't set TruffleFunctionInlining and/or TruffleCompilationThreshold
-# explizitly, disable it; this improves npm performance quite significantly
+# explicitly, disable it; this improves npm performance quite significantly
 if [[ $JVM_USED == 1 ]]; then
     # in JVM mode, both options need to be set for best performance
     if [[ $TRUFFLE_FUNCTION_INLINING_SET == 0 ]]; then
-        VM_ARGS+=("--jvm.Dgraal.TruffleFunctionInlining=false")
+        VM_ARGS+=("--vm.Dgraal.TruffleFunctionInlining=false")
     fi
     if [[ $TRUFFLE_COMPILATION_THRESHOLD_SET == 0 ]]; then
-        VM_ARGS+=("--jvm.Dgraal.TruffleCompilationThreshold=10000")
+        VM_ARGS+=("--vm.Dgraal.TruffleCompilationThreshold=10000")
     fi
 else
     # in native mode, only TruffleFunctionInlining needs to be deactivated
     if [[ $TRUFFLE_FUNCTION_INLINING_SET == 0 ]]; then
-        VM_ARGS+=("--native.XX:-TruffleFunctionInlining")
+        VM_ARGS+=("--vm.XX:-TruffleFunctionInlining")
     fi
 fi
 

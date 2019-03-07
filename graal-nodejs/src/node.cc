@@ -3085,10 +3085,16 @@ long GraalArgumentsPreprocessing(int argc, char *argv[]) {
     const char *arg = argv[i];
     const char *nptr = nullptr;
     const char *classpath = nullptr;
-    if (!strncmp(arg, "--jvm.Xss", sizeof("--jvm.Xss") - 1)) {
+    if (!strncmp(arg, "--vm.Xss", sizeof("--vm.Xss") - 1)) {
+      nptr = arg + sizeof("--vm.Xss") - 1;
+    } else if (!strncmp(arg, "--jvm.Xss", sizeof("--jvm.Xss") - 1)) {
       nptr = arg + sizeof("--jvm.Xss") - 1;
     } else if(!strncmp(arg, "--native.Xss", sizeof("--native.Xss") - 1)) {
       nptr = arg + sizeof("--native.Xss") - 1;
+    } else if (!strncmp(arg, "--vm.classpath", sizeof ("--vm.classpath") - 1)) {
+      classpath = arg + sizeof ("--vm.classpath") - 1;
+    } else if (!strncmp(arg, "--vm.cp", sizeof ("--vm.cp") - 1)) {
+      classpath = arg + sizeof ("--vm.cp") - 1;
     } else if (!strncmp(arg, "--jvm.classpath", sizeof ("--jvm.classpath") - 1)) {
       classpath = arg + sizeof ("--jvm.classpath") - 1;
     } else if (!strncmp(arg, "--jvm.cp", sizeof ("--jvm.cp") - 1)) {
@@ -3106,7 +3112,7 @@ long GraalArgumentsPreprocessing(int argc, char *argv[]) {
         // options, i.e., is not considered to be a name of the script to execute).
         memset(argv[i], '-', strlen(argv[i]));
       } else {
-        fprintf(stderr, "the --jvm.classpath and --jvm.cp arguments must be of the form --jvm.[classpath|cp]=<classpath>");
+        fprintf(stderr, "the --vm.classpath and --vm.cp arguments must be of the form --vm.[classpath|cp]=<classpath>");
         exit(9);
       }
     }
