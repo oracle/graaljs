@@ -181,6 +181,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return getValueLong(obj, obj);
     }
 
+    public final Object getValueOrDefault(Object obj, Object defaultValue) {
+        return getValueOrDefault(obj, obj, defaultValue);
+    }
+
     @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     protected Object getValue(Object thisObj, Object receiver) {
         for (GetCacheNode c = cacheNode; c != null; c = c.next) {
@@ -276,12 +280,36 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return specialize(thisObj).getValueLong(thisObj, receiver, this, false);
     }
 
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    protected Object getValueOrDefault(Object thisObj, Object receiver, Object defaultValue) {
+        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
+            if (c.isGeneric()) {
+                return c.getValueOrDefault(thisObj, receiver, defaultValue, this, false);
+            }
+            if (!c.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                break;
+            }
+            boolean guard = c.accepts(thisObj);
+            if (guard) {
+                return c.getValueOrDefault(thisObj, receiver, defaultValue, this, guard);
+            }
+        }
+        deoptimize();
+        return specialize(thisObj).getValueOrDefault(thisObj, receiver, defaultValue, this, false);
+    }
+
     public abstract static class GetCacheNode extends PropertyCacheNode.CacheNode<GetCacheNode> {
         protected GetCacheNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
         }
 
         protected abstract Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard);
+
+        @SuppressWarnings("unused")
+        protected Object getValueOrDefault(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
+            return getValue(thisObj, receiver, root, guard);
+        }
 
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
             return JSTypesGen.expectInteger(getValue(thisObj, receiver, root, guard));
@@ -618,6 +646,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             return Undefined.instance;
+        }
+
+        @Override
+        protected Object getValueOrDefault(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
+            return defaultValue;
         }
     }
 
@@ -1022,8 +1055,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
+            return getValueOrDefault(thisObj, receiver, Undefined.instance, root, guard);
+        }
+
+        @Override
+        protected Object getValueOrDefault(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             if (isJSObject.profile(JSObject.isJSObject(thisObj))) {
-                return getPropertyFromJSObject((DynamicObject) thisObj, receiver, root);
+                return getPropertyFromJSObject((DynamicObject) thisObj, receiver, defaultValue, root);
             } else {
                 if (isForeignObject.profile(JSGuards.isForeignObject(thisObj))) {
                     // a TruffleObject from another language
@@ -1039,12 +1077,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(root.getContext()));
                     }
                     DynamicObject object = JSRuntime.expectJSObject(toObjectNode.executeTruffleObject(thisObj), notAJSObjectBranch);
-                    return getPropertyFromJSObject(object, receiver, root);
+                    return getPropertyFromJSObject(object, receiver, defaultValue, root);
                 }
             }
         }
 
-        private Object getPropertyFromJSObject(DynamicObject thisObj, Object receiver, PropertyGetNode root) {
+        private Object getPropertyFromJSObject(DynamicObject thisObj, Object receiver, Object defaultValue, PropertyGetNode root) {
             if (root.getKey() instanceof HiddenKey) {
                 Object result = thisObj.get(root.getKey());
                 if (result != null) {
@@ -1056,9 +1094,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else {
                 if (getFromJSObjectNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getFromJSObjectNode = insert(GetPropertyFromJSObjectNode.create(root.getKey(), root.getContext(), root.isRequired()));
+                    getFromJSObjectNode = insert(GetPropertyFromJSObjectNode.create(root.getKey(), root.isRequired()));
                 }
-                return getFromJSObjectNode.executeWithJSObject(thisObj, receiver, root.isMethod());
+                return getFromJSObjectNode.executeWithJSObject(thisObj, receiver, defaultValue, root);
             }
         }
 
@@ -1072,39 +1110,38 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     abstract static class GetPropertyFromJSObjectNode extends JavaScriptBaseNode {
         private final Object key;
-        private final JSContext context;
         private final boolean isRequired;
         private final BranchProfile nullOrUndefinedBranch = BranchProfile.create();
         private final BranchProfile fallbackBranch = BranchProfile.create();
 
-        GetPropertyFromJSObjectNode(Object key, JSContext context, boolean isRequired) {
+        GetPropertyFromJSObjectNode(Object key, boolean isRequired) {
             this.key = key;
-            this.context = context;
             this.isRequired = isRequired;
         }
 
-        public abstract Object executeWithJSObject(DynamicObject thisObj, Object receiver, boolean isMethod);
+        public abstract Object executeWithJSObject(DynamicObject thisObj, Object receiver, Object defaultValue, PropertyGetNode root);
 
-        public static GetPropertyFromJSObjectNode create(Object key, JSContext context, boolean isRequired) {
-            return GetPropertyFromJSObjectNodeGen.create(key, context, isRequired);
+        public static GetPropertyFromJSObjectNode create(Object key, boolean isRequired) {
+            return GetPropertyFromJSObjectNodeGen.create(key, isRequired);
         }
 
         @Specialization(limit = "2", guards = {"cachedClass == getJSClass(object)"})
-        protected Object doJSObjectCached(DynamicObject object, Object receiver, boolean isMethod,
+        protected Object doJSObjectCached(DynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root,
                         @Cached("getJSClass(object)") JSClass cachedClass) {
-            return getPropertyFromJSObjectIntl(cachedClass, object, receiver, isMethod);
+            return getPropertyFromJSObjectIntl(cachedClass, object, receiver, defaultValue, root);
         }
 
         @Specialization(replaces = "doJSObjectCached")
-        protected Object doJSObjectDirect(DynamicObject object, Object receiver, boolean isMethod) {
-            return getPropertyFromJSObjectIntl(JSObject.getJSClass(object), object, receiver, isMethod);
+        protected Object doJSObjectDirect(DynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root) {
+            return getPropertyFromJSObjectIntl(JSObject.getJSClass(object), object, receiver, defaultValue, root);
         }
 
         protected JSClass getJSClass(DynamicObject object) {
             return JSObject.getJSClass(object);
         }
 
-        private Object getPropertyFromJSObjectIntl(JSClass jsclass, DynamicObject object, Object receiver, boolean isMethod) {
+        private Object getPropertyFromJSObjectIntl(JSClass jsclass, DynamicObject object, Object receiver, Object defaultValue, PropertyGetNode root) {
+            final boolean isMethod = root.isMethod();
             assert !(key instanceof HiddenKey);
             // 0. check for null or undefined
             if (jsclass == Null.NULL_CLASS) {
@@ -1120,18 +1157,19 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
             // 2. try to call fallback handler or return undefined
             fallbackBranch.enter();
-            return getNoSuchProperty(object, isMethod);
+            return getNoSuchProperty(object, defaultValue, root);
         }
 
-        protected Object getNoSuchProperty(DynamicObject thisObj, boolean isMethod) {
-            if (context.isOptionNashornCompatibilityMode() && (!context.getNoSuchPropertyUnusedAssumption().isValid() || (isMethod && !context.getNoSuchMethodUnusedAssumption().isValid()))) {
-                return getNoSuchPropertySlow(thisObj, isMethod);
+        protected Object getNoSuchProperty(DynamicObject thisObj, Object defaultValue, PropertyGetNode root) {
+            if (root.getContext().isOptionNashornCompatibilityMode() &&
+                            (!root.getContext().getNoSuchPropertyUnusedAssumption().isValid() || (root.isMethod() && !root.getContext().getNoSuchMethodUnusedAssumption().isValid()))) {
+                return getNoSuchPropertySlow(thisObj, defaultValue, root.isMethod());
             }
-            return getFallback();
+            return getFallback(defaultValue);
         }
 
         @TruffleBoundary
-        private Object getNoSuchPropertySlow(DynamicObject thisObj, boolean isMethod) {
+        private Object getNoSuchPropertySlow(DynamicObject thisObj, Object defaultValue, boolean isMethod) {
             if (!(key instanceof Symbol) && JSRuntime.isObject(thisObj) && !JSAdapter.isJSAdapter(thisObj) && !JSProxy.isProxy(thisObj)) {
                 if (isMethod) {
                     Object function = JSObject.get(thisObj, JSObject.NO_SUCH_METHOD_NAME);
@@ -1139,7 +1177,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         if (JSFunction.isJSFunction(function)) {
                             return callNoSuchHandler(thisObj, (DynamicObject) function, false);
                         } else {
-                            return getFallback();
+                            return getFallback(defaultValue);
                         }
                     }
                 }
@@ -1148,7 +1186,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return callNoSuchHandler(thisObj, (DynamicObject) function, true);
                 }
             }
-            return getFallback();
+            return getFallback(defaultValue);
         }
 
         private Object callNoSuchHandler(DynamicObject thisObj, DynamicObject function, boolean noSuchProperty) {
@@ -1166,11 +1204,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return isRequired;
         }
 
-        protected Object getFallback() {
+        protected Object getFallback(Object defaultValue) {
             if (isRequired) {
                 throw Errors.createReferenceErrorNotDefined(key, this);
             }
-            return Undefined.instance;
+            return defaultValue;
         }
     }
 

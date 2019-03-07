@@ -54,6 +54,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
@@ -71,6 +72,7 @@ import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.UnwrapPromiseNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -232,7 +234,13 @@ public class JSForeignAccessFactory {
                 readNode = insert(ReadElementNode.create(context));
                 export = insert(ExportValueNode.create(context.getLanguage()));
             }
-            return export.executeWithTarget(readNode.executeWithTargetAndIndex(target, castKey.executeWithTarget(key)), target);
+            Object importedKey = castKey.executeWithTarget(key);
+            Object value = readNode.executeWithTargetAndIndexOrDefault(target, importedKey, null);
+            if (value == null) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.raise(Boundaries.stringValueOf(key));
+            }
+            return export.executeWithTarget(value, target);
         }
 
         public Object access(InteropBoundFunction target, Object key) {
