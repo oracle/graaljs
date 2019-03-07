@@ -791,7 +791,7 @@ loop:
      * @param rhs Right hand side expression.
      * @return Verified expression.
      */
-    private Expression verifyAssignment(final long op, final Expression lhs, final Expression rhs) {
+    private Expression verifyAssignment(final long op, final Expression lhs, final Expression rhs, boolean inPatternPosition) {
         final TokenType opType = Token.descType(op);
 
         switch (opType) {
@@ -821,7 +821,7 @@ loop:
                 break;
             } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
                 break;
-            } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs)) {
+            } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs) && (inPatternPosition || !lhs.isParenthesized())) {
                 verifyDestructuringAssignmentPattern(lhs, ASSIGNMENT_TARGET_CONTEXT);
                 break;
             } else {
@@ -837,7 +837,7 @@ loop:
 
     private boolean isDestructuringLhs(Expression lhs) {
         if (lhs instanceof ObjectNode || lhs instanceof ArrayLiteralNode) {
-            return ES6_DESTRUCTURING && isES6() && !lhs.isParenthesized();
+            return ES6_DESTRUCTURING && isES6();
         }
         return false;
     }
@@ -1903,7 +1903,7 @@ loop:
             } else {
                 assert init != null || !isStatement;
                 if (init != null) {
-                    final Expression assignment = verifyAssignment(Token.recast(varToken, ASSIGN_INIT), binding, init);
+                    final Expression assignment = verifyAssignment(Token.recast(varToken, ASSIGN_INIT), binding, init, true);
                     if (isStatement) {
                         appendStatement(new ExpressionStatement(varLine, assignment.getToken(), finish, assignment));
                     } else {
@@ -3530,7 +3530,7 @@ loop:
                 coverInitializedName = true;
                 next();
                 Expression rhs = assignmentExpression(true, yield, await);
-                propertyValue = verifyAssignment(assignToken, propertyValue, rhs);
+                propertyValue = verifyAssignment(assignToken, propertyValue, rhs, true);
             }
         } else {
             expect(COLON);
@@ -5221,7 +5221,7 @@ loop:
                 long assignToken = token;
                 next();
                 Expression exprRhs = assignmentExpression(in, yield, await);
-                return verifyAssignment(assignToken, exprLhs, exprRhs);
+                return verifyAssignment(assignToken, exprLhs, exprRhs, inPatternPosition);
             } finally {
                 if (isAssign) {
                     popDefaultName();
