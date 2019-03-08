@@ -2203,6 +2203,9 @@ loop:
                 flags |= ForNode.IS_FOR_EACH;
                 next();
             } else if (ES8_FOR_AWAIT_OF && type == AWAIT) {
+                if (!inAsyncFunction()) {
+                    throw error(AbstractParser.message("invalid.for.await.of"), token);
+                }
                 isForAwaitOf = true;
                 next();
             }
