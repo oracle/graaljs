@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,11 +81,13 @@ import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode.FrameBlockScopeNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 public abstract class JSScope {
 
@@ -143,7 +145,7 @@ public abstract class JSScope {
     }
 
     protected final Scope toScope(MaterializedFrame frame) {
-        return Scope.newBuilder(getName(), getVariables(frame)).node(getNode()).arguments(getArguments(frame)).build();
+        return Scope.newBuilder(getName(), getVariables(frame)).node(getNode()).arguments(getArguments(frame)).receiver(THIS_NAME, getThis(frame)).build();
     }
 
     protected abstract String getName();
@@ -153,6 +155,8 @@ public abstract class JSScope {
     protected abstract Object getVariables(Frame frame);
 
     protected abstract Object getArguments(Frame frame);
+
+    protected abstract Object getThis(Frame frame);
 
     protected abstract JSScope findParent();
 
@@ -185,7 +189,6 @@ public abstract class JSScope {
         Map<String, Variable> slotMap = new LinkedHashMap<>();
         for (FrameSlot slot : frameDesc.getSlots()) {
             if (slot.getIdentifier().equals(THIS_SLOT_ID)) {
-                slotMap.put(THIS_NAME, new FrameSlotVariable(slot));
                 continue;
             }
             if (JSFrameUtil.isInternal(slot)) {
@@ -333,6 +336,11 @@ public abstract class JSScope {
         }
 
         @Override
+        protected Object getThis(Frame frame) {
+            return null; // Block scope does not override function's this
+        }
+
+        @Override
         protected JSScope findParent() {
             if (mFrame == null) {
                 return null;
@@ -388,6 +396,30 @@ public abstract class JSScope {
                 return null;
             }
             return new VariablesMapObject(collectArgs(rootNode), mFrame.getArguments(), mFrame);
+        }
+
+        @Override
+        protected Object getThis(Frame frame) {
+            if (mFrame == null) {
+                return null;
+            }
+            FrameSlot thisSlot = mFrame.getFrameDescriptor().findFrameSlot(THIS_SLOT_ID);
+            if (thisSlot == null) {
+                Object[] args = mFrame.getArguments();
+                Object thisObject = JSArguments.getThisObject(args);
+                Object function = JSArguments.getFunctionObject(args);
+                if (JSFunction.isJSFunction(function) && !JSFunction.isStrict((DynamicObject) function)) {
+                    JSRealm realm = AbstractJavaScriptLanguage.getCurrentJSRealm();
+                    if (thisObject == Undefined.instance || thisObject == Null.instance) {
+                        thisObject = realm.getGlobalObject();
+                    } else {
+                        thisObject = JSRuntime.toObject(realm.getContext(), thisObject);
+                    }
+                }
+                return thisObject;
+            } else {
+                return frame.getValue(thisSlot);
+            }
         }
 
         private static Map<String, ? extends Variable> collectArgs(Node block) {
