@@ -577,7 +577,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // note that the expressions have to be extracted in evaluation order
             List<JavaScriptNode> extracted = new ArrayList<>();
             // we can only replace child fields assignable from JavaScriptNode
-            if (NodeUtil.isReplacementSafe(grandparent, parent, ANY_JAVA_SCRIPT_NODE)) {
+            if (grandparent == null || NodeUtil.isReplacementSafe(grandparent, parent, ANY_JAVA_SCRIPT_NODE)) {
                 // extraction is a destructive step; only attempt it if replace can succeed
                 extractChildrenTo(parent, extracted);
             } else {
