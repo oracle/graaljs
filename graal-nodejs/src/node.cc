@@ -2504,6 +2504,9 @@ void ProcessArgv(std::vector<std::string>* args,
           || (prefix = "--debug-brk", std::find_if(v8_args.begin(), v8_args.end(), prefix_test) != v8_args.end())) {
     env_opts->debug_options->break_first_line = true;
   }
+  if (prefix = "--inspect-brk-node", std::find_if(v8_args.begin(), v8_args.end(), prefix_test) != v8_args.end()) {
+    env_opts->debug_options->break_node_first_line = true;
+  }
 
   // TODO(bnoordhuis) Intercept --prof arguments and start the CPU profiler
   // manually?  That would give us a little more control over its runtime
