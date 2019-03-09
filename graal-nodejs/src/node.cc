@@ -2495,6 +2495,19 @@ void ProcessArgv(std::vector<std::string>* args,
     env_opts->abort_on_uncaught_exception = true;
   }
 
+  std::string prefix;
+  auto prefix_test = [&prefix](std::string opt){
+    // equals to prefix or starts with prefix=
+    return (opt.rfind(prefix, 0) == 0) && (opt.length() == prefix.length() || opt[prefix.length()] == '=');
+  };
+  if ((prefix = "--inspect-brk", std::find_if(v8_args.begin(), v8_args.end(), prefix_test) != v8_args.end())
+          || (prefix = "--debug-brk", std::find_if(v8_args.begin(), v8_args.end(), prefix_test) != v8_args.end())) {
+    env_opts->debug_options->break_first_line = true;
+  }
+  if (prefix = "--inspect-brk-node", std::find_if(v8_args.begin(), v8_args.end(), prefix_test) != v8_args.end()) {
+    env_opts->debug_options->break_node_first_line = true;
+  }
+
   // TODO(bnoordhuis) Intercept --prof arguments and start the CPU profiler
   // manually?  That would give us a little more control over its runtime
   // behavior but it could also interfere with the user's intentions in ways

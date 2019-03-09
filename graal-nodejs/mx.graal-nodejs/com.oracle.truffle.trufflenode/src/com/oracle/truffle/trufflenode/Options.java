@@ -214,7 +214,7 @@ public final class Options {
                 }
                 // Convert --(inspect|debug)-brk[=port] to --inspect[=port]
                 // --inspect.WaitAttached=true
-                if ("inspect-brk".equals(normalizedKey) || "debug-brk".equals(normalizedKey)) {
+                if ("inspect-brk".equals(normalizedKey) || "debug-brk".equals(normalizedKey) || "inspect-brk-node".equals(normalizedKey)) {
                     // Do not override port (from --inspect=)
                     if (value != null || !polyglotOptions.containsKey(INSPECT)) {
                         polyglotOptions.put(INSPECT, valueOrTrue(value));
