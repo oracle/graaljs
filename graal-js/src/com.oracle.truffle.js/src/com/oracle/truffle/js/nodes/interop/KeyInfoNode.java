@@ -100,11 +100,25 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
         boolean writable = hasSet || (!hasGet && desc.getIfHasWritable(true));
         boolean readSideEffects = isProxy || hasGet;
         boolean writeSideEffects = isProxy || hasSet;
-        boolean invocable = desc.isDataDescriptor() && JSRuntime.isCallable(desc.getValue());
-        boolean removable = desc.getConfigurable();
-        return (((readable ? READABLE : 0) | (writable ? MODIFIABLE : 0) |
-                        (readSideEffects ? READ_SIDE_EFFECTS : 0) | (writeSideEffects ? WRITE_SIDE_EFFECTS : 0) |
-                        (invocable ? INVOCABLE : 0) | (removable ? REMOVABLE : 0)) & query) != 0;
+        if ((query & READABLE) != 0 && readable) {
+            return true;
+        }
+        if ((query & MODIFIABLE) != 0 && writable) {
+            return true;
+        }
+        if ((query & READ_SIDE_EFFECTS) != 0 && readSideEffects) {
+            return true;
+        }
+        if ((query & WRITE_SIDE_EFFECTS) != 0 && writeSideEffects) {
+            return true;
+        }
+        if ((query & INVOCABLE) != 0 && desc.isDataDescriptor() && JSRuntime.isCallable(desc.getValue())) {
+            return true;
+        }
+        if ((query & REMOVABLE) != 0 && desc.getConfigurable()) {
+            return true;
+        }
+        return false;
     }
 
     @Specialization
@@ -132,7 +146,15 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
         boolean hasSet = desc.hasSet() && desc.getSet() != Undefined.instance;
         boolean readable = hasGet || !hasSet;
         boolean writable = hasSet || (!hasGet && desc.getIfHasWritable(true));
-        boolean removable = desc.getConfigurable();
-        return (((readable ? READABLE : 0) | (writable ? MODIFIABLE : 0) | (removable ? REMOVABLE : 0)) & query) != 0;
+        if ((query & READABLE) != 0 && readable) {
+            return true;
+        }
+        if ((query & MODIFIABLE) != 0 && writable) {
+            return true;
+        }
+        if ((query & REMOVABLE) != 0 && desc.getConfigurable()) {
+            return true;
+        }
+        return false;
     }
 }
