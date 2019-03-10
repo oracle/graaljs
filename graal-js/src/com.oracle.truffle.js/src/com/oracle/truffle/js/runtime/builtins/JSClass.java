@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -63,6 +62,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
+import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -429,17 +429,19 @@ public abstract class JSClass extends ObjectType {
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean isMemberReadable(DynamicObject target, String key) {
-        return KeyInfo.isReadable(getKeyInfo(target, key));
+    static boolean isMemberReadable(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.READABLE);
     }
 
     @SuppressWarnings({"unused", "deprecation"})
     @ExportMessage
     static void writeMember(DynamicObject target, String key, Object value,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
                     @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncached()") WriteElementNode writeNode) throws UnknownIdentifierException {
-        if (!KeyInfo.isWritable(getKeyInfo(target, key))) {
+        if (!keyInfo.execute(target, key, KeyInfoNode.WRITABLE)) {
             throw UnknownIdentifierException.create(key);
         }
         Object importedValue = castValueNode.executeWithTarget(value);
@@ -452,14 +454,16 @@ public abstract class JSClass extends ObjectType {
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean isMemberModifiable(DynamicObject target, String key) {
-        return KeyInfo.isModifiable(getKeyInfo(target, key));
+    static boolean isMemberModifiable(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.MODIFIABLE);
     }
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean isMemberInsertable(DynamicObject target, String key) {
-        return KeyInfo.isInsertable(getKeyInfo(target, key));
+    static boolean isMemberInsertable(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.INSERTABLE);
     }
 
     @ExportMessage
@@ -469,8 +473,9 @@ public abstract class JSClass extends ObjectType {
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean isMemberRemovable(DynamicObject target, String key) {
-        return KeyInfo.isRemovable(getKeyInfo(target, key));
+    static boolean isMemberRemovable(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.REMOVABLE);
     }
 
     @ExportMessage
@@ -514,17 +519,19 @@ public abstract class JSClass extends ObjectType {
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean isArrayElementReadable(DynamicObject target, long index) {
-        return KeyInfo.isReadable(getIndexKeyInfo(target, index));
+    static boolean isArrayElementReadable(DynamicObject target, long index,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, index, KeyInfoNode.READABLE);
     }
 
     @SuppressWarnings({"unused", "deprecation"})
     @ExportMessage
     static void writeArrayElement(DynamicObject target, long index, Object value,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
                     @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncached()") WriteElementNode writeNode) throws InvalidArrayIndexException {
-        if (!KeyInfo.isWritable(getIndexKeyInfo(target, index))) {
+        if (!keyInfo.execute(target, index, KeyInfoNode.WRITABLE)) {
             throw InvalidArrayIndexException.create(index);
         }
         Object importedValue = castValueNode.executeWithTarget(value);
@@ -537,14 +544,16 @@ public abstract class JSClass extends ObjectType {
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean isArrayElementModifiable(DynamicObject target, long index) {
-        return KeyInfo.isModifiable(getIndexKeyInfo(target, index));
+    static boolean isArrayElementModifiable(DynamicObject target, long index,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, index, KeyInfoNode.MODIFIABLE);
     }
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean isArrayElementInsertable(DynamicObject target, long index) {
-        return KeyInfo.isInsertable(getIndexKeyInfo(target, index));
+    static boolean isArrayElementInsertable(DynamicObject target, long index,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, index, KeyInfoNode.INSERTABLE);
     }
 
     @ExportMessage
@@ -554,47 +563,9 @@ public abstract class JSClass extends ObjectType {
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean isArrayElementRemovable(DynamicObject target, long index) {
-        return KeyInfo.isRemovable(getIndexKeyInfo(target, index));
-    }
-
-    @SuppressWarnings("deprecation")
-    private static int getKeyInfo(DynamicObject target, String key) {
-        PropertyDescriptor desc = null;
-        boolean isProxy = false;
-        for (DynamicObject proto = target; proto != Null.instance; proto = JSObject.getPrototype(proto)) {
-            desc = JSObject.getOwnProperty(proto, key);
-            if (JSProxy.isProxy(proto)) {
-                isProxy = true;
-                break;
-            }
-            if (desc != null) {
-                break;
-            }
-        }
-        if (desc == null) {
-            if (JSObject.isExtensible(target)) {
-                return KeyInfo.INSERTABLE;
-            }
-            return 0;
-        }
-
-        boolean hasGet = desc.hasGet() && desc.getGet() != Undefined.instance;
-        boolean hasSet = desc.hasSet() && desc.getSet() != Undefined.instance;
-        boolean readable = hasGet || !hasSet;
-        boolean writable = hasSet || (!hasGet && desc.getIfHasWritable(true));
-        boolean readSideEffects = isProxy || hasGet;
-        boolean writeSideEffects = isProxy || hasSet;
-        boolean invocable = desc.isDataDescriptor() && JSRuntime.isCallable(desc.getValue());
-        boolean removable = desc.getConfigurable();
-        return (readable ? KeyInfo.READABLE : 0) | (writable ? KeyInfo.MODIFIABLE : 0) |
-                        (readSideEffects ? KeyInfo.READ_SIDE_EFFECTS : 0) | (writeSideEffects ? KeyInfo.WRITE_SIDE_EFFECTS : 0) |
-                        (invocable ? KeyInfo.INVOCABLE : 0) | (removable ? KeyInfo.REMOVABLE : 0);
-    }
-
-    private static int getIndexKeyInfo(DynamicObject target, long index) {
-        String key = String.valueOf(index);
-        return getKeyInfo(target, key);
+    static boolean isArrayElementRemovable(DynamicObject target, long index,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, index, KeyInfoNode.REMOVABLE);
     }
 
     @ExportMessage
@@ -655,20 +626,23 @@ public abstract class JSClass extends ObjectType {
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean isMemberInvocable(DynamicObject target, String key) {
-        return KeyInfo.isInvocable(getKeyInfo(target, key));
+    static boolean isMemberInvocable(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.INVOCABLE);
     }
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean hasMemberReadSideEffects(DynamicObject target, String key) {
-        return KeyInfo.hasReadSideEffects(getKeyInfo(target, key));
+    static boolean hasMemberReadSideEffects(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.READ_SIDE_EFFECTS);
     }
 
     @SuppressWarnings("deprecation")
     @ExportMessage
-    static boolean hasMemberWriteSideEffects(DynamicObject target, String key) {
-        return KeyInfo.hasWriteSideEffects(getKeyInfo(target, key));
+    static boolean hasMemberWriteSideEffects(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.WRITE_SIDE_EFFECTS);
     }
 
     @ExportMessage
