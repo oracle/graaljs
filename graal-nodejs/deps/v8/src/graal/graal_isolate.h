@@ -537,6 +537,11 @@ public:
     void SetFunctionTemplateFunction(unsigned id, GraalValue* function);
     void SetFunctionTemplateData(unsigned id, GraalValue* data);
     void SetFunctionTemplateCallback(unsigned id, v8::FunctionCallback callback);
+    void ReportAPIFailure(const char* location, const char* message);
+
+    inline void SetFatalErrorHandler(v8::FatalErrorCallback callback) {
+        fatal_error_handler_ = callback;
+    }
 
     inline void SaveReturnValue(double value) {
         return_value_ = value;
@@ -659,6 +664,7 @@ private:
     v8::PromiseRejectCallback promise_reject_callback_;
     v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
     v8::HostImportModuleDynamicallyCallback import_module_dynamically;
+    v8::FatalErrorCallback fatal_error_handler_;
 };
 
 #endif /* GRAAL_ISOLATE_H_ */

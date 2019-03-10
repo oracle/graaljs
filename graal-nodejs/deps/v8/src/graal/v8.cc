@@ -479,8 +479,8 @@ namespace v8 {
         TRACE
     }
 
-    void Isolate::SetFatalErrorHandler(void (*)(char const*, char const*)) {
-        TRACE
+    void Isolate::SetFatalErrorHandler(FatalErrorCallback that) {
+        reinterpret_cast<GraalIsolate*> (this)->SetFatalErrorHandler(that);
     }
 
     void Isolate::SetPromiseRejectCallback(PromiseRejectCallback callback) {
