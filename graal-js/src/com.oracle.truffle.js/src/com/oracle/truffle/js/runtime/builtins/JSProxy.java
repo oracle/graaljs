@@ -87,7 +87,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public static final String SET = "set";
     public static final String DELETE_PROPERTY = "deleteProperty";
     public static final String DEFINE_PROPERTY = "defineProperty";
-    public static final String ENUMERATE = "enumerate";
     public static final String OWN_KEYS = "ownKeys";
     public static final String APPLY = "apply";
     public static final String CONSTRUCT = "construct";

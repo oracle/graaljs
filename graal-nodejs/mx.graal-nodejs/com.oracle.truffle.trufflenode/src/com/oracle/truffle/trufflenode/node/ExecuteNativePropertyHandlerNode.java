@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -84,7 +83,6 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         SETTER,
         QUERY,
         DELETER,
-        ENUMERATOR,
         OWN_KEYS,
         GET_OWN_PROPERTY_DESCRIPTOR,
         DEFINE_PROPERTY
@@ -122,8 +120,6 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                 return executeGetOwnPropertyDescriptor(holder, arguments);
             case DELETER:
                 return executeDeleter(holder, arguments);
-            case ENUMERATOR:
-                return executeEnumerator(holder, arguments);
             case OWN_KEYS:
                 return executeOwnKeys(holder, arguments);
             case DEFINE_PROPERTY:
@@ -329,24 +325,6 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             }
         }
         return false;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private Object executeEnumerator(Object holder, Object[] arguments) {
-        Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2]);
-        DynamicObject array = null;
-        if (namedHandler != null && namedHandler.getEnumerator() != 0) {
-            array = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(namedHandler.getEnumerator(), holder, nativeCallArgs, namedHandlerData);
-        }
-        if (indexedHandler != null && indexedHandler.getEnumerator() != 0) {
-            DynamicObject array2 = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandlerData);
-            array = concatArrays(array, array2, context);
-        }
-        if (array == null) {
-            array = JSArray.createEmpty(context, 0);
-        }
-        Object fn = JSObject.get(array, "values");
-        return JSFunction.call((DynamicObject) fn, array, JSArguments.EMPTY_ARGUMENTS_ARRAY);
     }
 
     @CompilerDirectives.TruffleBoundary

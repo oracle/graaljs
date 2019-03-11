@@ -1563,14 +1563,6 @@ public final class GraalJSAccess {
                         ExecuteNativePropertyHandlerNode.Mode.DELETER), proxy);
         JSObject.set(handler, JSProxy.DELETE_PROPERTY, deleter);
 
-        DynamicObject enumerator = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
-                        this,
-                        context,
-                        template,
-                        proxy,
-                        ExecuteNativePropertyHandlerNode.Mode.ENUMERATOR), proxy);
-        JSObject.set(handler, JSProxy.ENUMERATE, enumerator);
-
         DynamicObject ownKeys = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
                         this,
                         context,
