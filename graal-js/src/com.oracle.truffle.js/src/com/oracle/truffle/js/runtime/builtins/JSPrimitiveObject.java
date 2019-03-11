@@ -86,12 +86,12 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject implements Proto
 
     @TruffleBoundary
     @Override
-    public Object getMethodHelper(DynamicObject store, Object thisObj, Object name) {
-        if (name instanceof String && allowJavaMembersFor(thisObj)) {
+    public Object getMethodHelper(DynamicObject store, Object thisObj, Object key) {
+        if (key instanceof String && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
             if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
-                if (hasOwnProperty(store, name)) {
-                    Object method = getJavaMethod(thisObj, (String) name, context);
+                if (hasOwnProperty(store, key)) {
+                    Object method = getJavaMethod(thisObj, (String) key, context);
                     if (method != null) {
                         return method;
                     }
@@ -99,7 +99,7 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject implements Proto
             }
         }
 
-        return super.getMethodHelper(store, thisObj, name);
+        return super.getMethodHelper(store, thisObj, key);
     }
 
     private static Object getJavaMethod(Object thisObj, String name, JSContext context) {

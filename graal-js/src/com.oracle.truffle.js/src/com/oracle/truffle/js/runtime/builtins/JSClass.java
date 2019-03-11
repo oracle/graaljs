@@ -98,7 +98,7 @@ public abstract class JSClass extends ObjectType {
      * 9.1.5 [[GetOwnProperty]] (P).
      */
     @TruffleBoundary
-    public abstract PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object propertyKey);
+    public abstract PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key);
 
     /**
      * 9.1.6 [[DefineOwnProperty]] (P, Desc).
@@ -116,7 +116,7 @@ public abstract class JSClass extends ObjectType {
     public abstract boolean hasProperty(DynamicObject thisObj, long index);
 
     @TruffleBoundary
-    public abstract boolean hasOwnProperty(DynamicObject thisObj, Object propName);
+    public abstract boolean hasOwnProperty(DynamicObject thisObj, Object key);
 
     @TruffleBoundary
     public abstract boolean hasOwnProperty(DynamicObject thisObj, long index);
@@ -169,7 +169,7 @@ public abstract class JSClass extends ObjectType {
     public abstract boolean delete(DynamicObject thisObj, Object key, boolean isStrict);
 
     @TruffleBoundary
-    public abstract boolean delete(DynamicObject thisObj, long propIdx, boolean isStrict);
+    public abstract boolean delete(DynamicObject thisObj, long index, boolean isStrict);
 
     /**
      * 9.1.12 [[OwnPropertyKeys]]().
@@ -355,5 +355,9 @@ public abstract class JSClass extends ObjectType {
     @SuppressWarnings("unused")
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
         throw Errors.shouldNotReachHere(getClass().getName());
+    }
+
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
     }
 }

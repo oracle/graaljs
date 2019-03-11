@@ -517,9 +517,9 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     @Override
-    public boolean defineOwnProperty(DynamicObject thisObj, Object propertyKey, PropertyDescriptor descriptor, boolean doThrow) {
-        if (JSRuntime.isString(propertyKey)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString(propertyKey);
+    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
+        if (JSRuntime.isString(key)) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString(key);
             if (numericIndex != Undefined.instance) {
                 boolean success = defineOwnPropertyIndex(thisObj, numericIndex, descriptor);
                 if (doThrow && !success) {
@@ -529,7 +529,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 return success;
             }
         }
-        return super.defineOwnProperty(thisObj, propertyKey, descriptor, doThrow);
+        return super.defineOwnProperty(thisObj, key, descriptor, doThrow);
     }
 
     @TruffleBoundary
@@ -585,10 +585,10 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object property) {
-        assert JSRuntime.isPropertyKey(property);
-        if (JSRuntime.isString(property)) {
-            long numericIndex = JSRuntime.propertyKeyToIntegerIndex(property);
+    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
+        if (JSRuntime.isString(key)) {
+            long numericIndex = JSRuntime.propertyKeyToIntegerIndex(key);
             if (numericIndex >= 0) {
                 Object value = getOwnHelper(thisObj, thisObj, numericIndex);
                 if (value == Undefined.instance) {
@@ -597,7 +597,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
                 return PropertyDescriptor.createData(value, true, true, false);
             }
         }
-        return ordinaryGetOwnProperty(thisObj, property);
+        return ordinaryGetOwnProperty(thisObj, key);
     }
 
     private static void checkDetachedBuffer(DynamicObject thisObj) {
@@ -639,4 +639,8 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         return super.delete(thisObj, key, isStrict);
     }
 
+    @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
+    }
 }

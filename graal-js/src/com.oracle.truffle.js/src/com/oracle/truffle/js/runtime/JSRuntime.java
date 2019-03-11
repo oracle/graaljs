@@ -2201,7 +2201,7 @@ public final class JSRuntime {
     /**
      * ES2016 7.3.16 CreateArrayFromList(elements).
      */
-    public static DynamicObject createArrayFromList(JSContext context, List<Object> list) {
+    public static DynamicObject createArrayFromList(JSContext context, List<? extends Object> list) {
         return JSArray.createConstant(context, Boundaries.listToArray(list));
     }
 
