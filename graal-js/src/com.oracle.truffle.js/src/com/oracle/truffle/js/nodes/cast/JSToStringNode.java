@@ -122,6 +122,11 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     }
 
     @Specialization
+    protected String doBoolean(boolean value) {
+        return JSRuntime.booleanToString(value);
+    }
+
+    @Specialization
     protected String doInteger(int value) {
         return Boundaries.stringValueOf(value);
     }
@@ -132,18 +137,13 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected String doDouble(double d, @Cached("create()") JSDoubleToStringNode doubleToStringNode) {
-        return doubleToStringNode.executeString(d);
-    }
-
-    @Specialization
-    protected String doBoolean(boolean value) {
-        return JSRuntime.booleanToString(value);
-    }
-
-    @Specialization
     protected String doLong(long value) {
         return Boundaries.stringValueOf(value);
+    }
+
+    @Specialization
+    protected String doDouble(double d, @Cached("create()") JSDoubleToStringNode doubleToStringNode) {
+        return doubleToStringNode.executeString(d);
     }
 
     @Specialization(guards = "isJSObject(value)")

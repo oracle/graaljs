@@ -72,6 +72,11 @@ public class JSTypes {
         return value.doubleValue();
     }
 
+    @ImplicitCast
+    public static double longToDouble(long value) {
+        return value;
+    }
+
     @TypeCast(double.class)
     public static double asDouble(Object value) {
         return ((Double) value).doubleValue();

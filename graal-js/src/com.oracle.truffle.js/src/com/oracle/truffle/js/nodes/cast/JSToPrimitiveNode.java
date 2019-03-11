@@ -120,6 +120,11 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @Specialization
+    protected long doLong(long value) {
+        return value;
+    }
+
+    @Specialization
     protected double doDouble(double value) {
         return value;
     }
@@ -240,12 +245,6 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         } else {
             throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
         }
-    }
-
-    @Specialization
-    protected long doLong(long value) {
-        // Long is used internally for integer indices
-        return value;
     }
 
     @Fallback

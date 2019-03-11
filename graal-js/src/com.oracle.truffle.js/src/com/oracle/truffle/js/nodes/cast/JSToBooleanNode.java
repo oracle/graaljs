@@ -134,6 +134,11 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
     }
 
     @Specialization
+    protected boolean doLong(long value) {
+        return value != 0L;
+    }
+
+    @Specialization
     protected boolean doDouble(double value) {
         return value != 0.0 && !Double.isNaN(value);
     }

@@ -81,6 +81,11 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization
+    protected boolean doLong(long value) {
+        return value != 0L;
+    }
+
+    @Specialization
     protected double doDouble(double value) {
         return value;
     }

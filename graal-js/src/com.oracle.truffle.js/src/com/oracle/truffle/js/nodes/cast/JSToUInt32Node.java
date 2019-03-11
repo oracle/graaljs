@@ -102,6 +102,11 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return JSRuntime.booleanToNumber(value);
     }
 
+    @Specialization
+    protected double doLong(long value) {
+        return JSRuntime.toUInt32(value);
+    }
+
     @Specialization(guards = {"!isDoubleLargerThan2e32(value)"})
     protected double doDoubleFitsInt32Negative(double value) {
         return JSRuntime.toUInt32((long) value);
@@ -158,12 +163,6 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Cached("create()") JSToUInt32Node toUInt32Node) {
         return ((Number) toUInt32Node.execute(toPrimitiveNode.execute(object))).doubleValue();
-    }
-
-    @Specialization
-    protected double doLong(long value) {
-        // Long is used internally for array length
-        return value;
     }
 
     public abstract static class JSToUInt32WrapperNode extends JSUnaryNode {

@@ -71,11 +71,6 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public double fromDouble(double value) {
-        return value;
-    }
-
-    @Specialization
     public String fromString(String value) {
         return value;
     }
@@ -96,8 +91,13 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isLongRepresentableAsInt32(value)")
-    public BigInt fromLongToBigInt(long value) {
-        return BigInt.valueOf(value);
+    public long fromLong(long value) {
+        return value;
+    }
+
+    @Specialization
+    public double fromDouble(double value) {
+        return value;
     }
 
     @Specialization
