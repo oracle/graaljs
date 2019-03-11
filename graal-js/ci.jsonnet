@@ -46,7 +46,7 @@ local common = import '../common.jsonnet';
       ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal-js-jdk11-maven-demo.git'], 'graal-js-jdk11-maven-demo'],
       ['cd', 'graal-js-jdk11-maven-demo'],
       ['mvn', '-Dgraalvm.version=GATE', 'package'],
-      ['mvn', 'exec:exec'],
+      ['mvn', '-Dgraalvm.version=GATE', 'exec:exec'],
     ],
     timelimit: '10:00',
   },
