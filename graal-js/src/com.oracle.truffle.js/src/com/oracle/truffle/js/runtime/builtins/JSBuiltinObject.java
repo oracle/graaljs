@@ -311,15 +311,15 @@ public abstract class JSBuiltinObject extends JSClass {
     }
 
     @TruffleBoundary
-    private static boolean setPropertyPrototypes(DynamicObject thisObj, Object propertyKey, Object value, Object receiver, boolean isStrict) {
+    private static boolean setPropertyPrototypes(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
         // check prototype chain for accessors
-        assert JSRuntime.isPropertyKey(propertyKey);
+        assert JSRuntime.isPropertyKey(key);
         DynamicObject current = JSObject.getPrototype(thisObj);
         while (current != Null.instance) {
             if (JSProxy.isProxy(current)) {
-                return JSObject.setWithReceiver(current, propertyKey, value, receiver, false);
+                return JSObject.setWithReceiver(current, key, value, receiver, false);
             } else {
-                PropertyDescriptor desc = JSObject.getOwnProperty(current, propertyKey);
+                PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
                 if (desc != null) {
                     if (desc.isDataDescriptor() && !desc.getWritable()) {
                         if (isStrict) {
@@ -327,7 +327,7 @@ public abstract class JSBuiltinObject extends JSClass {
                         }
                         return true;
                     } else if (desc.isAccessorDescriptor()) {
-                        invokeAccessorPropertySetter(desc, thisObj, propertyKey, value, receiver, isStrict);
+                        invokeAccessorPropertySetter(desc, thisObj, key, value, receiver, isStrict);
                         return true;
                     } else {
                         break;
@@ -339,14 +339,14 @@ public abstract class JSBuiltinObject extends JSClass {
         return false;
     }
 
-    protected static void invokeAccessorPropertySetter(PropertyDescriptor desc, DynamicObject thisObj, Object propertyKey, Object value, Object receiver, boolean isStrict) {
+    protected static void invokeAccessorPropertySetter(PropertyDescriptor desc, DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
         CompilerAsserts.neverPartOfCompilation();
         assert desc.isAccessorDescriptor();
         DynamicObject setter = (DynamicObject) desc.getSet();
         if (setter != Undefined.instance) {
             JSRuntime.call(setter, receiver, new Object[]{value});
         } else if (isStrict) {
-            throw Errors.createTypeErrorCannotSetAccessorProperty(propertyKey, thisObj);
+            throw Errors.createTypeErrorCannotSetAccessorProperty(key, thisObj);
         }
     }
 
@@ -364,37 +364,37 @@ public abstract class JSBuiltinObject extends JSClass {
     }
 
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object property) {
-        return ordinaryGetOwnProperty(thisObj, property);
+    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+        return ordinaryGetOwnProperty(thisObj, key);
     }
 
     /**
      * 9.1.5.1 OrdinaryGetOwnProperty (O, P).
      */
-    public static PropertyDescriptor ordinaryGetOwnProperty(DynamicObject thisObj, Object property) {
-        assert JSRuntime.isPropertyKey(property) || property instanceof HiddenKey;
-        Property x = thisObj.getShape().getProperty(property);
-        if (x == null) {
+    public static PropertyDescriptor ordinaryGetOwnProperty(DynamicObject thisObj, Object key) {
+        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
+        Property prop = thisObj.getShape().getProperty(key);
+        if (prop == null) {
             return null;
         }
-        return ordinaryGetOwnPropertyIntl(thisObj, property, x);
+        return ordinaryGetOwnPropertyIntl(thisObj, key, prop);
     }
 
     @TruffleBoundary
-    public static PropertyDescriptor ordinaryGetOwnPropertyIntl(DynamicObject thisObj, Object property, Property x) {
-        PropertyDescriptor d = null;
-        if (JSProperty.isData(x)) {
-            d = PropertyDescriptor.createData(JSObject.get(thisObj, property));
-            d.setWritable(JSProperty.isWritable(x));
-        } else if (JSProperty.isAccessor(x)) {
-            Accessor acc = (Accessor) x.get(thisObj, false);
-            d = PropertyDescriptor.createAccessor(acc.getGetter(), acc.getSetter());
+    public static PropertyDescriptor ordinaryGetOwnPropertyIntl(DynamicObject thisObj, Object key, Property prop) {
+        PropertyDescriptor desc = null;
+        if (JSProperty.isData(prop)) {
+            desc = PropertyDescriptor.createData(JSObject.get(thisObj, key));
+            desc.setWritable(JSProperty.isWritable(prop));
+        } else if (JSProperty.isAccessor(prop)) {
+            Accessor acc = (Accessor) prop.get(thisObj, false);
+            desc = PropertyDescriptor.createAccessor(acc.getGetter(), acc.getSetter());
         } else {
-            d = PropertyDescriptor.createEmpty();
+            desc = PropertyDescriptor.createEmpty();
         }
-        d.setEnumerable(JSProperty.isEnumerable(x));
-        d.setConfigurable(JSProperty.isConfigurable(x));
-        return d;
+        desc.setEnumerable(JSProperty.isEnumerable(prop));
+        desc.setConfigurable(JSProperty.isConfigurable(prop));
+        return desc;
     }
 
     @Override

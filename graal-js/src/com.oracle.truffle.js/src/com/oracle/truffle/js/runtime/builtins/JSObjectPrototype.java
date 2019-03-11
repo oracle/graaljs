@@ -100,12 +100,12 @@ public final class JSObjectPrototype extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, long propIdx) {
+    public boolean hasOwnProperty(DynamicObject thisObj, long index) {
         ScriptArray array = JSObject.getArray(thisObj);
-        if (array.hasElement(thisObj, propIdx)) {
+        if (array.hasElement(thisObj, index)) {
             return true;
         }
-        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(propIdx));
+        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(index));
     }
 
     @TruffleBoundary

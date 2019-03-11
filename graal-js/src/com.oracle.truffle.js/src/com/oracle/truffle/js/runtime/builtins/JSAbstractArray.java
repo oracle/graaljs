@@ -480,12 +480,12 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public final boolean hasOwnProperty(DynamicObject thisObj, long propIdx) {
+    public final boolean hasOwnProperty(DynamicObject thisObj, long index) {
         ScriptArray array = arrayGetArrayType(thisObj);
-        if (array.hasElement(thisObj, propIdx)) {
+        if (array.hasElement(thisObj, index)) {
             return true;
         }
-        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(propIdx));
+        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(index));
     }
 
     private static long findNextEnumerable(DynamicObject object, ScriptArray array, long indexParam) {
@@ -584,13 +584,13 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     @Override
-    public boolean defineOwnProperty(DynamicObject thisObj, Object propertyKey, PropertyDescriptor descriptor, boolean doThrow) {
-        if (propertyKey.equals(LENGTH)) {
-            return defineOwnPropertyLength(thisObj, propertyKey, descriptor, doThrow);
-        } else if (propertyKey instanceof String && JSRuntime.isArrayIndex((String) propertyKey)) {
-            return defineOwnPropertyIndex(thisObj, (String) propertyKey, descriptor, doThrow);
+    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
+        if (key.equals(LENGTH)) {
+            return defineOwnPropertyLength(thisObj, key, descriptor, doThrow);
+        } else if (key instanceof String && JSRuntime.isArrayIndex((String) key)) {
+            return defineOwnPropertyIndex(thisObj, (String) key, descriptor, doThrow);
         } else {
-            return super.defineOwnProperty(thisObj, propertyKey, descriptor, doThrow);
+            return super.defineOwnProperty(thisObj, key, descriptor, doThrow);
         }
     }
 
@@ -771,18 +771,18 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object property) {
-        return ordinaryGetOwnPropertyArray(thisObj, property);
+    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+        return ordinaryGetOwnPropertyArray(thisObj, key);
     }
 
     /**
      * 9.1.5.1 OrdinaryGetOwnProperty (O, P), implemented for Arrays.
      */
     @TruffleBoundary
-    public static PropertyDescriptor ordinaryGetOwnPropertyArray(DynamicObject thisObj, Object propertyKey) {
-        assert JSRuntime.isPropertyKey(propertyKey) || propertyKey instanceof HiddenKey;
+    public static PropertyDescriptor ordinaryGetOwnPropertyArray(DynamicObject thisObj, Object key) {
+        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
 
-        long idx = JSRuntime.propertyKeyToArrayIndex(propertyKey);
+        long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (JSRuntime.isArrayIndex(idx)) {
             ScriptArray array = arrayGetArrayType(thisObj, false);
             if (array.hasElement(thisObj, idx)) {
@@ -790,11 +790,11 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
                 return PropertyDescriptor.createData(value, true, !array.isFrozen(), !array.isSealed());
             }
         }
-        Property x = thisObj.getShape().getProperty(propertyKey);
-        if (x == null) {
+        Property prop = thisObj.getShape().getProperty(key);
+        if (prop == null) {
             return null;
         }
-        return JSBuiltinObject.ordinaryGetOwnPropertyIntl(thisObj, propertyKey, x);
+        return JSBuiltinObject.ordinaryGetOwnPropertyIntl(thisObj, key, prop);
     }
 
     @Override

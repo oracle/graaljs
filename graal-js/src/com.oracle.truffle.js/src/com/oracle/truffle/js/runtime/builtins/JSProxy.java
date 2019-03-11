@@ -206,9 +206,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object receiver, Object name) {
-        assert JSRuntime.isPropertyKey(name);
-        return proxyGet(store, name, receiver);
+    public Object getOwnHelper(DynamicObject store, Object receiver, Object key) {
+        assert JSRuntime.isPropertyKey(key);
+        return proxyGet(store, key, receiver);
     }
 
     @TruffleBoundary
@@ -219,37 +219,37 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     @TruffleBoundary
-    private static Object proxyGet(DynamicObject proxy, Object propertyKey, Object receiver) {
-        assert JSRuntime.isPropertyKey(propertyKey);
+    private static Object proxyGet(DynamicObject proxy, Object key, Object receiver) {
+        assert JSRuntime.isPropertyKey(key);
         DynamicObject handler = getHandler(proxy);
         TruffleObject target = getTarget(proxy);
         Object trap = getTrapFromObject(handler, GET);
         if (trap == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
-                return JSObject.getJSClass((DynamicObject) target).getHelper((DynamicObject) target, receiver, propertyKey);
+                return JSObject.getJSClass((DynamicObject) target).getHelper((DynamicObject) target, receiver, key);
             } else {
-                return JSInteropNodeUtil.read(target, propertyKey);
+                return JSInteropNodeUtil.read(target, key);
             }
         }
 
-        Object trapResult = JSRuntime.call(trap, handler, new Object[]{target, propertyKey, receiver});
-        checkProxyGetTrapInvariants(target, propertyKey, trapResult);
+        Object trapResult = JSRuntime.call(trap, handler, new Object[]{target, key, receiver});
+        checkProxyGetTrapInvariants(target, key, trapResult);
         return trapResult;
     }
 
     @TruffleBoundary
-    public static void checkProxyGetTrapInvariants(TruffleObject truffleTarget, Object propertyKey, Object trapResult) {
-        assert JSRuntime.isPropertyKey(propertyKey);
+    public static void checkProxyGetTrapInvariants(TruffleObject truffleTarget, Object key, Object trapResult) {
+        assert JSRuntime.isPropertyKey(key);
         if (!JSObject.isJSObject(truffleTarget)) {
             return; // best effort, cannot check for foreign objects
         }
         DynamicObject target = (DynamicObject) truffleTarget;
-        PropertyDescriptor targetDesc = JSObject.getOwnProperty(target, propertyKey);
+        PropertyDescriptor targetDesc = JSObject.getOwnProperty(target, key);
         if (targetDesc != null) {
             if (targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && !targetDesc.getWritable()) {
                 Object targetValue = targetDesc.getValue();
                 if (!JSRuntime.isSameValue(trapResult, targetValue)) {
-                    throw Errors.createTypeErrorProxyGetInvariantViolated(propertyKey, targetValue, trapResult);
+                    throw Errors.createTypeErrorProxyGetInvariantViolated(key, targetValue, trapResult);
                 }
             }
             if (targetDesc.isAccessorDescriptor() && !targetDesc.getConfigurable() && targetDesc.getGet() == Undefined.instance) {
@@ -261,8 +261,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     @Override
-    public boolean set(DynamicObject thisObj, Object propertyKey, Object value, Object receiver, boolean isStrict) {
-        return setOwn(thisObj, propertyKey, value, receiver, isStrict);
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+        return setOwn(thisObj, key, value, receiver, isStrict);
     }
 
     @Override
@@ -283,34 +283,34 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     @TruffleBoundary
-    private static boolean proxySet(DynamicObject thisObj, Object propertyKey, Object value, Object receiver, boolean isStrict) {
-        assert JSRuntime.isPropertyKey(propertyKey);
+    private static boolean proxySet(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+        assert JSRuntime.isPropertyKey(key);
         DynamicObject handler = getHandler(thisObj);
         TruffleObject target = getTarget(thisObj);
         Object trap = getTrapFromObject(handler, SET);
         if (trap == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
-                boolean result = JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
+                boolean result = JSReflectUtils.performOrdinarySet((DynamicObject) target, key, value, receiver);
                 if (isStrict && !result) {
-                    throw Errors.createTypeErrorCannotSetProperty(propertyKey, thisObj, null);
+                    throw Errors.createTypeErrorCannotSetProperty(key, thisObj, null);
                 }
                 return result;
             } else {
-                JSInteropNodeUtil.write(target, propertyKey, value);
+                JSInteropNodeUtil.write(target, key, value);
                 return true;
             }
         }
 
-        Object trapResult = JSRuntime.call(trap, handler, new Object[]{target, propertyKey, value, receiver});
+        Object trapResult = JSRuntime.call(trap, handler, new Object[]{target, key, value, receiver});
         boolean booleanTrapResult = JSRuntime.toBoolean(trapResult);
         if (!booleanTrapResult) {
             if (isStrict) {
-                throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.SET, propertyKey);
+                throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.SET, key);
             } else {
                 return false;
             }
         }
-        return checkProxySetTrapInvariants(thisObj, propertyKey, value);
+        return checkProxySetTrapInvariants(thisObj, key, value);
     }
 
     @TruffleBoundary
@@ -338,8 +338,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, long propIdx) {
-        return hasOwnProperty(thisObj, JSRuntime.toString(propIdx));
+    public boolean hasOwnProperty(DynamicObject thisObj, long index) {
+        return hasOwnProperty(thisObj, JSRuntime.toString(index));
     }
 
     @TruffleBoundary
@@ -353,8 +353,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @TruffleBoundary
     @Override
-    public boolean hasProperty(DynamicObject thisObj, long propIdx) {
-        return hasProperty(thisObj, JSRuntime.toString(propIdx));
+    public boolean hasProperty(DynamicObject thisObj, long index) {
+        return hasProperty(thisObj, JSRuntime.toString(index));
     }
 
     @TruffleBoundary
@@ -377,37 +377,37 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, long propIdx, boolean isStrict) {
-        return delete(thisObj, String.valueOf(propIdx), isStrict);
+    public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
+        return delete(thisObj, String.valueOf(index), isStrict);
     }
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, Object propertyKey, boolean isStrict) {
-        assert JSRuntime.isPropertyKey(propertyKey);
+    public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
+        assert JSRuntime.isPropertyKey(key);
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
 
         TruffleObject deleteFn = getTrapFromObject(handler, DELETE_PROPERTY);
         if (deleteFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
-                return JSObject.delete((DynamicObject) target, propertyKey, isStrict);
+                return JSObject.delete((DynamicObject) target, key, isStrict);
             } else {
-                return JSInteropNodeUtil.remove(target, propertyKey);
+                return JSInteropNodeUtil.remove(target, key);
             }
         }
-        Object trapResult = JSRuntime.call(deleteFn, handler, new Object[]{target, propertyKey});
+        Object trapResult = JSRuntime.call(deleteFn, handler, new Object[]{target, key});
         boolean booleanTrapResult = JSRuntime.toBoolean(trapResult);
         if (!booleanTrapResult) {
             if (isStrict) {
-                throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.DELETE_PROPERTY, propertyKey);
+                throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.DELETE_PROPERTY, key);
             }
             return false;
         }
         if (!JSObject.isJSObject(target)) {
             return true;
         }
-        PropertyDescriptor targetDesc = JSObject.getOwnProperty((DynamicObject) target, propertyKey);
+        PropertyDescriptor targetDesc = JSObject.getOwnProperty((DynamicObject) target, key);
         if (targetDesc == null) {
             return true;
         }
@@ -754,24 +754,24 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     // implements 9.5.5 [[GetOwnProperty]]
     @TruffleBoundary
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object propertyKey) {
-        assert JSRuntime.isPropertyKey(propertyKey);
+    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
         TruffleObject getOwnPropertyFn = getTrapFromObject(handler, GET_OWN_PROPERTY_DESCRIPTOR);
         if (getOwnPropertyFn == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
-                return JSObject.getOwnProperty((DynamicObject) target, propertyKey);
+                return JSObject.getOwnProperty((DynamicObject) target, key);
             } else {
                 return null;
             }
         }
-        Object trapResultObj = checkTrapReturnValue(JSRuntime.call(getOwnPropertyFn, handler, new Object[]{target, propertyKey}));
+        Object trapResultObj = checkTrapReturnValue(JSRuntime.call(getOwnPropertyFn, handler, new Object[]{target, key}));
         if (!JSObject.isJSObject(target)) {
             return JSRuntime.toPropertyDescriptor(trapResultObj);
         }
 
-        PropertyDescriptor targetDesc = JSObject.getOwnProperty((DynamicObject) target, propertyKey);
+        PropertyDescriptor targetDesc = JSObject.getOwnProperty((DynamicObject) target, key);
         if (trapResultObj == Undefined.instance) {
             if (targetDesc == null) {
                 return null; // undefined
