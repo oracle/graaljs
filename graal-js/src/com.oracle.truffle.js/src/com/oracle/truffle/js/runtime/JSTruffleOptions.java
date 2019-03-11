@@ -98,7 +98,7 @@ public class JSTruffleOptions {
     public static final boolean TrimLoadCache = booleanOption("TrimLoadCache", false);
     public static final boolean TrimCompiledRegexCache = booleanOption("TrimCompiledRegexCache", true);
     public static final int StackTraceLimit = integerOption("StackTraceLimit", 10);
-    public static final int StringLengthLimit = integerOption("StringLengthLimit", (1 << 28) - 16);
+    public static final int StringLengthLimit = integerOption("StringLengthLimit", (1 << 30) - 1 - 24); // v8::String::kMaxLength
     public static final int MaxTypedArrayLength = integerOption("MaxTypedArrayLength", 0x3fff_ffff);
     public static final int MaxApplyArgumentLength = integerOption("MaxApplyArgumentLength", 10_000_000);
     public static final int MaxExpectedPrototypeChainLength = integerOption("MaxExpectedPrototypeChainLength", 32766); // regress-578775.js

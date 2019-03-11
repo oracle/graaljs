@@ -176,7 +176,7 @@ public class Test262Runnable extends TestRunnable {
             }
             testResult = TestFile.Result.PASSED;
         } catch (TimeoutException e) {
-            testResult = TestFile.Result.timeout(ecmaVersionSuffix.trim(), e);
+            testResult = TestFile.Result.timeout(e);
             suite.logFail(testFile, "TIMEOUT" + ecmaVersionSuffix, "");
             if (future != null) {
                 boolean result = future.cancel(true);
@@ -190,7 +190,7 @@ public class Test262Runnable extends TestRunnable {
                 cause = e.getCause() != null ? e.getCause() : e;
             }
 
-            testResult = TestFile.Result.failed(ecmaVersionSuffix.trim(), cause);
+            testResult = TestFile.Result.failed(cause);
             if (negative) {
                 negativeThrowCause = cause;
                 negativeThrowCauseMsg = cause.getMessage();

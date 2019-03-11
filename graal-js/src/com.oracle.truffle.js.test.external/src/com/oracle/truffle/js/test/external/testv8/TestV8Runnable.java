@@ -123,7 +123,7 @@ public class TestV8Runnable extends TestRunnable {
             if (e instanceof ExitException && ((ExitException) e).getStatus() == 0) {
                 testResult = TestFile.Result.PASSED;
             } else {
-                testResult = TestFile.Result.failed(ecmaVersionSuffix.trim(), e);
+                testResult = TestFile.Result.failed(e);
                 if (!negative && !shouldThrow) {
                     suite.logFail(testFile, "FAILED" + ecmaVersionSuffix, e);
                 }

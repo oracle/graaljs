@@ -449,9 +449,25 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
+    "filePath" : "mjsunit/compiler/regress-445907.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
     "filePath" : "mjsunit/compiler/regress-801097.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/compiler/string-add-try-catch.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
+    "filePath" : "mjsunit/compiler/string-concat-deopt.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
+    "filePath" : "mjsunit/compiler/string-concat-try-catch.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
   }, {
     "filePath" : "mjsunit/console.js",
     "status" : "FAIL",
@@ -1214,6 +1230,10 @@
     "filePath" : "mjsunit/regress/regress-319722-ArrayBuffer.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/regress/regress-336820.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
     "filePath" : "mjsunit/regress/regress-3404.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1272,9 +1292,17 @@
     "filePath" : "mjsunit/regress/regress-4970.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/regress/regress-500980.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
     "filePath" : "mjsunit/regress/regress-5085.js",
     "status" : "SKIP",
     "comment" : "obj instanceof Proxy throws (as Proxy.prototype is not an object) but the test expects it to be false"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5404.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
   }, {
     "filePath" : "mjsunit/regress/regress-543994.js",
     "status" : "SKIP",
@@ -1359,6 +1387,10 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
+    "filePath" : "mjsunit/regress/regress-678917.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
     "filePath" : "mjsunit/regress/regress-681984.js",
     "status" : "SKIP",
     "runInIsolation" : true,
@@ -1389,6 +1421,10 @@
     "filePath" : "mjsunit/regress/regress-7773.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-779407.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
   }, {
     "filePath" : "mjsunit/regress/regress-786573.js",
     "status" : "FAIL",
@@ -1498,10 +1534,6 @@
     "filePath" : "mjsunit/regress/regress-crbug-150545.js",
     "status" : "SKIP",
     "comment" : "infinite loops caused by not compiling V8 style"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-160010.js",
-    "status" : "FAIL",
-    "comment" : "timeout unknown"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-352586.js",
     "runInIsolation" : true,
