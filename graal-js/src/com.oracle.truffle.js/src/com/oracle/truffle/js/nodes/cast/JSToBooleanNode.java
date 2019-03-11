@@ -134,6 +134,11 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
     }
 
     @Specialization
+    protected boolean doLong(long value) {
+        return value != 0L;
+    }
+
+    @Specialization
     protected boolean doDouble(double value) {
         return value != 0.0 && !Double.isNaN(value);
     }
@@ -163,12 +168,6 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
         return true;
     }
 
-    @Specialization(guards = {"cachedClass != null", "value.getClass() == cachedClass"}, limit = "MAX_CLASSES")
-    protected boolean doNumberCached(Object value,
-                    @Cached("getJavaNumberClass(value)") Class<? extends Number> cachedClass) {
-        return doNumber(cachedClass.cast(value));
-    }
-
     @TruffleBoundary
     @Specialization(guards = "isForeignObject(value)")
     protected boolean doForeignObject(TruffleObject value,
@@ -184,23 +183,6 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
             return recToBoolean.executeBoolean(obj);
         }
         return true; // cf. doObject()
-    }
-
-    @Specialization(guards = {"isJavaNumber(value)"}, replaces = "doNumberCached")
-    protected boolean doNumber(Object value) {
-        return doDouble(JSRuntime.doubleValue((Number) value));
-    }
-
-    @Specialization(guards = {"cachedClass != null", "value.getClass() == cachedClass"}, limit = "MAX_CLASSES")
-    protected boolean doJavaObject(Object value,
-                    @SuppressWarnings("unused") @Cached("getJavaObjectClass(value)") Class<?> cachedClass) {
-        return doJavaGeneric(value);
-    }
-
-    @Specialization(guards = {"isJavaObject(value)"}, replaces = {"doJavaObject"})
-    protected boolean doJavaGeneric(Object value) {
-        assert value != null && JSRuntime.isJavaObject(value);
-        return true;
     }
 
     @Override

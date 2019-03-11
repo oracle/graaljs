@@ -51,6 +51,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -96,6 +97,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
         @Child private PropertySetNode setValueNode;
         @Child private PropertySetNode setDoneNode;
         @Child private PropertyGetNode getIteratorNode;
+        @Child private JSForeignToJSTypeNode importValueNode;
         private final BranchProfile errorBranch;
         private final ValueProfile iteratorProfile;
 
@@ -104,6 +106,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
             this.setValueNode = PropertySetNode.create(JSRuntime.VALUE, false, context, false);
             this.setDoneNode = PropertySetNode.create(JSRuntime.DONE, false, context, false);
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
+            this.importValueNode = JSForeignToJSTypeNode.create();
             this.errorBranch = BranchProfile.create();
             this.iteratorProfile = ValueProfile.createClassProfile();
         }
@@ -117,7 +120,9 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
             }
             Iterator<?> iterator = (Iterator<?>) iteratorProfile.profile(iteratorValue);
             if (Boundaries.iteratorHasNext(iterator)) {
-                return createIterResultObject(Boundaries.iteratorNext(iterator), false);
+                Object nextValue = Boundaries.iteratorNext(iterator);
+                Object importedValue = importValueNode.executeWithTarget(nextValue);
+                return createIterResultObject(importedValue, false);
             }
             return createIterResultObject(Undefined.instance, true);
         }

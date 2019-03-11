@@ -64,7 +64,6 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -167,7 +166,6 @@ public abstract class EnumerateNode extends JavaScriptNode {
                     @Cached("createRead()") Node readNode,
                     @Cached("createKeys()") Node keysNode,
                     @Cached("create()") JSToLengthNode toLengthNode,
-                    @Cached("create()") JSForeignToJSTypeNode foreignConvertNode,
                     @Cached("createBinaryProfile()") ConditionProfile isHostObject) {
         TruffleLanguage.Env env = context.getRealm().getEnv();
         if (isHostObject.profile(env.isHostObject(iteratedObject))) {
@@ -178,39 +176,48 @@ public abstract class EnumerateNode extends JavaScriptNode {
             }
         }
 
-        return doEnumerateTruffleObjectIntl(context, iteratedObject, hasSizeNode, getSizeNode, readNode, keysNode, toLengthNode, foreignConvertNode, values);
+        return doEnumerateTruffleObjectIntl(context, iteratedObject, hasSizeNode, getSizeNode, readNode, keysNode, toLengthNode, values);
     }
 
     @TruffleBoundary
     private static Iterator<?> getHostObjectIterator(Object hostObject, boolean values, TruffleLanguage.Env env) {
         if (hostObject != null) {
+            Iterator<?> iterator;
             if (hostObject instanceof Map) {
                 Map<?, ?> map = (Map<?, ?>) hostObject;
-                Iterator<?> iterator = values ? map.values().iterator() : map.keySet().iterator();
-                return IteratorUtil.convertIterator(iterator, env::asGuestValue);
+                iterator = values ? map.values().iterator() : map.keySet().iterator();
             } else if (hostObject.getClass().isArray()) {
-                return values ? new ArrayIterator(hostObject) : IteratorUtil.rangeIterator(Array.getLength(hostObject));
+                if (values) {
+                    iterator = new ArrayIterator(hostObject);
+                } else {
+                    return IteratorUtil.rangeIterator(Array.getLength(hostObject));
+                }
             } else if (!values && hostObject instanceof List<?>) {
                 return IteratorUtil.rangeIterator(((List<?>) hostObject).size());
             } else if (values && hostObject instanceof Iterable<?>) {
-                Iterator<?> iterator = ((Iterable<?>) hostObject).iterator();
-                return IteratorUtil.convertIterator(iterator, env::asGuestValue);
+                iterator = ((Iterable<?>) hostObject).iterator();
+            } else {
+                return null;
             }
+            // the value is imported in the iterator's next method node
+            return IteratorUtil.convertIterator(iterator, env::asGuestValue);
         }
         return null;
     }
 
     public static DynamicObject doEnumerateTruffleObjectIntl(JSContext context, TruffleObject iteratedObject, Node hasSizeNode, Node getSizeNode, Node readNode, Node keysNode,
-                    JSToLengthNode toLengthNode, JSForeignToJSTypeNode foreignConvertNode, boolean values) {
+                    JSToLengthNode toLengthNode, boolean values) {
         try {
             boolean hasSize = ForeignAccess.sendHasSize(hasSizeNode, iteratedObject);
             if (hasSize) {
-                return enumerateForeignArrayLike(context, iteratedObject, getSizeNode, readNode, toLengthNode, foreignConvertNode, values);
+                long longSize = getSizeAsLong(iteratedObject, getSizeNode, toLengthNode);
+                return enumerateForeignArrayLike(context, iteratedObject, longSize, readNode, values);
             } else {
                 TruffleObject keysObj = ForeignAccess.sendKeys(keysNode, iteratedObject);
                 hasSize = ForeignAccess.sendHasSize(hasSizeNode, keysObj);
                 if (hasSize) {
-                    return enumerateForeignNonArray(context, iteratedObject, keysObj, getSizeNode, readNode, toLengthNode, foreignConvertNode, values);
+                    long longSize = getSizeAsLong(keysObj, getSizeNode, toLengthNode);
+                    return enumerateForeignNonArray(context, iteratedObject, keysObj, longSize, readNode, values);
                 } else {
                     return JSArray.createEmptyZeroLength(context);
                 }
@@ -222,11 +229,12 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return newEnumerateIterator(context, Collections.emptyIterator());
     }
 
-    private static DynamicObject enumerateForeignArrayLike(JSContext context, TruffleObject iteratedObject, Node getSizeNode, Node readNode, JSToLengthNode toLengthNode,
-                    JSForeignToJSTypeNode foreignConvertNode, boolean values)
-                    throws UnsupportedMessageException {
+    private static long getSizeAsLong(TruffleObject iteratedObject, Node getSizeNode, JSToLengthNode toLengthNode) throws UnsupportedMessageException {
         Object size = ForeignAccess.sendGetSize(getSizeNode, iteratedObject);
-        long longSize = toLengthNode.executeLong(size);
+        return toLengthNode.executeLong(size);
+    }
+
+    private static DynamicObject enumerateForeignArrayLike(JSContext context, TruffleObject iteratedObject, long longSize, Node readNode, boolean values) {
         Iterator<Object> iterator = new Iterator<Object>() {
             private int cursor;
 
@@ -240,7 +248,8 @@ public abstract class EnumerateNode extends JavaScriptNode {
                 if (hasNext()) {
                     if (values) {
                         try {
-                            return foreignConvertNode.executeWithTarget(ForeignAccess.sendRead(readNode, iteratedObject, cursor++));
+                            // the value is imported in the iterator's next method node
+                            return ForeignAccess.sendRead(readNode, iteratedObject, cursor++);
                         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                             // swallow and default
                         }
@@ -254,17 +263,13 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return newEnumerateIterator(context, iterator);
     }
 
-    private static DynamicObject enumerateForeignNonArray(JSContext context, TruffleObject iteratedObject, TruffleObject keysObject, Node getSizeNode, Node readNode, JSToLengthNode toLengthNode,
-                    JSForeignToJSTypeNode foreignConvertNode,
-                    boolean values) throws UnsupportedMessageException {
-        Object size = ForeignAccess.sendGetSize(getSizeNode, keysObject);
-        long longSize = toLengthNode.executeLong(size);
+    private static DynamicObject enumerateForeignNonArray(JSContext context, TruffleObject iteratedObject, TruffleObject keysObject, long keysSize, Node readNode, boolean values) {
         Iterator<Object> iterator = new Iterator<Object>() {
             private int cursor;
 
             @Override
             public boolean hasNext() {
-                return cursor < longSize;
+                return cursor < keysSize;
             }
 
             @Override
@@ -274,7 +279,8 @@ public abstract class EnumerateNode extends JavaScriptNode {
                         try {
                             // no conversion on KEYS, always String
                             Object key = ForeignAccess.sendRead(readNode, keysObject, cursor++);
-                            return foreignConvertNode.executeWithTarget(ForeignAccess.sendRead(readNode, iteratedObject, key));
+                            // the value is imported in the iterator's next method node
+                            return ForeignAccess.sendRead(readNode, iteratedObject, key);
                         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                             // swallow and default
                         }

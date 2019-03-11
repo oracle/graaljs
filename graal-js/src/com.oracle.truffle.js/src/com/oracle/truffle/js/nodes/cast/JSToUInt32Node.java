@@ -55,7 +55,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32NodeGen.JSToUInt32WrapperNodeGen;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -103,6 +102,11 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return JSRuntime.booleanToNumber(value);
     }
 
+    @Specialization
+    protected double doLong(long value) {
+        return JSRuntime.toUInt32(value);
+    }
+
     @Specialization(guards = {"!isDoubleLargerThan2e32(value)"})
     protected double doDoubleFitsInt32Negative(double value) {
         return JSRuntime.toUInt32((long) value);
@@ -145,7 +149,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
     @Specialization
     protected int doBigInt(@SuppressWarnings("unused") BigInt value) {
-        throw Errors.createTypeErrorCanNotConvertBigIntToNumber();
+        throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
     }
 
     @Specialization(guards = "isJSObject(value)")
@@ -155,15 +159,10 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isForeignObject(object)")
-    protected static double doCrossLanguageToDouble(TruffleObject object,
-                    @Cached("create()") JSUnboxOrGetNode unboxOrGetNode,
+    protected static double doForeignObject(TruffleObject object,
+                    @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
                     @Cached("create()") JSToUInt32Node toUInt32Node) {
-        return ((Number) toUInt32Node.execute(unboxOrGetNode.executeWithTarget(object))).doubleValue();
-    }
-
-    @Specialization(guards = "isJavaNumber(value)")
-    protected static double doJavaNumer(Object value) {
-        return JSRuntime.toUInt32(JSRuntime.doubleValue((Number) value));
+        return ((Number) toUInt32Node.execute(toPrimitiveNode.execute(object))).doubleValue();
     }
 
     public abstract static class JSToUInt32WrapperNode extends JSUnaryNode {

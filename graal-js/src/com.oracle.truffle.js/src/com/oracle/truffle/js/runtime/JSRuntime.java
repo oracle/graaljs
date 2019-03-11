@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -407,10 +408,13 @@ public final class JSRuntime {
             return stringToNumber(value.toString());
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
+        } else if (value instanceof BigInt) {
+            throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value");
         } else if (value instanceof Number) {
-            return (Number) value; // BigDecimal, BigInteger
+            assert isJavaPrimitive(value) : value.getClass().getName();
+            return (Number) value;
         }
-        assert false : "coerceToNumber: should never reach here, type " + value.getClass().getSimpleName() + " not handled.";
+        assert false : "should never reach here, type " + value.getClass().getName() + " not handled.";
         throw Errors.createTypeErrorCannotConvertToNumber(safeToString(value));
     }
 
@@ -1019,10 +1023,10 @@ public final class JSRuntime {
                 }
                 return keys;
             } else {
-                try {
+                if (JSInteropNodeUtil.hasKeys(obj)) {
                     return JSInteropNodeUtil.keys(obj);
-                } catch (Exception ex) {
-                    return new ArrayList<>();
+                } else {
+                    return Collections.emptyList();
                 }
             }
         }
@@ -1362,11 +1366,9 @@ public final class JSRuntime {
         } else if (isString(a) && isBigInt(b)) {
             return b.equals(stringToBigInt(a.toString()));
         } else if (isJavaNumber(a) && isBigInt(b)) {
-            double numberVal = doubleValue((Number) a);
-            return !Double.isNaN(numberVal) && ((BigInt) b).compareValueTo(numberVal) == 0;
+            return equalBigIntAndNumber((BigInt) b, (Number) a);
         } else if (isBigInt(a) && isJavaNumber(b)) {
-            double numberVal = doubleValue((Number) a);
-            return !Double.isNaN(numberVal) && ((BigInt) a).compareValueTo(numberVal) == 0;
+            return equalBigIntAndNumber((BigInt) a, (Number) b);
         } else if (a instanceof Boolean) {
             return equal(booleanToNumber((Boolean) a), b);
         } else if (b instanceof Boolean) {
@@ -1426,6 +1428,15 @@ public final class JSRuntime {
         } else {
             assert !isForeignObject(primLeft) && !isForeignObject(primRight);
             return equal(primLeft, primRight);
+        }
+    }
+
+    private static boolean equalBigIntAndNumber(BigInt a, Number b) {
+        if (b instanceof Double || b instanceof Float) {
+            double numberVal = doubleValue(b);
+            return !Double.isNaN(numberVal) && a.compareValueTo(numberVal) == 0;
+        } else {
+            return a.compareValueTo(longValue(b)) == 0;
         }
     }
 
@@ -1775,10 +1786,6 @@ public final class JSRuntime {
 
     public static boolean isStringClass(Class<?> clazz) {
         return String.class.isAssignableFrom(clazz) || JSLazyString.class.isAssignableFrom(clazz) || PropertyReference.class.isAssignableFrom(clazz);
-    }
-
-    public static boolean isJavaObject(Object value) {
-        return !isJSNative(value) && !(value instanceof Number) && !(value instanceof TruffleObject);
     }
 
     public static Object nullToUndefined(Object value) {
@@ -2313,8 +2320,6 @@ public final class JSRuntime {
             return key;
         } else if (isString(key)) {
             return key.toString();
-        } else if (key instanceof HiddenKey) {
-            return key;
         }
         return toString(key);
     }
@@ -2758,24 +2763,19 @@ public final class JSRuntime {
             return value;
         } else if (value instanceof Character) {
             return String.valueOf(value);
-        } else if (value instanceof Number) {
-            Number numVal = (Number) value;
-            if (value instanceof Byte) {
-                return ((Byte) numVal).intValue();
-            } else if (value instanceof Short) {
-                return ((Short) numVal).intValue();
-            } else if (value instanceof Long) {
-                long lValue = numVal.longValue();
-                if (JSRuntime.longIsRepresentableAsInt(lValue)) {
-                    return (int) lValue;
-                } else if (JSRuntime.MIN_SAFE_INTEGER_LONG <= lValue && lValue <= JSRuntime.MAX_SAFE_INTEGER_LONG) {
-                    return LargeInteger.valueOf(lValue);
-                }
-                return (double) lValue;
+        } else if (value instanceof Long) {
+            long longValue = (long) value;
+            if (longIsRepresentableAsInt(longValue)) {
+                return (int) longValue;
+            } else {
+                return BigInt.valueOf(longValue);
             }
-            return numVal.doubleValue();
+        } else if (value instanceof Byte || value instanceof Short) {
+            return ((Number) value).intValue();
+        } else if (value instanceof Float) {
+            return ((Number) value).doubleValue();
         } else {
-            throw Errors.createTypeError("type " + value.getClass().getSimpleName() + " not supported in JavaScript");
+            throw Errors.createTypeErrorUnsupportedInteropType(value);
         }
     }
 

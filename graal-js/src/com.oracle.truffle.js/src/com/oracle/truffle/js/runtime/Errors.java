@@ -109,8 +109,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCanNotMixBigIntWithOtherTypes() {
-        return createTypeError("Cannot mix BigInt and other types, use explicit conversions.");
+    public static JSException createTypeErrorCannotMixBigIntWithOtherTypes(Node originatingNode) {
+        return createTypeError("Cannot mix BigInt and other types, use explicit conversions.", originatingNode);
     }
 
     @TruffleBoundary
@@ -119,8 +119,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCanNotConvertBigIntToNumber() {
-        return createTypeError("Cannot convert a BigInt value to a number.");
+    public static JSException createTypeErrorCannotConvertBigIntToNumber(Node originatingNode) {
+        return createTypeError("Cannot convert a BigInt value to a number.", originatingNode);
     }
 
     @TruffleBoundary
@@ -594,6 +594,11 @@ public final class Errors {
             }
         }
         return JSException.create(JSErrorType.TypeError, message + " on " + receiverStr + " failed due to: " + reason, cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorUnsupportedInteropType(Object value) {
+        return Errors.createTypeError("type " + value.getClass().getSimpleName() + " not supported in JavaScript");
     }
 
     @TruffleBoundary

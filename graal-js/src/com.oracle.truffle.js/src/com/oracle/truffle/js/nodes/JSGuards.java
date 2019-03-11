@@ -319,10 +319,6 @@ public final class JSGuards {
         return JSRuntime.isJavaNumber(operand);
     }
 
-    public static boolean isJavaObject(Object operand) {
-        return JSRuntime.isJavaObject(operand);
-    }
-
     public static boolean isNumberInteger(Object thisObj) {
         return thisObj instanceof Integer;
     }
@@ -499,7 +495,7 @@ public final class JSGuards {
         return Math.abs(d) >= JSRuntime.TWO32;
     }
 
-    public static boolean isLongFitsInt32(long value) {
+    public static boolean isLongRepresentableAsInt32(long value) {
         return JSRuntime.longIsRepresentableAsInt(value);
     }
 
@@ -551,13 +547,6 @@ public final class JSGuards {
         return null;
     }
 
-    public static Class<?> getJavaObjectClass(Object value) {
-        if (value != null && JSRuntime.isJavaObject(value)) {
-            return value.getClass();
-        }
-        return null;
-    }
-
     public static JSClass getJSClassChecked(DynamicObject object) {
         if (JSObject.isJSObject(object)) {
             return JSObject.getJSClass(object);
@@ -570,8 +559,12 @@ public final class JSGuards {
         return a == b;
     }
 
-    public static boolean isJavaPrimitive(Object o) {
-        return o.getClass().isPrimitive();
+    public static boolean isJavaPrimitive(Object value) {
+        return JSRuntime.isJavaPrimitive(value);
+    }
+
+    public static boolean isJavaPrimitiveNumber(Object value) {
+        return value instanceof Number && JSRuntime.isJavaPrimitive(value);
     }
 
     public static boolean isNullOrUndefined(Object value) {

@@ -40,19 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 
@@ -75,12 +71,12 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public double fromDouble(double value) {
+    public String fromString(String value) {
         return value;
     }
 
     @Specialization
-    public String fromString(String value) {
+    public boolean fromBoolean(boolean value) {
         return value;
     }
 
@@ -89,36 +85,38 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization
-    public Object fromNumber(Number value,
-                    @Cached("createBinaryProfile()") ConditionProfile longCase,
-                    @Cached("createBinaryProfile()") ConditionProfile byteCase,
-                    @Cached("createBinaryProfile()") ConditionProfile shortCase) {
-        if (value instanceof Double || value instanceof Integer) {
-            return value;
-        } else if (byteCase.profile(value instanceof Byte)) {
-            return ((Byte) value).intValue();
-        } else if (shortCase.profile(value instanceof Short)) {
-            return ((Short) value).intValue();
-        } else if (longCase.profile(value instanceof Long)) {
-            long lValue = value.longValue();
-            if (JSRuntime.longIsRepresentableAsInt(lValue)) {
-                return (int) lValue;
-            } else if (JSRuntime.MIN_SAFE_INTEGER_LONG <= lValue && lValue <= JSRuntime.MAX_SAFE_INTEGER_LONG) {
-                return LargeInteger.valueOf(lValue);
-            }
-            return (double) lValue;
-        }
-        return JSRuntime.doubleValueVirtual(value);
+    @Specialization(guards = "isLongRepresentableAsInt32(value)")
+    public int fromLongToInt(long value) {
+        return (int) value;
     }
 
-    @Specialization
-    public Object fromBoolean(boolean value) {
+    @Specialization(guards = "!isLongRepresentableAsInt32(value)")
+    public long fromLong(long value) {
         return value;
     }
 
     @Specialization
-    public Object fromChar(char value) {
+    public double fromDouble(double value) {
+        return value;
+    }
+
+    @Specialization
+    public int fromNumber(byte value) {
+        return value;
+    }
+
+    @Specialization
+    public int fromNumber(short value) {
+        return value;
+    }
+
+    @Specialization
+    public double fromNumber(float value) {
+        return value;
+    }
+
+    @Specialization
+    public String fromChar(char value) {
         return String.valueOf(value);
     }
 
@@ -143,9 +141,8 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @TruffleBoundary
     @Fallback
     public Object fallbackCase(Object value) {
-        throw Errors.createTypeError("type " + value.getClass().getSimpleName() + " not supported in JavaScript");
+        throw Errors.createTypeErrorUnsupportedInteropType(value);
     }
 }

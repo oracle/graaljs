@@ -43,15 +43,21 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -64,11 +70,13 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * This implements ECMA 7.1.1 ToPrimitive.
  *
  */
+@ImportStatic(value = JSInteropUtil.class)
 public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     public enum Hint {
@@ -108,6 +116,11 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     @Specialization
     protected LargeInteger doLargeInteger(LargeInteger value) {
+        return value;
+    }
+
+    @Specialization
+    protected long doLong(long value) {
         return value;
     }
 
@@ -190,26 +203,54 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return hint == Hint.Number || hint == Hint.None;
     }
 
-    @Specialization(guards = "isTruffleJavaObject(object)")
-    protected Object doTruffleJavaObject(TruffleObject object) {
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
-        Object javaObject = env.asHostObject(object);
-        return (javaObject == null) ? Null.instance : doGeneric(javaObject);
+    protected final boolean isHintStringOrDefault() {
+        return hint == Hint.String || hint == Hint.None;
     }
 
-    @Specialization(guards = {"isForeignObject(object)", "!isTruffleJavaObject(object)"})
-    protected Object doCrossLanguage(TruffleObject object,
-                    @Cached("create()") JSUnboxOrGetNode unboxOrGet) {
-        return unboxOrGet.executeWithTarget(object);
+    @Specialization(guards = "isForeignObject(object)")
+    protected Object doTruffleJavaObject(TruffleObject object,
+                    @Cached("createIsBoxed()") Node isBoxed,
+                    @Cached("createUnbox()") Node unbox,
+                    @Cached("createIsNull()") Node isNull,
+                    @Cached("createHasSize()") Node hasSizeNode,
+                    @Cached("create()") JSForeignToJSTypeNode toJSType) {
+        if (ForeignAccess.sendIsNull(isNull, object)) {
+            return Null.instance;
+        }
+        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        if (env.isHostObject(object)) {
+            Object javaObject = env.asHostObject(object);
+            if (javaObject == null) {
+                return Null.instance;
+            } else if (JSGuards.isJavaPrimitiveNumber(javaObject)) {
+                return toJSType.executeWithTarget(javaObject);
+            } else {
+                if (isHintStringOrDefault()) {
+                    return JSRuntime.toJSNull(Boundaries.javaToString(javaObject));
+                } else {
+                    throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+                }
+            }
+        }
+        if (ForeignAccess.sendIsBoxed(isBoxed, object)) {
+            try {
+                return toJSType.executeWithTarget(ForeignAccess.sendUnbox(unbox, object));
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(object, e, Message.UNBOX, this);
+            }
+        }
+        if (isHintStringOrDefault()) {
+            boolean hasSize = ForeignAccess.sendHasSize(hasSizeNode, object);
+            return JSRuntime.objectToConsoleString(object, hasSize ? null : "foreign");
+        } else {
+            throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+        }
     }
 
     @Fallback
-    protected static Object doGeneric(Object value) {
+    protected Object doFallback(Object value) {
         assert value != null;
-        if (value instanceof Number) {
-            return value;
-        }
-        return JSRuntime.toJSNull(Boundaries.javaToString(value));
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
     protected static PropertyNode createGetToPrimitive(DynamicObject object) {

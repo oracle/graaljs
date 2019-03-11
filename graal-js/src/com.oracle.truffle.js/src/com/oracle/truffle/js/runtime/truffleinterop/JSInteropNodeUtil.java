@@ -124,6 +124,11 @@ public final class JSInteropNodeUtil {
         return JSInteropUtil.createRemove();
     }
 
+    static Node getHasKeysNode() {
+        CompilerAsserts.neverPartOfCompilation();
+        return JSInteropUtil.createHasKeys();
+    }
+
     @TruffleBoundary
     public static Object getSize(TruffleObject obj) {
         return getSize(obj, getGetSizeNode());
@@ -181,6 +186,11 @@ public final class JSInteropNodeUtil {
         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(obj, e, Message.WRITE, null);
         }
+    }
+
+    @TruffleBoundary
+    public static boolean hasKeys(TruffleObject obj) {
+        return ForeignAccess.sendHasKeys(getHasKeysNode(), obj);
     }
 
     @TruffleBoundary

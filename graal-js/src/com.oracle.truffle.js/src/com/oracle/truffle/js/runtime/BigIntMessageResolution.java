@@ -40,8 +40,29 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = BigInt.class)
 public class BigIntMessageResolution {
+    @Resolve(message = "IS_BOXED")
+    public abstract static class IsBoxedObject extends Node {
+        public boolean access(BigInt bigInt) {
+            return bigInt.fitsInLong();
+        }
+    }
+
+    @Resolve(message = "UNBOX")
+    public abstract static class UnboxObject extends Node {
+        public long access(BigInt bigInt) {
+            try {
+                return bigInt.longValueExact();
+            } catch (ArithmeticException e) {
+                throw UnsupportedMessageException.raise(Message.UNBOX);
+            }
+        }
+    }
 }

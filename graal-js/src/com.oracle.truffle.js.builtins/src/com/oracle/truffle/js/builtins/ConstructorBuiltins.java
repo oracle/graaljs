@@ -1296,12 +1296,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Object callBigInt(Object[] args,
                         @Cached("create()") JSNumberToBigIntNode numberToBigIntNode,
                         @Cached("create()") JSToBigIntNode toBigIntNode) {
-
-            Object primitiveObj = toPrimitive(args[0]);
+            Object value = args[0];
+            Object primitiveObj = toPrimitive(value);
             if (JSRuntime.isNumber(primitiveObj)) {
                 return numberToBigIntNode.executeBigInt(primitiveObj);
             } else {
-                return toBigIntNode.executeBigInteger(args[0]);
+                return toBigIntNode.executeBigInteger(value);
             }
         }
     }
