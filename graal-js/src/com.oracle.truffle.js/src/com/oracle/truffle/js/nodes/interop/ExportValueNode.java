@@ -121,6 +121,11 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization
+    protected static long doLong(long value, @SuppressWarnings("unused") Object thiz) {
+        return value;
+    }
+
+    @Specialization
     protected static double doDouble(double value, @SuppressWarnings("unused") Object thiz) {
         return value;
     }

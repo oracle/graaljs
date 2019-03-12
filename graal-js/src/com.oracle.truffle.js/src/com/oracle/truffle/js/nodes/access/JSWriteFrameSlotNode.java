@@ -141,13 +141,19 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
         return value;
     }
 
+    @Specialization(guards = "ensureObjectKind(levelFrame)")
+    protected final long doLong(Frame levelFrame, long value) {
+        levelFrame.setObject(frameSlot, value);
+        return value;
+    }
+
     @Specialization(guards = "isDoubleKind(levelFrame)", replaces = {"doInteger", "doLargeInteger", "doLargeIntegerInt"})
     protected final double doDouble(Frame levelFrame, double value) {
         levelFrame.setDouble(frameSlot, value);
         return value;
     }
 
-    @Specialization(guards = {"ensureObjectKind(levelFrame)"}, replaces = {"doBoolean", "doInteger", "doDouble", "doLargeInteger", "doLargeIntegerInt"})
+    @Specialization(guards = {"ensureObjectKind(levelFrame)"}, replaces = {"doBoolean", "doInteger", "doDouble", "doLargeInteger", "doLargeIntegerInt", "doLong"})
     protected final Object doObject(Frame levelFrame, Object value) {
         levelFrame.setObject(frameSlot, value);
         return value;
@@ -213,13 +219,19 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
         return value;
     }
 
+    @Specialization(guards = "ensureObjectKind(frame)")
+    protected final long doLong(VirtualFrame frame, long value) {
+        frame.setObject(frameSlot, value);
+        return value;
+    }
+
     @Specialization(guards = "isDoubleKind(frame)", replaces = {"doInteger", "doLargeInteger", "doLargeIntegerInt"})
     protected final double doDouble(VirtualFrame frame, double value) {
         frame.setDouble(frameSlot, value);
         return value;
     }
 
-    @Specialization(guards = {"ensureObjectKind(frame)"}, replaces = {"doBoolean", "doInteger", "doDouble", "doLargeInteger", "doLargeIntegerInt"})
+    @Specialization(guards = {"ensureObjectKind(frame)"}, replaces = {"doBoolean", "doInteger", "doDouble", "doLargeInteger", "doLargeIntegerInt", "doLong"})
     protected final Object doObject(VirtualFrame frame, Object value) {
         frame.setObject(frameSlot, value);
         return value;
