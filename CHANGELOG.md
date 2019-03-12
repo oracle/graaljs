@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the Graal JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 1.0.0 RC15
+* Removed non-standard `String.prototype.contains`; use `includes` instead.
+
 ## Version 1.0.0 RC14
 * Option `js.function-arguments-limit` to set an upper bound for function arguments and argument spreading (default: 65535).
 * Support for [HTML-like comments](https://tc39.github.io/ecma262/#sec-html-like-comments) added.

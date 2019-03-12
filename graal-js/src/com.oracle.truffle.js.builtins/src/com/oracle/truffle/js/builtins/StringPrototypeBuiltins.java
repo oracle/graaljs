@@ -187,7 +187,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         // ES6
         startsWith(1),
         endsWith(1),
-        contains(1),
         includes(1),
         repeat(1),
         codePointAt(1),
@@ -315,8 +314,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringStartsWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case endsWith:
                 return JSStringEndsWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
-            case contains:
-                return JSStringIncludesNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case includes:
                 return JSStringIncludesNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case repeat:
