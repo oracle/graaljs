@@ -79,7 +79,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.parser.GraalJSParserOptions;
+import com.oracle.truffle.js.runtime.GraalJSParserOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 

@@ -1,36 +1,8 @@
 {
   "testFiles" : [ {
-    "filePath" : "annexB/built-ins/Function/createdynfn-html-close-comment-body.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "annexB/built-ins/Function/createdynfn-html-close-comment-params.js",
     "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "annexB/built-ins/Function/createdynfn-html-open-comment-body.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "annexB/built-ins/Function/createdynfn-html-open-comment-params.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "annexB/language/comments/multi-line-html-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "annexB/language/comments/single-line-html-close-asi.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "annexB/language/comments/single-line-html-close-unicode-separators.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "annexB/language/comments/single-line-html-close.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "annexB/language/comments/single-line-html-open.js",
-    "status" : "FAIL"
+    "comment" : "Off-spec: the test-case is missing a line terminator before html close comment"
   }, {
     "filePath" : "annexB/language/expressions/yield/star-iterable-return-emulates-undefined-throws-when-called.js",
     "status" : "SKIP",
@@ -9778,6 +9750,14 @@
     "filePath" : "language/import/dup-bound-names.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "language/line-terminators/invalid-string-ls.js",
+    "status" : "SKIP",
+    "comment" : "test removed from test262 on 2019-01-22. See https://github.com/tc39/test262/pull/2044"
+  }, {
+    "filePath" : "language/line-terminators/invalid-string-ps.js",
+    "status" : "SKIP",
+    "comment" : "test removed from test262 on 2019-01-22. See https://github.com/tc39/test262/pull/2044"
+  }, {
     "filePath" : "language/literals/numeric/numeric-separator-literal-bil-bd-nsl-bd.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -9901,22 +9881,6 @@
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
     "status" : "FAIL",
     "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode."
-  }, {
-    "filePath" : "language/literals/string/line-separator-eval.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/literals/string/line-separator.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/literals/string/paragraph-separator-eval.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/literals/string/paragraph-separator.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/module-code/eval-gtbndng-indirect-update-dflt.js",
     "status" : "FAIL"

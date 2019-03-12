@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import com.oracle.truffle.js.parser.internal.ir.debug.JSONWriter;
 import com.oracle.truffle.js.parser.json.JSONParser;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
+import com.oracle.truffle.js.runtime.GraalJSParserOptions;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;

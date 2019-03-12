@@ -52,6 +52,7 @@ import java.util.Map;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
@@ -95,8 +96,8 @@ public class SnapshotTool {
 
         SnapshotTool snapshotTool = new SnapshotTool();
         if (!srcFiles.isEmpty() && outDir != null) {
-            try (Context polyglotContext = Context.newBuilder(AbstractJavaScriptLanguage.ID).allowIO(true).build()) {
-                polyglotContext.initialize(AbstractJavaScriptLanguage.ID);
+            try (Context polyglotContext = Context.newBuilder(JavaScriptLanguage.ID).allowIO(true).build()) {
+                polyglotContext.initialize(JavaScriptLanguage.ID);
                 polyglotContext.enter();
                 for (String srcFile : srcFiles) {
                     File sourceFile = inDir == null ? new File(srcFile) : Paths.get(inDir, srcFile).toFile();
@@ -125,7 +126,7 @@ public class SnapshotTool {
         JSRealm realm = AbstractJavaScriptLanguage.getCurrentJSRealm();
         JSContext context = realm.getContext();
         Recording.logv("recording snapshot of %s", fileName);
-        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, realm.getEnv().getTruffleFile(sourceFile.getPath())).name(fileName).build();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getTruffleFile(sourceFile.getPath())).name(fileName).build();
         final Recording rec;
         try (TimerCloseable timer = timeStats.file(fileName)) {
             rec = new Recording();

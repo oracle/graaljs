@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,11 +49,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
+
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
+
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 public final class Options {
     private final Context.Builder contextBuilder;
@@ -212,7 +214,7 @@ public final class Options {
                 }
                 // Convert --(inspect|debug)-brk[=port] to --inspect[=port]
                 // --inspect.WaitAttached=true
-                if ("inspect-brk".equals(normalizedKey) || "debug-brk".equals(normalizedKey)) {
+                if ("inspect-brk".equals(normalizedKey) || "debug-brk".equals(normalizedKey) || "inspect-brk-node".equals(normalizedKey)) {
                     // Do not override port (from --inspect=)
                     if (value != null || !polyglotOptions.containsKey(INSPECT)) {
                         polyglotOptions.put(INSPECT, valueOrTrue(value));
@@ -244,7 +246,7 @@ public final class Options {
 
         @Override
         protected String getLanguageId() {
-            return AbstractJavaScriptLanguage.ID;
+            return JavaScriptLanguage.ID;
         }
 
         @Override

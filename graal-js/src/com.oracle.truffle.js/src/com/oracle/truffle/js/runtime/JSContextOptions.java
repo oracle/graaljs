@@ -1,0 +1,703 @@
+/*
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+package com.oracle.truffle.js.runtime;
+
+import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionType;
+import org.graalvm.options.OptionValues;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
+public final class JSContextOptions {
+    @CompilationFinal private ParserOptions parserOptions;
+    @CompilationFinal private OptionValues optionValues;
+
+    public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
+    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, help = "ECMAScript Version.") //
+    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(
+                    JSTruffleOptions.MaxECMAScriptVersion,
+                    new OptionType<>(
+                                    "ecmascript-version",
+                                    JSTruffleOptions.MaxECMAScriptVersion,
+                                    new Function<String, Integer>() {
+
+                                        @Override
+                                        public Integer apply(String t) {
+                                            try {
+                                                int version = Integer.parseInt(t);
+                                                if (version < 5 || version > JSTruffleOptions.MaxECMAScriptVersion) {
+                                                    throw new IllegalArgumentException("Supported values are between 5 and " + JSTruffleOptions.MaxECMAScriptVersion + ".");
+                                                }
+                                                return version;
+                                            } catch (NumberFormatException e) {
+                                                throw new IllegalArgumentException(e.getMessage(), e);
+                                            }
+                                        }
+                                    }));
+    @CompilationFinal private int ecmascriptVersion;
+
+    public static final String ANNEX_B_NAME = JS_OPTION_PREFIX + "annex-b";
+    @Option(name = ANNEX_B_NAME, category = OptionCategory.USER, help = "Enable ECMAScript Annex B features.") //
+    public static final OptionKey<Boolean> ANNEX_B = new OptionKey<>(JSTruffleOptions.AnnexB);
+    @CompilationFinal private boolean annexB;
+
+    public static final String SYNTAX_EXTENSIONS_NAME = JS_OPTION_PREFIX + "syntax-extensions";
+    @Option(name = SYNTAX_EXTENSIONS_NAME, category = OptionCategory.USER, help = "Enable Nashorn syntax extensions.") //
+    public static final OptionKey<Boolean> SYNTAX_EXTENSIONS = new OptionKey<>(false);
+
+    public static final String SCRIPTING_NAME = JS_OPTION_PREFIX + "scripting";
+    @Option(name = SCRIPTING_NAME, category = OptionCategory.USER, help = "Enable scripting features (Nashorn compatibility option).") //
+    public static final OptionKey<Boolean> SCRIPTING = new OptionKey<>(false);
+
+    public static final String SHEBANG_NAME = JS_OPTION_PREFIX + "shebang";
+    @Option(name = SHEBANG_NAME, category = OptionCategory.USER, help = "Allow parsing files starting with #!.") //
+    public static final OptionKey<Boolean> SHEBANG = new OptionKey<>(false);
+
+    public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
+    @Option(name = STRICT_NAME, category = OptionCategory.USER, help = "Enforce strict mode.") //
+    public static final OptionKey<Boolean> STRICT = new OptionKey<>(false);
+
+    public static final String CONST_AS_VAR_NAME = JS_OPTION_PREFIX + "const-as-var";
+    @Option(name = CONST_AS_VAR_NAME, category = OptionCategory.EXPERT, help = "Parse const declarations as a var (legacy compatibility option).") //
+    public static final OptionKey<Boolean> CONST_AS_VAR = new OptionKey<>(false);
+
+    public static final String FUNCTION_STATEMENT_ERROR_NAME = JS_OPTION_PREFIX + "function-statement-error";
+    @Option(name = FUNCTION_STATEMENT_ERROR_NAME, category = OptionCategory.EXPERT, help = "Treat hoistable function statements in blocks as an error (in ES5 mode).") //
+    public static final OptionKey<Boolean> FUNCTION_STATEMENT_ERROR = new OptionKey<>(false);
+
+    public static final String INTL_402_NAME = JS_OPTION_PREFIX + "intl-402";
+    @Option(name = INTL_402_NAME, category = OptionCategory.USER, help = "Enable ECMAScript Internationalization API.") //
+    public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(false);
+    @CompilationFinal private boolean intl402;
+
+    public static final String REGEXP_STATIC_RESULT_NAME = JS_OPTION_PREFIX + "regexp-static-result";
+    @Option(name = REGEXP_STATIC_RESULT_NAME, category = OptionCategory.USER, help = "Provide last RegExp match in RegExp global var, e.g. RegExp.$1.") //
+    public static final OptionKey<Boolean> REGEXP_STATIC_RESULT = new OptionKey<>(true);
+    @CompilationFinal private boolean regexpStaticResult;
+
+    public static final String ARRAY_SORT_INHERITED_NAME = JS_OPTION_PREFIX + "array-sort-inherited";
+    @Option(name = ARRAY_SORT_INHERITED_NAME, category = OptionCategory.USER, help = "Sort inherited keys in Array.protoype.sort.") //
+    public static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
+    private final CyclicAssumption arraySortInheritedCyclicAssumption = new CyclicAssumption("The " + ARRAY_SORT_INHERITED_NAME + " option is stable.");
+    @CompilationFinal private Assumption arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
+    @CompilationFinal private boolean arraySortInherited;
+
+    public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
+    @Option(name = SHARED_ARRAY_BUFFER_NAME, category = OptionCategory.USER, help = "Enable ES2017 SharedArrayBuffer.") //
+    public static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(true);
+    @CompilationFinal private boolean sharedArrayBuffer;
+
+    public static final String ATOMICS_NAME = JS_OPTION_PREFIX + "atomics";
+    @Option(name = ATOMICS_NAME, category = OptionCategory.USER, help = "Enable ES2017 Atomics.") //
+    public static final OptionKey<Boolean> ATOMICS = new OptionKey<>(true);
+    @CompilationFinal private boolean atomics;
+
+    public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
+    @Option(name = V8_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the Google V8 engine.") //
+    public static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
+    private final CyclicAssumption v8CompatibilityModeCyclicAssumption = new CyclicAssumption("The " + V8_COMPATIBILITY_MODE_NAME + " option is stable.");
+    @CompilationFinal private Assumption v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
+    @CompilationFinal private boolean v8CompatibilityMode;
+
+    public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
+    @Option(name = V8_REALM_BUILTIN_NAME, category = OptionCategory.INTERNAL, help = "Provide Realm builtin compatible with V8's d8 shell.") //
+    public static final OptionKey<Boolean> V8_REALM_BUILTIN = new OptionKey<>(false);
+    @CompilationFinal private boolean v8RealmBuiltin;
+
+    public static final String NASHORN_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "nashorn-compat";
+    @Option(name = NASHORN_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the OpenJDK Nashorn engine.") //
+    public static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
+    @CompilationFinal private boolean nashornCompatibilityMode;
+
+    public static final String STACK_TRACE_LIMIT_NAME = JS_OPTION_PREFIX + "stack-trace-limit";
+    @Option(name = STACK_TRACE_LIMIT_NAME, category = OptionCategory.USER, help = "Number of stack frames to capture.") //
+    public static final OptionKey<Integer> STACK_TRACE_LIMIT = new OptionKey<>(JSTruffleOptions.StackTraceLimit);
+
+    public static final String DEBUG_BUILTIN_NAME = JS_OPTION_PREFIX + "debug-builtin";
+    @Option(name = DEBUG_BUILTIN_NAME, category = OptionCategory.INTERNAL, help = "Provide a non-API Debug builtin. Behaviour will likely change. Don't depend on this in production code.") //
+    public static final OptionKey<Boolean> DEBUG_BUILTIN = new OptionKey<>(false);
+    @CompilationFinal private boolean debug;
+
+    public static final String DIRECT_BYTE_BUFFER_NAME = JS_OPTION_PREFIX + "direct-byte-buffer";
+    @Option(name = DIRECT_BYTE_BUFFER_NAME, category = OptionCategory.USER, help = "Use direct (off-heap) byte buffer for typed arrays.") //
+    public static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(JSTruffleOptions.DirectByteBuffer);
+    private final CyclicAssumption directByteBufferCyclicAssumption = new CyclicAssumption("The " + DIRECT_BYTE_BUFFER_NAME + " option is stable.");
+    @CompilationFinal private Assumption directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
+    @CompilationFinal private boolean directByteBuffer;
+
+    public static final String PARSE_ONLY_NAME = JS_OPTION_PREFIX + "parse-only";
+    @Option(name = PARSE_ONLY_NAME, category = OptionCategory.INTERNAL, help = "Only parse source code, do not run it.") //
+    public static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
+    @CompilationFinal private boolean parseOnly;
+
+    public static final String TIME_ZONE_NAME = JS_OPTION_PREFIX + "timezone";
+    @Option(name = TIME_ZONE_NAME, category = OptionCategory.USER, help = "Set custom timezone.") //
+    public static final OptionKey<String> TIME_ZONE = new OptionKey<>("");
+
+    public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
+    @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
+    public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
+    private final CyclicAssumption timerResolutionCyclicAssumption = new CyclicAssumption("The " + TIMER_RESOLUTION_NAME + " option is stable.");
+    @CompilationFinal private Assumption timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
+    @CompilationFinal private long timerResolution;
+
+    public static final String AGENT_CAN_BLOCK_NAME = JS_OPTION_PREFIX + "agent-can-block";
+    @Option(name = AGENT_CAN_BLOCK_NAME, category = OptionCategory.INTERNAL, help = "Determines whether agents can block or not.") //
+    public static final OptionKey<Boolean> AGENT_CAN_BLOCK = new OptionKey<>(true);
+    @CompilationFinal private boolean agentCanBlock;
+
+    public static final String JAVA_PACKAGE_GLOBALS_NAME = JS_OPTION_PREFIX + "java-package-globals";
+    @Option(name = JAVA_PACKAGE_GLOBALS_NAME, category = OptionCategory.USER, help = "Provide Java package globals: Packages, java, javafx, javax, com, org, edu.") //
+    public static final OptionKey<Boolean> JAVA_PACKAGE_GLOBALS = new OptionKey<>(true);
+
+    public static final String GLOBAL_PROPERTY_NAME = JS_OPTION_PREFIX + "global-property";
+    @Option(name = GLOBAL_PROPERTY_NAME, category = OptionCategory.USER, help = "Provide 'global' global property.") //
+    public static final OptionKey<Boolean> GLOBAL_PROPERTY = new OptionKey<>(true);
+
+    public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
+    @Option(name = CONSOLE_NAME, category = OptionCategory.USER, help = "Provide 'console' global property.") //
+    public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
+
+    public static final String PERFORMANCE_NAME = JS_OPTION_PREFIX + "performance";
+    @Option(name = PERFORMANCE_NAME, category = OptionCategory.USER, help = "Provide 'performance' global property.") //
+    public static final OptionKey<Boolean> PERFORMANCE = new OptionKey<>(true);
+
+    public static final String SHELL_NAME = JS_OPTION_PREFIX + "shell";
+    @Option(name = SHELL_NAME, category = OptionCategory.USER, help = "Provide global functions for js shell.") //
+    public static final OptionKey<Boolean> SHELL = new OptionKey<>(false);
+
+    public static final String PRINT_NAME = JS_OPTION_PREFIX + "print";
+    @Option(name = PRINT_NAME, category = OptionCategory.USER, help = "Provide 'print' global function.") //
+    public static final OptionKey<Boolean> PRINT = new OptionKey<>(true);
+
+    public static final String LOAD_NAME = JS_OPTION_PREFIX + "load";
+    @Option(name = LOAD_NAME, category = OptionCategory.USER, help = "Provide 'load' global function.") //
+    public static final OptionKey<Boolean> LOAD = new OptionKey<>(true);
+
+    public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
+    @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
+    public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
+
+    public static final String POLYGLOT_BUILTIN_NAME = JS_OPTION_PREFIX + "polyglot-builtin";
+    @Option(name = POLYGLOT_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Polyglot' global property.") //
+    public static final OptionKey<Boolean> POLYGLOT_BUILTIN = new OptionKey<>(true);
+
+    public static final String AWAIT_OPTIMIZATION_NAME = JS_OPTION_PREFIX + "await-optimization";
+    @Option(name = AWAIT_OPTIMIZATION_NAME, category = OptionCategory.INTERNAL, help = "Use PromiseResolve for Await.") //
+    public static final OptionKey<Boolean> AWAIT_OPTIMIZATION = new OptionKey<>(true);
+    @CompilationFinal private boolean awaitOptimization;
+
+    public static final String DISABLE_EVAL_NAME = JS_OPTION_PREFIX + "disable-eval";
+    @Option(name = DISABLE_EVAL_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to parse code via e.g. eval().") //
+    public static final OptionKey<Boolean> DISABLE_EVAL = new OptionKey<>(false);
+    @CompilationFinal private boolean disableEval;
+
+    public static final String DISABLE_WITH_NAME = JS_OPTION_PREFIX + "disable-with";
+    @Option(name = DISABLE_WITH_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to use the 'with' statement.") //
+    public static final OptionKey<Boolean> DISABLE_WITH = new OptionKey<>(false);
+    @CompilationFinal private boolean disableWith;
+
+    public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
+    @Option(name = REGEX_DUMP_AUTOMATA_NAME, category = OptionCategory.INTERNAL, help = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.") //
+    public static final OptionKey<Boolean> REGEX_DUMP_AUTOMATA = new OptionKey<>(false);
+    @CompilationFinal private boolean regexDumpAutomata;
+
+    public static final String REGEX_STEP_EXECUTION_NAME = JS_OPTION_PREFIX + "regex.step-execution";
+    @Option(name = REGEX_STEP_EXECUTION_NAME, category = OptionCategory.INTERNAL, help = "Trace the execution of automata in JSON files.") //
+    public static final OptionKey<Boolean> REGEX_STEP_EXECUTION = new OptionKey<>(false);
+    @CompilationFinal private boolean regexStepExecution;
+
+    public static final String REGEX_ALWAYS_EAGER_NAME = JS_OPTION_PREFIX + "regex.always-eager";
+    @Option(name = REGEX_ALWAYS_EAGER_NAME, category = OptionCategory.INTERNAL, help = "Always match capture groups eagerly.") //
+    public static final OptionKey<Boolean> REGEX_ALWAYS_EAGER = new OptionKey<>(false);
+    @CompilationFinal private boolean regexAlwaysEager;
+
+    public static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME = JS_OPTION_PREFIX + "script-engine-global-scope-import";
+    @Option(name = SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, category = OptionCategory.INTERNAL, help = "Enable ScriptEngine-specific global scope import function.") //
+    public static final OptionKey<Boolean> SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT = new OptionKey<>(false);
+    @CompilationFinal private boolean scriptEngineGlobalScopeImport;
+
+    public static final String FOREIGN_OBJECT_PROTOTYPE_NAME = JS_OPTION_PREFIX + "experimental-foreign-object-prototype";
+    @Option(name = FOREIGN_OBJECT_PROTOTYPE_NAME, category = OptionCategory.EXPERT, help = "Non-JS objects have prototype (Object/Function/Array.prototype) set.") //
+    public static final OptionKey<Boolean> FOREIGN_OBJECT_PROTOTYPE = new OptionKey<>(false);
+    @CompilationFinal private boolean hasForeignObjectPrototype;
+
+    public static final String SIMDJS_NAME = JS_OPTION_PREFIX + "simdjs";
+    @Option(name = SIMDJS_NAME, category = OptionCategory.EXPERT, help = "Provide an experimental implementation of the SIMD.js proposal.") //
+    public static final OptionKey<Boolean> SIMDJS = new OptionKey<>(false);
+    @CompilationFinal private boolean simdjs;
+
+    // limit originally from TestV8 regress-1122.js, regress-605470.js
+    public static final String FUNCTION_ARGUMENTS_LIMIT_NAME = JS_OPTION_PREFIX + "function-arguments-limit";
+    @Option(name = FUNCTION_ARGUMENTS_LIMIT_NAME, category = OptionCategory.EXPERT, help = "Maximum number of arguments for functions.") //
+    public static final OptionKey<Long> FUNCTION_ARGUMENTS_LIMIT = new OptionKey<>(65535L);
+    @CompilationFinal private long functionArgumentsLimit;
+
+    public JSContextOptions(ParserOptions parserOptions) {
+        this.parserOptions = parserOptions;
+        cacheOptions();
+    }
+
+    public ParserOptions getParserOptions() {
+        return parserOptions;
+    }
+
+    public void setParserOptions(ParserOptions parserOptions) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.parserOptions = parserOptions;
+    }
+
+    public void setOptionValues(OptionValues newOptions) {
+        CompilerAsserts.neverPartOfCompilation();
+        optionValues = newOptions;
+        cacheOptions();
+        parserOptions = parserOptions.putOptions(newOptions);
+    }
+
+    private void cacheOptions() {
+        this.ecmascriptVersion = readIntegerOption(ECMASCRIPT_VERSION, ECMASCRIPT_VERSION_NAME);
+        this.annexB = readBooleanOption(ANNEX_B, ANNEX_B_NAME);
+        this.intl402 = readBooleanOption(INTL_402, INTL_402_NAME);
+        this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME);
+        this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, msg -> {
+            arraySortInheritedCyclicAssumption.invalidate(msg);
+            arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
+        });
+        this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME);
+        this.atomics = readBooleanOption(ATOMICS, ATOMICS_NAME);
+        this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, msg -> {
+            v8CompatibilityModeCyclicAssumption.invalidate(msg);
+            v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
+        });
+        this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
+        this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
+        this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, msg -> {
+            directByteBufferCyclicAssumption.invalidate(msg);
+            directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
+        });
+        this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
+        this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
+        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, msg -> {
+            timerResolutionCyclicAssumption.invalidate(msg);
+            timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
+        });
+        this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME);
+        this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME);
+        this.disableEval = readBooleanOption(DISABLE_EVAL, DISABLE_EVAL_NAME);
+        this.disableWith = readBooleanOption(DISABLE_WITH, DISABLE_WITH_NAME);
+        this.regexDumpAutomata = readBooleanOption(REGEX_DUMP_AUTOMATA, REGEX_DUMP_AUTOMATA_NAME);
+        this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME);
+        this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME);
+        this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
+        this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME);
+        this.simdjs = readBooleanOption(SIMDJS, SIMDJS_NAME);
+        this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT, FUNCTION_ARGUMENTS_LIMIT_NAME);
+    }
+
+    private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
+        boolean newValue = readBooleanOption(key, name);
+        if (oldValue != newValue) {
+            invalidate.accept(String.format("Option %s was changed from %b to %b.", name, oldValue, newValue));
+        }
+        return newValue;
+    }
+
+    private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
+        if (optionValues == null) {
+            return readBooleanFromSystemProperty(key, name);
+        } else {
+            return key.getValue(optionValues);
+        }
+    }
+
+    private static boolean readBooleanFromSystemProperty(OptionKey<Boolean> key, String name) {
+        String sysProp = System.getProperty("polyglot." + name);
+        if (sysProp != null) {
+            return sysProp.equalsIgnoreCase("true");
+        }
+        return key.getDefaultValue();
+    }
+
+    private int readIntegerOption(OptionKey<Integer> key, String name) {
+        if (optionValues == null) {
+            return readIntegerFromSystemProperty(key, name);
+        } else {
+            return key.getValue(optionValues);
+        }
+    }
+
+    private static int readIntegerFromSystemProperty(OptionKey<Integer> key, String name) {
+        return Integer.getInteger("polyglot." + name, key.getDefaultValue());
+    }
+
+    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Consumer<String> invalidate) {
+        long newValue = readLongOption(key, name);
+        if (oldValue != newValue) {
+            invalidate.accept(String.format("Option %s was changed from %d to %d.", name, oldValue, newValue));
+        }
+        return newValue;
+    }
+
+    private long readLongOption(OptionKey<Long> key, String name) {
+        if (optionValues == null) {
+            return readLongFromSystemProperty(key, name);
+        } else {
+            return key.getValue(optionValues);
+        }
+    }
+
+    private static long readLongFromSystemProperty(OptionKey<Long> key, String name) {
+        return Long.getLong("polyglot." + name, key.getDefaultValue());
+    }
+
+    public static String helpWithDefault(String helpMessage, OptionKey<? extends Object> key) {
+        return helpMessage + " (default:" + key.getDefaultValue() + ")";
+    }
+
+    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, String help) {
+        return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).build();
+    }
+
+    public static void describeOptions(List<OptionDescriptor> options) {
+        for (OptionDescriptor optionDescriptor : new JSContextOptionsOptionDescriptors()) {
+            options.add(newOptionDescriptor(optionDescriptor.getKey(), optionDescriptor.getName(), optionDescriptor.getCategory(), optionDescriptor.getHelp()));
+        }
+    }
+
+    public <T> boolean optionWillChange(OptionKey<T> option, OptionValues newOptionValues) {
+        return !option.getValue(this.optionValues).equals(option.getValue(newOptionValues));
+    }
+
+    public int getEcmaScriptVersion() {
+        return ecmascriptVersion;
+    }
+
+    public boolean isAnnexB() {
+        return annexB;
+    }
+
+    public boolean isIntl402() {
+        CompilerAsserts.neverPartOfCompilation("Patchable option intl-402 should never be accessed in compiled code.");
+        return intl402;
+    }
+
+    public boolean isRegexpStaticResult() {
+        return regexpStaticResult;
+    }
+
+    public boolean isArraySortInherited() {
+        try {
+            arraySortInheritedCurrentAssumption.check();
+        } catch (InvalidAssumptionException e) {
+        }
+        return arraySortInherited;
+    }
+
+    public boolean isSharedArrayBuffer() {
+        if (getEcmaScriptVersion() < 8) {
+            return false;
+        }
+        return sharedArrayBuffer;
+    }
+
+    public boolean isAtomics() {
+        if (getEcmaScriptVersion() < 8) {
+            return false;
+        }
+        return atomics;
+    }
+
+    public boolean isV8CompatibilityMode() {
+        try {
+            v8CompatibilityModeCurrentAssumption.check();
+        } catch (InvalidAssumptionException e) {
+        }
+        return v8CompatibilityMode;
+    }
+
+    public boolean isNashornCompatibilityMode() {
+        return nashornCompatibilityMode;
+    }
+
+    public boolean isDebugBuiltin() {
+        return debug;
+    }
+
+    public boolean isDirectByteBuffer() {
+        try {
+            directByteBufferCurrentAssumption.check();
+        } catch (InvalidAssumptionException e) {
+        }
+        return directByteBuffer;
+    }
+
+    public boolean isParseOnly() {
+        return parseOnly;
+    }
+
+    public long getTimerResolution() {
+        try {
+            timerResolutionCurrentAssumption.check();
+        } catch (InvalidAssumptionException e) {
+        }
+        return timerResolution;
+    }
+
+    public boolean isV8RealmBuiltin() {
+        return v8RealmBuiltin;
+    }
+
+    public boolean canAgentBlock() {
+        return agentCanBlock;
+    }
+
+    public boolean isAwaitOptimization() {
+        return awaitOptimization;
+    }
+
+    public boolean isDisableEval() {
+        return disableEval;
+    }
+
+    public boolean isDisableWith() {
+        return disableWith;
+    }
+
+    public boolean isRegexDumpAutomata() {
+        return regexDumpAutomata;
+    }
+
+    public boolean isRegexStepExecution() {
+        return regexStepExecution;
+    }
+
+    public boolean isRegexAlwaysEager() {
+        return regexAlwaysEager;
+    }
+
+    public boolean isScriptEngineGlobalScopeImport() {
+        return scriptEngineGlobalScopeImport;
+    }
+
+    public boolean hasForeignObjectPrototype() {
+        return hasForeignObjectPrototype;
+    }
+
+    public boolean isGlobalProperty() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option global-property was assumed not to be accessed in compiled code.");
+        return GLOBAL_PROPERTY.getValue(optionValues);
+    }
+
+    public boolean isConsole() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option console was assumed not to be accessed in compiled code.");
+        return CONSOLE.getValue(optionValues);
+    }
+
+    public boolean isPrint() {
+        return PRINT.getValue(optionValues);
+    }
+
+    public boolean isLoad() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
+        return LOAD.getValue(optionValues);
+    }
+
+    public boolean isPerformance() {
+        return PERFORMANCE.getValue(optionValues);
+    }
+
+    public boolean isShell() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option shell was assumed not to be accessed in compiled code.");
+        return SHELL.getValue(optionValues);
+    }
+
+    public boolean isGraalBuiltin() {
+        return GRAAL_BUILTIN.getValue(optionValues);
+    }
+
+    public boolean isPolyglotBuiltin() {
+        return POLYGLOT_BUILTIN.getValue(optionValues);
+    }
+
+    public boolean isSIMDjs() {
+        return simdjs;
+    }
+
+    public long getFunctionArgumentsLimit() {
+        return functionArgumentsLimit;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 53 * hash + Objects.hashCode(this.parserOptions);
+        hash = 53 * hash + this.ecmascriptVersion;
+        hash = 53 * hash + (this.annexB ? 1 : 0);
+        hash = 53 * hash + (this.intl402 ? 1 : 0);
+        hash = 53 * hash + (this.regexpStaticResult ? 1 : 0);
+        hash = 53 * hash + (this.arraySortInherited ? 1 : 0);
+        hash = 53 * hash + (this.sharedArrayBuffer ? 1 : 0);
+        hash = 53 * hash + (this.atomics ? 1 : 0);
+        hash = 53 * hash + (this.v8CompatibilityMode ? 1 : 0);
+        hash = 53 * hash + (this.v8RealmBuiltin ? 1 : 0);
+        hash = 53 * hash + (this.nashornCompatibilityMode ? 1 : 0);
+        hash = 53 * hash + (this.debug ? 1 : 0);
+        hash = 53 * hash + (this.directByteBuffer ? 1 : 0);
+        hash = 53 * hash + (this.parseOnly ? 1 : 0);
+        hash = 53 * hash + (int) this.timerResolution;
+        hash = 53 * hash + (this.agentCanBlock ? 1 : 0);
+        hash = 53 * hash + (this.awaitOptimization ? 1 : 0);
+        hash = 53 * hash + (this.disableEval ? 1 : 0);
+        hash = 53 * hash + (this.disableWith ? 1 : 0);
+        hash = 53 * hash + (this.regexDumpAutomata ? 1 : 0);
+        hash = 53 * hash + (this.regexStepExecution ? 1 : 0);
+        hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
+        hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
+        hash = 53 * hash + (this.hasForeignObjectPrototype ? 1 : 0);
+        hash = 53 * hash + (this.simdjs ? 1 : 0);
+        hash = 53 * hash + (int) this.functionArgumentsLimit;
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final JSContextOptions other = (JSContextOptions) obj;
+        if (this.ecmascriptVersion != other.ecmascriptVersion) {
+            return false;
+        }
+        if (this.annexB != other.annexB) {
+            return false;
+        }
+        if (this.intl402 != other.intl402) {
+            return false;
+        }
+        if (this.regexpStaticResult != other.regexpStaticResult) {
+            return false;
+        }
+        if (this.arraySortInherited != other.arraySortInherited) {
+            return false;
+        }
+        if (this.sharedArrayBuffer != other.sharedArrayBuffer) {
+            return false;
+        }
+        if (this.atomics != other.atomics) {
+            return false;
+        }
+        if (this.v8CompatibilityMode != other.v8CompatibilityMode) {
+            return false;
+        }
+        if (this.v8RealmBuiltin != other.v8RealmBuiltin) {
+            return false;
+        }
+        if (this.nashornCompatibilityMode != other.nashornCompatibilityMode) {
+            return false;
+        }
+        if (this.debug != other.debug) {
+            return false;
+        }
+        if (this.directByteBuffer != other.directByteBuffer) {
+            return false;
+        }
+        if (this.parseOnly != other.parseOnly) {
+            return false;
+        }
+        if (this.timerResolution != other.timerResolution) {
+            return false;
+        }
+        if (this.agentCanBlock != other.agentCanBlock) {
+            return false;
+        }
+        if (this.awaitOptimization != other.awaitOptimization) {
+            return false;
+        }
+        if (this.disableEval != other.disableEval) {
+            return false;
+        }
+        if (this.disableWith != other.disableWith) {
+            return false;
+        }
+        if (this.regexDumpAutomata != other.regexDumpAutomata) {
+            return false;
+        }
+        if (this.regexStepExecution != other.regexStepExecution) {
+            return false;
+        }
+        if (this.regexAlwaysEager != other.regexAlwaysEager) {
+            return false;
+        }
+        if (this.scriptEngineGlobalScopeImport != other.scriptEngineGlobalScopeImport) {
+            return false;
+        }
+        if (this.hasForeignObjectPrototype != other.hasForeignObjectPrototype) {
+            return false;
+        }
+        if (this.simdjs != other.simdjs) {
+            return false;
+        }
+        if (this.functionArgumentsLimit != other.functionArgumentsLimit) {
+            return false;
+        }
+        return Objects.equals(this.parserOptions, other.parserOptions);
+    }
+}

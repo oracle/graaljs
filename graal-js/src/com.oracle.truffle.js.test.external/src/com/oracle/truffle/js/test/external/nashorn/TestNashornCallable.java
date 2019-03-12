@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,8 +50,7 @@ import java.util.Locale;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 
-import com.oracle.truffle.js.parser.GraalJSParserOptions;
-import com.oracle.truffle.js.parser.JavaScriptLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
@@ -96,11 +95,11 @@ public class TestNashornCallable extends TestCallable {
         contextBuilder.allowIO(true);
 
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion));
-        contextBuilder.option(GraalJSParserOptions.STRICT_NAME, Boolean.toString(forceStrictMode));
-        contextBuilder.option(GraalJSParserOptions.SCRIPTING_NAME, Boolean.toString(scripting));
-        contextBuilder.option(GraalJSParserOptions.SYNTAX_EXTENSIONS_NAME, Boolean.toString(syntaxExtensions));
-        contextBuilder.option(GraalJSParserOptions.CONST_AS_VAR_NAME, Boolean.toString(constAsVar));
-        contextBuilder.option(GraalJSParserOptions.FUNCTION_STATEMENT_ERROR_NAME, Boolean.toString(functionStatementError));
+        contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(forceStrictMode));
+        contextBuilder.option(JSContextOptions.SCRIPTING_NAME, Boolean.toString(scripting));
+        contextBuilder.option(JSContextOptions.SYNTAX_EXTENSIONS_NAME, Boolean.toString(syntaxExtensions));
+        contextBuilder.option(JSContextOptions.CONST_AS_VAR_NAME, Boolean.toString(constAsVar));
+        contextBuilder.option(JSContextOptions.FUNCTION_STATEMENT_ERROR_NAME, Boolean.toString(functionStatementError));
         contextBuilder.option(JSContextOptions.PARSE_ONLY_NAME, Boolean.toString(parseOnly));
         contextBuilder.option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true");
         if (!arguments.isEmpty()) {

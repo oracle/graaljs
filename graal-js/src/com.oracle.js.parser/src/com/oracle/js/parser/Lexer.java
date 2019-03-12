@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,6 +101,9 @@ public class Lexer extends Scanner {
     /** True if a nested scan. (scan to completion, no EOF.) */
     private final boolean nested;
 
+    /** True if parsing a module. */
+    private final boolean isModule;
+
     /** Pending new line number and position. */
     int pendingLine;
 
@@ -162,9 +165,10 @@ public class Lexer extends Scanner {
      * @param scripting are we in scripting mode
      * @param es6       are we in ECMAScript 6 mode
      * @param shebang   do we support shebang
+     * @param isModule  are we in module
      */
-    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang) {
-        this(source, 0, source.getLength(), stream, scripting, es6, shebang, false);
+    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule) {
+        this(source, 0, source.getLength(), stream, scripting, es6, shebang, isModule, false);
     }
 
     /**
@@ -177,11 +181,12 @@ public class Lexer extends Scanner {
      * @param scripting are we in scripting mode
      * @param es6       are we in ECMAScript 6 mode
      * @param shebang   do we support shebang
+     * @param isModule  are we in module
      * @param pauseOnFunctionBody if true, lexer will return from {@link #lexify()} when it encounters a
      * function body. This is used with the feature where the parser is skipping nested function bodies to
      * avoid reading ahead unnecessarily when we skip the function bodies.
      */
-    public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean pauseOnFunctionBody) {
+    public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean pauseOnFunctionBody) {
         super(source.getContent().toString().toCharArray(), 1, start, len);
         this.source      = source;
         this.stream      = stream;
@@ -189,6 +194,7 @@ public class Lexer extends Scanner {
         this.es6         = es6;
         this.shebang     = shebang;
         this.nested      = false;
+        this.isModule    = isModule;
         this.pendingLine = 1;
         this.last        = EOL;
 
@@ -205,6 +211,7 @@ public class Lexer extends Scanner {
         es6 = lexer.es6;
         shebang = lexer.shebang;
         nested = true;
+        isModule = lexer.isModule;
 
         pendingLine = state.pendingLine;
         linePosition = state.linePosition;
@@ -378,6 +385,17 @@ public class Lexer extends Scanner {
     }
 
     /**
+     * Test whether a char is valid JavaScript end of string.
+     * Line separators and paragraph separators can appear in
+     * JavaScript string literals.
+     * @param ch a char
+     * @return true if valid JavaScript end of string
+     */
+    public static boolean isStringLineTerminator(final char ch) {
+        return ch == '\n' || ch == '\r';
+    }
+
+    /**
      * Test if char is a string delimiter, e.g. '\' or '"'.
      * @param ch a char
      * @return true if string delimiter
@@ -427,73 +445,120 @@ public class Lexer extends Scanner {
         }
     }
 
-    /**
-     * Skip over comments.
-     *
-     * @return True if a comment.
-     */
-    protected boolean skipComments() {
-        // Save the current position.
+    private void skipUntilEOL() {
+        // Scan for EOL.
+        while (!atEOF() && !isEOL(ch0)) {
+            skip(1);
+        }
+    }
+
+    private void skipSingleLineComment() {
+        assert ch0 == '/' && ch1 == '/';
+
         final int start = position;
 
-        if (ch0 == '/') {
-            // Is it a // comment.
-            if (ch1 == '/') {
-                // Skip over //.
-                skip(2);
+        // Skip over //.
+        skip(2);
 
-                boolean directiveComment = false;
-                if ((ch0 == '#' || ch0 == '@') && (ch1 == ' ')) {
-                    directiveComment = true;
-                }
-
-                // Scan for EOL.
-                while (!atEOF() && !isEOL(ch0)) {
-                    skip(1);
-                }
-                // Did detect a comment.
-                add(directiveComment ? DIRECTIVE_COMMENT : COMMENT, start);
-                return true;
-            } else if (ch1 == '*') {
-                // Skip over /*.
-                skip(2);
-                // Scan for */.
-                while (!atEOF() && !(ch0 == '*' && ch1 == '/')) {
-                    // If end of line handle else skip character.
-                    if (isEOL(ch0)) {
-                        skipEOL(true);
-                    } else {
-                        skip(1);
-                    }
-                }
-
-                if (atEOF()) {
-                    // TODO - Report closing */ missing in parser.
-                    add(ERROR, start);
-                } else {
-                    // Skip */.
-                    skip(2);
-                }
-
-                // Did detect a comment.
-                add(COMMENT, start);
-                return true;
-            }
-        } else if (ch0 == '#') {
-            assert shebang || scripting;
-            // shell style comment
-            // Skip over #.
-            skip(1);
-            // Scan for EOL.
-            while (!atEOF() && !isEOL(ch0)) {
-                skip(1);
-            }
-            // Did detect a comment.
-            add(COMMENT, start);
-            return true;
+        boolean directiveComment = false;
+        if ((ch0 == '#' || ch0 == '@') && (ch1 == ' ')) {
+            directiveComment = true;
         }
 
-        // Not a comment.
+        skipUntilEOL();
+
+        // Did detect a comment.
+        add(directiveComment ? DIRECTIVE_COMMENT : COMMENT, start);
+    }
+
+    private void skipMultiLineComment() {
+        assert ch0 == '/' && ch1 == '*';
+
+        final int start = position;
+
+        // Skip over /*.
+        skip(2);
+        // Scan for */.
+        while (!atEOF() && !(ch0 == '*' && ch1 == '/')) {
+            // If end of line handle else skip character.
+            if (isEOL(ch0)) {
+                skipEOL(true);
+            } else {
+                skip(1);
+            }
+        }
+
+        if (atEOF()) {
+            // TODO - Report closing */ missing in parser.
+            add(ERROR, start);
+        } else {
+            // Skip */.
+            skip(2);
+        }
+
+        // Did detect a comment.
+        add(COMMENT, start);
+    }
+
+    private void skipShebang() {
+        assert shebang || scripting;
+        assert ch0 == '#';
+
+        final int start = position;
+
+        // shell style comment
+        // Skip over #.
+        skip(1);
+        skipUntilEOL();
+
+        // Did detect a comment.
+        add(COMMENT, start);
+    }
+
+    private void skipSingleLineHTMLOpenComment() {
+        assert !isModule;
+        assert ch0 == '<' && ch1 == '!' && ch2 == '-' && ch3 == '-';
+
+        final int start = position;
+
+        // HTML-like open comment
+        // Skip over <!--.
+        skip(4);
+        skipUntilEOL();
+
+        // Did detect a comment.
+        add(COMMENT, start);
+    }
+
+    private void skipSingleLineHTMLCloseComment() {
+        assert !isModule;
+        assert ch0 == '-' && ch1 == '-' && ch2 == '>';
+
+        final int start = position;
+
+        // HTML-like close comment
+        // Skip over -->.
+        skip(3);
+        skipUntilEOL();
+
+        // Did detect a comment.
+        add(COMMENT, start);
+    }
+
+    private boolean seenEOL() {
+        if (last == EOL) {
+            return true;
+        }
+        int idx = stream.last();
+        while (idx >= 0) {
+            switch (Token.descType(stream.get(idx--))) {
+                case COMMENT:
+                    continue;
+                case EOL:
+                    return true;
+            }
+            break;
+        }
         return false;
     }
 
@@ -1048,7 +1113,7 @@ public class Lexer extends Scanner {
         final State stringState = saveState();
 
         // Scan until close quote or end of line.
-        while (!atEOF() && ch0 != quote && !isEOL(ch0)) {
+        while (!atEOF() && ch0 != quote && !Lexer.isStringLineTerminator(ch0)) {
             // Skip over escaped character.
             if (ch0 == '\\') {
                 type = ESCSTRING;
@@ -1858,12 +1923,26 @@ public class Lexer extends Scanner {
             // Check for comments. Note that we don't scan for regexp and other literals here as
             // we may not have enough context to distinguish them from similar looking operators.
             // Instead we break on ambiguous operators below and let the parser decide.
-            if (ch0 == '/' && skipComments()) {
+            if (ch0 == '/') {
+                if (ch1 == '/') {
+                    skipSingleLineComment();
+                    continue;
+                } else if (ch1 == '*') {
+                    skipMultiLineComment();
+                    continue;
+                }
+            } else if (ch0 == '#' && ((ch1 == '!' && position == 0 && shebang) || scripting)) {
+                skipShebang();
                 continue;
-            }
-
-            if (ch0 == '#' && ((ch1 == '!' && position == 0 && shebang) || scripting) && skipComments()) {
-                continue;
+            } else if (!isModule) {
+                // HTML-like comments
+                if (ch0 == '<' && ch1 == '!' && ch2 == '-' && ch3 == '-') {
+                    skipSingleLineHTMLOpenComment();
+                    continue;
+                } else if (ch0 == '-' && ch1 == '-' && ch2 == '>' && seenEOL()) {
+                    skipSingleLineHTMLCloseComment();
+                    continue;
+                }
             }
 
             // TokenType for lookup of delimiter or operator.

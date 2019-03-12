@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -348,7 +348,7 @@ public class Parser extends AbstractParser {
      */
     private void prepareLexer(final int startPos, final int len) {
         stream = new TokenStream();
-        lexer  = new Lexer(source, startPos, len, stream, scripting, isES6(), shebang, reparsedFunction != null);
+        lexer  = new Lexer(source, startPos, len, stream, scripting, isES6(), shebang, isModule, reparsedFunction != null);
         lexer.line = lexer.pendingLine = lineOffset + 1;
         line = lineOffset;
     }
@@ -418,7 +418,11 @@ public class Parser extends AbstractParser {
      * @return function node resulting from successful parse
      */
     public FunctionNode parseModule(final String moduleName, final int startPos, final int len) {
+        boolean oldModule = isModule;
+        boolean oldStrictMode = isStrictMode;
         try {
+            isModule = true;
+            isStrictMode = true; // Module code is always strict mode code. (ES6 10.2.1)
             prepareLexer(startPos, len);
 
             scanFirstToken();
@@ -428,6 +432,9 @@ public class Parser extends AbstractParser {
             handleParseException(e);
 
             return null;
+        } finally {
+            isStrictMode = oldStrictMode;
+            isModule = oldModule;
         }
     }
 
@@ -445,7 +452,7 @@ public class Parser extends AbstractParser {
     public void parseFormalParameterList() {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting, isES6(), shebang);
+            lexer  = new Lexer(source, stream, scripting, isES6(), shebang, isModule);
 
             scanFirstToken();
 
@@ -466,7 +473,7 @@ public class Parser extends AbstractParser {
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting, isES6(), shebang);
+            lexer  = new Lexer(source, stream, scripting, isES6(), shebang, isModule);
             final int functionLine = line;
 
             scanFirstToken();
@@ -784,7 +791,7 @@ loop:
      * @param rhs Right hand side expression.
      * @return Verified expression.
      */
-    private Expression verifyAssignment(final long op, final Expression lhs, final Expression rhs) {
+    private Expression verifyAssignment(final long op, final Expression lhs, final Expression rhs, boolean inPatternPosition) {
         final TokenType opType = Token.descType(op);
 
         switch (opType) {
@@ -814,7 +821,7 @@ loop:
                 break;
             } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
                 break;
-            } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs)) {
+            } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs) && (inPatternPosition || !lhs.isParenthesized())) {
                 verifyDestructuringAssignmentPattern(lhs, ASSIGNMENT_TARGET_CONTEXT);
                 break;
             } else {
@@ -830,7 +837,7 @@ loop:
 
     private boolean isDestructuringLhs(Expression lhs) {
         if (lhs instanceof ObjectNode || lhs instanceof ArrayLiteralNode) {
-            return ES6_DESTRUCTURING && isES6() && !lhs.isParenthesized();
+            return ES6_DESTRUCTURING && isES6();
         }
         return false;
     }
@@ -1896,7 +1903,7 @@ loop:
             } else {
                 assert init != null || !isStatement;
                 if (init != null) {
-                    final Expression assignment = verifyAssignment(Token.recast(varToken, ASSIGN_INIT), binding, init);
+                    final Expression assignment = verifyAssignment(Token.recast(varToken, ASSIGN_INIT), binding, init, true);
                     if (isStatement) {
                         appendStatement(new ExpressionStatement(varLine, assignment.getToken(), finish, assignment));
                     } else {
@@ -2073,6 +2080,9 @@ loop:
 
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
+                if (identNode.isParenthesized()) {
+                    throw error("Expected a valid binding identifier", identNode.getToken());
+                }
                 identifierCallback.accept(identNode);
                 return false;
             }
@@ -2193,6 +2203,9 @@ loop:
                 flags |= ForNode.IS_FOR_EACH;
                 next();
             } else if (ES8_FOR_AWAIT_OF && type == AWAIT) {
+                if (!inAsyncFunction()) {
+                    throw error(AbstractParser.message("invalid.for.await.of"), token);
+                }
                 isForAwaitOf = true;
                 next();
             }
@@ -3520,7 +3533,7 @@ loop:
                 coverInitializedName = true;
                 next();
                 Expression rhs = assignmentExpression(true, yield, await);
-                propertyValue = verifyAssignment(assignToken, propertyValue, rhs);
+                propertyValue = verifyAssignment(assignToken, propertyValue, rhs, true);
             }
         } else {
             expect(COLON);
@@ -4691,7 +4704,7 @@ loop:
         }
 
         stream.reset();
-        lexer = parserState.createLexer(source, lexer, stream, scripting, isES6(), shebang);
+        lexer = parserState.createLexer(source, lexer, stream, scripting, isES6(), shebang, isModule);
         line = parserState.line;
         linePosition = parserState.linePosition;
         // Doesn't really matter, but it's safe to treat it as if there were a semicolon before
@@ -4717,8 +4730,8 @@ loop:
             this.linePosition = linePosition;
         }
 
-        Lexer createLexer(final Source source, final Lexer lexer, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang) {
-            final Lexer newLexer = new Lexer(source, position, lexer.limit - position, stream, scripting, es6, shebang, true);
+        Lexer createLexer(final Source source, final Lexer lexer, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule) {
+            final Lexer newLexer = new Lexer(source, position, lexer.limit - position, stream, scripting, es6, shebang, isModule, true);
             newLexer.restoreState(new Lexer.State(position, Integer.MAX_VALUE, line, -1, linePosition, SEMICOLON));
             return newLexer;
         }
@@ -5211,7 +5224,7 @@ loop:
                 long assignToken = token;
                 next();
                 Expression exprRhs = assignmentExpression(in, yield, await);
-                return verifyAssignment(assignToken, exprLhs, exprRhs);
+                return verifyAssignment(assignToken, exprLhs, exprRhs, inPatternPosition);
             } finally {
                 if (isAssign) {
                     popDefaultName();
@@ -5350,7 +5363,7 @@ loop:
         if (param instanceof IdentNode) {
             IdentNode ident = (IdentNode)param;
             verifyStrictIdent(ident, FUNCTION_PARAMETER_CONTEXT);
-            if (currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
+            if (ident.isParenthesized() || currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
             }
             currentFunction.addParameter(ident);
@@ -5371,7 +5384,7 @@ loop:
                 // was marked as using 'this' from parenthesizedExpressionAndArrowParameterList())
                 currentFunction.setFlag(FunctionNode.USES_THIS);
             }
-            if (lhs instanceof IdentNode) {
+            if (lhs instanceof IdentNode && !lhs.isParenthesized()) {
                 // default parameter
                 IdentNode ident = (IdentNode) lhs;
 
@@ -5382,6 +5395,8 @@ loop:
                 verifyDestructuringParameterBindingPattern(lhs, paramToken, paramLine);
 
                 addDestructuringParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction, false);
+            } else {
+                throw error(AbstractParser.message("invalid.arrow.parameter"), paramToken);
             }
         } else if (isDestructuringLhs(param)) {
             // binding pattern
@@ -5654,51 +5669,41 @@ loop:
      *      ModuleItemList
      */
     private FunctionNode module(final String moduleName) {
-        boolean oldModule = isModule;
-        boolean oldStrictMode = isStrictMode;
+        // Make a pseudo-token for the script holding its start and length.
+        int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
+        final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
+        final int  functionLine  = line;
+
+        final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), moduleName);
+        final ParserContextFunctionNode script = createParserContextFunctionNode(
+                        ident,
+                        functionToken,
+                        FunctionNode.Kind.MODULE,
+                        functionLine,
+                        Collections.<IdentNode>emptyList(), 0);
+        lc.push(script);
+
+        final ParserContextModuleNode module = new ParserContextModuleNode(moduleName);
+        final ParserContextBlockNode body = newBlock();
+        functionDeclarations = new ArrayList<>();
+
         try {
-            isModule = true;
-            isStrictMode = true; // Module code is always strict mode code. (ES6 10.2.1)
-
-            // Make a pseudo-token for the script holding its start and length.
-            int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
-            final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
-            final int  functionLine  = line;
-
-            final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), moduleName);
-            final ParserContextFunctionNode script = createParserContextFunctionNode(
-                            ident,
-                            functionToken,
-                            FunctionNode.Kind.MODULE,
-                            functionLine,
-                            Collections.<IdentNode>emptyList(), 0);
-            lc.push(script);
-
-            final ParserContextModuleNode module = new ParserContextModuleNode(moduleName);
-            final ParserContextBlockNode body = newBlock();
-            functionDeclarations = new ArrayList<>();
-
-            try {
-                moduleBody(module);
-                addFunctionDeclarations(script);
-            } finally {
-                functionDeclarations = null;
-                restoreBlock(body);
-                lc.pop(script);
-            }
-
-            body.setFlag(Block.NEEDS_SCOPE);
-            final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getStatements());
-            script.setLastToken(token);
-
-            expect(EOF);
-
-            script.setModule(module.createModule());
-            return createFunctionNode(script, functionToken, ident, FunctionNode.Kind.MODULE, functionLine, programBody);
+            moduleBody(module);
+            addFunctionDeclarations(script);
         } finally {
-            isStrictMode = oldStrictMode;
-            isModule = oldModule;
+            functionDeclarations = null;
+            restoreBlock(body);
+            lc.pop(script);
         }
+
+        body.setFlag(Block.NEEDS_SCOPE);
+        final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getStatements());
+        script.setLastToken(token);
+
+        expect(EOF);
+
+        script.setModule(module.createModule());
+        return createFunctionNode(script, functionToken, ident, FunctionNode.Kind.MODULE, functionLine, programBody);
     }
 
     /**

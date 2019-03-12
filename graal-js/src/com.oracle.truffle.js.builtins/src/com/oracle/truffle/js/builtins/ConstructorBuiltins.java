@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,9 +90,9 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructFuncti
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSAdapterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJSProxyNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructJavaImporterNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructListFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberFormatNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructListFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructObjectNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructPluralRulesNodeGen;
@@ -109,7 +109,6 @@ import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
@@ -192,8 +191,8 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.interop.JavaImporter;
-import com.oracle.truffle.js.runtime.interop.JavaPackage;
+import com.oracle.truffle.js.runtime.java.JavaImporter;
+import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -842,30 +841,31 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructRegExp(DynamicObject newTarget, Object pattern, Object flags,
                         @Cached("create(getContext())") IsRegExpNode isRegExpNode) {
-            boolean patternIsRegExp = isRegExpNode.executeBoolean(pattern);
+            boolean hasMatchSymbol = isRegExpNode.executeBoolean(pattern);
             if (isCall) {
                 // we are in the "call" case, i.e. NewTarget is undefined (before)
-                if (callIsRegExpProfile.profile(patternIsRegExp && flags == Undefined.instance && JSObject.isJSObject(pattern))) {
+                if (callIsRegExpProfile.profile(hasMatchSymbol && flags == Undefined.instance && JSObject.isJSObject(pattern))) {
                     DynamicObject patternObj = (DynamicObject) pattern;
                     Object patternConstructor = getConstructor(patternObj);
                     if (constructorEquivalentProfile.profile(patternConstructor == getContext().getRealm().getRegExpConstructor().getFunctionObject())) {
                         return patternObj;
                     }
                 }
-                return constructRegExpImpl(pattern, flags, patternIsRegExp);
+                return constructRegExpImpl(pattern, flags, hasMatchSymbol);
             } else {
                 // we are in the "construct" case, i.e. NewTarget is NOT undefined
-                return swapPrototype(constructRegExpImpl(pattern, flags, patternIsRegExp), newTarget);
+                return swapPrototype(constructRegExpImpl(pattern, flags, hasMatchSymbol), newTarget);
             }
 
         }
 
-        protected DynamicObject constructRegExpImpl(Object patternObj, Object flags, boolean patternIsRegExp) {
+        protected DynamicObject constructRegExpImpl(Object patternObj, Object flags, boolean hasMatchSymbol) {
             Object p;
             Object f;
-            if (JSRegExp.isJSRegExp(patternObj)) {
+            boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
+            if (isJSRegExp) {
                 regexpObject.enter();
-                TruffleObject compiledRegex = JSRegExp.getCompiledRegex((DynamicObject) patternObj);
+                TruffleObject compiledRegex = JSRegExp.getCompiledRegexUnchecked((DynamicObject) patternObj, isJSRegExp);
                 if (flags == Undefined.instance) {
                     return getCreateRegExpNode().execute(compiledRegex);
                 } else {
@@ -877,7 +877,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     TruffleObject newCompiledRegex = getCompileRegexNode().compile(TRegexUtil.readPattern(getInteropReadPatternNode(), compiledRegex), flagsStr);
                     return getCreateRegExpNode().execute(newCompiledRegex);
                 }
-            } else if (patternIsRegExp) {
+            } else if (hasMatchSymbol) {
                 regexpMatcherObject.enter();
                 DynamicObject patternJSObj = (DynamicObject) patternObj;
                 p = getSource(patternJSObj);
@@ -1243,7 +1243,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Number callNumber(Object[] args,
                         @Cached("create()") JSToNumericNode toNumericNode,
                         @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
-            return (Number) toNumberFromNumericNode.executeObject(toNumericNode.execute(args[0]));
+            return toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]));
         }
     }
 
@@ -1261,7 +1261,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructNumber(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToNumericNode toNumericNode,
                         @Cached("create()") JSNumericToNumberNode toNumberFromNumericNode) {
-            return swapPrototype(JSNumber.create(getContext(), (Number) toNumberFromNumericNode.executeObject(toNumericNode.execute(args[0]))), newTarget);
+            return swapPrototype(JSNumber.create(getContext(), toNumberFromNumericNode.executeNumeric(toNumericNode.execute(args[0]))), newTarget);
         }
 
         @Override
@@ -1323,6 +1323,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private final boolean asyncFunction;
         @Child private JSToStringNode toStringNode;
         @Child private CreateDynamicFunctionNode functionNode;
+        private ConditionProfile argsLengthProfile = ConditionProfile.createBinaryProfile();
 
         public ConstructFunctionNode(JSContext context, JSBuiltin builtin, boolean generatorFunction, boolean asyncFunction, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -1339,7 +1340,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 params[i] = toStringNode.executeString(args[i]);
             }
             String body = args.length > 0 ? toStringNode.executeString(args[args.length - 1]) : "";
-            String paramList = args.length > 1 ? join(params) : "";
+            String paramList = argsLengthProfile.profile(args.length > 1) ? join(params) : "";
             return swapPrototype(functionNode.executeFunction(paramList, body), newTarget);
         }
 
@@ -1408,7 +1409,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         protected final ScriptNode parseFunction(String paramList, String body, String sourceName) {
             CompilerAsserts.neverPartOfCompilation();
-            return ((NodeEvaluator) context.getEvaluator()).parseFunction(context, paramList, body, generatorFunction, asyncFunction, sourceName);
+            return context.getEvaluator().parseFunction(context, paramList, body, generatorFunction, asyncFunction, sourceName);
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)

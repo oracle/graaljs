@@ -55,17 +55,9 @@ describe('Other', function () {
         it('util.inspect should work for JavaObjects', function() {
             var Point = Java.type('java.awt.Point');
             var point = new Point();
-            var skip = false;
-            try {
-                Object.getOwnPropertyDescriptor(point, 'x');
-            } catch (e) {
-                skip = true; // NashornJavaInterop
-            }
-            if (!skip) {
-                // just make sure that it does not throw an error
-                util.inspect(Point);
-                util.inspect(point);
-            }
+            // just make sure that it does not throw an error
+            util.inspect(Point);
+            util.inspect(point);
         });
     }
     it('should not regress in ExecuteNativeFunctionNode', function () {

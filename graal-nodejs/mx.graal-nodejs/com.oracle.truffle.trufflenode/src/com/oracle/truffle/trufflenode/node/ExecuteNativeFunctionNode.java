@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,10 +49,10 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -114,7 +114,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     private static int sourceSectionCounter;
 
     private static SourceSection createSourceSection() {
-        return Source.newBuilder(AbstractJavaScriptLanguage.ID, "", "<native$" + ++sourceSectionCounter + ">").build().createUnavailableSection();
+        return Source.newBuilder(JavaScriptLanguage.ID, "", "<native$" + ++sourceSectionCounter + ">").build().createUnavailableSection();
     }
 
     @Override
@@ -247,7 +247,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     private int getValueType(int index, Object argument) {
         if (valueTypeNodes[index] == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            valueTypeNodes[index] = ValueTypeNodeGen.create(graalAccess, context, index >= IMPLICIT_ARG_COUNT);
+            valueTypeNodes[index] = insert(ValueTypeNodeGen.create(graalAccess, context, index >= IMPLICIT_ARG_COUNT));
         }
         int type = valueTypeNodes[index].executeInt(argument);
         assert type == graalAccess.valueType(argument, false);
@@ -257,7 +257,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     private Object flatten(int index, Object argument) {
         if (flattenNodes[index] == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            flattenNodes[index] = FlattenNodeGen.create();
+            flattenNodes[index] = insert(FlattenNodeGen.create());
         }
         return flattenNodes[index].execute(argument);
     }

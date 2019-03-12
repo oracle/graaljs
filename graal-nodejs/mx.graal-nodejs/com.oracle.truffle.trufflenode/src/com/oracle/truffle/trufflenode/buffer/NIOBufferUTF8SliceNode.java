@@ -53,6 +53,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
@@ -61,6 +62,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     private static final int V8MaxStringLength = (1 << 30) - 1 - 24;
 
     protected final BranchProfile nativePath = BranchProfile.create();
+    protected final BranchProfile errorBranch = BranchProfile.create();
 
     public NIOBufferUTF8SliceNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
@@ -105,9 +107,10 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     }
 
     private Object doSlice(DynamicObject target, int start, int end) throws CharacterCodingException {
-        DynamicObject arrayBuffer = getArrayBuffer(target);
+        boolean isArrayBufferView = JSArrayBufferView.isJSArrayBufferView(target);
+        DynamicObject arrayBuffer = getArrayBuffer(target, isArrayBufferView);
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
-        int byteOffset = getOffset(target);
+        int byteOffset = getOffset(target, isArrayBufferView);
         int actualEnd = end;
         if (end < start) {
             actualEnd = start;
@@ -117,6 +120,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
             return "";
         }
         if (actualEnd > rawBuffer.capacity() || !oobCheck(start, end)) {
+            errorBranch.enter();
             outOfBoundsFail();
         }
         int length = actualEnd - start;
@@ -125,6 +129,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         }
         int bufferLen = getLength(target);
         if (length > bufferLen) {
+            errorBranch.enter();
             outOfBoundsFail();
         }
         ByteBuffer data = sliceBuffer(rawBuffer, byteOffset);

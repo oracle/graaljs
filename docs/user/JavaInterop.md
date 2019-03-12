@@ -21,10 +21,10 @@ This way, Graal JavaScript is executed on a traditional JVM and allows full Java
 
 #### Classpath
 To load Java classes you need to have them on the Java classpath.
-You can specify the classpath with the `--jvm.classpath=<classpath>` option (or short: `--jvm.cp=<classpath>`).
+You can specify the classpath with the `--vm.classpath=<classpath>` option (or short: `--vm.cp=<classpath>`).
 
-    node --jvm --jvm.cp=/my/class/path
-    js --jvm --jvm.cp=/my/class/path
+    node --jvm --vm.cp=/my/class/path
+    js --jvm --vm.cp=/my/class/path
 
 The method `Java.addToClasspath()` can be used to programmatically add to the classpath at runtime.
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,9 +101,8 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNode
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
-import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.NodeEvaluator;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.RealmNode;
@@ -116,7 +115,6 @@ import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSLoadNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
@@ -572,7 +570,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             CompilerAsserts.neverPartOfCompilation();
             long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
             try {
-                return ((NodeEvaluator) ctxt.getEvaluator()).evalCompile(ctxt, script, name);
+                return ctxt.getEvaluator().evalCompile(ctxt, script, name);
             } finally {
                 if (JSTruffleOptions.ProfileTime) {
                     ctxt.getTimeProfiler().printElapsed(startTime, "parsing " + name);
@@ -583,8 +581,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected final Source sourceFromURL(URL url) {
             try {
-                return Source.newBuilder(AbstractJavaScriptLanguage.ID, url).name(url.getFile()).build();
-            } catch (IOException e) {
+                return Source.newBuilder(JavaScriptLanguage.ID, url).name(url.getFile()).build();
+            } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
@@ -592,8 +590,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected final Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
-                return Source.newBuilder(AbstractJavaScriptLanguage.ID, realm.getEnv().getTruffleFile(fileName)).name(fileName).build();
-            } catch (IOException e) {
+                return Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getTruffleFile(fileName)).name(fileName).build();
+            } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
@@ -601,8 +599,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected final Source sourceFromTruffleFile(TruffleFile file) {
             try {
-                return Source.newBuilder(AbstractJavaScriptLanguage.ID, file).build();
-            } catch (IOException e) {
+                return Source.newBuilder(JavaScriptLanguage.ID, file).build();
+            } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
         }
@@ -1045,7 +1043,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (sourceName == null) {
                 sourceName = Evaluator.EVAL_SOURCE_NAME;
             }
-            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(AbstractJavaScriptLanguage.ID, sourceText, sourceName).build());
+            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(JavaScriptLanguage.ID, sourceText, sourceName).build());
         }
 
         @Specialization(guards = "!isString(source)")
@@ -1179,27 +1177,25 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return source;
         }
 
-        @Specialization
-        protected Object loadURL(VirtualFrame frame, URL url) {
-            return runImpl(realmNode.execute(frame), sourceFromURL(url));
+        protected Object loadFile(JSRealm realm, File file) {
+            return runImpl(realm, sourceFromFileName(fileGetPath(file), realm));
         }
 
-        @Specialization
-        protected Object loadFile(VirtualFrame frame, File file) {
-            JSRealm realm = realmNode.execute(frame);
-            return runImpl(realm, sourceFromFileName(fileGetPath(file), realm));
+        protected Object loadURL(JSRealm realm, URL url) {
+            return runImpl(realm, sourceFromURL(url));
         }
 
         @Specialization(guards = "isForeignObject(scriptObj)")
         protected Object loadTruffleObject(VirtualFrame frame, TruffleObject scriptObj,
                         @Cached("createUnbox()") Node unboxNode) {
-            TruffleLanguage.Env env = realmNode.execute(frame).getEnv();
+            JSRealm realm = realmNode.execute(frame);
+            TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(scriptObj)) {
                 Object hostObject = env.asHostObject(scriptObj);
                 if (hostObject instanceof File) {
-                    return loadFile(frame, (File) hostObject);
+                    return loadFile(realm, (File) hostObject);
                 } else if (hostObject instanceof URL) {
-                    return loadURL(frame, (URL) hostObject);
+                    return loadURL(realm, (URL) hostObject);
                 }
             }
             Object unboxed = JSInteropNodeUtil.unbox(scriptObj, unboxNode);
@@ -1220,13 +1216,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        @Specialization(guards = "isFallback(fileName)")
+        @Specialization(guards = {"!isString(fileName)", "!isForeignObject(fileName)", "!isJSObject(fileName)"})
         protected Object loadConvertToString(VirtualFrame frame, Object fileName) {
             return loadString(frame, toString1(fileName));
-        }
-
-        protected static boolean isFallback(Object value) {
-            return !(JSGuards.isString(value) || value instanceof URL || value instanceof File || value instanceof Map || JSGuards.isForeignObject(value) || JSGuards.isJSObject(value));
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
@@ -1235,7 +1227,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromURI(String resource) {
-            if (!JSTruffleOptions.SubstrateVM &&
+            if (JSTruffleOptions.SubstrateVM) {
+                return null;
+            }
+            if (getContext().isOptionNashornCompatibilityMode() &&
                             (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {
                 return sourceFromResourceURL(resource);
             }
@@ -1249,8 +1244,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromResourceURL(String resource) {
+            assert getContext().isOptionNashornCompatibilityMode();
             InputStream stream = null;
-            if (getContext().isOptionNashornCompatibilityMode() && resource.startsWith(LOAD_NASHORN)) {
+            if (resource.startsWith(LOAD_NASHORN)) {
                 if (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS)) {
                     stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
                 }
@@ -1263,8 +1259,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
             if (stream != null) {
                 try {
-                    return Source.newBuilder(AbstractJavaScriptLanguage.ID, new InputStreamReader(stream, StandardCharsets.UTF_8), resource).build();
-                } catch (IOException e) {
+                    return Source.newBuilder(JavaScriptLanguage.ID, new InputStreamReader(stream, StandardCharsets.UTF_8), resource).build();
+                } catch (IOException | SecurityException e) {
                 }
             }
             return null;
@@ -1551,13 +1547,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 throw Errors.shouldNotReachHere();
             }
             return (boolean) hasNext;
-        }
-
-        // for legacy NashornJavaInterop mode
-        @Specialization
-        @SuppressWarnings("unchecked")
-        final Object importGlobalContextJavaLangObject(Object globalContextBindings) {
-            return importGlobalContext((TruffleObject) getContext().getRealm().getEnv().asGuestValue(globalContextBindings));
         }
 
         private static class ScriptEngineGlobalScopeBindingsPropertyProxy implements PropertyProxy {

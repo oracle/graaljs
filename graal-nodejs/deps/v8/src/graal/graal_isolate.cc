@@ -1431,3 +1431,13 @@ void GraalIsolate::UnsetEnv(const char * name) {
     _putenv_s(name, "");
 #endif
 }
+
+void GraalIsolate::ReportAPIFailure(const char* location, const char* message) {
+    if (fatal_error_handler_ == nullptr) {
+        fprintf(stderr, "FATAL ERROR: %s %s\n", location, message);
+        fflush(stderr);
+        abort();
+    } else {
+        fatal_error_handler_(location, message);
+    }
+}

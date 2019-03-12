@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,7 @@ import java.util.TimeZone;
 
 import org.graalvm.polyglot.Source;
 
-import com.oracle.truffle.js.parser.JavaScriptLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.test.external.suite.SuiteConfig;
 import com.oracle.truffle.js.test.external.suite.TestFile;
 import com.oracle.truffle.js.test.external.suite.TestRunnable;

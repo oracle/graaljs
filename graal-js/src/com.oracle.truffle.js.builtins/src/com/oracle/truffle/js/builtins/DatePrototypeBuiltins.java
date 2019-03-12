@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,6 +89,7 @@ import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.OrdinaryToPrimitiveNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -98,7 +99,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
@@ -907,6 +907,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
     public abstract static class JSDateToJSONNode extends ObjectOperation {
 
         @Child private PropertyGetNode getToISOStringFnNode;
+        @Child private JSFunctionCallNode callToISOStringFnNode;
         @Child private JSToPrimitiveNode toPrimitiveNode;
 
         public JSDateToJSONNode(JSContext context, JSBuiltin builtin) {
@@ -925,8 +926,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 }
             }
             Object toISO = getToISOStringFn(o);
-            JSFunction.checkIsFunction(toISO);
-            return JSFunction.call((DynamicObject) toISO, o, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+            return getCallToISOStringFnNode().executeCall(JSArguments.create(o, toISO, JSArguments.EMPTY_ARGUMENTS_ARRAY));
         }
 
         private Object getToISOStringFn(Object obj) {
@@ -935,6 +935,14 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 getToISOStringFnNode = insert(PropertyGetNode.create("toISOString", false, getContext()));
             }
             return getToISOStringFnNode.getValue(obj);
+        }
+
+        private JSFunctionCallNode getCallToISOStringFnNode() {
+            if (callToISOStringFnNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callToISOStringFnNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callToISOStringFnNode;
         }
     }
 

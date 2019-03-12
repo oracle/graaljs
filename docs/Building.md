@@ -1,14 +1,15 @@
 ## Graal JavaScript
 
-Here we describe how to build and run Graal JavaScript.
+This document describes how to build and run Graal JavaScript.
 
+Building yourself should only be necessary if you are contributing to Graal JavaScript or you want to try out the latest features.
+The average user will prefer the pre-built binaries as part of [GraalVM](http://www.graalvm.org/downloads/) or the Graal JavaScript JAR files published to Maven (see [blog post](https://medium.com/graalvm/graalvms-javascript-engine-on-jdk11-with-high-performance-3e79f968a819)).
 
 ### Prerequisites
 
 * Python 2.7 (required by `mx`)
 * git (to download, update, and locate repositories)
 * Java JDK 8 or newer
-
 
 ### Building
 
@@ -45,7 +46,6 @@ Here we describe how to build and run Graal JavaScript.
     ```bash
     mx build
     ```
-
 
 ### Running
 
@@ -120,3 +120,4 @@ mx --dynamicimports /compiler --jdk jvmci node [OPTION]... [FILE]...
 cd graaljs/graal-js
 mx js --help
 ```
+

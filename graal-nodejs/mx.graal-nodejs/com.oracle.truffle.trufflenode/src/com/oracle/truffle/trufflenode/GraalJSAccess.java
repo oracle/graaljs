@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -122,22 +122,21 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.js.nodes.NodeEvaluator;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.function.ConstructorRootNode;
 import com.oracle.truffle.js.parser.GraalJSEvaluator;
 import com.oracle.truffle.js.parser.GraalJSParserHelper;
-import com.oracle.truffle.js.parser.GraalJSParserOptions;
 import com.oracle.truffle.js.parser.JSParser;
-import com.oracle.truffle.js.parser.JavaScriptLanguage;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.GraalJSParserOptions;
 import com.oracle.truffle.js.runtime.ImportMetaInitializer;
 import com.oracle.truffle.js.runtime.ImportModuleDynamicallyCallback;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
@@ -284,7 +283,7 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, "true");
             contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
             contextBuilder.option(JSContextOptions.INTL_402_NAME, "true");
-            contextBuilder.option(GraalJSParserOptions.SYNTAX_EXTENSIONS_NAME, "false");
+            contextBuilder.option(JSContextOptions.SYNTAX_EXTENSIONS_NAME, "false");
             // Node.js does not have global load property
             contextBuilder.option(JSContextOptions.LOAD_NAME, "false");
             // Node.js provides its own console
@@ -1684,7 +1683,7 @@ public final class GraalJSAccess {
     public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] extensions) {
         JSRealm realm = (JSRealm) context;
         JSContext jsContext = realm.getContext();
-        NodeEvaluator nodeEvaluator = (NodeEvaluator) jsContext.getEvaluator();
+        Evaluator nodeEvaluator = jsContext.getEvaluator();
 
         StringBuilder params = new StringBuilder();
         for (int i = 0; i < arguments.length; i++) {
@@ -1723,7 +1722,7 @@ public final class GraalJSAccess {
         }
 
         code.append(";})");
-        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, code.toString(), sourceName).build();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
         DynamicObject wrapper = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
         return JSFunction.call(wrapper, Undefined.instance, extensions);
     }
@@ -2869,7 +2868,7 @@ public final class GraalJSAccess {
         NodeFactory factory = NodeFactory.getInstance(jsContext);
         String moduleName = (String) name;
         URI uri = URI.create(moduleName);
-        Source source = Source.newBuilder(AbstractJavaScriptLanguage.ID, (String) sourceCode, moduleName).uri(uri).build();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, (String) sourceCode, moduleName).uri(uri).build();
         return JavaScriptTranslator.translateModule(factory, jsContext, source, getModuleLoader());
     }
 
