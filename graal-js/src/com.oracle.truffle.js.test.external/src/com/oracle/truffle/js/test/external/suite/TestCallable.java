@@ -69,6 +69,7 @@ public class TestCallable implements Callable<Object> {
 
         this.contextBuilder = Context.newBuilder(JavaScriptLanguage.ID);
         contextBuilder.allowIO(true);
+        contextBuilder.allowExperimentalOptions(true);
 
         assert ecmaScriptVersion <= JSTruffleOptions.MaxECMAScriptVersion;
 

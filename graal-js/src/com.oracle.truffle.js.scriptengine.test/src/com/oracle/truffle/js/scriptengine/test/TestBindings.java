@@ -394,7 +394,7 @@ public class TestBindings {
 
     @Test
     public void testSetContextBuilder() throws ScriptException {
-        ScriptEngine engine = GraalJSScriptEngine.create(null, Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true));
+        ScriptEngine engine = GraalJSScriptEngine.create(null, Context.newBuilder("js").allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true));
         engine.put("javaObj", new Object());
         assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"));
     }

@@ -225,9 +225,9 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         if (contextConfigToUse == null) {
             // default config
             if (NASHORN_COMPATIBILITY_MODE) {
-                contextConfigToUse = Context.newBuilder(ID).allowAllAccess(true).option(JS_SYNTAX_EXTENSIONS_OPTION, "true");
+                contextConfigToUse = Context.newBuilder(ID).allowExperimentalOptions(true).allowAllAccess(true).option(JS_SYNTAX_EXTENSIONS_OPTION, "true");
             } else {
-                contextConfigToUse = Context.newBuilder(ID).option(JS_SYNTAX_EXTENSIONS_OPTION, "true");
+                contextConfigToUse = Context.newBuilder(ID).allowExperimentalOptions(true).option(JS_SYNTAX_EXTENSIONS_OPTION, "true");
             }
         }
         this.factory = new GraalJSEngineFactory(engineToUse);

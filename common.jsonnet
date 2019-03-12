@@ -34,6 +34,9 @@
       'Graal diagnostic output saved in (?P<filename>.+.zip)',
       'npm-debug.log', // created on npm errors
     ],
+    environment+: {
+      GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
+    },
   },
 
   linux: common + {
