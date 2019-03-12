@@ -51,6 +51,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -128,12 +129,15 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     private static DynamicObject createToPrimitiveFunction(JSRealm realm) {
         JSContext context = realm.getContext();
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            private final ConditionProfile isSymbolProfile = ConditionProfile.createBinaryProfile();
+            private final ConditionProfile isJSSymbolProfile = ConditionProfile.createBinaryProfile();
+
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = JSFrameUtil.getThisObj(frame);
-                if (obj instanceof Symbol) {
+                if (isSymbolProfile.profile(obj instanceof Symbol)) {
                     return obj;
-                } else if (JSSymbol.isJSSymbol(obj)) {
+                } else if (isJSSymbolProfile.profile(JSSymbol.isJSSymbol(obj))) {
                     return JSSymbol.getSymbolData((DynamicObject) obj);
                 } else {
                     throw Errors.createTypeErrorSymbolExpected();
@@ -146,12 +150,15 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     private static DynamicObject createDescriptionGetterFunction(JSRealm realm) {
         JSContext context = realm.getContext();
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            private final ConditionProfile isSymbolProfile = ConditionProfile.createBinaryProfile();
+            private final ConditionProfile isJSSymbolProfile = ConditionProfile.createBinaryProfile();
+
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = frame.getArguments()[0];
-                if (obj instanceof Symbol) {
+                if (isSymbolProfile.profile(obj instanceof Symbol)) {
                     return ((Symbol) obj).getDescription();
-                } else if (isJSSymbol(obj)) {
+                } else if (isJSSymbolProfile.profile(isJSSymbol(obj))) {
                     return JSSymbol.getSymbolData((DynamicObject) obj).getDescription();
                 } else {
                     throw Errors.createTypeErrorSymbolExpected();

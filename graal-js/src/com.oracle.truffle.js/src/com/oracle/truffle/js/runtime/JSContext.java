@@ -53,6 +53,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -74,6 +76,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.interop.InteropAsyncFunctionForeign;
 import com.oracle.truffle.js.nodes.interop.InteropBoundFunctionForeign;
 import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
@@ -141,7 +145,6 @@ import com.oracle.truffle.regex.CachingRegexEngine;
 import com.oracle.truffle.regex.RegexCompiler;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
-import org.graalvm.options.OptionValues;
 
 public class JSContext {
     private final Evaluator evaluator;
@@ -1581,11 +1584,14 @@ public class JSContext {
 
     private JSFunctionData protoGetterFunction() {
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
+            @Child private JSToObjectNode toObjectNode = JSToObjectNode.createToObject(JSContext.this);
+            @Child private GetPrototypeNode getPrototypeNode = GetPrototypeNode.create();
+
             @Override
             public Object execute(VirtualFrame frame) {
-                Object obj = JSRuntime.toObject(JSContext.this, JSArguments.getThisObject(frame.getArguments()));
+                TruffleObject obj = toObjectNode.executeTruffleObject(JSArguments.getThisObject(frame.getArguments()));
                 if (JSObject.isJSObject(obj)) {
-                    return JSObject.getPrototype((DynamicObject) obj);
+                    return getPrototypeNode.executeJSObject(obj);
                 }
                 return Null.instance;
             }
