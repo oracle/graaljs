@@ -466,7 +466,7 @@ def _prepare_svm_env():
     import mx_vm
     libpolyglot = join(mx_vm.graalvm_home(), 'jre', 'lib', 'polyglot', mx.add_lib_suffix(mx.add_lib_prefix('polyglot')))
     if not exists(libpolyglot):
-        mx.abort("Cannot find polyglot library. Did you forget to build it using 'mx --env svm build'?")
+        mx.abort("Cannot find polyglot library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(libpolyglot))
     _setEnvVar('NODE_JVM_LIB', libpolyglot)
     _setEnvVar('ICU4J_DATA_PATH', join(mx.suite('graal-js').dir, 'lib', 'icu4j', 'icudt'))
 
