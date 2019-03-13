@@ -16,14 +16,6 @@
     "status" : "SKIP",
     "comment" : "IsHTMLDDA"
   }, {
-    "filePath" : "built-ins/Array/prototype/indexOf/calls-only-has-on-prototype-after-length-zeroed.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "built-ins/Array/prototype/lastIndexOf/calls-only-has-on-prototype-after-length-zeroed.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/Atomics/wait/undefined-index-defaults-to-zero.js",
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
