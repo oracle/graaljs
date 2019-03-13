@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @NodeInfo(cost = NodeCost.NONE)
 @ImportStatic({JSProxy.class})
@@ -100,7 +100,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
             if (JSObject.isJSObject(target)) {
                 return JSObject.hasProperty((DynamicObject) target, propertyKey);
             } else {
-                return JSInteropNodeUtil.hasProperty(target, propertyKey);
+                return JSInteropUtil.hasProperty(target, propertyKey);
             }
         } else {
             Object callResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey));

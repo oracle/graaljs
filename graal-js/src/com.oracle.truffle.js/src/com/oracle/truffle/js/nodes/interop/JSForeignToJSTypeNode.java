@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -49,6 +51,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
@@ -132,11 +135,12 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public Object fromTruffleJavaObject(TruffleObject value) {
+    public Object fromTruffleJavaObject(TruffleObject value,
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) {
         if (value instanceof InteropBoundFunction) {
             return ((InteropBoundFunction) value).getFunction();
         } else {
-            TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
+            TruffleLanguage.Env env = contextRef.get().getEnv();
             if (env.isHostObject(value)) {
                 Object object = env.asHostObject(value);
                 if (object == null) {

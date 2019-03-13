@@ -41,26 +41,23 @@
 package com.oracle.truffle.js.nodes.unary;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * Represents abstract operation IsCallable.
  *
  * @see JSRuntime#isCallable(Object)
  */
-@ImportStatic({JSInteropUtil.class})
 public abstract class IsCallableNode extends JSUnaryNode {
 
     protected IsCallableNode(JavaScriptNode operand) {
@@ -95,10 +92,10 @@ public abstract class IsCallableNode extends JSUnaryNode {
         return false;
     }
 
-    @Specialization(guards = "isForeignObject(obj)")
+    @Specialization(guards = "isForeignObject(obj)", limit = "3")
     protected static boolean doTruffleObject(TruffleObject obj,
-                    @Cached("createIsExecutable()") Node isExecutableNode) {
-        return ForeignAccess.sendIsExecutable(isExecutableNode, obj);
+                    @CachedLibrary("obj") InteropLibrary interop) {
+        return interop.isExecutable(obj);
     }
 
     @Specialization

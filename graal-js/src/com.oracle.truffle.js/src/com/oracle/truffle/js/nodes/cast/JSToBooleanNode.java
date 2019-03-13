@@ -41,28 +41,26 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBigIntNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
-@ImportStatic({JSRuntime.class, JSInteropUtil.class})
+@ImportStatic({JSRuntime.class})
 public abstract class JSToBooleanNode extends JSUnaryNode {
     protected static final int MAX_CLASSES = 3;
 
@@ -169,18 +167,30 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
     }
 
     @TruffleBoundary
-    @Specialization(guards = "isForeignObject(value)")
+    @Specialization(guards = "isForeignObject(value)", limit = "5")
     protected boolean doForeignObject(TruffleObject value,
-                    @Cached("create()") JSToBooleanNode recToBoolean,
-                    @Cached("createIsNull()") Node isNullNode,
-                    @Cached("createIsBoxed()") Node isBoxedNode,
-                    @Cached("createUnbox()") Node unboxNode,
-                    @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {
-        if (ForeignAccess.sendIsNull(isNullNode, value)) {
+                    @CachedLibrary("value") InteropLibrary interop) {
+        if (interop.isNull(value)) {
             return false;
-        } else if (ForeignAccess.sendIsBoxed(isBoxedNode, value)) {
-            Object obj = foreignConvertNode.executeWithTarget(JSInteropNodeUtil.unbox(value, unboxNode));
-            return recToBoolean.executeBoolean(obj);
+        }
+        try {
+            if (interop.isBoolean(value)) {
+                return interop.asBoolean(value);
+            } else if (interop.isString(value)) {
+                return !interop.asString(value).isEmpty();
+            } else if (interop.isNumber(value)) {
+                if (interop.fitsInInt(value)) {
+                    return doInt(interop.asInt(value));
+                } else if (interop.fitsInLong(value)) {
+                    return doLong(interop.asLong(value));
+                } else if (interop.fitsInDouble(value)) {
+                    return doDouble(interop.asDouble(value));
+                } else {
+                    return true;
+                }
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(value, e, this);
         }
         return true; // cf. doObject()
     }

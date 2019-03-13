@@ -43,11 +43,10 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -61,7 +60,6 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -208,11 +206,12 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
     @NodeInfo(cost = NodeCost.MEGAMORPHIC)
     public static final class GenericHasPropertyCacheNode extends HasCacheNode {
-        @Child private Node keyInfoNode;
+        @Child private InteropLibrary interop;
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
 
         public GenericHasPropertyCacheNode() {
             super(null);
+            this.interop = InteropLibrary.getFactory().createDispatched(3);
         }
 
         @Override
@@ -226,31 +225,33 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
                 }
             } else {
                 assert JSRuntime.isForeignObject(thisObj);
-                return JSInteropNodeUtil.hasProperty((TruffleObject) thisObj, root.getKey(), getKeyInfoNode());
+                Object key = root.getKey();
+                if (key instanceof String) {
+                    return interop.isMemberExisting(thisObj, (String) key);
+                } else {
+                    return false;
+                }
             }
         }
-
-        private Node getKeyInfoNode() {
-            if (keyInfoNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                keyInfoNode = insert(Message.KEY_INFO.createNode());
-            }
-            return keyInfoNode;
-        }
-
     }
 
     public static final class ForeignHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
-        @Child private Node keyInfoNode;
+        @Child private InteropLibrary interop;
 
         public ForeignHasPropertyCacheNode() {
             super(new ForeignLanguageCheckNode());
-            this.keyInfoNode = Message.KEY_INFO.createNode();
+            this.interop = InteropLibrary.getFactory().createDispatched(3);
         }
 
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
-            return JSInteropNodeUtil.hasProperty((TruffleObject) thisObj, root.getKey(), keyInfoNode);
+            assert JSRuntime.isForeignObject(thisObj);
+            Object key = root.getKey();
+            if (key instanceof String) {
+                return interop.isMemberExisting(thisObj, (String) key);
+            } else {
+                return false;
+            }
         }
     }
 

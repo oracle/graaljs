@@ -288,6 +288,10 @@ public final class IteratorUtil {
         return new RangeIterator(length);
     }
 
+    public static Iterable<Integer> rangeIterable(int length) {
+        return () -> rangeIterator(length);
+    }
+
     private static final class RangeIterator implements Iterator<Integer> {
         private final int length;
         private int index;

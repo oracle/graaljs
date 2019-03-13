@@ -44,8 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
@@ -580,7 +578,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorInteropException(TruffleObject receiver, InteropException cause, Message message, Node originatingNode) {
+    public static JSException createTypeErrorInteropException(Object receiver, InteropException cause, String message, Node originatingNode) {
         String reason = cause.getMessage();
         if (reason == null) {
             reason = cause.getClass().getSimpleName();
@@ -598,12 +596,17 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorUnboxException(Object receiver, InteropException cause, Node originatingNode) {
+        return createTypeErrorInteropException(receiver, cause, "UNBOX", originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorUnsupportedInteropType(Object value) {
         return Errors.createTypeError("type " + value.getClass().getSimpleName() + " not supported in JavaScript");
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNotATruffleObject(Message message) {
+    public static JSException createTypeErrorNotATruffleObject(String message) {
         return Errors.createTypeError("cannot call " + message + " on a non-interop object");
     }
 

@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -65,12 +69,8 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
-
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
 
 /**
  * Methods for dealing with JS objects (access, creation, instanceof, cast).
@@ -287,7 +287,7 @@ public final class JSObject {
         if (isJSObject(obj)) {
             return get((DynamicObject) obj, key);
         } else {
-            return JSInteropNodeUtil.read(obj, key);
+            return JSInteropUtil.readMemberOrDefault(obj, key, Undefined.instance);
         }
     }
 
@@ -296,7 +296,7 @@ public final class JSObject {
         if (isJSObject(obj)) {
             return get((DynamicObject) obj, index);
         } else {
-            return JSInteropNodeUtil.read(obj, index);
+            return JSInteropUtil.readArrayElementOrDefault(obj, index, Undefined.instance);
         }
     }
 
@@ -405,7 +405,7 @@ public final class JSObject {
         if (isJSObject(target)) {
             return hasOwnProperty((DynamicObject) target, key);
         } else {
-            return JSInteropNodeUtil.hasProperty(target, key);
+            return JSInteropUtil.hasProperty(target, key);
         }
     }
 

@@ -42,6 +42,7 @@ package com.oracle.truffle.js.parser.foreign;
 
 import com.oracle.truffle.api.interop.*;
 
+@SuppressWarnings("deprecation")
 abstract class JSForeignAccessExtraMessages extends Message {
 
     @Override

@@ -46,8 +46,8 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -62,7 +62,6 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @NodeInfo(shortName = "==")
@@ -275,20 +274,19 @@ public abstract class JSEqualNode extends JSCompareNode {
 
     @Specialization(guards = "oneIsForeign(a,b)")
     protected boolean doForeign(Object a, Object b,
-                    @Cached("createIsNull()") Node isNull,
-                    @Cached("createIsBoxed()") Node isBoxed,
-                    @Cached("createUnbox()") Node unbox) {
+                    @CachedLibrary(limit = "3") InteropLibrary aInterop,
+                    @CachedLibrary(limit = "3") InteropLibrary bInterop) {
         assert (a != null) && (b != null);
         final Object defaultValue = null;
         Object primLeft;
         if (JSGuards.isForeignObject(a)) {
-            primLeft = JSInteropNodeUtil.toPrimitiveOrDefault((TruffleObject) a, defaultValue, isNull, isBoxed, unbox);
+            primLeft = JSInteropUtil.toPrimitiveOrDefault(a, defaultValue, aInterop, this);
         } else {
             primLeft = JSGuards.isNullOrUndefined(a) ? Null.instance : a;
         }
         Object primRight;
         if (JSGuards.isForeignObject(b)) {
-            primRight = JSInteropNodeUtil.toPrimitiveOrDefault((TruffleObject) b, defaultValue, isNull, isBoxed, unbox);
+            primRight = JSInteropUtil.toPrimitiveOrDefault(b, defaultValue, bInterop, this);
         } else {
             primRight = JSGuards.isNullOrUndefined(b) ? Null.instance : b;
         }

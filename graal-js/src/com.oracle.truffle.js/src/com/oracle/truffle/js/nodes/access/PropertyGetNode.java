@@ -53,16 +53,13 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -792,22 +789,24 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     public static class JavaStringMethodGetNode extends LinkedPropertyGetNode {
-        @Child private Node readNode;
+        @Child private InteropLibrary interop;
 
         public JavaStringMethodGetNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
-            this.readNode = Message.READ.createNode();
+            this.interop = InteropLibrary.getFactory().createDispatched(3);
         }
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             String thisStr = (String) thisObj;
-            Object boxedString = root.getContext().getRealm().getEnv().asBoxedGuestValue(thisStr);
-            try {
-                return ForeignAccess.sendRead(readNode, (TruffleObject) boxedString, root.getKey());
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                return Undefined.instance;
+            if (root.getKey() instanceof String) {
+                Object boxedString = root.getContext().getRealm().getEnv().asBoxedGuestValue(thisStr);
+                try {
+                    return interop.readMember(boxedString, (String) root.getKey());
+                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                }
             }
+            return Undefined.instance;
         }
     }
 
@@ -881,13 +880,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class ForeignPropertyGetNode extends LinkedPropertyGetNode {
 
-        @Child private Node isNullNode;
-        @Child private Node keyInfoNode;
-        @Child private Node readNode;
-        @Child private Node hasSizeNode;
-        @Child private Node getSizeNode;
-        @Child private Node getterKeyInfoNode;
-        @Child private Node getterInvokeNode;
         @Child private JSForeignToJSTypeNode toJSTypeNode;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private PropertyGetNode getFromPrototypeNode;
@@ -896,31 +888,36 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         private final boolean isGlobal;
         @CompilationFinal private boolean optimistic = true;
         private final JSContext context;
+        @Child private InteropLibrary interop;
+        @Child private InteropLibrary getterInterop;
 
         public ForeignPropertyGetNode(Object key, boolean isMethod, boolean isGlobal, JSContext context) {
             super(new ForeignLanguageCheckNode());
             this.context = context;
-            this.isNullNode = Message.IS_NULL.createNode();
-            this.readNode = Message.READ.createNode();
             this.toJSTypeNode = JSForeignToJSTypeNodeGen.create();
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
             this.isGlobal = isGlobal;
+            this.interop = InteropLibrary.getFactory().createDispatched(5);
         }
 
         private Object foreignGet(TruffleObject thisObj, PropertyGetNode root) {
             Object key = root.getKey();
-            if (ForeignAccess.sendIsNull(isNullNode, thisObj)) {
+            if (interop.isNull(thisObj)) {
                 throw Errors.createTypeErrorCannotGetProperty(key, thisObj, isMethod, this);
             }
+            if (!(key instanceof String)) {
+                return Undefined.instance;
+            }
+            String stringKey = (String) key;
             Object foreignResult;
             if (optimistic) {
                 try {
-                    foreignResult = ForeignAccess.sendRead(readNode, thisObj, key);
+                    foreignResult = interop.readMember(thisObj, stringKey);
                 } catch (UnknownIdentifierException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     optimistic = false;
-                    if (context.isOptionNashornCompatibilityMode() && key instanceof String) {
+                    if (context.isOptionNashornCompatibilityMode()) {
                         foreignResult = tryInvokeGetter(thisObj, root);
                     } else {
                         return maybeGetFromPrototype(thisObj, key);
@@ -929,17 +926,13 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return maybeGetFromPrototype(thisObj, key);
                 }
             } else {
-                if (keyInfoNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    keyInfoNode = insert(Message.KEY_INFO.createNode());
-                }
-                if (KeyInfo.isReadable(ForeignAccess.sendKeyInfo(keyInfoNode, thisObj, key))) {
+                if (interop.isMemberReadable(thisObj, stringKey)) {
                     try {
-                        foreignResult = ForeignAccess.sendRead(readNode, thisObj, key);
+                        foreignResult = interop.readMember(thisObj, stringKey);
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                         return Undefined.instance;
                     }
-                } else if (context.isOptionNashornCompatibilityMode() && key instanceof String) {
+                } else if (context.isOptionNashornCompatibilityMode()) {
                     foreignResult = tryInvokeGetter(thisObj, root);
                 } else {
                     return maybeGetFromPrototype(thisObj, key);
@@ -984,19 +977,15 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (getterKey == null) {
                 return null;
             }
-            if (getterKeyInfoNode == null) {
+            if (getterInterop == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterKeyInfoNode = insert(Message.KEY_INFO.createNode());
+                getterInterop = insert(InteropLibrary.getFactory().createDispatched(3));
             }
-            if (!KeyInfo.isInvocable(ForeignAccess.sendKeyInfo(getterKeyInfoNode, thisObj, getterKey))) {
+            if (!getterInterop.isMemberInvocable(thisObj, getterKey)) {
                 return null;
             }
-            if (getterInvokeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterInvokeNode = insert(Message.INVOKE.createNode());
-            }
             try {
-                return ForeignAccess.sendInvoke(getterInvokeNode, thisObj, getterKey, new Object[]{});
+                return getterInterop.invokeMember(thisObj, getterKey, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             } catch (UnknownIdentifierException e) {
                 return null;
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
@@ -1005,24 +994,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         private Object getSize(TruffleObject thisObj) {
-            if (getSizeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.getSizeNode = insert(Message.GET_SIZE.createNode());
-            }
             try {
-                Object foreignResult = ForeignAccess.sendGetSize(getSizeNode, thisObj);
-                return toJSTypeNode.executeWithTarget(foreignResult);
+                return JSRuntime.longToIntOrDouble(interop.getArraySize(thisObj));
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, Message.GET_SIZE, this);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "getArraySize", this);
             }
-        }
-
-        private boolean hasSizeProperty(TruffleObject thisObj) {
-            if (hasSizeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.hasSizeNode = insert(Message.HAS_SIZE.createNode());
-            }
-            return ForeignAccess.sendHasSize(hasSizeNode, thisObj);
         }
 
         @Override
@@ -1031,7 +1007,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (isMethod && !isGlobal) {
                 return thisObj;
             }
-            if (isLength && hasSizeProperty(thisObj)) {
+            if (isLength && interop.hasArrayElements(thisObj)) {
                 return getSize(thisObj);
             }
             return foreignGet(thisObj, root);

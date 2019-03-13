@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import javax.script.Bindings;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -57,6 +56,8 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import javax.script.Bindings;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -69,8 +70,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -132,9 +134,9 @@ import com.oracle.truffle.js.runtime.builtins.JSURLEncoder;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
@@ -1182,7 +1184,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "isForeignObject(scriptObj)")
         protected Object loadTruffleObject(VirtualFrame frame, TruffleObject scriptObj,
-                        @Cached("createUnbox()") Node unboxNode) {
+                        @CachedLibrary(limit = "3") InteropLibrary interop) {
             JSRealm realm = realmNode.execute(frame);
             TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(scriptObj)) {
@@ -1193,7 +1195,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     return loadURL(realm, (URL) hostObject);
                 }
             }
-            Object unboxed = JSInteropNodeUtil.unbox(scriptObj, unboxNode);
+            Object unboxed = JSInteropUtil.toPrimitiveOrDefault(scriptObj, Null.instance, interop, this);
+            if (unboxed == Null.instance) {
+                throw cannotLoadScript(scriptObj);
+            }
             String stringPath = toString1(unboxed);
             return loadString(frame, stringPath);
         }

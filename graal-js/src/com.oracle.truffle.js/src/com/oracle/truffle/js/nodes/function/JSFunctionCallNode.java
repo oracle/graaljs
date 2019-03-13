@@ -58,8 +58,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -109,8 +108,6 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -1341,25 +1338,22 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private static class ForeignExecuteNode extends ForeignCallNode {
-        @Child protected Node callNode;
+        @Child protected InteropLibrary interop;
 
         ForeignExecuteNode(int expectedArgumentCount) {
             super(expectedArgumentCount);
+            this.interop = InteropLibrary.getFactory().createDispatched(3);
         }
 
         @Override
         public Object executeCall(Object[] arguments) {
             TruffleObject function = getForeignFunction(arguments);
             Object[] callArguments = exportArguments(arguments);
-            return convertForeignReturn(JSInteropNodeUtil.call(function, callArguments, getCallNode()));
-        }
-
-        protected Node getCallNode() {
-            if (callNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(JSInteropUtil.createCall());
+            try {
+                return convertForeignReturn(interop.execute(function, callArguments));
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(function, e, "execute", this);
             }
-            return callNode;
         }
     }
 
@@ -1375,7 +1369,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         ForeignInvokeNode(JavaScriptLanguage language, String functionName, int expectedArgumentCount) {
             super(expectedArgumentCount);
             this.functionName = functionName;
-            contextRef = language.getContextReference();
+            this.contextRef = language.getContextReference();
         }
 
         @Override
@@ -1391,7 +1385,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 assert getForeignFunction(arguments) == receiver;
                 TruffleObject truffleReceiver = (TruffleObject) receiver;
                 try {
-                    callReturn = ForeignAccess.sendInvoke(getInvokeNode(), truffleReceiver, functionName, callArguments);
+                    callReturn = interop.invokeMember(truffleReceiver, functionName, callArguments);
                 } catch (UnknownIdentifierException | UnsupportedMessageException uiex) {
                     JSRealm realm = contextRef.get();
                     if (realm.getContext().getContextOptions().hasForeignObjectPrototype()) {
@@ -1405,26 +1399,21 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                         Object function = getFunctionNode.getValue(prototype);
                         callReturn = callOnPrototypeNode.executeCall(JSArguments.create(receiver, function, JSArguments.extractUserArguments(arguments)));
                     } else {
-                        throw Errors.createTypeErrorInteropException(truffleReceiver, uiex, Message.INVOKE, null);
+                        throw Errors.createTypeErrorInteropException(truffleReceiver, uiex, "invokeMember", this);
                     }
                 } catch (UnsupportedTypeException | ArityException e) {
-                    throw Errors.createTypeErrorInteropException(truffleReceiver, e, Message.INVOKE, null);
+                    throw Errors.createTypeErrorInteropException(truffleReceiver, e, "invokeMember", this);
                 }
             } else {
                 TruffleObject function = getForeignFunction(arguments);
-                callReturn = JSInteropNodeUtil.call(function, callArguments, getCallNode());
+                try {
+                    callReturn = interop.execute(function, callArguments);
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    throw Errors.createTypeErrorInteropException(function, e, "execute", this);
+                }
             }
             return convertForeignReturn(callReturn);
         }
-
-        private Node getInvokeNode() {
-            if (invokeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                invokeNode = insert(JSInteropUtil.createInvoke());
-            }
-            return invokeNode;
-        }
-
     }
 
     /**

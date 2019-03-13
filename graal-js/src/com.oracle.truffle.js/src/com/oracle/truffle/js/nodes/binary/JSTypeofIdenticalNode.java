@@ -44,14 +44,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -70,8 +69,6 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * This node optimizes the code patterns of typeof(a) === "typename" and "typename" == typeof (a).
@@ -81,7 +78,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
  * @see TypeOfNode
  * @see JSRuntime#typeof(Object)
  */
-@ImportStatic({JSTypeofIdenticalNode.Type.class, JSInteropUtil.class})
+@ImportStatic({JSTypeofIdenticalNode.Type.class})
 public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     protected static final int MAX_CLASSES = 3;
 
@@ -201,23 +198,22 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         throw Errors.shouldNotReachHere();
     }
 
-    @Specialization(guards = {"isForeignObject(value)"})
+    @Specialization(guards = {"isForeignObject(value)"}, limit = "5")
     protected final boolean doForeignObject(TruffleObject value,
-                    @Cached("createIsExecutable()") Node isExecutable,
-                    @Cached("createIsBoxed()") Node isBoxed,
-                    @Cached("createUnbox()") Node unboxNode,
-                    @Cached("createIsInstantiable()") Node isInstantiable,
-                    @Cached("create()") JSForeignToJSTypeNode toJSTypeNode) {
+                    @CachedLibrary("value") InteropLibrary interop) {
         if (type == Type.Undefined || type == Type.Symbol || type == Type.False) {
             return false;
         } else {
-            if (ForeignAccess.sendIsBoxed(isBoxed, value)) {
-                Object unboxedValue = toJSTypeNode.executeWithTarget(JSInteropNodeUtil.unbox(value, unboxNode));
-                return doUncached(unboxedValue);
+            if (type == Type.Boolean) {
+                return interop.isBoolean(value);
+            } else if (type == Type.String) {
+                return interop.isString(value);
+            } else if (type == Type.Number) {
+                return interop.isNumber(value);
             } else if (type == Type.Function) {
-                return ForeignAccess.sendIsExecutable(isExecutable, value) || ForeignAccess.sendIsInstantiable(isInstantiable, value);
+                return interop.isExecutable(value) || interop.isInstantiable(value);
             } else if (type == Type.Object) {
-                return !ForeignAccess.sendIsExecutable(isExecutable, value) && !ForeignAccess.sendIsInstantiable(isInstantiable, value);
+                return !interop.isExecutable(value) && !interop.isInstantiable(value) && !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value);
             } else {
                 return false;
             }

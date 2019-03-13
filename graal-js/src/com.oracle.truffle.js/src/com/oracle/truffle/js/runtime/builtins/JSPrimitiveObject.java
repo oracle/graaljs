@@ -41,15 +41,13 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 public abstract class JSPrimitiveObject extends JSBuiltinObject implements PrototypeSupplier {
     protected JSPrimitiveObject() {
@@ -78,7 +76,7 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject implements Proto
         String thisStr = (String) thisObj;
         Object boxedString = context.getRealm().getEnv().asBoxedGuestValue(thisStr);
         try {
-            return ForeignAccess.sendRead(JSInteropUtil.createRead(), (TruffleObject) boxedString, name);
+            return InteropLibrary.getFactory().getUncached().readMember(boxedString, name);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return Undefined.instance;
         }
@@ -106,7 +104,7 @@ public abstract class JSPrimitiveObject extends JSBuiltinObject implements Proto
         String thisStr = (String) thisObj;
         Object boxedString = context.getRealm().getEnv().asBoxedGuestValue(thisStr);
         try {
-            return ForeignAccess.sendRead(JSInteropUtil.createRead(), (TruffleObject) boxedString, name);
+            return InteropLibrary.getFactory().getUncached().readMember(boxedString, name);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return null;
         }

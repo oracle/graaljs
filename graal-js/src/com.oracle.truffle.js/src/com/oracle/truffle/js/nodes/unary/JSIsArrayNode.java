@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -54,7 +54,6 @@ import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * ES6 7.2.2 IsArray(argument).
@@ -67,9 +66,6 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
     protected static final int MAX_JSCLASS_COUNT = 1;
 
     private final boolean jsType;
-    @CompilationFinal private ConditionProfile isArrayProfile;
-    @CompilationFinal private ConditionProfile isProxyProfile;
-    @Child private Node hasSizeNode;
 
     protected JSIsArrayNode(boolean jsType) {
         this.jsType = jsType;
@@ -99,39 +95,30 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isJSProxy(object)"})
-    protected boolean doIsProxy(DynamicObject object) {
-        init();
-        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile, hasSizeNode);
+    protected boolean doIsProxy(DynamicObject object,
+                    @Shared("isArray") @Cached("createBinaryProfile()") ConditionProfile isArrayProfile,
+                    @Shared("isProxy") @Cached("createBinaryProfile()") ConditionProfile isProxyProfile,
+                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile, interop);
     }
 
     @Specialization(replaces = {"doIsArrayJSClass", "doIsProxy"})
-    protected boolean doGeneric(DynamicObject object) {
-        init();
-        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile, hasSizeNode);
+    protected boolean doGeneric(DynamicObject object,
+                    @Shared("isArray") @Cached("createBinaryProfile()") ConditionProfile isArrayProfile,
+                    @Shared("isProxy") @Cached("createBinaryProfile()") ConditionProfile isProxyProfile,
+                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile, interop);
     }
 
     @Specialization(guards = {"!isDynamicObject(object)"})
-    protected boolean doNotObject(Object object) {
+    protected boolean doNotObject(Object object,
+                    @Shared("isArray") @Cached("createBinaryProfile()") ConditionProfile isArrayProfile,
+                    @Shared("isProxy") @Cached("createBinaryProfile()") ConditionProfile isProxyProfile,
+                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
         if (jsType) {
             return false;
         }
-        init();
-        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile, hasSizeNode);
-    }
-
-    private void init() {
-        if (isArrayProfile == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            isArrayProfile = ConditionProfile.createBinaryProfile();
-        }
-        if (isProxyProfile == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            isProxyProfile = ConditionProfile.createBinaryProfile();
-        }
-        if (hasSizeNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            hasSizeNode = insert(JSInteropUtil.createHasSize());
-        }
+        return JSRuntime.isArray(object, isArrayProfile, isProxyProfile, interop);
     }
 
     public static JSIsArrayNode createIsArrayLike() {

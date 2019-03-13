@@ -46,6 +46,7 @@ import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
@@ -69,10 +70,6 @@ public final class JavaSuperAdapter implements TruffleObject {
 
     public Object getAdapter() {
         return adapter;
-    }
-
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof JavaSuperAdapter;
     }
 
     static final class NameCache {
@@ -122,42 +119,42 @@ public final class JavaSuperAdapter implements TruffleObject {
         return true;
     }
 
+    @ExportMessage
+    Object readMember(String name,
+                    @Shared("cache") @Cached NameCache cache,
+                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedMessageException, UnknownIdentifierException {
+        String superMethodName = cache.getSuperMethodName(name);
+        return interop.readMember(getAdapter(), superMethodName);
+    }
+
+    @ExportMessage
+    Object invokeMember(String name, Object[] args,
+                    @Shared("cache") @Cached NameCache cache,
+                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        String superMethodName = cache.getSuperMethodName(name);
+        return interop.invokeMember(getAdapter(), superMethodName, args);
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(String name,
+                    @Shared("cache") @Cached NameCache cache,
+                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interop) {
+        String superMethodName = cache.getSuperMethodName(name);
+        return interop.isMemberReadable(getAdapter(), superMethodName);
+    }
+
+    @ExportMessage
+    boolean isMemberInvocable(String name,
+                    @Shared("cache") @Cached NameCache cache,
+                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interop) {
+        String superMethodName = cache.getSuperMethodName(name);
+        return interop.isMemberInvocable(getAdapter(), superMethodName);
+    }
+
     @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    static Object readMember(JavaSuperAdapter superAdapter, String name,
-                    @Shared("cache") @Cached NameCache cache,
-                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary library) throws UnsupportedMessageException, UnknownIdentifierException {
-        String superMethodName = cache.getSuperMethodName(name);
-        return library.readMember(superAdapter.getAdapter(), superMethodName);
-    }
-
-    @ExportMessage
-    static Object invokeMember(JavaSuperAdapter superAdapter, String name, Object[] args,
-                    @Shared("cache") @Cached NameCache cache,
-                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary library)
-                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        String superMethodName = cache.getSuperMethodName(name);
-        return library.invokeMember(superAdapter.getAdapter(), superMethodName, args);
-    }
-
-    @ExportMessage
-    static boolean isMemberReadable(JavaSuperAdapter superAdapter, String name,
-                    @Shared("cache") @Cached NameCache cache,
-                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary library) {
-        String superMethodName = cache.getSuperMethodName(name);
-        return library.isMemberReadable(superAdapter.getAdapter(), superMethodName);
-    }
-
-    @ExportMessage
-    static boolean isMemberInvocable(JavaSuperAdapter superAdapter, String name,
-                    @Shared("cache") @Cached NameCache cache,
-                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary library) {
-        String superMethodName = cache.getSuperMethodName(name);
-        return library.isMemberInvocable(superAdapter.getAdapter(), superMethodName);
     }
 }

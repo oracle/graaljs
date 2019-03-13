@@ -43,13 +43,12 @@ package com.oracle.truffle.js.nodes.unary;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
@@ -66,14 +65,12 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * This node optimizes the check whether the argument is null or undefined. Used from the
  * {@link JSEqualNode} for optimizing {@code a == undefined;} and {@code a == null;}
  *
  */
-@ImportStatic(JSInteropUtil.class)
 public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     protected static final int MAX_SHAPE_COUNT = 1;
     protected static final int MAX_TYPE_COUNT = 1;
@@ -183,10 +180,10 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
         return false;
     }
 
-    @Specialization(guards = "isForeignObject(operand)")
+    @Specialization(guards = "isForeignObject(operand)", limit = "1")
     protected boolean doForeign(TruffleObject operand,
-                    @Cached("createIsNull()") Node isNullNode) {
-        return ForeignAccess.sendIsNull(isNullNode, operand);
+                    @CachedLibrary("operand") InteropLibrary interop) {
+        return interop.isNull(operand);
     }
 
     public static JSIsNullOrUndefinedNode createFromEquals(JavaScriptNode left, JavaScriptNode right) {
