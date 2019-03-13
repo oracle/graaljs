@@ -63,7 +63,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public class AsyncIteratorCloseWrapperNode extends AwaitNode {
 
-    private final JSContext context;
     @Child private JavaScriptNode loopNode;
     @Child private GetMethodNode getReturnNode;
     @Child private JSFunctionCallNode returnMethodCallNode;
@@ -78,7 +77,6 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
     protected AsyncIteratorCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iteratorNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode,
                     JavaScriptNode doneNode) {
         super(context, null, asyncContextNode, asyncResultNode);
-        this.context = context;
         this.loopNode = loopNode;
         this.iteratorNode = iteratorNode;
         this.doneNode = doneNode;
