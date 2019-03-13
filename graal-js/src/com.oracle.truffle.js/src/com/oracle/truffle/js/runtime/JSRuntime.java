@@ -184,7 +184,7 @@ public final class JSRuntime {
         }
     }
 
-    public static Object longToIntOrDouble(long value) {
+    public static Number longToIntOrDouble(long value) {
         if (Integer.MIN_VALUE <= value && value <= Integer.MAX_VALUE) {
             return (int) value;
         } else {
