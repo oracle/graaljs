@@ -20,10 +20,6 @@
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
   }, {
-    "filePath" : "built-ins/Function/prototype/bind/length-exceeds-int32.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "SKIP",
     "comment" : "Unimplemented RegExp proposal (GR-6965)."

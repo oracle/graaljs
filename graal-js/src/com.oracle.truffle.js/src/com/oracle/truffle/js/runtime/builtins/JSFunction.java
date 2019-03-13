@@ -366,13 +366,13 @@ public final class JSFunction extends JSBuiltinObject {
         DynamicObject proto = JSObject.getPrototype(thisFnObj);
         DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, false, null, null);
 
-        int length = 0;
+        long length = 0;
         boolean targetHasLength = JSObject.hasOwnProperty(thisFnObj, JSFunction.LENGTH);
         boolean mustSetLength = true;
         if (targetHasLength) {
             Object targetLen = JSObject.get(thisFnObj, JSFunction.LENGTH);
             if (JSRuntime.isNumber(targetLen)) {
-                int targetLenInt = (int) JSRuntime.toInteger(targetLen);
+                long targetLenInt = JSRuntime.toInteger(targetLen);
                 length = Math.max(0, targetLenInt - boundArguments.length);
                 if (targetLenInt == getLength(thisFnObj)) {
                     mustSetLength = false;
@@ -380,7 +380,7 @@ public final class JSFunction extends JSBuiltinObject {
             }
         }
         if (mustSetLength) {
-            setFunctionLength(boundFunction, length);
+            setFunctionLength(boundFunction, JSRuntime.longToIntOrDouble(length));
         }
 
         String targetName = getFunctionName(thisFnObj);
@@ -436,7 +436,7 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     @TruffleBoundary
-    public static void setFunctionLength(DynamicObject functionObj, int length) {
+    public static void setFunctionLength(DynamicObject functionObj, Number length) {
         JSObject.defineOwnProperty(functionObj, JSFunction.LENGTH, PropertyDescriptor.createData(length, false, false, true));
     }
 
