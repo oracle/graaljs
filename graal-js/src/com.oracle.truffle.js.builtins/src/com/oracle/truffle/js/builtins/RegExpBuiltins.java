@@ -154,10 +154,10 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             Object compiledRegex = realm.getLazyStaticRegexResultCompiledRegex();
             String input = realm.getLazyStaticRegexResultInputString();
             long fromIndex = realm.getLazyStaticRegexResultFromIndex();
-            realm.switchToEagerStaticRegExpResults();
-            if (compiledRegex != null) {
+            if (compiledRegex != null && context.getRegExpStaticResultUnusedAssumption().isValid()) {
+                realm.switchToEagerStaticRegExpResults();
                 Object result = compiledRegexAccessor.exec(compiledRegex, input, fromIndex);
-                realm.setRegexResult(result);
+                realm.setRegexResult(compiledRegex, input, result);
             }
             return realm.getRegexResult();
         }
@@ -169,24 +169,9 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             super(context, builtin);
         }
 
-        @Specialization(assumptions = "getStaticResultUnusedAssumption()")
-        String getInputLazy() {
-            return getContext().getRealm().getLazyStaticRegexResultInputString();
-        }
-
         @Specialization
-        String getInputEager(@Cached("createGetResultNode()") GetStaticRegExpResultNode getResultNode,
-                        @Cached("create()") TRegexUtil.TRegexResultAccessor resultAccessor) {
-            Object result = getResultNode.execute();
-            return resultAccessor.isMatch(result) ? resultAccessor.input(result) : "";
-        }
-
-        Assumption getStaticResultUnusedAssumption() {
-            return getContext().getRegExpStaticResultUnusedAssumption();
-        }
-
-        GetStaticRegExpResultNode createGetResultNode() {
-            return GetStaticRegExpResultNode.create(getContext());
+        String getInputProp() {
+            return getContext().getRealm().getLazyStaticRegexResultInputString();
         }
     }
 
@@ -221,9 +206,10 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         @Specialization
         boolean getMultilineEager(@Cached("createGetResultNode()") GetStaticRegExpResultNode getResultNode,
                         @Cached("create()") TRegexUtil.TRegexResultAccessor resultAccessor) {
+            Object compiledRegex = getContext().getRealm().getLazyStaticRegexResultCompiledRegex();
             Object result = getResultNode.execute();
             if (!JSTruffleOptions.NashornCompatibilityMode && resultAccessor.isMatch(result)) {
-                return multilineAccessor.get(resultAccessor.regex(result));
+                return multilineAccessor.get(compiledRegex);
             } else {
                 return false;
             }
@@ -248,6 +234,10 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             getResultNode = GetStaticRegExpResultNode.create(context);
             resultAccessor = TRegexUtil.TRegexResultAccessor.create();
         }
+
+        String getInput() {
+            return getContext().getRealm().getLazyStaticRegexResultInputString();
+        }
     }
 
     abstract static class JSRegExpStaticResultGetGroupNode extends JSRegExpStaticResultPropertyNode {
@@ -266,7 +256,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             if (resultAccessor.isMatch(result) && resultAccessor.groupCount(result) > groupNumber) {
                 int start = resultAccessor.captureGroupStart(result, groupNumber);
                 if (start >= 0) {
-                    return Boundaries.substring(resultAccessor.input(result), start, resultAccessor.captureGroupEnd(result, groupNumber));
+                    return Boundaries.substring(getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber));
                 }
             }
             return "";
@@ -287,7 +277,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
                 if (groupNumber > 0) {
                     int start = resultAccessor.captureGroupStart(result, groupNumber);
                     if (start >= 0) {
-                        return Boundaries.substring(resultAccessor.input(result), start, resultAccessor.captureGroupEnd(result, groupNumber));
+                        return Boundaries.substring(getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber));
                     }
                 }
             }
@@ -306,7 +296,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int start = resultAccessor.captureGroupStart(result, 0);
-                return Boundaries.substring(resultAccessor.input(result), 0, start);
+                return Boundaries.substring(getInput(), 0, start);
             } else {
                 return "";
             }
@@ -324,7 +314,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
                 int end = resultAccessor.captureGroupEnd(result, 0);
-                return Boundaries.substring(resultAccessor.input(result), end);
+                return Boundaries.substring(getInput(), end);
             } else {
                 return "";
             }

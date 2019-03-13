@@ -228,7 +228,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return BuildGroupsObjectNodeGen.create();
         }
 
-        public abstract DynamicObject execute(JSContext context, DynamicObject regExp, Object regexResult);
+        public abstract DynamicObject execute(JSContext context, DynamicObject regExp, Object regexResult, String input);
 
         // We can reuse the cachedGroupsFactory even if the new groups factory is different, as long
         // as the compiledRegex is the same. This can happen if a new RegExp instance is repeatedly
@@ -237,23 +237,24 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         static DynamicObject doCachedGroupsFactory(JSContext context,
                         @SuppressWarnings("unused") DynamicObject regExp,
                         Object regexResult,
+                        String input,
                         @Cached("getCompiledRegex(regExp)") @SuppressWarnings("unused") Object cachedCompiledRegex,
                         @Cached("getGroupsFactory(regExp)") JSObjectFactory cachedGroupsFactory,
                         @Cached("createIsJSRegExpNode()") @SuppressWarnings("unused") IsJSClassNode isJSRegExpNode) {
-            return doIt(context, cachedGroupsFactory, regexResult);
+            return doIt(context, cachedGroupsFactory, regexResult, input);
         }
 
         @Specialization
         @TruffleBoundary
-        static DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, Object regexResult) {
-            return doIt(context, JSRegExp.getGroupsFactory(regExp), regexResult);
+        static DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, Object regexResult, String input) {
+            return doIt(context, JSRegExp.getGroupsFactory(regExp), regexResult, input);
         }
 
-        private static DynamicObject doIt(JSContext context, JSObjectFactory groupsFactory, Object regexResult) {
+        private static DynamicObject doIt(JSContext context, JSObjectFactory groupsFactory, Object regexResult, String input) {
             if (groupsFactory == null) {
                 return Undefined.instance;
             } else {
-                return JSObject.create(context, groupsFactory, regexResult);
+                return JSObject.create(context, groupsFactory, regexResult, input);
             }
         }
     }
@@ -335,7 +336,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 if (ecmaScriptVersion < 6) {
                     return result;
                 }
-                DynamicObject groups = getGroupsObject(regExp, result);
+                DynamicObject groups = getGroupsObject(regExp, result, input);
                 return getMatchResult(result, input, groups);
             } else {
                 if (ecmaScriptVersion < 8 || global || sticky) {
@@ -351,12 +352,12 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // builds the object containing the matches of the named capture groups
-        private DynamicObject getGroupsObject(DynamicObject regExp, Object result) {
+        private DynamicObject getGroupsObject(DynamicObject regExp, Object result, String input) {
             if (groupsBuilder == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 groupsBuilder = insert(BuildGroupsObjectNode.create());
             }
-            return groupsBuilder.execute(context, regExp, result);
+            return groupsBuilder.execute(context, regExp, result, input);
         }
 
         private long getLastIndex(DynamicObject regExp) {

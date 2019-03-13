@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.intl;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -70,7 +69,7 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!hasNamedCG(compiledRegex)"})
     protected DynamicObject createWithoutNamedCG(Object compiledRegex) {
-        DynamicObject reObj = JSRegExp.create(context, (TruffleObject) compiledRegex, null);
+        DynamicObject reObj = JSRegExp.create(context, compiledRegex, null);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }
@@ -78,7 +77,7 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
     @Specialization(guards = {"hasNamedCG(compiledRegex)"})
     protected DynamicObject createWithNamedCG(Object compiledRegex) {
         Object namedCaptureGroups = readNamedCG.execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
-        DynamicObject reObj = JSRegExp.create(context, (TruffleObject) compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups));
+        DynamicObject reObj = JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups));
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }

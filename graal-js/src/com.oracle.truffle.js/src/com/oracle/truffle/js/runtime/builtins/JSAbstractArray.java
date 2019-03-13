@@ -97,6 +97,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     private static final HiddenKey ARRAY_OFFSET_ID = new HiddenKey("arrayOffset");
     private static final HiddenKey HOLE_COUNT_ID = new HiddenKey("holeCount");
     public static final HiddenKey LAZY_REGEX_RESULT_ID = new HiddenKey("lazyRegexResult");
+    public static final HiddenKey LAZY_REGEX_ORIGINAL_INPUT_ID = new HiddenKey("lazyRegexResultOriginalInput");
     public static final Property ARRAY_PROPERTY;
     public static final Property ARRAY_TYPE_PROPERTY;
     private static final Property ALLOCATION_SITE_PROPERTY;
@@ -106,6 +107,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     private static final Property ARRAY_OFFSET_PROPERTY;
     private static final Property HOLE_COUNT_PROPERTY;
     public static final Property LAZY_REGEX_RESULT_PROPERTY;
+    public static final Property LAZY_REGEX_ORIGINAL_INPUT_PROPERTY;
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
@@ -119,6 +121,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         HOLE_COUNT_PROPERTY = JSObjectUtil.makeHiddenProperty(HOLE_COUNT_ID, allocator.locationForType(int.class), false);
         LAZY_REGEX_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(LAZY_REGEX_RESULT_ID,
                         allocator.locationForType(TruffleObject.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        LAZY_REGEX_ORIGINAL_INPUT_PROPERTY = JSObjectUtil.makeHiddenProperty(LAZY_REGEX_ORIGINAL_INPUT_ID,
+                        allocator.locationForType(String.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
     }
 
     public static ScriptArray arrayGetArrayType(DynamicObject thisObj) {
@@ -228,6 +232,14 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     public static TruffleObject arrayGetRegexResult(DynamicObject thisObj, boolean arrayCondition) {
         return (TruffleObject) LAZY_REGEX_RESULT_PROPERTY.get(thisObj, arrayCondition);
+    }
+
+    public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj) {
+        return arrayGetRegexResultOriginalInput(thisObj, JSArray.isJSArray(thisObj) && JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY);
+    }
+
+    public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj, boolean arrayCondition) {
+        return (String) LAZY_REGEX_ORIGINAL_INPUT_PROPERTY.get(thisObj, arrayCondition);
     }
 
     public static void putArrayProperties(DynamicObject arrayPrototype, ScriptArray arrayType) {

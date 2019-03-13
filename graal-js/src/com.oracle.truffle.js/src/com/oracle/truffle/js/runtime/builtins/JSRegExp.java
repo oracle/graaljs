@@ -102,7 +102,9 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     // A pointer from the `groups` object of a regex result back to the regex result.
     // Needed to calculate the contents of the `groups` object lazily.
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
+    public static final HiddenKey GROUPS_ORIGINAL_INPUT_ID = new HiddenKey("regexResultOriginalIndex");
     private static final Property GROUPS_RESULT_PROPERTY;
+    private static final Property GROUPS_ORIGINAL_INPUT_PROPERTY;
 
     private static final String[] STATIC_REGEXP_RESULT_PROPERTIES_NASHORN_ONLY = {"input", "multiline", "lastMatch", "lastParen", "leftContext", "rightContext"};
     private static final String[] STATIC_REGEXP_RESULT_PROPERTIES_NO_NASHORN = {"input", "lastMatch", "lastParen", "leftContext", "rightContext"};
@@ -150,7 +152,8 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         @Override
         public Object get(DynamicObject object) {
             Object regexResult = GROUPS_RESULT_PROPERTY.get(object, false);
-            return materializeNode.materializeGroup(regexResult, groupIndex);
+            String input = (String) GROUPS_ORIGINAL_INPUT_PROPERTY.get(object, false);
+            return materializeNode.materializeGroup(regexResult, groupIndex, input);
         }
 
         @Override
@@ -168,6 +171,8 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
         Shape.Allocator resultAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
         GROUPS_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_RESULT_ID, resultAllocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        GROUPS_ORIGINAL_INPUT_PROPERTY = JSObjectUtil.makeHiddenProperty(GROUPS_ORIGINAL_INPUT_ID,
+                        resultAllocator.locationForType(String.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
     }
 
     private JSRegExp() {
@@ -241,6 +246,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     public static JSObjectFactory buildGroupsFactory(JSContext ctx, Object namedCaptureGroups) {
         Shape groupsShape = ctx.getEmptyShapeNullPrototype();
         groupsShape = groupsShape.addProperty(GROUPS_RESULT_PROPERTY);
+        groupsShape = groupsShape.addProperty(GROUPS_ORIGINAL_INPUT_PROPERTY);
         for (Object key : JSInteropNodeUtil.keys((TruffleObject) namedCaptureGroups)) {
             String groupName = (String) key;
             int groupIndex = TRegexUtil.InteropReadIntMemberNode.getUncached().execute(namedCaptureGroups, groupName);
@@ -327,6 +333,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSArray.INSTANCE, ctx);
         initialShape = JSArray.addArrayProperties(initialShape);
         initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_RESULT_PROPERTY);
+        initialShape = initialShape.addProperty(JSAbstractArray.LAZY_REGEX_ORIGINAL_INPUT_PROPERTY);
         final Property inputProperty = JSObjectUtil.makeDataProperty(JSRegExp.INPUT, initialShape.allocator().locationForType(String.class, EnumSet.of(LocationModifier.NonNull)),
                         JSAttributes.getDefault());
         initialShape = initialShape.addProperty(inputProperty);

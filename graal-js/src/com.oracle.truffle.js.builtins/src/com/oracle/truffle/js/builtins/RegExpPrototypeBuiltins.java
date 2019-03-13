@@ -334,7 +334,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         // converts RegexResult into DynamicObject
         protected DynamicObject getMatchResult(Object result, String inputStr) {
-            assert inputStr.equals(resultAccessor.input(result));
             assert getContext().getEcmaScriptVersion() < 6;
 
             if (setIndexNode == null || setInputNode == null) {
@@ -342,7 +341,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 this.setIndexNode = insert(PropertySetNode.create("index", false, getContext(), false));
                 this.setInputNode = insert(PropertySetNode.create("input", false, getContext(), false));
             }
-            Object[] matches = resultMaterializer.materializeFull(result);
+            Object[] matches = resultMaterializer.materializeFull(result, inputStr);
             DynamicObject array = JSArray.createConstant(getContext(), matches);
             setIndexNode.setValueInt(array, resultAccessor.captureGroupStart(result, 0));
             setInputNode.setValue(array, inputStr);
@@ -720,7 +719,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         prevMatchEnd = matchEnd;
                         long numberOfCaptures = resultAccessor.groupCount(tRegexResult);
                         for (int i = 1; i < numberOfCaptures; i++) {
-                            write(array, arrayLength, TRegexUtil.TRegexMaterializeResultNode.materializeGroup(resultAccessor, tRegexResult, i));
+                            write(array, arrayLength, TRegexUtil.TRegexMaterializeResultNode.materializeGroup(resultAccessor, tRegexResult, i, str));
                             arrayLength++;
                             if (arrayLength == lim) {
                                 prematureReturnBranch.enter();

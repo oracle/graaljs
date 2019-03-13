@@ -90,11 +90,9 @@ public final class TRegexUtil {
         public static final class RegexResult {
 
             public static final String IS_MATCH = "isMatch";
-            public static final String INPUT = "input";
             public static final String GROUP_COUNT = "groupCount";
             public static final String START = "start";
             public static final String END = "end";
-            public static final String REGEX = "regex";
         }
     }
 
@@ -667,10 +665,6 @@ public final class TRegexUtil {
             return getReadIsMatchNode().execute(regexResultObject, Props.RegexResult.IS_MATCH);
         }
 
-        public String input(Object regexResultObject) {
-            return getReadInputNode().execute(regexResultObject, Props.RegexResult.INPUT);
-        }
-
         public int groupCount(Object regexResultObject) {
             return getReadGroupCountNode().execute(regexResultObject, Props.RegexResult.GROUP_COUNT);
         }
@@ -687,24 +681,12 @@ public final class TRegexUtil {
             return captureGroupEnd(regexResultObject, i) - captureGroupStart(regexResultObject, i);
         }
 
-        public Object regex(Object regexResultObject) {
-            return getReadRegexNode().execute(regexResultObject, Props.RegexResult.REGEX);
-        }
-
         private InteropReadBooleanMemberNode getReadIsMatchNode() {
             if (readIsMatchNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 readIsMatchNode = insert(InteropReadBooleanMemberNode.create());
             }
             return readIsMatchNode;
-        }
-
-        private InteropReadStringMemberNode getReadInputNode() {
-            if (readInputNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readInputNode = insert(InteropReadStringMemberNode.create());
-            }
-            return readInputNode;
         }
 
         private InteropReadIntMemberNode getReadGroupCountNode() {
@@ -746,14 +728,6 @@ public final class TRegexUtil {
             }
             return readEndIndexNode;
         }
-
-        private InteropReadMemberNode getReadRegexNode() {
-            if (readRegexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readRegexNode = insert(InteropReadMemberNode.create());
-            }
-            return readRegexNode;
-        }
     }
 
     public static final class TRegexMaterializeResultNode extends Node {
@@ -774,12 +748,11 @@ public final class TRegexUtil {
             return UNCACHED;
         }
 
-        public Object materializeGroup(Object regexResult, int i) {
-            return materializeGroup(accessor, regexResult, i);
+        public Object materializeGroup(Object regexResult, int i, String input) {
+            return materializeGroup(accessor, regexResult, i, input);
         }
 
-        public static Object materializeGroup(TRegexResultAccessor accessor, Object regexResult, int i) {
-            final String input = accessor.input(regexResult);
+        public static Object materializeGroup(TRegexResultAccessor accessor, Object regexResult, int i, String input) {
             final int beginIndex = accessor.captureGroupStart(regexResult, i);
             if (beginIndex == Constants.CAPTURE_GROUP_NO_MATCH) {
                 assert i > 0;
@@ -789,11 +762,11 @@ public final class TRegexUtil {
             }
         }
 
-        public Object[] materializeFull(Object regexResult) {
+        public Object[] materializeFull(Object regexResult, String input) {
             final int groupCount = accessor.groupCount(regexResult);
             Object[] result = new Object[groupCount];
             for (int i = 0; i < groupCount; i++) {
-                result[i] = materializeGroup(regexResult, i);
+                result[i] = materializeGroup(regexResult, i, input);
             }
             return result;
         }

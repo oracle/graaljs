@@ -1331,10 +1331,12 @@ public class JSRealm {
         return lazyStaticRegexResultFromIndex;
     }
 
-    public void setRegexResult(Object regexResult) {
+    public void setRegexResult(Object tRegexCompiledRegex, String input, Object regexResult) {
         assert context.isOptionRegexpStaticResult();
         assert !context.getRegExpStaticResultUnusedAssumption().isValid();
         assert TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(regexResult, TRegexUtil.Props.RegexResult.IS_MATCH);
+        lazyStaticRegexResultCompiledRegex = tRegexCompiledRegex;
+        lazyStaticRegexResultInputString = input;
         this.regexResult = regexResult;
     }
 
@@ -1355,15 +1357,12 @@ public class JSRealm {
         if (context.getRegExpStaticResultUnusedAssumption().isValid()) {
             setRegexResultLazy(compiledRegex, input, fromIndex);
         } else {
-            setRegexResult(result);
+            setRegexResult(compiledRegex, input, result);
         }
     }
 
     public void switchToEagerStaticRegExpResults() {
         context.getRegExpStaticResultUnusedAssumption().invalidate();
-        lazyStaticRegexResultCompiledRegex = null;
-        lazyStaticRegexResultInputString = null;
-        lazyStaticRegexResultFromIndex = 0;
     }
 
     public OptionValues getOptions() {
