@@ -25,6 +25,23 @@ local common = import '../common.jsonnet';
     timelimit: '15:00',
   },
 
+  local gateCoverage = {
+    downloads+: {
+      ECLIPSE: {name: 'eclipse', version: '4.5.2.1', platformspecific: true},
+    },
+    environment+: {
+      ECLIPSE_EXE: '$ECLIPSE/eclipse',
+    },
+    setup+: [
+      ['mx', 'sversions'],
+    ],
+    run+: [
+      ['mx', '--jacoco-whitelist-package', 'com.oracle.js.parser', '--jacoco-whitelist-package', 'com.oracle.truffle.js', '--jacoco-exclude-annotation', '@GeneratedBy', '--strict-compliance', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', '${GATE_TAGS}', '--jacocout', 'html'],
+      ['mx', '--jacoco-whitelist-package', 'com.oracle.js.parser', '--jacoco-whitelist-package', 'com.oracle.truffle.js', '--jacoco-exclude-annotation', '@GeneratedBy', 'sonarqube-upload', "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.js", "-Dsonar.projectName=GraalVM - JS", '--exclude-generated']
+    ],
+    timelimit: '30:00',
+  },
+
   local gateGraalTip = {
     setup+: [
       ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal.git'], '../../graal'],
@@ -59,6 +76,9 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'directbytebuffer'}}   + {name: 'js-gate-directbytebuffer-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'cloneuninitialized'}} + {name: 'js-gate-cloneuninitialized-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'lazytranslation'}}    + {name: 'js-gate-lazytranslation-graal-tip-jdk8-linux-amd64'},
+
+    // jdk8 - coverage
+    graalJs + common.jdk8 + {targets: ['weekly']} + common.linux + gateCoverage  + {environment+: {GATE_TAGS: 'fullbuild,default'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
 
     // jdk 8 - sparc
     graalJs + common.jdk8 + common.gate + common.sparc + gateGraalTip    + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk8-solaris-sparcv9'},
