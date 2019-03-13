@@ -128,7 +128,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
     public final Object executeForEachIndex(TruffleObject target, TruffleObject callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
         boolean isArray = isArrayNode.execute(target);
-        if (isArray) {
+        if (isArray && context.getArrayPrototypeNoElementsAssumption().isValid()) {
             return executeForEachIndexFast((DynamicObject) target, callback, callbackThisArg, fromIndex, length, isArray, initialResult);
         } else {
             return executeForEachIndexSlow(target, callback, callbackThisArg, fromIndex, length, initialResult);
