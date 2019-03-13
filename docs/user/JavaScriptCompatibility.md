@@ -374,6 +374,9 @@ var result = rFunc();
 Exceptions can occur when an invalid `languageId` is passed, when the file identified by `sourceFileName` cannot be found, or when the language throws an exception during parsing (parse time errors, e.g. syntax errors).
 Exceptions thrown by the evaluated program are only thrown once the resulting function is evaluated.
 
+The `Polyglot.evalFile` function is available by default when the `Polyglot` builtin is available, unless deactivated by setting the `js.polyglot-evalfile` option to `false`.
+It is also available when `js.debug-builtin` is activated.
+
 ### Debug
 
 requires starting the engine with the `js.debug-builtin` flag.

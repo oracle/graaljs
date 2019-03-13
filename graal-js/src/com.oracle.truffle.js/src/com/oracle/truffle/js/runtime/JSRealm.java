@@ -1031,12 +1031,16 @@ public class JSRealm {
     }
 
     private void setupPolyglot() {
-        DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_CLASS_NAME);
+        DynamicObject polyglotObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, POLYGLOT_CLASS_NAME);
+
         if (getContext().isOptionDebugBuiltin()) {
-            JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_INTERNAL_CLASS_NAME);
+            JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, POLYGLOT_INTERNAL_CLASS_NAME);
+        } else if (getContext().getContextOptions().isPolyglotEvalFile()) {
+            // already loaded above when `debug-builtin` is true
+            JSObjectUtil.putDataProperty(context, polyglotObject, "evalFile", lookupFunction(POLYGLOT_INTERNAL_CLASS_NAME, "evalFile"), JSAttributes.getDefaultNotEnumerable());
         }
-        putGlobalProperty(POLYGLOT_CLASS_NAME, obj);
+        putGlobalProperty(POLYGLOT_CLASS_NAME, polyglotObject);
     }
 
     private void addConsoleGlobals() {

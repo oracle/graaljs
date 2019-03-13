@@ -111,8 +111,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         // external
         export(2),
         import_(1),
-        eval(2),
-        evalFile(2);
+        eval(2);
 
         private final int length;
 
@@ -135,8 +134,6 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                 return PolyglotImportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case eval:
                 return PolyglotEvalNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-            case evalFile:
-                return PolyglotEvalFileNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -163,6 +160,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             keys(1),
             hasKeys(1),
             isInstantiable(1),
+            evalFile(2), // under special flag
 
             createForeignObject(0) {
                 @Override
@@ -224,6 +222,8 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                     return PolyglotToPolyglotValueNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case hasKeys:
                     return PolyglotHasKeysNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                case evalFile:
+                    return PolyglotEvalFileNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
                 case createForeignObject:
                     if (!JSTruffleOptions.SubstrateVM) {
                         return PolyglotCreateForeignObjectNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));

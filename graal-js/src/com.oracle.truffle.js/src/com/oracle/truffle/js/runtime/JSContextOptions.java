@@ -234,6 +234,10 @@ public final class JSContextOptions {
     @Option(name = POLYGLOT_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Polyglot' global property.") //
     public static final OptionKey<Boolean> POLYGLOT_BUILTIN = new OptionKey<>(true);
 
+    public static final String POLYGLOT_EVALFILE_NAME = JS_OPTION_PREFIX + "polyglot-evalfile";
+    @Option(name = POLYGLOT_EVALFILE_NAME, category = OptionCategory.USER, help = "Provide 'Polyglot.evalFile' function.") //
+    public static final OptionKey<Boolean> POLYGLOT_EVALFILE = new OptionKey<>(true);
+
     public static final String AWAIT_OPTIMIZATION_NAME = JS_OPTION_PREFIX + "await-optimization";
     @Option(name = AWAIT_OPTIMIZATION_NAME, category = OptionCategory.INTERNAL, help = "Use PromiseResolve for Await.") //
     public static final OptionKey<Boolean> AWAIT_OPTIMIZATION = new OptionKey<>(true);
@@ -569,6 +573,10 @@ public final class JSContextOptions {
 
     public boolean isPolyglotBuiltin() {
         return POLYGLOT_BUILTIN.getValue(optionValues);
+    }
+
+    public boolean isPolyglotEvalFile() {
+        return POLYGLOT_EVALFILE.getValue(optionValues);
     }
 
     public boolean isSIMDjs() {
