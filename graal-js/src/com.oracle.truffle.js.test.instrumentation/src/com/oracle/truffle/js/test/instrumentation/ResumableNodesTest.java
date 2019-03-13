@@ -133,31 +133,31 @@ public class ResumableNodesTest extends FineGrainedAccessTest {
 
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertUndefinedInput);
-            call.input(assertJSFunctionInput("myGen"));
+            call.input(assertJSFunctionInputWithName("myGen"));
         }).exit();
         // 1st next() calls 'crash()' and yields
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
-            call.input(assertJSFunctionInput("next"));
+            call.input(assertJSFunctionInputWithName("next"));
             enter(FunctionCallExpressionTag.class, (e2, call2) -> {
                 call2.input(assertJSObjectInput);
-                call2.input(assertJSFunctionInput("crash"));
+                call2.input(assertJSFunctionInputWithName("crash"));
             }).exit();
         }).exit();
         // 2nd next() resumes and calls 'dummy()' -- but does not call crash
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
-            call.input(assertJSFunctionInput("next"));
+            call.input(assertJSFunctionInputWithName("next"));
             enter(FunctionCallExpressionTag.class, (e2, call2) -> {
                 call2.input(assertJSObjectInput);
-                call2.input(assertJSFunctionInput("dummy"));
+                call2.input(assertJSFunctionInputWithName("dummy"));
                 call2.input(assertUndefinedInput);
             }).exit();
         }).exit();
         // 3rd next() does no calls
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
-            call.input(assertJSFunctionInput("next"));
+            call.input(assertJSFunctionInputWithName("next"));
         }).exit();
     }
 

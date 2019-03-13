@@ -1400,7 +1400,7 @@ public final class JSRuntime {
     }
 
     private static boolean equalInterop(Object a, Object b) {
-        assert a != null & b != null;
+        assert (a != null) && (b != null);
         final Object defaultValue = null;
         Object primLeft;
         if (isForeignObject(a)) {

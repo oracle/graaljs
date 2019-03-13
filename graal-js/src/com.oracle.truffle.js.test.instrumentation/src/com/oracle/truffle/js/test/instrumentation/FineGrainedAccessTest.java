@@ -451,7 +451,7 @@ public abstract class FineGrainedAccessTest {
         assertTrue(JSFunction.isJSFunction(e.val));
     };
 
-    protected static Consumer<Event> assertJSFunctionInput(String expectedFunctionName) {
+    protected static Consumer<Event> assertJSFunctionInputWithName(String expectedFunctionName) {
         return (e) -> {
             assertTrue(JSFunction.isJSFunction(e.val));
             assertTrue(JSFunction.getName((DynamicObject) e.val).equals(expectedFunctionName));

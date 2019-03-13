@@ -278,7 +278,7 @@ public abstract class JSEqualNode extends JSCompareNode {
                     @Cached("createIsNull()") Node isNull,
                     @Cached("createIsBoxed()") Node isBoxed,
                     @Cached("createUnbox()") Node unbox) {
-        assert a != null & b != null;
+        assert (a != null) && (b != null);
         final Object defaultValue = null;
         Object primLeft;
         if (JSGuards.isForeignObject(a)) {

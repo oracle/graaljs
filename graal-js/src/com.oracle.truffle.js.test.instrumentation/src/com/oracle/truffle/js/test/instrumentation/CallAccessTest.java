@@ -454,15 +454,15 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         "bar.use();", new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
 
         enter(ObjectAllocationExpressionTag.class, (e, newCall) -> {
-            newCall.input(assertJSFunctionInput("Bar"));
+            newCall.input(assertJSFunctionInputWithName("Bar"));
         }).exit(assertJSObjectReturn);
 
         enter(FunctionCallExpressionTag.class, (e2, useCall) -> {
             useCall.input(assertJSObjectInput);
-            useCall.input(assertJSFunctionInput("use"));
+            useCall.input(assertJSFunctionInputWithName("use"));
             enter(FunctionCallExpressionTag.class, (e3, defCall) -> {
                 defCall.input(assertJSObjectInput);
-                defCall.input(assertJSFunctionInput("def"));
+                defCall.input(assertJSFunctionInputWithName("def"));
             }).exit(assertJSObjectReturn);
         }).exit(assertJSObjectReturn);
     }
@@ -481,20 +481,20 @@ public class CallAccessTest extends FineGrainedAccessTest {
         for (int i = 0; i < 3; i++) {
             enter(FunctionCallExpressionTag.class, (e, call) -> {
                 call.input(assertUndefinedInput);
-                call.input(assertJSFunctionInput("setKey"));
+                call.input(assertJSFunctionInputWithName("setKey"));
                 call.input(assertJSObjectInput);
                 call.input(assertJSArrayInput);
 
                 enter(FunctionCallExpressionTag.class, (e1, call1) -> {
                     enter(FunctionCallExpressionTag.class, (e2, call2) -> {
                         call2.input(assertJSArrayInput);
-                        call2.input(assertJSFunctionInput("slice"));
+                        call2.input(assertJSFunctionInputWithName("slice"));
                         call2.input(0);
                         call2.input(-1);
                     }).exit();
 
                     call1.input(assertJSArrayInput);
-                    call1.input(assertJSFunctionInput("forEach"));
+                    call1.input(assertJSFunctionInputWithName("forEach"));
                     call1.input(assertJSFunctionInput);
                 }).exit();
             }).exit();
@@ -520,20 +520,20 @@ public class CallAccessTest extends FineGrainedAccessTest {
         for (int i = 0; i < 3; i++) {
             enter(FunctionCallExpressionTag.class, (e, call) -> {
                 call.input(assertUndefinedInput);
-                call.input(assertJSFunctionInput("setKey"));
+                call.input(assertJSFunctionInputWithName("setKey"));
                 call.input(assertJSObjectInput);
                 call.input(assertJSObjectInput);
 
                 enter(FunctionCallExpressionTag.class, (e1, call1) -> {
                     enter(FunctionCallExpressionTag.class, (e2, call2) -> {
                         call2.input(assertJSArrayInput);
-                        call2.input(assertJSFunctionInput("fakeslice"));
+                        call2.input(assertJSFunctionInputWithName("fakeslice"));
                         call2.input(0);
                         call2.input(-1);
                     }).exit();
 
                     call1.input(assertJSArrayInput);
-                    call1.input(assertJSFunctionInput("forEach"));
+                    call1.input(assertJSFunctionInputWithName("forEach"));
                     call1.input(assertJSFunctionInput);
                 }).exit();
             }).exit();
@@ -553,10 +553,10 @@ public class CallAccessTest extends FineGrainedAccessTest {
 
         enter(FunctionCallExpressionTag.class, (e, barCall) -> {
             barCall.input(assertUndefinedInput);
-            barCall.input(assertJSFunctionInput("bar"));
+            barCall.input(assertJSFunctionInputWithName("bar"));
             enter(FunctionCallExpressionTag.class, (e2, fooCall) -> {
                 fooCall.input(assertJSObjectInput);
-                fooCall.input(assertJSFunctionInput("foo"));
+                fooCall.input(assertJSFunctionInputWithName("foo"));
                 fooCall.input("str");
                 fooCall.input(42);
             }).exit();

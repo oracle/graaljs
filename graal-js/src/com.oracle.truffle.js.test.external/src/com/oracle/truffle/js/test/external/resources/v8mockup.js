@@ -18,7 +18,7 @@
 // by both assertTrue() and assertFalse()
 var v8IgnoreResult = {};
 
-assertEquals = (function (originalAssertEquals) {
+var assertEquals = (function (originalAssertEquals) {
     return function (expected, found, user_message) {
         if (expected !== v8IgnoreResult && found !== v8IgnoreResult) {
             originalAssertEquals(expected, found, user_message);
@@ -26,7 +26,7 @@ assertEquals = (function (originalAssertEquals) {
     };
 })(assertEquals);
 
-assertSame = (function (originalAssertSame) {
+var assertSame = (function (originalAssertSame) {
     return function (expected, found, user_message) {
         if (expected !== v8IgnoreResult && found !== v8IgnoreResult) {
             originalAssertSame(expected, found, user_message);
@@ -37,23 +37,23 @@ assertSame = (function (originalAssertSame) {
 // ---------------------- V8 Compiler ---------------------- //
 // let compiler tests pass by overriding following functions
 // that are originally defined in `mjsunit.js` file
-assertUnoptimized = function() {
+var assertUnoptimized = function() {
 }
-assertOptimized = function() {
+var assertOptimized = function() {
 }
-isNeverOptimize = function() {
+var isNeverOptimize = function() {
     return v8IgnoreResult;
 }
-isAlwaysOptimize = function() {
+var isAlwaysOptimize = function() {
     return v8IgnoreResult;
 }
-isInterpreted = function() {
+var isInterpreted = function() {
     return v8IgnoreResult;
 }
-isOptimized = function() {
+var isOptimized = function() {
     return v8IgnoreResult;
 }
-isTurboFanned = function() {
+var isTurboFanned = function() {
     return v8IgnoreResult;
 }
 // ---------------------- V8 Compiler ---------------------- //
