@@ -62,7 +62,7 @@ public class YieldTest extends FineGrainedAccessTest {
                         "a.next(42);", ObjectAllocationExpressionTag.class);
 
         enter(ObjectAllocationExpressionTag.class, (e, call) -> {
-            call.input(assertJSFunctionInput("Noop"));
+            call.input(assertJSFunctionInputWithName("Noop"));
             call.input(42);
         }).exit();
     }
@@ -80,21 +80,21 @@ public class YieldTest extends FineGrainedAccessTest {
 
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertUndefinedInput);
-            call.input(assertJSFunctionInput("boom"));
+            call.input(assertJSFunctionInputWithName("boom"));
         }).exit();
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
-            call.input(assertJSFunctionInput("next"));
+            call.input(assertJSFunctionInputWithName("next"));
         }).exit();
 
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
-            call.input(assertJSFunctionInput("next"));
+            call.input(assertJSFunctionInputWithName("next"));
             call.input(42);
 
             enter(FunctionCallExpressionTag.class, (e1, call1) -> {
                 call.input(assertUndefinedInput);
-                call.input(assertJSFunctionInput("Noop"));
+                call.input(assertJSFunctionInputWithName("Noop"));
                 call.input(42);
 
             }).exit();
@@ -113,21 +113,21 @@ public class YieldTest extends FineGrainedAccessTest {
 
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertUndefinedInput);
-            call.input(assertJSFunctionInput("boom"));
+            call.input(assertJSFunctionInputWithName("boom"));
         }).exit();
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
-            call.input(assertJSFunctionInput("next"));
+            call.input(assertJSFunctionInputWithName("next"));
         }).exit();
 
         enter(FunctionCallExpressionTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
-            call.input(assertJSFunctionInput("next"));
+            call.input(assertJSFunctionInputWithName("next"));
             call.input(42);
 
             enter(FunctionCallExpressionTag.class, (e1, call1) -> {
                 call.input(assertJSObjectInput);
-                call.input(assertJSFunctionInput("fun"));
+                call.input(assertJSFunctionInputWithName("fun"));
                 call.input(42);
             }).exit();
         }).exit();

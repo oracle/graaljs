@@ -438,7 +438,7 @@ public class JSForeignAccessFactory {
             boolean writable = hasSet || (!hasGet && desc.getIfHasWritable(true));
             boolean readSideEffects = isProxy || hasGet;
             boolean writeSideEffects = isProxy || hasSet;
-            boolean invocable = desc.isDataDescriptor() & JSRuntime.isCallable(desc.getValue());
+            boolean invocable = desc.isDataDescriptor() && JSRuntime.isCallable(desc.getValue());
             boolean removable = desc.getConfigurable();
             return (readable ? KeyInfo.READABLE : 0) | (writable ? KeyInfo.MODIFIABLE : 0) |
                             (readSideEffects ? KeyInfo.READ_SIDE_EFFECTS : 0) | (writeSideEffects ? KeyInfo.WRITE_SIDE_EFFECTS : 0) |

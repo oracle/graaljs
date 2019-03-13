@@ -116,7 +116,7 @@ Object.defineProperty(Object.prototype, "toSource", {
             }
             state.add(this);
             var str = '({', sep = '';
-            for (i in this) {
+            for (var i in this) {
                 str += sep;
                 str += i;
                 str += ':';

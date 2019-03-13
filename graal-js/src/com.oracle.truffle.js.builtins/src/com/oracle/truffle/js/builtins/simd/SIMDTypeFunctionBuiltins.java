@@ -1313,7 +1313,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             for (int i = 0; i < numberOfElements; i++) {
                 boolean ax = (boolean) getLane(a, i);
                 boolean bx = (boolean) getLane(b, i);
-                setLane(rest, i, (ax & bx));
+                setLane(rest, i, (ax && bx));
             }
         }
     }
@@ -1437,7 +1437,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             for (int i = 0; i < numberOfElements; i++) {
                 boolean ax = (boolean) getLane(a, i);
                 boolean bx = (boolean) getLane(b, i);
-                setLane(rest, i, (ax | bx));
+                setLane(rest, i, (ax || bx));
             }
         }
     }
