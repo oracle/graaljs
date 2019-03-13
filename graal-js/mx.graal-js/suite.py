@@ -380,7 +380,6 @@ suite = {
         "sdk:GRAAL_SDK",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
