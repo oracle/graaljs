@@ -45,9 +45,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 
 import java.util.Set;
 
-import javax.script.Bindings;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -225,15 +222,6 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return !JSString.LENGTH.equals(objIndex);
     }
 
-    @TruffleBoundary
-    @Specialization(guards = {"isBindings(target)"})
-    protected static boolean doBindings(Object target, Object propertyResult) {
-        // e.g. TruffleJSBindings, see JDK-8015830.js
-        Bindings bindings = (Bindings) target;
-        Object result = bindings.remove(propertyResult);
-        return result != null;
-    }
-
     @Specialization(guards = {"isForeignObject(target)"})
     protected static boolean doInterop(TruffleObject target, Object property,
                     @Cached("createRemove()") Node removeNode,
@@ -247,7 +235,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isTruffleObject(target)", "!isString(target)", "!isBindings(target)"})
+    @Specialization(guards = {"!isTruffleObject(target)", "!isString(target)"})
     public boolean doOther(Object target, Object property) {
         return true;
     }

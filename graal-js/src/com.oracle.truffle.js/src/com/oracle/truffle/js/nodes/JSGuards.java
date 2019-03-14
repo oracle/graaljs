@@ -43,8 +43,6 @@ package com.oracle.truffle.js.nodes;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import javax.script.Bindings;
-
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -461,10 +459,6 @@ public final class JSGuards {
 
     public static boolean isList(Object value) {
         return value instanceof List;
-    }
-
-    public static boolean isBindings(Object value) {
-        return value instanceof Bindings;
     }
 
     public static boolean isJavaPackage(Object target) {
