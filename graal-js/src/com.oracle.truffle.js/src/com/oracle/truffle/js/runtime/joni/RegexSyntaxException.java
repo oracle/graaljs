@@ -40,31 +40,49 @@
  */
 package com.oracle.truffle.js.runtime.joni;
 
-/**
- * Static utility methods for analyzing regular expression patterns.
- */
-public final class PatternAnalyzer {
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-    public static boolean containsGroup(String pattern) {
-        boolean charClass = false;
-        int i = 0;
-        for (; i < pattern.length(); i++) {
-            char ch = pattern.charAt(i);
-            if (ch == '\\') {
-                i++;
-            } else if (charClass && ch == ']') {
-                charClass = false;
-            } else if (ch == '[') {
-                charClass = true;
-            } else if (!charClass && ch == '(') {
-                if (!pattern.regionMatches(i + 1, "?", 0, 1)) {
-                    return true; // unnamed capture group
-                } else if (pattern.regionMatches(i + 2, "<", 0, 1) && !pattern.regionMatches(i + 3, "=", 0, 1) && !pattern.regionMatches(i + 3, "!", 0, 1)) {
-                    return true; // named capture group
-                }
-            }
-        }
-        return false;
+public class RegexSyntaxException extends RuntimeException implements TruffleException {
+
+    private static final String template = "Invalid regular expression: /%s/%s: %s";
+    private static final String templateNoFlags = "Invalid regular expression: %s: %s";
+    private static final String templatePosition = "Invalid regular expression: /%s/%s:%d: %s";
+
+    public RegexSyntaxException(String msg) {
+        super(msg);
     }
 
+    @TruffleBoundary
+    public RegexSyntaxException(String pattern, String msg) {
+        super(String.format(templateNoFlags, pattern, msg));
+    }
+
+    @TruffleBoundary
+    public RegexSyntaxException(String pattern, String flags, String msg) {
+        super(String.format(template, pattern, flags, msg));
+    }
+
+    @TruffleBoundary
+    public RegexSyntaxException(String pattern, String flags, String msg, int position) {
+        super(String.format(templatePosition, pattern, flags, position, msg));
+    }
+
+    @TruffleBoundary
+    public RegexSyntaxException(String pattern, String flags, String msg, Throwable ex) {
+        super(String.format(template, pattern, flags, msg), ex);
+    }
+
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public Node getLocation() {
+        return null;
+    }
+
+    @Override
+    public boolean isSyntaxError() {
+        return true;
+    }
 }

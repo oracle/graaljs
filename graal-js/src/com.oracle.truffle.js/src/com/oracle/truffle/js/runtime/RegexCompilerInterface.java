@@ -45,6 +45,7 @@ import java.util.regex.PatternSyntaxException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -62,14 +63,21 @@ public final class RegexCompilerInterface {
     }
 
     public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.CompileRegexNode compileRegexNode) {
+        // RegexLanguage does its own validation of the flags. This call to validateFlags only
+        // serves the purpose of mimicking the error messages of Nashorn and V8.
+        validateFlags(flags, context.getEcmaScriptVersion());
         try {
-            // RegexLanguage does its own validation of the flags. This call to validateFlags only
-            // serves the purpose of mimicking the error messages of Nashorn and V8.
-            validateFlags(flags, context.getEcmaScriptVersion());
             return compileRegexNode.execute(context.getRegexEngine(), pattern, flags);
         } catch (RegexSyntaxException syntaxException) {
+            // TODO: remove this
             CompilerDirectives.transferToInterpreter();
             throw Errors.createSyntaxError(syntaxException.getMessage());
+        } catch (RuntimeException e) {
+            CompilerDirectives.transferToInterpreter();
+            if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
+                throw Errors.createSyntaxError(e.getMessage());
+            }
+            throw e;
         }
     }
 
@@ -97,7 +105,13 @@ public final class RegexCompilerInterface {
             try {
                 RegexLanguage.validateRegex(pattern, flags);
             } catch (final RegexSyntaxException e) {
+                // TODO: remove this
                 throw Errors.createSyntaxError(e.getMessage());
+            } catch (RuntimeException e) {
+                if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
+                    throw Errors.createSyntaxError(e.getMessage());
+                }
+                throw e;
             }
         }
     }

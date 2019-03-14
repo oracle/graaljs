@@ -38,33 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.joni;
+package com.oracle.truffle.js.runtime.joni.result;
 
-/**
- * Static utility methods for analyzing regular expression patterns.
- */
-public final class PatternAnalyzer {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.js.runtime.joni.interop.ToIntNode;
 
-    public static boolean containsGroup(String pattern) {
-        boolean charClass = false;
-        int i = 0;
-        for (; i < pattern.length(); i++) {
-            char ch = pattern.charAt(i);
-            if (ch == '\\') {
-                i++;
-            } else if (charClass && ch == ']') {
-                charClass = false;
-            } else if (ch == '[') {
-                charClass = true;
-            } else if (!charClass && ch == '(') {
-                if (!pattern.regionMatches(i + 1, "?", 0, 1)) {
-                    return true; // unnamed capture group
-                } else if (pattern.regionMatches(i + 2, "<", 0, 1) && !pattern.regionMatches(i + 3, "=", 0, 1) && !pattern.regionMatches(i + 3, "!", 0, 1)) {
-                    return true; // named capture group
-                }
-            }
-        }
-        return false;
+@ExportLibrary(InteropLibrary.class)
+public final class RegexResultGetStartMethod implements TruffleObject {
+
+    private final RegexResult result;
+
+    public RegexResultGetStartMethod(RegexResult result) {
+        this.result = result;
     }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    int execute(Object[] args,
+                    @Cached ToIntNode toIntNode,
+                    @Cached RegexResultGetStartNode getStartNode) throws ArityException, UnsupportedTypeException {
+        if (args.length != 1) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(1, args.length);
+        }
+        return getStartNode.execute(result, toIntNode.execute(args[1]));
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,36 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.joni;
+package com.oracle.truffle.js.runtime.joni.interop;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public abstract class InputToStringNode extends Node {
+@ExportLibrary(InteropLibrary.class)
+public final class TruffleNull implements TruffleObject {
 
-    public static InputToStringNode create() {
-        return InputToStringNodeGen.create();
+    private static final TruffleNull INSTANCE = new TruffleNull();
+
+    public static TruffleNull getInstance() {
+        return INSTANCE;
     }
 
-    public abstract String execute(Object input);
-
-    @Specialization
-    public String doString(String input) {
-        return input;
+    private TruffleNull() {
     }
 
-    @Specialization
-    public String doTruffleObject(TruffleObject input,
-                    @Cached("create()") InputLengthNode lengthNode,
-                    @Cached("create()") InputCharAtNode charAtNode) {
-        final int inputLength = lengthNode.execute(input);
-        StringBuilder sb = new StringBuilder(inputLength);
-        for (int i = 0; i < inputLength; i++) {
-            Boundaries.builderAppend(sb, charAtNode.execute(input, i));
-        }
-        return Boundaries.builderToString(sb);
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isNull() {
+        return true;
     }
 }

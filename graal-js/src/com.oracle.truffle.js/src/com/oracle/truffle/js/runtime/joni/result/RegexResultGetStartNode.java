@@ -38,33 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.joni;
+package com.oracle.truffle.js.runtime.joni.result;
 
-/**
- * Static utility methods for analyzing regular expression patterns.
- */
-public final class PatternAnalyzer {
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
-    public static boolean containsGroup(String pattern) {
-        boolean charClass = false;
-        int i = 0;
-        for (; i < pattern.length(); i++) {
-            char ch = pattern.charAt(i);
-            if (ch == '\\') {
-                i++;
-            } else if (charClass && ch == ']') {
-                charClass = false;
-            } else if (ch == '[') {
-                charClass = true;
-            } else if (!charClass && ch == '(') {
-                if (!pattern.regionMatches(i + 1, "?", 0, 1)) {
-                    return true; // unnamed capture group
-                } else if (pattern.regionMatches(i + 2, "<", 0, 1) && !pattern.regionMatches(i + 3, "=", 0, 1) && !pattern.regionMatches(i + 3, "!", 0, 1)) {
-                    return true; // named capture group
-                }
-            }
-        }
-        return false;
+@ReportPolymorphism
+@GenerateUncached
+abstract class RegexResultGetStartNode extends Node {
+
+    abstract int execute(RegexResult receiver, int groupNumber);
+
+    @Specialization
+    static int doNoMatch(@SuppressWarnings("unused") NoMatchResult receiver, @SuppressWarnings("unused") int groupNumber) {
+        return -1;
     }
 
+    @Specialization
+    static int doSingleResult(SingleResult receiver, int groupNumber,
+                    @Cached("createBinaryProfile()") ConditionProfile boundsProfile) {
+        if (boundsProfile.profile(groupNumber == 0)) {
+            return receiver.getStart();
+        } else {
+            return -1;
+        }
+    }
+
+    @Specialization
+    static int doStartsEndsIndexArray(StartsEndsIndexArrayResult receiver, int groupNumber) {
+        try {
+            return receiver.getStarts()[groupNumber];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return -1;
+        }
+    }
 }

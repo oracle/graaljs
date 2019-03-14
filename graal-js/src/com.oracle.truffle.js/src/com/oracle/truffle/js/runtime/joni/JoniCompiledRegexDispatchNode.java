@@ -40,31 +40,31 @@
  */
 package com.oracle.truffle.js.runtime.joni;
 
-/**
- * Static utility methods for analyzing regular expression patterns.
- */
-public final class PatternAnalyzer {
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.runtime.joni.result.RegexResult;
 
-    public static boolean containsGroup(String pattern) {
-        boolean charClass = false;
-        int i = 0;
-        for (; i < pattern.length(); i++) {
-            char ch = pattern.charAt(i);
-            if (ch == '\\') {
-                i++;
-            } else if (charClass && ch == ']') {
-                charClass = false;
-            } else if (ch == '[') {
-                charClass = true;
-            } else if (!charClass && ch == '(') {
-                if (!pattern.regionMatches(i + 1, "?", 0, 1)) {
-                    return true; // unnamed capture group
-                } else if (pattern.regionMatches(i + 2, "<", 0, 1) && !pattern.regionMatches(i + 3, "=", 0, 1) && !pattern.regionMatches(i + 3, "!", 0, 1)) {
-                    return true; // named capture group
-                }
-            }
-        }
-        return false;
+@ReportPolymorphism
+@GenerateUncached
+public abstract class JoniCompiledRegexDispatchNode extends Node {
+
+    public abstract RegexResult execute(JoniCompiledRegex receiver, String input, int fromIndex);
+
+    @Specialization(guards = "receiver == cachedReceiver", limit = "4")
+    public static RegexResult doCached(JoniCompiledRegex receiver, String input, int fromIndex,
+                    @SuppressWarnings("unused") @Cached("receiver") JoniCompiledRegex cachedReceiver,
+                    @Cached("create(cachedReceiver.getRegexCallTarget())") DirectCallNode directCallNode) {
+        return (RegexResult) directCallNode.call(new Object[]{receiver, input, fromIndex});
     }
 
+    @Specialization(replaces = "doCached")
+    public static RegexResult doGeneric(JoniCompiledRegex receiver, String input, int fromIndex,
+                    @Cached IndirectCallNode indirectCallNode) {
+        return (RegexResult) indirectCallNode.call(receiver.getRegexCallTarget(), new Object[]{receiver, input, fromIndex});
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,41 +42,49 @@ package com.oracle.truffle.js.runtime.joni;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.js.runtime.joni.interop.ToLongNode;
+import com.oracle.truffle.js.runtime.joni.interop.ToStringNode;
+import com.oracle.truffle.js.runtime.joni.result.NoMatchResult;
 
-@ImportStatic(JSInteropUtil.class)
-public abstract class InputLengthNode extends Node {
+@ExportLibrary(InteropLibrary.class)
+public final class JoniCompiledRegexExecMethod implements TruffleObject {
 
-    public static InputLengthNode create() {
-        return InputLengthNodeGen.create();
+    private final JoniCompiledRegex regex;
+
+    public JoniCompiledRegexExecMethod(JoniCompiledRegex regex) {
+        this.regex = regex;
     }
 
-    public abstract int execute(Object input);
-
-    @Specialization
-    public int getLength(String input) {
-        return input.length();
+    public JoniCompiledRegex getRegexObject() {
+        return regex;
     }
 
-    @Specialization
-    public int getLength(TruffleObject input, @Cached("createGetSize()") Node getSizeNode) {
-        try {
-            Object length = ForeignAccess.sendGetSize(getSizeNode, input);
-            if (length instanceof Integer) {
-                return (int) length;
-            }
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] args,
+                    @Cached("create()") ToStringNode toStringNode,
+                    @Cached ToLongNode toLongNode,
+                    @Cached JoniCompiledRegexDispatchNode executeNode) throws ArityException, UnsupportedTypeException {
+        if (args.length != 2) {
             CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.raise(new Object[]{length});
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw e.raise();
+            throw ArityException.create(2, args.length);
         }
+        String input = toStringNode.execute(args[0]);
+        long fromIndex = toLongNode.execute(args[1]);
+        if (fromIndex > Integer.MAX_VALUE) {
+            return NoMatchResult.getInstance();
+        }
+        return executeNode.execute(getRegexObject(), input, (int) fromIndex);
     }
 }

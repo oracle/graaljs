@@ -69,7 +69,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-import com.oracle.truffle.regex.UnsupportedRegexException;
 
 /**
  * Implements ES6 21.2.5.2.1 Runtime Semantics: RegExpExec ( R, S ).
@@ -390,8 +389,9 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                     TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor) {
         try {
             return compiledRegexAccessor.exec(compiledRegex, input, fromIndex);
-        } catch (UnsupportedRegexException e) {
+        } catch (RuntimeException e) {
             CompilerDirectives.transferToInterpreter();
+            // thrown if none of the regex engines supports the given regex
             throw Errors.createError(e.getMessage());
         }
     }

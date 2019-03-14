@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
+import com.oracle.truffle.js.runtime.joni.JoniRegexEngine;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -69,8 +69,6 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadStringMemberNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
-import com.oracle.truffle.regex.RegexEngine;
-import com.oracle.truffle.regex.RegexOptions;
 
 public final class JSRegExp extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -316,7 +314,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     private static Object compileEarly(String pattern, String flags) {
         // avoid getRealm() in context.getRegexEngine()
-        Object tempEngine = new RegexEngine(new JoniRegexCompiler(null), RegexOptions.DEFAULT);
+        Object tempEngine = new JoniRegexEngine(null);
         return TRegexUtil.CompileRegexNode.getUncached().execute(tempEngine, pattern, flags);
     }
 
