@@ -418,7 +418,7 @@ public abstract class JSScope {
                 }
                 return thisObject;
             } else {
-                return frame.getValue(thisSlot);
+                return mFrame.getValue(thisSlot);
             }
         }
 
