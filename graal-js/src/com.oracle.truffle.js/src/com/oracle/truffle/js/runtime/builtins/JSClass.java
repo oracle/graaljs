@@ -504,7 +504,10 @@ public abstract class JSClass extends ObjectType {
     static Object readArrayElement(DynamicObject target, long index,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
                     @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncached()") ReadElementNode readNode,
-                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws InvalidArrayIndexException {
+                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+        if (!hasArrayElements(target)) {
+            throw UnsupportedMessageException.create();
+        }
         Object result;
         if (readNode == null) {
             result = JSObject.getOrDefault(target, index, null, JSClassProfile.getUncached());
@@ -521,7 +524,7 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static boolean isArrayElementReadable(DynamicObject target, long index,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return keyInfo.execute(target, index, KeyInfoNode.READABLE);
+        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.READABLE);
     }
 
     @SuppressWarnings({"unused", "deprecation"})
@@ -530,7 +533,10 @@ public abstract class JSClass extends ObjectType {
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncached()") WriteElementNode writeNode) throws InvalidArrayIndexException {
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncached()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+        if (!hasArrayElements(target)) {
+            throw UnsupportedMessageException.create();
+        }
         if (!keyInfo.execute(target, index, KeyInfoNode.WRITABLE)) {
             throw InvalidArrayIndexException.create(index);
         }
@@ -546,18 +552,21 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static boolean isArrayElementModifiable(DynamicObject target, long index,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return keyInfo.execute(target, index, KeyInfoNode.MODIFIABLE);
+        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.MODIFIABLE);
     }
 
     @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean isArrayElementInsertable(DynamicObject target, long index,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return keyInfo.execute(target, index, KeyInfoNode.INSERTABLE);
+        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.INSERTABLE);
     }
 
     @ExportMessage
-    static void removeArrayElement(DynamicObject target, long index) {
+    static void removeArrayElement(DynamicObject target, long index) throws UnsupportedMessageException {
+        if (!hasArrayElements(target)) {
+            throw UnsupportedMessageException.create();
+        }
         JSObject.delete(target, index, true);
     }
 
@@ -565,7 +574,7 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static boolean isArrayElementRemovable(DynamicObject target, long index,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
-        return keyInfo.execute(target, index, KeyInfoNode.REMOVABLE);
+        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.REMOVABLE);
     }
 
     @ExportMessage
