@@ -56,7 +56,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
@@ -104,6 +103,7 @@ import com.oracle.truffle.js.nodes.access.IsRegExpNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToRegExpNode;
@@ -397,12 +397,15 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
-    abstract static class JSStringOperation extends JSNumberOperation {
+    abstract static class JSStringOperation extends JSBuiltinNode {
         JSStringOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
+        @Child private JSToStringNode toStringNode;
+        @Child private JSToIntegerNode toIntegerNode;
+        @Child private JSToNumberNode toNumberNode;
 
         protected static int within(int value, int min, int max) {
             assert min <= max;
@@ -435,6 +438,30 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 requireObjectCoercibleNode = insert(RequireObjectCoercibleNode.create());
             }
             requireObjectCoercibleNode.execute(target);
+        }
+
+        protected String toString(Object target) {
+            if (toStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toStringNode = insert(JSToStringNode.create());
+            }
+            return toStringNode.executeString(target);
+        }
+
+        protected int toInteger(Object target) {
+            if (toIntegerNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toIntegerNode = insert(JSToIntegerNode.create());
+            }
+            return toIntegerNode.executeInt(target);
+        }
+
+        protected Number toNumber(Object target) {
+            if (toNumberNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toNumberNode = insert(JSToNumberNode.create());
+            }
+            return toNumberNode.executeNumber(target);
         }
     }
 
