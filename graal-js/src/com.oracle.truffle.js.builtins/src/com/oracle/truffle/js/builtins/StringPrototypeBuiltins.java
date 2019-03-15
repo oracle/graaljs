@@ -625,7 +625,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return Double.NaN;
         }
 
-        @Specialization
+        @Specialization(replaces = {"charCodeAtLazyString", "charCodeAtInBounds", "charCodeAtOutOfBounds"})
         protected Object charCodeAtGeneric(Object thisObj, Object indexObj) {
             requireObjectCoercible(thisObj);
             String s = toString(thisObj);
@@ -701,7 +701,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        @Specialization(replaces = "substringStart")
+        @Specialization(replaces = {"substring", "substringStart"})
         protected String substringGeneric(Object thisObj, Object start, Object end,
                         @Cached("create()") JSToNumberNode toNumber2Node,
                         @Cached("createBinaryProfile()") ConditionProfile startUndefined,
@@ -775,8 +775,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return indexOfIntl(args, thisStr, searchStr);
         }
 
-        @Specialization
-        protected int indexOf(Object thisObj, Object[] args,
+        @Specialization(replaces = "indexOf")
+        protected int indexOfGeneric(Object thisObj, Object[] args,
                         @Cached("create()") JSToStringNode toString2Node) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
@@ -897,7 +897,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        protected Object splitSeparatorUndefined(Object thisObj, Object separator, Object limit) {
+        protected Object splitGeneric(Object thisObj, Object separator, Object limit) {
             if (getContext().getEcmaScriptVersion() < 6) {
                 return splitES5(thisObj, separator, limit);
             } else {
@@ -1130,8 +1130,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return builtinReplaceString(searchValue, replaceValue, thisObj, null);
         }
 
-        @Specialization
-        protected Object replaceObject(Object thisObj, Object searchValue, Object replaceValue) {
+        @Specialization(replaces = {"replaceString", "replaceStringCached"})
+        protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue) {
             requireObjectCoercible(thisObj);
             Object searchVal = searchValueProfile.profile(searchValue);
             Object replaceVal = replaceValueProfile.profile(replaceValue);
