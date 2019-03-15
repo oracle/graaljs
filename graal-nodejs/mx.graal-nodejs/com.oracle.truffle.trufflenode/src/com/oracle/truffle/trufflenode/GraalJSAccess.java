@@ -97,6 +97,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Module;
@@ -295,6 +296,14 @@ public final class GraalJSAccess {
             System.err.printf("ERROR: %s", iaex.getMessage());
             System.exit(1);
             throw iaex; // avoids compiler complaints that final fields are not initialized
+        } catch (PolyglotException pex) {
+            if (pex.isInternalError() || pex.getMessage() == null) {
+                pex.printStackTrace();
+            } else {
+                System.err.println("ERROR: " + pex.getMessage());
+            }
+            System.exit(pex.isExit() ? pex.getExitStatus() : 1);
+            throw pex;
         }
 
         mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
