@@ -40,18 +40,24 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.YieldException;
+import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -106,14 +112,25 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         return block.isResultAlwaysOfType(clazz);
     }
 
-    public static final class FrameBlockScopeNode extends BlockScopeNode implements FrameDescriptorProvider {
-        private final FrameDescriptor frameDescriptor;
-        private final FrameSlot parentSlot;
+    public static class FrameBlockScopeNode extends BlockScopeNode implements FrameDescriptorProvider {
+        protected final FrameDescriptor frameDescriptor;
+        protected final FrameSlot parentSlot;
 
         protected FrameBlockScopeNode(JavaScriptNode block, FrameDescriptor frameDescriptor, FrameSlot parentSlot) {
             super(block);
             this.frameDescriptor = frameDescriptor;
             this.parentSlot = parentSlot;
+        }
+
+        @Override
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
+                JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(block, frameDescriptor, parentSlot, getSourceSection());
+                materialized.setSourceSection(this.getSourceSection());
+                return materialized;
+            } else {
+                return this;
+            }
         }
 
         @Override

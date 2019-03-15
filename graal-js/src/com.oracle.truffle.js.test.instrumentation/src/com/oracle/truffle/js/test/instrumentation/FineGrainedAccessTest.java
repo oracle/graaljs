@@ -74,6 +74,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag.Type;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
@@ -212,6 +213,12 @@ public abstract class FineGrainedAccessTest {
 
     private static void assertTag(Class<? extends Tag> tag, Event event) {
         assertTrue("expected " + tag.getSimpleName() + ", actual [" + getTagNames(event.instrumentedNode) + "]", event.instrumentedNode.hasTag(tag));
+    }
+
+    protected void enterDeclareTag(String expectedVarName) {
+        enter(DeclareTag.class, (e, c) -> {
+            assertAttribute(e, NAME, expectedVarName);
+        }).exit();
     }
 
     protected AssertedEvent enter(Class<? extends Tag> tag) {

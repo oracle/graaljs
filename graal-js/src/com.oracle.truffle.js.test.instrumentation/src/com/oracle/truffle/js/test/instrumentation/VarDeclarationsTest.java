@@ -38,57 +38,66 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.function;
+package com.oracle.truffle.js.test.instrumentation;
 
-import java.util.Set;
+import org.junit.Test;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 
-@NodeInfo(cost = NodeCost.NONE)
-public class FunctionBodyNode extends AbstractBodyNode {
-    @Child private JavaScriptNode body;
+public class VarDeclarationsTest extends FineGrainedAccessTest {
 
-    public FunctionBodyNode(JavaScriptNode body) {
-        this.body = body;
+    @Test
+    public void var() {
+        evalWithTag("(function() { var b = 42; })();", DeclareTag.class);
+
+        enter(DeclareTag.class, (e, decl) -> {
+            assertAttribute(e, NAME, "b");
+            assertAttribute(e, TYPE, "var");
+        }).exit();
     }
 
-    public static FunctionBodyNode create(JavaScriptNode body) {
-        return new FunctionBodyNode(body);
+    @Test
+    public void argAndVar() {
+        evalWithTag("(function(a) { var b = 42; })();", DeclareTag.class);
+
+        enter(DeclareTag.class, (e, decl) -> {
+            assertAttribute(e, NAME, "a");
+            assertAttribute(e, TYPE, "var");
+        }).exit();
+        enter(DeclareTag.class, (e, decl) -> {
+            assertAttribute(e, NAME, "b");
+            assertAttribute(e, TYPE, "var");
+        }).exit();
     }
 
-    public JavaScriptNode getBody() {
-        return body;
+    @Test
+    public void let() {
+        evalWithTag("(function() { let b = 42; })();", DeclareTag.class);
+
+        enter(DeclareTag.class, (e, decl) -> {
+            assertAttribute(e, NAME, "b");
+            assertAttribute(e, TYPE, "let");
+        }).exit();
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return body.execute(frame);
+    @Test
+    public void letConstBlock() {
+        evalWithTag("(function() { const c = 1; for(var i = 0; i<c; i++) { let b = i; } })();", DeclareTag.class);
+
+        enter(DeclareTag.class, (e, decl) -> {
+            assertAttribute(e, NAME, "c");
+            assertAttribute(e, TYPE, "const");
+        }).exit();
+
+        enter(DeclareTag.class, (e, decl) -> {
+            assertAttribute(e, NAME, "i");
+            assertAttribute(e, TYPE, "var");
+        }).exit();
+
+        enter(DeclareTag.class, (e, decl) -> {
+            assertAttribute(e, NAME, "b");
+            assertAttribute(e, TYPE, "let");
+        }).exit();
     }
 
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(body));
-    }
-
-    @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
-            assert getParent() instanceof FunctionRootNode : "Malformed AST";
-            FrameDescriptor frameDescriptor = ((FunctionRootNode) getParent()).getFrameDescriptor();
-            JavaScriptNode materialized = DeclareTagProvider.createMaterializedFunctionBodyNode(body, getSourceSection(), frameDescriptor);
-            materialized.setSourceSection(getSourceSection());
-            materialized.addRootTag();
-            return materialized;
-        } else {
-            return this;
-        }
-    }
 }

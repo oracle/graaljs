@@ -69,6 +69,7 @@ public final class JSTags {
                     ControlFlowRootTag.class,
                     ControlFlowBlockTag.class,
                     ControlFlowBranchTag.class,
+                    DeclareTag.class,
     };
 
     // ##### ECMA218 12.x - JavaScript Expressions
@@ -503,6 +504,18 @@ public final class JSTags {
     @Tag.Identifier("InputNode")
     public static final class InputNodeTag extends Tag {
         private InputNodeTag() {
+        }
+    }
+
+    /**
+     * Variable declaration node.
+     *
+     * TODO(db) remove once we have an equivalent tag in Truffle.
+     *
+     */
+    @Tag.Identifier("Declare")
+    public static final class DeclareTag extends Tag {
+        private DeclareTag() {
         }
     }
 

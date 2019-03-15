@@ -65,6 +65,9 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
                 assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
+
+            enterDeclareTag("a");
+
             enter(UnaryExpressionTag.class, (e2, unary) -> {
                 enter(WriteVariableExpressionTag.class, (e3, var) -> {
                     enter(LiteralExpressionTag.class).exit();
@@ -86,6 +89,9 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
                 assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
+
+            enterDeclareTag("level");
+
             // second call
             enter(UnaryExpressionTag.class, (e6, unary) -> {
                 enter(FunctionCallExpressionTag.class, (e2, call2) -> {
@@ -134,6 +140,9 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
                 assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
+
+            enterDeclareTag("a");
+
             // write 42
             enter(WriteVariableExpressionTag.class, (e2, var) -> {
                 enter(LiteralExpressionTag.class).exit();
@@ -149,6 +158,7 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
         evalAllTags("(function() { const a = 42; return a; })();");
 
         enter(FunctionCallExpressionTag.class, (e1, call) -> {
+
             // fetch the target for the call (which is undefined)
             enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
@@ -157,6 +167,8 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
                 assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
+
+            enterDeclareTag("a");
             // write 42
             enter(WriteVariableExpressionTag.class, (e2, var) -> {
                 enter(LiteralExpressionTag.class).exit();
