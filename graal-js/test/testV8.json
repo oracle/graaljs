@@ -1399,9 +1399,6 @@
     "filePath" : "mjsunit/regress/regress-682349.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/regress/regress-689016.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-705934.js",
     "status" : "SKIP",
     "comment" : "REGEX language cannot be initialized after StackOverflow"
@@ -1486,12 +1483,12 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
+    "filePath" : "mjsunit/regress/regress-869735.js",
+    "status" : "FAIL",
+    "comment" : "Function calls that use spread operator do not have the number of arguments limited by a constant but by the stack-size."
+  }, {
     "filePath" : "mjsunit/regress/regress-88591.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/regress/regress-896326.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "mjsunit/regress/regress-897512.js",
     "status" : "FAIL",
@@ -1733,6 +1730,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-906043.js",
+    "status" : "FAIL",
+    "comment" : "Function calls that use spread operator do not have the number of arguments limited by a constant but by the stack-size."
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-909614.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -1777,6 +1778,10 @@
     "filePath" : "mjsunit/regress/regress-v8-5009.js",
     "status" : "SKIP",
     "comment" : "version()"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-6716.js",
+    "status" : "FAIL",
+    "comment" : "Function calls that use spread operator do not have the number of arguments limited by a constant but by the stack-size."
   }, {
     "filePath" : "mjsunit/regress/regress-v8-7682.js",
     "status" : "FAIL",
