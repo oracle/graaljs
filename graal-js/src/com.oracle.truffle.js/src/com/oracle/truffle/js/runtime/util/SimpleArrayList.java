@@ -51,7 +51,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
  */
 public class SimpleArrayList<E> {
 
-    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+    public static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
     private static final int DEFAULT_CAPACITY = 8;
 
     private Object[] elements;

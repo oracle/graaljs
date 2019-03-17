@@ -50,6 +50,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetInd
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUsedLength;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * Base class of a javascript dynamic writable array. The array implementation uses three write
@@ -246,27 +248,35 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     private int ensureCapacity(DynamicObject object, int internalIndex, long indexOffset, boolean condition, ProfileHolder profile) {
+        assert -indexOffset <= internalIndex; // 0 <= index
         int capacity = getArrayCapacity(object, condition);
         if (SET_SUPPORTED_PROFILE_ACCESS.ensureCapacityGrow(profile, internalIndex >= 0 && internalIndex < capacity)) {
             return 0;
         } else {
-            int minCapacity;
+            long minCapacity;
             if (SET_SUPPORTED_PROFILE_ACCESS.ensureCapacityGrowLeft(profile, internalIndex < 0)) {
-                minCapacity = -internalIndex + capacity;
+                minCapacity = -internalIndex + (long) capacity;
             } else {
-                minCapacity = internalIndex + 1;
+                minCapacity = internalIndex + 1L;
             }
-            int newCapacity = minCapacity << 1;
+            long newCapacity = minCapacity << 1;
+            if (newCapacity > SimpleArrayList.MAX_ARRAY_SIZE) {
+                if (SimpleArrayList.MAX_ARRAY_SIZE < minCapacity) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new OutOfMemoryError();
+                }
+                newCapacity = SimpleArrayList.MAX_ARRAY_SIZE;
+            }
 
             int offset = 0;
             if (internalIndex < 0) {
-                offset = newCapacity - capacity;
+                offset = (int) newCapacity - capacity;
                 // alignment to zero index
-                if (indexOffset != 0 && indexOffset < offset) {
+                if (indexOffset < offset) {
                     offset = (int) indexOffset;
                 }
             }
-            resizeArray(object, newCapacity, capacity, offset, condition);
+            resizeArray(object, (int) newCapacity, capacity, offset, condition);
             return offset;
         }
     }
