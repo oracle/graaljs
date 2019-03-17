@@ -123,10 +123,13 @@ public class SimpleArrayList<E> {
     private void ensureCapacityIntl(int minCapacity) throws OutOfMemoryError {
         long curCapacity = elements.length;
         long newCapacity = curCapacity + (curCapacity >> 1L);
+        if (newCapacity < minCapacity) {
+            newCapacity = minCapacity;
+        }
         if (newCapacity < DEFAULT_CAPACITY) {
             newCapacity = DEFAULT_CAPACITY;
         }
-        if (newCapacity >= MAX_ARRAY_SIZE) {
+        if (newCapacity > MAX_ARRAY_SIZE) {
             if (MAX_ARRAY_SIZE < minCapacity) {
                 CompilerDirectives.transferToInterpreter();
                 throw new OutOfMemoryError();
