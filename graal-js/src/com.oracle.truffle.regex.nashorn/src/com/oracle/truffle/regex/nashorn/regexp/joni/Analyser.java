@@ -243,7 +243,9 @@ public final class Analyser extends Parser {
             if (br.backRef > env.numMem) {
                 throw new ValueException(ERR_INVALID_BACKREF);
             }
-            min = getMinMatchLength(env.memNodes[br.backRef]);
+            // conservatively return 0 to avoid infinite loops on cases like /(a)|\1+/
+            // TODO: maybe refine this more
+            // min = getMinMatchLength(env.memNodes[br.backRef]);
 
             break;
 
@@ -1118,8 +1120,10 @@ public final class Analyser extends Parser {
                     if (len * qn.lower <= EXPAND_STRING_MAX_LENGTH) {
                         final StringNode str = qn.convertToString(sn.flag);
                         final int n = qn.lower;
-                        for (int i = 0; i < n; i++) {
-                            str.cat(sn.chars, sn.p, sn.end);
+                        if (sn.chars != null) {
+                            for (int i = 0; i < n; i++) {
+                                str.cat(sn.chars, sn.p, sn.end);
+                            }
                         }
                         break; /* break case NT_QTFR: */
                     }
