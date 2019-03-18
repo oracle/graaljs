@@ -50,7 +50,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
@@ -88,21 +90,39 @@ public abstract class IsCallableNode extends JSUnaryNode {
         return JSRuntime.isCallableProxy(proxy);
     }
 
+    @Specialization(guards = {"isJSType(object)", "!isJSFunction(object)", "!isJSProxy(object)"})
+    protected static boolean doJSTypeOther(@SuppressWarnings("unused") DynamicObject object) {
+        return false;
+    }
+
     @Specialization(guards = "isForeignObject(obj)")
     protected static boolean doTruffleObject(TruffleObject obj,
                     @Cached("createIsExecutable()") Node isExecutableNode) {
         return ForeignAccess.sendIsExecutable(isExecutableNode, obj);
     }
 
-    @SuppressWarnings("unused")
     @Specialization
-    protected static boolean doCharSequence(CharSequence string) {
+    protected static boolean doCharSequence(@SuppressWarnings("unused") CharSequence charSequence) {
         return false;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"!isJSFunction(other)", "!isJSProxy(other)"})
-    protected static boolean doOther(Object other) {
+    @Specialization
+    protected static boolean doNumber(@SuppressWarnings("unused") Number number) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doBoolean(@SuppressWarnings("unused") boolean value) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doSymbol(@SuppressWarnings("unused") Symbol symbol) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doBigInt(@SuppressWarnings("unused") BigInt bigInt) {
         return false;
     }
 
