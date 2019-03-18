@@ -75,10 +75,9 @@ public abstract class GetTemplateObjectNode extends JavaScriptNode {
         return GetTemplateObjectNodeGen.create(context, rawStrings, cookedStrings);
     }
 
-    @Specialization(guards = "context.getRealm() == cachedRealm")
+    @Specialization(guards = "!context.isMultiContext()", assumptions = "context.getSingleRealmAssumption()")
     protected DynamicObject doCached(@SuppressWarnings("unused") VirtualFrame frame,
-                    @Cached("doUncached(frame)") DynamicObject cachedTemplate,
-                    @Cached("context.getRealm()") @SuppressWarnings("unused") JSRealm cachedRealm) {
+                    @Cached("doUncached(frame)") DynamicObject cachedTemplate) {
         return cachedTemplate;
     }
 
