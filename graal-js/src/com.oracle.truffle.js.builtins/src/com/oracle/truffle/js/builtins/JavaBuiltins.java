@@ -240,6 +240,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             return javaType;
         }
 
+        @Specialization(guards = "!isString(obj)")
+        protected Object typeNoString(@SuppressWarnings("unused") Object obj) {
+            throw Errors.createTypeError("Java.type expects one string argument");
+        }
+
         static Class<?> asJavaClass(Object javaType, TruffleLanguage.Env env) {
             if (env.isHostObject(javaType)) {
                 Object clazz = env.asHostObject(javaType);
