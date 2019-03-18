@@ -506,7 +506,11 @@ public final class CClassNode extends Node {
             } else {
                 bs.set('-');
                 if (arg.vs != CCStateArg.VS_UNSET) {
-                    bs.set(arg.vs);
+                    if (arg.type == CCVALTYPE.SB) {
+                        bs.set(arg.vs);
+                    } else if (arg.type == CCVALTYPE.CODE_POINT) {
+                        addCodeRange(env, arg.vs, arg.vs);
+                    }
                 }
             }
         }
