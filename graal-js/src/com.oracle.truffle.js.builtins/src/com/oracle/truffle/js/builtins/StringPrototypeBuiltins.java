@@ -1134,10 +1134,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String searchString = toString2Node.executeString(searchValue);
             boolean functionalReplace = isCallableNode.executeBoolean(replParam);
             String replaceString = null;
-            DynamicObject replaceFunction = null;
-            if (functionalReplaceProfile.profile(functionalReplace)) {
-                replaceFunction = (DynamicObject) replParam;
-            } else {
+            if (!functionalReplaceProfile.profile(functionalReplace)) {
                 replaceString = toString3Node.executeString(replParam);
             }
             int pos = string.indexOf(searchString);
@@ -1147,7 +1144,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             StringBuilder sb = new StringBuilder(pos + (string.length() - (pos + searchString.length())) + 20);
             Boundaries.builderAppend(sb, string, 0, pos);
             if (functionalReplaceProfile.profile(functionalReplace)) {
-                Object replValue = functionReplaceCall(replaceFunction, Undefined.instance, new Object[]{searchString, pos, string});
+                Object replValue = functionReplaceCall(replParam, Undefined.instance, new Object[]{searchString, pos, string});
                 Boundaries.builderAppend(sb, toString3Node.executeString(replValue));
             } else {
                 appendSubstitution(sb, string, replaceString, searchString, pos, dollarProfile);
