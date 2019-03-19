@@ -1474,6 +1474,10 @@ public class JSContext {
         singleRealmAssumption.check();
     }
 
+    public final Assumption getSingleRealmAssumption() {
+        return singleRealmAssumption;
+    }
+
     public JSContextOptions getContextOptions() {
         return contextOptions;
     }

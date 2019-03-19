@@ -9668,34 +9668,6 @@
     "filePath" : "language/expressions/super/prop-expr-obj-val-from-eval.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/tagged-template/cache-differing-expressions-eval.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/tagged-template/cache-differing-expressions-new-function.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/tagged-template/cache-differing-expressions.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/tagged-template/cache-eval-inner-function.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/tagged-template/cache-identical-source-eval.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/tagged-template/cache-identical-source-new-function.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/expressions/tagged-template/cache-identical-source.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
     "filePath" : "language/expressions/tagged-template/tco-call.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
@@ -9703,10 +9675,6 @@
     "filePath" : "language/expressions/tagged-template/tco-member.js",
     "status" : "SKIP",
     "comment" : "Tail Call Tests failing due to StackOverflow"
-  }, {
-    "filePath" : "language/expressions/tagged-template/template-object-template-map.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/expressions/tco-pos.js",
     "status" : "SKIP",

@@ -45,10 +45,10 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.WeakHashMap;
 
 import org.graalvm.options.OptionValues;
 
@@ -240,7 +240,7 @@ public class JSRealm {
     @CompilationFinal private DynamicObject simdTypeConstructor;
     @CompilationFinal private DynamicObject simdTypePrototype;
 
-    private volatile Map<List<String>, DynamicObject> templateRegistry;
+    private volatile Map<Object, DynamicObject> templateRegistry;
 
     private final DynamicObject globalScope;
 
@@ -624,7 +624,7 @@ public class JSRealm {
         return javaPackageToPrimitiveFunction;
     }
 
-    public final Map<List<String>, DynamicObject> getTemplateRegistry() {
+    public final Map<Object, DynamicObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
         }
@@ -634,7 +634,7 @@ public class JSRealm {
     @TruffleBoundary
     private synchronized void createTemplateRegistry() {
         if (templateRegistry == null) {
-            templateRegistry = new HashMap<>();
+            templateRegistry = new WeakHashMap<>();
         }
     }
 

@@ -685,10 +685,6 @@
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/templates.js",
-    "status" : "FAIL",
-    "comment" : "Not up to date with the latest spec. Passes on V8 with --no-harmony-template-escapes only."
-  }, {
     "filePath" : "mjsunit/es6/throw-type-error-function-restrictions.js",
     "status" : "FAIL"
   }, {
