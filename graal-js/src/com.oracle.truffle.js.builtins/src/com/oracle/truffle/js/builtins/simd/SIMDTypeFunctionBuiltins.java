@@ -108,7 +108,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
-import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.SIMDType;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDBool16x8;
 import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDBool32x4;
@@ -431,60 +430,13 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         // SameValueZero(x, y)
-        protected boolean sameValueZero(Object x, Object y) {
-            if (x == Undefined.instance && y == Undefined.instance) {
-                return true;
+        protected boolean sameValueZero(Number x, Number y) {
+            double xd = JSRuntime.toDouble(x);
+            double yd = JSRuntime.toDouble(y);
+            if (Double.isNaN(xd)) {
+                return Double.isNaN(yd);
             }
-            if (x == Null.instance && y == Null.instance) {
-                return true;
-            }
-            if (JSRuntime.isNumber(x) && JSRuntime.isNumber(y)) {
-                double xd = JSRuntime.toDouble((Number) x);
-                double yd = JSRuntime.toDouble((Number) y);
-                if (JSRuntime.isNaN(x) && JSRuntime.isNaN(y)) {
-                    return true;
-                }
-                if (xd == +0.0 && yd == -0.0) {
-                    return true;
-                }
-                if (xd == -0.0 && yd == +0.0) {
-                    return true;
-                }
-                if (Double.compare(xd, yd) == 0) {
-                    return true;
-                }
-                return false;
-            }
-            if (JSRuntime.isString(x) && JSRuntime.isString(y)) {
-                if (((String) x).equals(y)) {
-                    return true;
-                }
-                return false;
-            }
-            if (x instanceof Boolean && y instanceof Boolean) {
-                if ((boolean) x == (boolean) y) {
-                    return true;
-                }
-                return false;
-            }
-            if (JSSymbol.isJSSymbol(x) && JSSymbol.isJSSymbol(x)) {
-                if (JSSymbol.getSymbolData((DynamicObject) x) == JSSymbol.getSymbolData((DynamicObject) y)) {
-                    return true;
-                }
-                return false;
-            }
-            if (JSSIMD.isJSSIMD(x) && JSSIMD.isJSSIMD(y)) {
-                for (int i = 0; i < JSSIMD.simdTypeGetSIMDType((DynamicObject) x).getFactory().getNumberOfElements(); i++) {
-                    if (!sameValueZero(simdExtractLane((DynamicObject) x, i), simdExtractLane((DynamicObject) y, i))) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            if (x == y) {
-                return true;
-            }
-            return false;
+            return xd == yd;
         }
 
         // 5.1.1 SIMDCreate( descriptor, vectorElements )
