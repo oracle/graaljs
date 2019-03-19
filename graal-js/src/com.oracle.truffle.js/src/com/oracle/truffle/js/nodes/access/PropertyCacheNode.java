@@ -418,10 +418,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            if (!(JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj))) {
-                return false;
+            if (JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj)) {
+                return true;
             }
-            return true;
+            return false;
         }
 
         @Override
@@ -777,17 +777,23 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean accept(Object thisObj) {
-            if (!(JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj))) {
+            if (!JSObject.isDynamicObject(thisObj)) {
                 return false;
             }
             DynamicObject current = (DynamicObject) thisObj;
+            boolean result = getShape().check(current);
+            if (!result) {
+                return false;
+            }
             for (int i = 0; i < shapeCheckNodes.length; i++) {
                 current = getPrototypeNodes[i].executeDynamicObject(current);
-                if (!shapeCheckNodes[i].accept(current)) {
+                result = shapeCheckNodes[i].accept(current);
+                if (!result) {
                     return false;
                 }
             }
-            return true;
+            // Return the shape check of the prototype we're going to access.
+            return result;
         }
 
         @ExplodeLoop
@@ -842,7 +848,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj) && protoShapeCheck.accept(getPrototypeNode.executeDynamicObject((DynamicObject) thisObj));
+            if (JSObject.isDynamicObject(thisObj)) {
+                DynamicObject jsobj = (DynamicObject) thisObj;
+                if (getShape().check(jsobj)) {
+                    // Return the shape check of the prototype we're going to access.
+                    return protoShapeCheck.accept(getPrototypeNode.executeDynamicObject(jsobj));
+                }
+            }
+            return false;
         }
 
         @Override
@@ -958,15 +971,18 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         public boolean accept(Object thisObj) {
             DynamicObject current = jsclass.getIntrinsicDefaultProto(context.getRealm());
+            boolean result = true;
             for (int i = 0; i < shapeCheckNodes.length; i++) {
-                if (!shapeCheckNodes[i].accept(current)) {
+                result = shapeCheckNodes[i].accept(current);
+                if (!result) {
                     return false;
                 }
                 if (i < shapeCheckNodes.length - 1) {
                     current = getPrototypeNodes[i].executeDynamicObject(current);
                 }
             }
-            return true;
+            // Return the shape check of the prototype we're going to access.
+            return result;
         }
 
         @ExplodeLoop
