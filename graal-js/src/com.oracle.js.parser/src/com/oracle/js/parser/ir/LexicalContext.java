@@ -40,7 +40,6 @@
  */
 package com.oracle.js.parser.ir;
 
-import java.io.File;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -256,8 +255,9 @@ public class LexicalContext {
                 final FunctionNode fn = (FunctionNode) node;
                 final Source source = fn.getSource();
                 String src = source.toString();
-                if (src.contains(File.pathSeparator)) {
-                    src = src.substring(src.lastIndexOf(File.pathSeparator));
+                int indexSep = src.lastIndexOf(':');
+                if (indexSep >= 0) {
+                    src = src.substring(indexSep);
                 }
                 sb.append(src);
                 sb.append(' ');
