@@ -40,18 +40,18 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.nashorn.regexp.RegExpScanner;
-
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 public final class RegexCompilerInterface {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
@@ -62,21 +62,22 @@ public final class RegexCompilerInterface {
         return JSInteropUtil.createCall();
     }
 
-    public static TruffleObject compile(String pattern, String flags, JSContext context) {
-        return compile(pattern, flags, context, createExecuteCompilerNode());
-    }
-
-    @TruffleBoundary
-    public static TruffleObject compile(String pattern, String flags, JSContext context, Node executeCompilerNode) {
+    public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.CompileRegexNode compileRegexNode) {
+        // RegexLanguage does its own validation of the flags. This call to validateFlags only
+        // serves the purpose of mimicking the error messages of Nashorn and V8.
+        validateFlags(flags, context.getEcmaScriptVersion());
         try {
-            // RegexLanguage does its own validation of the flags. This call to validateFlags only
-            // serves the purpose of mimicking the error messages of Nashorn and V8.
-            validateFlags(flags, context.getEcmaScriptVersion());
-            return (TruffleObject) ForeignAccess.sendExecute(executeCompilerNode, context.getRegexEngine(), pattern, flags);
+            return compileRegexNode.execute(context.getRegexEngine(), pattern, flags);
         } catch (RegexSyntaxException syntaxException) {
+            // TODO: remove this
+            CompilerDirectives.transferToInterpreter();
             throw Errors.createSyntaxError(syntaxException.getMessage());
-        } catch (InteropException ex) {
-            throw ex.raise();
+        } catch (RuntimeException e) {
+            CompilerDirectives.transferToInterpreter();
+            if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
+                throw Errors.createSyntaxError(e.getMessage());
+            }
+            throw e;
         }
     }
 
@@ -104,7 +105,13 @@ public final class RegexCompilerInterface {
             try {
                 RegexLanguage.validateRegex(pattern, flags);
             } catch (final RegexSyntaxException e) {
+                // TODO: remove this
                 throw Errors.createSyntaxError(e.getMessage());
+            } catch (RuntimeException e) {
+                if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
+                    throw Errors.createSyntaxError(e.getMessage());
+                }
+                throw e;
             }
         }
     }

@@ -67,9 +67,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -128,7 +125,7 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
-import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
+import com.oracle.truffle.js.runtime.joni.JoniRegexEngine;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
@@ -140,11 +137,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
-import com.oracle.truffle.regex.CachingRegexEngine;
-import com.oracle.truffle.regex.RegexCompiler;
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexOptions;
 
 public class JSContext {
     private final Evaluator evaluator;
@@ -209,7 +203,7 @@ public class JSContext {
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
 
     /** The RegExp engine, as obtained from RegexLanguage. */
-    private TruffleObject regexEngine;
+    @CompilationFinal private Object regexEngine;
 
     private PromiseRejectionTracker promiseRejectionTracker;
     private final Assumption promiseRejectionTrackerNotUsedAssumption;
@@ -936,54 +930,51 @@ public class JSContext {
         return dictionaryObjectFactory;
     }
 
+    private static final String REGEX_LANGUAGE_ID = "regex";
+    private static final String REGEX_OPTION_U180E_WHITESPACE = "U180EWhitespace";
+    private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";
+    private static final String REGEX_OPTION_DUMP_AUTOMATA = "DumpAutomata";
+    private static final String REGEX_OPTION_STEP_EXECUTION = "StepExecution";
+    private static final String REGEX_OPTION_ALWAYS_EAGER = "AlwaysEager";
+
     private String createRegexEngineOptions() {
         StringBuilder options = new StringBuilder(30);
         if (JSTruffleOptions.U180EWhitespace) {
-            options.append(RegexOptions.U180E_WHITESPACE_NAME + "=true,");
+            options.append(REGEX_OPTION_U180E_WHITESPACE + "=true,");
         }
         if (JSTruffleOptions.RegexRegressionTestMode) {
-            options.append(RegexOptions.REGRESSION_TEST_MODE_NAME + "=true,");
+            options.append(REGEX_OPTION_REGRESSION_TEST_MODE + "=true,");
         }
         if (getContextOptions().isRegexDumpAutomata()) {
-            options.append(RegexOptions.DUMP_AUTOMATA_NAME + "=true,");
+            options.append(REGEX_OPTION_DUMP_AUTOMATA + "=true,");
         }
         if (getContextOptions().isRegexStepExecution()) {
-            options.append(RegexOptions.STEP_EXECUTION_NAME + "=true,");
+            options.append(REGEX_OPTION_STEP_EXECUTION + "=true,");
         }
         if (getContextOptions().isRegexAlwaysEager()) {
-            options.append(RegexOptions.ALWAYS_EAGER_NAME + "=true,");
+            options.append(REGEX_OPTION_ALWAYS_EAGER + "=true,");
         }
         return options.toString();
     }
 
-    @SuppressWarnings("checkstyle:NoWhitespaceBefore")
-    public TruffleObject getRegexEngine() {
+    public Object getRegexEngine() {
         if (regexEngine == null) {
-            RegexCompiler joniCompiler = new JoniRegexCompiler(null);
-            if (JSTruffleOptions.UseTRegex) {
-                TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(RegexLanguage.ID, "", "TRegex Engine Builder Request").build()).call();
-                String regexOptions = createRegexEngineOptions();
-                try {
-                    regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), regexEngineBuilder, regexOptions, joniCompiler);
-                } catch (InteropException ex) {
-                    throw ex.raise();
-                }
-            } else {
-                // Checkstyle: stop
-                // @formatter:off
-                RegexOptions regexOptions = RegexOptions.newBuilder()
-                        .u180eWhitespace(JSTruffleOptions.U180EWhitespace)
-                        .regressionTestMode(JSTruffleOptions.RegexRegressionTestMode)
-                        .dumpAutomata(getContextOptions().isRegexDumpAutomata())
-                        .stepExecution(getContextOptions().isRegexStepExecution())
-                        .alwaysEager(getContextOptions().isRegexAlwaysEager())
-                        .build();
-                // @formatter:on
-                // Checkstyle: resume
-                regexEngine = new CachingRegexEngine(joniCompiler, regexOptions);
-            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            regexEngine = createRegexEngine();
         }
         return regexEngine;
+    }
+
+    @TruffleBoundary
+    private Object createRegexEngine() {
+        JoniRegexEngine joniCompiler = new JoniRegexEngine(null);
+        if (JSTruffleOptions.UseTRegex) {
+            TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").build()).call();
+            String regexOptions = createRegexEngineOptions();
+            return TRegexUtil.CreateRegexEngineNode.getUncached().execute(regexEngineBuilder, regexOptions, joniCompiler);
+        } else {
+            return joniCompiler;
+        }
     }
 
     private static class LocalTimeZoneHolder {

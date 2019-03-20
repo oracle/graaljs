@@ -60,9 +60,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -830,7 +828,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private PropertyGetNode getConstructorNode;
         @Child private PropertyGetNode getSourceNode;
         @Child private PropertyGetNode getFlagsNode;
-        @Child private Node interopReadPatternNode;
+        @Child private TRegexUtil.InteropReadStringMemberNode interopReadPatternNode;
         private final BranchProfile regexpObject = BranchProfile.create();
         private final BranchProfile regexpMatcherObject = BranchProfile.create();
         private final BranchProfile regexpNonObject = BranchProfile.create();
@@ -865,7 +863,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
             if (isJSRegExp) {
                 regexpObject.enter();
-                TruffleObject compiledRegex = JSRegExp.getCompiledRegexUnchecked((DynamicObject) patternObj, isJSRegExp);
+                Object compiledRegex = JSRegExp.getCompiledRegexUnchecked((DynamicObject) patternObj, isJSRegExp);
                 if (flags == Undefined.instance) {
                     return getCreateRegExpNode().execute(compiledRegex);
                 } else {
@@ -874,7 +872,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     }
                     String flagsStr = flagsToString(flags);
                     regexpObjectNewFlagsBranch.enter();
-                    TruffleObject newCompiledRegex = getCompileRegexNode().compile(TRegexUtil.readPattern(getInteropReadPatternNode(), compiledRegex), flagsStr);
+                    Object newCompiledRegex = getCompileRegexNode().compile(getInteropReadPatternNode().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN), flagsStr);
                     return getCreateRegExpNode().execute(newCompiledRegex);
                 }
             } else if (hasMatchSymbol) {
@@ -894,7 +892,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             String patternStr = getPatternToStringNode().executeString(p);
             String flagsStr = flagsToString(f);
-            TruffleObject compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
+            Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
             return getCreateRegExpNode().execute(compiledRegex);
         }
 
@@ -906,10 +904,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return patternToStringNode;
         }
 
-        private Node getInteropReadPatternNode() {
+        private TRegexUtil.InteropReadStringMemberNode getInteropReadPatternNode() {
             if (interopReadPatternNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                interopReadPatternNode = insert(Message.READ.createNode());
+                interopReadPatternNode = insert(TRegexUtil.InteropReadStringMemberNode.create());
             }
             return interopReadPatternNode;
         }

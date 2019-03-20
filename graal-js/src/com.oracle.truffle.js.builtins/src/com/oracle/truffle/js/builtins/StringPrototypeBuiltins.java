@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -454,7 +453,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        protected final TruffleObject matchIgnoreLastIndex(DynamicObject regExp, String input, int fromIndex) {
+        protected final Object matchIgnoreLastIndex(DynamicObject regExp, String input, int fromIndex) {
             assert getContext().getEcmaScriptVersion() <= 5;
             return getRegExpIgnoreLastIndexNode().execute(regExp, input, fromIndex);
         }
@@ -1001,12 +1000,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             private static Object[] splitEmptyString(DynamicObject regExp, JSStringSplitNode parent) {
-                TruffleObject result = parent.matchIgnoreLastIndex(regExp, "", 0);
+                Object result = parent.matchIgnoreLastIndex(regExp, "", 0);
                 return parent.matchProfile.profile(parent.getResultAccessor().isMatch(result)) ? EMPTY_SPLITS : SINGLE_ZERO_LENGTH_SPLIT;
             }
 
             private static Object[] splitNonEmptyString(String input, int limit, DynamicObject regExp, JSStringSplitNode parent) {
-                TruffleObject result = parent.matchIgnoreLastIndex(regExp, input, 0);
+                Object result = parent.matchIgnoreLastIndex(regExp, input, 0);
                 if (parent.matchProfile.profile(!parent.getResultAccessor().isMatch(result))) {
                     return new Object[]{input};
                 }
@@ -1338,39 +1337,38 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private <T> String replaceFirst(String thisStr, DynamicObject regExp, Replacer<T> replacer, T replaceValue) {
-            TruffleObject result = match(regExp, thisStr);
+            Object result = match(regExp, thisStr);
             if (match.profile(!resultAccessor.isMatch(result))) {
                 return thisStr;
             }
-            return replace(result, replacer, replaceValue);
+            return replace(thisStr, result, replacer, replaceValue);
         }
 
-        protected final TruffleObject match(DynamicObject regExp, String input) {
+        protected final Object match(DynamicObject regExp, String input) {
             assert getContext().getEcmaScriptVersion() <= 5;
-            return (TruffleObject) getRegExpNode().execute(regExp, input);
+            return getRegExpNode().execute(regExp, input);
         }
 
-        private <T> String replace(TruffleObject result, Replacer<T> replacer, T replaceValue) {
-            StringBuilder sb = new StringBuilder(replacer.guessResultLength(result, replaceValue));
-            CharSequence input = resultAccessor.input(result);
-            Boundaries.builderAppend(sb, input, 0, resultAccessor.captureGroupStart(result, 0));
-            replacer.appendReplacement(sb, result, replaceValue);
-            Boundaries.builderAppend(sb, input, resultAccessor.captureGroupEnd(result, 0), input.length());
+        private <T> String replace(String thisStr, Object result, Replacer<T> replacer, T replaceValue) {
+            StringBuilder sb = new StringBuilder(replacer.guessResultLength(result, replaceValue, thisStr));
+            Boundaries.builderAppend(sb, thisStr, 0, resultAccessor.captureGroupStart(result, 0));
+            replacer.appendReplacement(sb, thisStr, result, replaceValue);
+            Boundaries.builderAppend(sb, thisStr, resultAccessor.captureGroupEnd(result, 0), thisStr.length());
             return Boundaries.builderToString(sb);
         }
 
         private <T> String replaceAll(DynamicObject regExp, String input, Replacer<T> replacer, T replaceValue) {
             setLastIndex(regExp, 0);
-            TruffleObject result = matchIgnoreLastIndex(regExp, input, 0);
+            Object result = matchIgnoreLastIndex(regExp, input, 0);
             if (match.profile(!resultAccessor.isMatch(result))) {
                 return input;
             }
-            StringBuilder sb = new StringBuilder(replacer.guessResultLength(result, replaceValue));
+            StringBuilder sb = new StringBuilder(replacer.guessResultLength(result, replaceValue, input));
             int thisIndex = 0;
             int lastIndex = 0;
             while (resultAccessor.isMatch(result)) {
                 Boundaries.builderAppend(sb, input, thisIndex, resultAccessor.captureGroupStart(result, 0));
-                replacer.appendReplacement(sb, result, replaceValue);
+                replacer.appendReplacement(sb, input, result, replaceValue);
                 if (sb.length() > JSTruffleOptions.StringLengthLimit) {
                     throw Errors.createRangeErrorInvalidStringLength();
                 }
@@ -1395,11 +1393,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected final ConditionProfile groups = ConditionProfile.createBinaryProfile();
             protected final BranchProfile replaceDollar = BranchProfile.create();
 
-            int guessResultLength(TruffleObject result, @SuppressWarnings("unused") T replaceValue) {
-                return resultAccessor.input(result).length() * 2;
+            int guessResultLength(@SuppressWarnings("unused") Object result, @SuppressWarnings("unused") T replaceValue, String input) {
+                return input.length() * 2;
             }
 
-            abstract void appendReplacement(StringBuilder sb, TruffleObject result, T replaceValue);
+            abstract void appendReplacement(StringBuilder sb, String input, Object result, T replaceValue);
 
             abstract void appendReplacement(StringBuilder sb, String input, String matchedString, int pos, T replaceValue);
         }
@@ -1416,21 +1414,21 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            int guessResultLength(TruffleObject result, String replaceStr) {
+            int guessResultLength(Object result, String replaceStr, String input) {
                 if (replaceStr.isEmpty()) {
-                    return resultAccessor.input(result).length() - resultAccessor.captureGroupLength(result, 0);
+                    return input.length() - resultAccessor.captureGroupLength(result, 0);
                 } else {
-                    return resultAccessor.input(result).length() * 2;
+                    return input.length() * 2;
                 }
             }
 
             @Override
-            void appendReplacement(StringBuilder sb, TruffleObject result, String replaceStr) {
+            void appendReplacement(StringBuilder sb, String input, Object result, String replaceStr) {
                 if (emptyReplace.profile(!replaceStr.isEmpty())) {
                     int pos = nextDollar(sb, 0, replaceStr);
                     while (pos != -1) {
                         replaceDollar.enter();
-                        pos = appendSubstitution(sb, pos + 1, result, replaceStr);
+                        pos = appendSubstitution(sb, input, pos + 1, result, replaceStr);
                         pos = nextDollar(sb, pos, replaceStr);
                     }
                 }
@@ -1441,7 +1439,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 JSStringReplaceNode.appendSubstitution(sb, input, replaceValue, matchedString, pos, dollarProfile);
             }
 
-            private int appendSubstitution(StringBuilder sb, int pos, TruffleObject result, String replaceStr) {
+            private int appendSubstitution(StringBuilder sb, String input, int pos, Object result, String replaceStr) {
                 if (pos == replaceStr.length()) {
                     Boundaries.builderAppend(sb, '$');
                     return pos;
@@ -1453,17 +1451,17 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         Boundaries.builderAppend(sb, '$');
                         break;
                     case '&':
-                        Boundaries.builderAppend(sb, (String) resultMaterializer.materializeGroup(result, 0));
+                        Boundaries.builderAppend(sb, (String) resultMaterializer.materializeGroup(result, 0, input));
                         break;
                     case '`':
-                        Boundaries.builderAppend(sb, resultAccessor.input(result), 0, resultAccessor.captureGroupStart(result, 0));
+                        Boundaries.builderAppend(sb, input, 0, resultAccessor.captureGroupStart(result, 0));
                         break;
                     case '\'':
-                        Boundaries.builderAppend(sb, resultAccessor.input(result), resultAccessor.captureGroupEnd(result, 0), resultAccessor.input(result).length());
+                        Boundaries.builderAppend(sb, input, resultAccessor.captureGroupEnd(result, 0), input.length());
                         break;
                     default:
                         if (groups.profile(Boundaries.characterIsDigit(ch))) {
-                            return pos + appendGroup(sb, pos + 1, ch, result, replaceStr);
+                            return pos + appendGroup(sb, input, pos + 1, ch, result, replaceStr);
                         } else {
                             Boundaries.builderAppend(sb, '$');
                             Boundaries.builderAppend(sb, ch);
@@ -1480,14 +1478,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             // Returns 2 for valid two digit group references ($nn), otherwise returns 1.
-            private int appendGroup(StringBuilder sb, int pos, char digit, TruffleObject result, String replaceStr) {
+            private int appendGroup(StringBuilder sb, String input, int pos, char digit, Object result, String replaceStr) {
                 int groupNr = parseGroupNr(replaceStr, pos, digit, resultAccessor.groupCount(result) - 1);
                 if (groupNr == -1) {
                     Boundaries.builderAppend(sb, '$');
                     Boundaries.builderAppend(sb, digit);
                     return 1;
                 }
-                String group = (String) resultMaterializer.materializeGroup(result, groupNr);
+                String group = (String) resultMaterializer.materializeGroup(result, groupNr, input);
                 Boundaries.builderAppend(sb, group);
                 return (groupNr > 9) ? 2 : 1;
             }
@@ -1529,8 +1527,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            void appendReplacement(StringBuilder sb, TruffleObject result, DynamicObject replaceFunc) {
-                String replaceStr = callReplaceValueFunc(result, replaceFunc);
+            void appendReplacement(StringBuilder sb, String input, Object result, DynamicObject replaceFunc) {
+                String replaceStr = callReplaceValueFunc(result, input, replaceFunc);
                 Boundaries.builderAppend(sb, replaceStr);
             }
 
@@ -1542,9 +1540,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 Boundaries.builderAppend(sb, replaceStr);
             }
 
-            private String callReplaceValueFunc(TruffleObject result, DynamicObject replaceFunc) {
-                Object[] matches = resultMaterializer.materializeFull(result);
-                Object[] arguments = createArguments(matches, resultAccessor.captureGroupStart(result, 0), resultAccessor.input(result), replaceFunc);
+            private String callReplaceValueFunc(Object result, String input, DynamicObject replaceFunc) {
+                Object[] matches = resultMaterializer.materializeFull(result, input);
+                Object[] arguments = createArguments(matches, resultAccessor.captureGroupStart(result, 0), input, replaceFunc);
                 Object replaceValue = functionCallNode.executeCall(arguments);
                 return toStringNode.executeString(replaceValue);
             }
@@ -1736,7 +1734,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private Object builtinSearch(Object thisObj, Object regex) {
             String thisStr = toString(thisObj);
-            TruffleObject cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex));
+            Object cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex));
             DynamicObject regExp = getCreateRegExpNode().execute(cRe);
             return invoke(regExp, Symbol.SYMBOL_SEARCH, thisStr);
         }
@@ -1777,7 +1775,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
             DynamicObject regExp = toRegExpNode.execute(searchObj);
-            TruffleObject result = matchIgnoreLastIndex(regExp, thisStr, 0);
+            Object result = matchIgnoreLastIndex(regExp, thisStr, 0);
             return resultAccessor.isMatch(result) ? resultAccessor.captureGroupStart(result, 0) : -1;
         }
     }
@@ -1863,7 +1861,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private Object builtinMatch(Object thisObj, Object regex) {
             String thisStr = toString(thisObj);
-            TruffleObject cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex), matchAll ? "g" : "");
+            Object cRe = getCompileRegexNode().compile(regex == Undefined.instance ? "" : toString(regex), matchAll ? "g" : "");
             DynamicObject regExp = getCreateRegExpNode().execute(cRe);
             return invoke(regExp, matchSymbol(), thisStr);
         }
@@ -1934,14 +1932,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private DynamicObject matchAll(DynamicObject regExp, String input) {
             setLastIndex(regExp, 0);
-            TruffleObject result = matchIgnoreLastIndex(regExp, input, 0);
+            Object result = matchIgnoreLastIndex(regExp, input, 0);
             if (match.profile(!resultAccessor.isMatch(result))) {
                 return Null.instance;
             }
             List<String> matches = new ArrayList<>();
             int lastIndex = 0;
             while (resultAccessor.isMatch(result)) {
-                Boundaries.listAdd(matches, (String) resultMaterializer.materializeGroup(result, 0));
+                Boundaries.listAdd(matches, (String) resultMaterializer.materializeGroup(result, 0, input));
 
                 int thisIndex = resultAccessor.captureGroupEnd(result, 0);
                 lastIndex = thisIndex + (thisIndex == lastIndex ? 1 : 0);

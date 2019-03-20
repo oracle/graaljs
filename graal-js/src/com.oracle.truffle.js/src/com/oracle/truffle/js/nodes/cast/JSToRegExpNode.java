@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -78,7 +77,7 @@ public abstract class JSToRegExpNode extends JavaScriptBaseNode {
                     @Cached("createUndefinedToEmpty()") JSToStringNode toStringNode,
                     @Cached("create(context)") CompileRegexNode compileRegexNode) {
         String pattern = toStringNode.executeString(patternObj);
-        TruffleObject regex = compileRegexNode.compile(pattern);
+        Object regex = compileRegexNode.compile(pattern);
         return getCreateRegExpNode().execute(regex);
     }
 

@@ -38,33 +38,54 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.joni;
+package com.oracle.truffle.js.runtime.joni.interop;
 
-/**
- * Static utility methods for analyzing regular expression patterns.
- */
-public final class PatternAnalyzer {
+import java.util.Arrays;
 
-    public static boolean containsGroup(String pattern) {
-        boolean charClass = false;
-        int i = 0;
-        for (; i < pattern.length(); i++) {
-            char ch = pattern.charAt(i);
-            if (ch == '\\') {
-                i++;
-            } else if (charClass && ch == ']') {
-                charClass = false;
-            } else if (ch == '[') {
-                charClass = true;
-            } else if (!charClass && ch == '(') {
-                if (!pattern.regionMatches(i + 1, "?", 0, 1)) {
-                    return true; // unnamed capture group
-                } else if (pattern.regionMatches(i + 2, "<", 0, 1) && !pattern.regionMatches(i + 3, "=", 0, 1) && !pattern.regionMatches(i + 3, "!", 0, 1)) {
-                    return true; // named capture group
-                }
-            }
-        }
-        return false;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
+@ExportLibrary(InteropLibrary.class)
+public class TruffleReadOnlyKeysArray implements TruffleObject {
+
+    @CompilationFinal(dimensions = 1) private final String[] keys;
+
+    public TruffleReadOnlyKeysArray(String... keys) {
+        this.keys = keys;
+        Arrays.sort(this.keys);
     }
 
+    public boolean contains(String key) {
+        return Arrays.binarySearch(keys, key) >= 0;
+    }
+
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
+    }
+
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < keys.length;
+    }
+
+    @ExportMessage
+    long getArraySize() {
+        return keys.length;
+    }
+
+    @ExportMessage
+    String readArrayElement(long index) throws InvalidArrayIndexException {
+        try {
+            return keys[(int) index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw InvalidArrayIndexException.create(index);
+        }
+    }
 }

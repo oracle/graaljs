@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.joni;
+package com.oracle.truffle.js.runtime.joni.result;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+public final class NoMatchResult extends RegexResult {
 
-@ImportStatic(JSInteropUtil.class)
-public abstract class InputCharAtNode extends Node {
-
-    public static InputCharAtNode create() {
-        return InputCharAtNodeGen.create();
+    public NoMatchResult(int groupCount) {
+        super(groupCount);
     }
 
-    public abstract char execute(Object input, int index);
+    private static final NoMatchResult INSTANCE = new NoMatchResult(0);
 
-    @Specialization
-    public char doCharAt(String input, int index) {
-        return input.charAt(index);
+    public static NoMatchResult getInstance() {
+        return INSTANCE;
     }
 
-    @Specialization
-    public char doCharAt(TruffleObject input, int index, @Cached("createRead()") Node readNode) {
-        try {
-            Object c = ForeignAccess.sendRead(readNode, input, index);
-            if (c instanceof Character) {
-                return (char) c;
-            }
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.raise(new Object[]{c});
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw e.raise();
-        }
+    @Override
+    public String toString() {
+        return "NO_MATCH";
     }
 }

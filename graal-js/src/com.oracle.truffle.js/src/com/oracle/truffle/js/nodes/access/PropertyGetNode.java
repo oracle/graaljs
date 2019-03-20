@@ -1412,8 +1412,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class LazyRegexResultIndexPropertyGetNode extends LinkedPropertyGetNode {
 
-        @Child private Node readStartArrayNode = TRegexUtil.createReadNode();
-        @Child private Node readStartArrayElementNode = TRegexUtil.createReadNode();
+        @Child private TRegexUtil.InteropReadMemberNode readStartArrayNode = TRegexUtil.InteropReadMemberNode.create();
+        @Child private TRegexUtil.InteropReadIntArrayElementNode readStartArrayElementNode = TRegexUtil.InteropReadIntArrayElementNode.create();
 
         public LazyRegexResultIndexPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
@@ -1428,7 +1428,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            return TRegexUtil.readResultStartIndex(readStartArrayNode, readStartArrayElementNode, arrayGetRegexResult(receiverCheck.getStore(thisObj)), 0);
+            return readStartArrayElementNode.execute(readStartArrayNode.execute(arrayGetRegexResult(receiverCheck.getStore(thisObj)), TRegexUtil.Props.RegexResult.START), 0);
         }
 
         @Override
@@ -1441,6 +1441,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         private final int groupIndex;
         @Child private PropertyGetNode getResultNode;
+        @Child private PropertyGetNode getOriginalInputNode;
         @Child private TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.create();
 
         public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context, int groupIndex) {
@@ -1448,13 +1449,15 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             assert isLazyNamedCaptureGroupProperty(property);
             this.groupIndex = groupIndex;
             this.getResultNode = PropertyGetNode.create(JSRegExp.GROUPS_RESULT_ID, false, context);
+            this.getOriginalInputNode = PropertyGetNode.create(JSRegExp.GROUPS_ORIGINAL_INPUT_ID, false, context);
         }
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
             TruffleObject regexResult = (TruffleObject) getResultNode.getValue(store);
-            return materializeNode.materializeGroup(regexResult, groupIndex);
+            String input = (String) getOriginalInputNode.getValue(store);
+            return materializeNode.materializeGroup(regexResult, groupIndex, input);
         }
     }
 

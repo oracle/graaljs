@@ -61,7 +61,6 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
@@ -259,8 +258,8 @@ public class JSRealm {
     private Object embedderData;
 
     /** Support for RegExp.$1. */
-    private TruffleObject regexResult;
-    private TruffleObject lazyStaticRegexResultCompiledRegex;
+    private Object regexResult;
+    private Object lazyStaticRegexResultCompiledRegex;
     private String lazyStaticRegexResultInputString = "";
     private long lazyStaticRegexResultFromIndex;
 
@@ -1312,7 +1311,7 @@ public class JSRealm {
         this.embedderData = embedderData;
     }
 
-    public TruffleObject getRegexResult() {
+    public Object getRegexResult() {
         assert context.isOptionRegexpStaticResult();
         if (regexResult == null) {
             regexResult = TRegexUtil.getTRegexEmptyResult();
@@ -1320,7 +1319,7 @@ public class JSRealm {
         return regexResult;
     }
 
-    public TruffleObject getLazyStaticRegexResultCompiledRegex() {
+    public Object getLazyStaticRegexResultCompiledRegex() {
         return lazyStaticRegexResultCompiledRegex;
     }
 
@@ -1332,10 +1331,12 @@ public class JSRealm {
         return lazyStaticRegexResultFromIndex;
     }
 
-    public void setRegexResult(TruffleObject regexResult) {
+    public void setRegexResult(Object tRegexCompiledRegex, String input, Object regexResult) {
         assert context.isOptionRegexpStaticResult();
         assert !context.getRegExpStaticResultUnusedAssumption().isValid();
-        assert TRegexUtil.readResultIsMatch(TRegexUtil.createReadNode(), regexResult);
+        assert TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(regexResult, TRegexUtil.Props.RegexResult.IS_MATCH);
+        lazyStaticRegexResultCompiledRegex = tRegexCompiledRegex;
+        lazyStaticRegexResultInputString = input;
         this.regexResult = regexResult;
     }
 
@@ -1344,7 +1345,7 @@ public class JSRealm {
      * globally. Instead, we store the values needed to calculate the result on demand, under the
      * assumption that this non-standard feature is often not used at all.
      */
-    private void setRegexResultLazy(TruffleObject tRegexCompiledRegex, String inputString, long fromIndex) {
+    private void setRegexResultLazy(Object tRegexCompiledRegex, String inputString, long fromIndex) {
         assert context.isOptionRegexpStaticResult();
         assert context.getRegExpStaticResultUnusedAssumption().isValid();
         lazyStaticRegexResultCompiledRegex = tRegexCompiledRegex;
@@ -1352,19 +1353,16 @@ public class JSRealm {
         lazyStaticRegexResultFromIndex = fromIndex;
     }
 
-    public void setStaticRegexResult(TruffleObject compiledRegex, String input, long fromIndex, TruffleObject result) {
+    public void setStaticRegexResult(Object compiledRegex, String input, long fromIndex, Object result) {
         if (context.getRegExpStaticResultUnusedAssumption().isValid()) {
             setRegexResultLazy(compiledRegex, input, fromIndex);
         } else {
-            setRegexResult(result);
+            setRegexResult(compiledRegex, input, result);
         }
     }
 
     public void switchToEagerStaticRegExpResults() {
         context.getRegExpStaticResultUnusedAssumption().invalidate();
-        lazyStaticRegexResultCompiledRegex = null;
-        lazyStaticRegexResultInputString = null;
-        lazyStaticRegexResultFromIndex = 0;
     }
 
     public OptionValues getOptions() {

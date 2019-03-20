@@ -64,7 +64,6 @@ import java.util.function.ObjIntConsumer;
 
 import com.oracle.truffle.regex.nashorn.regexp.joni.encoding.CharacterType;
 import com.oracle.truffle.regex.nashorn.regexp.joni.encoding.IntHolder;
-import com.oracle.truffle.regex.chardata.Constants;
 
 public final class EncodingHelper {
 
@@ -109,6 +108,19 @@ public final class EncodingHelper {
 
     public static boolean isNewLine(final int code) {
         return code == NEW_LINE || code == CARRIAGE_RETURN || code == LINE_SEPARATOR || code == PARAGRAPH_SEPARATOR;
+    }
+
+    public static boolean isSpace(final int code) {
+        return '\t' <= code && code <= '\r' || '\u2000' <= code && code <= '\u200a' ||
+                        code == ' ' ||
+                        code == '\u00a0' ||
+                        code == '\u1680' ||
+                        code == '\u2028' ||
+                        code == '\u2029' ||
+                        code == '\u202f' ||
+                        code == '\u205f' ||
+                        code == '\u3000' ||
+                        code == '\ufeff';
     }
 
     // Encoding.prevCharHead
@@ -370,7 +382,7 @@ public final class EncodingHelper {
             case CharacterType.PUNCT:
                 return (1 << Character.getType(code) & CharacterType.PUNCT_MASK) != 0;
             case CharacterType.SPACE:
-                return Constants.WHITE_SPACE.contains(code);
+                return isSpace(code);
             case CharacterType.UPPER:
                 return Character.isUpperCase(code);
             case CharacterType.XDIGIT:

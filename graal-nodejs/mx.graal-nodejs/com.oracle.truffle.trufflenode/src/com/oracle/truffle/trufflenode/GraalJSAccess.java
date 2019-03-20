@@ -272,10 +272,6 @@ public final class GraalJSAccess {
 
     private final boolean exposeGC;
 
-    // static accessors to JSRegExp properties (usually via nodes)
-    private static final TRegexUtil.TRegexCompiledRegexAccessor STATIC_COMPILED_REGEX_ACCESSOR = TRegexUtil.TRegexCompiledRegexAccessor.create();
-    private static final TRegexUtil.TRegexFlagsAccessor STATIC_FLAGS_ACCESSOR = TRegexUtil.TRegexFlagsAccessor.create();
-
     private GraalJSAccess(String[] args) throws Exception {
         try {
             Options options = Options.parseArguments(prepareArguments(args));
@@ -2715,7 +2711,7 @@ public final class GraalJSAccess {
     }
 
     public static Object regexpCreate(JSContext context, String pattern, int v8Flags) {
-        TruffleObject compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context);
+        Object compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context, TRegexUtil.CompileRegexNode.getUncached());
         return JSRegExp.create(context, compiledRegexp);
     }
 
@@ -2726,8 +2722,8 @@ public final class GraalJSAccess {
 
     public static String regexpPattern(DynamicObject regexp) {
         assert JSRegExp.isJSRegExp(regexp);
-        TruffleObject compiledRegex = JSRegExp.getCompiledRegex(regexp);
-        return STATIC_COMPILED_REGEX_ACCESSOR.pattern(compiledRegex);
+        Object compiledRegex = JSRegExp.getCompiledRegex(regexp);
+        return TRegexUtil.InteropReadStringMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
     }
 
     @TruffleBoundary
@@ -2736,23 +2732,23 @@ public final class GraalJSAccess {
     }
 
     public static int regexpV8Flags(DynamicObject regexp) {
-        TruffleObject compiledRegex = JSRegExp.getCompiledRegex(regexp);
-        TruffleObject flagsObj = STATIC_COMPILED_REGEX_ACCESSOR.flags(compiledRegex);
+        Object compiledRegex = JSRegExp.getCompiledRegex(regexp);
+        Object flagsObj = TRegexUtil.InteropReadMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.FLAGS);
 
         int v8Flags = 0; // v8::RegExp::Flags::kNone
-        if (STATIC_FLAGS_ACCESSOR.global(flagsObj)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.GLOBAL)) {
             v8Flags |= 1; // v8::RegExp::Flags::kGlobal
         }
-        if (STATIC_FLAGS_ACCESSOR.ignoreCase(flagsObj)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.IGNORE_CASE)) {
             v8Flags |= 2; // v8::RegExp::Flags::kIgnoreCase
         }
-        if (STATIC_FLAGS_ACCESSOR.multiline(flagsObj)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.MULTILINE)) {
             v8Flags |= 4; // v8::RegExp::Flags::kMultiline
         }
-        if (STATIC_FLAGS_ACCESSOR.sticky(flagsObj)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.STICKY)) {
             v8Flags |= 8; // v8::RegExp::Flags::kSticky
         }
-        if (STATIC_FLAGS_ACCESSOR.unicode(flagsObj)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.UNICODE)) {
             v8Flags |= 16; // v8::RegExp::Flags::kUnicode
         }
         return v8Flags;
