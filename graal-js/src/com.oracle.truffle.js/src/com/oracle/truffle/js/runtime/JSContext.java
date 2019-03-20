@@ -67,9 +67,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -140,6 +137,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 
 public class JSContext {
@@ -205,7 +203,7 @@ public class JSContext {
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
 
     /** The RegExp engine, as obtained from RegexLanguage. */
-    @CompilationFinal private TruffleObject regexEngine;
+    @CompilationFinal private Object regexEngine;
 
     private PromiseRejectionTracker promiseRejectionTracker;
     private final Assumption promiseRejectionTrackerNotUsedAssumption;
@@ -959,7 +957,7 @@ public class JSContext {
         return options.toString();
     }
 
-    public TruffleObject getRegexEngine() {
+    public Object getRegexEngine() {
         if (regexEngine == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             regexEngine = createRegexEngine();
@@ -968,16 +966,12 @@ public class JSContext {
     }
 
     @TruffleBoundary
-    private TruffleObject createRegexEngine() {
+    private Object createRegexEngine() {
         JoniRegexEngine joniCompiler = new JoniRegexEngine(null);
         if (JSTruffleOptions.UseTRegex) {
             TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").build()).call();
             String regexOptions = createRegexEngineOptions();
-            try {
-                return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), regexEngineBuilder, regexOptions, joniCompiler);
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
+            return TRegexUtil.CreateRegexEngineNode.getUncached().execute(regexEngineBuilder, regexOptions, joniCompiler);
         } else {
             return joniCompiler;
         }

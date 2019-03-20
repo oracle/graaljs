@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.joni.result.NoMatchResult;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Props.CompiledRegex;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.CompileRegexNodeGen;
+import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.CreateRegexEngineNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.ExecExecMethodNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropIsMemberReadableNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropIsNullNodeGen;
@@ -430,6 +431,31 @@ public final class TRegexUtil {
 
         public static CompileRegexNode getUncached() {
             return CompileRegexNodeGen.getUncached();
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class CreateRegexEngineNode extends Node {
+
+        public abstract Object execute(Object regexCompiler, String engineOptions, Object fallbackCompiler);
+
+        @Specialization(guards = "objs.isExecutable(regexEngineBuilder)", limit = "3")
+        static Object exec(Object regexEngineBuilder, String engineOptions, Object fallbackCompiler,
+                        @CachedLibrary("regexEngineBuilder") InteropLibrary objs) {
+            try {
+                return objs.execute(regexEngineBuilder, engineOptions, fallbackCompiler);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new RuntimeException(e);
+            }
+        }
+
+        public static CreateRegexEngineNode create() {
+            return CreateRegexEngineNodeGen.create();
+        }
+
+        public static CreateRegexEngineNode getUncached() {
+            return CreateRegexEngineNodeGen.getUncached();
         }
     }
 
