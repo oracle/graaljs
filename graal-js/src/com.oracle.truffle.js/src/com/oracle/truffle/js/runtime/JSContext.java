@@ -205,7 +205,7 @@ public class JSContext {
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
 
     /** The RegExp engine, as obtained from RegexLanguage. */
-    private TruffleObject regexEngine;
+    @CompilationFinal private TruffleObject regexEngine;
 
     private PromiseRejectionTracker promiseRejectionTracker;
     private final Assumption promiseRejectionTrackerNotUsedAssumption;
@@ -959,23 +959,28 @@ public class JSContext {
         return options.toString();
     }
 
-    @SuppressWarnings("checkstyle:NoWhitespaceBefore")
     public TruffleObject getRegexEngine() {
         if (regexEngine == null) {
-            JoniRegexEngine joniCompiler = new JoniRegexEngine(null);
-            if (JSTruffleOptions.UseTRegex) {
-                TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").build()).call();
-                String regexOptions = createRegexEngineOptions();
-                try {
-                    regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), regexEngineBuilder, regexOptions, joniCompiler);
-                } catch (InteropException ex) {
-                    throw ex.raise();
-                }
-            } else {
-                regexEngine = joniCompiler;
-            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            regexEngine = createRegexEngine();
         }
         return regexEngine;
+    }
+
+    @TruffleBoundary
+    private TruffleObject createRegexEngine() {
+        JoniRegexEngine joniCompiler = new JoniRegexEngine(null);
+        if (JSTruffleOptions.UseTRegex) {
+            TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").build()).call();
+            String regexOptions = createRegexEngineOptions();
+            try {
+                return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), regexEngineBuilder, regexOptions, joniCompiler);
+            } catch (InteropException ex) {
+                throw ex.raise();
+            }
+        } else {
+            return joniCompiler;
+        }
     }
 
     private static class LocalTimeZoneHolder {
