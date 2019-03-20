@@ -40,40 +40,20 @@
  */
 package com.oracle.truffle.js.runtime.joni.result;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+public final class JoniNoMatchResult extends JoniRegexResult {
 
-@ReportPolymorphism
-@GenerateUncached
-abstract class RegexResultGetStartNode extends Node {
-
-    abstract int execute(RegexResult receiver, int groupNumber);
-
-    @Specialization
-    static int doNoMatch(@SuppressWarnings("unused") NoMatchResult receiver, @SuppressWarnings("unused") int groupNumber) {
-        return -1;
+    public JoniNoMatchResult(int groupCount) {
+        super(groupCount);
     }
 
-    @Specialization
-    static int doSingleResult(SingleResult receiver, int groupNumber,
-                    @Cached("createBinaryProfile()") ConditionProfile boundsProfile) {
-        if (boundsProfile.profile(groupNumber == 0)) {
-            return receiver.getStart();
-        } else {
-            return -1;
-        }
+    private static final JoniNoMatchResult INSTANCE = new JoniNoMatchResult(0);
+
+    public static JoniNoMatchResult getInstance() {
+        return INSTANCE;
     }
 
-    @Specialization
-    static int doStartsEndsIndexArray(StartsEndsIndexArrayResult receiver, int groupNumber) {
-        try {
-            return receiver.getStarts()[groupNumber];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            return -1;
-        }
+    @Override
+    public String toString() {
+        return "NO_MATCH";
     }
 }

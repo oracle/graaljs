@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.joni;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -55,7 +54,7 @@ import com.oracle.truffle.js.runtime.joni.interop.ToLongNode;
 import com.oracle.truffle.js.runtime.joni.interop.ToStringNode;
 import com.oracle.truffle.js.runtime.joni.interop.TruffleNull;
 import com.oracle.truffle.js.runtime.joni.interop.TruffleReadOnlyKeysArray;
-import com.oracle.truffle.js.runtime.joni.result.NoMatchResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniNoMatchResult;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
 
 @ExportLibrary(InteropLibrary.class)
@@ -118,9 +117,9 @@ public class JoniCompiledRegex extends AbstractConstantKeysObject {
 
     @ExportMessage
     Object invokeMember(String member, Object[] args,
-                    @Shared("toStringNode") @Cached("create()") ToStringNode toStringNode,
-                    @Shared("toLongNode") @Cached ToLongNode toLongNode,
-                    @Shared("executeNode") @Cached JoniCompiledRegexDispatchNode executeNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+                    @Cached("create()") ToStringNode toStringNode,
+                    @Cached ToLongNode toLongNode,
+                    @Cached JoniCompiledRegexDispatchNode executeNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (!"exec".equals(member)) {
             CompilerDirectives.transferToInterpreter();
             throw UnsupportedMessageException.create();
@@ -132,32 +131,7 @@ public class JoniCompiledRegex extends AbstractConstantKeysObject {
         String input = toStringNode.execute(args[0]);
         long fromIndex = toLongNode.execute(args[1]);
         if (fromIndex > Integer.MAX_VALUE) {
-            return NoMatchResult.getInstance();
-        }
-        return executeNode.execute(this, input, (int) fromIndex);
-    }
-
-    // TODO: remove this
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
-    }
-
-    // TODO: remove this
-    @ExportMessage
-    Object execute(Object[] args,
-                    @Shared("toStringNode") @Cached("create()") ToStringNode toStringNode,
-                    @Shared("toLongNode") @Cached ToLongNode toLongNode,
-                    @Shared("executeNode") @Cached JoniCompiledRegexDispatchNode executeNode) throws ArityException, UnsupportedTypeException {
-        if (args.length != 3) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(3, args.length);
-        }
-        String input = toStringNode.execute(args[1]);
-        long fromIndex = toLongNode.execute(args[2]);
-        if (fromIndex > Integer.MAX_VALUE) {
-            return NoMatchResult.getInstance();
+            return JoniNoMatchResult.getInstance();
         }
         return executeNode.execute(this, input, (int) fromIndex);
     }

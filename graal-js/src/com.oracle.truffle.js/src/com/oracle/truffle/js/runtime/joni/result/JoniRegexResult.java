@@ -44,50 +44,41 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.runtime.joni.AbstractConstantKeysObject;
 import com.oracle.truffle.js.runtime.joni.interop.ToIntNode;
 import com.oracle.truffle.js.runtime.joni.interop.TruffleReadOnlyKeysArray;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class RegexResult extends AbstractConstantKeysObject {
+public abstract class JoniRegexResult extends AbstractConstantKeysObject {
 
     static final String PROP_IS_MATCH = "isMatch";
     static final String PROP_GROUP_COUNT = "groupCount";
-    static final String PROP_START = "start";
-    static final String PROP_END = "end";
     static final String PROP_GET_START = "getStart";
     static final String PROP_GET_END = "getEnd";
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GROUP_COUNT, PROP_START, PROP_END, PROP_GET_START, PROP_GET_END);
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GROUP_COUNT, PROP_GET_START, PROP_GET_END);
 
     private final int groupCount;
 
-    public RegexResult(int groupCount) {
+    public JoniRegexResult(int groupCount) {
         this.groupCount = groupCount;
     }
 
     public final int getGroupCount() {
         return groupCount;
-    }
-
-    public final RegexResultStartArrayObject getStartArrayObject() {
-        // this allocation should get virtualized and optimized away by graal
-        return new RegexResultStartArrayObject(this);
-    }
-
-    public final RegexResultEndArrayObject getEndArrayObject() {
-        // this allocation should get virtualized and optimized away by graal
-        return new RegexResultEndArrayObject(this);
     }
 
     @Override
@@ -99,17 +90,13 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
     public final Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
             case PROP_IS_MATCH:
-                return this != NoMatchResult.getInstance();
+                return this != JoniNoMatchResult.getInstance();
             case PROP_GROUP_COUNT:
                 return getGroupCount();
-            case PROP_START:
-                return getStartArrayObject();
-            case PROP_END:
-                return getEndArrayObject();
             case PROP_GET_START:
-                return new RegexResultGetStartMethod(this);
+                return new GetStartMethod(this);
             case PROP_GET_END:
-                return new RegexResultGetEndMethod(this);
+                return new GetEndMethod(this);
             default:
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.create(symbol);
@@ -138,11 +125,11 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
     @GenerateUncached
     abstract static class IsInvocableCacheNode extends Node {
 
-        abstract boolean execute(RegexResult receiver, String symbol);
+        abstract boolean execute(JoniRegexResult receiver, String symbol);
 
         @SuppressWarnings("unused")
         @Specialization(guards = "symbol == cachedSymbol", limit = "2")
-        static boolean cacheIdentity(RegexResult receiver, String symbol,
+        static boolean cacheIdentity(JoniRegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isInvocable(receiver, cachedSymbol)") boolean result) {
             return result;
@@ -150,7 +137,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "2", replaces = "cacheIdentity")
-        static boolean cacheEquals(RegexResult receiver, String symbol,
+        static boolean cacheEquals(JoniRegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isInvocable(receiver, cachedSymbol)") boolean result) {
             return result;
@@ -158,53 +145,53 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
 
         @SuppressWarnings("unused")
         @Specialization(replaces = "cacheEquals")
-        static boolean isInvocable(RegexResult receiver, String symbol) {
+        static boolean isInvocable(JoniRegexResult receiver, String symbol) {
             return PROP_GET_START.equals(symbol) || PROP_GET_END.equals(symbol);
         }
     }
 
-    @ImportStatic(RegexResult.class)
+    @ImportStatic(JoniRegexResult.class)
     @GenerateUncached
     abstract static class InvokeCacheNode extends Node {
 
-        abstract Object execute(RegexResult receiver, String symbol, int groupNumber) throws UnknownIdentifierException;
+        abstract Object execute(JoniRegexResult receiver, String symbol, int groupNumber) throws UnknownIdentifierException;
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_GET_START)"}, limit = "2")
-        Object getStartIdentity(RegexResult receiver, String symbol, int groupNumber,
+        Object getStartIdentity(JoniRegexResult receiver, String symbol, int groupNumber,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached RegexResultGetStartNode getStartNode) {
+                        @Cached GetStartNode getStartNode) {
             return getStartNode.execute(receiver, groupNumber);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_GET_START)"}, limit = "2", replaces = "getStartIdentity")
-        Object getStartEquals(RegexResult receiver, String symbol, int groupNumber,
+        Object getStartEquals(JoniRegexResult receiver, String symbol, int groupNumber,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached RegexResultGetStartNode getStartNode) {
+                        @Cached GetStartNode getStartNode) {
             return getStartNode.execute(receiver, groupNumber);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_GET_END)"}, limit = "2")
-        Object getEndIdentity(RegexResult receiver, String symbol, int groupNumber,
+        Object getEndIdentity(JoniRegexResult receiver, String symbol, int groupNumber,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached RegexResultGetEndNode getEndNode) {
+                        @Cached GetEndNode getEndNode) {
             return getEndNode.execute(receiver, groupNumber);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_GET_END)"}, limit = "2", replaces = "getEndIdentity")
-        Object getEndEquals(RegexResult receiver, String symbol, int groupNumber,
+        Object getEndEquals(JoniRegexResult receiver, String symbol, int groupNumber,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached RegexResultGetEndNode getEndNode) {
+                        @Cached GetEndNode getEndNode) {
             return getEndNode.execute(receiver, groupNumber);
         }
 
         @Specialization(replaces = {"getStartEquals", "getEndEquals"})
-        static Object read(RegexResult receiver, String symbol, int groupNumber,
-                        @Cached RegexResultGetStartNode getStartNode,
-                        @Cached RegexResultGetEndNode getEndNode) throws UnknownIdentifierException {
+        static Object read(JoniRegexResult receiver, String symbol, int groupNumber,
+                        @Cached GetStartNode getStartNode,
+                        @Cached GetEndNode getEndNode) throws UnknownIdentifierException {
             switch (symbol) {
                 case PROP_GET_START:
                     return getStartNode.execute(receiver, groupNumber);
@@ -213,6 +200,123 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
                 default:
                     throw UnknownIdentifierException.create(symbol);
             }
+        }
+    }
+
+    @ReportPolymorphism
+    @GenerateUncached
+    abstract static class GetStartNode extends Node {
+
+        abstract int execute(JoniRegexResult receiver, int groupNumber);
+
+        @Specialization
+        static int doNoMatch(@SuppressWarnings("unused") JoniNoMatchResult receiver, @SuppressWarnings("unused") int groupNumber) {
+            return -1;
+        }
+
+        @Specialization
+        static int doSingleResult(JoniSingleResult receiver, int groupNumber,
+                        @Cached("createBinaryProfile()") ConditionProfile boundsProfile) {
+            if (boundsProfile.profile(groupNumber == 0)) {
+                return receiver.getStart();
+            } else {
+                return -1;
+            }
+        }
+
+        @Specialization
+        static int doStartsEndsIndexArray(JoniStartsEndsIndexArrayResult receiver, int groupNumber) {
+            try {
+                return receiver.getStarts()[groupNumber];
+            } catch (ArrayIndexOutOfBoundsException e) {
+                return -1;
+            }
+        }
+    }
+
+    @ReportPolymorphism
+    @GenerateUncached
+    abstract static class GetEndNode extends Node {
+
+        abstract int execute(Object receiver, int groupNumber);
+
+        @Specialization
+        static int doNoMatch(@SuppressWarnings("unused") JoniNoMatchResult receiver, @SuppressWarnings("unused") int groupNumber) {
+            return -1;
+        }
+
+        @Specialization
+        static int doSingleResult(JoniSingleResult receiver, int groupNumber,
+                        @Cached("createBinaryProfile()") ConditionProfile boundsProfile) {
+            if (boundsProfile.profile(groupNumber == 0)) {
+                return receiver.getEnd();
+            } else {
+                return -1;
+            }
+        }
+
+        @Specialization
+        static int doStartsEndsIndexArray(JoniStartsEndsIndexArrayResult receiver, int groupNumber) {
+            try {
+                return receiver.getEnds()[groupNumber];
+            } catch (ArrayIndexOutOfBoundsException e) {
+                return -1;
+            }
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public static final class GetStartMethod implements TruffleObject {
+
+        private final JoniRegexResult result;
+
+        public GetStartMethod(JoniRegexResult result) {
+            this.result = result;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        int execute(Object[] args,
+                        @Cached ToIntNode toIntNode,
+                        @Cached GetStartNode getStartNode) throws ArityException, UnsupportedTypeException {
+            if (args.length != 1) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(1, args.length);
+            }
+            return getStartNode.execute(result, toIntNode.execute(args[1]));
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public static final class GetEndMethod implements TruffleObject {
+
+        private final JoniRegexResult result;
+
+        public GetEndMethod(JoniRegexResult result) {
+            this.result = result;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        int execute(Object[] args,
+                        @Cached ToIntNode toIntNode,
+                        @Cached GetEndNode getEndNode) throws ArityException, UnsupportedTypeException {
+            if (args.length != 1) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(1, args.length);
+            }
+            return getEndNode.execute(result, toIntNode.execute(args[0]));
         }
     }
 }

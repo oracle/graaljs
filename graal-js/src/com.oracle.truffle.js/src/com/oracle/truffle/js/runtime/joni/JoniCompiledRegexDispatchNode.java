@@ -47,24 +47,24 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.joni.result.RegexResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniRegexResult;
 
 @ReportPolymorphism
 @GenerateUncached
 public abstract class JoniCompiledRegexDispatchNode extends Node {
 
-    public abstract RegexResult execute(JoniCompiledRegex receiver, String input, int fromIndex);
+    public abstract JoniRegexResult execute(JoniCompiledRegex receiver, String input, int fromIndex);
 
     @Specialization(guards = "receiver == cachedReceiver", limit = "4")
-    public static RegexResult doCached(JoniCompiledRegex receiver, String input, int fromIndex,
+    public static JoniRegexResult doCached(JoniCompiledRegex receiver, String input, int fromIndex,
                     @SuppressWarnings("unused") @Cached("receiver") JoniCompiledRegex cachedReceiver,
                     @Cached("create(cachedReceiver.getRegexCallTarget())") DirectCallNode directCallNode) {
-        return (RegexResult) directCallNode.call(new Object[]{receiver, input, fromIndex});
+        return (JoniRegexResult) directCallNode.call(new Object[]{receiver, input, fromIndex});
     }
 
     @Specialization(replaces = "doCached")
-    public static RegexResult doGeneric(JoniCompiledRegex receiver, String input, int fromIndex,
+    public static JoniRegexResult doGeneric(JoniCompiledRegex receiver, String input, int fromIndex,
                     @Cached IndirectCallNode indirectCallNode) {
-        return (RegexResult) indirectCallNode.call(receiver.getRegexCallTarget(), new Object[]{receiver, input, fromIndex});
+        return (JoniRegexResult) indirectCallNode.call(receiver.getRegexCallTarget(), new Object[]{receiver, input, fromIndex});
     }
 }

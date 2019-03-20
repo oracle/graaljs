@@ -40,20 +40,22 @@
  */
 package com.oracle.truffle.js.runtime.joni.result;
 
-public final class NoMatchResult extends RegexResult {
+public final class JoniStartsEndsIndexArrayResult extends JoniRegexResult {
 
-    public NoMatchResult(int groupCount) {
-        super(groupCount);
+    private final int[] starts;
+    private final int[] ends;
+
+    public JoniStartsEndsIndexArrayResult(int[] starts, int[] ends) {
+        super(starts.length);
+        this.starts = starts;
+        this.ends = ends;
     }
 
-    private static final NoMatchResult INSTANCE = new NoMatchResult(0);
-
-    public static NoMatchResult getInstance() {
-        return INSTANCE;
+    public int[] getStarts() {
+        return starts;
     }
 
-    @Override
-    public String toString() {
-        return "NO_MATCH";
+    public int[] getEnds() {
+        return ends;
     }
 }

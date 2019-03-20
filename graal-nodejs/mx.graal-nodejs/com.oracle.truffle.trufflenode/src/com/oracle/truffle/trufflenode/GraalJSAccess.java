@@ -1692,7 +1692,7 @@ public final class GraalJSAccess {
         String parameterList = params.toString();
 
         try {
-            GraalJSParserHelper.checkFunctionSyntax((GraalJSParserOptions) jsContext.getParserOptions(), parameterList, body, false, false);
+            GraalJSParserHelper.checkFunctionSyntax(jsContext, (GraalJSParserOptions) jsContext.getParserOptions(), parameterList, body, false, false);
         } catch (com.oracle.js.parser.ParserException ex) {
             // throw the correct JS error
             nodeEvaluator.parseFunction(jsContext, parameterList, body, false, false, sourceName);
@@ -1810,7 +1810,7 @@ public final class GraalJSAccess {
         String content = source.getCharacters().toString();
         FunctionNode parseResult = contextData.getFunctionNodeCache().get(content);
         if (parseResult == null) {
-            parseResult = GraalJSParserHelper.parseScript(source, (GraalJSParserOptions) context.getParserOptions());
+            parseResult = GraalJSParserHelper.parseScript(context, source, (GraalJSParserOptions) context.getParserOptions());
             contextData.getFunctionNodeCache().put(content, parseResult);
         }
         return parseResult;

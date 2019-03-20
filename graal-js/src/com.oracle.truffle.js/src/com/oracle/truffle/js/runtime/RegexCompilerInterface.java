@@ -49,8 +49,6 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.nashorn.regexp.RegExpScanner;
 
 public final class RegexCompilerInterface {
@@ -68,10 +66,6 @@ public final class RegexCompilerInterface {
         validateFlags(flags, context.getEcmaScriptVersion());
         try {
             return compileRegexNode.execute(context.getRegexEngine(), pattern, flags);
-        } catch (RegexSyntaxException syntaxException) {
-            // TODO: remove this
-            CompilerDirectives.transferToInterpreter();
-            throw Errors.createSyntaxError(syntaxException.getMessage());
         } catch (RuntimeException e) {
             CompilerDirectives.transferToInterpreter();
             if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
@@ -82,7 +76,7 @@ public final class RegexCompilerInterface {
     }
 
     @TruffleBoundary
-    public static void validate(String pattern, String flags, int ecmaScriptVersion) {
+    public static void validate(JSContext context, String pattern, String flags, int ecmaScriptVersion) {
         // We cannot use the TRegex parser in Nashorn compatibility mode, since the Nashorn
         // parser produces different error messages.
         if (JSTruffleOptions.NashornCompatibilityMode) {
@@ -103,10 +97,7 @@ public final class RegexCompilerInterface {
             }
         } else {
             try {
-                RegexLanguage.validateRegex(pattern, flags);
-            } catch (final RegexSyntaxException e) {
-                // TODO: remove this
-                throw Errors.createSyntaxError(e.getMessage());
+                TRegexUtil.ValidateRegexNode.getUncached().execute(context.getRegexEngine(), pattern, flags);
             } catch (RuntimeException e) {
                 if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
                     throw Errors.createSyntaxError(e.getMessage());
