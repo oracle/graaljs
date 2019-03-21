@@ -847,10 +847,10 @@ public final class TRegexUtil {
 
         private static final TRegexMaterializeResultNode UNCACHED = new TRegexMaterializeResultNode(false);
 
-        @Child TRegexResultAccessor accessor;
+        @Child TRegexResultAccessor resultAccessor;
 
         private TRegexMaterializeResultNode(boolean cached) {
-            accessor = cached ? TRegexResultAccessor.create() : TRegexResultAccessor.getUncached();
+            resultAccessor = cached ? TRegexResultAccessor.create() : TRegexResultAccessor.getUncached();
         }
 
         public static TRegexMaterializeResultNode create() {
@@ -862,7 +862,7 @@ public final class TRegexUtil {
         }
 
         public Object materializeGroup(Object regexResult, int i, String input) {
-            return materializeGroup(accessor, regexResult, i, input);
+            return materializeGroup(resultAccessor, regexResult, i, input);
         }
 
         public static Object materializeGroup(TRegexResultAccessor accessor, Object regexResult, int i, String input) {
@@ -876,7 +876,7 @@ public final class TRegexUtil {
         }
 
         public Object[] materializeFull(Object regexResult, String input) {
-            final int groupCount = accessor.groupCount(regexResult);
+            final int groupCount = resultAccessor.groupCount(regexResult);
             Object[] result = new Object[groupCount];
             for (int i = 0; i < groupCount; i++) {
                 result[i] = materializeGroup(regexResult, i, input);
