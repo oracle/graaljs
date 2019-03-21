@@ -40,24 +40,27 @@
  */
 package com.oracle.truffle.js.lang;
 
+import com.oracle.truffle.api.TruffleFile;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.APPLICATION_MIME_TYPE;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.SCRIPT_SOURCE_NAME_SUFFIX;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
+import java.nio.charset.Charset;
 
-public final class JSFileTypeDetector extends FileTypeDetector {
+public final class JSFileTypeDetector implements TruffleFile.FileTypeDetector {
+
     @Override
-    public String probeContentType(Path path) throws IOException {
-        Path fileNamePath = path.getFileName();
-        if (fileNamePath != null) {
-            String fileName = fileNamePath.toString();
-            if (fileName.endsWith(SCRIPT_SOURCE_NAME_SUFFIX) || fileName.endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
-                return APPLICATION_MIME_TYPE;
-            }
+    public String findMimeType(TruffleFile file) throws IOException {
+        String fileName = file.getName();
+        if (fileName != null && (fileName.endsWith(SCRIPT_SOURCE_NAME_SUFFIX) || fileName.endsWith(MODULE_SOURCE_NAME_SUFFIX))) {
+            return APPLICATION_MIME_TYPE;
         }
+        return null;
+    }
+
+    @Override
+    public Charset findEncoding(TruffleFile file) throws IOException {
         return null;
     }
 }
