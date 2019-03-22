@@ -265,7 +265,7 @@ public final class JSDictionaryObject extends JSBuiltinObject {
             if (JSObject.HIDDEN_PROTO.equals(key)) {
                 assert hashedShape.hasProperty(key);
                 continue; // has already been added
-            } else if (p.isHidden() || p.getLocation().isValue()) {
+            } else if (p.isHidden() || p.getLocation().isValue() || JSProperty.isProxy(p)) {
                 hashedShape = hashedShape.addProperty(p);
             } else {
                 // normal properties
