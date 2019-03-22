@@ -113,7 +113,7 @@ public class SourceSectionInstrumentationTest extends FineGrainedAccessTest {
         context = Context.create("js");
 
         instrument = context.getEngine().getInstruments().get(TestingExecutionInstrument.ID).lookup(TestingExecutionInstrument.class);
-        instrumenter = instrument.environment.getInstrumenter();
+        instrumenter = instrument.getEnvironment().getInstrumenter();
 
         sources = new ArrayList<>();
         context.enter();

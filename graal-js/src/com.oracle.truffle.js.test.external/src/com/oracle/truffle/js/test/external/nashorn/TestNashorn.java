@@ -67,14 +67,16 @@ public class TestNashorn extends TestSuite {
     private static final String TESTS_CONFIG_FILE = "testNashorn.json";
     private static final String FAILED_TESTS_FILE = "testnashorn.failed";
 
-    public static PrintStream origOut;
-    public static PrintStream origErr;
+    private final PrintStream origOut;
+    private final PrintStream origErr;
 
     private static final boolean isWindows = System.getProperty("os.name").startsWith("Windows");
     private static Boolean useNashornDiffBat;
 
     public TestNashorn(SuiteConfig config) {
         super(config);
+        origOut = System.out;
+        origErr = System.err;
     }
 
     @Override
@@ -246,9 +248,14 @@ public class TestNashorn extends TestSuite {
         }
 
         TestNashorn suite = new TestNashorn(config);
-        // remember out & err after TestSuite is created since it uses its own impls!
-        origOut = System.out;
-        origErr = System.err;
         exit(suite.runTestSuite(TEST_DIRS));
+    }
+
+    public PrintStream getOrigOut() {
+        return origOut;
+    }
+
+    public PrintStream getOrigErr() {
+        return origErr;
     }
 }

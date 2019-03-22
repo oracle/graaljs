@@ -79,7 +79,7 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
 
     public static final String ID = "FullExecutionTracerInstrument";
 
-    public Env environment;
+    private Env environment;
 
     public static void main(String[] args) throws IOException {
         try (Context c = Context.create("js")) {
@@ -203,6 +203,10 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
             }
         };
         return factory;
+    }
+
+    public Env getEnvironment() {
+        return environment;
     }
 
 }

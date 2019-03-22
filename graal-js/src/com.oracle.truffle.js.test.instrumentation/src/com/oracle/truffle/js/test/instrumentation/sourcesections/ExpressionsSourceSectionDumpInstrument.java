@@ -62,7 +62,7 @@ public class ExpressionsSourceSectionDumpInstrument extends TruffleInstrument {
 
     public static final String ID = "ExpressionsSourceSectionDumpInstrument";
 
-    public Env environment;
+    private Env environment;
 
     public static void main(String[] args) throws IOException {
         try (Context c = Context.create("js")) {
@@ -94,5 +94,9 @@ public class ExpressionsSourceSectionDumpInstrument extends TruffleInstrument {
             public void onEnter(EventContext cx, VirtualFrame frame) {
             }
         };
+    }
+
+    public Env getEnvironment() {
+        return this.environment;
     }
 }

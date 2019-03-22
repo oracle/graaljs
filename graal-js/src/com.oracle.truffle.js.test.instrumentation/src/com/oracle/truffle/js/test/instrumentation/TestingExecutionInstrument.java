@@ -51,7 +51,7 @@ public class TestingExecutionInstrument extends TruffleInstrument {
 
     public static final String ID = "TestingExecutionInstrument";
 
-    public Env environment;
+    private Env environment;
 
     @Override
     protected void onCreate(Env env) {
@@ -59,4 +59,7 @@ public class TestingExecutionInstrument extends TruffleInstrument {
         env.registerService(this);
     }
 
+    public Env getEnvironment() {
+        return environment;
+    }
 }

@@ -373,7 +373,7 @@ public abstract class FineGrainedAccessTest {
         collecting = false;
         context = Context.create("js");
         instrument = context.getEngine().getInstruments().get(TestingExecutionInstrument.ID).lookup(TestingExecutionInstrument.class);
-        instrumenter = instrument.environment.getInstrumenter();
+        instrumenter = instrument.getEnvironment().getInstrumenter();
         events = new ArrayList<>();
         stack = new Stack<>();
         factory = getTestFactory();

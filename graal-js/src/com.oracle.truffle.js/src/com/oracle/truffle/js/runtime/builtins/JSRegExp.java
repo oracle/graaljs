@@ -87,6 +87,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     public static final String LAST_INDEX = "lastIndex";
     public static final String INPUT = "input";
     public static final String GROUPS = "groups";
+    public static final String INDEX = "index";
 
     public static final String PROTOTYPE_GETTER_NAME = PROTOTYPE_NAME + " getter";
 
@@ -95,7 +96,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     private static final HiddenKey GROUPS_FACTORY_ID = new HiddenKey("groupsFactory");
     private static final Property GROUPS_FACTORY_PROPERTY;
 
-    private static final Property LAZY_INDEX_PROXY = JSObjectUtil.makeProxyProperty("index", new LazyRegexResultIndexProxyProperty(), JSAttributes.getDefault());
+    private static final Property LAZY_INDEX_PROXY = JSObjectUtil.makeProxyProperty(INDEX, new LazyRegexResultIndexProxyProperty(), JSAttributes.getDefault());
 
     // A pointer from the `groups` object of a regex result back to the regex result.
     // Needed to calculate the contents of the `groups` object lazily.
@@ -126,7 +127,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         @TruffleBoundary
         @Override
         public boolean set(DynamicObject object, Object value) {
-            JSObjectUtil.defineDataProperty(object, "index", value, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(object, JSRegExp.INDEX, value, JSAttributes.getDefault());
             return true;
         }
     }

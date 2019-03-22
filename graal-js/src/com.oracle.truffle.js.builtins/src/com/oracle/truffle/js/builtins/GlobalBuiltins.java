@@ -558,6 +558,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Child private JSLoadNode loadNode;
 
+        protected static final String EVAL_OBJ_FILE_NAME = "name";
+        protected static final String EVAL_OBJ_SOURCE = "script";
+
         protected final Object runImpl(JSRealm realm, Source source) {
             if (loadNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1135,9 +1138,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         private static final String NASHORN_PARSER_JS = "nashorn:parser.js";
         private static final String NASHORN_MOZILLA_COMPAT_JS = "nashorn:mozilla_compat.js";
 
-        private static final String EVAL_OBJ_FILE_NAME = "name";
-        private static final String EVAL_OBJ_SOURCE = "script";
-
         @Child private RealmNode realmNode;
 
         public JSGlobalLoadNode(JSContext context, JSBuiltin builtin) {
@@ -1314,8 +1314,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         protected Object load(DynamicObject from, Object[] args,
                         @Cached("create()") JSToStringNode toString2Node) {
-            String name = toString1(JSObject.get(from, "name"));
-            String script = toString2Node.executeString(JSObject.get(from, "script"));
+            String name = toString1(JSObject.get(from, EVAL_OBJ_FILE_NAME));
+            String script = toString2Node.executeString(JSObject.get(from, EVAL_OBJ_SOURCE));
             return loadIntl(name, script, args);
         }
 

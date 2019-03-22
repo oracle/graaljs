@@ -338,8 +338,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             if (setIndexNode == null || setInputNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.setIndexNode = insert(PropertySetNode.create("index", false, getContext(), false));
-                this.setInputNode = insert(PropertySetNode.create("input", false, getContext(), false));
+                this.setIndexNode = insert(PropertySetNode.create(JSRegExp.INDEX, false, getContext(), false));
+                this.setInputNode = insert(PropertySetNode.create(JSRegExp.INPUT, false, getContext(), false));
             }
             Object[] matches = resultMaterializer.materializeFull(result, inputStr);
             DynamicObject array = JSArray.createConstant(getContext(), matches);
@@ -923,7 +923,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         JSRegExpReplaceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getGlobalNode = PropertyGetNode.create(JSRegExp.GLOBAL, false, context);
-            this.getIndexNode = PropertyGetNode.create("index", false, context);
+            this.getIndexNode = PropertyGetNode.create(JSRegExp.INDEX, false, context);
             this.toIntegerNode = JSToIntegerNode.create();
             this.isObjectNode = IsObjectNode.create();
             this.isCallableNode = IsCallableNode.create();
@@ -1493,7 +1493,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected JSRegExpSearchNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getIndexNode = PropertyGetNode.create("index", false, context);
+            this.getIndexNode = PropertyGetNode.create(JSRegExp.INDEX, false, context);
             this.sameValueNode = JSIdenticalNode.createSameValue();
         }
 

@@ -142,7 +142,6 @@ public final class JSContextOptions {
     public static final String ATOMICS_NAME = JS_OPTION_PREFIX + "atomics";
     @Option(name = ATOMICS_NAME, category = OptionCategory.USER, help = "Enable ES2017 Atomics.") //
     public static final OptionKey<Boolean> ATOMICS = new OptionKey<>(true);
-    @CompilationFinal private boolean atomics;
 
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
     @Option(name = V8_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the Google V8 engine.") //
@@ -281,7 +280,6 @@ public final class JSContextOptions {
     public static final String SIMDJS_NAME = JS_OPTION_PREFIX + "simdjs";
     @Option(name = SIMDJS_NAME, category = OptionCategory.EXPERT, help = "Provide an experimental implementation of the SIMD.js proposal.") //
     public static final OptionKey<Boolean> SIMDJS = new OptionKey<>(false);
-    @CompilationFinal private boolean simdjs;
 
     // limit originally from TestV8 regress-1122.js, regress-605470.js
     public static final String FUNCTION_ARGUMENTS_LIMIT_NAME = JS_OPTION_PREFIX + "function-arguments-limit";
@@ -320,7 +318,6 @@ public final class JSContextOptions {
             arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
         });
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME);
-        this.atomics = readBooleanOption(ATOMICS, ATOMICS_NAME);
         this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, msg -> {
             v8CompatibilityModeCyclicAssumption.invalidate(msg);
             v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
@@ -346,7 +343,6 @@ public final class JSContextOptions {
         this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME);
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
         this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME);
-        this.simdjs = readBooleanOption(SIMDJS, SIMDJS_NAME);
         this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT, FUNCTION_ARGUMENTS_LIMIT_NAME);
     }
 
@@ -460,7 +456,7 @@ public final class JSContextOptions {
         if (getEcmaScriptVersion() < 8) {
             return false;
         }
-        return atomics;
+        return ATOMICS.getValue(optionValues);
     }
 
     public boolean isV8CompatibilityMode() {
@@ -580,7 +576,7 @@ public final class JSContextOptions {
     }
 
     public boolean isSIMDjs() {
-        return simdjs;
+        return SIMDJS.getValue(optionValues);
     }
 
     public long getFunctionArgumentsLimit() {
@@ -597,7 +593,6 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.regexpStaticResult ? 1 : 0);
         hash = 53 * hash + (this.arraySortInherited ? 1 : 0);
         hash = 53 * hash + (this.sharedArrayBuffer ? 1 : 0);
-        hash = 53 * hash + (this.atomics ? 1 : 0);
         hash = 53 * hash + (this.v8CompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.v8RealmBuiltin ? 1 : 0);
         hash = 53 * hash + (this.nashornCompatibilityMode ? 1 : 0);
@@ -614,7 +609,6 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
         hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
         hash = 53 * hash + (this.hasForeignObjectPrototype ? 1 : 0);
-        hash = 53 * hash + (this.simdjs ? 1 : 0);
         hash = 53 * hash + (int) this.functionArgumentsLimit;
         return hash;
     }
@@ -647,9 +641,6 @@ public final class JSContextOptions {
             return false;
         }
         if (this.sharedArrayBuffer != other.sharedArrayBuffer) {
-            return false;
-        }
-        if (this.atomics != other.atomics) {
             return false;
         }
         if (this.v8CompatibilityMode != other.v8CompatibilityMode) {
@@ -698,9 +689,6 @@ public final class JSContextOptions {
             return false;
         }
         if (this.hasForeignObjectPrototype != other.hasForeignObjectPrototype) {
-            return false;
-        }
-        if (this.simdjs != other.simdjs) {
             return false;
         }
         if (this.functionArgumentsLimit != other.functionArgumentsLimit) {
