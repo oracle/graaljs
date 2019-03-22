@@ -46,7 +46,6 @@ import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 
 /**
  *
@@ -84,7 +83,7 @@ public final class UnboundScript {
             // We have the content already, but we need to associate the Source
             // with the corresponding file so that debugger knows where to add
             // the breakpoints.
-            TruffleFile truffleFile = AbstractJavaScriptLanguage.getCurrentEnv().getTruffleFile(name);
+            TruffleFile truffleFile = JavaScriptLanguage.getCurrentEnv().getTruffleFile(name);
             source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code).name(name).build();
         }
         return source;

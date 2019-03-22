@@ -46,7 +46,7 @@ import java.util.List;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -570,7 +570,7 @@ public final class JSGuards {
     }
 
     public static boolean isTruffleJavaObject(TruffleObject object) {
-        return AbstractJavaScriptLanguage.getCurrentEnv().isHostObject(object);
+        return JavaScriptLanguage.getCurrentEnv().isHostObject(object);
     }
 
     public static boolean isArrayIndexLengthInRange(String str) {

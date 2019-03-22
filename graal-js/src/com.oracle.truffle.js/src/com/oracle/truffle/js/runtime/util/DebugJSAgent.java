@@ -55,7 +55,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -100,7 +99,7 @@ public class DebugJSAgent extends JSAgent {
                 try {
                     polyglotContext.initialize(JavaScriptLanguage.ID);
 
-                    DebugJSAgent debugJSAgent = (DebugJSAgent) AbstractJavaScriptLanguage.getCurrentJSRealm().getContext().getJSAgent();
+                    DebugJSAgent debugJSAgent = (DebugJSAgent) JavaScriptLanguage.getCurrentJSRealm().getContext().getJSAgent();
                     AgentExecutor executor = registerChildAgent(Thread.currentThread(), debugJSAgent);
 
                     polyglotContext.eval(JavaScriptLanguage.ID, source);

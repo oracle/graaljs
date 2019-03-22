@@ -48,8 +48,8 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
  */
 @ImportStatic(value = JSInteropUtil.class)
 public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
-    private final ContextReference<JSRealm> contextRef = AbstractJavaScriptLanguage.getCurrentLanguage().getContextReference();
+    private final ContextReference<JSRealm> contextRef = JavaScriptLanguage.getCurrentLanguage().getContextReference();
 
     public abstract DynamicObject executeDynamicObject(TruffleObject truffleObject);
 

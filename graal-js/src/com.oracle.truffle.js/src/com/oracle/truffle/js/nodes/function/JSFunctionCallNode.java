@@ -74,6 +74,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -93,7 +94,6 @@ import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.interop.ExportArgumentsNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -392,7 +392,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         AbstractCacheNode newNode = null;
         int userArgumentCount = JSArguments.getUserArgumentCount(arguments);
         Object thisObject = JSArguments.getThisObject(arguments);
-        AbstractJavaScriptLanguage language = AbstractJavaScriptLanguage.getCurrentLanguage();
+        JavaScriptLanguage language = JavaScriptLanguage.getCurrentLanguage();
         if (JSGuards.isForeignObject(thisObject)) {
             Object propertyKey = functionCallNode.getPropertyKey();
             if (propertyKey != null && propertyKey instanceof String) {
@@ -1372,7 +1372,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Child protected PropertyGetNode getFunctionNode;
         private final TruffleLanguage.ContextReference<JSRealm> contextRef;
 
-        ForeignInvokeNode(AbstractJavaScriptLanguage language, String functionName, int expectedArgumentCount) {
+        ForeignInvokeNode(JavaScriptLanguage language, String functionName, int expectedArgumentCount) {
             super(expectedArgumentCount);
             this.functionName = functionName;
             contextRef = language.getContextReference();

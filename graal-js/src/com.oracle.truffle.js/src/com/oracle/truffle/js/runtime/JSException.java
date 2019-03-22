@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -134,7 +135,7 @@ public final class JSException extends GraalJSException {
     @Override
     public Object getExceptionObject() {
         if (exceptionObj == null) {
-            JSRealm innerRealm = this.realm != null ? this.realm : AbstractJavaScriptLanguage.getCurrentJSRealm();
+            JSRealm innerRealm = this.realm != null ? this.realm : JavaScriptLanguage.getCurrentJSRealm();
             String message = getRawMessage();
             exceptionObj = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
         }

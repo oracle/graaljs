@@ -52,12 +52,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.IntToLongTypeSystem;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -169,7 +169,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     protected ContextReference<JSRealm> contextReference() {
-        return AbstractJavaScriptLanguage.getCurrentLanguage().getContextReference();
+        return JavaScriptLanguage.getCurrentLanguage().getContextReference();
     }
 
     @Specialization(guards = "isForeignObject(object)")

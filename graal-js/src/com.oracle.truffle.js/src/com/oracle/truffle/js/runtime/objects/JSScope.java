@@ -80,7 +80,6 @@ import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode.FrameBlockScopeNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -408,7 +407,7 @@ public abstract class JSScope {
                 Object thisObject = JSArguments.getThisObject(args);
                 Object function = JSArguments.getFunctionObject(args);
                 if (JSFunction.isJSFunction(function) && !JSFunction.isStrict((DynamicObject) function)) {
-                    JSRealm realm = AbstractJavaScriptLanguage.getCurrentJSRealm();
+                    JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
                     if (thisObject == Undefined.instance || thisObject == Null.instance) {
                         thisObject = realm.getGlobalObject();
                     } else {

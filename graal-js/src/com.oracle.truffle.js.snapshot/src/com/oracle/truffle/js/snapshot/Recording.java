@@ -89,6 +89,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.codec.BinaryEncoder;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
@@ -99,7 +100,6 @@ import com.oracle.truffle.js.parser.BinarySnapshotProvider;
 import com.oracle.truffle.js.parser.SnapshotProvider;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.json.JSONParser;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -1793,7 +1793,7 @@ public class Recording {
 
     private void testDecode(ByteBuffer buffer) {
         BinarySnapshotProvider snapshot = new BinarySnapshotProvider(buffer);
-        JSContext context = AbstractJavaScriptLanguage.getCurrentJSRealm().getContext();
+        JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
         snapshot.apply(NodeFactory.getDefaultInstance(), context, source);
     }
 

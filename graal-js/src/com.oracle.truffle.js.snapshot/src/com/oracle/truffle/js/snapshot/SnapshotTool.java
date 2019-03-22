@@ -56,7 +56,6 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -123,7 +122,7 @@ public class SnapshotTool {
     }
 
     private void snapshotScriptFileTo(String fileName, File sourceFile, File outputFile, boolean binary) throws IOException {
-        JSRealm realm = AbstractJavaScriptLanguage.getCurrentJSRealm();
+        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
         JSContext context = realm.getContext();
         Recording.logv("recording snapshot of %s", fileName);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getTruffleFile(sourceFile.getPath())).name(fileName).build();

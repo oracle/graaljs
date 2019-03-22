@@ -1278,7 +1278,7 @@ public class JSRealm {
         TruffleContext nestedContext = getEnv().newContextBuilder().build();
         Object prev = nestedContext.enter();
         try {
-            JSRealm childRealm = AbstractJavaScriptLanguage.getCurrentJSRealm();
+            JSRealm childRealm = JavaScriptLanguage.getCurrentJSRealm();
             // "Realm" object is shared by all realms (V8 compatibility mode)
             childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
             return childRealm;

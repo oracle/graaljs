@@ -47,6 +47,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 /**
@@ -59,7 +60,7 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
     @CompilationFinal private boolean seenException;
     @CompilationFinal private boolean seenNullRealm;
 
-    protected JavaScriptRealmBoundaryRootNode(AbstractJavaScriptLanguage lang, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
+    protected JavaScriptRealmBoundaryRootNode(JavaScriptLanguage lang, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
         super(lang, sourceSection, frameDescriptor);
     }
 

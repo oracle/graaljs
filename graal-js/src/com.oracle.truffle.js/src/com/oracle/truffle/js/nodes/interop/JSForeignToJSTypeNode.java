@@ -45,8 +45,8 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -136,7 +136,7 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
         if (value instanceof InteropBoundFunction) {
             return ((InteropBoundFunction) value).getFunction();
         } else {
-            TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+            TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
             if (env.isHostObject(value)) {
                 Object object = env.asHostObject(value);
                 if (object == null) {

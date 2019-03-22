@@ -41,19 +41,20 @@
 package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 
 public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     public static JSRealm getCurrentJSRealm() {
-        return getCurrentContext(AbstractJavaScriptLanguage.class);
+        return getCurrentContext(JavaScriptLanguage.class);
     }
 
-    public static AbstractJavaScriptLanguage getCurrentLanguage() {
-        return getCurrentLanguage(AbstractJavaScriptLanguage.class);
+    public static JavaScriptLanguage getCurrentLanguage() {
+        return getCurrentLanguage(JavaScriptLanguage.class);
     }
 
     public static TruffleLanguage.Env getCurrentEnv() {
-        return getCurrentContext(AbstractJavaScriptLanguage.class).getEnv();
+        return getCurrentContext(JavaScriptLanguage.class).getEnv();
     }
 
     public abstract boolean isMultiContext();
