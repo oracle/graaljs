@@ -184,7 +184,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
                 if (functionData.needsNewTarget()) {
                     // functions that use new.target are wrapped with a delegating call target that
                     // supplies an additional implicit newTarget argument to the original function.
-                    functionCallTarget = Truffle.getRuntime().createCallTarget(factory.createNewTargetCall(rootTarget));
+                    functionCallTarget = Truffle.getRuntime().createCallTarget(factory.createNewTargetCall(functionData.getContext(), rootTarget));
                 } else {
                     functionCallTarget = rootTarget;
                 }
@@ -201,7 +201,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
                 if (functionData.needsNewTarget()) {
                     // functions that use new.target are wrapped with a delegating call target that
                     // supplies an additional implicit newTarget argument to the original function.
-                    constructCallTarget = Truffle.getRuntime().createCallTarget(factory.createNewTargetConstruct(constructCallTarget));
+                    constructCallTarget = Truffle.getRuntime().createCallTarget(factory.createNewTargetConstruct(functionData.getContext(), constructCallTarget));
                 }
             }
             functionData.setConstructTarget(constructCallTarget);
@@ -210,7 +210,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
             if (functionData.needsNewTarget()) {
                 newTargetCallTarget = rootTarget;
             } else {
-                newTargetCallTarget = Truffle.getRuntime().createCallTarget(factory.createDropNewTarget(rootTarget));
+                newTargetCallTarget = Truffle.getRuntime().createCallTarget(factory.createDropNewTarget(functionData.getContext(), rootTarget));
             }
             CallTarget constructNewTargetCallTarget = Truffle.getRuntime().createCallTarget(factory.createConstructorRootNode(functionData, newTargetCallTarget, true));
             functionData.setConstructNewTarget(constructNewTargetCallTarget);

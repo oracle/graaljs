@@ -258,7 +258,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
                 constructNewTargetRoot = FunctionRootNode.create(constructNewTargetNode, frameDescriptor, functionData, builtin.getSourceSection(), builtin.getFullName());
             } else {
                 CallTarget constructTarget = functionData.getConstructTarget();
-                constructNewTargetRoot = factory.createDropNewTarget(constructTarget);
+                constructNewTargetRoot = factory.createDropNewTarget(functionData.getContext(), constructTarget);
             }
             functionData.setConstructNewTarget(Truffle.getRuntime().createCallTarget(constructNewTargetRoot));
         }

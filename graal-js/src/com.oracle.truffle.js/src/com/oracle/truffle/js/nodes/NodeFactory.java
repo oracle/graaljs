@@ -925,16 +925,16 @@ public class NodeFactory {
         return WithTargetNode.create(context, propertyName, withVariable);
     }
 
-    public JavaScriptRootNode createNewTargetConstruct(CallTarget callTarget) {
-        return NewTargetRootNode.createNewTargetConstruct(callTarget);
+    public JavaScriptRootNode createNewTargetConstruct(JSContext context, CallTarget callTarget) {
+        return NewTargetRootNode.createNewTargetConstruct(context.getLanguage(), callTarget);
     }
 
-    public JavaScriptRootNode createNewTargetCall(CallTarget callTarget) {
-        return NewTargetRootNode.createNewTargetCall(callTarget);
+    public JavaScriptRootNode createNewTargetCall(JSContext context, CallTarget callTarget) {
+        return NewTargetRootNode.createNewTargetCall(context.getLanguage(), callTarget);
     }
 
-    public JavaScriptRootNode createDropNewTarget(CallTarget callTarget) {
-        return NewTargetRootNode.createDropNewTarget(callTarget);
+    public JavaScriptRootNode createDropNewTarget(JSContext context, CallTarget callTarget) {
+        return NewTargetRootNode.createDropNewTarget(context.getLanguage(), callTarget);
     }
 
     public JavaScriptRootNode createConstructorRequiresNewRoot(JSFunctionData functionData, SourceSection sourceSection) {
