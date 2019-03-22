@@ -48,6 +48,8 @@ import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.js.nodes.access.*;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -58,6 +60,14 @@ public class WeakMap implements Map<DynamicObject, Object> {
     private static final HiddenKey INVERTED_WEAK_MAP_KEY = new HiddenKey("InvertedWeakMap");
 
     public WeakMap() {
+    }
+
+    public static PropertyGetNode createInvertedKeyMapGetNode(JSContext context) {
+        return PropertyGetNode.createGetHidden(WeakMap.INVERTED_WEAK_MAP_KEY, context);
+    }
+
+    public static HasHiddenKeyCacheNode createInvertedKeyMapHasNode() {
+        return HasHiddenKeyCacheNode.create(WeakMap.INVERTED_WEAK_MAP_KEY);
     }
 
     private static DynamicObject checkKey(Object key) {
