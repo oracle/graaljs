@@ -48,7 +48,8 @@ import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.js.nodes.access.*;
+import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;

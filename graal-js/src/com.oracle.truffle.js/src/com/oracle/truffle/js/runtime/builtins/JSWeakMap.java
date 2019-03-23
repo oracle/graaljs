@@ -58,7 +58,6 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.util.WeakMap;
 
 public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
