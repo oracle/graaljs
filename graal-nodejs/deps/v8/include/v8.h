@@ -9559,7 +9559,7 @@ bool PersistentBase<T>::IsWeak() const {
 
 template <class T>
 void PersistentBase<T>::Reset() {
-  if (this->IsEmpty()) return;
+  if (val_ == NULL) return;
   V8::DisposeGlobal(reinterpret_cast<internal::Object**>(this->val_));
   val_ = 0;
 }
