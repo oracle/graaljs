@@ -48,6 +48,9 @@
 #include "jni.h"
 #include <string.h>
 #include <vector>
+#ifdef DEBUG
+#include <algorithm>
+#endif
 
 #ifdef __POSIX__
 #include <pthread.h>
@@ -478,6 +481,38 @@ public:
         return reinterpret_cast<GraalHandleContent*> (contexts.back())->GetJavaObject();
     }
 
+    inline void HandleScopeEnter() {
+        handles.push_back(nullptr); // using nullptr as a separator of HandleScopes
+    }
+
+    inline void HandleScopeExit() {
+        while (true) {
+            GraalHandleContent* handle = handles.back();
+            handles.pop_back();
+            if (handle == nullptr) {
+                break;
+            } else {
+                handle->ReferenceRemoved();
+            }
+        }
+    }
+
+    inline void HandleScopeReference(GraalHandleContent* handle) {
+#ifdef DEBUG
+        if (handle == nullptr) {
+            fprintf(stderr, "NULL handle passed to HandleScopeReference!\n");
+        }
+        if (handles.empty()) {
+            fprintf(stderr, "No HandleScope defined for a handle!\n");
+        }
+        if (std::find(handles.begin(), handles.end(), handle) != handles.end()) {
+            fprintf(stderr, "A handle registered twice through HandleScopeReference!\n");
+        }
+#endif
+        handles.push_back(handle);
+        handle->ReferenceAdded();
+    }
+
     static inline v8::Isolate* GetCurrent() {
         return reinterpret_cast<v8::Isolate*> (CurrentIsolate());
     }
@@ -584,6 +619,7 @@ private:
     void* slot[22] = {};
     std::vector<v8::Value*> eternals;
     std::vector<v8::Context*> contexts;
+    std::vector<GraalHandleContent*> handles;
     std::vector<v8::Value*> internal_field_keys;
     std::vector<std::tuple<GCCallbackType, void*, void*>> prolog_callbacks;
     std::vector<std::tuple<GCCallbackType, void*, void*>> epilog_callbacks;
