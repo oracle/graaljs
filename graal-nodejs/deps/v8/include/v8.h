@@ -9551,7 +9551,7 @@ bool PersistentBase<T>::IsNearDeath() const {
 
 template <class T>
 bool PersistentBase<T>::IsWeak() const {
-    if (this->IsEmpty()) return false;
+    if (val_ == NULL) return false;
     GraalHandleContent* handle = reinterpret_cast<GraalHandleContent*>(this->val_);
     return handle->IsWeak();
 }
