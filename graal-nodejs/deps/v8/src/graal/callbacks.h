@@ -128,12 +128,6 @@ GraalIsolate* CurrentIsolateChecked();
 
 jobject GraalGetCoreModuleBinarySnapshot(JNIEnv* env, jclass nativeAccess, jstring modulePath);
 
-jlong GraalCreateAsyncHandle(JNIEnv* env, jclass nativeAccess, jlong loopAddress, jobject runnable);
-
-void GraalCloseAsyncHandle(JNIEnv* env, jclass nativeAccess, jlong handle);
-
-void GraalSendAsyncHandle(JNIEnv* env, jclass nativeAccess, jlong handlePtr);
-
 void GraalNotifyPromiseHook(JNIEnv* env, jclass nativeAccess, jint changeType, jobject java_promise, jobject java_parent);
 
 void GraalNotifyPromiseRejectionTracker(JNIEnv* env, jclass nativeAccess, jobject java_promise, jint operation, jobject java_value);

@@ -65,7 +65,6 @@
 #include "graal_external.h"
 #include "graal_script_or_module.h"
 #include "jni.h"
-#include "uv.h"
 #include "../../../../mxbuild/trufflenode/coremodules/node_snapshots.h"
 #include <vector>
 #include <stdlib.h>
@@ -97,9 +96,6 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("notifyGCCallbacks", "(Z)V", &GraalNotifyGCCallbacks),
     CALLBACK("polyglotEngineEntered", "(JJJJJJ)V", &GraalPolyglotEngineEntered),
     CALLBACK("getCoreModuleBinarySnapshot", "(Ljava/lang/String;)Ljava/nio/ByteBuffer;", &GraalGetCoreModuleBinarySnapshot),
-    CALLBACK("createAsyncHandle", "(JLjava/lang/Runnable;)J", &GraalCreateAsyncHandle),
-    CALLBACK("closeAsyncHandle", "(J)V", &GraalCloseAsyncHandle),
-    CALLBACK("sendAsyncHandle", "(J)V", &GraalSendAsyncHandle),
     CALLBACK("notifyPromiseHook", "(ILjava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyPromiseHook),
     CALLBACK("notifyPromiseRejectionTracker", "(Ljava/lang/Object;ILjava/lang/Object;)V", &GraalNotifyPromiseRejectionTracker),
     CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
@@ -600,22 +596,6 @@ void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong d
     }
 }
 
-#ifdef __POSIX__
-#define WEAK_ATTRIBUTE  __attribute__((weak))
-#else
-#define WEAK_ATTRIBUTE
-#endif
-
-extern "C" void uv_close(uv_handle_t* handle, uv_close_cb close_cb) WEAK_ATTRIBUTE;
-extern "C" int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) WEAK_ATTRIBUTE;
-extern "C" int uv_async_send(uv_async_t* handle) WEAK_ATTRIBUTE;
-
-#undef WEAK_ATTRIBUTE
-
-void GraalHandleClosed(uv_handle_t* handle) {
-    free(handle);
-}
-
 void GraalNotifyGCCallbacks(JNIEnv* env, jclass nativeAccess, jboolean prolog) {
     GraalIsolate* isolate = CurrentIsolateChecked();
     isolate->NotifyGCCallbacks(prolog);
@@ -651,33 +631,6 @@ jobject GraalGetCoreModuleBinarySnapshot(JNIEnv* env, jclass nativeAccess, jstri
     }
 
     return retval;
-}
-
-void GraalAsyncHandleTaskRunner(uv_async_t* handle) {
-    JNIEnv* env = CurrentIsolateChecked()->GetJNIEnv();
-    jobject runnable = (jobject) handle->data;
-    jclass runnable_class = env->FindClass("java/lang/Runnable");
-    jmethodID runMethodID = env->GetMethodID(runnable_class, "run", "()V");
-    env->CallVoidMethod(runnable, runMethodID);
-}
-
-void GraalCloseAsyncHandle(JNIEnv* env, jclass nativeAccess, jlong handlePtr) {
-    uv_async_t* handle = reinterpret_cast<uv_async_t*> (handlePtr);
-    jobject runnable = (jobject) handle->data;    
-    env->DeleteGlobalRef(runnable);
-    uv_close(reinterpret_cast<uv_handle_t*> (handle), &GraalHandleClosed);
-}
-
-void GraalSendAsyncHandle(JNIEnv* env, jclass nativeAccess, jlong handle) {
-    uv_async_send(reinterpret_cast<uv_async_t*> (handle));
-}
-
-jlong GraalCreateAsyncHandle(JNIEnv* env, jclass nativeAccess, jlong loopAddress, jobject runnable) {
-    uv_loop_t* loop = (uv_loop_t*) loopAddress;
-    uv_async_t* handle = (uv_async_t*) malloc(sizeof (uv_async_t));
-    handle->data = env->NewGlobalRef(runnable);    
-    uv_async_init(loop, handle, &GraalAsyncHandleTaskRunner);
-    return (jlong) handle;
 }
 
 void GraalNotifyPromiseHook(JNIEnv* env, jclass nativeAccess, jint changeType, jobject java_promise, jobject java_parent) {
