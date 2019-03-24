@@ -228,6 +228,7 @@ jobject GraalExecuteFunction0(JNIEnv* env, jclass nativeAccess, jint id,
     GraalIsolate* isolate = CurrentIsolateChecked();
     std::array<GraalValue*, 1> values;
     char memory[2][MAX_SIZE];
+    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[0]);
     GraalValue* graal_new_target = AllocateNewTarget(isolate, new_target, memory[1]);
     GraalValue* graal_data = isolate->GetFunctionTemplateData(id);
@@ -243,6 +244,7 @@ jobject GraalExecuteFunction1(JNIEnv* env, jclass nativeAccess, jint id,
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 2> values;
     char memory[3][MAX_SIZE];
+    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     GraalValue* graal_this = GraalValue::FromJavaObject(isolate, this_object, this_type, false, memory[1]);
@@ -261,6 +263,7 @@ jobject GraalExecuteFunction2(JNIEnv* env, jclass nativeAccess, jint id,
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 3> values;
     char memory[4][MAX_SIZE];
+    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
@@ -281,6 +284,7 @@ jobject GraalExecuteFunction3(JNIEnv* env, jclass nativeAccess, jint id,
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 4> values;
     char memory[5][MAX_SIZE];
+    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
@@ -303,6 +307,7 @@ jobject GraalExecuteFunction4(JNIEnv* env, jclass nativeAccess, jint id,
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 5> values;
     char memory[6][MAX_SIZE];
+    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
@@ -327,6 +332,7 @@ jobject GraalExecuteFunction5(JNIEnv* env, jclass nativeAccess, jint id,
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 6> values;
     char memory[7][MAX_SIZE];
+    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
@@ -353,6 +359,7 @@ jobject GraalExecuteFunction6(JNIEnv* env, jclass nativeAccess, jint id,
     isolate->ResetSharedBuffer();
     std::array<GraalValue*, 7> values;
     char memory[8][MAX_SIZE];
+    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
     int i = values.size() - 1;
     values[--i] = GraalValue::FromJavaObject(isolate, argument1, argument1_type, true, memory[0]);
     values[--i] = GraalValue::FromJavaObject(isolate, argument2, argument2_type, true, memory[1]);
