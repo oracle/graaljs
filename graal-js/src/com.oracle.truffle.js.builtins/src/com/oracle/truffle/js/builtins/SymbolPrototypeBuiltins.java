@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolToPrimitiveNodeGen;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolToStringNodeGen;
 import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltinsFactory.SymbolValueOfNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -63,7 +64,19 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     public enum SymbolPrototype implements BuiltinEnum<SymbolPrototype> {
         toString(0),
-        valueOf(0);
+        valueOf(0),
+
+        _toPrimitive(1) {
+            @Override
+            public Object getKey() {
+                return Symbol.SYMBOL_TO_PRIMITIVE;
+            }
+
+            @Override
+            public boolean isWritable() {
+                return false;
+            }
+        };
 
         private final int length;
 
@@ -84,6 +97,8 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return SymbolToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
                 return SymbolValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case _toPrimitive:
+                return SymbolToPrimitiveNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -122,6 +137,26 @@ public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSSymbol.getSymbolData((DynamicObject) thisObj);
             } else if (isPrimitiveSymbolProfile.profile(thisObj instanceof Symbol)) {
                 return (Symbol) thisObj;
+            } else {
+                throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+            }
+        }
+    }
+
+    public abstract static class SymbolToPrimitiveNode extends JSBuiltinNode {
+        private final ConditionProfile isSymbolProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isSymbolObjectProfile = ConditionProfile.createBinaryProfile();
+
+        public SymbolToPrimitiveNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Symbol toPrimitive(Object thisObj) {
+            if (isSymbolProfile.profile(thisObj instanceof Symbol)) {
+                return (Symbol) thisObj;
+            } else if (isSymbolObjectProfile.profile(JSSymbol.isJSSymbol(thisObj))) {
+                return JSSymbol.getSymbolData((DynamicObject) thisObj);
             } else {
                 throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
             }
