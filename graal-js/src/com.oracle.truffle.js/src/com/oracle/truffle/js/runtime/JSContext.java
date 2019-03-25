@@ -247,6 +247,7 @@ public class JSContext {
         PromiseValueThunk,
         PromiseThrower,
         ImportModuleDynamically,
+        JavaPackageToPrimitive,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
