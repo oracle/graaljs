@@ -237,7 +237,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)"})
     protected static boolean doInterop(TruffleObject target, Object property,
                     @Cached("createRemove()") Node removeNode,
-                    @Cached("create(context)") ExportValueNode exportNode) {
+                    @Cached("create()") ExportValueNode exportNode) {
         try {
             ForeignAccess.sendRemove(removeNode, target, exportNode.executeWithTarget(property, Undefined.instance));
             return true;

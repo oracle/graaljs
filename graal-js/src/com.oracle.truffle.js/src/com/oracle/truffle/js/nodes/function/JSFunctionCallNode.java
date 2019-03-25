@@ -400,7 +400,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             }
         }
         if (newNode == null) {
-            newNode = new ForeignExecuteNode(language, userArgumentCount);
+            newNode = new ForeignExecuteNode(userArgumentCount);
         }
         return insertAtFront(newNode, head);
     }
@@ -1317,8 +1317,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Child private JSForeignToJSTypeNode typeConvertNode;
         private final ValueProfile functionClassProfile = ValueProfile.createClassProfile();
 
-        ForeignCallNode(AbstractJavaScriptLanguage language, int expectedArgumentCount) {
-            this.exportArgumentsNode = ExportArgumentsNode.create(expectedArgumentCount, language);
+        ForeignCallNode(int expectedArgumentCount) {
+            this.exportArgumentsNode = ExportArgumentsNode.create(expectedArgumentCount);
             this.typeConvertNode = JSForeignToJSTypeNode.create();
         }
 
@@ -1343,8 +1343,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static class ForeignExecuteNode extends ForeignCallNode {
         @Child protected Node callNode;
 
-        ForeignExecuteNode(AbstractJavaScriptLanguage language, int expectedArgumentCount) {
-            super(language, expectedArgumentCount);
+        ForeignExecuteNode(int expectedArgumentCount) {
+            super(expectedArgumentCount);
         }
 
         @Override
@@ -1373,7 +1373,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         private final TruffleLanguage.ContextReference<JSRealm> contextRef;
 
         ForeignInvokeNode(AbstractJavaScriptLanguage language, String functionName, int expectedArgumentCount) {
-            super(language, expectedArgumentCount);
+            super(expectedArgumentCount);
             this.functionName = functionName;
             contextRef = language.getContextReference();
         }

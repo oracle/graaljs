@@ -222,7 +222,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     @Specialization(guards = {"isForeignObject(target)"})
     public Object doNewForeignObject(VirtualFrame frame, TruffleObject target,
                     @Cached("createNewCache()") Node newNode,
-                    @Cached("create(context)") ExportValueNode convert,
+                    @Cached("create()") ExportValueNode convert,
                     @Cached("create()") JSForeignToJSTypeNode toJSType,
                     @Cached("createBinaryProfile()") ConditionProfile isHostClassProf,
                     @Cached("createBinaryProfile()") ConditionProfile isAbstractProf) {
