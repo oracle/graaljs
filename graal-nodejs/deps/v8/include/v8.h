@@ -9551,7 +9551,7 @@ bool PersistentBase<T>::IsNearDeath() const {
 
 template <class T>
 bool PersistentBase<T>::IsWeak() const {
-    if (this->IsEmpty()) return false;
+    if (val_ == NULL) return false;
     GraalHandleContent* handle = reinterpret_cast<GraalHandleContent*>(this->val_);
     return handle->IsWeak();
 }
@@ -9559,7 +9559,7 @@ bool PersistentBase<T>::IsWeak() const {
 
 template <class T>
 void PersistentBase<T>::Reset() {
-  if (this->IsEmpty()) return;
+  if (val_ == NULL) return;
   V8::DisposeGlobal(reinterpret_cast<internal::Object**>(this->val_));
   val_ = 0;
 }
