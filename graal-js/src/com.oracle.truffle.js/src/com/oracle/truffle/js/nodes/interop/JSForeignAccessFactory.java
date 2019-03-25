@@ -141,7 +141,7 @@ public class JSForeignAccessFactory {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 JSContext context = JSObject.getJSContext(function);
                 contextRef = context.getLanguage().getContextReference();
-                export = insert(ExportValueNode.create(context.getLanguage()));
+                export = insert(ExportValueNode.create());
             }
             JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
@@ -167,7 +167,7 @@ public class JSForeignAccessFactory {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 JSContext context = JSObject.getJSContext(target);
                 callNode = insert(JSInteropInvokeNode.create(context));
-                export = insert(ExportValueNode.create(context.getLanguage()));
+                export = insert(ExportValueNode.create());
                 contextRef = context.getLanguage().getContextReference();
             }
             JSContext context = contextRef.get().getContext();
@@ -200,7 +200,7 @@ public class JSForeignAccessFactory {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 JSContext context = JSObject.getJSContext(target);
                 contextRef = context.getLanguage().getContextReference();
-                export = insert(ExportValueNode.create(context.getLanguage()));
+                export = insert(ExportValueNode.create());
             }
             JSContext context = contextRef.get().getContext();
             context.interopBoundaryEnter();
@@ -232,7 +232,7 @@ public class JSForeignAccessFactory {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 JSContext context = JSObject.getJSContext(target);
                 readNode = insert(ReadElementNode.create(context));
-                export = insert(ExportValueNode.create(context.getLanguage()));
+                export = insert(ExportValueNode.create());
             }
             Object importedKey = castKey.executeWithTarget(key);
             Object value = readNode.executeWithTargetAndIndexOrDefault(target, importedKey, null);

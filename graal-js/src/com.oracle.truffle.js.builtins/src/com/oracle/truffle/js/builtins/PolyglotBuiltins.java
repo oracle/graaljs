@@ -246,7 +246,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
         PolyglotExportNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            export = ExportValueNode.create(context);
+            export = ExportValueNode.create();
         }
 
         @Specialization
@@ -470,7 +470,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object write(TruffleObject obj, Object name, Object value,
                         @Cached("createWrite()") Node write,
-                        @Cached("create(getContext())") ExportValueNode exportValue) {
+                        @Cached("create()") ExportValueNode exportValue) {
             try {
                 Object identifier = exportValue.executeWithTarget(name, Undefined.instance);
                 Object convertedValue = exportValue.executeWithTarget(value, Undefined.instance);
@@ -497,7 +497,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object remove(TruffleObject obj, Object key,
                         @Cached("createRemove()") Node remove,
-                        @Cached("create(getContext())") ExportValueNode exportValue) {
+                        @Cached("create()") ExportValueNode exportValue) {
             try {
                 Object exportedKey = exportValue.executeWithTarget(key, Undefined.instance);
                 return ForeignAccess.sendRemove(remove, obj, exportedKey);
@@ -556,7 +556,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object execute(TruffleObject obj, Object[] arguments,
                         @Cached("createCall()") Node execute,
-                        @Cached("create(getContext())") ExportValueNode exportValue) {
+                        @Cached("create()") ExportValueNode exportValue) {
             try {
                 TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
                 Object[] convertedArgs = new Object[arguments.length];
@@ -586,7 +586,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object doNew(TruffleObject obj, Object[] arguments,
                         @Cached("createNew()") Node newNode,
-                        @Cached("create(getContext())") ExportValueNode exportValue) {
+                        @Cached("create()") ExportValueNode exportValue) {
             try {
                 TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
                 Object[] convertedArgs = new Object[arguments.length];
@@ -963,7 +963,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
         PolyglotToPolyglotValueNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.exportValueNode = ExportValueNode.create(context);
+            this.exportValueNode = ExportValueNode.create();
         }
 
         @Specialization

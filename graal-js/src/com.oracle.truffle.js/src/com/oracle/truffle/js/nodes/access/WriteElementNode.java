@@ -1650,8 +1650,8 @@ public class WriteElementNode extends JSTargetableNode {
             this.targetClass = targetClass;
             this.isNull = Message.IS_NULL.createNode();
             this.write = Message.WRITE.createNode();
-            this.exportKey = ExportValueNode.create(context);
-            this.exportValue = ExportValueNode.create(context);
+            this.exportKey = ExportValueNode.create();
+            this.exportValue = ExportValueNode.create();
         }
 
         @Override

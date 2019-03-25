@@ -47,14 +47,14 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropAsyncFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
@@ -67,10 +67,8 @@ import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
  */
 @ImportStatic({JSTruffleOptions.class, JSFunction.class})
 public abstract class ExportValueNode extends JavaScriptBaseNode {
-    private final AbstractJavaScriptLanguage language;
 
-    ExportValueNode(AbstractJavaScriptLanguage language) {
-        this.language = language;
+    ExportValueNode() {
     }
 
     public abstract Object executeWithTarget(Object property, Object thiz);
@@ -152,16 +150,15 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     @Fallback
-    protected final Object doOther(Object value, @SuppressWarnings("unused") Object thiz) {
-        assert !(value instanceof TruffleObject);
-        return language.getContextReference().get().getEnv().asGuestValue(value);
+    protected static final Object doOther(Object value, @SuppressWarnings("unused") Object thiz) {
+        if (value == null) {
+            return Null.instance;
+        } else {
+            throw Errors.createTypeError("Cannot convert to TruffleObject: " + value.getClass().getSimpleName());
+        }
     }
 
-    public static ExportValueNode create(AbstractJavaScriptLanguage language) {
-        return ExportValueNodeGen.create(language);
-    }
-
-    public static ExportValueNode create(JSContext context) {
-        return create(context.getLanguage());
+    public static ExportValueNode create() {
+        return ExportValueNodeGen.create();
     }
 }

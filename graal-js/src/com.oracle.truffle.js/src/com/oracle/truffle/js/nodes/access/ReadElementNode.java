@@ -1470,7 +1470,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         TruffleObjectReadElementTypeCacheNode(JSContext context, Class<? extends TruffleObject> targetClass) {
             super(context);
             this.targetClass = targetClass;
-            this.exportKeyNode = ExportValueNodeGen.create(context);
+            this.exportKeyNode = ExportValueNodeGen.create();
             this.foreignIsNullNode = Message.IS_NULL.createNode();
             this.foreignArrayAccessNode = Message.READ.createNode();
             this.toJSTypeNode = JSForeignToJSTypeNodeGen.create();

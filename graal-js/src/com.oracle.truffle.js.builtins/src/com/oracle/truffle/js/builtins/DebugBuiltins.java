@@ -276,7 +276,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             } else {
                 CompilerDirectives.transferToInterpreter();
             }
-            return null;
+            return Undefined.instance;
         }
     }
 
@@ -290,7 +290,11 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @Specialization
         protected Object clazz(Object obj) {
-            return obj == null ? null : getName ? obj.getClass().getName() : obj.getClass();
+            return obj == null ? Null.instance : getName ? obj.getClass().getName() : wrap(obj.getClass());
+        }
+
+        private Object wrap(Class<? extends Object> class1) {
+            return getContext().getRealm().getEnv().asGuestValue(class1);
         }
     }
 

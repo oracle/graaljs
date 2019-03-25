@@ -1030,7 +1030,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             this.context = context;
             this.isNull = Message.IS_NULL.createNode();
             this.write = Message.WRITE.createNode();
-            this.export = ExportValueNode.create(context);
+            this.export = ExportValueNode.create();
         }
 
         private TruffleObject nullCheck(TruffleObject truffleObject, Object key) {

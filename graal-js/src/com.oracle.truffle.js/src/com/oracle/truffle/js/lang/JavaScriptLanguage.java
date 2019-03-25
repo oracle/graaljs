@@ -205,7 +205,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
             RootNode rootNode = new RootNode(this) {
                 @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
-                @Child private ExportValueNode exportValueNode = ExportValueNode.create(context);
+                @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -245,7 +245,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         final boolean strict = isStrictLocation(request.getLocation());
         final ExecutableNode executableNode = new ExecutableNode(this) {
             @Child private JavaScriptNode expression = insert(parseInline(source, context, requestFrame, strict));
-            @Child private ExportValueNode exportValueNode = ExportValueNode.create(context);
+            @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
