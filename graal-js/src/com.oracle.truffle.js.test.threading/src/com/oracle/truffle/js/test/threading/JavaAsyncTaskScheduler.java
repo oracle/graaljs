@@ -46,6 +46,7 @@ import java.util.Queue;
 import java.util.concurrent.LinkedBlockingDeque;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
@@ -86,7 +87,7 @@ public class JavaAsyncTaskScheduler {
      */
     @Test
     public void testJavaWakeup() {
-        Context cx = Context.newBuilder("js").allowHostAccess(true).build();
+        Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).build();
         Queue<Object> sharedQueue = new LinkedBlockingDeque<>();
         Example async = new Example(sharedQueue);
 
