@@ -120,7 +120,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
@@ -1660,11 +1659,11 @@ public class WriteElementNode extends JSTargetableNode {
             if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this);
             }
-            Object convertedKey = exportKey.executeWithTarget(index, Undefined.instance);
+            Object convertedKey = exportKey.execute(index);
             if (convertedKey instanceof Symbol) {
                 return;
             }
-            Object exportedValue = exportValue.executeWithTarget(value, Undefined.instance);
+            Object exportedValue = exportValue.execute(value);
             if (keyInterop.isString(convertedKey)) {
                 try {
                     interop.writeMember(truffleObject, keyInterop.asString(convertedKey), exportedValue);

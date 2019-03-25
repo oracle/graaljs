@@ -1480,7 +1480,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
             }
-            Object exportedKey = exportKeyNode.executeWithTarget(index, Undefined.instance);
+            Object exportedKey = exportKeyNode.execute(index);
             if (exportedKey instanceof Symbol) {
                 return Undefined.instance;
             }

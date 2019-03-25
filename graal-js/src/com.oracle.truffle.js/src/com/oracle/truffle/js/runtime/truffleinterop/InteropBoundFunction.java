@@ -55,7 +55,6 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @ExportLibrary(InteropLibrary.class)
 public final class InteropBoundFunction extends InteropFunction {
@@ -110,7 +109,7 @@ public final class InteropBoundFunction extends InteropFunction {
         context.interopBoundaryEnter();
         try {
             Object result = callNode.execute(function, receiver, arguments);
-            return exportNode.executeWithTarget(result, Undefined.instance);
+            return exportNode.execute(result);
         } finally {
             context.interopBoundaryExit();
         }

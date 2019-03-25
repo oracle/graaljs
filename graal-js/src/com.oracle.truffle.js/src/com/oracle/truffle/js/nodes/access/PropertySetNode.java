@@ -1060,7 +1060,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (!(key instanceof String)) {
                 return false;
             }
-            Object exportedValue = export.executeWithTarget(value, Undefined.instance);
+            Object exportedValue = export.execute(value);
             return performWriteMember(truffleObject, exportedValue, root);
         }
 

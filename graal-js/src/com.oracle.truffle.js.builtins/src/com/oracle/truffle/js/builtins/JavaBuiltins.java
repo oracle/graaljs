@@ -525,7 +525,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             try {
                 Object result = newArray.instantiate(arrayType, arr.length);
                 for (int i = 0; i < arr.length; i++) {
-                    arrayElements.writeArrayElement(result, i, exportValue.executeWithTarget(arr[i], Undefined.instance));
+                    arrayElements.writeArrayElement(result, i, exportValue.execute(arr[i]));
                 }
                 return result;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | InvalidArrayIndexException e) {

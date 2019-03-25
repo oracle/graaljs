@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropAsyncFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 
@@ -72,7 +73,11 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     ExportValueNode() {
     }
 
-    public abstract Object executeWithTarget(Object property, Object thiz);
+    public final Object execute(Object value) {
+        return executeWithTarget(value, Undefined.instance);
+    }
+
+    public abstract Object executeWithTarget(Object value, Object thiz);
 
     @Specialization(guards = {"isJSFunction(function)", "!BindProgramResult", "!InteropCompletePromises || !isAsyncFunction(function)"})
     protected static TruffleObject doFunctionNoBind(DynamicObject function, @SuppressWarnings("unused") Object thiz) {

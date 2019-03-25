@@ -474,7 +474,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object member(TruffleObject obj, String name, Object value,
                         @Shared("exportValue") @Cached ExportValueNode exportValue,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
-            Object convertedValue = exportValue.executeWithTarget(value, Undefined.instance);
+            Object convertedValue = exportValue.execute(value);
             try {
                 interop.writeMember(obj, name, convertedValue);
                 return convertedValue;
@@ -489,7 +489,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object arrayElementInt(TruffleObject obj, int index, Object value,
                         @Shared("exportValue") @Cached ExportValueNode exportValue,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
-            Object convertedValue = exportValue.executeWithTarget(value, Undefined.instance);
+            Object convertedValue = exportValue.execute(value);
             try {
                 interop.writeArrayElement(obj, index, convertedValue);
                 return convertedValue;
@@ -504,7 +504,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object arrayElement(TruffleObject obj, Number index, Object value,
                         @Shared("exportValue") @Cached ExportValueNode exportValue,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
-            Object convertedValue = exportValue.executeWithTarget(value, Undefined.instance);
+            Object convertedValue = exportValue.execute(value);
             try {
                 interop.writeArrayElement(obj, index.longValue(), convertedValue);
                 return convertedValue;
@@ -648,10 +648,10 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object execute(TruffleObject obj, Object[] arguments,
                         @Cached ExportValueNode exportValue,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {
-            TruffleObject target = (TruffleObject) exportValue.executeWithTarget(obj, Undefined.instance);
+            Object target = exportValue.execute(obj);
             Object[] convertedArgs = new Object[arguments.length];
             for (int i = 0; i < arguments.length; i++) {
-                convertedArgs[i] = exportValue.executeWithTarget(arguments[i], Undefined.instance);
+                convertedArgs[i] = exportValue.execute(arguments[i]);
             }
             try {
                 return interop.execute(target, convertedArgs);
@@ -677,10 +677,10 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object doNew(TruffleObject obj, Object[] arguments,
                         @Cached ExportValueNode exportValue,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {
-            Object target = exportValue.executeWithTarget(obj, Undefined.instance);
+            Object target = exportValue.execute(obj);
             Object[] convertedArgs = new Object[arguments.length];
             for (int i = 0; i < arguments.length; i++) {
-                convertedArgs[i] = exportValue.executeWithTarget(arguments[i], Undefined.instance);
+                convertedArgs[i] = exportValue.execute(arguments[i]);
             }
             try {
                 return interop.instantiate(target, convertedArgs);
@@ -1016,7 +1016,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
         @Specialization
         protected Object execute(Object value) {
-            return exportValueNode.executeWithTarget(value, Undefined.instance);
+            return exportValueNode.execute(value);
         }
     }
 }

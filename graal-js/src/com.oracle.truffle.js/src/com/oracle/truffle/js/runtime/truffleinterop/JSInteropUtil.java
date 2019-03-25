@@ -57,7 +57,6 @@ import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Utility class for interop operations. Provides methods that can be used in Cached annotations of
@@ -139,7 +138,7 @@ public final class JSInteropUtil {
             return;
         }
         try {
-            interop.writeMember(obj, (String) member, exportValue.executeWithTarget(value, Undefined.instance));
+            interop.writeMember(obj, (String) member, exportValue.execute(value));
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
             throw Errors.createTypeErrorInteropException(obj, e, "writeMember", originatingNode);
         }

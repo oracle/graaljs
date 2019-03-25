@@ -211,7 +211,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     try {
                         context.interopBoundaryEnter();
                         Object result = directCallNode.call(program.argumentsToRun(realm));
-                        return exportValueNode.executeWithTarget(result, Undefined.instance);
+                        return exportValueNode.execute(result);
                     } finally {
                         context.interopBoundaryExit();
                     }
@@ -248,7 +248,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             public Object execute(VirtualFrame frame) {
                 assert getContextReference().get().getContext() == context : "unexpected JSContext";
                 Object result = expression.execute(frame);
-                return exportValueNode.executeWithTarget(result, Undefined.instance);
+                return exportValueNode.execute(result);
             }
         };
         return executableNode;

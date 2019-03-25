@@ -235,7 +235,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         args = arguments.executeFillObjectArray(frame, args, 0);
         // We need to convert (e.g., bind functions) before invoking the constructor
         for (int i = 0; i < args.length; i++) {
-            args[i] = convert.executeWithTarget(args[i], Undefined.instance);
+            args[i] = convert.execute(args[i]);
         }
 
         if (!JSTruffleOptions.SubstrateVM && context.isOptionNashornCompatibilityMode()) {

@@ -106,7 +106,7 @@ public final class InteropAsyncFunction extends InteropFunction {
         Object result;
         try {
             result = callNode.execute(function, Undefined.instance, arguments);
-            result = exportNode.executeWithTarget(result, Undefined.instance);
+            result = exportNode.execute(result);
         } finally {
             context.interopBoundaryExit();
         }

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.interop;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class ExportArgumentsNode extends JavaScriptBaseNode {
     public abstract Object[] export(Object[] extractedUserArguments);
@@ -55,7 +54,7 @@ public abstract class ExportArgumentsNode extends JavaScriptBaseNode {
             @Override
             public Object[] export(Object[] extractedUserArguments) {
                 for (int i = 0; i < extractedUserArguments.length; i++) {
-                    extractedUserArguments[i] = exportNode.executeWithTarget(extractedUserArguments[i], Undefined.instance);
+                    extractedUserArguments[i] = exportNode.execute(extractedUserArguments[i]);
                 }
                 return extractedUserArguments;
             }
@@ -77,7 +76,7 @@ public abstract class ExportArgumentsNode extends JavaScriptBaseNode {
             public Object[] export(Object[] extractedUserArguments) {
                 if (extractedUserArguments.length == exportNodes.length) {
                     for (int i = 0; i < exportNodes.length; i++) {
-                        extractedUserArguments[i] = exportNodes[i].executeWithTarget(extractedUserArguments[i], Undefined.instance);
+                        extractedUserArguments[i] = exportNodes[i].execute(extractedUserArguments[i]);
                     }
                     return extractedUserArguments;
                 } else {
