@@ -48,6 +48,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
@@ -79,7 +80,7 @@ public class ForkJoinTest {
                             "   return f2.compute() + f1.join();" +
                             "})";
 
-            Context cx = Context.newBuilder("js").engine(engine).build();
+            Context cx = Context.newBuilder("js").engine(engine).allowHostAccess(HostAccess.ALL).build();
             cx.getBindings("js").putMember("fib", new FibTaskCreator(tl));
             return cx.eval("js", src);
         }
