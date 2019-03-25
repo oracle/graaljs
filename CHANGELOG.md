@@ -6,6 +6,7 @@ The main focus is on user-observable behavior of the engine.
 ## Version 1.0.0 RC15
 * Removed non-standard `String.prototype.contains`; use `includes` instead.
 * ScriptEngine: security-relevant Context-options are now disabled by default.
+* Migrated to Truffle Libraries for interop.
 
 ## Version 1.0.0 RC14
 * Option `js.function-arguments-limit` to set an upper bound for function arguments and argument spreading (default: 65535).
