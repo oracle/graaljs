@@ -266,6 +266,7 @@ public class TestBindings {
     @Test
     public void setArgs1() throws ScriptException {
         ScriptEngine engine = getEngine();
+        engine.put("polyglot.js.allowHostAccess", true);
         engine.put(argsName, defaultArgs);
         assertEquals(defaultArgs[0], engine.eval(argsName + "[0];"));
         assertEquals(defaultArgs[1], engine.eval(argsName + "[1];"));
@@ -276,6 +277,7 @@ public class TestBindings {
     public void setArgs2() throws ScriptException {
         ScriptEngine engine = getEngine();
         Bindings bindings = new SimpleBindings();
+        bindings.put("polyglot.js.allowHostAccess", true);
         bindings.put(argsName, defaultArgs);
         engine.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
         assertEquals(defaultArgs[0], engine.eval(argsName + "[0];"));
