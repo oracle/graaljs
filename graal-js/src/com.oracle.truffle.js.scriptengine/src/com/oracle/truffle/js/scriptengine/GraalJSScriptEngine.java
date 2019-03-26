@@ -58,6 +58,7 @@ import javax.script.ScriptException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -96,7 +97,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         Context.Builder contextConfigToUse = contextConfig;
         if (contextConfigToUse == null) {
             // default config
-            contextConfigToUse = Context.newBuilder(ID).allowHostAccess(true).allowCreateThread(true).option(JS_SYNTAX_EXTENSIONS_OPTION, "true");
+            contextConfigToUse = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true).allowCreateThread(true).option(JS_SYNTAX_EXTENSIONS_OPTION, "true");
         }
         this.factory = new GraalJSEngineFactory(engineToUse);
         this.contextConfig = contextConfigToUse.option(JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION, "true").engine(engineToUse);
