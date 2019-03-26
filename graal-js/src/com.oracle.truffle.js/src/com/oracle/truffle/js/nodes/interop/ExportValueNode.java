@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropAsyncFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
@@ -151,11 +150,7 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     @TruffleBoundary
     @Fallback
     protected static final Object doOther(Object value, @SuppressWarnings("unused") Object thiz) {
-        if (value == null) {
-            return Null.instance;
-        } else {
-            throw Errors.createTypeError("Cannot convert to TruffleObject: " + value.getClass().getSimpleName());
-        }
+        throw Errors.createTypeErrorFormat("Cannot convert to TruffleObject: %s", value == null ? null : value.getClass().getSimpleName());
     }
 
     public static ExportValueNode create() {

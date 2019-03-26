@@ -1538,7 +1538,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw Errors.shouldNotReachHere();
             }
-            return null;
+            return Undefined.instance;
         }
 
         private boolean hasNext(TruffleObject iterator) throws UnsupportedTypeException, ArityException, UnknownIdentifierException, UnsupportedMessageException {
