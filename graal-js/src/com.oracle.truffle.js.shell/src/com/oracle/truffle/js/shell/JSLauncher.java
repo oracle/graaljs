@@ -181,17 +181,8 @@ public class JSLauncher extends AbstractLanguageLauncher {
             case "version":
                 versionAction = VersionAction.PrintAndExit;
                 return Consumed;
-            case "syntax-extensions":
-                polyglotOptions.put("js.syntax-extensions", "true");
-                return ConsumedPolyglotOption;
-            case "scripting":
-                polyglotOptions.put("js.scripting", "true");
-                return ConsumedPolyglotOption;
             case "no-shebang":
                 polyglotOptions.put("js.shebang", "false");
-                return ConsumedPolyglotOption;
-            case "strict":
-                polyglotOptions.put("js.strict", "true");
                 return ConsumedPolyglotOption;
             case "no-constasvar":
                 polyglotOptions.put("js.const-as-var", "false");
