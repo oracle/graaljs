@@ -10,10 +10,11 @@ This document explains the public API it provides to user applications written i
 ## ECMAScript language compliance
 
 Graal JavaScript implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
-Graal JavaScript is compatible with the 2018 edition of ECMAScript (sometimes referred to as "version 9" or "ES9"), see [http://www.ecma-international.org/ecma-262/9.0/](http://www.ecma-international.org/ecma-262/9.0/).
-Some features of the upcoming ECMAScript 2019 are already implemented and are available by default in this repo.
+Graal JavaScript is compatible with the 2019 edition of ECMAScript (sometimes referred to as "version 10" or "ES10"), see [http://www.ecma-international.org/ecma-262/](http://www.ecma-international.org/ecma-262/).
+(Remark: at the time of writing of this document, ECMAScript 2019 had been finalized, but the specification document was not yet published.)
+Some features of the upcoming ECMAScript 2020 are already implemented and are available behind specific flags.
 Older versions starting from ECMAScript 5 can be enabled with a config flag.
-It is recommended to use a fixed ECMAScript version, with the most recent published ECMAScript 2018 specification being a reasonable target.
+It is recommended to use a fixed ECMAScript version, with the most recent published ECMAScript 2019 specification being a reasonable target.
 For informations on the flags, see the *--help* message of the executable.
 
 Graal JavaScript provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:

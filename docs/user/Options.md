@@ -77,7 +77,7 @@ The versions are numbered with ascending integer values, with `5` for ECMAScript
 * `7` for ECMAScript 2016
 * `8` for ECMAScript 2017
 * `9` for ECMAScript 2018
-* `10` for ECMAScript 2019
+* `10` for ECMAScript 2019 (`latest` version of the specification)
 * `11` for ECMAScript 2020 (currently in draft stage, not fully supported by Graal JavaScript)
 
 ### intl-402
