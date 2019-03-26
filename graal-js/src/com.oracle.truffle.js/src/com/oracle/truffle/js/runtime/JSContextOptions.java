@@ -407,13 +407,13 @@ public final class JSContextOptions {
         return helpMessage + " (default:" + key.getDefaultValue() + ")";
     }
 
-    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, String help) {
-        return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).build();
+    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, OptionStability stability, String help) {
+        return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).stability(stability).build();
     }
 
     public static void describeOptions(List<OptionDescriptor> options) {
-        for (OptionDescriptor optionDescriptor : new JSContextOptionsOptionDescriptors()) {
-            options.add(newOptionDescriptor(optionDescriptor.getKey(), optionDescriptor.getName(), optionDescriptor.getCategory(), optionDescriptor.getHelp()));
+        for (OptionDescriptor desc : new JSContextOptionsOptionDescriptors()) {
+            options.add(newOptionDescriptor(desc.getKey(), desc.getName(), desc.getCategory(), desc.getStability(), desc.getHelp()));
         }
     }
 
