@@ -50,13 +50,13 @@ suite = {
       "os_arch": {
         "windows": {
           "<others>": {
-            "results" : ["node.exe"],
-            "output" : "Release"
+            "results" : ["Release/node.exe", "out/headers/include"],
+            "output" : "."
           },
         },
         "<others>": {
           "<others>": {
-            "results" : ["Release/node"],
+            "results" : ["Release/node", "headers/include"],
             "output" : "out"
           },
         },
@@ -129,11 +129,11 @@ suite = {
             "layout" : {
               "./" : [
                 "file:deps/npm",
-                "file:out/headers/*",
+                "dependency:trufflenodeNative/out/headers/include",
               ],
               "NODE_README.md" : "file:README.md",
               "bin/" : [
-                "dependency:trufflenodeNative/node.exe"
+                "dependency:trufflenodeNative/Release/node.exe"
               ],
               "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
               "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
@@ -145,7 +145,7 @@ suite = {
             "layout" : {
               "./" : [
                 "file:deps/npm",
-                "file:out/headers/*",
+                "dependency:trufflenodeNative/headers/include",
               ],
               "NODE_README.md" : "file:README.md",
               "bin/" : [
