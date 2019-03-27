@@ -478,7 +478,7 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static boolean hasArrayElements(DynamicObject target) {
         ObjectType objectType = JSShape.getJSClassNoCast(target.getShape());
-        return objectType instanceof JSAbstractArray || objectType instanceof JSArrayBufferView || objectType instanceof JSString;
+        return objectType instanceof JSAbstractArray || objectType instanceof JSArrayBufferView;
     }
 
     @ExportMessage
@@ -489,8 +489,6 @@ public abstract class JSClass extends ObjectType {
             return JSArrayBufferView.typedArrayGetLength(target);
         } else if (JSArgumentsObject.isJSArgumentsObject(target)) {
             return JSRuntime.toInteger(JSObject.get(target, JSAbstractArray.LENGTH));
-        } else if (JSString.isJSString(target)) {
-            return JSString.getStringLength(target);
         } else {
             throw UnsupportedMessageException.create();
         }
