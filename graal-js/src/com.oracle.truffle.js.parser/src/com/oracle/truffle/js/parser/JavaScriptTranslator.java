@@ -99,7 +99,14 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         Source src = source;
         String explicitURL = parserFunctionNode.getSource().getExplicitURL();
         if (explicitURL != null) {
-            src = Source.newBuilder(source.getLanguage(), source.getCharacters(), explicitURL).build();
+            // @formatter:off
+            src = Source.newBuilder(source.getLanguage(), source.getCharacters(), explicitURL).
+                            cached(source.isCached()).
+                            interactive(source.isInteractive()).
+                            internal(source.isInternal()).
+                            mimeType(source.getMimeType()).
+                            build();
+            // @formatter:on
         }
         return translateFunction(nodeFactory, context, env, src, isParentStrict, parserFunctionNode);
     }
