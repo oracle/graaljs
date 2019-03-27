@@ -1765,10 +1765,6 @@ public class WriteElementNode extends JSTargetableNode {
         return typeCacheNode;
     }
 
-    public static WriteElementNode getUncached() {
-        return null;
-    }
-
     public static WriteElementNode createCachedInterop(ContextReference<JSRealm> contextRef) {
         return create(contextRef.get().getContext(), true);
     }

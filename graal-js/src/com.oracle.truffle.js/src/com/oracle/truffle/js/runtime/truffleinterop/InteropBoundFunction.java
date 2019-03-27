@@ -103,7 +103,7 @@ public final class InteropBoundFunction extends InteropFunction {
     @ExportMessage
     Object execute(Object[] arguments,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
-                    @Cached(value = "createExecute()", uncached = "getUncachedExecute()") JSInteropExecuteNode callNode,
+                    @Cached JSInteropExecuteNode callNode,
                     @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
         JSContext context = realm.getContext();
         context.interopBoundaryEnter();

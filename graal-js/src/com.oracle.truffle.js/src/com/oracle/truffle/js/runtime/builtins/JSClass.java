@@ -413,7 +413,7 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static Object readMember(DynamicObject target, String key,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncached()") ReadElementNode readNode,
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnknownIdentifierException {
         Object result;
         if (readNode == null) {
@@ -427,20 +427,19 @@ public abstract class JSClass extends ObjectType {
         return exportNode.executeWithTarget(result, target);
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean isMemberReadable(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(target, key, KeyInfoNode.READABLE);
     }
 
-    @SuppressWarnings({"unused", "deprecation"})
+    @SuppressWarnings("unused")
     @ExportMessage
     static void writeMember(DynamicObject target, String key, Object value,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncached()") WriteElementNode writeNode) throws UnknownIdentifierException {
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws UnknownIdentifierException {
         if (!keyInfo.execute(target, key, KeyInfoNode.WRITABLE)) {
             throw UnknownIdentifierException.create(key);
         }
@@ -452,14 +451,12 @@ public abstract class JSClass extends ObjectType {
         }
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean isMemberModifiable(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(target, key, KeyInfoNode.MODIFIABLE);
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean isMemberInsertable(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
@@ -471,7 +468,6 @@ public abstract class JSClass extends ObjectType {
         JSObject.delete(target, key, true);
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean isMemberRemovable(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
@@ -503,7 +499,7 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static Object readArrayElement(DynamicObject target, long index,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncached()") ReadElementNode readNode,
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws InvalidArrayIndexException, UnsupportedMessageException {
         if (!hasArrayElements(target)) {
             throw UnsupportedMessageException.create();
@@ -520,20 +516,19 @@ public abstract class JSClass extends ObjectType {
         return exportNode.executeWithTarget(result, target);
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean isArrayElementReadable(DynamicObject target, long index,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
         return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.READABLE);
     }
 
-    @SuppressWarnings({"unused", "deprecation"})
+    @SuppressWarnings("unused")
     @ExportMessage
     static void writeArrayElement(DynamicObject target, long index, Object value,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncached()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
         if (!hasArrayElements(target)) {
             throw UnsupportedMessageException.create();
         }
@@ -548,14 +543,12 @@ public abstract class JSClass extends ObjectType {
         }
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean isArrayElementModifiable(DynamicObject target, long index,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
         return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.MODIFIABLE);
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean isArrayElementInsertable(DynamicObject target, long index,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
@@ -570,7 +563,6 @@ public abstract class JSClass extends ObjectType {
         JSObject.delete(target, index, true);
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean isArrayElementRemovable(DynamicObject target, long index,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
@@ -633,21 +625,18 @@ public abstract class JSClass extends ObjectType {
         }
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean isMemberInvocable(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(target, key, KeyInfoNode.INVOCABLE);
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean hasMemberReadSideEffects(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(target, key, KeyInfoNode.READ_SIDE_EFFECTS);
     }
 
-    @SuppressWarnings("deprecation")
     @ExportMessage
     static boolean hasMemberWriteSideEffects(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
@@ -793,5 +782,13 @@ public abstract class JSClass extends ObjectType {
         } else {
             throw UnsupportedMessageException.create();
         }
+    }
+
+    static ReadElementNode getUncachedRead() {
+        return null;
+    }
+
+    static WriteElementNode getUncachedWrite() {
+        return null;
     }
 }

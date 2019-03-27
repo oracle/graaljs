@@ -96,7 +96,7 @@ public abstract class JSInteropInvokeNode extends JavaScriptBaseNode {
     @Specialization(replaces = "doCached")
     Object doUncached(DynamicObject receiver, String name, Object[] arguments,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncached()") ReadElementNode readNode,
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
@@ -133,6 +133,10 @@ public abstract class JSInteropInvokeNode extends JavaScriptBaseNode {
     }
 
     static JSFunctionCallNode getUncachedCall() {
+        return null;
+    }
+
+    static ReadElementNode getUncachedRead() {
         return null;
     }
 }

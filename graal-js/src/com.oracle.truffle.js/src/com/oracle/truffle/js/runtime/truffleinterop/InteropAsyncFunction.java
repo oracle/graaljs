@@ -98,7 +98,7 @@ public final class InteropAsyncFunction extends InteropFunction {
     @ExportMessage
     Object execute(Object[] arguments,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
-                    @Cached(value = "createExecute()", uncached = "getUncachedExecute()") JSInteropExecuteNode callNode,
+                    @Cached JSInteropExecuteNode callNode,
                     @Cached ExportValueNode exportNode,
                     @Cached(value = "create(realm.getContext())") UnwrapPromiseNode unwrapPromise) throws UnsupportedMessageException {
         JSContext context = realm.getContext();

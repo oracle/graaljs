@@ -887,7 +887,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
                 List<Object> values = new ArrayList<>((int) size);
                 for (int i = 0; i < size; i++) {
-                    Object key = members.readArrayElement(keysObj, i); // will only read Strings
+                    Object key = members.readArrayElement(keysObj, i);
                     String stringKey = asStringKey(key);
                     Object value = importValue.executeWithTarget(interop.readMember(thisObj, stringKey));
                     if (entries) {
@@ -902,6 +902,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private String asStringKey(Object key) throws UnsupportedMessageException {
+            assert InteropLibrary.getFactory().getUncached().isString(key);
             if (key instanceof String) {
                 return (String) key;
             } else {

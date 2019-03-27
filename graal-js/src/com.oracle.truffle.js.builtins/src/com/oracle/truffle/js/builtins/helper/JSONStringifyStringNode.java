@@ -513,7 +513,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             }
             List<Object> keys = new ArrayList<>((int) size);
             for (long i = 0; i < size; i++) {
-                Object key = keysInterop.readArrayElement(keysObj, i); // will only read Strings
+                Object key = keysInterop.readArrayElement(keysObj, i);
+                assert InteropLibrary.getFactory().getUncached().isString(key);
                 String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
                 keys.add(stringKey);
             }

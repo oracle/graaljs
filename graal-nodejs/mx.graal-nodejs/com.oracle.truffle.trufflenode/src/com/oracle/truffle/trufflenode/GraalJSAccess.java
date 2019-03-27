@@ -413,7 +413,8 @@ public final class GraalJSAccess {
             if (interop.fitsInLong(value)) {
                 try {
                     return valueType(interop.asLong(value), useSharedBuffer);
-                } catch (UnsupportedMessageException e1) {
+                } catch (UnsupportedMessageException ignore) {
+                    // fall through to error case
                 }
             }
         }

@@ -94,6 +94,7 @@ abstract class FlattenNode extends JavaScriptBaseNode {
             try {
                 return interop.asString(value);
             } catch (UnsupportedMessageException e) {
+                // fall through
             }
         }
         return value;

@@ -1625,10 +1625,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return indexNode;
     }
 
-    public static ReadElementNode getUncached() {
-        return null;
-    }
-
     public static ReadElementNode createCachedInterop(ContextReference<JSRealm> contextRef) {
         return create(contextRef.get().getContext());
     }

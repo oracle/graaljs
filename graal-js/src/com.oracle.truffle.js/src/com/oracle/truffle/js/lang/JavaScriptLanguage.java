@@ -679,6 +679,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         sb.append('{');
         for (long i = 0; i < keyCount; i++) {
             Object key = keysInterop.readArrayElement(keys, i);
+            assert InteropLibrary.getFactory().getUncached().isString(key);
             String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
             Object value = objInterop.readMember(truffleObject, stringKey);
             sb.append(toString(realm, key, depth));

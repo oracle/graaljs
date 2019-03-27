@@ -205,14 +205,13 @@ public abstract class EnumerateNode extends JavaScriptNode {
             if (objInterop.hasArrayElements(iteratedObject)) {
                 long longSize = objInterop.getArraySize(iteratedObject);
                 return enumerateForeignArrayLike(context, iteratedObject, longSize, values, objInterop);
-            } else {
+            } else if (objInterop.hasMembers(iteratedObject)) {
                 Object keysObj = objInterop.getMembers(iteratedObject);
-                if (keysInterop.hasArrayElements(keysObj)) {
-                    long longSize = keysInterop.getArraySize(keysObj);
-                    return enumerateForeignNonArray(context, iteratedObject, keysObj, longSize, values, objInterop, keysInterop);
-                } else {
-                    return JSArray.createEmptyZeroLength(context);
-                }
+                assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
+                long longSize = keysInterop.getArraySize(keysObj);
+                return enumerateForeignNonArray(context, iteratedObject, keysObj, longSize, values, objInterop, keysInterop);
+            } else {
+                return JSArray.createEmptyZeroLength(context);
             }
         } catch (UnsupportedMessageException ex) {
             // swallow and default
@@ -267,10 +266,10 @@ public abstract class EnumerateNode extends JavaScriptNode {
                 if (hasNext()) {
                     long index = cursor++;
                     try {
-                        // no conversion on KEYS, always String
                         Object key = keysInterop.readArrayElement(keysObject, index);
                         if (values) {
                             try {
+                                assert InteropLibrary.getFactory().getUncached().isString(key);
                                 String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
                                 // the value is imported in the iterator's next method node
                                 return objInterop.readMember(iteratedObject, stringKey);
