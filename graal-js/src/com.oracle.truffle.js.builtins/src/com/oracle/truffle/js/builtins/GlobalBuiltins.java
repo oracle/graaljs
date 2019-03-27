@@ -1506,6 +1506,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         final Object importGlobalContext(TruffleObject globalContextBindings) {
+            doImport(globalContextBindings);
+            return Undefined.instance;
+        }
+
+        @TruffleBoundary
+        private void doImport(TruffleObject globalContextBindings) {
             DynamicObject globalObject = getContext().getRealm().getGlobalObject();
             Bindings bindings = (Bindings) getContext().getRealm().getEnv().asHostObject(globalContextBindings);
             for (Map.Entry<String, Object> entry : bindings.entrySet()) {
@@ -1514,7 +1520,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     JSObjectUtil.defineProxyProperty(globalObject, key, new ScriptEngineGlobalScopeBindingsPropertyProxy(getContext(), bindings, key), JSAttributes.getDefault());
                 }
             }
-            return Undefined.instance;
         }
 
         private static class ScriptEngineGlobalScopeBindingsPropertyProxy implements PropertyProxy {
@@ -1536,7 +1541,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 if (value == null) {
                     return Undefined.instance;
                 }
-                return context.getRealm().getEnv().asGuestValue(value);
+                return JSRuntime.importValue(context.getRealm().getEnv().asGuestValue(value));
             }
 
             @Override

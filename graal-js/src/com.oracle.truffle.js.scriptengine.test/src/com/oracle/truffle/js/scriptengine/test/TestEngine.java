@@ -83,6 +83,7 @@ public class TestEngine {
         // @formatter:off
         ScriptEngine engine = getEngine();
         engine.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.allowHostAccess", true);
+        engine.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.allowHostClassLookup", true);
         assertEquals(true, engine.eval(
                         "var m = new javax.script.ScriptEngineManager();" +
                         "var engine = m.getEngineByName('Graal.js');" +

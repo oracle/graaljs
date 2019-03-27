@@ -45,6 +45,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.function.Predicate;
 
 import javax.script.AbstractScriptEngine;
 import javax.script.Bindings;
@@ -60,6 +61,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -86,7 +88,14 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
         String getOptionKey();
 
-        Context.Builder setOption(Context.Builder builder);
+        Context.Builder setOption(Builder builder, Object value);
+    }
+
+    private static boolean toBoolean(MagicBindingsOptionSetter optionSetter, Object value) {
+        if (!(value instanceof Boolean)) {
+            throw magicOptionValueErrorBool(optionSetter.getOptionKey(), value);
+        }
+        return (Boolean) value;
     }
 
     private static final MagicBindingsOptionSetter[] MAGIC_OPTION_SETTERS = new MagicBindingsOptionSetter[]{
@@ -98,8 +107,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                         }
 
                         @Override
-                        public Builder setOption(Builder builder) {
-                            return builder.allowHostAccess(true);
+                        public Builder setOption(Builder builder, Object value) {
+                            return builder.allowHostAccess(toBoolean(this, value) ? HostAccess.ALL : HostAccess.NONE);
                         }
                     },
                     new MagicBindingsOptionSetter() {
@@ -110,8 +119,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                         }
 
                         @Override
-                        public Builder setOption(Builder builder) {
-                            return builder.allowNativeAccess(true);
+                        public Builder setOption(Builder builder, Object value) {
+                            return builder.allowNativeAccess(toBoolean(this, value));
                         }
                     },
                     new MagicBindingsOptionSetter() {
@@ -122,8 +131,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                         }
 
                         @Override
-                        public Builder setOption(Builder builder) {
-                            return builder.allowCreateThread(true);
+                        public Builder setOption(Builder builder, Object value) {
+                            return builder.allowCreateThread(toBoolean(this, value));
                         }
                     },
                     new MagicBindingsOptionSetter() {
@@ -134,8 +143,30 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                         }
 
                         @Override
-                        public Builder setOption(Builder builder) {
-                            return builder.allowIO(true);
+                        public Builder setOption(Builder builder, Object value) {
+                            return builder.allowIO(toBoolean(this, value));
+                        }
+                    },
+                    new MagicBindingsOptionSetter() {
+
+                        @Override
+                        public String getOptionKey() {
+                            return MAGIC_OPTION_PREFIX + "allowHostClassLookup";
+                        }
+
+                        @SuppressWarnings("unchecked")
+                        @Override
+                        public Builder setOption(Builder builder, Object value) {
+                            if (value instanceof Boolean) {
+                                return builder.allowHostClassLookup(((Boolean) value) ? s -> true : null);
+                            } else {
+                                try {
+                                    return builder.allowHostClassLookup((Predicate<String>) value);
+                                } catch (ClassCastException e) {
+                                    throw new IllegalArgumentException(
+                                                    String.format("failed to set graal-js option \"%s\": expected a boolean or Predicate<String> value, got \"%s\"", getOptionKey(), value));
+                                }
+                            }
                         }
                     },
                     new MagicBindingsOptionSetter() {
@@ -146,8 +177,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                         }
 
                         @Override
-                        public Builder setOption(Builder builder) {
-                            return builder.allowHostClassLoading(true);
+                        public Builder setOption(Builder builder, Object value) {
+                            return builder.allowHostClassLoading(toBoolean(this, value));
                         }
                     },
                     new MagicBindingsOptionSetter() {
@@ -158,8 +189,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                         }
 
                         @Override
-                        public Builder setOption(Builder builder) {
-                            return builder.allowAllAccess(true);
+                        public Builder setOption(Builder builder, Object value) {
+                            return builder.allowAllAccess(toBoolean(this, value));
                         }
                     }
     };
@@ -327,13 +358,9 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             Context.Builder builder = contextConfig;
             for (MagicBindingsOptionSetter optionSetter : MAGIC_OPTION_SETTERS) {
                 Object value = engineB.get(optionSetter.getOptionKey());
-                if (value instanceof Boolean) {
-                    if (((Boolean) value).booleanValue()) {
-                        builder = optionSetter.setOption(builder);
-                        engineB.remove(optionSetter.getOptionKey());
-                    } else {
-                        throw magicOptionValueError(optionSetter.getOptionKey(), value);
-                    }
+                if (value != null) {
+                    builder = optionSetter.setOption(builder, value);
+                    engineB.remove(optionSetter.getOptionKey());
                 }
             }
             ctx = createDefaultContext(builder);
@@ -519,7 +546,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                     "    return new Proxy(target, handler);\n" +
                     "}});\n";
 
-    public static IllegalArgumentException magicOptionValueError(String name, Object v) {
+    public static IllegalArgumentException magicOptionValueErrorBool(String name, Object v) {
         return new IllegalArgumentException(String.format("failed to set graal-js option \"%s\": expected a boolean value, got \"%s\"", name, v));
     }
 

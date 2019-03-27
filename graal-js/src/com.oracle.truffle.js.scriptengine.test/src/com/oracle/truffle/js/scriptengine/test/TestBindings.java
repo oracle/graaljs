@@ -53,7 +53,11 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.script.SimpleBindings;
 
+import java.util.function.Predicate;
+
 import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
 public class TestBindings {
@@ -328,6 +332,17 @@ public class TestBindings {
         ScriptEngine engine = getEngine();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", true);
+        bindings.put("javaObj", new Object());
+        assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"));
+    }
+
+    @Test
+    public void testSetContextOptionsViaGraalJSBindings2() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", (Predicate<String>) s -> true);
         bindings.put("javaObj", new Object());
         assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"));
     }
@@ -359,6 +374,7 @@ public class TestBindings {
         ScriptEngine engine = getEngine();
         Bindings bindings = new SimpleBindings();
         bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", true);
         bindings.put("javaObj", new Object());
         assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));", bindings));
     }
@@ -370,8 +386,16 @@ public class TestBindings {
         // force context initialization
         engine.eval("dummy = 42;", bindings);
         bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", true);
         // should fail
         engine.eval("(javaObj instanceof Java.type('java.lang.Object'));", bindings);
         fail();
+    }
+
+    @Test
+    public void testSetContextBuilder() throws ScriptException {
+        ScriptEngine engine = GraalJSScriptEngine.create(null, Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true));
+        engine.put("javaObj", new Object());
+        assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"));
     }
 }

@@ -109,13 +109,7 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
                 if (optionSetter == null) {
                     throw new IllegalArgumentException("unkown graal-js option \"" + name + "\"");
                 } else {
-                    if (v instanceof Boolean) {
-                        if (((Boolean) v).booleanValue()) {
-                            contextBuilder = optionSetter.setOption(contextBuilder);
-                        } else {
-                            throw GraalJSScriptEngine.magicOptionValueError(name, v);
-                        }
-                    }
+                    contextBuilder = optionSetter.setOption(contextBuilder, v);
                     return true;
                 }
             } else {
