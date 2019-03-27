@@ -58,7 +58,7 @@ public class TestScriptEngineInterop {
 
     @Test
     public void testInterop() throws ScriptException {
-        GraalJSScriptEngine engine = GraalJSScriptEngine.create(null, Context.newBuilder(ID));
+        GraalJSScriptEngine engine = GraalJSScriptEngine.create(null, Context.newBuilder(ID).allowExperimentalOptions(true));
         Object result = engine.eval("a = 42");
         Assert.assertEquals(42, result);
         Assert.assertEquals(42, engine.get("a"));

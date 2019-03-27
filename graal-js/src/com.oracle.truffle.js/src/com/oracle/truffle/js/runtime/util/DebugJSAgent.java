@@ -88,7 +88,7 @@ public class DebugJSAgent extends JSAgent {
 
             @Override
             public void run() {
-                Context.Builder contextBuilder = Context.newBuilder(JavaScriptLanguage.ID);
+                Context.Builder contextBuilder = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true);
                 for (OptionDescriptor optionDescriptor : optionValues.getDescriptors()) {
                     if (optionDescriptor.getKey().hasBeenSet(optionValues)) {
                         contextBuilder.option(optionDescriptor.getName(), String.valueOf(optionDescriptor.getKey().getValue(optionValues)));

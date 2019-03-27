@@ -53,6 +53,7 @@ import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
@@ -65,7 +66,7 @@ public final class JSContextOptions {
     @CompilationFinal private OptionValues optionValues;
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, help = "ECMAScript Version.") //
+    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "ECMAScript Version.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(
                     JSTruffleOptions.MaxECMAScriptVersion,
                     new OptionType<>(
@@ -106,7 +107,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHEBANG = new OptionKey<>(false);
 
     public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
-    @Option(name = STRICT_NAME, category = OptionCategory.USER, help = "Enforce strict mode.") //
+    @Option(name = STRICT_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Enforce strict mode.") //
     public static final OptionKey<Boolean> STRICT = new OptionKey<>(false);
 
     public static final String CONST_AS_VAR_NAME = JS_OPTION_PREFIX + "const-as-var";
@@ -118,7 +119,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> FUNCTION_STATEMENT_ERROR = new OptionKey<>(false);
 
     public static final String INTL_402_NAME = JS_OPTION_PREFIX + "intl-402";
-    @Option(name = INTL_402_NAME, category = OptionCategory.USER, help = "Enable ECMAScript Internationalization API.") //
+    @Option(name = INTL_402_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Enable ECMAScript Internationalization API.") //
     public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(false);
     @CompilationFinal private boolean intl402;
 
@@ -406,13 +407,13 @@ public final class JSContextOptions {
         return helpMessage + " (default:" + key.getDefaultValue() + ")";
     }
 
-    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, String help) {
-        return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).build();
+    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, OptionStability stability, String help) {
+        return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).stability(stability).build();
     }
 
     public static void describeOptions(List<OptionDescriptor> options) {
-        for (OptionDescriptor optionDescriptor : new JSContextOptionsOptionDescriptors()) {
-            options.add(newOptionDescriptor(optionDescriptor.getKey(), optionDescriptor.getName(), optionDescriptor.getCategory(), optionDescriptor.getHelp()));
+        for (OptionDescriptor desc : new JSContextOptionsOptionDescriptors()) {
+            options.add(newOptionDescriptor(desc.getKey(), desc.getName(), desc.getCategory(), desc.getStability(), desc.getHelp()));
         }
     }
 

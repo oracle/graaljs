@@ -95,6 +95,7 @@ public class TestNashornCallable extends TestCallable {
         contextBuilder.allowHostAccess(HostAccess.ALL);
         contextBuilder.allowHostClassLookup((className) -> true);
         contextBuilder.allowIO(true);
+        contextBuilder.allowExperimentalOptions(true);
 
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion));
         contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(forceStrictMode));

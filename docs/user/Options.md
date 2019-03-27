@@ -53,7 +53,18 @@ Context context = Context.newBuilder("js")
 context.eval("js", "42");
 ```
 
+### Stable and Experimental options
+
+The available options are distinguished in stable and experimental options.
+If an experimental option is used, an extra flag has to be provided upfront.
+
+In the native launchers (`js`, `node`), `--experimental-options` has to be passed before all experimental options.
+When using a `Context`, the option `allowExperimentalOptions(true)` has to be called on the `Context.Builder`.
+See [ScriptEngine.md](ScriptEngine.md) on how to use experimental options with a `ScriptEngine`.
+
 ### ecmascript-version
+
+Stability: stable
 
 Emulate a specific version of the ECMAScript specification.
 Expects an integer value (6-10), default is the latest (draft) version of the specification available.
@@ -71,10 +82,14 @@ The versions are numbered with ascending integer values, with `5` for ECMAScript
 
 ### intl-402
 
+Stability: stable
+
 Enable ECMAScript's [Internationalization API](https://tc39.github.io/ecma402/).
 Expects a Boolean value, the default is `false`.
 
 ### strict
+
+Stability: stable
 
 Enables JavaScript's strict mode for all scripts.
 Expects a boolean value, default is false.
