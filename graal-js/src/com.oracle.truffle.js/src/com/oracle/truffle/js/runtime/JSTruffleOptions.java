@@ -84,6 +84,7 @@ public final class JSTruffleOptions {
     public static final boolean DictionaryObject = booleanOption("DictionaryObject", true);
     /** Migrate objects to dictionary mode when the number of properties exceeds this threshold. */
     public static final int DictionaryObjectThreshold = integerOption("DictionaryObjectThreshold", 256);
+    public static final int DictionaryObjectTransitionThreshold = integerOption("DictionaryObjectThreshold", 1024);
     public static final boolean TraceDictionaryObject = booleanOption("TraceDictionaryObject", false);
     public static final boolean MergeShapes = booleanOption("MergeShapes", true);
 

@@ -360,7 +360,7 @@ public abstract class JSBuiltinObject extends JSClass {
         }
 
         int count = thisObj.getShape().getPropertyCount();
-        return (count == JSTruffleOptions.DictionaryObjectThreshold) || (count == 0 && isIndex);
+        return (count == 0 && isIndex) || (count == JSTruffleOptions.DictionaryObjectTransitionThreshold);
     }
 
     @Override
