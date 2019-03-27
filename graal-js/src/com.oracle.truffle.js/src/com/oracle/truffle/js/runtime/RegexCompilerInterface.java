@@ -97,7 +97,7 @@ public final class RegexCompilerInterface {
             }
         } else {
             try {
-                TRegexUtil.ValidateRegexNode.getUncached().execute(context.getRegexEngine(), pattern, flags);
+                TRegexUtil.ValidateRegexNode.getUncached().execute(context.getTRegexEngine(), pattern, flags);
             } catch (RuntimeException e) {
                 if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
                     throw Errors.createSyntaxError(e.getMessage());
