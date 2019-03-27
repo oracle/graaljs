@@ -825,6 +825,26 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         return JSRuntime.call(trap, handler, new Object[]{target, holder, JSArray.createConstant(ctx, arguments)});
     }
 
+    @TruffleBoundary
+    public static Object construct(DynamicObject proxyObj, Object[] arguments) {
+        if (!JSRuntime.isConstructorProxy(proxyObj)) {
+            throw Errors.createTypeErrorNotAFunction(proxyObj);
+        }
+        DynamicObject handler = getHandlerChecked(proxyObj);
+        TruffleObject target = getTarget(proxyObj);
+        TruffleObject trap = getTrapFromObject(handler, CONSTRUCT);
+        Object newTarget = proxyObj;
+        if (trap == Undefined.instance) {
+            return JSRuntime.construct(target, arguments);
+        }
+        JSContext ctx = JSObject.getJSContext(proxyObj);
+        Object result = JSRuntime.call(trap, handler, new Object[]{target, JSArray.createConstant(ctx, arguments), newTarget});
+        if (!JSRuntime.isObject(result)) {
+            throw Errors.createTypeErrorNotAnObject(result);
+        }
+        return result;
+    }
+
     @SuppressWarnings("deprecation")
     @Override
     public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(DynamicObject object) {

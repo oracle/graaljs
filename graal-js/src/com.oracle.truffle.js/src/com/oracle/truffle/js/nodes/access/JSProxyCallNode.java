@@ -122,7 +122,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
         assert JSProxy.isProxy(function);
         DynamicObject proxy = (DynamicObject) function;
 
-        if (!callableProfile.profile(JSRuntime.isCallableProxy(proxy))) {
+        if (!callableProfile.profile(JSRuntime.isConstructorProxy(proxy))) {
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {
             DynamicObject pxHandler = JSProxy.getHandlerChecked(proxy);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,36 +40,21 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
-@GenerateUncached
-public abstract class JSInteropExecuteNode extends JSInteropCallNode {
-    protected JSInteropExecuteNode() {
+public abstract class JSInteropCallNode extends JavaScriptBaseNode {
+    protected JSInteropCallNode() {
     }
 
-    public abstract Object execute(DynamicObject function, Object thisArg, Object[] args) throws UnsupportedMessageException;
+    protected static Object[] prepare(Object[] arguments, JSForeignToJSTypeNode importValueNode) {
+        for (int i = 0; i < arguments.length; i++) {
+            arguments[i] = importValueNode.executeWithTarget(arguments[i]);
+        }
+        return arguments;
+    }
 
-    @Specialization
-    Object doDefault(DynamicObject function, Object thisArg, Object[] arguments,
-                    @Cached IsCallableNode isCallableNode,
-                    @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Cached JSForeignToJSTypeNode importValueNode) throws UnsupportedMessageException {
-        if (!isCallableNode.executeBoolean(function)) {
-            throw UnsupportedMessageException.create();
-        }
-        Object[] preparedArgs = prepare(arguments, importValueNode);
-        if (callNode == null) {
-            return JSRuntime.call(function, thisArg, preparedArgs);
-        } else {
-            return callNode.executeCall(JSArguments.create(thisArg, function, preparedArgs));
-        }
+    protected static JSFunctionCallNode getUncachedCall() {
+        return null;
     }
 }

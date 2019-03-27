@@ -2332,7 +2332,19 @@ public final class JSRuntime {
         } else if (JSProxy.isProxy(fnObj)) {
             return JSProxy.call((DynamicObject) fnObj, holder, arguments);
         } else if (isForeignObject(fnObj)) {
-            return JSInteropUtil.call((TruffleObject) fnObj, arguments);
+            return JSInteropUtil.call(fnObj, arguments);
+        } else {
+            throw Errors.createTypeErrorNotAFunction(fnObj);
+        }
+    }
+
+    public static Object construct(Object fnObj, Object[] arguments) {
+        if (JSFunction.isJSFunction(fnObj)) {
+            return JSFunction.construct((DynamicObject) fnObj, arguments);
+        } else if (JSProxy.isProxy(fnObj)) {
+            return JSProxy.construct((DynamicObject) fnObj, arguments);
+        } else if (isForeignObject(fnObj)) {
+            return JSInteropUtil.construct(fnObj, arguments);
         } else {
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }

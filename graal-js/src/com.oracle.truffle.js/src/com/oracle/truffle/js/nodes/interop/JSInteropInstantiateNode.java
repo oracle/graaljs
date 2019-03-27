@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,30 +46,31 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 @GenerateUncached
-public abstract class JSInteropExecuteNode extends JSInteropCallNode {
-    protected JSInteropExecuteNode() {
+public abstract class JSInteropInstantiateNode extends JSInteropCallNode {
+    protected JSInteropInstantiateNode() {
     }
 
-    public abstract Object execute(DynamicObject function, Object thisArg, Object[] args) throws UnsupportedMessageException;
+    public abstract Object execute(DynamicObject function, Object[] args) throws UnsupportedMessageException;
 
     @Specialization
-    Object doDefault(DynamicObject function, Object thisArg, Object[] arguments,
-                    @Cached IsCallableNode isCallableNode,
-                    @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
+    Object doDefault(DynamicObject function, Object[] arguments,
+                    @Cached IsConstructorNode isConstructorNode,
+                    @Cached(value = "createNew()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Cached JSForeignToJSTypeNode importValueNode) throws UnsupportedMessageException {
-        if (!isCallableNode.executeBoolean(function)) {
+        if (!isConstructorNode.executeBoolean(function)) {
             throw UnsupportedMessageException.create();
         }
         Object[] preparedArgs = prepare(arguments, importValueNode);
         if (callNode == null) {
-            return JSRuntime.call(function, thisArg, preparedArgs);
+            return JSRuntime.construct(function, preparedArgs);
         } else {
-            return callNode.executeCall(JSArguments.create(thisArg, function, preparedArgs));
+            return callNode.executeCall(JSArguments.create(JSFunction.CONSTRUCT, function, preparedArgs));
         }
     }
 }

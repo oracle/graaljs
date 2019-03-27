@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropInstantiateNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
 import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
@@ -572,7 +573,7 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static Object execute(DynamicObject target, Object[] args,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
-                    @Cached(value = "createExecute()", uncached = "getUncachedExecute()") JSInteropExecuteNode callNode,
+                    @Cached JSInteropExecuteNode callNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
         JSContext context = realm.getContext();
         context.interopBoundaryEnter();
@@ -593,12 +594,12 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static Object instantiate(DynamicObject target, Object[] args,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
-                    @Cached(value = "createNew()", uncached = "getUncachedNew()") JSInteropExecuteNode callNode,
+                    @Cached JSInteropInstantiateNode callNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
         JSContext context = realm.getContext();
         context.interopBoundaryEnter();
         try {
-            Object result = callNode.execute(target, Undefined.instance, args);
+            Object result = callNode.execute(target, args);
             return exportNode.executeWithTarget(result, Undefined.instance);
         } finally {
             context.interopBoundaryExit();

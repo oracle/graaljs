@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -51,6 +52,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
  *
  * @see JSRuntime#isConstructor(Object)
  */
+@GenerateUncached
 public abstract class IsConstructorNode extends JavaScriptBaseNode {
 
     protected IsConstructorNode() {

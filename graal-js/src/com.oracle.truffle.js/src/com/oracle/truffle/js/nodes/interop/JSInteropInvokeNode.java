@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -62,7 +61,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @GenerateUncached
-public abstract class JSInteropInvokeNode extends JavaScriptBaseNode {
+public abstract class JSInteropInvokeNode extends JSInteropCallNode {
     JSInteropInvokeNode() {
     }
 
@@ -121,19 +120,8 @@ public abstract class JSInteropInvokeNode extends JavaScriptBaseNode {
         }
     }
 
-    private static Object[] prepare(Object[] arguments, JSForeignToJSTypeNode importValueNode) {
-        for (int i = 0; i < arguments.length; i++) {
-            arguments[i] = importValueNode.executeWithTarget(arguments[i]);
-        }
-        return arguments;
-    }
-
     PropertyGetNode createGetProperty(String name, ContextReference<JSRealm> contextRef) {
         return PropertyGetNode.create(name, false, contextRef.get().getContext());
-    }
-
-    static JSFunctionCallNode getUncachedCall() {
-        return null;
     }
 
     static ReadElementNode getUncachedRead() {

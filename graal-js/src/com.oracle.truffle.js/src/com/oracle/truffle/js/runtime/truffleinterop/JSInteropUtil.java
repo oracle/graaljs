@@ -213,7 +213,7 @@ public final class JSInteropUtil {
     }
 
     @TruffleBoundary
-    public static Object call(TruffleObject function, Object[] args) {
+    public static Object call(Object function, Object[] args) {
         Object[] exportedArgs = JSRuntime.exportValueArray(args);
         try {
             return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().execute(function, exportedArgs));
@@ -223,7 +223,7 @@ public final class JSInteropUtil {
     }
 
     @TruffleBoundary
-    public static Object construct(TruffleObject target, Object[] args) {
+    public static Object construct(Object target, Object[] args) {
         Object[] exportedArgs = JSRuntime.exportValueArray(args);
         try {
             return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().instantiate(target, exportedArgs));
