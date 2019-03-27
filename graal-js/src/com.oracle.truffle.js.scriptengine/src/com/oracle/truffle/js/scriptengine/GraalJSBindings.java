@@ -50,18 +50,40 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 
+import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine.MagicBindingsOptionSetter;
+
 final class GraalJSBindings extends AbstractMap<String, Object> implements Bindings, AutoCloseable {
 
     private static final TypeLiteral<Map<String, Object>> STRING_MAP = new TypeLiteral<Map<String, Object>>() {
     };
 
-    private final Context context;
-    private final Map<String, Object> global;
+    private Context context;
+    private Map<String, Object> global;
     private Value deleteProperty;
     private Value clear;
+    private Context.Builder contextBuilder;
+
+    GraalJSBindings(Context.Builder contextBuilder) {
+        this.contextBuilder = contextBuilder;
+    }
 
     GraalJSBindings(Context context) {
         this.context = context;
+        initGlobal();
+    }
+
+    private void requireContext() {
+        if (context == null) {
+            initContext();
+        }
+    }
+
+    private void initContext() {
+        context = GraalJSScriptEngine.createDefaultContext(contextBuilder);
+        initGlobal();
+    }
+
+    private void initGlobal() {
         this.global = GraalJSScriptEngine.evalInternal(context, "this").as(STRING_MAP);
     }
 
@@ -81,37 +103,59 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
 
     @Override
     public Object put(String name, Object v) {
+        if (name.startsWith(GraalJSScriptEngine.MAGIC_OPTION_PREFIX)) {
+            if (context == null) {
+                MagicBindingsOptionSetter optionSetter = GraalJSScriptEngine.MAGIC_BINDINGS_OPTION_MAP.get(name);
+                if (optionSetter == null) {
+                    throw new IllegalArgumentException("unkown graal-js option \"" + name + "\"");
+                } else {
+                    contextBuilder = optionSetter.setOption(contextBuilder, v);
+                    return true;
+                }
+            } else {
+                throw GraalJSScriptEngine.magicOptionContextInitializedError(name);
+            }
+        }
+        requireContext();
         return global.put(name, v);
     }
 
     @Override
     public void clear() {
-        clearFunction().execute(global);
+        if (context != null) {
+            clearFunction().execute(global);
+        }
     }
 
     @Override
     public Object get(Object key) {
+        requireContext();
         return global.get(key);
     }
 
     @Override
     public Object remove(Object key) {
+        requireContext();
         Object prev = get(key);
         deletePropertyFunction().execute(global, key);
         return prev;
     }
 
     public Context getContext() {
+        requireContext();
         return context;
     }
 
     @Override
     public Set<Entry<String, Object>> entrySet() {
+        requireContext();
         return global.entrySet();
     }
 
     @Override
     public void close() {
-        context.close();
+        if (context != null) {
+            context.close();
+        }
     }
 }

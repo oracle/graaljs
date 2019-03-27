@@ -92,7 +92,7 @@ public class TestEngineNashorn {
     @Test
     public void argumentsTest() {
         final ScriptEngine e = getEngine();
-
+        e.put("polyglot.js.allowHostAccess", true);
         String[] args = new String[]{"hello", "world"};
         try {
             e.put("arguments", args);
@@ -312,6 +312,7 @@ public class TestEngineNashorn {
     @Test
     public void putGlobalFunctionTest() {
         final ScriptEngine e = getEngine();
+        e.put("polyglot.js.allowHostAccess", true);
 
         e.put("callable", new Callable<String>() {
             @Override
@@ -488,6 +489,8 @@ public class TestEngineNashorn {
         Map<String, Object> map = new HashMap<>();
         map.put("title", "Title example");
         map.put("comments", Arrays.asList(new Comment("author1", "content1"), new Comment("author2", "content2"), new Comment("author3", "content3")));
+        e.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.allowHostAccess", true);
+        e.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.allowHostClassLookup", true);
         e.eval(script);
         assertEquals("ok", Objects.toString(((Invocable) e).invokeFunction("test", "string", map)));
     }
