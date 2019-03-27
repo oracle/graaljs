@@ -202,8 +202,11 @@ public class JSContext {
 
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
 
-    /** The RegExp engine, as obtained from RegexLanguage. */
+    /** The RegExp engine in use, may be JoniRegexEngine or the TRegex engine. */
     @CompilationFinal private Object regexEngine;
+
+    /** The TRegex engine, as obtained from RegexLanguage. */
+    @CompilationFinal private Object tRegexEngine;
 
     private PromiseRejectionTracker promiseRejectionTracker;
     private final Assumption promiseRejectionTrackerNotUsedAssumption;
@@ -965,16 +968,28 @@ public class JSContext {
         return regexEngine;
     }
 
+    public Object getTRegexEngine() {
+        if (tRegexEngine == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            tRegexEngine = createTRegexEngine();
+        }
+        return tRegexEngine;
+    }
+
     @TruffleBoundary
     private Object createRegexEngine() {
-        JoniRegexEngine joniCompiler = new JoniRegexEngine(null);
         if (JSTruffleOptions.UseTRegex) {
-            TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").build()).call();
-            String regexOptions = createRegexEngineOptions();
-            return TRegexUtil.CreateRegexEngineNode.getUncached().execute(regexEngineBuilder, regexOptions, joniCompiler);
+            return getTRegexEngine();
         } else {
-            return joniCompiler;
+            return new JoniRegexEngine(null);
         }
+    }
+
+    @TruffleBoundary
+    private Object createTRegexEngine() {
+        TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").build()).call();
+        String regexOptions = createRegexEngineOptions();
+        return TRegexUtil.CreateRegexEngineNode.getUncached().execute(regexEngineBuilder, regexOptions, new JoniRegexEngine(null));
     }
 
     private static class LocalTimeZoneHolder {

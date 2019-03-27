@@ -116,12 +116,9 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
      */
     public static class LazyRegexResultIndexProxyProperty implements PropertyProxy {
 
-        private static final TRegexUtil.InteropReadMemberNode readStartArray = TRegexUtil.InteropReadMemberNode.getUncached();
-        private static final TRegexUtil.InteropReadIntArrayElementNode readStartArrayElement = TRegexUtil.InteropReadIntArrayElementNode.getUncached();
-
         @Override
         public Object get(DynamicObject object) {
-            return readStartArrayElement.execute(readStartArray.execute(arrayGetRegexResult(object), TRegexUtil.Props.RegexResult.START), 0);
+            return TRegexUtil.InvokeGetGroupBoundariesMethodNode.getUncached().execute(arrayGetRegexResult(object), TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
         @TruffleBoundary

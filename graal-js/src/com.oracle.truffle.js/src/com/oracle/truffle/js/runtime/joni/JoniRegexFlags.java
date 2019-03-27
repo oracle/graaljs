@@ -68,7 +68,7 @@ public final class JoniRegexFlags extends AbstractConstantKeysObject {
     }
 
     @TruffleBoundary
-    public static JoniRegexFlags parseFlags(String source) throws RegexSyntaxException {
+    public static JoniRegexFlags parseFlags(String source) throws JoniRegexSyntaxException {
         if (source.isEmpty()) {
             return DEFAULT;
         }
@@ -108,10 +108,10 @@ public final class JoniRegexFlags extends AbstractConstantKeysObject {
                     dotAll = true;
                     break;
                 default:
-                    throw new RegexSyntaxException(source, "unsupported regex flag: " + ch);
+                    throw new JoniRegexSyntaxException(source, "unsupported regex flag: " + ch);
             }
             if (repeated) {
-                throw new RegexSyntaxException(source, "repeated regex flag: " + ch);
+                throw new JoniRegexSyntaxException(source, "repeated regex flag: " + ch);
             }
         }
         return new JoniRegexFlags(source, ignoreCase, multiline, global, sticky, unicode, dotAll);

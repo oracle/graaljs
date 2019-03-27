@@ -1412,8 +1412,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class LazyRegexResultIndexPropertyGetNode extends LinkedPropertyGetNode {
 
-        @Child private TRegexUtil.InteropReadMemberNode readStartArrayNode = TRegexUtil.InteropReadMemberNode.create();
-        @Child private TRegexUtil.InteropReadIntArrayElementNode readStartArrayElementNode = TRegexUtil.InteropReadIntArrayElementNode.create();
+        @Child private TRegexUtil.InvokeGetGroupBoundariesMethodNode readStartNode = TRegexUtil.InvokeGetGroupBoundariesMethodNode.create();
 
         public LazyRegexResultIndexPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
@@ -1428,7 +1427,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            return readStartArrayElementNode.execute(readStartArrayNode.execute(arrayGetRegexResult(receiverCheck.getStore(thisObj)), TRegexUtil.Props.RegexResult.START), 0);
+            return readStartNode.execute(arrayGetRegexResult(receiverCheck.getStore(thisObj)), TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
         @Override

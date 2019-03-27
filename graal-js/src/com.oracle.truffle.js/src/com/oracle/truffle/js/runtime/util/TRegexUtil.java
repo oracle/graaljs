@@ -47,31 +47,35 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.joni.result.NoMatchResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniNoMatchResult;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Props.CompiledRegex;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.Props.RegexEngine;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.CompileRegexNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.CreateRegexEngineNodeGen;
-import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.ExecExecMethodNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropIsMemberReadableNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropIsNullNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadBooleanMemberNodeGen;
-import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadIntArrayElementNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadIntMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadStringMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InvokeExecMethodNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InvokeGetGroupBoundariesMethodNodeGen;
+import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.ValidateRegexNodeGen;
 
 public final class TRegexUtil {
 
     public static final class Props {
+
+        public static final class RegexEngine {
+
+            public static final String VALIDATE = "validate";
+        }
 
         public static final class CompiledRegex {
 
@@ -96,8 +100,6 @@ public final class TRegexUtil {
 
             public static final String IS_MATCH = "isMatch";
             public static final String GROUP_COUNT = "groupCount";
-            public static final String START = "start";
-            public static final String END = "end";
             public static final String GET_START = "getStart";
             public static final String GET_END = "getEnd";
         }
@@ -108,7 +110,7 @@ public final class TRegexUtil {
     }
 
     public static Object getTRegexEmptyResult() {
-        return NoMatchResult.getInstance();
+        return JoniNoMatchResult.getInstance();
     }
 
     @GenerateUncached
@@ -242,46 +244,6 @@ public final class TRegexUtil {
     }
 
     @GenerateUncached
-    public abstract static class InteropReadArrayElementNode extends Node {
-
-        public abstract Object execute(Object obj, long index);
-
-        @Specialization(guards = "objs.isArrayElementReadable(obj, index)", limit = "3")
-        static Object read(Object obj, long index, @CachedLibrary("obj") InteropLibrary objs) {
-            try {
-                return objs.readArrayElement(obj, index);
-            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    @GenerateUncached
-    public abstract static class InteropReadIntArrayElementNode extends Node {
-
-        public abstract int execute(Object obj, long index);
-
-        @Specialization(guards = "objs.isArrayElementReadable(obj, index)", limit = "3")
-        static int read(Object obj, long index, @Cached InteropToIntNode coerceNode, @CachedLibrary("obj") InteropLibrary objs) {
-            try {
-                return coerceNode.execute(objs.readArrayElement(obj, index));
-            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
-            }
-        }
-
-        public static InteropReadIntArrayElementNode create() {
-            return InteropReadIntArrayElementNodeGen.create();
-        }
-
-        public static InteropReadIntArrayElementNode getUncached() {
-            return InteropReadIntArrayElementNodeGen.getUncached();
-        }
-    }
-
-    @GenerateUncached
     public abstract static class InteropToBooleanNode extends Node {
 
         public abstract boolean execute(Object obj);
@@ -344,27 +306,6 @@ public final class TRegexUtil {
         }
     }
 
-    @GenerateUncached
-    public abstract static class ExecExecMethodNode extends Node {
-
-        public abstract Object execute(Object compiledRegexExecMethodObject, String input, long fromIndex);
-
-        @Specialization(guards = "objs.isExecutable(compiledRegexExecMethodObject)", limit = "3")
-        static Object exec(Object compiledRegexExecMethodObject, String input, long fromIndex,
-                        @CachedLibrary("compiledRegexExecMethodObject") InteropLibrary objs) {
-            try {
-                return objs.execute(compiledRegexExecMethodObject, input, fromIndex);
-            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
-            }
-        }
-
-        public static ExecExecMethodNode create() {
-            return ExecExecMethodNodeGen.create();
-        }
-    }
-
     @ImportStatic(CompiledRegex.class)
     @GenerateUncached
     public abstract static class InvokeExecMethodNode extends Node {
@@ -407,6 +348,10 @@ public final class TRegexUtil {
         public static InvokeGetGroupBoundariesMethodNode create() {
             return InvokeGetGroupBoundariesMethodNodeGen.create();
         }
+
+        public static InvokeGetGroupBoundariesMethodNode getUncached() {
+            return InvokeGetGroupBoundariesMethodNodeGen.getUncached();
+        }
     }
 
     @GenerateUncached
@@ -431,6 +376,32 @@ public final class TRegexUtil {
 
         public static CompileRegexNode getUncached() {
             return CompileRegexNodeGen.getUncached();
+        }
+    }
+
+    @ImportStatic(RegexEngine.class)
+    @GenerateUncached
+    public abstract static class ValidateRegexNode extends Node {
+
+        public abstract Object execute(Object regexEngine, String pattern, String flags);
+
+        @Specialization(guards = "objs.isMemberInvocable(regexEngine, VALIDATE)", limit = "3")
+        static Object exec(Object regexEngine, String pattern, String flags,
+                        @CachedLibrary("regexEngine") InteropLibrary objs) {
+            try {
+                return objs.invokeMember(regexEngine, RegexEngine.VALIDATE, pattern, flags);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new RuntimeException(e);
+            }
+        }
+
+        public static ValidateRegexNode create() {
+            return ValidateRegexNodeGen.create();
+        }
+
+        public static ValidateRegexNode getUncached() {
+            return ValidateRegexNodeGen.getUncached();
         }
     }
 
@@ -463,8 +434,6 @@ public final class TRegexUtil {
 
         @Child private InteropReadStringMemberNode readPatternNode;
         @Child private InteropReadMemberNode readFlagsNode;
-        @Child private InteropReadMemberNode readExecMethodNode;
-        @Child private ExecExecMethodNode execExecMethodNode;
         @Child private InvokeExecMethodNode invokeExecMethodNode;
         @Child private InteropReadMemberNode readGroupsNode;
 
@@ -484,9 +453,7 @@ public final class TRegexUtil {
         }
 
         public Object exec(Object compiledRegexObject, String input, long fromIndex) {
-            // TODO: Switch to invoke
-            // return getInvokeExecMethodNode().execute(compiledRegexObject, input, fromIndex);
-            return getExecExecMethodNode().execute(getReadExecMethodNode().execute(compiledRegexObject, Props.CompiledRegex.EXEC), input, fromIndex);
+            return getInvokeExecMethodNode().execute(compiledRegexObject, input, fromIndex);
         }
 
         public Object namedCaptureGroups(Object compiledRegexObject) {
@@ -509,24 +476,6 @@ public final class TRegexUtil {
             return readFlagsNode;
         }
 
-        private InteropReadMemberNode getReadExecMethodNode() {
-            if (readExecMethodNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readExecMethodNode = insert(InteropReadMemberNode.create());
-            }
-            return readExecMethodNode;
-        }
-
-        private ExecExecMethodNode getExecExecMethodNode() {
-            if (execExecMethodNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                execExecMethodNode = insert(ExecExecMethodNode.create());
-            }
-            return execExecMethodNode;
-        }
-
-        // TODO: Switch to invoke
-        @SuppressWarnings("unused")
         private InvokeExecMethodNode getInvokeExecMethodNode() {
             if (invokeExecMethodNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -721,24 +670,16 @@ public final class TRegexUtil {
         private static final TRegexResultAccessor UNCACHED = new TRegexResultAccessor(false);
 
         @Child private InteropReadBooleanMemberNode readIsMatchNode;
-        @Child private InteropReadStringMemberNode readInputNode;
         @Child private InteropReadIntMemberNode readGroupCountNode;
-        @Child private InteropReadMemberNode readStartNode;
-        @Child private InteropReadIntArrayElementNode readStartIndexNode;
-        @Child private InteropReadMemberNode readEndNode;
-        @Child private InteropReadIntArrayElementNode readEndIndexNode;
         @Child private InvokeGetGroupBoundariesMethodNode getStartNode;
         @Child private InvokeGetGroupBoundariesMethodNode getEndNode;
 
         private TRegexResultAccessor(boolean cached) {
             if (!cached) {
                 readIsMatchNode = InteropReadBooleanMemberNodeGen.getUncached();
-                readInputNode = InteropReadStringMemberNodeGen.getUncached();
                 readGroupCountNode = InteropReadIntMemberNodeGen.getUncached();
-                readStartNode = InteropReadMemberNodeGen.getUncached();
-                readStartIndexNode = InteropReadIntArrayElementNodeGen.getUncached();
-                readEndNode = InteropReadMemberNodeGen.getUncached();
-                readEndIndexNode = InteropReadIntArrayElementNodeGen.getUncached();
+                getStartNode = InvokeGetGroupBoundariesMethodNodeGen.getUncached();
+                getEndNode = InvokeGetGroupBoundariesMethodNodeGen.getUncached();
             }
         }
 
@@ -759,15 +700,11 @@ public final class TRegexUtil {
         }
 
         public int captureGroupStart(Object regexResultObject, int i) {
-            // TODO: Switch to invoke
-            // return getGetStartNode().execute(regexResultObject, Props.RegexResult.GET_START, i);
-            return getReadStartIndexNode().execute(getReadStartNode().execute(regexResultObject, Props.RegexResult.START), i);
+            return getGetStartNode().execute(regexResultObject, Props.RegexResult.GET_START, i);
         }
 
         public int captureGroupEnd(Object regexResultObject, int i) {
-            // TODO: Switch to invoke
-            // return getGetEndNode().execute(regexResultObject, Props.RegexResult.GET_END, i);
-            return getReadEndIndexNode().execute(getReadEndNode().execute(regexResultObject, Props.RegexResult.END), i);
+            return getGetEndNode().execute(regexResultObject, Props.RegexResult.GET_END, i);
         }
 
         public int captureGroupLength(Object regexResultObject, int i) {
@@ -790,40 +727,6 @@ public final class TRegexUtil {
             return readGroupCountNode;
         }
 
-        private InteropReadMemberNode getReadStartNode() {
-            if (readStartNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readStartNode = insert(InteropReadMemberNode.create());
-            }
-            return readStartNode;
-        }
-
-        private InteropReadIntArrayElementNode getReadStartIndexNode() {
-            if (readStartIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readStartIndexNode = insert(InteropReadIntArrayElementNode.create());
-            }
-            return readStartIndexNode;
-        }
-
-        private InteropReadMemberNode getReadEndNode() {
-            if (readEndNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readEndNode = insert(InteropReadMemberNode.create());
-            }
-            return readEndNode;
-        }
-
-        private InteropReadIntArrayElementNode getReadEndIndexNode() {
-            if (readEndIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readEndIndexNode = insert(InteropReadIntArrayElementNode.create());
-            }
-            return readEndIndexNode;
-        }
-
-        // TODO: Switch to invoke
-        @SuppressWarnings("unused")
         private InvokeGetGroupBoundariesMethodNode getGetStartNode() {
             if (getStartNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -832,8 +735,6 @@ public final class TRegexUtil {
             return getStartNode;
         }
 
-        // TODO: Switch to invoke
-        @SuppressWarnings("unused")
         private InvokeGetGroupBoundariesMethodNode getGetEndNode() {
             if (getEndNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

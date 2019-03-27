@@ -47,10 +47,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.js.runtime.joni.result.NoMatchResult;
-import com.oracle.truffle.js.runtime.joni.result.RegexResult;
-import com.oracle.truffle.js.runtime.joni.result.SingleResult;
-import com.oracle.truffle.js.runtime.joni.result.StartsEndsIndexArrayResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniNoMatchResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniRegexResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniSingleResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniStartsEndsIndexArrayResult;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Matcher;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Region;
@@ -73,7 +73,7 @@ public abstract class JoniRegexExecRootNode extends RootNode {
     }
 
     @Override
-    public final RegexResult execute(VirtualFrame frame) {
+    public final JoniRegexResult execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         assert args.length == 3;
 
@@ -83,7 +83,7 @@ public abstract class JoniRegexExecRootNode extends RootNode {
         Regex impl = compiledRegex.getJoniRegex();
         Matcher matcher = sticky ? match(impl, input, fromIndex) : search(impl, input, fromIndex);
 
-        return (matcher != null) ? getMatchResult(matcher) : NoMatchResult.getInstance();
+        return (matcher != null) ? getMatchResult(matcher) : JoniNoMatchResult.getInstance();
     }
 
     @TruffleBoundary
@@ -114,7 +114,7 @@ public abstract class JoniRegexExecRootNode extends RootNode {
         return "joni regex " + pseudoSource;
     }
 
-    protected abstract RegexResult getMatchResult(Matcher matcher);
+    protected abstract JoniRegexResult getMatchResult(Matcher matcher);
 
     private static SourceSection createPseudoSource(String name) {
         String patternSrc = "/[" + name + "]/";
@@ -127,8 +127,8 @@ public abstract class JoniRegexExecRootNode extends RootNode {
         }
 
         @Override
-        protected RegexResult getMatchResult(Matcher matcher) {
-            return new SingleResult(matcher.getBegin(), matcher.getEnd());
+        protected JoniRegexResult getMatchResult(Matcher matcher) {
+            return new JoniSingleResult(matcher.getBegin(), matcher.getEnd());
         }
     }
 
@@ -138,9 +138,9 @@ public abstract class JoniRegexExecRootNode extends RootNode {
         }
 
         @Override
-        protected RegexResult getMatchResult(Matcher matcher) {
+        protected JoniRegexResult getMatchResult(Matcher matcher) {
             Region reg = matcher.getRegion();
-            return new StartsEndsIndexArrayResult(reg.beg, reg.end);
+            return new JoniStartsEndsIndexArrayResult(reg.beg, reg.end);
         }
     }
 }

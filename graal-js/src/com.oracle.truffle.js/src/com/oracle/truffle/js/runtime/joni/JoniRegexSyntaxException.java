@@ -44,33 +44,33 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-public class RegexSyntaxException extends RuntimeException implements TruffleException {
+public class JoniRegexSyntaxException extends RuntimeException implements TruffleException {
 
     private static final String template = "Invalid regular expression: /%s/%s: %s";
     private static final String templateNoFlags = "Invalid regular expression: %s: %s";
     private static final String templatePosition = "Invalid regular expression: /%s/%s:%d: %s";
 
-    public RegexSyntaxException(String msg) {
+    public JoniRegexSyntaxException(String msg) {
         super(msg);
     }
 
     @TruffleBoundary
-    public RegexSyntaxException(String pattern, String msg) {
+    public JoniRegexSyntaxException(String pattern, String msg) {
         super(String.format(templateNoFlags, pattern, msg));
     }
 
     @TruffleBoundary
-    public RegexSyntaxException(String pattern, String flags, String msg) {
+    public JoniRegexSyntaxException(String pattern, String flags, String msg) {
         super(String.format(template, pattern, flags, msg));
     }
 
     @TruffleBoundary
-    public RegexSyntaxException(String pattern, String flags, String msg, int position) {
+    public JoniRegexSyntaxException(String pattern, String flags, String msg, int position) {
         super(String.format(templatePosition, pattern, flags, position, msg));
     }
 
     @TruffleBoundary
-    public RegexSyntaxException(String pattern, String flags, String msg, Throwable ex) {
+    public JoniRegexSyntaxException(String pattern, String flags, String msg, Throwable ex) {
         super(String.format(template, pattern, flags, msg), ex);
     }
 

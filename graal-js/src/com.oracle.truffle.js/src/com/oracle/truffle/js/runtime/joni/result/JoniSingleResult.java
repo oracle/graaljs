@@ -40,40 +40,22 @@
  */
 package com.oracle.truffle.js.runtime.joni.result;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.js.runtime.joni.interop.ToIntNode;
+public final class JoniSingleResult extends JoniRegexResult {
 
-@ExportLibrary(InteropLibrary.class)
-public final class RegexResultGetEndMethod implements TruffleObject {
+    private final int start;
+    private final int end;
 
-    private final RegexResult result;
-
-    public RegexResultGetEndMethod(RegexResult result) {
-        this.result = result;
+    public JoniSingleResult(int start, int end) {
+        super(1);
+        this.start = start;
+        this.end = end;
     }
 
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
+    public int getStart() {
+        return start;
     }
 
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    int execute(Object[] args,
-                    @Cached ToIntNode toIntNode,
-                    @Cached RegexResultGetEndNode getEndNode) throws ArityException, UnsupportedTypeException {
-        if (args.length != 1) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(1, args.length);
-        }
-        return getEndNode.execute(result, toIntNode.execute(args[0]));
+    public int getEnd() {
+        return end;
     }
 }

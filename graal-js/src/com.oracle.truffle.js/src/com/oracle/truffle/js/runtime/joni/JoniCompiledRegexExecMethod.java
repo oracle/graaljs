@@ -50,7 +50,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.runtime.joni.interop.ToLongNode;
 import com.oracle.truffle.js.runtime.joni.interop.ToStringNode;
-import com.oracle.truffle.js.runtime.joni.result.NoMatchResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniNoMatchResult;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JoniCompiledRegexExecMethod implements TruffleObject {
@@ -83,7 +83,7 @@ public final class JoniCompiledRegexExecMethod implements TruffleObject {
         String input = toStringNode.execute(args[0]);
         long fromIndex = toLongNode.execute(args[1]);
         if (fromIndex > Integer.MAX_VALUE) {
-            return NoMatchResult.getInstance();
+            return JoniNoMatchResult.getInstance();
         }
         return executeNode.execute(getRegexObject(), input, (int) fromIndex);
     }
