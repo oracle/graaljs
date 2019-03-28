@@ -146,13 +146,7 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
             BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter);
             icuIterator.setText(value);
             Granularity granularity = JSSegmenter.getGranularity(segmenter);
-            DynamicObject jsIterator = JSObject.create(context, JSSegmenter.createIteratorShape(context));
-            JSObject.setPrototype(jsIterator, context.getRealm().getSegmentIteratorPrototype());
-            JSSegmenter.ITERATED_OBJECT_PROPERTY.setInternal(jsIterator, value);
-            JSSegmenter.SEGMENTER_PROPERTY.setInternal(jsIterator, icuIterator);
-            JSSegmenter.ITER_GRANULARITY_PROPERTY.setInternal(jsIterator, granularity);
-            JSSegmenter.INDEX_PROPERTY.setInternal(jsIterator, 0);
-            return jsIterator;
+            return JSObject.createWithRealm(context, context.getSegmentIteratorFactory(), context.getRealm(), value, icuIterator, granularity, null, 0);
         }
     }
 }

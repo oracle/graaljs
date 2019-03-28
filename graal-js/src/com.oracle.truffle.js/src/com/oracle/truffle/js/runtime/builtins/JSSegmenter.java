@@ -290,13 +290,8 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
     // Iterator
 
-    @TruffleBoundary
-    public static JSObjectFactory buildIteratorFactory(JSContext ctx) {
-        return JSObjectFactory.createUnbound(ctx, createIteratorShape(ctx).createFactory());
-    }
-
-    public static Shape createIteratorShape(JSContext ctx) {
-        Shape iteratorShape = ctx.createEmptyShape();
+    public static Shape makeInitialSegmentIteratorShape(JSContext ctx, DynamicObject prototype) {
+        Shape iteratorShape = JSObjectUtil.getProtoChildShape(prototype, JSUserObject.INSTANCE, ctx);
         iteratorShape = iteratorShape.addProperty(ITERATED_OBJECT_PROPERTY);
         iteratorShape = iteratorShape.addProperty(SEGMENTER_PROPERTY);
         iteratorShape = iteratorShape.addProperty(ITER_GRANULARITY_PROPERTY);

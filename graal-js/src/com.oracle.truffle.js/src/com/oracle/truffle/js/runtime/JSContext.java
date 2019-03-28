@@ -519,7 +519,7 @@ public class JSContext {
         this.listFormatFactory = builder.create(JSListFormat.INSTANCE);
         this.relativeTimeFormatFactory = builder.create(JSRelativeTimeFormat.INSTANCE);
         this.segmenterFactory = builder.create(JSSegmenter.INSTANCE);
-        this.segmentIteratorFactory = JSSegmenter.buildIteratorFactory(this);
+        this.segmentIteratorFactory = builder.create(JSRealm::getSegmentIteratorPrototype, JSSegmenter::makeInitialSegmentIteratorShape);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
