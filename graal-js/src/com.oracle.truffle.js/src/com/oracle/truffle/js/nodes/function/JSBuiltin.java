@@ -163,7 +163,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
     }
 
     public SourceSection getSourceSection() {
-        return createSourceSection(name);
+        return createSourceSection();
     }
 
     @Override
@@ -221,7 +221,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         }
     }
 
-    public static SourceSection createSourceSection(@SuppressWarnings("unused") String name) {
+    public static SourceSection createSourceSection() {
         return JSFunction.BUILTIN_SOURCE_SECTION;
     }
 

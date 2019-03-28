@@ -4760,7 +4760,7 @@ loop:
         } else {
             args.add(rhs);
         }
-        args.add(LiteralNode.newInstance(lhs.getToken(), lhs.getFinish(), lhs.toString()));
+        args.add(LiteralNode.newInstance(lhs.getToken(), lhs.toString()));
         return new RuntimeNode(lhs.getToken(), lhs.getFinish(), RuntimeNode.Request.REFERENCE_ERROR, args);
     }
 
@@ -5652,9 +5652,9 @@ loop:
             // A tagged template string with an invalid escape sequence has value 'undefined'
             cookedExpression = newUndefinedLiteral(stringToken, finish);
         } else {
-            cookedExpression = LiteralNode.newInstance(stringToken, finish, cookedString);
+            cookedExpression = LiteralNode.newInstance(stringToken, cookedString);
         }
-        rawStrings.add(LiteralNode.newInstance(stringToken, finish, rawString));
+        rawStrings.add(LiteralNode.newInstance(stringToken, rawString));
         cookedStrings.add(cookedExpression);
     }
 
@@ -5780,7 +5780,7 @@ loop:
             String moduleSpecifier = (String) getValue();
             long specifierToken = token;
             next();
-            LiteralNode<String> specifier = LiteralNode.newInstance(specifierToken, finish, moduleSpecifier);
+            LiteralNode<String> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
             module.addModuleRequest(moduleSpecifier);
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier));
         } else {
@@ -5916,7 +5916,7 @@ loop:
             String moduleSpecifier = (String) getValue();
             long specifierToken = token;
             next();
-            LiteralNode<String> specifier = LiteralNode.newInstance(specifierToken, finish, moduleSpecifier);
+            LiteralNode<String> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
             return new FromNode(fromToken, fromStart, finish, specifier);
         } else {
             throw error(expectMessage(STRING));
