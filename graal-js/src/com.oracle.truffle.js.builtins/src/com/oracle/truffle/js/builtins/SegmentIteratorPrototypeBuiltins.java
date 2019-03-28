@@ -146,12 +146,12 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
             Object iteratedString = getIteratedObjectNode.getValue(iterator);
             if (iteratedString == Undefined.instance) {
-                return createIterResultObjectNode.execute(frame, null, true);
+                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
             BreakIterator icuIterator = (BreakIterator) getSegmenterNode.getValue(iterator);
             JSSegmenter.Kind segmenterKind = (JSSegmenter.Kind) getSegmentIteratorKindNode.getValue(iterator);
             DynamicObject nextValue = nextValue(iterator, (String) iteratedString, segmenterKind, icuIterator);
-            return createIterResultObjectNode.execute(frame, nextValue, nextValue == null);
+            return createIterResultObjectNode.execute(frame, nextValue, nextValue == Undefined.instance);
         }
 
         @SuppressWarnings("unused")
@@ -169,7 +169,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
             if (done) {
                 setBreakTypeNode.setValue(iterator, null);
-                return null;
+                return Undefined.instance;
             }
 
             String segment = s.substring(startIndex, endIndex);
