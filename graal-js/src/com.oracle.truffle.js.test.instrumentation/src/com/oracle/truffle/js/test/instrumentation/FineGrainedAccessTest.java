@@ -52,6 +52,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.After;
 import org.junit.Before;
 
@@ -370,7 +371,7 @@ public abstract class FineGrainedAccessTest {
     @Before
     public void initTest() {
         collecting = false;
-        context = Context.create("js");
+        context = Context.newBuilder("js").allowPolyglotAccess(PolyglotAccess.ALL).build();
         instrument = context.getEngine().getInstruments().get(TestingExecutionInstrument.ID).lookup(TestingExecutionInstrument.class);
         instrumenter = instrument.getEnvironment().getInstrumenter();
         events = new ArrayList<>();
