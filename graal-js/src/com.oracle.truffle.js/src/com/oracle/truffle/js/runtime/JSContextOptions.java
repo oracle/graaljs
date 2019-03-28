@@ -71,7 +71,6 @@ public final class JSContextOptions {
                     JSTruffleOptions.LatestECMAScriptVersion,
                     new OptionType<>(
                                     "ecmascript-version",
-                                    JSTruffleOptions.LatestECMAScriptVersion,
                                     new Function<String, Integer>() {
 
                                         @Override
