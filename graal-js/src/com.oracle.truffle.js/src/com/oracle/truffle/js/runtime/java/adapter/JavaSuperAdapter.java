@@ -122,7 +122,7 @@ public final class JavaSuperAdapter implements TruffleObject {
     @ExportMessage
     Object readMember(String name,
                     @Shared("cache") @Cached NameCache cache,
-                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedMessageException, UnknownIdentifierException {
+                    @CachedLibrary("this.adapter") InteropLibrary interop) throws UnsupportedMessageException, UnknownIdentifierException {
         String superMethodName = cache.getSuperMethodName(name);
         return interop.readMember(getAdapter(), superMethodName);
     }
@@ -130,7 +130,7 @@ public final class JavaSuperAdapter implements TruffleObject {
     @ExportMessage
     Object invokeMember(String name, Object[] args,
                     @Shared("cache") @Cached NameCache cache,
-                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+                    @CachedLibrary("this.adapter") InteropLibrary interop) throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
         String superMethodName = cache.getSuperMethodName(name);
         return interop.invokeMember(getAdapter(), superMethodName, args);
     }
@@ -138,7 +138,7 @@ public final class JavaSuperAdapter implements TruffleObject {
     @ExportMessage
     boolean isMemberReadable(String name,
                     @Shared("cache") @Cached NameCache cache,
-                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interop) {
+                    @CachedLibrary("this.adapter") InteropLibrary interop) {
         String superMethodName = cache.getSuperMethodName(name);
         return interop.isMemberReadable(getAdapter(), superMethodName);
     }
@@ -146,7 +146,7 @@ public final class JavaSuperAdapter implements TruffleObject {
     @ExportMessage
     boolean isMemberInvocable(String name,
                     @Shared("cache") @Cached NameCache cache,
-                    @Shared("interop") @CachedLibrary(limit = "1") InteropLibrary interop) {
+                    @CachedLibrary("this.adapter") InteropLibrary interop) {
         String superMethodName = cache.getSuperMethodName(name);
         return interop.isMemberInvocable(getAdapter(), superMethodName);
     }

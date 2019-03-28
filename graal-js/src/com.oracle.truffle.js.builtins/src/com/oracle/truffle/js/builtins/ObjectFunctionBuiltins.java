@@ -353,24 +353,28 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return JSArray.createConstantEmptyArray(getContext());
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"})
+        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"}, limit = "3")
         protected DynamicObject getForeignObjectNames(TruffleObject thisObj,
-                        @CachedLibrary(limit = "3") InteropLibrary interop,
+                        @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members) {
             Object[] array;
-            try {
-                Object keysObj = interop.getMembers(thisObj);
-                long size = members.getArraySize(keysObj);
-                if (size < 0 || size >= Integer.MAX_VALUE) {
-                    throw Errors.createRangeErrorInvalidArrayLength();
+            if (interop.hasMembers(thisObj)) {
+                try {
+                    Object keysObj = interop.getMembers(thisObj);
+                    long size = members.getArraySize(keysObj);
+                    if (size < 0 || size >= Integer.MAX_VALUE) {
+                        throw Errors.createRangeErrorInvalidArrayLength();
+                    }
+                    array = new Object[(int) size];
+                    for (int i = 0; i < size; i++) {
+                        Object key = members.readArrayElement(keysObj, i);
+                        assert InteropLibrary.getFactory().getUncached().isString(key);
+                        array[i] = key;
+                    }
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    array = ScriptArray.EMPTY_OBJECT_ARRAY;
                 }
-                array = new Object[(int) size];
-                for (int i = 0; i < size; i++) {
-                    Object key = members.readArrayElement(keysObj, i);
-                    assert InteropLibrary.getFactory().getUncached().isString(key);
-                    array[i] = key;
-                }
-            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+            } else {
                 array = ScriptArray.EMPTY_OBJECT_ARRAY;
             }
             return JSArray.createConstant(getContext(), array);
@@ -638,28 +642,32 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return keysDynamicObject(toOrAsObject(thisObj));
         }
 
-        @Specialization(guards = "isForeignObject(thisObj)")
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "3")
         protected DynamicObject keys(TruffleObject thisObj,
-                        @CachedLibrary(limit = "3") InteropLibrary interop,
+                        @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members) {
             return keysIntl(getKeysList(interop, members, thisObj));
         }
 
         private static List<Object> getKeysList(InteropLibrary interop, InteropLibrary members, TruffleObject obj) {
-            try {
-                Object keysObj = interop.getMembers(obj);
-                long size = members.getArraySize(keysObj);
-                if (size < 0 || size >= Integer.MAX_VALUE) {
-                    throw Errors.createRangeErrorInvalidArrayLength();
+            if (interop.hasMembers(obj)) {
+                try {
+                    Object keysObj = interop.getMembers(obj);
+                    long size = members.getArraySize(keysObj);
+                    if (size < 0 || size >= Integer.MAX_VALUE) {
+                        throw Errors.createRangeErrorInvalidArrayLength();
+                    }
+                    List<Object> keys = new ArrayList<>((int) size);
+                    for (int i = 0; i < size; i++) {
+                        Object key = members.readArrayElement(keysObj, i);
+                        assert InteropLibrary.getFactory().getUncached().isString(key);
+                        keys.add(key);
+                    }
+                    return keys;
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    return Collections.emptyList();
                 }
-                List<Object> keys = new ArrayList<>((int) size);
-                for (int i = 0; i < size; i++) {
-                    Object key = members.readArrayElement(keysObj, i);
-                    assert InteropLibrary.getFactory().getUncached().isString(key);
-                    keys.add(key);
-                }
-                return keys;
-            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+            } else {
                 return Collections.emptyList();
             }
         }

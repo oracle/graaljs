@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -69,9 +69,6 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 @ReportPolymorphism
 public abstract class JSEqualNode extends JSCompareNode {
     protected static final int MAX_CLASSES = 3;
-
-    @Child protected JSEqualNode equalNode;
-    @Child protected JSToPrimitiveNode toPrimitiveNode;
 
     protected JSEqualNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
@@ -211,19 +208,23 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization(guards = {"isObject(a)", "!isObject(b)"})
-    protected boolean doJSObject(DynamicObject a, Object b) {
+    protected boolean doJSObject(DynamicObject a, Object b,
+                    @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         if (JSGuards.isNullOrUndefined(b)) {
             return false;
         }
-        return getEqualNode().executeBoolean(getToPrimitiveNode().execute(a), b);
+        return nestedEqualNode.executeBoolean(toPrimitiveNode.execute(a), b);
     }
 
     @Specialization(guards = {"!isObject(a)", "isObject(b)"})
-    protected boolean doJSObject(Object a, DynamicObject b) {
+    protected boolean doJSObject(Object a, DynamicObject b,
+                    @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         if (JSGuards.isNullOrUndefined(a)) {
             return false;
         }
-        return getEqualNode().executeBoolean(a, getToPrimitiveNode().execute(b));
+        return nestedEqualNode.executeBoolean(a, toPrimitiveNode.execute(b));
     }
 
     @Specialization
@@ -272,10 +273,11 @@ public abstract class JSEqualNode extends JSCompareNode {
         return false;
     }
 
-    @Specialization(guards = "oneIsForeign(a,b)")
+    @Specialization(guards = "oneIsForeign(a,b)", limit = "5")
     protected boolean doForeign(Object a, Object b,
-                    @CachedLibrary(limit = "3") InteropLibrary aInterop,
-                    @CachedLibrary(limit = "3") InteropLibrary bInterop) {
+                    @CachedLibrary("a") InteropLibrary aInterop,
+                    @CachedLibrary("b") InteropLibrary bInterop,
+                    @Cached JSEqualNode nestedEqualNode) {
         assert (a != null) && (b != null);
         final Object defaultValue = null;
         Object primLeft;
@@ -303,7 +305,7 @@ public abstract class JSEqualNode extends JSCompareNode {
             }
         } else {
             assert !JSGuards.isForeignObject(primLeft) && !JSGuards.isForeignObject(primRight);
-            return getEqualNode().executeBoolean(primLeft, primRight);
+            return nestedEqualNode.executeBoolean(primLeft, primRight);
         }
     }
 
@@ -336,22 +338,6 @@ public abstract class JSEqualNode extends JSCompareNode {
 
     protected static boolean oneIsForeign(Object a, Object b) {
         return JSGuards.isForeignObject(a) || JSGuards.isForeignObject(b);
-    }
-
-    private JSEqualNode getEqualNode() {
-        if (equalNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            equalNode = insert(JSEqualNode.create());
-        }
-        return equalNode;
-    }
-
-    private JSToPrimitiveNode getToPrimitiveNode() {
-        if (toPrimitiveNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toPrimitiveNode = insert(JSToPrimitiveNode.createHintNone());
-        }
-        return toPrimitiveNode;
     }
 
     @Override
