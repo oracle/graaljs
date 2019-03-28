@@ -72,6 +72,10 @@ package com.oracle.truffle.js.runtime.doubleconv;
 
 public class CachedPowers {
 
+    private CachedPowers() {
+        // should not be constructed
+    }
+
     static class CachedPower {
         final private long significand;
         final private int binaryExponent;

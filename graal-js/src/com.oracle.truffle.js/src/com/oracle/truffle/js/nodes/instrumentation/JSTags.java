@@ -48,6 +48,10 @@ import com.oracle.truffle.api.instrumentation.Tag;
  */
 public class JSTags {
 
+    private JSTags() {
+        // should not be constructed
+    }
+
     public static final Class<?>[] ALL = new Class[]{
                     ObjectAllocationExpressionTag.class,
                     BinaryExpressionTag.class,

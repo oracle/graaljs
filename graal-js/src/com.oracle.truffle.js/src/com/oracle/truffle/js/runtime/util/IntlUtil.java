@@ -70,6 +70,10 @@ import java.util.MissingResourceException;
  */
 public class IntlUtil {
 
+    private IntlUtil() {
+        // should not be constructed
+    }
+
     private static final String ICU4J_DATA_PATH_SYS_PROPERTY = "com.ibm.icu.impl.ICUBinary.dataPath";
 
     // based on http://unicode.org/repos/cldr/trunk/common/bcp47/number.xml

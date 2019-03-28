@@ -69,14 +69,27 @@ import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.ValidateRegexNodeGen
 
 public final class TRegexUtil {
 
+    private TRegexUtil() {
+        // should not be constructed
+    }
+
     public static final class Props {
+        private Props() {
+            // should not be constructed
+        }
 
         public static final class RegexEngine {
+            private RegexEngine() {
+                // should not be constructed
+            }
 
             public static final String VALIDATE = "validate";
         }
 
         public static final class CompiledRegex {
+            private CompiledRegex() {
+                // should not be constructed
+            }
 
             public static final String PATTERN = "pattern";
             public static final String FLAGS = "flags";
@@ -86,6 +99,9 @@ public final class TRegexUtil {
         }
 
         public static final class Flags {
+            private Flags() {
+                // should not be constructed
+            }
 
             public static final String SOURCE = "source";
             public static final String GLOBAL = "global";
@@ -97,6 +113,9 @@ public final class TRegexUtil {
         }
 
         public static final class RegexResult {
+            private RegexResult() {
+                // should not be constructed
+            }
 
             public static final String IS_MATCH = "isMatch";
             public static final String GET_START = "getStart";
@@ -107,6 +126,10 @@ public final class TRegexUtil {
     private static final String NUMBER_OF_REGEX_RESULT_TYPES = "9";
 
     public static final class Constants {
+        private Constants() {
+            // should not be constructed
+        }
+
         public static final int CAPTURE_GROUP_NO_MATCH = -1;
     }
 

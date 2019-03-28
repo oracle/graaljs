@@ -54,6 +54,10 @@ public class StringEscape {
 
     private static final BitSet dontEscapeSet;
 
+    private StringEscape() {
+        // should not be constructed
+    }
+
     static {
         BitSet unescaped = new BitSet(128);
         unescaped.set('a', 'z' + 1);

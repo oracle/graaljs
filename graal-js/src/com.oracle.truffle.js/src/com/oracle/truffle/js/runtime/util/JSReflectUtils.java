@@ -51,6 +51,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class JSReflectUtils {
 
+    private JSReflectUtils() {
+        // should not be constructed
+    }
+
     // Implementation of OrdinaryGet (O, P, Receiver)
     @TruffleBoundary(transferToInterpreterOnException = false)
     public static Object performOrdinaryGet(DynamicObject target, Object key, Object receiver) {

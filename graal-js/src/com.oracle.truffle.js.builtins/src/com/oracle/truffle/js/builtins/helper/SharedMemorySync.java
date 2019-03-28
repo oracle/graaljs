@@ -64,6 +64,10 @@ import sun.misc.Unsafe;
  */
 public class SharedMemorySync {
 
+    private SharedMemorySync() {
+        // should not be constructed
+    }
+
     private static final class SyncUtils {
         @TruffleBoundary
         public static void loadFence() {

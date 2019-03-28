@@ -63,6 +63,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public class DefinePropertyUtil {
 
+    private DefinePropertyUtil() {
+        // should not be constructed
+    }
+
     /**
      * Implementation of OrdinaryDefineOwnProperty as defined in ECMAScript 2015, 9.1.6.1.
      */

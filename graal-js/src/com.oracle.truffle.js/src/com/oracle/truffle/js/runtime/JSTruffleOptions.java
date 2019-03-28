@@ -47,6 +47,11 @@ import java.util.Map.Entry;
 import com.oracle.truffle.api.TruffleOptions;
 
 public class JSTruffleOptions {
+
+    private JSTruffleOptions() {
+        // should not be constructed
+    }
+
     public static final String TRUFFLE_JS_OPTION_PREFIX = "truffle.js.";
     public static final String JS_OPTION_PREFIX = "js.";
     private static final String PARSER_OPTION_PREFIX = "parser.";
