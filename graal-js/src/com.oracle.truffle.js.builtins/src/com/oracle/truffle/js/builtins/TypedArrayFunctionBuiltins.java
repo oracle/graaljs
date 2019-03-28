@@ -153,7 +153,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
             for (int k = 0; k < len; k++) {
                 Object mapped = values.get(k);
                 if (mapping) {
-                    mapped = callMapFn(thisArg, (DynamicObject) mapFn, new Object[]{mapped, k});
+                    mapped = callMapFn(thisArg, (DynamicObject) mapFn, mapped, k);
                 }
                 writeOwn(obj, k, mapped);
             }

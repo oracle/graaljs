@@ -82,7 +82,7 @@ public class IntlUtil {
                     "jpanfin", "kali", "khmr", "knda", "lana", "lanatham", "laoo", "latn", "lepc", "limb", "mathbold", "mathdbl", "mathmono", "mathsanb", "mathsans", "mlym", "modi", "mong", "mroo",
                     "mtei", "mymr", "mymrshan", "mymrtlng", "native", "newa", "nkoo", "olck", "orya", "osma", "roman", "romanlow", "saur", "shrd", "sind", "sinh", "sora", "sund", "takr", "talu",
                     "taml", "tamldec", "telu", "thai", "tirh", "tibt", "traditio", "vaii", "wara"});
-    private static final List<String> BANNED_BCP47_NU_KEYS = Arrays.asList(new String[]{"native", "traditio", "finance"});
+    private static final List<String> BANNED_BCP47_NU_KEYS = Arrays.asList("native", "traditio", "finance");
 
     public static final String _2_DIGIT = "2-digit";
     public static final String ACCENT = "accent";

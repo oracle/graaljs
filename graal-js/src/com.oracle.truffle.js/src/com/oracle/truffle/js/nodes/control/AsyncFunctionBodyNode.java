@@ -170,7 +170,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     private void asyncFunctionStart(VirtualFrame frame, PromiseCapabilityRecord promiseCapability) {
         writeAsyncContext.executeWrite(frame, new Object[]{resumptionTarget, promiseCapability, frame.materialize()});
         Completion unusedInitialResult = null;
-        asyncCallNode.call(new Object[]{frame.materialize(), promiseCapability, unusedInitialResult});
+        asyncCallNode.call(frame.materialize(), promiseCapability, unusedInitialResult);
     }
 
     @Override
