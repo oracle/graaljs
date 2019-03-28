@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -54,7 +55,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 @ValueType
 public final class LargeInteger extends Number implements Comparable<LargeInteger>, TruffleObject {
-    private final long value;
+    final long value;
 
     private LargeInteger(long value) {
         this.value = value;
@@ -152,34 +153,10 @@ public final class LargeInteger extends Number implements Comparable<LargeIntege
         return true;
     }
 
-    @ExportMessage
-    boolean fitsInInt() {
-        return longValue() == intValue();
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean fitsInDouble() {
-        return true;
-    }
-
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean fitsInLong() {
         return true;
-    }
-
-    @ExportMessage
-    int asInt() throws UnsupportedMessageException {
-        if (!fitsInInt()) {
-            throw UnsupportedMessageException.create();
-        }
-        return intValue();
-    }
-
-    @ExportMessage
-    double asDouble() {
-        return doubleValue();
     }
 
     @ExportMessage
@@ -188,40 +165,52 @@ public final class LargeInteger extends Number implements Comparable<LargeIntege
     }
 
     @ExportMessage
-    boolean fitsInByte() {
-        return longValue() == byteValue();
+    boolean fitsInInt(@CachedLibrary("this.value") InteropLibrary numbers) {
+        return numbers.fitsInInt(value);
     }
 
     @ExportMessage
-    boolean fitsInShort() {
-        return longValue() == shortValue();
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean fitsInFloat() {
-        return false;
+    int asInt(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
+        return numbers.asInt(value);
     }
 
     @ExportMessage
-    byte asByte() throws UnsupportedMessageException {
-        if (!fitsInByte()) {
-            throw UnsupportedMessageException.create();
-        }
-        return (byte) intValue();
+    boolean fitsInDouble(@CachedLibrary("this.value") InteropLibrary numbers) {
+        return numbers.fitsInDouble(value);
     }
 
     @ExportMessage
-    short asShort() throws UnsupportedMessageException {
-        if (!fitsInShort()) {
-            throw UnsupportedMessageException.create();
-        }
-        return (short) intValue();
+    double asDouble(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
+        return numbers.asDouble(value);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
-    float asFloat() throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+    boolean fitsInByte(@CachedLibrary("this.value") InteropLibrary numbers) {
+        return numbers.fitsInByte(value);
+    }
+
+    @ExportMessage
+    byte asByte(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
+        return numbers.asByte(value);
+    }
+
+    @ExportMessage
+    boolean fitsInShort(@CachedLibrary("this.value") InteropLibrary numbers) {
+        return numbers.fitsInShort(value);
+    }
+
+    @ExportMessage
+    short asShort(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
+        return numbers.asShort(value);
+    }
+
+    @ExportMessage
+    boolean fitsInFloat(@CachedLibrary("this.value") InteropLibrary numbers) {
+        return numbers.fitsInFloat(value);
+    }
+
+    @ExportMessage
+    float asFloat(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
+        return numbers.asFloat(value);
     }
 }
