@@ -123,10 +123,15 @@ public class JSTruffleOptions {
     public static final boolean DirectByteBuffer = booleanOption("DirectByteBuffer", false);
 
     // ECMAScript specification options
+    public static final int ECMAScript5 = 5;
+    public static final int ECMAScript6 = 6;
+    public static final int ECMAScript2015 = 6;
+    public static final int ECMAScript2016 = 7;
     public static final int ECMAScript2017 = 8;
     public static final int ECMAScript2018 = 9;
     public static final int ECMAScript2019 = 10;
     public static final int ECMAScript2020 = 11;
+    public static final int ECMAScriptNumberYearDelta = 2009; // ES6==ES2015
     public static final int LatestECMAScriptVersion = ECMAScript2019;
     public static final int MaxECMAScriptVersion = integerOption("ECMAScriptVersion", ECMAScript2020);
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
