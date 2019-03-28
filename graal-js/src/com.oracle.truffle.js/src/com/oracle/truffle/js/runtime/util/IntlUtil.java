@@ -348,8 +348,7 @@ public class IntlUtil {
     public static Locale selectedLocaleStripped(JSContext ctx, String[] locales) {
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
-        Locale strippedLocale = selectedLocale.stripExtensions();
-        return strippedLocale;
+        return selectedLocale.stripExtensions();
     }
 
     @TruffleBoundary

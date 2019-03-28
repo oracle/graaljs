@@ -1605,8 +1605,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         assert JSRuntime.isString(key);
         String origKey = key instanceof String ? (String) key : ((JSLazyString) key).toString();
         if (origKey.length() > 0 && Character.isLetter(origKey.charAt(0))) {
-            String accessorKey = getset + origKey.substring(0, 1).toUpperCase() + origKey.substring(1);
-            return accessorKey;
+            return getset + origKey.substring(0, 1).toUpperCase() + origKey.substring(1);
         }
         return null;
     }

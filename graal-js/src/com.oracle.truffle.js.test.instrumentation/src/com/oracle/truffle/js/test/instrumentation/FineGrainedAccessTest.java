@@ -153,8 +153,7 @@ public abstract class FineGrainedAccessTest {
 
     private Event getNextEvent() {
         assertFalse("empty queue!", events.isEmpty());
-        Event event = events.remove(0);
-        return event;
+        return events.remove(0);
     }
 
     static class AssertedEvent {
@@ -389,19 +388,17 @@ public abstract class FineGrainedAccessTest {
     // === common asserts
 
     protected static final Consumer<Event> assertReturnValue(Object expected) {
-        Consumer<Event> c = (e) -> {
+        return e -> {
             assertTrue(e.val instanceof Object[]);
             Object[] vals = (Object[]) e.val;
             assertEquals(vals[0], expected);
         };
-        return c;
     }
 
     protected static final Consumer<Event> assertLiteralType(LiteralExpressionTag.Type type) {
-        Consumer<Event> c = (e) -> {
+        return e -> {
             assertAttribute(e, TYPE, type.name());
         };
-        return c;
     }
 
     protected static final Consumer<Event> assertPropertyReadName(String name) {

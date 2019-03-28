@@ -142,8 +142,7 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
                 }
             }
         });
-        DynamicObject descriptionGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, callTarget, 0, "get " + DESCRIPTION));
-        return descriptionGetter;
+        return JSFunction.create(realm, JSFunctionData.createCallOnly(context, callTarget, 0, "get " + DESCRIPTION));
     }
 
     @Override
