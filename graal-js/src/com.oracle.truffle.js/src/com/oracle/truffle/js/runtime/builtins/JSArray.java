@@ -347,7 +347,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     public static DynamicObject createLazyRegexArray(JSContext context, int length, Object regexResult, String input, DynamicObject groups) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         ScriptArray arrayType = LazyRegexResultArray.createLazyRegexResultArray();
-        Object array = ScriptArray.EMPTY_OBJECT_ARRAY;
+        Object array = new Object[length];
         ArrayAllocationSite site = null;
         int usedLength = 0;
         int indexOffset = 0;

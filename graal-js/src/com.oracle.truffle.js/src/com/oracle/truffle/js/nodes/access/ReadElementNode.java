@@ -992,7 +992,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) array;
             if (inBounds.profile(lazyRegexResultArray.hasElement(target, (int) index))) {
-                return LazyRegexResultArray.materializeGroup(getMaterializeResultNode(), target, (int) index);
+                return LazyRegexResultArray.materializeGroup(getMaterializeResultNode(), target, (int) index, arrayCondition && array instanceof LazyRegexResultArray);
             } else {
                 return readOutOfBounds(target, index, defaultValue);
             }

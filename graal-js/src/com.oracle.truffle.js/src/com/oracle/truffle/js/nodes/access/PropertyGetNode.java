@@ -1427,7 +1427,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            return readStartNode.execute(arrayGetRegexResult(receiverCheck.getStore(thisObj)), TRegexUtil.Props.RegexResult.GET_START, 0);
+            return readStartNode.execute(arrayGetRegexResult(receiverCheck.getStore(thisObj), guard), TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
         @Override
