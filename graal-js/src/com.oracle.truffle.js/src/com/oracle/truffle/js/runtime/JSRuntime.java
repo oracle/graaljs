@@ -2286,21 +2286,6 @@ public final class JSRuntime {
         return false;
     }
 
-    public static boolean isArray(Object obj, ConditionProfile profile1, ConditionProfile profile2, InteropLibrary interop) {
-        if (profile1.profile(JSArray.isJSArray(obj))) {
-            return true;
-        } else if (profile2.profile(JSProxy.isProxy(obj))) {
-            DynamicObject proxy = (DynamicObject) obj;
-            if (JSProxy.isRevoked(proxy)) {
-                throw Errors.createTypeErrorProxyRevoked();
-            }
-            return isArrayProxy(proxy);
-        } else if (isForeignObject(obj)) {
-            return interop.hasArrayElements(obj);
-        }
-        return false;
-    }
-
     @TruffleBoundary
     private static boolean isArrayProxy(DynamicObject proxy) {
         return isArray(JSProxy.getTarget(proxy));
