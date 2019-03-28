@@ -359,10 +359,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            if (JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj)) {
-                return true;
-            }
-            return false;
+            return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
         }
 
         @Override
@@ -418,10 +415,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            if (JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj)) {
-                return true;
-            }
-            return false;
+            return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
         }
 
         @Override
@@ -527,10 +521,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         public boolean accept(Object thisObj) {
             DynamicObject expectedObj = this.expectedObjectRef.get();
-            if (thisObj != expectedObj) {
-                return false;
-            }
-            return true;
+            return thisObj == expectedObj;
         }
 
         @Override

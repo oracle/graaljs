@@ -287,10 +287,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         if (JSRuntime.isNegativeZero(d) || d < 0) {
             return false;
         }
-        if (d >= JSArrayBufferView.typedArrayGetLength(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj))) {
-            return false;
-        }
-        return true;
+        return d < JSArrayBufferView.typedArrayGetLength(thisObj, JSArrayBufferView.isJSArrayBufferView(thisObj));
     }
 
     /**

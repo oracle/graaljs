@@ -144,10 +144,7 @@ public final class WithTargetNode extends JavaScriptNode {
     private static boolean hasNoSuchPropertyImpl(DynamicObject thisObj, boolean isMethod) {
         assert JSRuntime.isObject(thisObj);
         Object function = JSObject.get(thisObj, isMethod ? JSObject.NO_SUCH_METHOD_NAME : JSObject.NO_SUCH_PROPERTY_NAME);
-        if (JSFunction.isJSFunction(function)) {
-            return true;
-        }
-        return false;
+        return JSFunction.isJSFunction(function);
     }
 
     @Override

@@ -5469,10 +5469,7 @@ loop:
             case COMMENT:
                 continue;
             default:
-                if (t.isContextualKeyword() || t.isFutureStrict()) {
-                    return true;
-                }
-                return false;
+                return (t.isContextualKeyword() || t.isFutureStrict());
             }
         }
         return false;

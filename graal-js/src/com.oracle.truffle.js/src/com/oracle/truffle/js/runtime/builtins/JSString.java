@@ -115,10 +115,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
             return true;
         }
         long index = JSRuntime.propertyKeyToArrayIndex(key);
-        if (index >= 0 && index < getStringLength(thisObj)) {
-            return true;
-        }
-        return false;
+        return index >= 0 && index < getStringLength(thisObj);
     }
 
     public static CharSequence getCharSequence(DynamicObject obj) {
