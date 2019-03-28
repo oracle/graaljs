@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -90,14 +91,12 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     public static final Property BREAK_TYPE_PROPERTY;
     public static final Property INDEX_PROPERTY;
 
-    public static Shape.Allocator iterAllocator;
-
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
         INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID,
                         allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
 
-        iterAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
+        Shape.Allocator iterAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
         ITERATED_OBJECT_PROPERTY = JSObjectUtil.makeHiddenProperty(JSRuntime.ITERATED_OBJECT_ID, iterAllocator.locationForType(String.class));
         SEGMENTER_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_SEGMENTER_ID, iterAllocator.locationForType(BreakIterator.class));
         ITER_GRANULARITY_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_GRANULARITY_ID, iterAllocator.locationForType(Granularity.class));
@@ -308,11 +307,12 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
     private static CallTarget createPropertyGetterCallTarget(JSContext context, Property property) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @Child private HasHiddenKeyCacheNode isSegmentIteratorNode = HasHiddenKeyCacheNode.create(JSSegmenter.SEGMENT_ITERATOR_GRANULARITY_ID);
 
             @Override
             public Object execute(VirtualFrame frame) {
                 Object obj = JSArguments.getThisObject(frame.getArguments());
-                if (JSObject.isDynamicObject(obj)) {
+                if (isSegmentIteratorNode.executeHasHiddenKey(obj)) {
                     DynamicObject iteratorObj = (DynamicObject) obj;
                     Object result = property.get(iteratorObj, true);
                     return result == null ? Undefined.instance : result;

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import com.ibm.icu.text.BreakIterator;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -145,9 +144,6 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         protected DynamicObject doSegmentIterator(VirtualFrame frame, DynamicObject iterator) {
 
             Object iteratedString = getIteratedObjectNode.getValue(iterator);
-            if (iteratedString == Undefined.instance) {
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
-            }
             BreakIterator icuIterator = (BreakIterator) getSegmenterNode.getValue(iterator);
             JSSegmenter.Granularity segmenterGranularity = (JSSegmenter.Granularity) getSegmentIteratorGranularityNode.getValue(iterator);
             DynamicObject nextValue = nextValue(iterator, (String) iteratedString, segmenterGranularity, icuIterator);
@@ -155,7 +151,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @SuppressWarnings("unused")
-        @Fallback
+        @Specialization(guards = "!isSegmentIterator(iterator)")
         protected DynamicObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeErrorTypeXExpected(JSSegmenter.ITERATOR_CLASS_NAME);
         }
@@ -186,9 +182,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         protected DynamicObject makeIterationResultValue(int endIndex, String segment, String breakType) {
             DynamicObject result = JSUserObject.create(getContext());
             JSObject.set(result, IntlUtil.SEGMENT, segment);
-            if (breakType != null) {
-                JSObject.set(result, IntlUtil.BREAK_TYPE, breakType);
-            }
+            JSObject.set(result, IntlUtil.BREAK_TYPE, breakType == null ? Undefined.instance : breakType);
             JSObject.set(result, IntlUtil.INDEX, endIndex);
             return result;
         }
