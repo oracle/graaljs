@@ -79,14 +79,14 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     public static final String ITERATOR_CLASS_NAME = "Segment Iterator";
     public static final String ITERATOR_PROTOTYPE_NAME = "Segment Iterator.prototype";
 
-    public static final HiddenKey SEGMENT_ITERATOR_KIND_ID = new HiddenKey("kind");
+    public static final HiddenKey SEGMENT_ITERATOR_GRANULARITY_ID = new HiddenKey("granularity");
     public static final HiddenKey SEGMENT_ITERATOR_SEGMENTER_ID = new HiddenKey("segmenter");
     public static final HiddenKey SEGMENT_ITERATOR_INDEX_ID = new HiddenKey("index");
     public static final HiddenKey SEGMENT_ITERATOR_BREAK_TYPE_ID = new HiddenKey("breakType");
 
     public static final Property ITERATED_OBJECT_PROPERTY;
     public static final Property SEGMENTER_PROPERTY;
-    public static final Property ITER_KIND_PROPERTY;
+    public static final Property ITER_GRANULARITY_PROPERTY;
     public static final Property BREAK_TYPE_PROPERTY;
     public static final Property INDEX_PROPERTY;
 
@@ -100,7 +100,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         iterAllocator = JSShape.makeAllocator(JSObject.LAYOUT);
         ITERATED_OBJECT_PROPERTY = JSObjectUtil.makeHiddenProperty(JSRuntime.ITERATED_OBJECT_ID, iterAllocator.locationForType(String.class));
         SEGMENTER_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_SEGMENTER_ID, iterAllocator.locationForType(BreakIterator.class));
-        ITER_KIND_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_KIND_ID, iterAllocator.locationForType(Kind.class));
+        ITER_GRANULARITY_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_GRANULARITY_ID, iterAllocator.locationForType(Granularity.class));
         BREAK_TYPE_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_BREAK_TYPE_ID, iterAllocator.locationForType(String.class));
         INDEX_PROPERTY = JSObjectUtil.makeHiddenProperty(SEGMENT_ITERATOR_INDEX_ID, iterAllocator.locationForType(Integer.class));
     }
@@ -112,9 +112,9 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         String getBreakType(int icuStatus);
     }
 
-    public enum Kind implements IcuIteratorHelper {
+    public enum Granularity implements IcuIteratorHelper {
 
-        GRAPHEME() {
+        GRAPHEME(IntlUtil.GRAPHEME) {
             @Override
             @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
@@ -126,7 +126,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
                 return null;
             }
         },
-        WORD() {
+        WORD(IntlUtil.WORD) {
             @Override
             @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
@@ -138,7 +138,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
                 return icuStatus == BreakIterator.WORD_NONE ? IntlUtil.NONE : IntlUtil.WORD;
             }
         },
-        SENTENCE() {
+        SENTENCE(IntlUtil.SENTENCE) {
             @Override
             @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
@@ -150,6 +150,16 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
                 return icuStatus == BreakIterator.WORD_NONE ? IntlUtil.SEP : IntlUtil.TERM;
             }
         };
+
+        private String name;
+
+        Granularity(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
 
     }
 
@@ -220,19 +230,18 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     @TruffleBoundary
     public static void setupInternalBreakIterator(InternalState state, String granularity) {
         state.javaLocale = Locale.forLanguageTag(state.locale);
-        state.granularity = granularity;
-        switch (state.granularity) {
+        switch (granularity) {
             case IntlUtil.GRAPHEME:
-                state.kind = Kind.GRAPHEME;
+                state.granularity = Granularity.GRAPHEME;
                 break;
             case IntlUtil.WORD:
-                state.kind = Kind.WORD;
+                state.granularity = Granularity.WORD;
                 break;
             case IntlUtil.SENTENCE:
-                state.kind = Kind.SENTENCE;
+                state.granularity = Granularity.SENTENCE;
                 break;
             default:
-                throw Errors.shouldNotReachHere(String.format("Segmenter with granularity, %s, is not supported", state.granularity));
+                throw Errors.shouldNotReachHere(String.format("Segmenter with granularity, %s, is not supported", granularity));
         }
     }
 
@@ -243,13 +252,12 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         public String locale;
         public Locale javaLocale;
 
-        public String granularity = IntlUtil.GRAPHEME;
-        public Kind kind = Kind.GRAPHEME;
+        public Granularity granularity = Granularity.GRAPHEME;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
             JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.GRANULARITY, granularity, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(result, IntlUtil.GRANULARITY, granularity.getName(), JSAttributes.getDefault());
             return result;
         }
     }
@@ -258,12 +266,12 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     public static BreakIterator createBreakIterator(DynamicObject segmenterObj) {
         InternalState state = getInternalState(segmenterObj);
         ULocale ulocale = ULocale.forLocale(state.javaLocale);
-        return state.kind.getIterator(ulocale);
+        return state.granularity.getIterator(ulocale);
     }
 
-    public static Kind getKind(DynamicObject segmenterObj) {
+    public static Granularity getGranularity(DynamicObject segmenterObj) {
         InternalState state = getInternalState(segmenterObj);
-        return state.kind;
+        return state.granularity;
     }
 
     @TruffleBoundary
@@ -292,7 +300,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         Shape iteratorShape = ctx.createEmptyShape();
         iteratorShape = iteratorShape.addProperty(ITERATED_OBJECT_PROPERTY);
         iteratorShape = iteratorShape.addProperty(SEGMENTER_PROPERTY);
-        iteratorShape = iteratorShape.addProperty(ITER_KIND_PROPERTY);
+        iteratorShape = iteratorShape.addProperty(ITER_GRANULARITY_PROPERTY);
         iteratorShape = iteratorShape.addProperty(BREAK_TYPE_PROPERTY);
         iteratorShape = iteratorShape.addProperty(INDEX_PROPERTY);
         return iteratorShape;

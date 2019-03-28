@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
-import com.oracle.truffle.js.runtime.builtins.JSSegmenter.Kind;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter.Granularity;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SegmenterPrototypeBuiltins.SegmenterPrototype> {
@@ -145,12 +145,12 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
             assert JSSegmenter.isJSSegmenter(segmenter);
             BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter);
             icuIterator.setText(value);
-            Kind kind = JSSegmenter.getKind(segmenter);
+            Granularity granularity = JSSegmenter.getGranularity(segmenter);
             DynamicObject jsIterator = JSObject.create(context, JSSegmenter.createIteratorShape(context));
             JSObject.setPrototype(jsIterator, context.getRealm().getSegmentIteratorPrototype());
             JSSegmenter.ITERATED_OBJECT_PROPERTY.setInternal(jsIterator, value);
             JSSegmenter.SEGMENTER_PROPERTY.setInternal(jsIterator, icuIterator);
-            JSSegmenter.ITER_KIND_PROPERTY.setInternal(jsIterator, kind);
+            JSSegmenter.ITER_GRANULARITY_PROPERTY.setInternal(jsIterator, granularity);
             JSSegmenter.INDEX_PROPERTY.setInternal(jsIterator, 0);
             return jsIterator;
         }

@@ -110,7 +110,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
     public abstract static class SegmentIteratorOpNode extends JSBuiltinNode {
 
         @Child protected HasHiddenKeyCacheNode isSegmentIteratorNode;
-        @Child protected PropertyGetNode getSegmentIteratorKindNode;
+        @Child protected PropertyGetNode getSegmentIteratorGranularityNode;
         @Child protected PropertyGetNode getIteratedObjectNode;
         @Child protected PropertyGetNode getSegmenterNode;
         @Child protected PropertySetNode setBreakTypeNode;
@@ -118,8 +118,8 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
         public SegmentIteratorOpNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isSegmentIteratorNode = HasHiddenKeyCacheNode.create(JSSegmenter.SEGMENT_ITERATOR_KIND_ID);
-            this.getSegmentIteratorKindNode = PropertyGetNode.createGetHidden(JSSegmenter.SEGMENT_ITERATOR_KIND_ID, context);
+            this.isSegmentIteratorNode = HasHiddenKeyCacheNode.create(JSSegmenter.SEGMENT_ITERATOR_GRANULARITY_ID);
+            this.getSegmentIteratorGranularityNode = PropertyGetNode.createGetHidden(JSSegmenter.SEGMENT_ITERATOR_GRANULARITY_ID, context);
             this.getIteratedObjectNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.getSegmenterNode = PropertyGetNode.createGetHidden(JSSegmenter.SEGMENT_ITERATOR_SEGMENTER_ID, context);
             this.setIndexNode = PropertySetNode.createSetHidden(JSSegmenter.SEGMENT_ITERATOR_INDEX_ID,
@@ -149,8 +149,8 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
             BreakIterator icuIterator = (BreakIterator) getSegmenterNode.getValue(iterator);
-            JSSegmenter.Kind segmenterKind = (JSSegmenter.Kind) getSegmentIteratorKindNode.getValue(iterator);
-            DynamicObject nextValue = nextValue(iterator, (String) iteratedString, segmenterKind, icuIterator);
+            JSSegmenter.Granularity segmenterGranularity = (JSSegmenter.Granularity) getSegmentIteratorGranularityNode.getValue(iterator);
+            DynamicObject nextValue = nextValue(iterator, (String) iteratedString, segmenterGranularity, icuIterator);
             return createIterResultObjectNode.execute(frame, nextValue, nextValue == Undefined.instance);
         }
 
@@ -161,7 +161,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @TruffleBoundary
-        protected DynamicObject nextValue(DynamicObject iterator, String s, JSSegmenter.Kind segmenterKind, BreakIterator icuIterator) {
+        protected DynamicObject nextValue(DynamicObject iterator, String s, JSSegmenter.Granularity segmenterGranularity, BreakIterator icuIterator) {
 
             int startIndex = icuIterator.current();
             int endIndex = icuIterator.next();
@@ -173,7 +173,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             }
 
             String segment = s.substring(startIndex, endIndex);
-            String breakType = segmenterKind.getBreakType(icuIterator.getRuleStatus());
+            String breakType = segmenterGranularity.getBreakType(icuIterator.getRuleStatus());
 
             DynamicObject result = makeIterationResultValue(endIndex, segment, breakType);
 
@@ -219,9 +219,9 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
         private boolean advanceOp(DynamicObject iterator, int offset) {
             BreakIterator icuIterator = (BreakIterator) getSegmenterNode.getValue(iterator);
-            JSSegmenter.Kind segmenterKind = (JSSegmenter.Kind) getSegmentIteratorKindNode.getValue(iterator);
+            JSSegmenter.Granularity segmenterGranularity = (JSSegmenter.Granularity) getSegmentIteratorGranularityNode.getValue(iterator);
             int newIndex = doAdvanceOp(icuIterator, offset);
-            String breakType = segmenterKind.getBreakType(icuIterator.getRuleStatus());
+            String breakType = segmenterGranularity.getBreakType(icuIterator.getRuleStatus());
             setBreakTypeNode.setValue(iterator, breakType);
             setIndexNode.setValue(iterator, newIndex);
             return newIndex == BreakIterator.DONE;
