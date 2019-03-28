@@ -207,16 +207,14 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @SuppressWarnings("unused")
-        void doCheckOffsetRange(int offset, int length) {
+        void doCheckOffsetRange(long offset, int length) {
             throw Errors.shouldNotReachHere();
         }
 
-        private boolean checkRangeAndAdvanceOp(DynamicObject iterator, int offset) {
-            Object iteratedString = getIteratedObjectNode.getValue(iterator);
-            if (iteratedString instanceof String) {
-                doCheckOffsetRange(offset, ((String) iteratedString).length());
-            }
-            return advanceOp(iterator, offset);
+        private boolean checkRangeAndAdvanceOp(DynamicObject iterator, long offset) {
+            String iteratedString = (String) getIteratedObjectNode.getValue(iterator);
+            doCheckOffsetRange(offset, iteratedString.length());
+            return advanceOp(iterator, (int) offset);
         }
 
         private boolean advanceOp(DynamicObject iterator, int offset) {
@@ -231,7 +229,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization(guards = {"isSegmentIterator(iterator)", "!isUndefined(from)"})
         protected boolean doSegmentIteratorWithFrom(DynamicObject iterator, Object from, @Cached("create()") JSToIndexNode toIndexNode) {
-            return checkRangeAndAdvanceOp(iterator, (int) toIndexNode.executeLong(from));
+            return checkRangeAndAdvanceOp(iterator, toIndexNode.executeLong(from));
         }
 
         @Specialization(guards = {"isSegmentIterator(iterator)", "isUndefined(from)"})
@@ -258,7 +256,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Override
-        final void doCheckOffsetRange(int offset, int length) {
+        final void doCheckOffsetRange(long offset, int length) {
             if (offset == 0 || offset > length) {
                 throw Errors.createRangeErrorFormat("Offset out of bounds in Intl.Segment iterator %s method.", this, "preceding");
             }
@@ -278,7 +276,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Override
-        final void doCheckOffsetRange(int offset, int length) {
+        final void doCheckOffsetRange(long offset, int length) {
             if (offset >= length) {
                 throw Errors.createRangeErrorFormat("Offset out of bounds in Intl.Segment iterator %s method.", this, "following");
             }
