@@ -114,7 +114,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
     public enum Kind implements IcuIteratorHelper {
 
-        GRAPHEME(1) {
+        GRAPHEME() {
             @Override
             @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
@@ -126,7 +126,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
                 return null;
             }
         },
-        WORD(2) {
+        WORD() {
             @Override
             @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
@@ -138,7 +138,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
                 return icuStatus == BreakIterator.WORD_NONE ? IntlUtil.NONE : IntlUtil.WORD;
             }
         },
-        SENTENCE(3) {
+        SENTENCE() {
             @Override
             @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
@@ -151,15 +151,6 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
             }
         };
 
-        int v;
-
-        Kind(int v) {
-            this.v = v;
-        }
-
-        int getValue() {
-            return v;
-        }
     }
 
     public static final JSSegmenter INSTANCE = new JSSegmenter();
