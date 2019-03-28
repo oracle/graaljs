@@ -356,6 +356,13 @@ public class JSRealm {
             this.simdTypeConstructors = null;
         }
 
+        this.iteratorPrototype = createIteratorPrototype();
+        this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
+        this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
+        this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
+        this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
+        this.regExpStringIteratorPrototype = JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
+
         this.collatorConstructor = JSCollator.createConstructor(this);
         this.numberFormatConstructor = JSNumberFormat.createConstructor(this);
         this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
@@ -364,13 +371,6 @@ public class JSRealm {
         this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
         this.segmenterConstructor = JSSegmenter.createConstructor(this);
         this.segmentIteratorPrototype = JSSegmenter.createSegmentIteratorPrototype(context, this);
-
-        this.iteratorPrototype = createIteratorPrototype();
-        this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
-        this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
-        this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
-        this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
-        this.regExpStringIteratorPrototype = JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
 
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
         this.generatorObjectPrototype = es6 ? (DynamicObject) generatorFunctionConstructor.getPrototype().get(JSObject.PROTOTYPE, null) : null;
