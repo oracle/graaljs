@@ -47,9 +47,6 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
@@ -57,9 +54,12 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
 
 public final class JSContextOptions {
     @CompilationFinal private ParserOptions parserOptions;
@@ -68,18 +68,25 @@ public final class JSContextOptions {
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
     @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "ECMAScript Version.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(
-                    JSTruffleOptions.MaxECMAScriptVersion,
+                    JSTruffleOptions.LatestECMAScriptVersion,
                     new OptionType<>(
                                     "ecmascript-version",
-                                    JSTruffleOptions.MaxECMAScriptVersion,
+                                    JSTruffleOptions.LatestECMAScriptVersion,
                                     new Function<String, Integer>() {
 
                                         @Override
                                         public Integer apply(String t) {
                                             try {
                                                 int version = Integer.parseInt(t);
+
+                                                int minYearVersion = JSTruffleOptions.ECMAScript6 + JSTruffleOptions.ECMAScriptNumberYearDelta;
+                                                int maxYearVersion = JSTruffleOptions.MaxECMAScriptVersion + JSTruffleOptions.ECMAScriptNumberYearDelta;
+                                                if (minYearVersion <= version && version <= maxYearVersion) {
+                                                    version -= JSTruffleOptions.ECMAScriptNumberYearDelta;
+                                                }
                                                 if (version < 5 || version > JSTruffleOptions.MaxECMAScriptVersion) {
-                                                    throw new IllegalArgumentException("Supported values are between 5 and " + JSTruffleOptions.MaxECMAScriptVersion + ".");
+                                                    throw new IllegalArgumentException(
+                                                                    "Supported values are 5 to " + JSTruffleOptions.MaxECMAScriptVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
                                                 }
                                                 return version;
                                             } catch (NumberFormatException e) {

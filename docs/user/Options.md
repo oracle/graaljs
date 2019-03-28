@@ -66,19 +66,20 @@ See [ScriptEngine.md](ScriptEngine.md) on how to use experimental options with a
 
 Stability: stable
 
-Emulate a specific version of the ECMAScript specification.
-Expects an integer value (6-10), default is the latest (draft) version of the specification available.
-Graal.js implements features from the latest specification and thus sets the defaults to `latest`.
+Provides compatibility to a specific version of the ECMAScript specification.
+Expects an integer value, where both the counting version numbers (`5` to `11`) and the publication years (starting from `2015`) are supported.
+The default is the latest finalized version of the specification, currently `ECMAScript 2019`.
+Graal.js implements some features of the current draft specification if you explicitly select that version.
 For production settings, it is recommended to set the `ecmascript-version` to an existing, finalized version of the specification.
-The versions are numbered with ascending integer values, with `5` for ECMAScript 5.x, `6` for ECMAScript 2015 (formerly ECMAScript 6), and counting from there.
 
+Available versions:
 * `5` for ECMAScript 5.x
-* `6` for ECMAScript 2015
-* `7` for ECMAScript 2016
-* `8` for ECMAScript 2017
-* `9` for ECMAScript 2018
-* `10` for ECMAScript 2019
-* `11` for ECMAScript 2020 (currently in draft stage, not fully supported by Graal JavaScript)
+* `6` or `2015` for ECMAScript 2015
+* `7` or `2016` for ECMAScript 2016
+* `8` or `2017` for ECMAScript 2017
+* `9` or `2018` for ECMAScript 2018
+* `10` or `2019` for ECMAScript 2019 (latest finalized version of the specification)
+* `11` or `2020` for ECMAScript 2020 (currently in draft stage, not fully supported by Graal JavaScript)
 
 ### intl-402
 

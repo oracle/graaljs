@@ -236,7 +236,7 @@ public final class TestFile {
     public static final class EcmaVersion {
 
         public static final int MIN_VERSION = 5;
-        public static final int MAX_VERSION = JSTruffleOptions.MaxECMAScriptVersion;
+        public static final int MAX_VERSION = JSTruffleOptions.LatestECMAScriptVersion;
 
         private final int[] allVersions;
         private final int[] versions;
