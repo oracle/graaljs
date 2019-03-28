@@ -70,10 +70,6 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
         return JSForeignToJSTypeNodeGen.create();
     }
 
-    public static JSForeignToJSTypeNode getUncached() {
-        return JSForeignToJSTypeNodeGen.getUncached();
-    }
-
     @Specialization
     public int fromInt(int value) {
         return value;

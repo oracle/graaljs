@@ -123,8 +123,4 @@ public abstract class IsCallableNode extends JavaScriptBaseNode {
     public static IsCallableNode create() {
         return IsCallableNodeGen.create();
     }
-
-    public static IsCallableNode getUncached() {
-        return IsCallableNodeGen.getUncached();
-    }
 }
