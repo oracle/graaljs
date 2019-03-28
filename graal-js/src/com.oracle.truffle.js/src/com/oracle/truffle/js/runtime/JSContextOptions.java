@@ -237,7 +237,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
 
     public static final String POLYGLOT_BUILTIN_NAME = JS_OPTION_PREFIX + "polyglot-builtin";
-    @Option(name = POLYGLOT_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Polyglot' global property.") //
+    @Option(name = POLYGLOT_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Polyglot' global property.", deprecated = true) //
     public static final OptionKey<Boolean> POLYGLOT_BUILTIN = new OptionKey<>(true);
 
     public static final String POLYGLOT_EVALFILE_NAME = JS_OPTION_PREFIX + "polyglot-evalfile";
