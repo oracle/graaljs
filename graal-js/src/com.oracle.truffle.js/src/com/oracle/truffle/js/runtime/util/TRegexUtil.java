@@ -105,6 +105,8 @@ public final class TRegexUtil {
         }
     }
 
+    private static final String NUMBER_OF_REGEX_RESULT_TYPES = "9";
+
     public static final class Constants {
         public static final int CAPTURE_GROUP_NO_MATCH = -1;
     }
@@ -137,7 +139,7 @@ public final class TRegexUtil {
 
         public abstract boolean execute(Object obj, String key);
 
-        @Specialization(limit = "3")
+        @Specialization(limit = NUMBER_OF_REGEX_RESULT_TYPES)
         static boolean read(Object obj, String key, @CachedLibrary("obj") InteropLibrary objs) {
             return objs.isMemberReadable(obj, key);
         }
@@ -152,7 +154,7 @@ public final class TRegexUtil {
 
         public abstract Object execute(Object obj, String key);
 
-        @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = "3")
+        @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = NUMBER_OF_REGEX_RESULT_TYPES)
         static Object read(Object obj, String key, @CachedLibrary("obj") InteropLibrary objs) {
             try {
                 return objs.readMember(obj, key);
@@ -176,7 +178,7 @@ public final class TRegexUtil {
 
         public abstract int execute(Object obj, String key);
 
-        @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = "3")
+        @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = NUMBER_OF_REGEX_RESULT_TYPES)
         static int read(Object obj, String key, @Cached InteropToIntNode coerceNode, @CachedLibrary("obj") InteropLibrary objs) {
             try {
                 return coerceNode.execute(objs.readMember(obj, key));
@@ -200,7 +202,7 @@ public final class TRegexUtil {
 
         public abstract boolean execute(Object obj, String key);
 
-        @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = "3")
+        @Specialization(guards = "objs.isMemberReadable(obj, key)", limit = NUMBER_OF_REGEX_RESULT_TYPES)
         static boolean read(Object obj, String key, @Cached InteropToBooleanNode coerceNode, @CachedLibrary("obj") InteropLibrary objs) {
             try {
                 return coerceNode.execute(objs.readMember(obj, key));
@@ -333,7 +335,7 @@ public final class TRegexUtil {
 
         public abstract int execute(Object regexResult, String method, int groupNumber);
 
-        @Specialization(guards = "objs.isMemberInvocable(regexResult, method)", limit = "3")
+        @Specialization(guards = "objs.isMemberInvocable(regexResult, method)", limit = NUMBER_OF_REGEX_RESULT_TYPES)
         static int exec(Object regexResult, String method, int groupNumber,
                         @CachedLibrary("regexResult") InteropLibrary objs,
                         @Cached InteropToIntNode toIntNode) {
