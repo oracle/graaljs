@@ -250,7 +250,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
             }
             CallTarget constructTarget;
             constructTarget = Truffle.getRuntime().createCallTarget(constructRoot);
-            constructTarget = functionData.setConstructTarget(constructTarget);
+            functionData.setConstructTarget(constructTarget);
         } else if (target == JSFunctionData.Target.ConstructNewTarget) {
             JavaScriptRootNode constructNewTargetRoot;
             if (builtin.hasNewTargetConstructor()) {

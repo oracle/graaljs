@@ -121,7 +121,8 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
             AsyncGeneratorRequest next = queue.peekFirst();
             if (abruptProf.profile(next.isAbruptCompletion())) {
                 if (state == AsyncGeneratorState.SuspendedStart) {
-                    setGeneratorStateNode.setValue(generator, state = AsyncGeneratorState.Completed);
+                    state = AsyncGeneratorState.Completed;
+                    setGeneratorStateNode.setValue(generator, state);
                 }
                 if (state == AsyncGeneratorState.Completed) {
                     if (next.isReturn()) {
@@ -147,7 +148,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                 continue; // Perform ! AsyncGeneratorResumeNext(generator).
             }
             assert state == AsyncGeneratorState.SuspendedStart || state == AsyncGeneratorState.SuspendedYield;
-            setGeneratorStateNode.setValue(generator, state = AsyncGeneratorState.Executing);
+            setGeneratorStateNode.setValue(generator, AsyncGeneratorState.Executing);
             return performResumeNext(generator, next.getCompletion());
         }
     }

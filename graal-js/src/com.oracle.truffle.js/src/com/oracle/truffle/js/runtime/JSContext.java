@@ -652,12 +652,11 @@ public class JSContext {
     }
 
     private LocalTimeZoneHolder getLocalTimeZoneHolder() {
-        if (localTimeZoneHolder != null) {
-            return localTimeZoneHolder;
-        } else {
+        if (localTimeZoneHolder == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return localTimeZoneHolder = new LocalTimeZoneHolder();
+            localTimeZoneHolder = new LocalTimeZoneHolder();
         }
+        return localTimeZoneHolder;
     }
 
     public final ZoneId getLocalTimeZoneId() {
@@ -1034,10 +1033,10 @@ public class JSContext {
     private synchronized Map<Shape, JSShapeData> createShapeDataMap() {
         Map<Shape, JSShapeData> map = shapeDataMap;
         if (map == null) {
-            return shapeDataMap = new WeakHashMap<>();
-        } else {
-            return map;
+            map = new WeakHashMap<>();
+            shapeDataMap = map;
         }
+        return map;
     }
 
     public JavaScriptLanguage getLanguage() {

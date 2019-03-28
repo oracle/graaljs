@@ -989,7 +989,6 @@ public final class JSRuntime {
             if (fillUndefinedArrayRest(sb, length, prevArrayIndex, propertyCount > 0)) {
                 propertyCount++;
             }
-            prevArrayIndex = Math.max(prevArrayIndex, length);
         }
         if (internalKeys != null) {
             assert internalValues != null;

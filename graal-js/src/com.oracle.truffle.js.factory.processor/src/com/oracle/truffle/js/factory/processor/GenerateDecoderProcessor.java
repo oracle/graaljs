@@ -93,7 +93,8 @@ public class GenerateDecoderProcessor extends AbstractFactoryProcessor {
         if (objectTypeMirror != null) {
             return objectTypeMirror;
         }
-        return objectTypeMirror = processingEnv.getElementUtils().getTypeElement("java.lang.Object").asType();
+        objectTypeMirror = processingEnv.getElementUtils().getTypeElement("java.lang.Object").asType();
+        return objectTypeMirror;
     }
 
     private void processElement(TypeElement element) {

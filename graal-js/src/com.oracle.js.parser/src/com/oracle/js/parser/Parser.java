@@ -2216,14 +2216,16 @@ loop:
             switch (type) {
             case VAR:
                 // Var declaration captured in for outer block.
-                varDeclList = variableDeclarationList(varType = type, false, forStart);
+                varType = type;
+                varDeclList = variableDeclarationList(varType, false, forStart);
                 break;
             case SEMICOLON:
                 break;
             default:
                 if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(true) || type == CONST)) {
                     // LET/CONST declaration captured in container block created above.
-                    varDeclList = variableDeclarationList(varType = type, false, forStart);
+                    varType = type;
+                    varDeclList = variableDeclarationList(varType, false, forStart);
                     if (varType == LET) {
                         // Per-iteration scope not needed if BindingPattern is empty
                         if (!forNode.getStatements().isEmpty()) {
@@ -2234,7 +2236,8 @@ loop:
                 }
                 if (env.constAsVar && type == CONST) {
                     // Var declaration captured in for outer block.
-                    varDeclList = variableDeclarationList(varType = TokenType.VAR, false, forStart);
+                    varType = TokenType.VAR;
+                    varDeclList = variableDeclarationList(varType, false, forStart);
                     break;
                 }
 

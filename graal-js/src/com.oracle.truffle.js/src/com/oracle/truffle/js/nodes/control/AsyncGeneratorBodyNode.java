@@ -58,7 +58,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode.SpecializedNewObjectNode;
@@ -76,7 +75,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async generator functions in JavaScript.")
     private static final class AsyncGeneratorRootNode extends JavaScriptRootNode {
-        @Child private PropertyGetNode getGeneratorState;
         @Child private PropertySetNode setGeneratorState;
         @Child private JavaScriptNode functionBody;
         @Child private JSWriteFrameSlotNode writeYieldValue;
@@ -90,7 +88,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
         AsyncGeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection) {
             super(context.getLanguage(), functionSourceSection, null);
-            this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
             this.functionBody = functionBody;
             this.writeYieldValue = writeYieldValueNode;
@@ -108,20 +105,19 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             Completion completion = (Completion) arguments[2];
 
             for (;;) {
-                AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorState.getValue(generatorObject);
-
                 // State must be Executing when called from AsyncGeneratorResumeNext.
                 // State can be Executing or SuspendedYield when resuming from Await.
-                assert state == AsyncGeneratorState.Executing || state == AsyncGeneratorState.SuspendedYield : state;
+                assert generatorObject.get(JSFunction.ASYNC_GENERATOR_STATE_ID) == AsyncGeneratorState.Executing ||
+                                generatorObject.get(JSFunction.ASYNC_GENERATOR_STATE_ID) == AsyncGeneratorState.SuspendedYield;
                 writeYieldValue.executeWrite(generatorFrame, completion);
 
                 try {
                     Object result = functionBody.execute(generatorFrame);
-                    setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.Completed);
+                    setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
                     asyncGeneratorResolveNode.performResolve(frame, generatorObject, result, true);
                 } catch (YieldException e) {
                     if (e.isYield()) {
-                        setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.SuspendedYield);
+                        setGeneratorState.setValue(generatorObject, AsyncGeneratorState.SuspendedYield);
                         asyncGeneratorResolveNode.performResolve(frame, generatorObject, e.getResult(), false);
                     } else {
                         assert e.isAwait();
@@ -129,7 +125,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                     }
                 } catch (Throwable e) {
                     if (shouldCatch(e)) {
-                        setGeneratorState.setValue(generatorObject, state = AsyncGeneratorState.Completed);
+                        setGeneratorState.setValue(generatorObject, AsyncGeneratorState.Completed);
                         Object reason = getErrorObjectNode.execute(e);
                         asyncGeneratorRejectNode.performReject(generatorFrame, generatorObject, reason);
                     } else {
