@@ -67,7 +67,11 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
@@ -135,7 +139,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 
 public class JSContext {
@@ -981,7 +984,12 @@ public class JSContext {
     private Object createTRegexEngine() {
         TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").build()).call();
         String regexOptions = createRegexEngineOptions();
-        return TRegexUtil.CreateRegexEngineNode.getUncached().execute(regexEngineBuilder, regexOptions, new JoniRegexEngine(null));
+        JoniRegexEngine fallbackCompiler = new JoniRegexEngine(null);
+        try {
+            return InteropLibrary.getFactory().getUncached().execute(regexEngineBuilder, regexOptions, fallbackCompiler);
+        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+            throw Errors.shouldNotReachHere(e);
+        }
     }
 
     private static class LocalTimeZoneHolder {
