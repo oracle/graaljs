@@ -206,136 +206,48 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "intl/segmenter/constructor-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/constructor.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/resolved-options.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-iterator-breakType.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-iterator-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-iterator-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-iterator-ownPropertyDescriptor.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/segmenter/segment-iterator-position.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-iterator-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/segmenter/segment-iterator.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line-following-modes.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-word-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-word-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-word-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-word-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-word.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/subclassing.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/supported-locale.js",
     "status" : "FAIL",

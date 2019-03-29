@@ -2164,97 +2164,33 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/locales-valid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/newtarget-undefined.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-granularity-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl402/Segmenter/constructor/constructor/options-granularity-valid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/constructor/constructor/options-lineBreakStyle-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/constructor/constructor/options-lineBreakStyle-valid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-localeMatcher-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/constructor/constructor/options-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/constructor/constructor/options-throwing-getters.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/constructor/constructor/options-toobject-prototype.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-toobject.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/constructor/constructor/options-valid-combinations.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/subclassing.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/length.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/prototype.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/basic.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/branding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/length.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/locales-empty.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/locales-invalid.js",
     "status" : "FAIL",
@@ -2264,225 +2200,45 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/options-localeMatcher-invalid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/options-null.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/options-toobject.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/options-undefined.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/result-type.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl402/Segmenter/instance/extensibility.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/instance/prototype.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/iterator/branding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/iterator/breakType.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/iterator/following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
     "filePath" : "intl402/Segmenter/iterator/granularity.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/iterator/next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/iterator/position.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/iterator/preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/iterator/prototype.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/constructor/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/resolvedOptions/branding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/resolvedOptions/caching.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/resolvedOptions/length.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/resolvedOptions/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/prototype/resolvedOptions/order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/resolvedOptions/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/prototype/resolvedOptions/type-with-lbs.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/resolvedOptions/type-without-lbs.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/branding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/length.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-grapheme-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-grapheme-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-grapheme-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-grapheme-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-grapheme.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/prototype/segment/segment-line-following-modes.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
     "filePath" : "intl402/Segmenter/prototype/segment/segment-line-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/prototype/segment/segment-line-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/prototype/segment/segment-line-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/prototype/segment/segment-line-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/Segmenter/prototype/segment/segment-line.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-sentence-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-sentence-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-sentence-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-sentence-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-sentence.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-tostring.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-word-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-word-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-word-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-word-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-word.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/toStringTag/toString.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/toStringTag/toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/supportedLocalesOf-consistent-with-resolvedOptions.js",
     "status" : "FAIL",

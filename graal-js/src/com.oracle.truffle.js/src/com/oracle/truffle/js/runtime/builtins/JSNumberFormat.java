@@ -756,8 +756,8 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     private static DynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {
         CallTarget ct = createGetFormatCallTarget(realm, context);
         JSFunctionData fd = JSFunctionData.create(context, ct, ct, 0, "get format", false, false, false, true);
-        DynamicObject compareFunction = JSFunction.create(realm, fd);
-        return compareFunction;
+        DynamicObject formatFunction = JSFunction.create(realm, fd);
+        return formatFunction;
     }
 
     @Override

@@ -72,6 +72,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -307,6 +308,14 @@ public final class JSGuards {
 
     public static boolean isJSRelativeTimeFormat(Object value) {
         return JSRelativeTimeFormat.isJSRelativeTimeFormat(value);
+    }
+
+    public static boolean isJSSegmenter(DynamicObject value) {
+        return JSSegmenter.isJSSegmenter(value);
+    }
+
+    public static boolean isJSSegmenter(Object value) {
+        return JSSegmenter.isJSSegmenter(value);
     }
 
     public static boolean isNumber(Object operand) {
