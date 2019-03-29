@@ -114,7 +114,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSMetaObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -531,41 +530,26 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         String type;
         String subtype = null;
         String className = null;
-        String description;
 
         if (value instanceof JSMetaObject) {
             return "metaobject";
         } else if (JSObject.isJSObject(value)) {
             DynamicObject obj = (DynamicObject) value;
             type = "object";
-            description = JSObject.safeToString(obj);
             className = obj == Undefined.instance ? "undefined" : JSRuntime.getConstructorName(obj);
 
             if (JSFunction.isJSFunction(obj)) {
-                DynamicObject func = obj;
-                if (JSFunction.isBoundFunction(func)) {
-                    func = JSFunction.getBoundTargetFunction(func);
-                }
-                description = JSObject.safeToString(func);
                 type = "function";
             } else if (JSArray.isJSArray(obj)) {
                 subtype = "array";
-                description = JSArray.CLASS_NAME + "[" + JSArray.arrayGetLength(obj) + "]";
             } else if (JSDate.isJSDate(obj)) {
                 subtype = "date";
-                description = JSDate.formatUTC(JSDate.getJSDateUTCFormat(), JSDate.getTimeMillisField(obj));
             } else if (JSSymbol.isJSSymbol(obj)) {
-                Symbol sym = JSSymbol.getSymbolData(obj);
                 type = "symbol";
-                description = "Symbol(" + sym.getName() + ")";
             } else if (value == Undefined.instance) {
                 type = "undefined";
-                description = "undefined";
             } else if (value == Null.instance) {
                 subtype = "null";
-                description = "null";
-            } else if (JSUserObject.isJSUserObject(obj)) {
-                description = className;
             }
         } else if (value instanceof InteropBoundFunction) {
             return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());
@@ -579,21 +563,14 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             }
             type = "object";
             className = "Foreign";
-            description = "foreign TruffleObject";
         } else if (value == null) {
             type = "null";
-            description = "null";
         } else {
             // primitive
             type = JSRuntime.typeof(value);
-            if (value instanceof Symbol) {
-                description = "Symbol(" + ((Symbol) value).getName() + ")";
-            } else {
-                description = toString(realm, value);
-            }
         }
 
-        return new JSMetaObject(type, subtype, className, description, realm.getEnv());
+        return new JSMetaObject(type, subtype, className, realm.getEnv());
     }
 
     @Override
