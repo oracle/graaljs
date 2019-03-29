@@ -46,7 +46,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -65,6 +65,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
 import com.oracle.truffle.js.test.external.suite.TestFile;
 import com.oracle.truffle.js.test.external.suite.TestRunnable;
@@ -77,14 +78,14 @@ public class Test262Runnable extends TestRunnable {
     private static final Pattern NEGATIVE_TYPE_PREFIX = Pattern.compile("^[\t ]*type: ");
     private static final String FLAGS_PREFIX = "flags: ";
     private static final String INCLUDES_PREFIX = "includes: ";
+    private static final String FEATURES_PREFIX = "features: ";
     private static final String ONLY_STRICT_FLAG = "onlyStrict";
     private static final String MODULE_FLAG = "module";
     private static final String CAN_BLOCK_IS_FALSE_FLAG = "CanBlockIsFalse";
     private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
+    private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(", ");
-    private static final Pattern ECMA_VERSION_PATTERN = Pattern.compile("^\\W*es(?<version>\\d+)id:");
-    private static final String PENDING_ECMA_VERSION_LINE = "esid: pending";
 
     private static final Map<String, String> commonOptions;
     static {
@@ -92,6 +93,119 @@ public class Test262Runnable extends TestRunnable {
         options.put(JSContextOptions.INTL_402_NAME, "true");
         commonOptions = Collections.unmodifiableMap(options);
     }
+
+    private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Array.prototype.flat",
+                    "Array.prototype.flatMap",
+                    "Array.prototype.values",
+                    "ArrayBuffer",
+                    "Atomics",
+                    "BigInt",
+                    "DataView",
+                    "DataView.prototype.getInt16",
+                    "DataView.prototype.getInt32",
+                    "DataView.prototype.getInt8",
+                    "DataView.prototype.getFloat32",
+                    "DataView.prototype.getFloat64",
+                    "DataView.prototype.getUint16",
+                    "DataView.prototype.getUint32",
+                    "DataView.prototype.setUint8",
+                    "Float32Array",
+                    "Float64Array",
+                    "Int32Array",
+                    "Int8Array",
+                    "Intl.ListFormat",
+                    "Intl.NumberFormat-unified",
+                    "Intl.RelativeTimeFormat",
+                    "Intl.Segmenter",
+                    "Map",
+                    "Object.fromEntries",
+                    "Object.is",
+                    "Promise.prototype.finally",
+                    "Proxy",
+                    "Reflect",
+                    "Reflect.construct",
+                    "Reflect.set",
+                    "Reflect.setPrototypeOf",
+                    "Set",
+                    "SharedArrayBuffer",
+                    "String.fromCodePoint",
+                    "String.prototype.endsWith",
+                    "String.prototype.includes",
+                    "String.prototype.matchAll",
+                    "String.prototype.trimStart",
+                    "String.prototype.trimEnd",
+                    "Symbol",
+                    "Symbol.asyncIterator",
+                    "Symbol.hasInstance",
+                    "Symbol.isConcatSpreadable",
+                    "Symbol.iterator",
+                    "Symbol.match",
+                    "Symbol.matchAll",
+                    "Symbol.prototype.description",
+                    "Symbol.replace",
+                    "Symbol.search",
+                    "Symbol.species",
+                    "Symbol.split",
+                    "Symbol.toPrimitive",
+                    "Symbol.toStringTag",
+                    "Symbol.unscopables",
+                    "TypedArray",
+                    "Uint16Array",
+                    "Uint8Array",
+                    "Uint8ClampedArray",
+                    "WeakSet",
+                    "WeakMap",
+
+                    "arrow-function",
+                    "async-functions",
+                    "async-iteration",
+                    "caller",
+                    "class",
+                    "computed-property-names",
+                    "const",
+                    "cross-realm",
+                    "default-parameters",
+                    "destructuring-assignment",
+                    "destructuring-binding",
+                    "dynamic-import",
+                    "export-star-as-namespace-from-module",
+                    "for-of",
+                    "generators",
+                    "globalThis",
+                    "import.meta",
+                    "json-superset",
+                    "let",
+                    "new.target",
+                    "object-rest",
+                    "object-spread",
+                    "optional-catch-binding",
+                    "regexp-dotall",
+                    "regexp-lookbehind",
+                    "regexp-named-groups",
+                    "regexp-unicode-property-escapes",
+                    "string-trimming",
+                    "super",
+                    "template",
+                    "u180e",
+                    "well-formed-json-stringify",
+    }));
+    private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Intl.Locale",
+                    "IsHTMLDDA",
+                    "class-fields-private",
+                    "class-fields-public",
+                    "class-methods-private",
+                    "class-static-fields-private",
+                    "class-static-fields-public",
+                    "class-static-methods-private",
+                    "numeric-separator-literal",
+                    "tail-call-optimization"
+    }));
+    private static final Set<String> ES2020_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "dynamic-import",
+                    "import.meta"
+    }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
@@ -125,14 +239,6 @@ public class Test262Runnable extends TestRunnable {
             }
         }
 
-        // ecma versions
-        TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
-        if (ecmaVersion == null) {
-            int[] detectedVersions = detectScriptEcmaVersions(scriptCodeList);
-            assert detectedVersions.length != 0 : testFile.getFilePath();
-            ecmaVersion = TestFile.EcmaVersion.forVersions(detectedVersions);
-        }
-
         Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
 
         final Map<String, String> options;
@@ -143,8 +249,30 @@ public class Test262Runnable extends TestRunnable {
             options = commonOptions;
         }
 
-        // now run it
-        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, options)));
+        boolean supported = true;
+        boolean requiresES2020 = false;
+        for (String feature : getFeatures(scriptCodeList)) {
+            if (SUPPORTED_FEATURES.contains(feature)) {
+                if (ES2020_FEATURES.contains(feature)) {
+                    requiresES2020 = true;
+                }
+            } else {
+                assert UNSUPPORTED_FEATURES.contains(feature) : feature;
+                supported = false;
+            }
+        }
+
+        TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
+        if (ecmaVersion == null) {
+            int version = requiresES2020 ? JSTruffleOptions.ECMAScript2020 : JSTruffleOptions.LatestECMAScriptVersion;
+            ecmaVersion = TestFile.EcmaVersion.forVersions(version);
+        }
+
+        if (supported) {
+            testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, options)));
+        } else {
+            testFile.setStatus(TestFile.Status.SKIP);
+        }
     }
 
     private TestFile.Result runInternal(int ecmaVersion, File file, org.graalvm.polyglot.Source testSource, boolean negative, boolean asyncTest, String negativeExpectedMessage,
@@ -227,37 +355,6 @@ public class Test262Runnable extends TestRunnable {
         return testResult;
     }
 
-    private int[] detectScriptEcmaVersions(List<String> scriptCodeList) {
-        List<String> matches = new ArrayList<>();
-        for (String line : scriptCodeList) {
-            if (line.endsWith("---*/")) {
-                break;
-            }
-            if (line.equals(PENDING_ECMA_VERSION_LINE)) {
-                matches.add(PENDING_ECMA_VERSION_LINE);
-            } else {
-                Matcher matcher = ECMA_VERSION_PATTERN.matcher(line);
-                if (matcher.find()) {
-                    matches.add(matcher.group("version"));
-                }
-            }
-        }
-        assert matches.size() == new HashSet<>(matches).size() : testFile.getFilePath() + ": duplicated versions " + matches;
-        if (matches.isEmpty()) {
-            return new int[]{TestFile.EcmaVersion.MAX_VERSION};
-        }
-        int[] versions = new int[matches.size()];
-        for (int i = 0; i < matches.size(); i++) {
-            String match = matches.get(i);
-            if (match.equals(PENDING_ECMA_VERSION_LINE)) {
-                versions[i] = TestFile.EcmaVersion.MAX_VERSION;
-            } else {
-                versions[i] = Integer.parseInt(match);
-            }
-        }
-        return versions;
-    }
-
     private static Source createSource(File testFile, String code, boolean module) {
         Source.Builder builder = Source.newBuilder("js", testFile).content(code);
         if (module) {
@@ -318,6 +415,10 @@ public class Test262Runnable extends TestRunnable {
             }
         }
         return includes;
+    }
+
+    private static Set<String> getFeatures(List<String> scriptCode) {
+        return getStrings(scriptCode, FEATURES_PREFIX, FEATURES_PATTERN).collect(Collectors.toSet());
     }
 
     private static boolean isAsyncTest(List<String> scriptCodeList) {
