@@ -47,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -77,11 +78,13 @@ public class Test262Runnable extends TestRunnable {
     private static final Pattern NEGATIVE_TYPE_PREFIX = Pattern.compile("^[\t ]*type: ");
     private static final String FLAGS_PREFIX = "flags: ";
     private static final String INCLUDES_PREFIX = "includes: ";
+    private static final String FEATURES_PREFIX = "features: ";
     private static final String ONLY_STRICT_FLAG = "onlyStrict";
     private static final String MODULE_FLAG = "module";
     private static final String CAN_BLOCK_IS_FALSE_FLAG = "CanBlockIsFalse";
     private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
+    private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(", ");
     private static final Pattern ECMA_VERSION_PATTERN = Pattern.compile("^\\W*es(?<version>\\d+)id:");
     private static final String PENDING_ECMA_VERSION_LINE = "esid: pending";
@@ -92,6 +95,115 @@ public class Test262Runnable extends TestRunnable {
         options.put(JSContextOptions.INTL_402_NAME, "true");
         commonOptions = Collections.unmodifiableMap(options);
     }
+
+    private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Array.prototype.flat",
+                    "Array.prototype.flatMap",
+                    "Array.prototype.values",
+                    "ArrayBuffer",
+                    "Atomics",
+                    "BigInt",
+                    "DataView",
+                    "DataView.prototype.getInt16",
+                    "DataView.prototype.getInt32",
+                    "DataView.prototype.getInt8",
+                    "DataView.prototype.getFloat32",
+                    "DataView.prototype.getFloat64",
+                    "DataView.prototype.getUint16",
+                    "DataView.prototype.getUint32",
+                    "DataView.prototype.setUint8",
+                    "Float32Array",
+                    "Float64Array",
+                    "Int32Array",
+                    "Int8Array",
+                    "Intl.ListFormat",
+                    "Intl.NumberFormat-unified",
+                    "Intl.RelativeTimeFormat",
+                    "Intl.Segmenter",
+                    "Map",
+                    "Object.fromEntries",
+                    "Object.is",
+                    "Promise.prototype.finally",
+                    "Proxy",
+                    "Reflect",
+                    "Reflect.construct",
+                    "Reflect.set",
+                    "Reflect.setPrototypeOf",
+                    "Set",
+                    "SharedArrayBuffer",
+                    "String.fromCodePoint",
+                    "String.prototype.endsWith",
+                    "String.prototype.includes",
+                    "String.prototype.matchAll",
+                    "String.prototype.trimStart",
+                    "String.prototype.trimEnd",
+                    "Symbol",
+                    "Symbol.asyncIterator",
+                    "Symbol.hasInstance",
+                    "Symbol.isConcatSpreadable",
+                    "Symbol.iterator",
+                    "Symbol.match",
+                    "Symbol.matchAll",
+                    "Symbol.prototype.description",
+                    "Symbol.replace",
+                    "Symbol.search",
+                    "Symbol.species",
+                    "Symbol.split",
+                    "Symbol.toPrimitive",
+                    "Symbol.toStringTag",
+                    "Symbol.unscopables",
+                    "TypedArray",
+                    "Uint16Array",
+                    "Uint8Array",
+                    "Uint8ClampedArray",
+                    "WeakSet",
+                    "WeakMap",
+
+                    "arrow-function",
+                    "async-functions",
+                    "async-iteration",
+                    "caller",
+                    "class",
+                    "computed-property-names",
+                    "const",
+                    "cross-realm",
+                    "default-parameters",
+                    "destructuring-assignment",
+                    "destructuring-binding",
+                    "dynamic-import",
+                    "export-star-as-namespace-from-module",
+                    "for-of",
+                    "generators",
+                    "globalThis",
+                    "import.meta",
+                    "json-superset",
+                    "let",
+                    "new.target",
+                    "object-rest",
+                    "object-spread",
+                    "optional-catch-binding",
+                    "regexp-dotall",
+                    "regexp-lookbehind",
+                    "regexp-named-groups",
+                    "regexp-unicode-property-escapes",
+                    "string-trimming",
+                    "super",
+                    "template",
+                    "u180e",
+                    "well-formed-json-stringify",
+    }));
+    private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Intl.Locale",
+                    "IsHTMLDDA",
+                    "class-fields-private",
+                    "class-fields-public",
+                    "class-methods-private",
+                    "class-static-fields-private",
+                    "class-static-fields-public",
+                    "class-static-methods-private",
+                    "numeric-separator-literal",
+                    "tail-call-optimization"
+    }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
@@ -143,8 +255,19 @@ public class Test262Runnable extends TestRunnable {
             options = commonOptions;
         }
 
-        // now run it
-        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, options)));
+        boolean supported = true;
+        for (String feature : getFeatures(scriptCodeList)) {
+            if (!SUPPORTED_FEATURES.contains(feature)) {
+                assert UNSUPPORTED_FEATURES.contains(feature) : feature;
+                supported = false;
+            }
+        }
+
+        if (supported) {
+            testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, options)));
+        } else {
+            testFile.setStatus(TestFile.Status.SKIP);
+        }
     }
 
     private TestFile.Result runInternal(int ecmaVersion, File file, org.graalvm.polyglot.Source testSource, boolean negative, boolean asyncTest, String negativeExpectedMessage,
@@ -318,6 +441,10 @@ public class Test262Runnable extends TestRunnable {
             }
         }
         return includes;
+    }
+
+    private static Set<String> getFeatures(List<String> scriptCode) {
+        return getStrings(scriptCode, FEATURES_PREFIX, FEATURES_PATTERN).collect(Collectors.toSet());
     }
 
     private static boolean isAsyncTest(List<String> scriptCodeList) {
