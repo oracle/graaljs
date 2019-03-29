@@ -10,12 +10,3 @@ prefix es-module
 
 # dynamic import via eval (not supported by Graal.js yet)
 test-esm-dynamic-import                          : FAIL
-
-# ECMAScript 2020 feature, not supported in the current default ECMAScript 2019 mode
-test-esm-cyclic-dynamic-import                   : FAIL
-test-esm-error-cache                             : FAIL
-test-esm-import-meta                             : FAIL
-test-esm-loader-invalid-format                   : FAIL
-test-esm-throw-undefined                         : FAIL
-test-esm-loader-invalid-url                      : FAIL
-test-esm-loader-missing-dynamic-instantiate-hook : FAIL

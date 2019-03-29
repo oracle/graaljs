@@ -151,11 +151,6 @@ test-vm-new-script-new-context                                     : FAIL
 test-vm-syntax-error-stderr                                        : FAIL
 test-zlib-invalid-input-memory                                     : FAIL
 
-# not supported in the current default ECMAScript 2019 mode
-test-loaders-unknown-builtin-module                                : FAIL
-test-vm-module-dynamic-import                                      : FAIL
-test-vm-module-import-meta                                         : FAIL
-
 # fails randomly
 test-http2-server-rst-stream                                       : SKIP
 
