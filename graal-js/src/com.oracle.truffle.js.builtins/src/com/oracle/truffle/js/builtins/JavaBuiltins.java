@@ -53,13 +53,11 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaAddToClasspathNodeGen;
@@ -82,6 +80,7 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -388,17 +387,18 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
     }
 
     abstract static class JavaFromNode extends JSBuiltinNode {
-        JavaFromNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
 
         private final BranchProfile objectListBranch = BranchProfile.create();
         private final BranchProfile needErrorBranches = BranchProfile.create();
 
         @Child private WriteElementNode writeNode;
-        @Child private Node readNode;
-        @Child private Node getSizeNode;
         @Child private JSForeignToJSTypeNode foreignConvertNode;
+        @Child private InteropLibrary interop;
+
+        JavaFromNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.interop = InteropLibrary.getFactory().createDispatched(3);
+        }
 
         private void write(Object target, int index, Object value) {
             if (writeNode == null) {
@@ -406,22 +406,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 writeNode = insert(WriteElementNode.create(null, null, null, getContext(), false));
             }
             writeNode.executeWithTargetAndIndexAndValue(target, index, value);
-        }
-
-        private int sendGetSize(TruffleObject javaArray) throws UnsupportedMessageException {
-            if (getSizeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getSizeNode = insert(Message.GET_SIZE.createNode());
-            }
-            return (int) ForeignAccess.sendGetSize(getSizeNode, javaArray);
-        }
-
-        private Object sendRead(TruffleObject javaArray, int i) throws UnknownIdentifierException, UnsupportedMessageException {
-            if (readNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readNode = insert(Message.READ.createNode());
-            }
-            return foreignConvert(ForeignAccess.sendRead(readNode, javaArray, i));
         }
 
         private Object foreignConvert(Object value) {
@@ -439,16 +423,17 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 TruffleObject javaArray = (TruffleObject) javaObj;
                 if (env.isHostObject(javaArray)) {
                     try {
-                        int size = sendGetSize(javaArray);
-                        if (size >= 0) {
-                            DynamicObject jsArray = JSArray.createEmptyChecked(getContext(), size);
-                            for (int i = 0; i < size; i++) {
-                                Object element = sendRead(javaArray, i);
-                                write(jsArray, i, convertValue(element));
-                            }
-                            return jsArray;
+                        long size = interop.getArraySize(javaArray);
+                        if (size < 0 || size >= Integer.MAX_VALUE) {
+                            throw Errors.createRangeErrorInvalidArrayLength();
                         }
-                    } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                        DynamicObject jsArray = JSArray.createEmptyChecked(getContext(), size);
+                        for (int i = 0; i < size; i++) {
+                            Object element = foreignConvert(interop.readArrayElement(javaArray, i));
+                            write(jsArray, i, element);
+                        }
+                        return jsArray;
+                    } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
                         // fall through
                     }
                     Object hostObject = env.asHostObject(javaArray);
@@ -468,35 +453,26 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         private void fromList(List<?> javaList, int len, DynamicObject jsArrayObj) {
             objectListBranch.enter();
             for (int i = 0; i < len; i++) {
-                write(jsArrayObj, i, convertValue(Boundaries.listGet(javaList, i)));
+                write(jsArrayObj, i, foreignConvert(Boundaries.listGet(javaList, i)));
             }
-        }
-
-        private static Object convertValue(Object object) {
-            if (object instanceof Long) {
-                return ((Long) object).doubleValue();
-            } else if (object instanceof Byte) {
-                return ((Byte) object).intValue();
-            } else if (object instanceof Short) {
-                return ((Short) object).intValue();
-            } else if (object instanceof Float) {
-                return ((Float) object).doubleValue();
-            } else if (object instanceof Character) {
-                return (int) ((Character) object).charValue();
-            }
-            return object;
         }
     }
 
     abstract static class JavaToNode extends JSBuiltinNode {
 
-        @Child private JSToStringNode toStringNode;
         @Child private JSToObjectArrayNode toObjectArrayNode;
-        @Child private Node newNode;
-        @Child private Node writeNode;
+        @Child private ExportValueNode exportValue;
+        @Child private InteropLibrary newArray;
+        @Child private InteropLibrary arrayElements;
+        @Child private JSToStringNode toStringNode;
 
         JavaToNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.toObjectArrayNode = JSToObjectArrayNode.create(context);
+            this.exportValue = ExportValueNode.create();
+            this.newArray = InteropLibrary.getFactory().createDispatched(3);
+            this.arrayElements = InteropLibrary.getFactory().createDispatched(3);
+
         }
 
         private String toString(Object target) {
@@ -507,30 +483,22 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             return toStringNode.executeString(target);
         }
 
-        private Object[] toObjectArray(TruffleObject jsObj) {
-            if (toObjectArrayNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toObjectArrayNode = insert(JSToObjectArrayNode.create(getContext()));
-            }
-            return toObjectArrayNode.executeObjectArray(jsObj);
-        }
-
         @Specialization
         protected Object to(TruffleObject jsObj, Object toType) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
             if (toType instanceof TruffleObject && env.isHostObject(toType)) {
                 if (isJavaArrayClass(toType, env)) {
-                    return toArray(jsObj, (TruffleObject) toType, env);
+                    return toArray(jsObj, toType, env);
                 } else {
                     throw Errors.createTypeErrorFormat("Unsupported type: %s", toType);
                 }
             } else if (toType == Undefined.instance) {
-                return toArray(jsObj, (TruffleObject) env.asGuestValue(Object[].class), env);
+                return toArray(jsObj, env.asGuestValue(Object[].class), env);
             } else {
                 String className = toString(toType);
                 Object javaType = JavaTypeNode.lookupJavaType(className, env);
                 if (isJavaArrayClass(javaType, env)) {
-                    return toArray(jsObj, (TruffleObject) javaType, env);
+                    return toArray(jsObj, javaType, env);
                 } else {
                     throw Errors.createTypeErrorFormat("Unsupported type: %s", className);
                 }
@@ -550,26 +518,17 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             return false;
         }
 
-        private Object toArray(TruffleObject jsObj, TruffleObject arrayType, TruffleLanguage.Env env) {
+        private Object toArray(TruffleObject jsObj, Object arrayType, TruffleLanguage.Env env) {
             assert isJavaArrayClass(arrayType, env);
 
-            if (newNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                newNode = insert(Message.NEW.createNode());
-            }
-            if (writeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                writeNode = insert(Message.WRITE.createNode());
-            }
-
-            Object[] arr = toObjectArray(jsObj);
+            Object[] arr = toObjectArrayNode.executeObjectArray(jsObj);
             try {
-                TruffleObject result = (TruffleObject) ForeignAccess.sendNew(newNode, arrayType, arr.length);
+                Object result = newArray.instantiate(arrayType, arr.length);
                 for (int i = 0; i < arr.length; i++) {
-                    ForeignAccess.sendWrite(writeNode, result, i, arr[i]);
+                    arrayElements.writeArrayElement(result, i, exportValue.execute(arr[i]));
                 }
                 return result;
-            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | InvalidArrayIndexException e) {
                 throw Errors.createTypeError(Boundaries.javaToString(e));
             }
         }

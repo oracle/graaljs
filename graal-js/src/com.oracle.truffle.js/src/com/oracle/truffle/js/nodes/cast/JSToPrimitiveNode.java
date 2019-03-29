@@ -41,42 +41,41 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * This implements ECMA 7.1.1 ToPrimitive.
  *
  */
-@ImportStatic(value = JSInteropUtil.class)
 public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     public enum Hint {
@@ -207,17 +206,15 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return hint == Hint.String || hint == Hint.None;
     }
 
-    @Specialization(guards = "isForeignObject(object)")
+    @Specialization(guards = "isForeignObject(object)", limit = "5")
     protected Object doTruffleJavaObject(TruffleObject object,
-                    @Cached("createIsBoxed()") Node isBoxed,
-                    @Cached("createUnbox()") Node unbox,
-                    @Cached("createIsNull()") Node isNull,
-                    @Cached("createHasSize()") Node hasSizeNode,
+                    @CachedLibrary("object") InteropLibrary interop,
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
                     @Cached("create()") JSForeignToJSTypeNode toJSType) {
-        if (ForeignAccess.sendIsNull(isNull, object)) {
+        if (interop.isNull(object)) {
             return Null.instance;
         }
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        TruffleLanguage.Env env = contextRef.get().getEnv();
         if (env.isHostObject(object)) {
             Object javaObject = env.asHostObject(object);
             if (javaObject == null) {
@@ -232,15 +229,25 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                 }
             }
         }
-        if (ForeignAccess.sendIsBoxed(isBoxed, object)) {
-            try {
-                return toJSType.executeWithTarget(ForeignAccess.sendUnbox(unbox, object));
-            } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(object, e, Message.UNBOX, this);
+        try {
+            if (interop.isBoolean(object)) {
+                return interop.asBoolean(object);
+            } else if (interop.isString(object)) {
+                return interop.asString(object);
+            } else if (interop.isNumber(object)) {
+                if (interop.fitsInInt(object)) {
+                    return interop.asInt(object);
+                } else if (interop.fitsInLong(object)) {
+                    return interop.asLong(object);
+                } else if (interop.fitsInDouble(object)) {
+                    return interop.asDouble(object);
+                }
             }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(object, e, this);
         }
         if (isHintStringOrDefault()) {
-            boolean hasSize = ForeignAccess.sendHasSize(hasSizeNode, object);
+            boolean hasSize = interop.hasArrayElements(object);
             return JSRuntime.objectToConsoleString(object, hasSize ? null : "foreign");
         } else {
             throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);

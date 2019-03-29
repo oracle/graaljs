@@ -45,21 +45,19 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 
 import java.util.Set;
 
-import javax.script.Bindings;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -71,7 +69,6 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -79,15 +76,12 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
  * 11.4.1 The delete Operator ({@code delete object[property]}).
  */
 @NodeInfo(shortName = "delete")
-@ImportStatic(value = JSInteropUtil.class)
 public abstract class DeletePropertyNode extends JSTargetableNode {
     private final boolean strict;
     protected final JSContext context;
@@ -225,29 +219,58 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return !JSString.LENGTH.equals(objIndex);
     }
 
-    @TruffleBoundary
-    @Specialization(guards = {"isBindings(target)"})
-    protected static boolean doBindings(Object target, Object propertyResult) {
-        // e.g. TruffleJSBindings, see JDK-8015830.js
-        Bindings bindings = (Bindings) target;
-        Object result = bindings.remove(propertyResult);
-        return result != null;
-    }
-
     @Specialization(guards = {"isForeignObject(target)"})
-    protected static boolean doInterop(TruffleObject target, Object property,
-                    @Cached("createRemove()") Node removeNode,
-                    @Cached("create()") ExportValueNode exportNode) {
+    protected boolean member(TruffleObject target, String name,
+                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
         try {
-            ForeignAccess.sendRemove(removeNode, target, exportNode.executeWithTarget(property, Undefined.instance));
+            interop.removeMember(target, name);
             return true;
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return false;
         }
     }
 
+    @Specialization(guards = {"isForeignObject(target)"})
+    protected boolean arrayElementInt(TruffleObject target, int index,
+                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+        try {
+            interop.removeArrayElement(target, index);
+            return true;
+        } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
+            return false;
+        }
+    }
+
+    @Specialization(guards = {"isForeignObject(target)", "isNumber(index)"}, replaces = "arrayElementInt")
+    protected boolean arrayElement(TruffleObject target, Number index,
+                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+        try {
+            interop.removeArrayElement(target, index.longValue());
+            return true;
+        } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
+            return false;
+        }
+    }
+
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isTruffleObject(target)", "!isString(target)", "!isBindings(target)"})
+    @Specialization(guards = {"isForeignObject(target)", "!isString(key)", "!isNumber(key)"})
+    protected Object foreignObject(TruffleObject target, Object key,
+                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
+                    @CachedLibrary(limit = "3") InteropLibrary interopKey) {
+        try {
+            if (interopKey.isString(key)) {
+                return member(target, interopKey.asString(key), interop);
+            } else if (interopKey.fitsInInt(key)) {
+                return arrayElement(target, interopKey.asInt(key), interop);
+            }
+            return false;
+        } catch (UnsupportedMessageException e) {
+            return false;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"!isTruffleObject(target)", "!isString(target)"})
     public boolean doOther(Object target, Object property) {
         return true;
     }

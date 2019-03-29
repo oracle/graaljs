@@ -40,23 +40,22 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -64,28 +63,14 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Implementation of ECMA intl402 9.2.1 "CanonicalizeLocaleList" as Truffle node.
  * https://tc39.github.io/ecma402/#sec-canonicalizelocalelist
  */
 public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode {
-
-    @Child private JSToObjectNode toObjectNode;
-    @Child private JSToStringNode toStringNode;
-    @Child private JSToLengthNode toLengthNode;
-    @Child private TypeOfNode typeOfNode;
-    @Child private JSHasPropertyNode hasPropertyNode;
-    @Child private PropertyGetNode getLengthPropertyNode;
-    @Child private Node foreignGetNode;
-    @Child private JSForeignToJSTypeNode toJSTypeNode;
-
-    private final JSContext context;
+    final JSContext context;
 
     protected JSToCanonicalizedLocaleListNode(JSContext context) {
         this.context = context;
@@ -96,10 +81,6 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     }
 
     public abstract String[] executeLanguageTags(Object value);
-
-    protected final JSContext getContext() {
-        return context;
-    }
 
     @Specialization()
     protected String[] doRawString(String s) {
@@ -124,21 +105,23 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     }
 
     @Specialization(guards = {"!isForeignObject(object)", "!isString(object)", "!isJSString(object)", "!isUndefined(object)", "!isJSNull(object)"})
-    protected String[] doOtherType(Object object) {
-
+    protected String[] doOtherType(Object object,
+                    @Cached("createToObject(context)") JSToObjectNode toObjectNode,
+                    @Cached("create(context)") JSGetLengthNode getLengthNode,
+                    @Cached JSHasPropertyNode hasPropertyNode,
+                    @Cached TypeOfNode typeOfNode,
+                    @Cached JSToStringNode toStringNode) {
         List<String> result = new ArrayList<>();
-
-        DynamicObject localeObj = (DynamicObject) toObject(object);
-        int len = toLength(JSObject.get(localeObj, "length"));
-        for (int k = 0; k < len; k++) {
-            String pk = toStringVal(k);
-            if (JSObject.hasProperty(localeObj, pk)) {
-                Object kValue = JSObject.get(localeObj, pk);
-                String typeOfKValue = typeOf(kValue);
+        DynamicObject localeObj = (DynamicObject) toObjectNode.executeTruffleObject(object);
+        long len = getLengthNode.executeLong(localeObj);
+        for (long k = 0; k < len; k++) {
+            if (hasPropertyNode.executeBoolean(localeObj, k)) {
+                Object kValue = JSObject.get(localeObj, k);
+                String typeOfKValue = typeOfNode.executeString(kValue);
                 if (JSRuntime.isNullOrUndefined(kValue) || ((!typeOfKValue.equals("string") && !typeOfKValue.equals("object")))) {
                     throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                 }
-                String lt = toStringVal(kValue);
+                String lt = toStringNode.executeString(kValue);
                 String canonicalizedLt = IntlUtil.validateAndCanonicalizeLanguageTag(lt);
                 if (!Boundaries.listContains(result, canonicalizedLt)) {
                     Boundaries.listAdd(result, canonicalizedLt);
@@ -149,25 +132,30 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     }
 
     @Specialization(guards = {"isForeignObject(object)"})
-    protected String[] doForeignType(Object object) {
-
+    protected String[] doForeignType(TruffleObject object,
+                    @CachedLibrary(limit = "1") InteropLibrary interop,
+                    @Cached TypeOfNode typeOfNode,
+                    @Cached JSToStringNode toStringNode) {
         List<String> result = new ArrayList<>();
-
-        TruffleObject localeObj = toObject(object);
-        if (getLengthPropertyNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getLengthPropertyNode = insert(PropertyGetNode.create("length", false, context));
+        long len;
+        try {
+            len = interop.getArraySize(object);
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(object, e, "getArraySize", this);
         }
-        int len = toLength(getLengthPropertyNode.getValue(localeObj));
-        for (int k = 0; k < len; k++) {
-            String pk = toStringVal(k);
-            if (hasProperty(localeObj, pk)) {
-                Object kValue = foreignGet(localeObj, pk);
-                String typeOfKValue = typeOf(kValue);
+        for (long k = 0; k < len; k++) {
+            if (interop.isArrayElementReadable(object, k)) {
+                Object kValue;
+                try {
+                    kValue = interop.readArrayElement(object, k);
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    throw Errors.createTypeErrorInteropException(object, e, "readArrayElement", this);
+                }
+                String typeOfKValue = typeOfNode.executeString(kValue);
                 if (!typeOfKValue.equals("string") && !typeOfKValue.equals("object")) {
                     throw Errors.createTypeError(Boundaries.stringFormat("String or Object expected in locales list, got %s", typeOfKValue));
                 }
-                String lt = toStringVal(kValue);
+                String lt = toStringNode.executeString(kValue);
                 String canonicalizedLt = IntlUtil.validateAndCanonicalizeLanguageTag(lt);
                 if (!Boundaries.listContains(result, canonicalizedLt)) {
                     Boundaries.listAdd(result, canonicalizedLt);
@@ -175,66 +163,5 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
             }
         }
         return result.toArray(new String[]{});
-    }
-
-    protected final boolean hasProperty(TruffleObject object, String key) {
-        if (hasPropertyNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            hasPropertyNode = insert(JSHasPropertyNode.create());
-        }
-        return hasPropertyNode.executeBoolean(object, key);
-    }
-
-    private Object foreignGet(TruffleObject thisObj, String key) {
-        if (foreignGetNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.foreignGetNode = insert(Message.READ.createNode());
-        }
-        try {
-            Object foreignResult = ForeignAccess.sendRead(foreignGetNode, thisObj, key);
-            return convertToJSType(foreignResult);
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            return Null.instance;
-        }
-    }
-
-    private Object convertToJSType(Object foreinResult) {
-        if (toJSTypeNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.toJSTypeNode = insert(JSForeignToJSTypeNodeGen.create());
-        }
-        return toJSTypeNode.executeWithTarget(foreinResult);
-    }
-
-    private TruffleObject toObject(Object obj) {
-        if (toObjectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
-        }
-        return toObjectNode.executeTruffleObject(obj);
-    }
-
-    private String toStringVal(Object obj) {
-        if (toStringNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toStringNode = insert(JSToStringNode.create());
-        }
-        return toStringNode.executeString(obj);
-    }
-
-    private int toLength(Object obj) {
-        if (toLengthNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toLengthNode = insert(JSToLengthNode.create());
-        }
-        return (int) toLengthNode.executeLong(obj);
-    }
-
-    private String typeOf(Object obj) {
-        if (typeOfNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            typeOfNode = insert(TypeOfNode.create());
-        }
-        return typeOfNode.executeString(obj);
     }
 }

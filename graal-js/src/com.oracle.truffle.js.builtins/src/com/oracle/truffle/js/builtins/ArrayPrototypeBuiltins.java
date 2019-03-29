@@ -57,6 +57,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
@@ -133,6 +134,7 @@ import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
@@ -165,7 +167,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -2369,6 +2371,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile hasCompareFnBranch = BranchProfile.create();
         private final BranchProfile noCompareFnBranch = BranchProfile.create();
         private final BranchProfile growProfile = BranchProfile.create();
+        @Child private InteropLibrary interopNode;
+        @Child private JSForeignToJSTypeNode importValueNode;
 
         public JSArraySortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -2605,11 +2609,18 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return list.toArray();
         }
 
-        @TruffleBoundary
         private Object[] truffleobjectToArray(TruffleObject thisObj, long len) {
+            InteropLibrary interop = interopNode;
+            JSForeignToJSTypeNode importValue = importValueNode;
+            if (interop == null || importValue == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(3));
+                importValueNode = importValue = insert(JSForeignToJSTypeNode.create());
+            }
             SimpleArrayList<Object> list = SimpleArrayList.create(len);
-            for (int index = 0; index < len; index++) {
-                list.add(JSInteropNodeUtil.read(thisObj, index), growProfile);
+            for (long index = 0; index < len; index++) {
+                Object element = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
+                list.add(element, growProfile);
             }
             return list.toArray();
         }

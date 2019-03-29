@@ -51,8 +51,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.js.runtime.joni.AbstractConstantKeysObjectFactory.IsReadableCacheNodeGen;
-import com.oracle.truffle.js.runtime.joni.AbstractConstantKeysObjectFactory.ReadCacheNodeGen;
 import com.oracle.truffle.js.runtime.joni.interop.TruffleReadOnlyKeysArray;
 
 @ExportLibrary(InteropLibrary.class)
@@ -112,14 +110,6 @@ public abstract class AbstractConstantKeysObject implements TruffleObject {
         static boolean isReadable(AbstractConstantKeysObject receiver, String symbol) {
             return receiver.getKeys().contains(symbol);
         }
-
-        public static IsReadableCacheNode create() {
-            return IsReadableCacheNodeGen.create();
-        }
-
-        public static IsReadableCacheNode getUncached() {
-            return IsReadableCacheNodeGen.getUncached();
-        }
     }
 
     @GenerateUncached
@@ -142,14 +132,6 @@ public abstract class AbstractConstantKeysObject implements TruffleObject {
         @Specialization(replaces = "readEquals")
         static Object read(AbstractConstantKeysObject receiver, String symbol) throws UnknownIdentifierException {
             return receiver.readMemberImpl(symbol);
-        }
-
-        public static ReadCacheNode create() {
-            return ReadCacheNodeGen.create();
-        }
-
-        public static ReadCacheNode getUncached() {
-            return ReadCacheNodeGen.getUncached();
         }
     }
 }

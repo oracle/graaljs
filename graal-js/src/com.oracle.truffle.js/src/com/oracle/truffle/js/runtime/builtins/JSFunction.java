@@ -359,6 +359,12 @@ public final class JSFunction extends JSBuiltinObject {
         return getCallTarget((DynamicObject) JSArguments.getFunctionObject(jsArguments)).call(jsArguments);
     }
 
+    public static Object construct(DynamicObject functionObject, Object[] argumentValues) {
+        assert isJSFunction(functionObject) && isConstructor(functionObject);
+        Object[] arguments = JSArguments.create(CONSTRUCT, functionObject, argumentValues);
+        return getConstructTarget(functionObject).call(arguments);
+    }
+
     @TruffleBoundary
     public static DynamicObject bind(JSRealm realm, DynamicObject thisFnObj, Object thisArg, Object[] boundArguments) {
         assert JSFunction.isJSFunction(thisFnObj);

@@ -40,16 +40,36 @@
  */
 package com.oracle.truffle.js.test.instrumentation;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * Fake foreign object used for testing.
  */
+@SuppressWarnings("static-method")
+@ExportLibrary(InteropLibrary.class)
 public class ForeignTestObject implements TruffleObject {
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return ForeignTestObjectMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    final Object invokeMember(@SuppressWarnings("unused") String name, @SuppressWarnings("unused") Object[] args) {
+        return 42;
+    }
+
+    @ExportMessage
+    final boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    final boolean isMemberInvocable(@SuppressWarnings("unused") String member) {
+        return true;
+    }
+
+    @ExportMessage
+    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }

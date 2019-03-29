@@ -79,13 +79,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -100,8 +100,6 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.JSExternalObject;
 
@@ -109,7 +107,7 @@ import com.oracle.truffle.trufflenode.JSExternalObject;
  * Keep in sync with {@link GraalJSAccess#valueType}.
  */
 @SuppressWarnings("unused")
-@ImportStatic({JSExternalObject.class, JSRuntime.class, JSUserObject.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class, JSInteropUtil.class})
+@ImportStatic({JSExternalObject.class, JSRuntime.class, JSUserObject.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
 abstract class ValueTypeNode extends JavaScriptBaseNode {
     protected final GraalJSAccess graalAccess;
     protected final JSContext context;
@@ -327,18 +325,23 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         return BIG_INT_VALUE;
     }
 
-    @Specialization(guards = "isForeignObject(value)")
-    protected static int doForeignObject(TruffleObject value,
-                    @Cached("createIsExecutable()") Node isExecutable,
-                    @Cached("createIsBoxed()") Node isBoxed,
-                    @Cached("createUnbox()") Node unboxNode,
-                    @Cached("create(graalAccess, context, useSharedBuffer)") ValueTypeNode unboxedValueType,
-                    @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {
-        if (ForeignAccess.sendIsBoxed(isBoxed, value)) {
-            Object obj = foreignConvertNode.executeWithTarget(JSInteropNodeUtil.unbox(value, unboxNode));
-            return unboxedValueType.executeInt(obj);
-        } else if (ForeignAccess.sendIsExecutable(isExecutable, value)) {
+    @Specialization(guards = "isForeignObject(value)", limit = "5")
+    protected final int doForeignObject(TruffleObject value,
+                    @CachedLibrary("value") InteropLibrary interop) {
+        if (interop.isExecutable(value)) {
             return FUNCTION_OBJECT;
+        } else if (interop.isNull(value)) {
+            return NULL_VALUE;
+        } else if (interop.isBoolean(value)) {
+            try {
+                return interop.asBoolean(value) ? BOOLEAN_VALUE_TRUE : BOOLEAN_VALUE_FALSE;
+            } catch (UnsupportedMessageException e) {
+                return doFallback(value);
+            }
+        } else if (interop.isString(value)) {
+            return STRING_VALUE;
+        } else if (interop.isNumber(value)) {
+            return graalAccess.valueTypeForeignNumber(value, interop, useSharedBuffer);
         } else {
             return ORDINARY_OBJECT;
         }

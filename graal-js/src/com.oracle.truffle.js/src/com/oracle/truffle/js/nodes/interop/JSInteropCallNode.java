@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.instrumentation;
+package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 
-@MessageResolution(receiverType = ForeignTestObject.class)
-public class ForeignTestObjectMessageResolution {
-
-    @CanResolve
-    public abstract static class CanHandleTestMap extends Node {
-        public boolean test(TruffleObject o) {
-            return o instanceof ForeignTestObject;
-        }
+public abstract class JSInteropCallNode extends JavaScriptBaseNode {
+    protected JSInteropCallNode() {
     }
 
-    @Resolve(message = "INVOKE")
-    abstract static class RunnableInvokeNode extends Node {
-
-        @SuppressWarnings("unused")
-        public Object access(ForeignTestObject invoker, String identifier, Object[] arguments) {
-            return 42;
+    protected static Object[] prepare(Object[] arguments, JSForeignToJSTypeNode importValueNode) {
+        for (int i = 0; i < arguments.length; i++) {
+            arguments[i] = importValueNode.executeWithTarget(arguments[i]);
         }
+        return arguments;
     }
 
+    protected static JSFunctionCallNode getUncachedCall() {
+        return null;
+    }
 }

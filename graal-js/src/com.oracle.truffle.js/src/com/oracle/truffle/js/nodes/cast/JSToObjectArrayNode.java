@@ -47,13 +47,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -65,7 +64,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * Converts an arbitrary value to an Object[].
@@ -76,7 +74,6 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
  *
  * @see #nullOrUndefinedAsEmptyArray
  */
-@ImportStatic(value = JSInteropUtil.class)
 public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
 
     protected final JSContext context;
@@ -182,20 +179,17 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
         return list.toArray();
     }
 
-    @Specialization(guards = {"!isDynamicObject(obj)"})
+    @Specialization(guards = {"!isJSObject(obj)"}, limit = "5")
     protected static Object[] doForeignObject(TruffleObject obj,
-                    @Cached("create()") JSToNumberNode toNumberNode,
+                    @CachedLibrary("obj") InteropLibrary interop,
                     @Cached("create()") BranchProfile hasPropertiesBranch,
-                    @Cached("createHasSize()") Node hasSizeNode,
-                    @Cached("createGetSize()") Node getSizeNode,
-                    @Cached("createRead()") Node readNode,
                     @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {
         try {
-            if (!ForeignAccess.sendHasSize(hasSizeNode, obj)) {
+            if (!interop.hasArrayElements(obj)) {
                 throw Errors.createTypeError("foreign Object reports not to have a SIZE");
             }
 
-            long len = JSRuntime.toUInt32(toNumberNode.executeNumber(ForeignAccess.sendGetSize(getSizeNode, obj)));
+            long len = interop.getArraySize(obj);
             if (len > JSTruffleOptions.MaxApplyArgumentLength) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorTooManyArguments();
@@ -205,11 +199,11 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
             if (len > 0) {
                 hasPropertiesBranch.enter();
                 for (int i = 0; i < iLen; i++) {
-                    arr[i] = foreignConvertNode.executeWithTarget(ForeignAccess.sendRead(readNode, obj, i));
+                    arr[i] = foreignConvertNode.executeWithTarget(interop.readArrayElement(obj, i));
                 }
             }
             return arr;
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+        } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
             throw Errors.createTypeErrorNotAnObject(obj);
         }
     }

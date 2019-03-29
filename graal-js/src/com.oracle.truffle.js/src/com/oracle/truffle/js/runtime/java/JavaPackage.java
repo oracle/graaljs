@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -190,7 +191,11 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     public static DynamicObject createToPrimitiveFunction(JSRealm realm) {
-        JSContext context = realm.getContext();
+        JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.JavaPackageToPrimitive, JavaPackage::createToPrimitiveFunctionImpl);
+        return JSFunction.create(realm, functionData);
+    }
+
+    private static JSFunctionData createToPrimitiveFunctionImpl(JSContext context) {
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
 
             @Override
@@ -211,7 +216,7 @@ public final class JavaPackage extends JSBuiltinObject {
                 }
             }
         });
-        return JSFunction.create(realm, JSFunctionData.createCallOnly(context, callTarget, 1, "[Symbol.toPrimitive]"));
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "[Symbol.toPrimitive]");
     }
 
     @Override

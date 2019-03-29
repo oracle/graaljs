@@ -40,15 +40,18 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -73,7 +76,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 
 public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
@@ -142,7 +145,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                 jsonJO(builder, data, valueObj);
             }
         } else if (value instanceof TruffleObject) {
-            jsonTruffleObject(builder, data, (TruffleObject) value);
+            assert JSGuards.isForeignObject(value);
+            jsonForeignObject(builder, data, (TruffleObject) value);
         } else if (JSRuntime.isJavaPrimitive(value)) {
             // call toString on Java objects, GR-3722
             jsonQuote(builder, value.toString());
@@ -151,12 +155,15 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private void jsonTruffleObject(DelimitedStringBuilder builder, JSONData data, TruffleObject obj) {
-        if (truffleIsNull(obj)) {
+    private void jsonForeignObject(DelimitedStringBuilder builder, JSONData data, TruffleObject obj) {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
+        if (interop.isNull(obj)) {
             builder.append(Null.NAME, sbAppendProfile);
-        } else if (truffleIsBoxed(obj)) {
-            jsonStrExecute(builder, data, JSInteropNodeUtil.unbox(obj));
-        } else if (truffleHasSize(obj)) {
+        } else if (interop.isBoolean(obj) || interop.isString(obj) || interop.isNumber(obj)) {
+            Object unboxed = JSInteropUtil.toPrimitiveOrDefault(obj, Null.instance, interop, this);
+            assert !JSGuards.isForeignObject(unboxed);
+            jsonStrExecute(builder, data, unboxed);
+        } else if (interop.hasArrayElements(obj)) {
             jsonJA(builder, data, obj);
         } else {
             jsonJO(builder, data, obj);
@@ -312,7 +319,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private void jsonJA(DelimitedStringBuilder builder, JSONData data, TruffleObject value) {
         checkCycle(data, value);
-        assert JSRuntime.isArray(value) || truffleHasSize(value);
+        assert JSRuntime.isArray(value) || InteropLibrary.getFactory().getUncached().hasArrayElements(value);
         data.pushStack(value);
         checkStackDepth(data);
         int stepback = data.getIndent();
@@ -476,57 +483,44 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         builder.append(Character.forDigit(c & 0xF, 16), sbAppendProfile);
     }
 
-    private boolean truffleHasSize(TruffleObject obj) {
-        CompilerAsserts.neverPartOfCompilation("JSONStringifyStringNode.truffleHasSize");
-        if (hasSizeNode == null) {
-            hasSizeNode = insert(Message.HAS_SIZE.createNode());
-        }
-        return ForeignAccess.sendHasSize(hasSizeNode, obj);
-    }
-
     private Object truffleGetSize(TruffleObject obj) {
-        CompilerAsserts.neverPartOfCompilation("JSONStringifyStringNode.truffleGetSize");
-        if (getSizeNode == null) {
-            getSizeNode = insert(Message.GET_SIZE.createNode());
-        }
-        return JSInteropNodeUtil.getSize(obj, getSizeNode);
+        return JSInteropUtil.getArraySize(obj, InteropLibrary.getFactory().getUncached(), this);
     }
 
-    private Object truffleRead(TruffleObject obj, Object key) {
-        CompilerAsserts.neverPartOfCompilation("JSONStringifyStringNode.truffleRead");
-        if (readNode == null) {
-            readNode = insert(Message.READ.createNode());
+    private Object truffleRead(TruffleObject obj, String key) {
+        try {
+            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readMember(obj, key));
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, "readMember", this);
         }
-        return JSRuntime.importValue(JSInteropNodeUtil.read(obj, key, readNode));
     }
 
-    private List<Object> truffleKeys(TruffleObject obj) {
-        CompilerAsserts.neverPartOfCompilation("JSONStringifyStringNode.truffleKeys");
-        if (keysNode == null) {
-            keysNode = insert(Message.KEYS.createNode());
+    private Object truffleRead(TruffleObject obj, int index) {
+        try {
+            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readArrayElement(obj, index));
+        } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", this);
         }
-        if (readNode == null) {
-            readNode = insert(Message.READ.createNode());
-        }
-        if (getSizeNode == null) {
-            getSizeNode = insert(Message.GET_SIZE.createNode());
-        }
-        return JSInteropNodeUtil.keys(obj, keysNode, readNode, getSizeNode, true);
     }
 
-    private boolean truffleIsNull(TruffleObject obj) {
-        if (isNullNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            isNullNode = insert(Message.IS_NULL.createNode());
+    private static List<Object> truffleKeys(TruffleObject obj) {
+        try {
+            Object keysObj = InteropLibrary.getFactory().getUncached().getMembers(obj);
+            InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keysObj);
+            long size = keysInterop.getArraySize(keysObj);
+            if (size < 0 || size >= Integer.MAX_VALUE) {
+                throw Errors.createRangeErrorInvalidArrayLength();
+            }
+            List<Object> keys = new ArrayList<>((int) size);
+            for (long i = 0; i < size; i++) {
+                Object key = keysInterop.readArrayElement(keysObj, i);
+                assert InteropLibrary.getFactory().getUncached().isString(key);
+                String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
+                keys.add(stringKey);
+            }
+            return keys;
+        } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+            return Collections.emptyList();
         }
-        return ForeignAccess.sendIsNull(isNullNode, obj);
-    }
-
-    private boolean truffleIsBoxed(TruffleObject obj) {
-        if (isBoxedNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            isBoxedNode = insert(Message.IS_BOXED.createNode());
-        }
-        return ForeignAccess.sendIsBoxed(isBoxedNode, obj);
     }
 }

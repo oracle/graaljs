@@ -59,25 +59,25 @@ public abstract class NewTargetRootNode extends JavaScriptRootNode {
 
     @Child protected DirectCallNode callNode;
 
-    protected NewTargetRootNode(CallTarget callTarget) {
-        super(((RootCallTarget) callTarget).getRootNode().getLanguage(JavaScriptLanguage.class), ((RootCallTarget) callTarget).getRootNode().getSourceSection(), null);
+    protected NewTargetRootNode(JavaScriptLanguage lang, CallTarget callTarget) {
+        super(lang, ((RootCallTarget) callTarget).getRootNode().getSourceSection(), null);
         this.callTarget = callTarget;
     }
 
-    public static JavaScriptRootNode createNewTargetConstruct(CallTarget callTarget) {
-        return createNewTarget(callTarget, true);
+    public static JavaScriptRootNode createNewTargetConstruct(JavaScriptLanguage lang, CallTarget callTarget) {
+        return createNewTarget(lang, callTarget, true);
     }
 
-    public static JavaScriptRootNode createNewTargetCall(CallTarget callTarget) {
-        return createNewTarget(callTarget, false);
+    public static JavaScriptRootNode createNewTargetCall(JavaScriptLanguage lang, CallTarget callTarget) {
+        return createNewTarget(lang, callTarget, false);
     }
 
-    private static JavaScriptRootNode createNewTarget(CallTarget callTarget, boolean construct) {
-        return new InsertNewTargetRootNode(callTarget, construct);
+    private static JavaScriptRootNode createNewTarget(JavaScriptLanguage lang, CallTarget callTarget, boolean construct) {
+        return new InsertNewTargetRootNode(lang, callTarget, construct);
     }
 
-    public static JavaScriptRootNode createDropNewTarget(CallTarget callTarget) {
-        return new DropNewTargetRootNode(callTarget);
+    public static JavaScriptRootNode createDropNewTarget(JavaScriptLanguage lang, CallTarget callTarget) {
+        return new DropNewTargetRootNode(lang, callTarget);
     }
 
     @Override
@@ -119,8 +119,8 @@ public abstract class NewTargetRootNode extends JavaScriptRootNode {
     public static class InsertNewTargetRootNode extends NewTargetRootNode {
         private final boolean construct;
 
-        protected InsertNewTargetRootNode(CallTarget callTarget, boolean construct) {
-            super(callTarget);
+        protected InsertNewTargetRootNode(JavaScriptLanguage lang, CallTarget callTarget, boolean construct) {
+            super(lang, callTarget);
             this.construct = construct;
         }
 
@@ -143,13 +143,13 @@ public abstract class NewTargetRootNode extends JavaScriptRootNode {
 
         @Override
         protected JavaScriptRootNode cloneUninitialized() {
-            return new InsertNewTargetRootNode(callTarget, construct);
+            return new InsertNewTargetRootNode(lookupLanguageReference(JavaScriptLanguage.class).get(), callTarget, construct);
         }
     }
 
     public static class DropNewTargetRootNode extends NewTargetRootNode {
-        protected DropNewTargetRootNode(CallTarget callTarget) {
-            super(callTarget);
+        protected DropNewTargetRootNode(JavaScriptLanguage lang, CallTarget callTarget) {
+            super(lang, callTarget);
         }
 
         private static Object[] copyAndDropArgument(Object[] arguments, int dropPosition, int dropLength) {
@@ -168,7 +168,7 @@ public abstract class NewTargetRootNode extends JavaScriptRootNode {
 
         @Override
         protected JavaScriptRootNode cloneUninitialized() {
-            return new DropNewTargetRootNode(callTarget);
+            return new DropNewTargetRootNode(lookupLanguageReference(JavaScriptLanguage.class).get(), callTarget);
         }
     }
 }

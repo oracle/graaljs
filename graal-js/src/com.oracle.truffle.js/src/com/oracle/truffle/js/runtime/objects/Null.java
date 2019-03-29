@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -101,11 +100,6 @@ public final class Null {
         @TruffleBoundary
         public String toString(DynamicObject object) {
             return "DynamicObject<" + defaultToString(object) + ">@" + Integer.toHexString(hashCode(object));
-        }
-
-        @Override
-        public ForeignAccess getForeignAccessFactory(DynamicObject object) {
-            return NullOrUndefinedForeignAccessFactory.getForeignAccess();
         }
     }
 }

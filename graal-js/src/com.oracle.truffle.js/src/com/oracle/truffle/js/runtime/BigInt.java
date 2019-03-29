@@ -45,9 +45,13 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 @ValueType
 public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
@@ -296,11 +300,6 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     }
 
     @TruffleBoundary
-    public boolean fitsInLong() {
-        return value.bitLength() <= 63;
-    }
-
-    @TruffleBoundary
     public long longValue() {
         return value.longValue();
     }
@@ -311,12 +310,97 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         return value.toString(10);
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof BigInt;
+    @ExportMessage
+    boolean isNumber() {
+        return fitsInLong();
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return BigIntMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    @TruffleBoundary
+    boolean fitsInByte() {
+        return value.bitLength() <= 7;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean fitsInShort() {
+        return value.bitLength() <= 15;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean fitsInInt() {
+        return value.bitLength() <= 31;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public boolean fitsInLong() {
+        return value.bitLength() <= 63;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean fitsInDouble() {
+        return fitsInInt();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean fitsInFloat() {
+        return false;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    byte asByte() throws UnsupportedMessageException {
+        try {
+            return value.byteValueExact();
+        } catch (ArithmeticException e) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    short asShort() throws UnsupportedMessageException {
+        try {
+            return value.shortValueExact();
+        } catch (ArithmeticException e) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    int asInt() throws UnsupportedMessageException {
+        try {
+            return value.intValueExact();
+        } catch (ArithmeticException e) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    long asLong() throws UnsupportedMessageException {
+        try {
+            return longValueExact();
+        } catch (ArithmeticException e) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    @TruffleBoundary
+    double asDouble() throws UnsupportedMessageException {
+        return asInt();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    float asFloat() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }

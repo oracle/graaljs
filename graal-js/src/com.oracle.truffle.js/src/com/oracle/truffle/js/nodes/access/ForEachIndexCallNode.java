@@ -42,8 +42,8 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -107,9 +106,8 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     @Child private JSArrayLastElementIndexNode lastElementIndexNode;
     @Child private JSHasPropertyNode hasPropertyNode;
     @Child private JSForeignToJSTypeNode toJSTypeNode;
+    @Child private InteropLibrary interop;
     protected final JSContext context;
-    @Child private Node hasSizeNode;
-    @Child private Node readNode;
 
     protected ForEachIndexCallNode(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode) {
         this.callbackNode = callbackArgumentsNode;
@@ -155,24 +153,20 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         return lastElementIndexNode.executeLong(target, length);
     }
 
-    protected Node getHasSizeNode() {
-        if (hasSizeNode == null) {
+    protected final InteropLibrary getInterop() {
+        if (interop == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            hasSizeNode = insert(JSInteropUtil.createHasSize());
+            interop = insert(InteropLibrary.getFactory().createDispatched(3));
         }
-        return hasSizeNode;
+        return interop;
     }
 
     protected Object foreignRead(TruffleObject target, long index) {
-        if (readNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            readNode = insert(JSInteropUtil.createRead());
-        }
         if (toJSTypeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toJSTypeNode = insert(JSForeignToJSTypeNode.create());
         }
-        return toJSTypeNode.executeWithTarget(JSInteropNodeUtil.read(target, index, readNode));
+        return JSInteropUtil.readArrayElementOrDefault(target, index, Undefined.instance, getInterop(), toJSTypeNode, this);
     }
 
     protected final void checkHasDetachedBuffer(TruffleObject view) {
@@ -236,7 +230,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             Object currentResult = initialResult;
             boolean isForeign = JSRuntime.isForeignObject(target);
             if (isForeign) {
-                if (!JSInteropNodeUtil.hasSize(target, getHasSizeNode())) {
+                if (!getInterop().hasArrayElements(target)) {
                     // Foreign object would not understand our read calls with int indices
                     return currentResult;
                 }
@@ -300,7 +294,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             Object currentResult = initialResult;
             boolean isForeign = JSRuntime.isForeignObject(target);
             if (isForeign) {
-                if (!JSInteropNodeUtil.hasSize(target, getHasSizeNode())) {
+                if (!getInterop().hasArrayElements(target)) {
                     // Foreign object would not understand our read calls with int indices
                     return currentResult;
                 }

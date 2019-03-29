@@ -44,12 +44,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -62,7 +62,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.js.runtime.util.JSReflectUtils;
 
@@ -207,18 +207,18 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public Object getOwnHelper(DynamicObject store, Object receiver, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        return proxyGet(store, key, receiver);
+        return proxyGetHelper(store, key, receiver);
     }
 
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object receiver, long index) {
         assert JSRuntime.isSafeInteger(index);
-        return proxyGet(store, Boundaries.stringValueOf(index), receiver);
+        return proxyGetHelper(store, Boundaries.stringValueOf(index), receiver);
     }
 
     @TruffleBoundary
-    private static Object proxyGet(DynamicObject proxy, Object key, Object receiver) {
+    private static Object proxyGetHelper(DynamicObject proxy, Object key, Object receiver) {
         assert JSRuntime.isPropertyKey(key);
         DynamicObject handler = getHandler(proxy);
         TruffleObject target = getTarget(proxy);
@@ -227,7 +227,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (JSObject.isJSObject(target)) {
                 return JSObject.getJSClass((DynamicObject) target).getHelper((DynamicObject) target, receiver, key);
             } else {
-                return JSInteropNodeUtil.read(target, key);
+                return JSInteropUtil.readMemberOrDefault(target, key, null);
             }
         }
 
@@ -295,7 +295,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 }
                 return result;
             } else {
-                JSInteropNodeUtil.write(target, key, value);
+                JSInteropUtil.writeMember(target, key, value);
                 return true;
             }
         }
@@ -392,7 +392,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (JSObject.isJSObject(target)) {
                 return JSObject.delete((DynamicObject) target, key, isStrict);
             } else {
-                return JSInteropNodeUtil.remove(target, key);
+                return JSInteropUtil.remove(target, key);
             }
         }
         Object trapResult = JSRuntime.call(deleteFn, handler, new Object[]{target, key});
@@ -427,7 +427,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (JSObject.isJSObject(target)) {
                 return JSObject.defineOwnProperty((DynamicObject) target, key, desc, doThrow);
             } else {
-                JSInteropNodeUtil.write(target, key, Null.instance);
+                JSInteropUtil.writeMember(target, key, Null.instance);
                 return true;
             }
         }
@@ -679,7 +679,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (JSObject.isJSObject(target)) {
                 return JSObject.ownPropertyKeys((DynamicObject) target);
             } else {
-                return JSInteropNodeUtil.keys(target);
+                return JSInteropUtil.keys(target);
             }
         }
 
@@ -825,9 +825,30 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         return JSRuntime.call(trap, handler, new Object[]{target, holder, JSArray.createConstant(ctx, arguments)});
     }
 
+    @TruffleBoundary
+    public static Object construct(DynamicObject proxyObj, Object[] arguments) {
+        if (!JSRuntime.isConstructorProxy(proxyObj)) {
+            throw Errors.createTypeErrorNotAFunction(proxyObj);
+        }
+        DynamicObject handler = getHandlerChecked(proxyObj);
+        TruffleObject target = getTarget(proxyObj);
+        TruffleObject trap = getTrapFromObject(handler, CONSTRUCT);
+        Object newTarget = proxyObj;
+        if (trap == Undefined.instance) {
+            return JSRuntime.construct(target, arguments);
+        }
+        JSContext ctx = JSObject.getJSContext(proxyObj);
+        Object result = JSRuntime.call(trap, handler, new Object[]{target, JSArray.createConstant(ctx, arguments), newTarget});
+        if (!JSRuntime.isObject(result)) {
+            throw Errors.createTypeErrorNotAnObject(result);
+        }
+        return result;
+    }
+
+    @SuppressWarnings("deprecation")
     @Override
-    public ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return JSObject.getJSContext(object).getInteropRuntime().getForeignAccessFactory();
+    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(DynamicObject object) {
+        return JSForeignAccessFactoryForeign.ACCESS;
     }
 
     @Override

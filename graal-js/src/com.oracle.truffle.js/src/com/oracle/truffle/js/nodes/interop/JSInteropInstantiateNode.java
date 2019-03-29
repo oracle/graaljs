@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,37 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropAsyncFunction;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
-public final class InteropAsyncFunctionForeign extends InteropFunctionForeign {
-    public static final ForeignAccess ACCESS = ForeignAccess.create(InteropAsyncFunction.class, new InteropAsyncFunctionForeign());
+@GenerateUncached
+public abstract class JSInteropInstantiateNode extends JSInteropCallNode {
+    protected JSInteropInstantiateNode() {
+    }
 
-    private InteropAsyncFunctionForeign() {
+    public abstract Object execute(DynamicObject function, Object[] args) throws UnsupportedMessageException;
+
+    @Specialization
+    Object doDefault(DynamicObject function, Object[] arguments,
+                    @Cached IsConstructorNode isConstructorNode,
+                    @Cached(value = "createNew()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
+                    @Cached JSForeignToJSTypeNode importValueNode) throws UnsupportedMessageException {
+        if (!isConstructorNode.executeBoolean(function)) {
+            throw UnsupportedMessageException.create();
+        }
+        Object[] preparedArgs = prepare(arguments, importValueNode);
+        if (callNode == null) {
+            return JSRuntime.construct(function, preparedArgs);
+        } else {
+            return callNode.executeCall(JSArguments.create(JSFunction.CONSTRUCT, function, preparedArgs));
+        }
     }
 }

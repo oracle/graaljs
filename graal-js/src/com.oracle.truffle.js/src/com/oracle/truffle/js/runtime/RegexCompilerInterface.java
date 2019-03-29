@@ -46,8 +46,6 @@ import java.util.regex.PatternSyntaxException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.regex.nashorn.regexp.RegExpScanner;
 
@@ -55,10 +53,6 @@ public final class RegexCompilerInterface {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG = "Invalid regular expression flags";
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG_NASHORN = "Unsupported RegExp flag: %c";
-
-    public static Node createExecuteCompilerNode() {
-        return JSInteropUtil.createCall();
-    }
 
     public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.CompileRegexNode compileRegexNode) {
         // RegexLanguage does its own validation of the flags. This call to validateFlags only

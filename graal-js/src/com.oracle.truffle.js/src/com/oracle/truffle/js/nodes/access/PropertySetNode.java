@@ -49,16 +49,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.BooleanLocation;
@@ -1016,25 +1013,21 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     public static final class ForeignPropertySetNode extends LinkedPropertySetNode {
 
-        @Child private Node isNull;
-        @Child private Node keyInfo;
-        @Child private Node write;
         @Child private ExportValueNode export;
-        @Child private Node setterKeyInfo;
-        @Child private Node setterInvoke;
         @CompilationFinal private boolean optimistic = true;
         private final JSContext context;
+        @Child private InteropLibrary interop;
+        @Child private InteropLibrary setterInterop;
 
         public ForeignPropertySetNode(JSContext context) {
             super(new ForeignLanguageCheckNode());
             this.context = context;
-            this.isNull = Message.IS_NULL.createNode();
-            this.write = Message.WRITE.createNode();
             this.export = ExportValueNode.create();
+            this.interop = InteropLibrary.getFactory().createDispatched(3);
         }
 
-        private TruffleObject nullCheck(TruffleObject truffleObject, Object key) {
-            if (ForeignAccess.sendIsNull(isNull, truffleObject)) {
+        private Object nullCheck(Object truffleObject, Object key) {
+            if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this);
             }
             return truffleObject;
@@ -1043,59 +1036,50 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
             Object key = root.getKey();
-            TruffleObject truffleObject = nullCheck((TruffleObject) thisObj, key);
-            if (optimistic) {
-                try {
-                    ForeignAccess.sendWrite(write, truffleObject, key, value);
-                } catch (UnknownIdentifierException e) {
-                    unknownIdentifier(truffleObject, value, root);
-                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
-                }
-            } else {
-                if (keyInfo == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    keyInfo = insert(Message.KEY_INFO.createNode());
-                }
-                if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
-                    try {
-                        ForeignAccess.sendWrite(write, truffleObject, key, value);
-                    } catch (UnknownIdentifierException e) {
-                        // do nothing
-                    } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                        throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
-                    }
-                } else if (context.isOptionNashornCompatibilityMode()) {
-                    tryInvokeSetter(truffleObject, value, root);
-                }
+            Object truffleObject = nullCheck(thisObj, key);
+            if (!(key instanceof String)) {
+                return false;
             }
-            return true;
+            return performWriteMember(truffleObject, value, root);
         }
 
         @Override
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
             Object key = root.getKey();
-            TruffleObject truffleObject = nullCheck((TruffleObject) thisObj, key);
+            Object truffleObject = nullCheck(thisObj, key);
+            if (!(key instanceof String)) {
+                return false;
+            }
+            return performWriteMember(truffleObject, value, root);
+        }
+
+        @Override
+        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
+            Object key = root.getKey();
+            Object truffleObject = nullCheck(thisObj, key);
+            if (!(key instanceof String)) {
+                return false;
+            }
+            Object exportedValue = export.execute(value);
+            return performWriteMember(truffleObject, exportedValue, root);
+        }
+
+        private boolean performWriteMember(Object truffleObject, Object value, PropertySetNode root) {
+            String stringKey = (String) root.getKey();
             if (optimistic) {
                 try {
-                    ForeignAccess.sendWrite(write, truffleObject, key, value);
+                    interop.writeMember(truffleObject, stringKey, value);
                 } catch (UnknownIdentifierException e) {
                     unknownIdentifier(truffleObject, value, root);
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
                 }
             } else {
-                if (keyInfo == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    keyInfo = insert(Message.KEY_INFO.createNode());
-                }
-                if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
+                if (interop.isMemberWritable(truffleObject, stringKey)) {
                     try {
-                        ForeignAccess.sendWrite(write, truffleObject, key, value);
-                    } catch (UnknownIdentifierException e) {
-                        // do nothing
-                    } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                        throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
+                        interop.writeMember(truffleObject, stringKey, value);
+                    } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
                     }
                 } else if (context.isOptionNashornCompatibilityMode()) {
                     tryInvokeSetter(truffleObject, value, root);
@@ -1104,40 +1088,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return true;
         }
 
-        @Override
-        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            Object key = root.getKey();
-            TruffleObject truffleObject = nullCheck((TruffleObject) thisObj, key);
-            Object exportedValue = export.executeWithTarget(value, Undefined.instance);
-            if (optimistic) {
-                try {
-                    ForeignAccess.sendWrite(write, truffleObject, key, exportedValue);
-                } catch (UnknownIdentifierException e) {
-                    unknownIdentifier(truffleObject, exportedValue, root);
-                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
-                }
-            } else {
-                if (keyInfo == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    keyInfo = insert(Message.KEY_INFO.createNode());
-                }
-                if (KeyInfo.isWritable(ForeignAccess.sendKeyInfo(keyInfo, truffleObject, key))) {
-                    try {
-                        ForeignAccess.sendWrite(write, truffleObject, key, exportedValue);
-                    } catch (UnknownIdentifierException e) {
-                        // do nothing
-                    } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                        throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
-                    }
-                } else if (context.isOptionNashornCompatibilityMode()) {
-                    tryInvokeSetter(truffleObject, exportedValue, root);
-                }
-            }
-            return true;
-        }
-
-        private void unknownIdentifier(TruffleObject truffleObject, Object value, PropertySetNode root) {
+        private void unknownIdentifier(Object truffleObject, Object value, PropertySetNode root) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             optimistic = false;
             if (context.isOptionNashornCompatibilityMode()) {
@@ -1146,7 +1097,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
 
         // in nashorn-compat mode, `javaObj.xyz = a` can mean `javaObj.setXyz(a)`.
-        private void tryInvokeSetter(TruffleObject thisObj, Object value, PropertySetNode root) {
+        private void tryInvokeSetter(Object thisObj, Object value, PropertySetNode root) {
             assert context.isOptionNashornCompatibilityMode();
             if (!(root.getKey() instanceof String)) {
                 return;
@@ -1157,19 +1108,15 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 if (setterKey == null) {
                     return;
                 }
-                if (setterKeyInfo == null) {
+                if (setterInterop == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setterKeyInfo = insert(Message.KEY_INFO.createNode());
+                    setterInterop = insert(InteropLibrary.getFactory().createDispatched(3));
                 }
-                if (!KeyInfo.isInvocable(ForeignAccess.sendKeyInfo(setterKeyInfo, thisObj, setterKey))) {
+                if (!setterInterop.isMemberInvocable(thisObj, setterKey)) {
                     return;
                 }
-                if (setterInvoke == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setterInvoke = insert(Message.INVOKE.createNode());
-                }
                 try {
-                    ForeignAccess.sendInvoke(setterInvoke, thisObj, setterKey, new Object[]{value});
+                    setterInterop.invokeMember(thisObj, setterKey, value);
                 } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                     // silently ignore
                 }

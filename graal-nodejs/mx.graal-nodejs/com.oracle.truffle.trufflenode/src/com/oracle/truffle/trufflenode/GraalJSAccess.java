@@ -114,9 +114,9 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -196,7 +196,6 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -386,14 +385,41 @@ public final class GraalJSAccess {
     }
 
     private int valueTypeForeignObject(TruffleObject value, boolean useSharedBuffer) {
-        if (ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), value)) {
-            Object unboxedValue = JSInteropNodeUtil.unbox(value);
-            return valueType(unboxedValue, useSharedBuffer);
-        } else if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), value)) {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
+        if (interop.isExecutable(value)) {
             return FUNCTION_OBJECT;
+        } else if (interop.isNull(value)) {
+            return NULL_VALUE;
+        } else if (interop.isBoolean(value)) {
+            try {
+                return interop.asBoolean(value) ? BOOLEAN_VALUE_TRUE : BOOLEAN_VALUE_FALSE;
+            } catch (UnsupportedMessageException e) {
+                valueTypeError(value);
+                return UNKNOWN_TYPE;
+            }
+        } else if (interop.isString(value)) {
+            return STRING_VALUE;
+        } else if (interop.isNumber(value)) {
+            return valueTypeForeignNumber(value, interop, useSharedBuffer);
         } else {
             return ORDINARY_OBJECT;
         }
+    }
+
+    public int valueTypeForeignNumber(TruffleObject value, InteropLibrary interop, boolean useSharedBuffer) {
+        try {
+            return valueType(interop.asDouble(value), useSharedBuffer);
+        } catch (UnsupportedMessageException e) {
+            if (interop.fitsInLong(value)) {
+                try {
+                    return valueType(interop.asLong(value), useSharedBuffer);
+                } catch (UnsupportedMessageException ignore) {
+                    // fall through to error case
+                }
+            }
+        }
+        valueTypeError(value);
+        return UNKNOWN_TYPE;
     }
 
     private int valueTypeJSObject(DynamicObject obj, boolean useSharedBuffer) {
@@ -796,11 +822,11 @@ public final class GraalJSAccess {
         } else if (value instanceof PropertyReference) {
             return ((PropertyReference) value).toString();
         } else if (JSRuntime.isForeignObject(value)) {
-            TruffleObject truffleObject = (TruffleObject) value;
-            if (ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), truffleObject)) {
-                Object unboxedValue = JSInteropNodeUtil.unbox(truffleObject);
-                if (unboxedValue instanceof String) {
-                    return unboxedValue;
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
+            if (interop.isString(value)) {
+                try {
+                    return interop.asString(value);
+                } catch (UnsupportedMessageException e) {
                 }
             }
             return value;

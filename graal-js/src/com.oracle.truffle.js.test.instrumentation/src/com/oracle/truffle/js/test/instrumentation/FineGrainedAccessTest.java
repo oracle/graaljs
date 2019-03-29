@@ -65,8 +65,7 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -332,7 +331,7 @@ public abstract class FineGrainedAccessTest {
 
     public static Object getAttributeFrom(EventContext cx, String name) {
         try {
-            return ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);
+            return InteropLibrary.getFactory().getUncached().readMember(((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new RuntimeException(e);
         }

@@ -51,18 +51,17 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -72,14 +71,12 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.EnumerateIterator;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 /**
  * ES6 [[Enumerate]]().
  */
-@ImportStatic(JSInteropUtil.class)
 public abstract class EnumerateNode extends JavaScriptNode {
     /** Enumerate values instead of keys (used by for-each-in loop). */
     private final boolean values;
@@ -159,13 +156,10 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return create(context, null, true);
     }
 
-    @Specialization(guards = {"isForeignObject(iteratedObject)"})
+    @Specialization(guards = {"isForeignObject(iteratedObject)"}, limit = "3")
     protected DynamicObject doEnumerateTruffleObject(TruffleObject iteratedObject,
-                    @Cached("createHasSize()") Node hasSizeNode,
-                    @Cached("createGetSize()") Node getSizeNode,
-                    @Cached("createRead()") Node readNode,
-                    @Cached("createKeys()") Node keysNode,
-                    @Cached("create()") JSToLengthNode toLengthNode,
+                    @CachedLibrary("iteratedObject") InteropLibrary interop,
+                    @CachedLibrary(limit = "3") InteropLibrary keysInterop,
                     @Cached("createBinaryProfile()") ConditionProfile isHostObject) {
         TruffleLanguage.Env env = context.getRealm().getEnv();
         if (isHostObject.profile(env.isHostObject(iteratedObject))) {
@@ -176,7 +170,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             }
         }
 
-        return doEnumerateTruffleObjectIntl(context, iteratedObject, hasSizeNode, getSizeNode, readNode, keysNode, toLengthNode, values);
+        return doEnumerateTruffleObjectIntl(context, iteratedObject, values, interop, keysInterop);
     }
 
     @TruffleBoundary
@@ -205,22 +199,19 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return null;
     }
 
-    public static DynamicObject doEnumerateTruffleObjectIntl(JSContext context, TruffleObject iteratedObject, Node hasSizeNode, Node getSizeNode, Node readNode, Node keysNode,
-                    JSToLengthNode toLengthNode, boolean values) {
+    public static DynamicObject doEnumerateTruffleObjectIntl(JSContext context, Object iteratedObject, boolean values,
+                    InteropLibrary objInterop, InteropLibrary keysInterop) {
         try {
-            boolean hasSize = ForeignAccess.sendHasSize(hasSizeNode, iteratedObject);
-            if (hasSize) {
-                long longSize = getSizeAsLong(iteratedObject, getSizeNode, toLengthNode);
-                return enumerateForeignArrayLike(context, iteratedObject, longSize, readNode, values);
+            if (objInterop.hasArrayElements(iteratedObject)) {
+                long longSize = objInterop.getArraySize(iteratedObject);
+                return enumerateForeignArrayLike(context, iteratedObject, longSize, values, objInterop);
+            } else if (objInterop.hasMembers(iteratedObject)) {
+                Object keysObj = objInterop.getMembers(iteratedObject);
+                assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
+                long longSize = keysInterop.getArraySize(keysObj);
+                return enumerateForeignNonArray(context, iteratedObject, keysObj, longSize, values, objInterop, keysInterop);
             } else {
-                TruffleObject keysObj = ForeignAccess.sendKeys(keysNode, iteratedObject);
-                hasSize = ForeignAccess.sendHasSize(hasSizeNode, keysObj);
-                if (hasSize) {
-                    long longSize = getSizeAsLong(keysObj, getSizeNode, toLengthNode);
-                    return enumerateForeignNonArray(context, iteratedObject, keysObj, longSize, readNode, values);
-                } else {
-                    return JSArray.createEmptyZeroLength(context);
-                }
+                return JSArray.createEmptyZeroLength(context);
             }
         } catch (UnsupportedMessageException ex) {
             // swallow and default
@@ -229,14 +220,10 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return newEnumerateIterator(context, Collections.emptyIterator());
     }
 
-    private static long getSizeAsLong(TruffleObject iteratedObject, Node getSizeNode, JSToLengthNode toLengthNode) throws UnsupportedMessageException {
-        Object size = ForeignAccess.sendGetSize(getSizeNode, iteratedObject);
-        return toLengthNode.executeLong(size);
-    }
-
-    private static DynamicObject enumerateForeignArrayLike(JSContext context, TruffleObject iteratedObject, long longSize, Node readNode, boolean values) {
+    private static DynamicObject enumerateForeignArrayLike(JSContext context, Object iteratedObject, long longSize, boolean values,
+                    InteropLibrary interop) {
         Iterator<Object> iterator = new Iterator<Object>() {
-            private int cursor;
+            private long cursor;
 
             @Override
             public boolean hasNext() {
@@ -246,15 +233,16 @@ public abstract class EnumerateNode extends JavaScriptNode {
             @Override
             public Object next() {
                 if (hasNext()) {
+                    long index = cursor++;
                     if (values) {
                         try {
                             // the value is imported in the iterator's next method node
-                            return ForeignAccess.sendRead(readNode, iteratedObject, cursor++);
-                        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                            return interop.readArrayElement(iteratedObject, index);
+                        } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
                             // swallow and default
                         }
                     } else {
-                        return cursor++;
+                        return index;
                     }
                 }
                 throw new NoSuchElementException();
@@ -263,9 +251,10 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return newEnumerateIterator(context, iterator);
     }
 
-    private static DynamicObject enumerateForeignNonArray(JSContext context, TruffleObject iteratedObject, TruffleObject keysObject, long keysSize, Node readNode, boolean values) {
+    private static DynamicObject enumerateForeignNonArray(JSContext context, Object iteratedObject, Object keysObject, long keysSize, boolean values,
+                    InteropLibrary objInterop, InteropLibrary keysInterop) {
         Iterator<Object> iterator = new Iterator<Object>() {
-            private int cursor;
+            private long cursor;
 
             @Override
             public boolean hasNext() {
@@ -275,22 +264,23 @@ public abstract class EnumerateNode extends JavaScriptNode {
             @Override
             public Object next() {
                 if (hasNext()) {
-                    if (values) {
-                        try {
-                            // no conversion on KEYS, always String
-                            Object key = ForeignAccess.sendRead(readNode, keysObject, cursor++);
-                            // the value is imported in the iterator's next method node
-                            return ForeignAccess.sendRead(readNode, iteratedObject, key);
-                        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                            // swallow and default
+                    long index = cursor++;
+                    try {
+                        Object key = keysInterop.readArrayElement(keysObject, index);
+                        if (values) {
+                            try {
+                                assert InteropLibrary.getFactory().getUncached().isString(key);
+                                String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
+                                // the value is imported in the iterator's next method node
+                                return objInterop.readMember(iteratedObject, stringKey);
+                            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                                // swallow and default
+                            }
+                        } else {
+                            return key;
                         }
-                    } else {
-                        try {
-                            // no conversion on KEYS, always String
-                            return ForeignAccess.sendRead(readNode, keysObject, cursor++);
-                        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                            // swallow and default
-                        }
+                    } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
+                        // swallow and default
                     }
                 }
                 throw new NoSuchElementException();

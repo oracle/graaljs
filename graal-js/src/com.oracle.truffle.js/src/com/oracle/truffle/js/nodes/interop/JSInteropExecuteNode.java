@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,40 +40,36 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
-public class JSInteropExecuteNode extends JavaScriptBaseNode {
-    @Child private JSFunctionCallNode call;
-    @Child private JSForeignToJSTypeNode convertArgsNode;
-
-    protected JSInteropExecuteNode(boolean isNew) {
-        this.call = JSFunctionCallNode.create(isNew);
+@GenerateUncached
+public abstract class JSInteropExecuteNode extends JSInteropCallNode {
+    protected JSInteropExecuteNode() {
     }
 
-    public static JSInteropExecuteNode createExecute() {
-        return new JSInteropExecuteNode(false);
-    }
+    public abstract Object execute(DynamicObject function, Object thisArg, Object[] args) throws UnsupportedMessageException;
 
-    public static JSInteropExecuteNode createNew() {
-        return new JSInteropExecuteNode(true);
-    }
-
-    public Object execute(DynamicObject function, Object thisArg, Object[] args) {
-        return call.executeCall(JSArguments.create(thisArg, function, prepare(args)));
-    }
-
-    private Object[] prepare(Object[] shifted) {
-        if (convertArgsNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            convertArgsNode = insert(JSForeignToJSTypeNodeGen.create());
+    @Specialization
+    Object doDefault(DynamicObject function, Object thisArg, Object[] arguments,
+                    @Cached IsCallableNode isCallableNode,
+                    @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
+                    @Cached JSForeignToJSTypeNode importValueNode) throws UnsupportedMessageException {
+        if (!isCallableNode.executeBoolean(function)) {
+            throw UnsupportedMessageException.create();
         }
-        for (int i = 0; i < shifted.length; i++) {
-            shifted[i] = convertArgsNode.executeWithTarget(shifted[i]);
+        Object[] preparedArgs = prepare(arguments, importValueNode);
+        if (callNode == null) {
+            return JSRuntime.call(function, thisArg, preparedArgs);
+        } else {
+            return callNode.executeCall(JSArguments.create(thisArg, function, preparedArgs));
         }
-        return shifted;
     }
 }

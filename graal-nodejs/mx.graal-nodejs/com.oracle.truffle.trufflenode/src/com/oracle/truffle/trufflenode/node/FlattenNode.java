@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.trufflenode.node;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -54,10 +54,8 @@ import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
-@ImportStatic({JSObject.class, JSInteropUtil.class, JSRuntime.class})
+@ImportStatic({JSObject.class, JSRuntime.class})
 abstract class FlattenNode extends JavaScriptBaseNode {
     protected abstract Object execute(Object value);
 
@@ -86,17 +84,17 @@ abstract class FlattenNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = "isForeignObject(value)")
+    @Specialization(guards = "isForeignObject(value)", limit = "3")
     protected static Object doForeignObject(TruffleObject value,
-                    @Cached("createIsBoxed()") Node isBoxedNode,
-                    @Cached("createUnbox()") Node unboxNode) {
-        if (ForeignAccess.sendIsBoxed(isBoxedNode, value)) {
-            Object unboxedValue = JSInteropNodeUtil.unbox(value, unboxNode);
-            if (unboxedValue instanceof String) {
-                // jobject reference in the native wrapper (GraalString)
-                // must be jstring (to allow the usage of various String-specific
-                // JNI functions) => return the unboxed string
-                return unboxedValue;
+                    @CachedLibrary("value") InteropLibrary interop) {
+        if (interop.isString(value)) {
+            // jobject reference in the native wrapper (GraalString)
+            // must be jstring (to allow the usage of various String-specific
+            // JNI functions) => return the unboxed string
+            try {
+                return interop.asString(value);
+            } catch (UnsupportedMessageException e) {
+                // fall through
             }
         }
         return value;

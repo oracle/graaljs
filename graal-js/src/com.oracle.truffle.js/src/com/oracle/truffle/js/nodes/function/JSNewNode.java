@@ -55,8 +55,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -91,7 +95,6 @@ import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
@@ -196,7 +199,7 @@ public abstract class JSNewNode extends JavaScriptNode {
                 args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT + 1);
                 return getCallNewTarget().executeCall(args);
             } else {
-                return JSInteropNodeUtil.construct(target, getAbstractFunctionArguments(frame));
+                return JSInteropUtil.construct(target, getAbstractFunctionArguments(frame));
             }
         }
         Object[] args = getAbstractFunctionArguments(frame);
@@ -221,7 +224,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     @Specialization(guards = {"isForeignObject(target)"})
     public Object doNewForeignObject(VirtualFrame frame, TruffleObject target,
-                    @Cached("createNewCache()") Node newNode,
+                    @CachedLibrary(limit = "5") InteropLibrary interop,
                     @Cached("create()") ExportValueNode convert,
                     @Cached("create()") JSForeignToJSTypeNode toJSType,
                     @Cached("createBinaryProfile()") ConditionProfile isHostClassProf,
@@ -232,7 +235,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         args = arguments.executeFillObjectArray(frame, args, 0);
         // We need to convert (e.g., bind functions) before invoking the constructor
         for (int i = 0; i < args.length; i++) {
-            args[i] = convert.executeWithTarget(args[i], Undefined.instance);
+            args[i] = convert.execute(args[i]);
         }
 
         if (!JSTruffleOptions.SubstrateVM && context.isOptionNashornCompatibilityMode()) {
@@ -245,7 +248,11 @@ public abstract class JSNewNode extends JavaScriptNode {
             }
         }
 
-        return toJSType.executeWithTarget(JSInteropNodeUtil.construct(newTarget, args, newNode, this));
+        try {
+            return toJSType.executeWithTarget(interop.instantiate(newTarget, args));
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(target, e, "instantiate", this);
+        }
     }
 
     @TruffleBoundary
@@ -258,10 +265,6 @@ public abstract class JSNewNode extends JavaScriptNode {
         JavaAccess.checkAccess(new Class<?>[]{type}, context);
         Class<?> adapterClass = context.getJavaAdapterClassFor(type);
         return (TruffleObject) env.asHostSymbol(adapterClass);
-    }
-
-    protected Node createNewCache() {
-        return JSInteropUtil.createNew();
     }
 
     @TruffleBoundary

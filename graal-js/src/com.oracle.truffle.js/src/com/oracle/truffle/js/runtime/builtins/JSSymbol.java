@@ -54,7 +54,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -108,7 +107,6 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_PRIMITIVE, createToPrimitiveFunction(realm), JSAttributes.configurableNotEnumerableNotWritable());
         if (ctx.getContextOptions().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
             JSObjectUtil.putConstantAccessorProperty(ctx, prototype, DESCRIPTION, createDescriptionGetterFunction(realm), Undefined.instance);
         }
@@ -124,27 +122,6 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
 
     public static JSConstructor createConstructor(JSRealm realm) {
         return INSTANCE.createConstructorAndPrototype(realm);
-    }
-
-    private static DynamicObject createToPrimitiveFunction(JSRealm realm) {
-        JSContext context = realm.getContext();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            private final ConditionProfile isSymbolProfile = ConditionProfile.createBinaryProfile();
-            private final ConditionProfile isJSSymbolProfile = ConditionProfile.createBinaryProfile();
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object obj = JSFrameUtil.getThisObj(frame);
-                if (isSymbolProfile.profile(obj instanceof Symbol)) {
-                    return obj;
-                } else if (isJSSymbolProfile.profile(JSSymbol.isJSSymbol(obj))) {
-                    return JSSymbol.getSymbolData((DynamicObject) obj);
-                } else {
-                    throw Errors.createTypeErrorSymbolExpected();
-                }
-            }
-        });
-        return JSFunction.create(realm, JSFunctionData.createCallOnly(context, callTarget, 1, "[Symbol.toPrimitive]"));
     }
 
     private static DynamicObject createDescriptionGetterFunction(JSRealm realm) {

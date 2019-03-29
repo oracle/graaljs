@@ -41,16 +41,41 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.WriteElementNode;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropInstantiateNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
+import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
  * Basic interface for all JavaScript "classes". A JSClass defines the internal and access methods
@@ -65,6 +90,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
  * - keep interface clean, avoid redundant methods, maximize consistency with JSObject and ECMAScript
  * </pre>
  */
+@ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
 public abstract class JSClass extends ObjectType {
 
     protected JSClass() {
@@ -359,5 +385,409 @@ public abstract class JSClass extends ObjectType {
 
     public boolean usesOrdinaryGetOwnProperty() {
         return false;
+    }
+
+    @Override
+    public Class<?> dispatch() {
+        return JSClass.class;
+    }
+
+    @ExportMessage
+    static boolean isNull(DynamicObject target) {
+        return JSShape.getJSClassNoCast(target.getShape()) == Null.NULL_CLASS;
+    }
+
+    @ExportMessage
+    static boolean hasMembers(DynamicObject target) {
+        return JSRuntime.isObject(target);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static Object getMembers(DynamicObject target, @SuppressWarnings("unused") boolean internal) {
+        Object[] keys = JSObject.enumerableOwnNames(target).toArray();
+        JSContext context = JSObject.getJSContext(target);
+        return JSArray.createConstant(context, keys);
+    }
+
+    @SuppressWarnings("unused")
+    @ExportMessage
+    static Object readMember(DynamicObject target, String key,
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnknownIdentifierException {
+        Object result;
+        if (readNode == null) {
+            result = JSObject.getOrDefault(target, key, null, JSClassProfile.getUncached());
+        } else {
+            result = readNode.executeWithTargetAndIndexOrDefault(target, key, null);
+        }
+        if (result == null) {
+            throw UnknownIdentifierException.create(key);
+        }
+        return exportNode.executeWithTarget(result, target);
+    }
+
+    @ExportMessage
+    static boolean isMemberReadable(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.READABLE);
+    }
+
+    @SuppressWarnings("unused")
+    @ExportMessage
+    static void writeMember(DynamicObject target, String key, Object value,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
+                    @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws UnknownIdentifierException {
+        if (!keyInfo.execute(target, key, KeyInfoNode.WRITABLE)) {
+            throw UnknownIdentifierException.create(key);
+        }
+        Object importedValue = castValueNode.executeWithTarget(value);
+        if (writeNode == null) {
+            JSObject.set(target, key, importedValue, true);
+        } else {
+            writeNode.executeWithTargetAndIndexAndValue(target, key, importedValue);
+        }
+    }
+
+    @ExportMessage
+    static boolean isMemberModifiable(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.MODIFIABLE);
+    }
+
+    @ExportMessage
+    static boolean isMemberInsertable(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.INSERTABLE);
+    }
+
+    @ExportMessage
+    static void removeMember(DynamicObject target, String key) {
+        JSObject.delete(target, key, true);
+    }
+
+    @ExportMessage
+    static boolean isMemberRemovable(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.REMOVABLE);
+    }
+
+    @ExportMessage
+    static boolean hasArrayElements(DynamicObject target) {
+        ObjectType objectType = JSShape.getJSClassNoCast(target.getShape());
+        return objectType instanceof JSAbstractArray || objectType instanceof JSArrayBufferView;
+    }
+
+    @ExportMessage
+    static long getArraySize(DynamicObject target) throws UnsupportedMessageException {
+        if (JSArray.isJSArray(target)) {
+            return JSArray.arrayGetLength(target);
+        } else if (JSArrayBufferView.isJSArrayBufferView(target)) {
+            return JSArrayBufferView.typedArrayGetLength(target);
+        } else if (JSArgumentsObject.isJSArgumentsObject(target)) {
+            return JSRuntime.toInteger(JSObject.get(target, JSAbstractArray.LENGTH));
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @ExportMessage
+    static Object readArrayElement(DynamicObject target, long index,
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+        if (!hasArrayElements(target)) {
+            throw UnsupportedMessageException.create();
+        }
+        Object result;
+        if (readNode == null) {
+            result = JSObject.getOrDefault(target, index, null, JSClassProfile.getUncached());
+        } else {
+            result = readNode.executeWithTargetAndIndexOrDefault(target, index, null);
+        }
+        if (result == null) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        return exportNode.executeWithTarget(result, target);
+    }
+
+    @ExportMessage
+    static boolean isArrayElementReadable(DynamicObject target, long index,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.READABLE);
+    }
+
+    @SuppressWarnings("unused")
+    @ExportMessage
+    static void writeArrayElement(DynamicObject target, long index, Object value,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
+                    @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+        if (!hasArrayElements(target)) {
+            throw UnsupportedMessageException.create();
+        }
+        if (!keyInfo.execute(target, index, KeyInfoNode.WRITABLE)) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        Object importedValue = castValueNode.executeWithTarget(value);
+        if (writeNode == null) {
+            JSObject.set(target, index, importedValue, true);
+        } else {
+            writeNode.executeWithTargetAndIndexAndValue(target, index, importedValue);
+        }
+    }
+
+    @ExportMessage
+    static boolean isArrayElementModifiable(DynamicObject target, long index,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.MODIFIABLE);
+    }
+
+    @ExportMessage
+    static boolean isArrayElementInsertable(DynamicObject target, long index,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.INSERTABLE);
+    }
+
+    @ExportMessage
+    static void removeArrayElement(DynamicObject target, long index) throws UnsupportedMessageException {
+        if (!hasArrayElements(target)) {
+            throw UnsupportedMessageException.create();
+        }
+        JSObject.delete(target, index, true);
+    }
+
+    @ExportMessage
+    static boolean isArrayElementRemovable(DynamicObject target, long index,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.REMOVABLE);
+    }
+
+    @ExportMessage
+    static Object execute(DynamicObject target, Object[] args,
+                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @Cached JSInteropExecuteNode callNode,
+                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+        JSContext context = realm.getContext();
+        context.interopBoundaryEnter();
+        try {
+            Object result = callNode.execute(target, Undefined.instance, args);
+            return exportNode.executeWithTarget(result, Undefined.instance);
+        } finally {
+            context.interopBoundaryExit();
+        }
+    }
+
+    @ExportMessage
+    static boolean isExecutable(DynamicObject target,
+                    @Cached IsCallableNode isCallable) {
+        return isCallable.executeBoolean(target);
+    }
+
+    @ExportMessage
+    static Object instantiate(DynamicObject target, Object[] args,
+                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @Cached JSInteropInstantiateNode callNode,
+                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+        JSContext context = realm.getContext();
+        context.interopBoundaryEnter();
+        try {
+            Object result = callNode.execute(target, args);
+            return exportNode.executeWithTarget(result, Undefined.instance);
+        } finally {
+            context.interopBoundaryExit();
+        }
+    }
+
+    @ExportMessage
+    static boolean isInstantiable(DynamicObject target) {
+        return JSRuntime.isConstructor(target);
+    }
+
+    @ExportMessage
+    static Object invokeMember(DynamicObject target, String id, Object[] args,
+                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @Cached JSInteropInvokeNode callNode,
+                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException, UnknownIdentifierException {
+        JSContext context = realm.getContext();
+        context.interopBoundaryEnter();
+        try {
+            Object result = callNode.execute(target, id, args);
+            return exportNode.executeWithTarget(result, target);
+        } finally {
+            context.interopBoundaryExit();
+        }
+    }
+
+    @ExportMessage
+    static boolean isMemberInvocable(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.INVOCABLE);
+    }
+
+    @ExportMessage
+    static boolean hasMemberReadSideEffects(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.READ_SIDE_EFFECTS);
+    }
+
+    @ExportMessage
+    static boolean hasMemberWriteSideEffects(DynamicObject target, String key,
+                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        return keyInfo.execute(target, key, KeyInfoNode.WRITE_SIDE_EFFECTS);
+    }
+
+    @ExportMessage
+    static boolean isString(DynamicObject target) {
+        JSClass builtinClass = JSObject.getJSClass(target);
+        if (builtinClass == JSString.INSTANCE) {
+            return true;
+        }
+        return false;
+    }
+
+    @ExportMessage
+    static String asString(DynamicObject target) throws UnsupportedMessageException {
+        JSClass builtinClass = JSObject.getJSClass(target);
+        if (builtinClass == JSString.INSTANCE) {
+            return JSString.getString(target);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static boolean isBoolean(DynamicObject target) {
+        JSClass builtinClass = JSObject.getJSClass(target);
+        if (builtinClass == JSBoolean.INSTANCE) {
+            return true;
+        }
+        return false;
+    }
+
+    @ExportMessage
+    static boolean asBoolean(DynamicObject target) throws UnsupportedMessageException {
+        JSClass builtinClass = JSObject.getJSClass(target);
+        if (builtinClass == JSBoolean.INSTANCE) {
+            return JSBoolean.valueOf(target);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static boolean isNumber(DynamicObject target) {
+        JSClass builtinClass = JSObject.getJSClass(target);
+        if (builtinClass == JSNumber.INSTANCE) {
+            return true;
+        }
+        return false;
+    }
+
+    @ExportMessage
+    static boolean fitsInByte(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
+        return isNumber(target) && numberLib.fitsInByte(JSNumber.valueOf(target));
+    }
+
+    @ExportMessage
+    static boolean fitsInShort(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
+        return isNumber(target) && numberLib.fitsInShort(JSNumber.valueOf(target));
+    }
+
+    @ExportMessage
+    static boolean fitsInInt(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
+        return isNumber(target) && numberLib.fitsInInt(JSNumber.valueOf(target));
+    }
+
+    @ExportMessage
+    static boolean fitsInLong(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
+        return isNumber(target) && numberLib.fitsInLong(JSNumber.valueOf(target));
+    }
+
+    @ExportMessage
+    static boolean fitsInFloat(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
+        return isNumber(target) && numberLib.fitsInFloat(JSNumber.valueOf(target));
+    }
+
+    @ExportMessage
+    static boolean fitsInDouble(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) {
+        return isNumber(target) && numberLib.fitsInDouble(JSNumber.valueOf(target));
+    }
+
+    @ExportMessage
+    static byte asByte(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
+        if (fitsInByte(target, numberLib)) {
+            return numberLib.asByte(JSNumber.valueOf(target));
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    static short asShort(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
+        if (fitsInShort(target, numberLib)) {
+            return numberLib.asShort(JSNumber.valueOf(target));
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    static int asInt(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
+        if (fitsInInt(target, numberLib)) {
+            return numberLib.asInt(JSNumber.valueOf(target));
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    static long asLong(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
+        if (fitsInLong(target, numberLib)) {
+            return numberLib.asLong(JSNumber.valueOf(target));
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    static float asFloat(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
+        if (fitsInFloat(target, numberLib)) {
+            return numberLib.asFloat(JSNumber.valueOf(target));
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    static double asDouble(DynamicObject target,
+                    @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
+        if (fitsInDouble(target, numberLib)) {
+            return numberLib.asDouble(JSNumber.valueOf(target));
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    static ReadElementNode getUncachedRead() {
+        return null;
+    }
+
+    static WriteElementNode getUncachedWrite() {
+        return null;
     }
 }

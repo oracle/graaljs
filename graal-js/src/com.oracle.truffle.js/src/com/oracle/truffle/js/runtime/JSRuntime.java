@@ -47,16 +47,15 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -84,7 +83,8 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.util.IteratorUtil;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
 public final class JSRuntime {
@@ -226,10 +226,14 @@ public final class JSRuntime {
         } else if (value instanceof TruffleObject) {
             assert !(value instanceof Symbol);
             TruffleObject object = (TruffleObject) value;
-            if (JSInteropNodeUtil.isBoxed(object)) {
-                return typeof(JSInteropNodeUtil.unbox(object));
-            }
-            if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), object) || ForeignAccess.sendIsInstantiable(Message.IS_INSTANTIABLE.createNode(), object)) {
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+            if (interop.isBoolean(object)) {
+                return JSBoolean.TYPE_NAME;
+            } else if (interop.isString(object)) {
+                return JSString.TYPE_NAME;
+            } else if (interop.isNumber(object)) {
+                return JSNumber.TYPE_NAME;
+            } else if (interop.isExecutable(object) || interop.isInstantiable(object)) {
                 return JSFunction.TYPE_NAME;
             } else {
                 return JSUserObject.TYPE_NAME;
@@ -314,16 +318,13 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object toPrimitiveFromForeign(TruffleObject tObj) {
-        if (JSInteropNodeUtil.isNull(tObj)) {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
+        if (interop.isNull(tObj)) {
             return Null.instance;
-        } else if (JSInteropNodeUtil.isBoxed(tObj)) {
-            try {
-                return JSRuntime.importValue(JSInteropNodeUtil.unbox(tObj));
-            } catch (Exception e) {
-                return Null.instance;
-            }
+        } else if (interop.isBoolean(tObj) || interop.isString(tObj) || interop.isNumber(tObj)) {
+            return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
         } else {
-            boolean hasSize = JSInteropNodeUtil.hasSize(tObj);
+            boolean hasSize = interop.hasArrayElements(tObj);
             return JSRuntime.objectToConsoleString(tObj, hasSize ? null : "foreign");
         }
     }
@@ -349,11 +350,11 @@ public final class JSRuntime {
         } else if (value instanceof BigInt) {
             return ((BigInt) value).compareTo(BigInt.ZERO) != 0;
         } else if (isForeignObject(value)) {
-            TruffleObject object = (TruffleObject) value;
-            if (JSInteropNodeUtil.isNull(object)) {
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
+            if (interop.isNull(value)) {
                 return false;
-            } else if (JSInteropNodeUtil.isBoxed(object)) {
-                return toBoolean(JSInteropNodeUtil.unbox(object));
+            } else if (interop.isBoolean(value) || interop.isString(value) || interop.isNumber(value)) {
+                return toBoolean(JSInteropUtil.toPrimitiveOrDefault(value, Null.instance, interop, null));
             } else {
                 return true;
             }
@@ -999,32 +1000,30 @@ public final class JSRuntime {
     }
 
     private static boolean isArrayLike(TruffleObject obj) {
-        return JSArray.isJSArray(obj) || (isForeignObject(obj) && JSInteropNodeUtil.hasSize(obj));
+        return JSArray.isJSArray(obj) || (isForeignObject(obj) && InteropLibrary.getFactory().getUncached().hasArrayElements(obj));
     }
 
     private static PropertyDescriptor getOwnProperty(TruffleObject obj, Object key) {
         if (JSObject.isJSObject(obj)) {
             return JSObject.getOwnProperty((DynamicObject) obj, key);
+        } else if (key instanceof Integer) {
+            return PropertyDescriptor.createDataDefault(JSInteropUtil.readArrayElementOrDefault(obj, ((Integer) key).longValue(), Undefined.instance));
         } else {
-            return PropertyDescriptor.createDataDefault(JSInteropNodeUtil.read(obj, key));
+            return PropertyDescriptor.createDataDefault(JSInteropUtil.readMemberOrDefault(obj, key, Undefined.instance));
         }
     }
 
-    private static Iterable<Object> ownPropertyKeys(TruffleObject obj, boolean isArray, long size) {
+    private static Iterable<? extends Object> ownPropertyKeys(TruffleObject obj, boolean isArray, long size) {
         if (JSObject.isJSObject(obj)) {
             return JSObject.ownPropertyKeys((DynamicObject) obj);
         } else {
             if (isArray) {
                 // Foreign arrays don't answer the KEYS message
                 // they just have keys from 0 to length-1
-                List<Object> keys = new ArrayList<>((int) size);
-                for (int i = 0; i < size; i++) {
-                    keys.add(i);
-                }
-                return keys;
+                return IteratorUtil.rangeIterable((int) Math.min(size, Integer.MAX_VALUE));
             } else {
-                if (JSInteropNodeUtil.hasKeys(obj)) {
-                    return JSInteropNodeUtil.keys(obj);
+                if (InteropLibrary.getFactory().getUncached().hasMembers(obj)) {
+                    return JSInteropUtil.keys(obj);
                 } else {
                     return Collections.emptyList();
                 }
@@ -1038,7 +1037,7 @@ public final class JSRuntime {
             return JSArray.arrayGetLength((DynamicObject) obj);
         } else {
             assert isForeignObject(obj);
-            return JSRuntime.toLong(JSRuntime.toNumber(JSInteropNodeUtil.getSize(obj)));
+            return JSInteropUtil.getArraySize(obj, InteropLibrary.getFactory().getUncached(), null);
         }
     }
 
@@ -1404,13 +1403,13 @@ public final class JSRuntime {
         final Object defaultValue = null;
         Object primLeft;
         if (isForeignObject(a)) {
-            primLeft = JSInteropNodeUtil.toPrimitiveOrDefault((TruffleObject) a, defaultValue);
+            primLeft = JSInteropUtil.toPrimitiveOrDefault(a, defaultValue, InteropLibrary.getFactory().getUncached(a), null);
         } else {
             primLeft = isNullOrUndefined(a) ? Null.instance : a;
         }
         Object primRight;
         if (isForeignObject(b)) {
-            primRight = JSInteropNodeUtil.toPrimitiveOrDefault((TruffleObject) b, defaultValue);
+            primRight = JSInteropUtil.toPrimitiveOrDefault(b, defaultValue, InteropLibrary.getFactory().getUncached(b), null);
         } else {
             primRight = isNullOrUndefined(b) ? Null.instance : b;
         }
@@ -1470,7 +1469,7 @@ public final class JSRuntime {
         if (isString(a) && isString(b)) {
             return a.toString().equals(b.toString());
         }
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
         if (env.isHostObject(a) && env.isHostObject(b)) {
             return env.asHostObject(a) == env.asHostObject(b);
         }
@@ -2258,7 +2257,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static boolean isCallableForeign(TruffleObject value) {
         if (isForeignObject(value)) {
-            return JSInteropNodeUtil.isExecutable(value);
+            return InteropLibrary.getFactory().getUncached().isExecutable(value);
         }
         return false;
     }
@@ -2282,22 +2281,7 @@ public final class JSRuntime {
             }
             return isArrayProxy(proxy);
         } else if (isForeignObject(obj)) {
-            return JSInteropNodeUtil.hasSize((TruffleObject) obj);
-        }
-        return false;
-    }
-
-    public static boolean isArray(Object obj, ConditionProfile profile1, ConditionProfile profile2, Node hasSizeNode) {
-        if (profile1.profile(JSArray.isJSArray(obj))) {
-            return true;
-        } else if (profile2.profile(JSProxy.isProxy(obj))) {
-            DynamicObject proxy = (DynamicObject) obj;
-            if (JSProxy.isRevoked(proxy)) {
-                throw Errors.createTypeErrorProxyRevoked();
-            }
-            return isArrayProxy(proxy);
-        } else if (isForeignObject(obj)) {
-            return JSInteropNodeUtil.hasSize((TruffleObject) obj, hasSizeNode);
+            return InteropLibrary.getFactory().getUncached().hasArrayElements(obj);
         }
         return false;
     }
@@ -2333,7 +2317,19 @@ public final class JSRuntime {
         } else if (JSProxy.isProxy(fnObj)) {
             return JSProxy.call((DynamicObject) fnObj, holder, arguments);
         } else if (isForeignObject(fnObj)) {
-            return JSInteropNodeUtil.call((TruffleObject) fnObj, arguments);
+            return JSInteropUtil.call(fnObj, arguments);
+        } else {
+            throw Errors.createTypeErrorNotAFunction(fnObj);
+        }
+    }
+
+    public static Object construct(Object fnObj, Object[] arguments) {
+        if (JSFunction.isJSFunction(fnObj)) {
+            return JSFunction.construct((DynamicObject) fnObj, arguments);
+        } else if (JSProxy.isProxy(fnObj)) {
+            return JSProxy.construct((DynamicObject) fnObj, arguments);
+        } else if (isForeignObject(fnObj)) {
+            return JSInteropUtil.construct(fnObj, arguments);
         } else {
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }
@@ -2619,7 +2615,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static boolean isConstructorForeign(TruffleObject value) {
         if (isForeignObject(value)) {
-            return JSInteropNodeUtil.isInstantiable(value);
+            return InteropLibrary.getFactory().getUncached().isInstantiable(value);
         }
         return false;
     }
@@ -2738,7 +2734,7 @@ public final class JSRuntime {
         } else if (JSRuntime.isJSPrimitive(value)) {
             return value;
         }
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
         return env.asGuestValue(value);
     }
 

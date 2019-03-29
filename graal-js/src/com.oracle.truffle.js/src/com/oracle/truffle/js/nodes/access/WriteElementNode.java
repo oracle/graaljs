@@ -50,13 +50,13 @@ import java.util.concurrent.locks.Lock;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -81,6 +81,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -119,7 +120,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
@@ -1638,42 +1638,53 @@ public class WriteElementNode extends JSTargetableNode {
 
     static class TruffleObjectWriteElementTypeCacheNode extends CachedWriteElementTypeCacheNode {
         private final Class<? extends TruffleObject> targetClass;
-        @Child private Node write;
-        @Child private Node isNull;
+        @Child private InteropLibrary interop;
+        @Child private InteropLibrary keyInterop;
+        @Child private InteropLibrary setterInterop;
         @Child private ExportValueNode exportKey;
         @Child private ExportValueNode exportValue;
-        @Child private Node setterKeyInfo;
-        @Child private Node setterInvoke;
 
         TruffleObjectWriteElementTypeCacheNode(JSContext context, boolean isStrict, Class<? extends TruffleObject> targetClass, boolean writeOwn) {
             super(context, isStrict, writeOwn);
             this.targetClass = targetClass;
-            this.isNull = Message.IS_NULL.createNode();
-            this.write = Message.WRITE.createNode();
             this.exportKey = ExportValueNode.create();
             this.exportValue = ExportValueNode.create();
+            this.interop = InteropLibrary.getFactory().createDispatched(3);
+            this.keyInterop = InteropLibrary.getFactory().createDispatched(3);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
             TruffleObject truffleObject = targetClass.cast(target);
-            if (ForeignAccess.sendIsNull(isNull, truffleObject)) {
+            if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this);
             }
-            Object convertedKey = exportKey.executeWithTarget(index, Undefined.instance);
+            Object convertedKey = exportKey.execute(index);
             if (convertedKey instanceof Symbol) {
                 return;
             }
-            Object exportedValue = exportValue.executeWithTarget(value, Undefined.instance);
-            try {
-                ForeignAccess.sendWrite(write, truffleObject, convertedKey, exportedValue);
-            } catch (UnknownIdentifierException e) {
-                if (context.isOptionNashornCompatibilityMode() && convertedKey instanceof String) {
-                    tryInvokeSetter(truffleObject, (String) convertedKey, exportedValue);
+            Object exportedValue = exportValue.execute(value);
+            if (keyInterop.isString(convertedKey)) {
+                try {
+                    interop.writeMember(truffleObject, keyInterop.asString(convertedKey), exportedValue);
+                } catch (UnknownIdentifierException e) {
+                    if (context.isOptionNashornCompatibilityMode() && convertedKey instanceof String) {
+                        tryInvokeSetter(truffleObject, (String) convertedKey, exportedValue);
+                    }
+                    // do nothing
+                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
                 }
+            } else if (keyInterop.fitsInLong(convertedKey)) {
+                try {
+                    interop.writeArrayElement(truffleObject, keyInterop.asLong(convertedKey), exportedValue);
+                } catch (InvalidArrayIndexException e) {
+                    // do nothing
+                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
+                }
+            } else {
                 // do nothing
-            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(truffleObject, e, Message.WRITE, this);
             }
         }
 
@@ -1695,19 +1706,15 @@ public class WriteElementNode extends JSTargetableNode {
                 if (setterKey == null) {
                     return;
                 }
-                if (setterKeyInfo == null) {
+                if (setterInterop == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setterKeyInfo = insert(Message.KEY_INFO.createNode());
+                    setterInterop = insert(InteropLibrary.getFactory().createDispatched(3));
                 }
-                if (!KeyInfo.isInvocable(ForeignAccess.sendKeyInfo(setterKeyInfo, thisObj, setterKey))) {
+                if (!setterInterop.isMemberInvocable(thisObj, setterKey)) {
                     return;
                 }
-                if (setterInvoke == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setterInvoke = insert(Message.INVOKE.createNode());
-                }
                 try {
-                    ForeignAccess.sendInvoke(setterInvoke, thisObj, setterKey, new Object[]{value});
+                    setterInterop.invokeMember(thisObj, setterKey, value);
                 } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                     // silently ignore
                 }
@@ -1756,5 +1763,9 @@ public class WriteElementNode extends JSTargetableNode {
             this.typeCacheNode = insert(new UninitWriteElementTypeCacheNode(context, isStrict, writeOwn));
         }
         return typeCacheNode;
+    }
+
+    public static WriteElementNode createCachedInterop(ContextReference<JSRealm> contextRef) {
+        return create(contextRef.get().getContext(), true);
     }
 }

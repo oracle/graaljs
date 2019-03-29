@@ -67,17 +67,19 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
-import com.oracle.truffle.js.nodes.interop.InteropAsyncFunctionForeign;
-import com.oracle.truffle.js.nodes.interop.InteropBoundFunctionForeign;
-import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -137,14 +139,13 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 
 public class JSContext {
     private final Evaluator evaluator;
     private final JSFunctionLookup functionLookup;
 
-    private final AbstractJavaScriptLanguage language;
+    private final JavaScriptLanguage language;
     private TruffleLanguage.Env truffleLanguageEnv;
 
     private final Shape emptyShape;
@@ -197,7 +198,6 @@ public class JSContext {
 
     private final Object nodeFactory;
 
-    private JSInteropRuntime interopRuntime;
     private final TimeProfiler timeProfiler;
 
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
@@ -250,6 +250,7 @@ public class JSContext {
         PromiseValueThunk,
         PromiseThrower,
         ImportModuleDynamically,
+        JavaPackageToPrimitive,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
@@ -377,7 +378,7 @@ public class JSContext {
 
     private final int factoryCount;
 
-    protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
+    protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
         this.contextOptions = contextOptions;
 
@@ -529,8 +530,6 @@ public class JSContext {
         this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
         this.factoryCount = builder.finish();
-
-        this.interopRuntime = new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionForeign.ACCESS, InteropAsyncFunctionForeign.ACCESS);
     }
 
     public final JSFunctionLookup getFunctionLookup() {
@@ -589,7 +588,7 @@ public class JSContext {
         return regExpStaticResultUnusedAssumption;
     }
 
-    public static JSContext createContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
+    public static JSContext createContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
         return new JSContext(evaluator, lookup, contextOptions, lang, env);
     }
 
@@ -736,10 +735,6 @@ public class JSContext {
         if (--interopCallStackDepth == 0) {
             processAllPendingPromiseJobs();
         }
-    }
-
-    public JSInteropRuntime getInteropRuntime() {
-        return interopRuntime;
     }
 
     public TimeProfiler getTimeProfiler() {
@@ -989,7 +984,12 @@ public class JSContext {
     private Object createTRegexEngine() {
         TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").build()).call();
         String regexOptions = createRegexEngineOptions();
-        return TRegexUtil.CreateRegexEngineNode.getUncached().execute(regexEngineBuilder, regexOptions, new JoniRegexEngine(null));
+        JoniRegexEngine fallbackCompiler = new JoniRegexEngine(null);
+        try {
+            return InteropLibrary.getFactory().getUncached().execute(regexEngineBuilder, regexOptions, fallbackCompiler);
+        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+            throw Errors.shouldNotReachHere(e);
+        }
     }
 
     private static class LocalTimeZoneHolder {
@@ -1027,7 +1027,7 @@ public class JSContext {
         }
     }
 
-    public AbstractJavaScriptLanguage getLanguage() {
+    public JavaScriptLanguage getLanguage() {
         return language;
     }
 
@@ -1040,7 +1040,7 @@ public class JSContext {
     }
 
     /** CallTarget for an empty function that returns undefined. */
-    private static CallTarget createEmptyFunctionCallTarget(AbstractJavaScriptLanguage lang) {
+    private static CallTarget createEmptyFunctionCallTarget(JavaScriptLanguage lang) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -1053,7 +1053,7 @@ public class JSContext {
         return speciesGetterFunctionCallTarget;
     }
 
-    private static CallTarget createSpeciesGetterFunctionCallTarget(AbstractJavaScriptLanguage lang) {
+    private static CallTarget createSpeciesGetterFunctionCallTarget(JavaScriptLanguage lang) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -1090,7 +1090,7 @@ public class JSContext {
         return result;
     }
 
-    private static RootCallTarget createNotConstructibleCallTarget(AbstractJavaScriptLanguage lang, boolean generator) {
+    private static RootCallTarget createNotConstructibleCallTarget(JavaScriptLanguage lang, boolean generator) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
