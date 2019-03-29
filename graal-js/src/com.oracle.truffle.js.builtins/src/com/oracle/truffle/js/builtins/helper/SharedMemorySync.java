@@ -62,7 +62,7 @@ import sun.misc.Unsafe;
 /**
  * Implementation of the synchronization primitives of ECMA2017 Shared Memory model.
  */
-public class SharedMemorySync {
+public final class SharedMemorySync {
 
     private SharedMemorySync() {
         // should not be constructed

@@ -47,7 +47,7 @@ import java.lang.reflect.Proxy;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.NodeFactoryProxyGen;
 
-public class RecordingProxy {
+public final class RecordingProxy {
 
     private RecordingProxy() {
         // should not be constructed

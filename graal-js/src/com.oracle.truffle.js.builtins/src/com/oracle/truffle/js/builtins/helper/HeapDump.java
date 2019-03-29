@@ -51,7 +51,7 @@ import javax.management.MBeanServer;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.sun.management.HotSpotDiagnosticMXBean;
 
-public class HeapDump {
+public final class HeapDump {
 
     private HeapDump() {
         // should not be constructed

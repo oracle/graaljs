@@ -103,7 +103,7 @@ public class ObjectSizeCalculator {
         int getSuperclassFieldPadding();
     }
 
-    public static class CurrentLayout {
+    public static final class CurrentLayout {
         private CurrentLayout() {
             // should not be constructed
         }

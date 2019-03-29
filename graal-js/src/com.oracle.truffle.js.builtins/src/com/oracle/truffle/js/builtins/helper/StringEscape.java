@@ -50,7 +50,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  * defined in ECMAScript 5.1.
  *
  */
-public class StringEscape {
+public final class StringEscape {
 
     private static final BitSet dontEscapeSet;
 

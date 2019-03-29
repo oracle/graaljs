@@ -46,7 +46,7 @@ import java.util.Map.Entry;
 
 import com.oracle.truffle.api.TruffleOptions;
 
-public class JSTruffleOptions {
+public final class JSTruffleOptions {
 
     private JSTruffleOptions() {
         // should not be constructed

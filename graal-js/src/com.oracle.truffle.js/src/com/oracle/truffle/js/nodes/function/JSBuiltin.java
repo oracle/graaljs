@@ -162,7 +162,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         return (attributeFlags & JSAttributes.NOT_ENUMERABLE) == 0;
     }
 
-    public SourceSection getSourceSection() {
+    public static SourceSection getSourceSection() {
         return createSourceSection();
     }
 
@@ -229,7 +229,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         JSContext context = functionData.getContext();
         JSBuiltinNode functionRoot = JSBuiltinNode.createBuiltin(context, builtin, false, false);
         FrameDescriptor frameDescriptor = null;
-        FunctionRootNode callRoot = FunctionRootNode.create(functionRoot, frameDescriptor, functionData, builtin.getSourceSection(), builtin.getFullName());
+        FunctionRootNode callRoot = FunctionRootNode.create(functionRoot, frameDescriptor, functionData, getSourceSection(), builtin.getFullName());
 
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(callRoot);
         callTarget = functionData.setRootTarget(callTarget);
@@ -244,7 +244,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
             RootNode constructRoot;
             if (builtin.hasSeparateConstructor()) {
                 JSBuiltinNode constructNode = JSBuiltinNode.createBuiltin(context, builtin, true, false);
-                constructRoot = FunctionRootNode.create(constructNode, frameDescriptor, functionData, builtin.getSourceSection(), builtin.getFullName());
+                constructRoot = FunctionRootNode.create(constructNode, frameDescriptor, functionData, getSourceSection(), builtin.getFullName());
             } else {
                 constructRoot = factory.createConstructorRootNode(functionData, callTarget, false);
             }
@@ -255,7 +255,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
             JavaScriptRootNode constructNewTargetRoot;
             if (builtin.hasNewTargetConstructor()) {
                 AbstractBodyNode constructNewTargetNode = JSBuiltinNode.createBuiltin(context, builtin, true, true);
-                constructNewTargetRoot = FunctionRootNode.create(constructNewTargetNode, frameDescriptor, functionData, builtin.getSourceSection(), builtin.getFullName());
+                constructNewTargetRoot = FunctionRootNode.create(constructNewTargetNode, frameDescriptor, functionData, getSourceSection(), builtin.getFullName());
             } else {
                 CallTarget constructTarget = functionData.getConstructTarget();
                 constructNewTargetRoot = factory.createDropNewTarget(functionData.getContext(), constructTarget);

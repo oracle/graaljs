@@ -68,7 +68,7 @@ import java.util.MissingResourceException;
  *
  * ECMA 402 Utilities.
  */
-public class IntlUtil {
+public final class IntlUtil {
 
     private IntlUtil() {
         // should not be constructed

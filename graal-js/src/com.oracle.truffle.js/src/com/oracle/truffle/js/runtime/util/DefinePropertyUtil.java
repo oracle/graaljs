@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Implements ECMAScript 2015's OrdinaryDefineOwnProperty as defined in 9.1.6.1., and connected
  * functionality.
  */
-public class DefinePropertyUtil {
+public final class DefinePropertyUtil {
 
     private DefinePropertyUtil() {
         // should not be constructed
