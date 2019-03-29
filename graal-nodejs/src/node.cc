@@ -2508,6 +2508,10 @@ void ProcessArgv(std::vector<std::string>* args,
     env_opts->debug_options->break_node_first_line = true;
   }
 
+  if (env_opts->experimental_modules || env_opts->experimental_vm_modules) {
+      v8_args.push_back("--experimental-modules");
+  }
+
   // TODO(bnoordhuis) Intercept --prof arguments and start the CPU profiler
   // manually?  That would give us a little more control over its runtime
   // behavior but it could also interfere with the user's intentions in ways
