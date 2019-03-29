@@ -48,10 +48,10 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResultOriginalInput;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
 public final class LazyRegexResultArray extends AbstractConstantArray {
 
@@ -65,26 +65,24 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
         super(integrityLevel, cache);
     }
 
-    private static Object[] getArray(DynamicObject object) {
-        if (arrayGetArray(object) == ScriptArray.EMPTY_OBJECT_ARRAY) {
-            arraySetArray(object, new Object[(int) arrayGetLength(object)]);
-        }
-        return (Object[]) arrayGetArray(object);
+    private static Object[] getArray(DynamicObject object, boolean condition) {
+        return (Object[]) arrayGetArray(object, condition);
     }
 
-    public static Object materializeGroup(TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, int index) {
-        final Object[] internalArray = getArray(object);
+    public static Object materializeGroup(TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, int index, boolean condition) {
+        Object[] internalArray = getArray(object, condition);
         if (internalArray[index] == null) {
-            internalArray[index] = materializeResultNode.materializeGroup(arrayGetRegexResult(object), index, arrayGetRegexResultOriginalInput(object));
+            internalArray[index] = materializeResultNode.materializeGroup(arrayGetRegexResult(object, condition), index, arrayGetRegexResultOriginalInput(object, condition));
         }
         return internalArray[index];
     }
 
-    public ScriptArray createWritable(TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, long index, Object value) {
+    public ScriptArray createWritable(TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, long index, Object value, boolean condition) {
+        boolean lrraCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultArray;
         for (int i = 0; i < arrayGetLength(object); i++) {
-            materializeGroup(materializeResultNode, object, i);
+            materializeGroup(materializeResultNode, object, i, lrraCondition);
         }
-        final Object[] internalArray = getArray(object);
+        final Object[] internalArray = getArray(object, condition);
         AbstractObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, internalArray.length, internalArray.length, internalArray, integrityLevel);
         if (JSTruffleOptions.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -94,21 +92,23 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
 
     @Override
     public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        final Object[] internalArray = getArray(object);
+        boolean lrraCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultArray;
+        final Object[] internalArray = getArray(object, condition);
         if (internalArray[index] == null) {
-            internalArray[index] = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeGroup(arrayGetRegexResult(object), index, arrayGetRegexResultOriginalInput(object));
+            internalArray[index] = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeGroup(arrayGetRegexResult(object, lrraCondition), index,
+                            arrayGetRegexResultOriginalInput(object, lrraCondition));
         }
         return internalArray[index];
     }
 
     @Override
     public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return index >= 0 && index < arrayGetLength(object);
+        return index >= 0 && index < arrayGetLength(object, condition);
     }
 
     @Override
     public int lengthInt(DynamicObject object, boolean condition) {
-        return (int) arrayGetLength(object);
+        return (int) arrayGetLength(object, condition);
     }
 
     @Override

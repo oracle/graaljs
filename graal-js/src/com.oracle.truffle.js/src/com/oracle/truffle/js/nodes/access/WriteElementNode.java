@@ -819,7 +819,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) cast(array);
-            ScriptArray newArray = lazyRegexResultArray.createWritable(materializeResultNode, target, index, value);
+            ScriptArray newArray = lazyRegexResultArray.createWritable(materializeResultNode, target, index, value, arrayCondition);
             if (inBoundsProfile.profile(index >= 0 && index < 0x7fff_ffff)) {
                 setArrayAndWrite(newArray, target, index, value, arrayCondition);
             } else {
