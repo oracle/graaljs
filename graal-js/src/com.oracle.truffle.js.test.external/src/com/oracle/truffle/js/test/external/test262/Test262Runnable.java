@@ -46,7 +46,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -66,6 +65,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
 import com.oracle.truffle.js.test.external.suite.TestFile;
 import com.oracle.truffle.js.test.external.suite.TestRunnable;
@@ -86,8 +86,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(", ");
-    private static final Pattern ECMA_VERSION_PATTERN = Pattern.compile("^\\W*es(?<version>\\d+)id:");
-    private static final String PENDING_ECMA_VERSION_LINE = "esid: pending";
 
     private static final Map<String, String> commonOptions;
     static {
@@ -204,6 +202,10 @@ public class Test262Runnable extends TestRunnable {
                     "numeric-separator-literal",
                     "tail-call-optimization"
     }));
+    private static final Set<String> ES2020_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "dynamic-import",
+                    "import.meta"
+    }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
@@ -237,14 +239,6 @@ public class Test262Runnable extends TestRunnable {
             }
         }
 
-        // ecma versions
-        TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
-        if (ecmaVersion == null) {
-            int[] detectedVersions = detectScriptEcmaVersions(scriptCodeList);
-            assert detectedVersions.length != 0 : testFile.getFilePath();
-            ecmaVersion = TestFile.EcmaVersion.forVersions(detectedVersions);
-        }
-
         Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
 
         final Map<String, String> options;
@@ -256,11 +250,22 @@ public class Test262Runnable extends TestRunnable {
         }
 
         boolean supported = true;
+        boolean requiresES2020 = false;
         for (String feature : getFeatures(scriptCodeList)) {
-            if (!SUPPORTED_FEATURES.contains(feature)) {
+            if (SUPPORTED_FEATURES.contains(feature)) {
+                if (ES2020_FEATURES.contains(feature)) {
+                    requiresES2020 = true;
+                }
+            } else {
                 assert UNSUPPORTED_FEATURES.contains(feature) : feature;
                 supported = false;
             }
+        }
+
+        TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
+        if (ecmaVersion == null) {
+            int version = requiresES2020 ? JSTruffleOptions.ECMAScript2020 : JSTruffleOptions.LatestECMAScriptVersion;
+            ecmaVersion = TestFile.EcmaVersion.forVersions(version);
         }
 
         if (supported) {
@@ -348,37 +353,6 @@ public class Test262Runnable extends TestRunnable {
             }
         }
         return testResult;
-    }
-
-    private int[] detectScriptEcmaVersions(List<String> scriptCodeList) {
-        List<String> matches = new ArrayList<>();
-        for (String line : scriptCodeList) {
-            if (line.endsWith("---*/")) {
-                break;
-            }
-            if (line.equals(PENDING_ECMA_VERSION_LINE)) {
-                matches.add(PENDING_ECMA_VERSION_LINE);
-            } else {
-                Matcher matcher = ECMA_VERSION_PATTERN.matcher(line);
-                if (matcher.find()) {
-                    matches.add(matcher.group("version"));
-                }
-            }
-        }
-        assert matches.size() == new HashSet<>(matches).size() : testFile.getFilePath() + ": duplicated versions " + matches;
-        if (matches.isEmpty()) {
-            return new int[]{TestFile.EcmaVersion.MAX_VERSION};
-        }
-        int[] versions = new int[matches.size()];
-        for (int i = 0; i < matches.size(); i++) {
-            String match = matches.get(i);
-            if (match.equals(PENDING_ECMA_VERSION_LINE)) {
-                versions[i] = TestFile.EcmaVersion.MAX_VERSION;
-            } else {
-                versions[i] = Integer.parseInt(match);
-            }
-        }
-        return versions;
     }
 
     private static Source createSource(File testFile, String code, boolean module) {

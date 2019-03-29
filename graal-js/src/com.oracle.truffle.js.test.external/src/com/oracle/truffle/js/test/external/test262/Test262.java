@@ -123,9 +123,6 @@ public class Test262 extends TestSuite {
 
     @Override
     protected void setupTestFile(TestFile testFile) {
-        // force running tests with latest ES version
-        // see GR-3508
-        testFile.setEcmaVersion(TestFile.EcmaVersion.forVersions(TestFile.EcmaVersion.MAX_VERSION));
     }
 
     @Override
