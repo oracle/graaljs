@@ -357,9 +357,20 @@ public abstract class JSScope {
         private final RootNode rootNode;
 
         protected JSFunctionScope(Node node, MaterializedFrame frame) {
-            super(node, frame);
+            super(node, getFunctionFrame(frame));
             this.rootNode = findRootNode(node);
             assert frame == null || rootNode == null || frame.getFrameDescriptor() == rootNode.getFrameDescriptor();
+        }
+
+        private static MaterializedFrame getFunctionFrame(MaterializedFrame frame) {
+            if (frame != null && frame.getArguments().length > 0) {
+                Object arg0 = frame.getArguments()[0];
+                if (arg0 instanceof MaterializedFrame) {
+                    // arg0 is generatorFrame
+                    return (MaterializedFrame) arg0;
+                }
+            }
+            return frame;
         }
 
         private static RootNode findRootNode(Node node) {
