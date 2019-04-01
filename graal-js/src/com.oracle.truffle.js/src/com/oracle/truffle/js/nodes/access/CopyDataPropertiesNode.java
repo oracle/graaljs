@@ -151,10 +151,9 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
     private static boolean isExcluded(Object[] excludedKeys, Object key) {
         if (excludedKeys != null) {
             for (Object e : excludedKeys) {
-                if (e instanceof String) {
-                    if (((String) e).equals(key)) {
-                        return true;
-                    }
+                assert JSRuntime.isPropertyKey(e);
+                if (e.equals(key)) {
+                    return true;
                 }
             }
         }
