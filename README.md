@@ -31,8 +31,8 @@ For instance, a guide how to build Graal JavaScript from source code can be foun
 
 ## Current Status
 
-Graal JavaScript is compatible with the ECMAScript 2018 specification.
-New features, e.g. for the upcoming 2019 edition, are added frequently.
+Graal JavaScript is compatible with the ECMAScript 2019 specification.
+New features, e.g. for the upcoming 2020 edition, are added frequently.
 In addition, some popular extensions of other engines are supported, see [`JavaScriptCompatibility.md`](docs/user/JavaScriptCompatibility.md).
 
 Graal JavaScript can execute Node.js applications.
