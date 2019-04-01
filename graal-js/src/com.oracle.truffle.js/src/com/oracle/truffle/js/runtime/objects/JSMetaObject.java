@@ -58,15 +58,13 @@ public final class JSMetaObject implements TruffleObject {
     private final String type;
     private final String subtype;
     private final String className;
-    private final String description;
     private final Env env;
     private EconomicMap<String, String> map;
 
-    public JSMetaObject(String type, String subtype, String className, String description, TruffleLanguage.Env env) {
+    public JSMetaObject(String type, String subtype, String className, TruffleLanguage.Env env) {
         this.type = Objects.requireNonNull(type);
         this.subtype = subtype;
         this.className = className;
-        this.description = description;
         this.env = env;
     }
 
@@ -87,9 +85,6 @@ public final class JSMetaObject implements TruffleObject {
             }
             if (className != null) {
                 map.put("className", className);
-            }
-            if (description != null) {
-                map.put("description", description);
             }
         }
         return map;
