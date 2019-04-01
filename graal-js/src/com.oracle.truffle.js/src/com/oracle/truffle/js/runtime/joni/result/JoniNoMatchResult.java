@@ -42,11 +42,7 @@ package com.oracle.truffle.js.runtime.joni.result;
 
 public final class JoniNoMatchResult extends JoniRegexResult {
 
-    public JoniNoMatchResult(int groupCount) {
-        super(groupCount);
-    }
-
-    private static final JoniNoMatchResult INSTANCE = new JoniNoMatchResult(0);
+    private static final JoniNoMatchResult INSTANCE = new JoniNoMatchResult();
 
     public static JoniNoMatchResult getInstance() {
         return INSTANCE;

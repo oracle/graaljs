@@ -875,7 +875,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSToUInt32Node toUInt32Node;
         @Child private JSToStringNode toString2Node;
 
-        @Child private TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
+        @Child private TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor;
+        @Child private TRegexUtil.TRegexResultAccessor resultAccessor;
 
         private int toUInt32(Object target) {
             if (toUInt32Node == null) {
@@ -953,7 +954,19 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSArray.createConstant(getContext(), splits);
         }
 
+        public TRegexUtil.TRegexCompiledRegexAccessor getCompiledRegexAccessor() {
+            if (compiledRegexAccessor == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                compiledRegexAccessor = insert(TRegexUtil.TRegexCompiledRegexAccessor.create());
+            }
+            return compiledRegexAccessor;
+        }
+
         public TRegexUtil.TRegexResultAccessor getResultAccessor() {
+            if (resultAccessor == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                resultAccessor = insert(TRegexUtil.TRegexResultAccessor.create());
+            }
             return resultAccessor;
         }
 
@@ -1048,7 +1061,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                     String split = Boundaries.substring(input, start, matchStart);
                     splits.add(split, parent.growProfile);
-                    int count = Math.min(parent.getResultAccessor().groupCount(result) - 1, limit - splits.size());
+                    int count = Math.min(parent.getCompiledRegexAccessor().groupCount(JSRegExp.getCompiledRegex(regExp)) - 1, limit - splits.size());
                     for (int i = 1; i <= count; i++) {
                         int groupStart = parent.getResultAccessor().captureGroupStart(result, i);
                         if (groupStart == TRegexUtil.Constants.CAPTURE_GROUP_NO_MATCH) {
@@ -1264,6 +1277,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSToStringNode toString2Node;
         @Child private JSToStringNode toString3Node;
         @Child private TRegexUtil.TRegexCompiledRegexSingleFlagAccessor globalFlagAccessor = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(TRegexUtil.Props.Flags.GLOBAL);
+        @Child private TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
         @Child private TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
         private final ConditionProfile match = ConditionProfile.createCountingProfile();
         private final ConditionProfile isRegExp = ConditionProfile.createCountingProfile();
@@ -1281,17 +1295,18 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             JSRuntime.checkStringLength(thisStr);
             if (isRegExp.profile(JSRegExp.isJSRegExp(searchValue))) {
                 DynamicObject searchRegExp = (DynamicObject) searchValue;
+                int groupCount = compiledRegexAccessor.groupCount(JSRegExp.getCompiledRegex(searchRegExp));
                 if (isFnRepl.profile(JSFunction.isJSFunction(replaceValue))) {
                     DynamicObject replaceFunc = (DynamicObject) replaceValue;
                     if (globalFlagAccessor.get(JSRegExp.getCompiledRegex(searchRegExp))) {
-                        return replaceAll(searchRegExp, thisStr, getFunctionReplacerNode(), replaceFunc);
+                        return replaceAll(searchRegExp, thisStr, groupCount, getFunctionReplacerNode(), replaceFunc);
                     } else {
                         return replaceFirst(thisStr, searchRegExp, getFunctionReplacerNode(), replaceFunc);
                     }
                 } else {
                     String replaceStr = toString3(replaceValue);
                     if (globalFlagAccessor.get(JSRegExp.getCompiledRegex(searchRegExp))) {
-                        return replaceAll(searchRegExp, thisStr, getStringReplacerNode(), replaceStr);
+                        return replaceAll(searchRegExp, thisStr, groupCount, getStringReplacerNode(), replaceStr);
                     } else {
                         return replaceFirst(thisStr, searchRegExp, getStringReplacerNode(), replaceStr);
                     }
@@ -1365,7 +1380,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (match.profile(!resultAccessor.isMatch(result))) {
                 return thisStr;
             }
-            return replace(thisStr, result, replacer, replaceValue);
+            return replace(thisStr, result, compiledRegexAccessor.groupCount(JSRegExp.getCompiledRegex(regExp)), replacer, replaceValue);
         }
 
         protected final Object match(DynamicObject regExp, String input) {
@@ -1373,15 +1388,15 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return getRegExpNode().execute(regExp, input);
         }
 
-        private <T> String replace(String thisStr, Object result, Replacer<T> replacer, T replaceValue) {
+        private <T> String replace(String thisStr, Object result, int groupCount, Replacer<T> replacer, T replaceValue) {
             StringBuilder sb = new StringBuilder(replacer.guessResultLength(result, replaceValue, thisStr));
             Boundaries.builderAppend(sb, thisStr, 0, resultAccessor.captureGroupStart(result, 0));
-            replacer.appendReplacement(sb, thisStr, result, replaceValue);
+            replacer.appendReplacement(sb, thisStr, result, groupCount, replaceValue);
             Boundaries.builderAppend(sb, thisStr, resultAccessor.captureGroupEnd(result, 0), thisStr.length());
             return Boundaries.builderToString(sb);
         }
 
-        private <T> String replaceAll(DynamicObject regExp, String input, Replacer<T> replacer, T replaceValue) {
+        private <T> String replaceAll(DynamicObject regExp, String input, int groupCount, Replacer<T> replacer, T replaceValue) {
             setLastIndex(regExp, 0);
             Object result = matchIgnoreLastIndex(regExp, input, 0);
             if (match.profile(!resultAccessor.isMatch(result))) {
@@ -1392,7 +1407,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int lastIndex = 0;
             while (resultAccessor.isMatch(result)) {
                 Boundaries.builderAppend(sb, input, thisIndex, resultAccessor.captureGroupStart(result, 0));
-                replacer.appendReplacement(sb, input, result, replaceValue);
+                replacer.appendReplacement(sb, input, result, groupCount, replaceValue);
                 if (sb.length() > JSTruffleOptions.StringLengthLimit) {
                     throw Errors.createRangeErrorInvalidStringLength();
                 }
@@ -1410,6 +1425,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private abstract static class Replacer<T> extends JavaScriptBaseNode {
 
+            @Child TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
             @Child TRegexUtil.TRegexResultAccessor resultAccessor = TRegexUtil.TRegexResultAccessor.create();
             @Child TRegexUtil.TRegexMaterializeResultNode resultMaterializer = TRegexUtil.TRegexMaterializeResultNode.create();
 
@@ -1421,7 +1437,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return input.length() * 2;
             }
 
-            abstract void appendReplacement(StringBuilder sb, String input, Object result, T replaceValue);
+            abstract void appendReplacement(StringBuilder sb, String input, Object result, int groupCount, T replaceValue);
 
             abstract void appendReplacement(StringBuilder sb, String input, String matchedString, int pos, T replaceValue);
         }
@@ -1447,12 +1463,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            void appendReplacement(StringBuilder sb, String input, Object result, String replaceStr) {
+            void appendReplacement(StringBuilder sb, String input, Object result, int groupCount, String replaceStr) {
                 if (emptyReplace.profile(!replaceStr.isEmpty())) {
                     int pos = nextDollar(sb, 0, replaceStr);
                     while (pos != -1) {
                         replaceDollar.enter();
-                        pos = appendSubstitution(sb, input, pos + 1, result, replaceStr);
+                        pos = appendSubstitution(sb, input, pos + 1, groupCount, result, replaceStr);
                         pos = nextDollar(sb, pos, replaceStr);
                     }
                 }
@@ -1463,7 +1479,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 JSStringReplaceNode.appendSubstitution(sb, input, replaceValue, matchedString, pos, dollarProfile);
             }
 
-            private int appendSubstitution(StringBuilder sb, String input, int pos, Object result, String replaceStr) {
+            private int appendSubstitution(StringBuilder sb, String input, int pos, int groupCount, Object result, String replaceStr) {
                 if (pos == replaceStr.length()) {
                     Boundaries.builderAppend(sb, '$');
                     return pos;
@@ -1485,7 +1501,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         break;
                     default:
                         if (groups.profile(Boundaries.characterIsDigit(ch))) {
-                            return pos + appendGroup(sb, input, pos + 1, ch, result, replaceStr);
+                            return pos + appendGroup(sb, input, pos + 1, ch, groupCount, result, replaceStr);
                         } else {
                             Boundaries.builderAppend(sb, '$');
                             Boundaries.builderAppend(sb, ch);
@@ -1502,8 +1518,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             // Returns 2 for valid two digit group references ($nn), otherwise returns 1.
-            private int appendGroup(StringBuilder sb, String input, int pos, char digit, Object result, String replaceStr) {
-                int groupNr = parseGroupNr(replaceStr, pos, digit, resultAccessor.groupCount(result) - 1);
+            private int appendGroup(StringBuilder sb, String input, int pos, char digit, int groupCount, Object result, String replaceStr) {
+                int groupNr = parseGroupNr(replaceStr, pos, digit, groupCount - 1);
                 if (groupNr == -1) {
                     Boundaries.builderAppend(sb, '$');
                     Boundaries.builderAppend(sb, digit);
@@ -1551,8 +1567,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Override
-            void appendReplacement(StringBuilder sb, String input, Object result, DynamicObject replaceFunc) {
-                String replaceStr = callReplaceValueFunc(result, input, replaceFunc);
+            void appendReplacement(StringBuilder sb, String input, Object result, int groupCount, DynamicObject replaceFunc) {
+                String replaceStr = callReplaceValueFunc(result, input, groupCount, replaceFunc);
                 Boundaries.builderAppend(sb, replaceStr);
             }
 
@@ -1564,8 +1580,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 Boundaries.builderAppend(sb, replaceStr);
             }
 
-            private String callReplaceValueFunc(Object result, String input, DynamicObject replaceFunc) {
-                Object[] matches = resultMaterializer.materializeFull(result, input);
+            private String callReplaceValueFunc(Object result, String input, int groupCount, DynamicObject replaceFunc) {
+                Object[] matches = resultMaterializer.materializeFull(result, groupCount, input);
                 Object[] arguments = createArguments(matches, resultAccessor.captureGroupStart(result, 0), input, replaceFunc);
                 Object replaceValue = functionCallNode.executeCall(arguments);
                 return toStringNode.executeString(replaceValue);
