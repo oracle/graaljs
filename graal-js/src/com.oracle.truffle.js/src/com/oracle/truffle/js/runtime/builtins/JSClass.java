@@ -402,9 +402,16 @@ public abstract class JSClass extends ObjectType {
         return JSRuntime.isObject(target);
     }
 
+    private static void ensureHasMembers(DynamicObject target) throws UnsupportedMessageException {
+        if (!hasMembers(target)) {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
     @ExportMessage
     @TruffleBoundary
-    static Object getMembers(DynamicObject target, @SuppressWarnings("unused") boolean internal) {
+    static Object getMembers(DynamicObject target, @SuppressWarnings("unused") boolean internal) throws UnsupportedMessageException {
+        ensureHasMembers(target);
         Object[] keys = JSObject.enumerableOwnNames(target).toArray();
         JSContext context = JSObject.getJSContext(target);
         return JSArray.createConstant(context, keys);
@@ -415,7 +422,8 @@ public abstract class JSClass extends ObjectType {
     static Object readMember(DynamicObject target, String key,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
                     @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnknownIdentifierException {
+                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnknownIdentifierException, UnsupportedMessageException {
+        ensureHasMembers(target);
         Object result;
         if (readNode == null) {
             result = JSObject.getOrDefault(target, key, null, JSClassProfile.getUncached());
@@ -431,6 +439,9 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static boolean isMemberReadable(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        if (!hasMembers(target)) {
+            return false;
+        }
         return keyInfo.execute(target, key, KeyInfoNode.READABLE);
     }
 
@@ -440,7 +451,8 @@ public abstract class JSClass extends ObjectType {
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws UnknownIdentifierException {
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws UnknownIdentifierException, UnsupportedMessageException {
+        ensureHasMembers(target);
         if (!keyInfo.execute(target, key, KeyInfoNode.WRITABLE)) {
             throw UnknownIdentifierException.create(key);
         }
@@ -455,23 +467,33 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static boolean isMemberModifiable(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        if (!hasMembers(target)) {
+            return false;
+        }
         return keyInfo.execute(target, key, KeyInfoNode.MODIFIABLE);
     }
 
     @ExportMessage
     static boolean isMemberInsertable(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        if (!hasMembers(target)) {
+            return false;
+        }
         return keyInfo.execute(target, key, KeyInfoNode.INSERTABLE);
     }
 
     @ExportMessage
-    static void removeMember(DynamicObject target, String key) {
+    static void removeMember(DynamicObject target, String key) throws UnsupportedMessageException {
+        ensureHasMembers(target);
         JSObject.delete(target, key, true);
     }
 
     @ExportMessage
     static boolean isMemberRemovable(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        if (!hasMembers(target)) {
+            return false;
+        }
         return keyInfo.execute(target, key, KeyInfoNode.REMOVABLE);
     }
 
@@ -614,6 +636,7 @@ public abstract class JSClass extends ObjectType {
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
                     @Cached JSInteropInvokeNode callNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException, UnknownIdentifierException {
+        ensureHasMembers(target);
         JSContext context = realm.getContext();
         context.interopBoundaryEnter();
         try {
@@ -627,18 +650,27 @@ public abstract class JSClass extends ObjectType {
     @ExportMessage
     static boolean isMemberInvocable(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        if (!hasMembers(target)) {
+            return false;
+        }
         return keyInfo.execute(target, key, KeyInfoNode.INVOCABLE);
     }
 
     @ExportMessage
     static boolean hasMemberReadSideEffects(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        if (!hasMembers(target)) {
+            return false;
+        }
         return keyInfo.execute(target, key, KeyInfoNode.READ_SIDE_EFFECTS);
     }
 
     @ExportMessage
     static boolean hasMemberWriteSideEffects(DynamicObject target, String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+        if (!hasMembers(target)) {
+            return false;
+        }
         return keyInfo.execute(target, key, KeyInfoNode.WRITE_SIDE_EFFECTS);
     }
 
