@@ -53,6 +53,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -103,9 +104,10 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
 
     @Specialization(guards = {"!isJSType(value)", "excludedNode == null"})
     protected final Object doOther(DynamicObject restObj, Object value,
-                    @Shared("toObject") @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode) {
+                    @Shared("toObject") @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode,
+                    @Shared("isJSObject") @Cached("createBinaryProfile()") ConditionProfile isJSObjectProfile) {
         TruffleObject from = toObjectNode.executeTruffleObject(value);
-        if (JSGuards.isJSType(from)) {
+        if (isJSObjectProfile.profile(JSGuards.isJSType(from))) {
             doObject(restObj, (DynamicObject) from);
         } else {
             copyDataPropertiesForeign(restObj, from, null);
@@ -115,9 +117,10 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
 
     @Specialization(guards = {"!isJSType(value)", "excludedNode != null"})
     protected final Object doOtherWithExcluded(VirtualFrame frame, DynamicObject restObj, Object value,
-                    @Shared("toObject") @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode) {
+                    @Shared("toObject") @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode,
+                    @Shared("isJSObject") @Cached("createBinaryProfile()") ConditionProfile isJSObjectProfile) {
         TruffleObject from = toObjectNode.executeTruffleObject(value);
-        if (JSGuards.isJSType(from)) {
+        if (isJSObjectProfile.profile(JSGuards.isJSType(from))) {
             doObjectWithExcluded(frame, restObj, (DynamicObject) from);
         } else {
             copyDataPropertiesForeign(restObj, from, excludedItems(frame));

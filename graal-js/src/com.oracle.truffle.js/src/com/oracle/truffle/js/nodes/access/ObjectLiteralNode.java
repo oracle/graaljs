@@ -62,6 +62,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -557,6 +558,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
     private static class ObjectLiteralSpreadMemberNode extends ObjectLiteralMemberNode {
         @Child private JavaScriptNode valueNode;
         @Child private JSToObjectNode toObjectNode;
+        private final ConditionProfile isJSObjectProfile = ConditionProfile.createBinaryProfile();
 
         ObjectLiteralSpreadMemberNode(boolean isStatic, int attributes, JavaScriptNode valueNode) {
             super(isStatic, attributes);
@@ -574,7 +576,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(context));
             }
             TruffleObject from = toObjectNode.executeTruffleObject(sourceValue);
-            if (JSObject.isJSObject(from)) {
+            if (isJSObjectProfile.profile(JSObject.isJSObject(from))) {
                 copyDataProperties(target, (DynamicObject) from);
             } else {
                 copyDataPropertiesForeign(target, from);
