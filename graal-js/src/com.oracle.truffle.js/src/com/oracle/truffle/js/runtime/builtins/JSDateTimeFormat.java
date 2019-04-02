@@ -558,29 +558,29 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     public static class InternalState {
 
-        public boolean initialized = false;
-        public DateFormat dateFormat;
+        private boolean initialized = false;
+        private DateFormat dateFormat;
 
-        DynamicObject boundFormatFunction = null;
+        private DynamicObject boundFormatFunction = null;
 
-        public String locale;
-        public String calendar;
-        public String numberingSystem = "latn";
+        private String locale;
+        private String calendar;
+        private String numberingSystem = "latn";
 
-        public String weekday;
-        public String era;
-        public String year;
-        public String month;
-        public String day;
-        public String hour;
-        public String minute;
-        public String second;
+        private String weekday;
+        private String era;
+        private String year;
+        private String month;
+        private String day;
+        private String hour;
+        private String minute;
+        private String second;
 
-        public Boolean hour12;
-        public String hourCycle;
+        private Boolean hour12;
+        private String hourCycle;
 
-        public String timeZoneName;
-        public String timeZone;
+        private String timeZoneName;
+        private String timeZone;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);

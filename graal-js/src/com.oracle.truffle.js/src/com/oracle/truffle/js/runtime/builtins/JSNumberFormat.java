@@ -608,20 +608,20 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     public static class BasicInternalState {
 
-        public boolean initialized = false;
+        protected boolean initialized = false;
 
-        public NumberFormat numberFormat;
+        protected NumberFormat numberFormat;
 
-        public Locale javaLocale;
-        public String locale;
+        protected Locale javaLocale;
+        protected String locale;
 
-        public String numberingSystem = "latn";
+        protected String numberingSystem = "latn";
 
-        public int minimumIntegerDigits = 1;
-        public int minimumFractionDigits = 0;
-        public int maximumFractionDigits = 3;
-        public Integer minimumSignificantDigits;
-        public Integer maximumSignificantDigits;
+        protected int minimumIntegerDigits = 1;
+        protected int minimumFractionDigits = 0;
+        protected int maximumFractionDigits = 3;
+        protected Integer minimumSignificantDigits;
+        protected Integer maximumSignificantDigits;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject resolvedOptions = JSUserObject.create(context);
@@ -661,14 +661,94 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                 df.setMaximumSignificantDigits(maximumSignificantDigits);
             }
         }
+
+        public boolean isInitialized() {
+            return initialized;
+        }
+
+        public NumberFormat getNumberFormat() {
+            return numberFormat;
+        }
+
+        public Locale getJavaLocale() {
+            return javaLocale;
+        }
+
+        public String getLocale() {
+            return locale;
+        }
+
+        public String getNumberingSystem() {
+            return numberingSystem;
+        }
+
+        public int getMinimumIntegerDigits() {
+            return minimumIntegerDigits;
+        }
+
+        public int getMinimumFractionDigits() {
+            return minimumFractionDigits;
+        }
+
+        public int getMaximumFractionDigits() {
+            return maximumFractionDigits;
+        }
+
+        public Integer getMinimumSignificantDigits() {
+            return minimumSignificantDigits;
+        }
+
+        public Integer getMaximumSignificantDigits() {
+            return maximumSignificantDigits;
+        }
+
+        public void setInitialized(boolean initialized) {
+            this.initialized = initialized;
+        }
+
+        public void setNumberFormat(NumberFormat numberFormat) {
+            this.numberFormat = numberFormat;
+        }
+
+        public void setJavaLocale(Locale javaLocale) {
+            this.javaLocale = javaLocale;
+        }
+
+        public void setLocale(String locale) {
+            this.locale = locale;
+        }
+
+        public void setNumberingSystem(String numberingSystem) {
+            this.numberingSystem = numberingSystem;
+        }
+
+        public void setMinimumIntegerDigits(int minimumIntegerDigits) {
+            this.minimumIntegerDigits = minimumIntegerDigits;
+        }
+
+        public void setMinimumFractionDigits(int minimumFractionDigits) {
+            this.minimumFractionDigits = minimumFractionDigits;
+        }
+
+        public void setMaximumFractionDigits(int maximumFractionDigits) {
+            this.maximumFractionDigits = maximumFractionDigits;
+        }
+
+        public void setMinimumSignificantDigits(Integer minimumSignificantDigits) {
+            this.minimumSignificantDigits = minimumSignificantDigits;
+        }
+
+        public void setMaximumSignificantDigits(Integer maximumSignificantDigits) {
+            this.maximumSignificantDigits = maximumSignificantDigits;
+        }
     }
 
     public static class InternalState extends BasicInternalState {
 
-        public String style = IntlUtil.DECIMAL;
-        public String currency;
-        public String currencyDisplay;
-        public boolean useGrouping = true;
+        private String style = IntlUtil.DECIMAL;
+        private String currency;
+        private String currencyDisplay;
+        private boolean useGrouping = true;
 
         DynamicObject boundFormatFunction = null;
 
@@ -692,6 +772,31 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
             this.useGrouping = useGrouping;
             this.numberFormat.setGroupingUsed(useGrouping);
         }
+
+        public String getStyle() {
+            return style;
+        }
+
+        public String getCurrency() {
+            return currency;
+        }
+
+        public String getCurrencyDisplay() {
+            return currencyDisplay;
+        }
+
+        public void setStyle(String style) {
+            this.style = style;
+        }
+
+        public void setCurrency(String currency) {
+            this.currency = currency;
+        }
+
+        public void setCurrencyDisplay(String currencyDisplay) {
+            this.currencyDisplay = currencyDisplay;
+        }
+
     }
 
     @TruffleBoundary

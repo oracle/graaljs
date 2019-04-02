@@ -112,9 +112,9 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
             getLocaleMatcherOption.executeValue(options);
             String optType = getTypeOption.executeValue(options);
 
-            state.initialized = true;
+            state.setInitialized(true);
 
-            state.type = optType;
+            state.setType(optType);
 
             JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
             JSPluralRules.setupInternalPluralRulesAndNumberFormat(state);
