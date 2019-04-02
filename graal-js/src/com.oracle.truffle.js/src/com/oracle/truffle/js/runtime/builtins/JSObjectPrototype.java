@@ -185,11 +185,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
      */
     @Override
     public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
-        Object oldPrototype = JSObject.getPrototype(thisObj);
-        if (oldPrototype == newPrototype) {
-            return true;
-        }
-        return false;
+        return JSObject.getPrototype(thisObj) == newPrototype;
     }
 
     @Override

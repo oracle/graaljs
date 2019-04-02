@@ -968,9 +968,8 @@ public class Recording {
 
         @Override
         public String rhs() {
-            String rhs = (isAssignable(getDeclaredType(), methodReturnType) ? "" : "(" + typeName(getDeclaredType()) + ")") + name + "(nodeFactory, context, source" +
+            return (isAssignable(getDeclaredType(), methodReturnType) ? "" : "(" + typeName(getDeclaredType()) + ")") + name + "(nodeFactory, context, source" +
                             (args.length == 0 ? "" : (", " + Arrays.stream(args).map(Object::toString).collect(Collectors.joining(", ")))) + ")";
-            return rhs;
         }
 
         @Override

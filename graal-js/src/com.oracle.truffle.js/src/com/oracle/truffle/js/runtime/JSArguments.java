@@ -54,6 +54,10 @@ public final class JSArguments {
     private static final int FUNCTION_OBJECT_INDEX = 1;
     private static final int NEW_TARGET_INDEX = RUNTIME_ARGUMENT_COUNT;
 
+    private JSArguments() {
+        // should not be constructed
+    }
+
     static Object[] createNullArguments() {
         return createZeroArg(Null.instance, null);
     }

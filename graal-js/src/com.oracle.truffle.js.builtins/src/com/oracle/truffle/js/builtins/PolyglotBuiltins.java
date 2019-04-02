@@ -966,8 +966,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         testMapClass = Class.forName("com.oracle.truffle.js.test.interop.object.ForeignDynamicObject");
                     }
                     Method createNew = testMapClass.getMethod("createNew");
-                    Object result = createNew.invoke(null);
-                    return result;
+                    return createNew.invoke(null);
                 } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
                     throw Errors.createTypeError("cannot test with ForeignDynamicObject: " + e.getMessage());
                 }

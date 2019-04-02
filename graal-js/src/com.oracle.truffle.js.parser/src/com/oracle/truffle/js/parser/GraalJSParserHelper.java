@@ -69,9 +69,13 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 
-public class GraalJSParserHelper {
+public final class GraalJSParserHelper {
 
     private static final String NEVER_PART_OF_COMPILATION_MESSAGE = "do not parse from compiled code";
+
+    private GraalJSParserHelper() {
+        // should not be constructed
+    }
 
     public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions) {
         return parseScript(context, truffleSource, parserOptions, false, false);

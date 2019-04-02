@@ -167,7 +167,8 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         if (jsStackTrace != null) {
             return jsStackTrace;
         }
-        return jsStackTrace = materializeJSStackTrace();
+        jsStackTrace = materializeJSStackTrace();
+        return jsStackTrace;
     }
 
     @TruffleBoundary

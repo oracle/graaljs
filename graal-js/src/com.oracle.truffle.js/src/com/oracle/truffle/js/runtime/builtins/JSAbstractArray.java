@@ -348,7 +348,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         if (array.isSealed()) {
             long minIndex = array.lastElementIndex(thisObj) + 1;
             if (length < minIndex) {
-                arraySetArrayType(thisObj, array = array.setLength(thisObj, minIndex, doThrow));
+                array = array.setLength(thisObj, minIndex, doThrow);
+                arraySetArrayType(thisObj, array);
                 return array.canDeleteElement(thisObj, minIndex - 1, doThrow);
             }
         }

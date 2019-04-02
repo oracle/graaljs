@@ -279,7 +279,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     private ScriptNode fakeScriptForModule(JSContext context, Source source) {
-        RootNode rootNode = new JavaScriptRootNode(context.getLanguage(), JSBuiltin.createSourceSection("evalModule"), null) {
+        RootNode rootNode = new JavaScriptRootNode(context.getLanguage(), JSBuiltin.createSourceSection(), null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 JSRealm realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));

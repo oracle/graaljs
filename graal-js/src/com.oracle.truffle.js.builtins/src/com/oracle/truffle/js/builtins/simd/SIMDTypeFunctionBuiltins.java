@@ -470,8 +470,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         // 5.1.3 SIMDExtractLane( value, lane )
         public Object simdExtractLane(DynamicObject value, int lane) {
             assert JSSIMD.isJSSIMD(value);
-            Object res = getLane(value, lane);
-            return res;
+            return getLane(value, lane);
         }
 
         // 5.1.5 MaybeFlushDenormal( n, descriptor )

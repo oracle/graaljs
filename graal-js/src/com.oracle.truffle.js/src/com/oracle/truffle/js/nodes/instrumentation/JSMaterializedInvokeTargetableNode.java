@@ -212,10 +212,7 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
 
         @Override
         public boolean hasTag(Class<? extends Tag> tag) {
-            if (tag == JSTags.InputNodeTag.class) {
-                return true;
-            }
-            return false;
+            return tag == JSTags.InputNodeTag.class;
         }
 
         @Override

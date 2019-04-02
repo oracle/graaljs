@@ -349,8 +349,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     private static DynamicObject createCompareFunctionGetter(JSRealm realm, JSContext context) {
         CallTarget ct = createGetCompareCallTarget(realm, context);
         JSFunctionData fd = JSFunctionData.create(context, ct, ct, 0, "get compare", false, false, false, true);
-        DynamicObject compareFunction = JSFunction.create(realm, fd);
-        return compareFunction;
+        return JSFunction.create(realm, fd);
     }
 
     @Override

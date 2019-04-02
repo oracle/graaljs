@@ -176,7 +176,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                 long longIndex = (long) objIndex;
                 ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(targetObject, isArray));
                 if (array.canDeleteElement(targetObject, longIndex, strict, isArray)) {
-                    arraySetArrayType(targetObject, array = array.deleteElement(targetObject, longIndex, strict, isArray));
+                    arraySetArrayType(targetObject, array.deleteElement(targetObject, longIndex, strict, isArray));
                     return true;
                 } else {
                     return false;

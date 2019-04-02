@@ -597,7 +597,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 } else {
                     lower = len - nextUpper - 1;
                 }
-                upper = len - lower - 1;
             }
             return thisObj;
         }

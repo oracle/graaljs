@@ -129,8 +129,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
         Iterator<?> iterator = new EnumerateIterator(iteratedObject);
         if (values) {
             iterator = IteratorUtil.convertIterator(iterator, key -> {
-                Object value = JSObject.get(iteratedObject, Boundaries.javaToString(key));
-                return value;
+                return JSObject.get(iteratedObject, Boundaries.javaToString(key));
             });
         }
         return iterator;

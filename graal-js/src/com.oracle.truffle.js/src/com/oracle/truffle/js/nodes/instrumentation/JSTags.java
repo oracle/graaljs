@@ -46,7 +46,11 @@ import com.oracle.truffle.api.instrumentation.Tag;
  * Runtime profiling Tags provided by Graal.js.
  *
  */
-public class JSTags {
+public final class JSTags {
+
+    private JSTags() {
+        // should not be constructed
+    }
 
     public static final Class<?>[] ALL = new Class[]{
                     ObjectAllocationExpressionTag.class,

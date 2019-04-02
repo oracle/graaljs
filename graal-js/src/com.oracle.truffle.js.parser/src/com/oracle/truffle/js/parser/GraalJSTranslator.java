@@ -606,8 +606,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
         LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
         WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
-        JavaScriptNode wrapper = factory.createGeneratorWrapper((JavaScriptNode) parent, readState, writeState);
-        return wrapper;
+        return factory.createGeneratorWrapper((JavaScriptNode) parent, readState, writeState);
     }
 
     private static boolean isSideEffectFreeUnaryOpNode(Node node) {
@@ -1418,8 +1417,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         assert pos == size;
-        JavaScriptNode blockNode = createBlock(statements, terminal, expressionBlock);
-        return blockNode;
+        return createBlock(statements, terminal, expressionBlock);
     }
 
     private EnvironmentCloseable enterBlockEnvironment(Block block) {

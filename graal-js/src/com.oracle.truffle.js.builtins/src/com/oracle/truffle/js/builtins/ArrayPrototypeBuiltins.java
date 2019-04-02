@@ -2234,7 +2234,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         JSFunctionData flattenFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.ArrayFlattenIntoArray, c -> createOrGetFlattenCallFunctionData(c));
                         innerFlattenCall = insert(DirectCallNode.create(flattenFunctionData.getCallTarget()));
                     }
-                    return (long) innerFlattenCall.call(new Object[]{targetArray, element, elementLength, targetIndex, depth});
+                    return (long) innerFlattenCall.call(targetArray, element, elementLength, targetIndex, depth);
                 }
             };
         }

@@ -560,7 +560,7 @@ public abstract class AbstractParser {
         } else if (value instanceof Number) {
             node = LiteralNode.newInstance(literalToken, finish, (Number) value, getNumberToStringConverter());
         } else if (value instanceof String) {
-            node = LiteralNode.newInstance(literalToken, finish, (String) value);
+            node = LiteralNode.newInstance(literalToken, (String) value);
         } else if (value instanceof LexerToken) {
             validateLexerToken((LexerToken) value);
             node = LiteralNode.newInstance(literalToken, finish, (LexerToken) value);

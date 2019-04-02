@@ -51,7 +51,12 @@ import javax.management.MBeanServer;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.sun.management.HotSpotDiagnosticMXBean;
 
-public class HeapDump {
+public final class HeapDump {
+
+    private HeapDump() {
+        // should not be constructed
+    }
+
     // Derived from:
     // https://blogs.oracle.com/sundararajan/entry/programmatically_dumping_heap_from_java
     public static void dump(String fileName, boolean live) throws IOException {

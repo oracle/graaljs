@@ -125,8 +125,7 @@ public final class JavaAdapterFactory {
 
         JavaAdapterServices.setClassOverrides(Context.getCurrent().asValue(classOverrides));
         try {
-            Class<?> generatedClass = generatedClassLoader.generateClass(commonLoader);
-            return generatedClass;
+            return generatedClassLoader.generateClass(commonLoader);
         } finally {
             JavaAdapterServices.setClassOverrides(null);
         }

@@ -1858,7 +1858,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         }
                         Object k = readElement(nextItem, 0);
                         Object v = readElement(nextItem, 1);
-                        call(mapObj, adderFn, new Object[]{k, v});
+                        call(mapObj, adderFn, k, v);
                     }
                 } catch (Exception ex) {
                     iteratorCloseAbrupt(iter.getIterator());

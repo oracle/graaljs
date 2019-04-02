@@ -157,8 +157,8 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         private void setLengthSealed(DynamicObject arrayObj, int length, ScriptArray arrayType, boolean condition, ScriptArray.ProfileHolder setLengthProfile) {
             long minLength = arrayType.lastElementIndex(arrayObj, condition) + 1;
             if (length < minLength) {
-                ScriptArray array = arrayType;
-                arraySetArrayType(arrayObj, array = arrayType.setLength(arrayObj, minLength, strict, condition, setLengthProfile));
+                ScriptArray array = arrayType.setLength(arrayObj, minLength, strict, condition, setLengthProfile);
+                arraySetArrayType(arrayObj, array);
                 array.canDeleteElement(arrayObj, minLength - 1, strict, condition);
                 return;
             }
@@ -202,7 +202,8 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             ScriptArray array = arrayType;
             for (int i = array.lengthInt(arrayObj, condition) - 1; i >= length; i--) {
                 if (array.canDeleteElement(arrayObj, i, strict, condition)) {
-                    arraySetArrayType(arrayObj, array = array.deleteElement(arrayObj, i, strict, condition));
+                    array = array.deleteElement(arrayObj, i, strict, condition);
+                    arraySetArrayType(arrayObj, array);
                 }
             }
             arraySetArrayType(arrayObj, array.setLength(arrayObj, length, strict, condition, setLengthProfile));

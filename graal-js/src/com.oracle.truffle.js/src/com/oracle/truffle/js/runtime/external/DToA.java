@@ -37,6 +37,10 @@ import com.oracle.truffle.js.runtime.SuppressFBWarnings;
  */
 public class DToA {
 
+    private DToA() {
+        // should not be constructed
+    }
+
     private static char basedigit(int digit) {
         return (char) ((digit >= 10) ? 'a' - 10 + digit : '0' + digit);
     }

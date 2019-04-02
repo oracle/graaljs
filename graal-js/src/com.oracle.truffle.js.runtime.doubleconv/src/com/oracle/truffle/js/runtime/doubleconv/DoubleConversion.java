@@ -81,6 +81,10 @@ package com.oracle.truffle.js.runtime.doubleconv;
  */
 public final class DoubleConversion {
 
+    private DoubleConversion() {
+        // should not be constructed
+    }
+
     private final static int BUFFER_LENGTH = 101;
 
     /**
