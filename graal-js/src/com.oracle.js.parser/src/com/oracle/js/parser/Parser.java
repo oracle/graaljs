@@ -226,6 +226,14 @@ public class Parser extends AbstractParser {
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
     private static final int REPARSE_IS_METHOD = 1 << 1;
 
+    private static final String MESSAGE_INVALID_LVALUE = "invalid.lvalue";
+    private static final String MESSAGE_EXPECTED_STMT = "expected.stmt";
+    private static final String MESSAGE_ESCAPED_KEYWORD = "escaped.keyword";
+    private static final String MESSAGE_INVALID_PROPERTY_INITIALIZER = "invalid.property.initializer";
+    private static final String MESSAGE_INVALID_ARROW_PARAMETER = "invalid.arrow.parameter";
+    private static final String MESSAGE_EXPECTED_OPERAND = "expected.operand";
+    private static final String MESSAGE_PROPERTY_REDEFINITON = "property.redefinition";
+
     /** Current env. */
     private final ScriptEnvironment env;
 
@@ -846,7 +854,7 @@ loop:
             @Override
             protected void verifySpreadElement(Expression lvalue) {
                 if (!checkValidLValue(lvalue, contextString)) {
-                    throw error(AbstractParser.message("invalid.lvalue"), lvalue.getToken());
+                    throw error(AbstractParser.message(MESSAGE_INVALID_LVALUE), lvalue.getToken());
                 }
                 lvalue.accept(this);
             }
@@ -854,7 +862,7 @@ loop:
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
                 if (!checkIdentLValue(identNode) || identNode.isMetaProperty()) {
-                    throw error(AbstractParser.message("invalid.lvalue"), identNode.getToken());
+                    throw error(AbstractParser.message(MESSAGE_INVALID_LVALUE), identNode.getToken());
                 }
                 verifyStrictIdent(identNode, contextString);
                 return false;
@@ -1191,7 +1199,7 @@ loop:
                 // LabelledItem : FunctionDeclaration.
                 // ES6 B.3.4 FunctionDeclarations in IfStatement Statement Clauses
                 if (isStrictMode || !mayBeFunctionDeclaration) {
-                    throw error(AbstractParser.message("expected.stmt", "function declaration"), token);
+                    throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "function declaration"), token);
                 }
             }
             functionExpression(true, topLevel || labelledStatement, singleStatement);
@@ -1205,7 +1213,7 @@ loop:
                         // The IDENT check is not needed here - the only purpose of this
                         // shortcut is to produce the same error mesage as Nashorn.
                         if (lookahead == LBRACKET || T(k + 1) == IDENT) {
-                            throw error(AbstractParser.message("expected.stmt", "let declaration"), token);
+                            throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "let declaration"), token);
                         } // else break and call expressionStatement()
                     } else {
                         variableStatement(type);
@@ -1217,7 +1225,7 @@ loop:
         case CONST:
             if (useBlockScope()) {
                 if (singleStatement) {
-                    throw error(AbstractParser.message("expected.stmt", "const declaration"), token);
+                    throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "const declaration"), token);
                 }
                 variableStatement(type);
                 return;
@@ -1229,7 +1237,7 @@ loop:
         case CLASS:
             if (ES6_CLASS && isES6()) {
                 if (singleStatement) {
-                    throw error(AbstractParser.message("expected.stmt", "class declaration"), token);
+                    throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "class declaration"), token);
                 }
                 classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
                 return;
@@ -1238,7 +1246,7 @@ loop:
         case ASYNC:
             if (isAsync() && lookaheadIsAsyncFunction()) {
                 if (singleStatement) {
-                    throw error(AbstractParser.message("expected.stmt", "async function declaration"), token);
+                    throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "async function declaration"), token);
                 }
                 asyncFunctionExpression(true, topLevel || labelledStatement);
                 return;
@@ -1674,7 +1682,7 @@ loop:
         // It is a Syntax Error if StringValue of IdentifierName is the same as the StringValue of any ReservedWord except for yield or await.
         if (isES6()) {
             if (isEscapedIdent(ident) && isReservedWordSequence(ident.getName())) {
-                throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+                throw error(AbstractParser.message(MESSAGE_ESCAPED_KEYWORD, ident.getName()), ident.getToken());
             } else {
                 assert !isReservedWordSequence(ident.getName()) : ident.getName();
             }
@@ -1684,7 +1692,7 @@ loop:
             if (ident.isTokenType(YIELD)) {
                 throw error(expectMessage(IDENT, ident.getToken()), ident.getToken());
             } else if (isEscapedIdent(ident) && YIELD.getName().equals(ident.getName())) {
-                throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+                throw error(AbstractParser.message(MESSAGE_ESCAPED_KEYWORD, ident.getName()), ident.getToken());
             } else {
                 assert !YIELD.getName().equals(ident.getName());
             }
@@ -1695,7 +1703,7 @@ loop:
             if (ident.isTokenType(AWAIT)) {
                 throw error(expectMessage(IDENT, ident.getToken()), ident.getToken());
             } else if (isEscapedIdent(ident) && AWAIT.getName().equals(ident.getName())) {
-                throw error(AbstractParser.message("escaped.keyword", ident.getName()), ident.getToken());
+                throw error(AbstractParser.message(MESSAGE_ESCAPED_KEYWORD, ident.getName()), ident.getToken());
             } else {
                 assert !AWAIT.getName().equals(ident.getName());
             }
@@ -1985,7 +1993,7 @@ loop:
         public boolean enterLiteralNode(LiteralNode<?> literalNode) {
             if (literalNode.isArray()) {
                 if (literalNode.isParenthesized()) {
-                    throw error(AbstractParser.message("invalid.lvalue"), literalNode.getToken());
+                    throw error(AbstractParser.message(MESSAGE_INVALID_LVALUE), literalNode.getToken());
                 }
                 if (((ArrayLiteralNode)literalNode).hasSpread() && ((ArrayLiteralNode)literalNode).hasTrailingComma()) {
                     throw error("Rest element must be last", literalNode.getElementExpressions().get(literalNode.getElementExpressions().size() - 1).getToken());
@@ -2016,7 +2024,7 @@ loop:
         @Override
         public boolean enterObjectNode(ObjectNode objectNode) {
             if (objectNode.isParenthesized()) {
-                throw error(AbstractParser.message("invalid.lvalue"), objectNode.getToken());
+                throw error(AbstractParser.message(MESSAGE_INVALID_LVALUE), objectNode.getToken());
             }
             boolean restElement = false;
             for (PropertyNode property : objectNode.getElements()) {
@@ -2259,7 +2267,7 @@ loop:
                     }
                 } else {
                     if (hasCoverInitializedName(init)) {
-                        throw error(AbstractParser.message("invalid.property.initializer"));
+                        throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
                     }
                 }
 
@@ -2896,7 +2904,7 @@ loop:
         }
 
         if (expression == null) {
-            throw error(AbstractParser.message("expected.operand", type.getNameOrType()));
+            throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
         }
 
         endOfLine();
@@ -3363,7 +3371,7 @@ loop:
     private void checkPropertyRedefinition(final PropertyNode property, final Expression value, final FunctionNode getter, final FunctionNode setter, final Expression prevValue, final FunctionNode prevGetter, final FunctionNode prevSetter) {
         // ECMA 11.1.5 strict mode restrictions
         if (isStrictMode && value != null && prevValue != null) {
-            throw error(AbstractParser.message("property.redefinition", property.getKeyName()), property.getToken());
+            throw error(AbstractParser.message(MESSAGE_PROPERTY_REDEFINITON, property.getKeyName()), property.getToken());
         }
 
         final boolean isPrevAccessor = prevGetter != null || prevSetter != null;
@@ -3371,18 +3379,18 @@ loop:
 
         // data property redefined as accessor property
         if (prevValue != null && isAccessor) {
-            throw error(AbstractParser.message("property.redefinition", property.getKeyName()), property.getToken());
+            throw error(AbstractParser.message(MESSAGE_PROPERTY_REDEFINITON, property.getKeyName()), property.getToken());
         }
 
         // accessor property redefined as data
         if (isPrevAccessor && value != null) {
-            throw error(AbstractParser.message("property.redefinition", property.getKeyName()), property.getToken());
+            throw error(AbstractParser.message(MESSAGE_PROPERTY_REDEFINITON, property.getKeyName()), property.getToken());
         }
 
         if (isAccessor && isPrevAccessor) {
             if (getter != null && prevGetter != null ||
                     setter != null && prevSetter != null) {
-                throw error(AbstractParser.message("property.redefinition", property.getKeyName()), property.getToken());
+                throw error(AbstractParser.message(MESSAGE_PROPERTY_REDEFINITON, property.getKeyName()), property.getToken());
             }
         }
     }
@@ -3742,7 +3750,7 @@ loop:
                         if (hasCoverInitializedName(argument)) {
                             // would be thrown by assignmentExpression() if we knew that
                             // we are parsing arguments (and not arrow parameter list)
-                            throw error(AbstractParser.message("invalid.property.initializer"));
+                            throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
                         }
                     }
                 }
@@ -3852,7 +3860,7 @@ loop:
             }
         } else if (type == IMPORT && isES2020() && lookahead() == LPAREN) {
             // new cannot be used with import()
-            throw error(AbstractParser.message("expected.operand", IMPORT.getName()), token);
+            throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, IMPORT.getName()), token);
         }
 
         // Get function base.
@@ -4010,7 +4018,7 @@ loop:
             }
             case PERIOD: {
                 if (lhs == null) {
-                    throw error(AbstractParser.message("expected.operand", type.getNameOrType()));
+                    throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
                 }
 
                 next();
@@ -4072,7 +4080,7 @@ loop:
             IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), IMPORT.getName());
             return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, Collections.singletonList(argument));
         } else {
-            throw error(AbstractParser.message("expected.operand", IMPORT.getName()), importToken);
+            throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, IMPORT.getName()), importToken);
         }
     }
 
@@ -4204,7 +4212,7 @@ loop:
         boolean generator = false;
         if (type == MUL && ES6_GENERATOR_FUNCTION && isES6()) {
             if (expressionStatement) {
-                throw error(AbstractParser.message("expected.stmt", "generator function declaration"), token);
+                throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "generator function declaration"), token);
             }
             generator = true;
             next();
@@ -4752,7 +4760,7 @@ loop:
 
     private RuntimeNode referenceError(final Expression lhs, final Expression rhs, final boolean earlyError) {
         if (earlyError) {
-            throw error(JSErrorType.ReferenceError, AbstractParser.message("invalid.lvalue"), lhs.getToken());
+            throw error(JSErrorType.ReferenceError, AbstractParser.message(MESSAGE_INVALID_LVALUE), lhs.getToken());
         }
         final ArrayList<Expression> args = new ArrayList<>();
         args.add(lhs);
@@ -4872,7 +4880,7 @@ loop:
         }
 
         if (expression == null) {
-            throw error(AbstractParser.message("expected.operand", type.getNameOrType()));
+            throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
         }
 
         return expression;
@@ -5084,7 +5092,7 @@ loop:
 
         boolean arrowAhead = lookaheadIsArrow();
         if (hasCoverInitializedName && !(type == RPAREN && arrowAhead)) {
-            throw error(AbstractParser.message("invalid.property.initializer"));
+            throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
         }
 
         if (!arrowAhead) {
@@ -5233,7 +5241,7 @@ loop:
             }
         } else {
             if (!inPatternPosition && hasCoverInitializedName(exprLhs)) {
-                throw error(AbstractParser.message("invalid.property.initializer"));
+                throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
             }
             return exprLhs;
         }
@@ -5349,7 +5357,7 @@ loop:
             for (int i = params.size() - 1, pos = 0; i >= 0; i--, pos++) {
                 Expression param = params.get(i);
                 if (i != 0 && param.isTokenType(SPREAD_ARGUMENT)) {
-                    throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
+                    throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
                 } else {
                     convertArrowParameter(param, pos, functionLine, function);
                 }
@@ -5365,7 +5373,7 @@ loop:
             IdentNode ident = (IdentNode)param;
             verifyStrictIdent(ident, FUNCTION_PARAMETER_CONTEXT);
             if (ident.isParenthesized() || currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
-                throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
+                throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
             }
             currentFunction.addParameter(ident);
             return;
@@ -5377,7 +5385,7 @@ loop:
             Expression initializer = ((BinaryNode) param).getRhs();
             if (initializer instanceof IdentNode) {
                 if (((IdentNode) initializer).getName().equals(AWAIT.getName())) {
-                    throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
+                    throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
                 }
             }
             if (lc.getCurrentNonArrowFunction().getFlag(FunctionNode.USES_THIS) != 0) {
@@ -5397,7 +5405,7 @@ loop:
 
                 addDestructuringParameter(paramToken, param.getFinish(), paramLine, lhs, initializer, currentFunction, false);
             } else {
-                throw error(AbstractParser.message("invalid.arrow.parameter"), paramToken);
+                throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), paramToken);
             }
         } else if (isDestructuringLhs(param)) {
             // binding pattern
@@ -5412,10 +5420,10 @@ loop:
                 IdentNode rest = ((IdentNode) expression).setIsRestParameter();
                 convertArrowParameter(rest, index, paramLine, currentFunction);
             } else {
-                throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
+                throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
             }
         } else {
-            throw error(AbstractParser.message("invalid.arrow.parameter"), param.getToken());
+            throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
         }
     }
 
