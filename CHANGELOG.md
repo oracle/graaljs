@@ -8,6 +8,7 @@ The main focus is on user-observable behavior of the engine.
 * ScriptEngine: security-relevant Context-options are now disabled by default.
 * Migrated to Truffle Libraries for interop.
 * `Polyglot` builtin enabled based on `Context.Builder.allowPolyglotAccess()`.
+* Added object rest and spread properties support for foreign objects.
 
 ## Version 1.0.0 RC14
 * Option `js.function-arguments-limit` to set an upper bound for function arguments and argument spreading (default: 65535).
