@@ -549,7 +549,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     if (snippetRun.getException() != null) {
                         final Value param = snippetRun.getParameters().get(0);
                         final Value paramMeta = param.getMetaObject();
-                        final String type = paramMeta.hasMember("type") ? paramMeta.getMember("type").asString() : null;
+                        final String type = (paramMeta != null && paramMeta.hasMember("type")) ? paramMeta.getMember("type").asString() : null;
                         final boolean jsObject = type != null && ("object".equals(type) || "function".equals(type)) && paramMeta.hasMember("className");
                         boolean hasIterator = false;
                         try {
