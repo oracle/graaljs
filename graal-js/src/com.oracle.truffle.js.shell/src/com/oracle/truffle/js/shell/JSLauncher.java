@@ -181,12 +181,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
             case "version":
                 versionAction = VersionAction.PrintAndExit;
                 return Consumed;
-            case "no-shebang":
-                polyglotOptions.put("js.shebang", "false");
-                return ConsumedPolyglotOption;
-            case "no-constasvar":
-                polyglotOptions.put("js.const-as-var", "false");
-                return ConsumedPolyglotOption;
         }
         return Unhandled;
     }
@@ -274,8 +268,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
         printOption("-e, --eval CODE",      "evaluate the code");
         printOption("-f, --file FILE",      "load script file");
         printOption("--module FILE",        "load module file");
-        printOption("--no-constasvar",      "disallows parsing of 'const' declarations as 'var'");
-        printOption("--no-shebang",         "disallows support for files starting with '#!'");
         printOption("--syntax-extensions",  "enable non-spec syntax extensions");
         printOption("--print-result",       "print the return value of each FILE");
         printOption("--scripting",          "enable scripting features (Nashorn compatibility option)");
@@ -290,8 +282,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
         args.addAll(Arrays.asList(
                         "-e", "--eval",
                         "-f", "--file",
-                        "--no-constasvar",
-                        "--no-shebang",
                         "--syntax-extensions",
                         "--print-result",
                         "--version",
