@@ -252,7 +252,6 @@ public class Parser extends AbstractParser {
 
     public static final boolean PROFILE_PARSING = Options.getBooleanProperty("parser.profiling", false);
     public static final boolean PROFILE_PARSING_PRINT = Options.getBooleanProperty("parser.profiling.print", true);
-    public static long totalParsingDuration = 0L;
 
     /**
      * Constructor
@@ -398,7 +397,6 @@ public class Parser extends AbstractParser {
         } finally {
             if (PROFILE_PARSING) {
                 long duration = (System.nanoTime() - startTime);
-                totalParsingDuration += duration;
                 if (PROFILE_PARSING_PRINT) {
                     System.out.println("Parsing: " + duration / 1_000_000);
                 }
