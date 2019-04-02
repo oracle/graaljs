@@ -46,7 +46,9 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -114,11 +116,18 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         }
     }
 
-    @Specialization(guards = "isForeignObject(iteratedObject)")
+    @Specialization(guards = "isForeignObject(iteratedObject)", limit = "3")
     protected IteratorRecord doGetIteratorWithForeignObject(TruffleObject iteratedObject,
+                    @CachedLibrary("iteratedObject") InteropLibrary interop,
+                    @Cached("create(getContext())") GetIteratorNode getIteratorNode,
                     @Cached("createEnumerateValues()") EnumerateNode enumerateNode) {
-        DynamicObject iterator = enumerateNode.execute(iteratedObject);
-        return IteratorRecord.create(iterator, getNextMethodNode.getValue(iterator), false);
+        Object unboxed = JSInteropUtil.toPrimitiveOrDefault(iteratedObject, iteratedObject, interop, this);
+        if (unboxed == iteratedObject) { // not boxed
+            DynamicObject iterator = enumerateNode.execute(iteratedObject);
+            return IteratorRecord.create(iterator, getNextMethodNode.getValue(iterator), false);
+        } else {
+            return getIteratorNode.execute(unboxed);
+        }
     }
 
     protected EnumerateNode createEnumerateValues() {
