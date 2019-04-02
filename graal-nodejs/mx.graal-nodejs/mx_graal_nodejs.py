@@ -319,7 +319,6 @@ def setLibraryPath(additionalPath=None):
 def setupNodeEnvironment(args, add_graal_vm_args=True):
     args = args if args else []
     mode, vmArgs, progArgs = _parseArgs(args)
-    vmArgs += mx.java_debug_args()
     setLibraryPath()
 
     if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None:
@@ -436,6 +435,8 @@ def _parseArgs(args):
     if mx.suite('compiler', fatalIfMissing=False):
         import mx_compiler
         vmArgs = mx_compiler._parseVmArgs(vmArgs)
+    else:
+        vmArgs += mx.java_debug_args()
 
     for arg in ['-d64', '-server']:
         if arg in vmArgs:
