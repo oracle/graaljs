@@ -318,6 +318,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 }
             }
             return type;
+        } else if (value instanceof InteropBoundFunction) {
+            return JSObject.safeToString(((InteropBoundFunction) value).getFunction());
         } else if (JSRuntime.isForeignObject(value)) {
             return toStringForeignObject(realm, value, depth);
         }
