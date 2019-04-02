@@ -227,11 +227,13 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
     abstract static class JSRegExpStaticResultPropertyNode extends JSBuiltinNode {
 
         @Child GetStaticRegExpResultNode getResultNode;
+        @Child TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor;
         @Child TRegexUtil.TRegexResultAccessor resultAccessor;
 
         JSRegExpStaticResultPropertyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             getResultNode = GetStaticRegExpResultNode.create(context);
+            compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
             resultAccessor = TRegexUtil.TRegexResultAccessor.create();
         }
 
@@ -253,7 +255,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         @Specialization
         String getGroup() {
             Object result = getResultNode.execute();
-            if (resultAccessor.isMatch(result) && resultAccessor.groupCount(result) > groupNumber) {
+            if (resultAccessor.isMatch(result) && compiledRegexAccessor.groupCount(getContext().getRealm().getLazyStaticRegexResultCompiledRegex()) > groupNumber) {
                 int start = resultAccessor.captureGroupStart(result, groupNumber);
                 if (start >= 0) {
                     return Boundaries.substring(getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber));
@@ -273,7 +275,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         String lastParen() {
             Object result = getResultNode.execute();
             if (resultAccessor.isMatch(result)) {
-                int groupNumber = resultAccessor.groupCount(result) - 1;
+                int groupNumber = compiledRegexAccessor.groupCount(getContext().getRealm().getLazyStaticRegexResultCompiledRegex()) - 1;
                 if (groupNumber > 0) {
                     int start = resultAccessor.captureGroupStart(result, groupNumber);
                     if (start >= 0) {

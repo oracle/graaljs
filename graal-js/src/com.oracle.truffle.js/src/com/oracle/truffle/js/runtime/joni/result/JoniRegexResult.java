@@ -65,21 +65,10 @@ import com.oracle.truffle.js.runtime.joni.interop.TruffleReadOnlyKeysArray;
 public abstract class JoniRegexResult extends AbstractConstantKeysObject {
 
     static final String PROP_IS_MATCH = "isMatch";
-    static final String PROP_GROUP_COUNT = "groupCount";
     static final String PROP_GET_START = "getStart";
     static final String PROP_GET_END = "getEnd";
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GROUP_COUNT, PROP_GET_START, PROP_GET_END);
-
-    private final int groupCount;
-
-    public JoniRegexResult(int groupCount) {
-        this.groupCount = groupCount;
-    }
-
-    public final int getGroupCount() {
-        return groupCount;
-    }
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GET_START, PROP_GET_END);
 
     @Override
     public TruffleReadOnlyKeysArray getKeys() {
@@ -91,8 +80,6 @@ public abstract class JoniRegexResult extends AbstractConstantKeysObject {
         switch (symbol) {
             case PROP_IS_MATCH:
                 return this != JoniNoMatchResult.getInstance();
-            case PROP_GROUP_COUNT:
-                return getGroupCount();
             case PROP_GET_START:
                 return new GetStartMethod(this);
             case PROP_GET_END:

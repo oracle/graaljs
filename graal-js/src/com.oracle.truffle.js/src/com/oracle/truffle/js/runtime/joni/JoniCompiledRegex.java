@@ -60,7 +60,7 @@ import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
 @ExportLibrary(InteropLibrary.class)
 public class JoniCompiledRegex extends AbstractConstantKeysObject {
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("exec", "pattern", "flags", "groups");
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("exec", "pattern", "flags", "groupCount", "groups");
 
     private final String pattern;
     private final JoniRegexFlags flags;
@@ -101,6 +101,8 @@ public class JoniCompiledRegex extends AbstractConstantKeysObject {
                 return pattern;
             case "flags":
                 return flags;
+            case "groupCount":
+                return joniRegex.numberOfCaptures() + 1;
             case "groups":
                 return TruffleNull.getInstance();
             default:

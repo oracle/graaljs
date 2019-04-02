@@ -46,7 +46,6 @@ public final class JoniSingleResult extends JoniRegexResult {
     private final int end;
 
     public JoniSingleResult(int start, int end) {
-        super(1);
         this.start = start;
         this.end = end;
     }

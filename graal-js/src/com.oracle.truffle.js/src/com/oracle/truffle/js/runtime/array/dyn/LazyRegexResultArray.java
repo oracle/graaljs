@@ -79,7 +79,7 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
 
     public ScriptArray createWritable(TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, long index, Object value, boolean condition) {
         boolean lrraCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultArray;
-        for (int i = 0; i < arrayGetLength(object); i++) {
+        for (int i = 0; i < lengthInt(object); i++) {
             materializeGroup(materializeResultNode, object, i, lrraCondition);
         }
         final Object[] internalArray = getArray(object, condition);
@@ -103,7 +103,7 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
 
     @Override
     public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return index >= 0 && index < arrayGetLength(object, condition);
+        return index >= 0 && index < lengthInt(object, condition);
     }
 
     @Override
@@ -113,7 +113,8 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
 
     @Override
     public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
-        Object[] array = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeFull(arrayGetRegexResult(object), arrayGetRegexResultOriginalInput(object));
+        Object[] array = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeFull(arrayGetRegexResult(object), lengthInt(object, condition),
+                        arrayGetRegexResultOriginalInput(object));
         AbstractObjectArray newArray;
         newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, array.length, array.length, array, integrityLevel);
         if (JSTruffleOptions.TraceArrayTransitions) {
@@ -159,7 +160,7 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
 
     @Override
     public Object[] toArray(DynamicObject object) {
-        return TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeFull(arrayGetRegexResult(object), arrayGetRegexResultOriginalInput(object));
+        return TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeFull(arrayGetRegexResult(object), lengthInt(object), arrayGetRegexResultOriginalInput(object));
     }
 
     @Override

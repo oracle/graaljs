@@ -81,6 +81,7 @@ public final class TRegexUtil {
             public static final String PATTERN = "pattern";
             public static final String FLAGS = "flags";
             public static final String EXEC = "exec";
+            public static final String GROUP_COUNT = "groupCount";
             public static final String GROUPS = "groups";
         }
 
@@ -98,7 +99,6 @@ public final class TRegexUtil {
         public static final class RegexResult {
 
             public static final String IS_MATCH = "isMatch";
-            public static final String GROUP_COUNT = "groupCount";
             public static final String GET_START = "getStart";
             public static final String GET_END = "getEnd";
         }
@@ -411,6 +411,7 @@ public final class TRegexUtil {
         @Child private InteropReadStringMemberNode readPatternNode;
         @Child private InteropReadMemberNode readFlagsNode;
         @Child private InvokeExecMethodNode invokeExecMethodNode;
+        @Child private InteropReadIntMemberNode readGroupCountNode;
         @Child private InteropReadMemberNode readGroupsNode;
 
         private TRegexCompiledRegexAccessor() {
@@ -430,6 +431,10 @@ public final class TRegexUtil {
 
         public Object exec(Object compiledRegexObject, String input, long fromIndex) {
             return getInvokeExecMethodNode().execute(compiledRegexObject, input, fromIndex);
+        }
+
+        public int groupCount(Object regexResultObject) {
+            return getReadGroupCountNode().execute(regexResultObject, Props.CompiledRegex.GROUP_COUNT);
         }
 
         public Object namedCaptureGroups(Object compiledRegexObject) {
@@ -458,6 +463,14 @@ public final class TRegexUtil {
                 invokeExecMethodNode = insert(InvokeExecMethodNode.create());
             }
             return invokeExecMethodNode;
+        }
+
+        private InteropReadIntMemberNode getReadGroupCountNode() {
+            if (readGroupCountNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readGroupCountNode = insert(InteropReadIntMemberNode.create());
+            }
+            return readGroupCountNode;
         }
 
         private InteropReadMemberNode getReadGroupsNode() {
@@ -646,14 +659,12 @@ public final class TRegexUtil {
         private static final TRegexResultAccessor UNCACHED = new TRegexResultAccessor(false);
 
         @Child private InteropReadBooleanMemberNode readIsMatchNode;
-        @Child private InteropReadIntMemberNode readGroupCountNode;
         @Child private InvokeGetGroupBoundariesMethodNode getStartNode;
         @Child private InvokeGetGroupBoundariesMethodNode getEndNode;
 
         private TRegexResultAccessor(boolean cached) {
             if (!cached) {
                 readIsMatchNode = InteropReadBooleanMemberNodeGen.getUncached();
-                readGroupCountNode = InteropReadIntMemberNodeGen.getUncached();
                 getStartNode = InvokeGetGroupBoundariesMethodNodeGen.getUncached();
                 getEndNode = InvokeGetGroupBoundariesMethodNodeGen.getUncached();
             }
@@ -669,10 +680,6 @@ public final class TRegexUtil {
 
         public boolean isMatch(Object regexResultObject) {
             return getReadIsMatchNode().execute(regexResultObject, Props.RegexResult.IS_MATCH);
-        }
-
-        public int groupCount(Object regexResultObject) {
-            return getReadGroupCountNode().execute(regexResultObject, Props.RegexResult.GROUP_COUNT);
         }
 
         public int captureGroupStart(Object regexResultObject, int i) {
@@ -693,14 +700,6 @@ public final class TRegexUtil {
                 readIsMatchNode = insert(InteropReadBooleanMemberNode.create());
             }
             return readIsMatchNode;
-        }
-
-        private InteropReadIntMemberNode getReadGroupCountNode() {
-            if (readGroupCountNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readGroupCountNode = insert(InteropReadIntMemberNode.create());
-            }
-            return readGroupCountNode;
         }
 
         private InvokeGetGroupBoundariesMethodNode getGetStartNode() {
@@ -752,8 +751,7 @@ public final class TRegexUtil {
             }
         }
 
-        public Object[] materializeFull(Object regexResult, String input) {
-            final int groupCount = resultAccessor.groupCount(regexResult);
+        public Object[] materializeFull(Object regexResult, int groupCount, String input) {
             Object[] result = new Object[groupCount];
             for (int i = 0; i < groupCount; i++) {
                 result[i] = materializeGroup(regexResult, i, input);

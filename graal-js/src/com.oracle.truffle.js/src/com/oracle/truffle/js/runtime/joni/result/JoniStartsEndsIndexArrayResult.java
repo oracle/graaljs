@@ -46,7 +46,6 @@ public final class JoniStartsEndsIndexArrayResult extends JoniRegexResult {
     private final int[] ends;
 
     public JoniStartsEndsIndexArrayResult(int[] starts, int[] ends) {
-        super(starts.length);
         this.starts = starts;
         this.ends = ends;
     }

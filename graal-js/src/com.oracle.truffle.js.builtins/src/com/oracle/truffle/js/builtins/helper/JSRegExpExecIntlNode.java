@@ -335,8 +335,9 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 if (ecmaScriptVersion < 6) {
                     return result;
                 }
+                int groupCount = compiledRegexAccessor.groupCount(compiledRegex);
                 DynamicObject groups = getGroupsObject(regExp, result, input);
-                return getMatchResult(result, input, groups);
+                return getMatchResult(result, groupCount, input, groups);
             } else {
                 if (ecmaScriptVersion < 8 || global || sticky) {
                     setLastIndex(regExp, 0);
@@ -346,8 +347,8 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // converts RegexResult into DynamicObject
-        private DynamicObject getMatchResult(Object result, String inputStr, DynamicObject groups) {
-            return JSArray.createLazyRegexArray(context, regexResultAccessor.groupCount(result), result, inputStr, groups);
+        private DynamicObject getMatchResult(Object result, int groupCount, String inputStr, DynamicObject groups) {
+            return JSArray.createLazyRegexArray(context, groupCount, result, inputStr, groups);
         }
 
         // builds the object containing the matches of the named capture groups
