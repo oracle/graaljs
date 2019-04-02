@@ -551,7 +551,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             type = "object";
             className = JSRuntime.getConstructorName(obj);
 
-            if (JSFunction.isJSFunction(obj)) {
+            if (JSRuntime.isCallable(obj)) {
                 type = "function";
             } else if (JSArray.isJSArray(obj)) {
                 subtype = "array";
