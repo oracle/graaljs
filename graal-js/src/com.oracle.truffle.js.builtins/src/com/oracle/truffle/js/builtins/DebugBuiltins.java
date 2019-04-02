@@ -635,7 +635,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization
-        protected Object heapDump(Object fileName0, Object live0) {
+        protected String heapDump(Object fileName0, Object live0) {
             String fileName = fileName0 == Undefined.instance ? HeapDump.defaultDumpName() : JSRuntime.toString(fileName0);
             boolean live = live0 == Undefined.instance ? true : JSRuntime.toBoolean(live0);
             try {
@@ -646,7 +646,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 throw JSException.create(JSErrorType.Error, getBuiltin().getFullName() + " unsupported", e, this);
             }
 
-            return Undefined.instance;
+            return fileName;
         }
     }
 
