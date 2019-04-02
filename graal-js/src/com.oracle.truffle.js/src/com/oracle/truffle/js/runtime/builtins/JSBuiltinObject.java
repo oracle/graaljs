@@ -399,22 +399,30 @@ public abstract class JSBuiltinObject extends JSClass {
 
     @Override
     @TruffleBoundary
-    public boolean setIntegrityLevel(DynamicObject obj, boolean freeze) {
-        Shape oldShape = obj.getShape();
-        Shape newShape = freeze ? JSShape.freeze(oldShape) : JSShape.seal(oldShape);
-        if (oldShape != newShape) {
-            obj.setShapeAndGrow(oldShape, newShape);
+    public boolean setIntegrityLevel(DynamicObject thisObj, boolean freeze) {
+        Shape shape = thisObj.getShape();
+        if (thisObj.updateShape()) {
+            shape = thisObj.getShape();
         }
-        return JSObject.preventExtensions(obj);
+        Shape newShape = freeze ? JSShape.freeze(shape) : JSShape.seal(shape);
+        if (shape != newShape) {
+            thisObj.setShapeAndGrow(shape, newShape);
+            thisObj.updateShape();
+        }
+        return JSObject.preventExtensions(thisObj);
     }
 
     @TruffleBoundary
     @Override
     public boolean preventExtensions(DynamicObject thisObj) {
-        Shape oldShape = thisObj.getShape();
-        Shape newShape = JSShape.makeNotExtensible(oldShape);
-        if (oldShape != newShape) {
-            thisObj.setShapeAndGrow(oldShape, newShape);
+        Shape shape = thisObj.getShape();
+        if (thisObj.updateShape()) {
+            shape = thisObj.getShape();
+        }
+        Shape newShape = JSShape.makeNotExtensible(shape);
+        if (shape != newShape) {
+            thisObj.setShapeAndGrow(shape, newShape);
+            thisObj.updateShape();
         }
         return true;
     }
