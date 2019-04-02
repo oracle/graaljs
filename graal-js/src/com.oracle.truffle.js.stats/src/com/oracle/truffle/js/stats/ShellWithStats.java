@@ -44,7 +44,6 @@ import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Consumed;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
@@ -62,12 +61,12 @@ public class ShellWithStats extends RepeatingLauncher {
     }
 
     @Override
-    protected PreprocessResult preprocessArgument(String argument, Map<String, String> polyglotOptions) {
+    protected PreprocessResult preprocessArgument(String argument) {
         if (argument.equals("heap-dump")) {
             heapDump = true;
             return Consumed;
         }
-        return super.preprocessArgument(argument, polyglotOptions);
+        return super.preprocessArgument(argument);
     }
 
     @Override

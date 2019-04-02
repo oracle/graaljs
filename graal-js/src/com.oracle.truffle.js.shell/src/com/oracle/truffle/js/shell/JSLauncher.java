@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.shell;
 
 import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Consumed;
-import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.ConsumedPolyglotOption;
 import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.MissingValue;
 import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Unhandled;
 
@@ -114,10 +113,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
                     }
                 }
 
-                switch (preprocessArgument(flag, polyglotOptions)) {
-                    case ConsumedPolyglotOption:
-                        iterator.remove();
-                        // fall through
+                switch (preprocessArgument(flag)) {
                     case Consumed:
                         continue;
                     case MissingValue:
@@ -135,14 +131,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
                     value = null;
                 }
 
-                switch ((preprocessArgument(flag, value, polyglotOptions))) {
-                    case ConsumedPolyglotOption:
-                        iterator.remove();
-                        if (equalsIndex < 0 && value != null) {
-                            iterator.previous();
-                        }
-                        iterator.remove();
-                        // fall through
+                switch ((preprocessArgument(flag, value))) {
                     case Consumed:
                         continue;
                     case MissingValue:
@@ -164,12 +153,11 @@ public class JSLauncher extends AbstractLanguageLauncher {
 
     public enum PreprocessResult {
         Consumed,
-        ConsumedPolyglotOption,
         Unhandled,
         MissingValue
     }
 
-    protected PreprocessResult preprocessArgument(String argument, Map<String, String> polyglotOptions) {
+    protected PreprocessResult preprocessArgument(String argument) {
         switch (argument) {
             case "printResult":
             case "print-result":
@@ -185,7 +173,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
         return Unhandled;
     }
 
-    protected PreprocessResult preprocessArgument(String argument, String value, @SuppressWarnings("unused") Map<String, String> polyglotOptions) {
+    protected PreprocessResult preprocessArgument(String argument, String value) {
         switch (argument) {
             case "eval":
                 if (value == null) {
