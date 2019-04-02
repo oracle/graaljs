@@ -307,11 +307,19 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         if (value == null) {
             return "null";
         } else if (value instanceof JSMetaObject) {
-            String type = ((JSMetaObject) value).getClassName();
+            JSMetaObject metaObject = (JSMetaObject) value;
+            String type = metaObject.getClassName();
             if (type == null) {
-                type = ((JSMetaObject) value).getType();
+                String subType = metaObject.getSubtype();
+                if ("null".equals(subType)) {
+                    type = "null";
+                } else {
+                    type = metaObject.getType();
+                }
             }
             return type;
+        } else if (value instanceof InteropBoundFunction) {
+            return JSObject.safeToString(((InteropBoundFunction) value).getFunction());
         } else if (JSRuntime.isForeignObject(value)) {
             return toStringForeignObject(realm, value, depth);
         }
@@ -533,12 +541,17 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
         if (value instanceof JSMetaObject) {
             return "metaobject";
-        } else if (JSObject.isJSObject(value)) {
+        } else if (value == Undefined.instance) {
+            type = "undefined";
+        } else if (value == Null.instance) {
+            type = "object";
+            subtype = "null";
+        } else if (JSRuntime.isObject(value)) {
             DynamicObject obj = (DynamicObject) value;
             type = "object";
-            className = obj == Undefined.instance ? "undefined" : JSRuntime.getConstructorName(obj);
+            className = JSRuntime.getConstructorName(obj);
 
-            if (JSFunction.isJSFunction(obj)) {
+            if (JSRuntime.isCallable(obj)) {
                 type = "function";
             } else if (JSArray.isJSArray(obj)) {
                 subtype = "array";
@@ -546,10 +559,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 subtype = "date";
             } else if (JSSymbol.isJSSymbol(obj)) {
                 type = "symbol";
-            } else if (value == Undefined.instance) {
-                type = "undefined";
-            } else if (value == Null.instance) {
-                subtype = "null";
             }
         } else if (value instanceof InteropBoundFunction) {
             return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());

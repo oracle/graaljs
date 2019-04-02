@@ -72,6 +72,10 @@ public final class JSMetaObject implements TruffleObject {
         return type;
     }
 
+    public String getSubtype() {
+        return subtype;
+    }
+
     public String getClassName() {
         return className;
     }
