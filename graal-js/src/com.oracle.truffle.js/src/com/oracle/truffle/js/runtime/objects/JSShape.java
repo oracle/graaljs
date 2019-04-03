@@ -147,15 +147,12 @@ public final class JSShape {
         getSharedData(shape).invalidatePrototypeAssumption();
     }
 
-    private static boolean isRoot(Shape shape) {
-        return shape.getParent() == null;
-    }
-
     private static Shape freezeHelper(Shape shape, Predicate<Shape> pred, Function<Property, Property> propertyConverter) {
         if (!pred.test(shape)) {
-            Shape newShape = shape.getRoot();
-            for (Property property : shape.getPropertyListInternal(true)) {
-                newShape = newShape.addProperty(propertyConverter.apply(property));
+            Shape newShape = shape;
+            for (Property property : shape.getProperties()) {
+                assert property.equals(newShape.getProperty(property.getKey()));
+                newShape = newShape.replaceProperty(property, propertyConverter.apply(property));
             }
             assert pred.test(newShape);
             return newShape;
@@ -172,13 +169,10 @@ public final class JSShape {
     }
 
     private static boolean isFrozenHelper(Shape shape, Predicate<Property> pred) {
-        Shape current = shape;
-        while (!isRoot(current)) {
-            Property currentProperty = current.getLastProperty();
-            if (pred.test(currentProperty)) {
+        for (Property property : shape.getProperties()) {
+            if (pred.test(property)) {
                 return false;
             }
-            current = current.getParent();
         }
         return true;
     }
