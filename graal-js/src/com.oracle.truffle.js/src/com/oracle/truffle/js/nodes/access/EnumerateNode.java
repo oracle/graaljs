@@ -64,40 +64,45 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.EnumerateIterator;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 /**
- * ES6 [[Enumerate]]().
+ * Returns an Iterator object iterating over the enumerable properties of an object.
  */
 public abstract class EnumerateNode extends JavaScriptNode {
     /** Enumerate values instead of keys (used by for-each-in loop). */
     private final boolean values;
+    /** If true, throw a TypeError for foreign objects that do not have elements or members. */
+    private final boolean requireIterable;
     protected final JSContext context;
     @Child @Executed protected JavaScriptNode targetNode;
 
-    protected EnumerateNode(JSContext context, boolean values, JavaScriptNode targetNode) {
+    protected EnumerateNode(JSContext context, boolean values, boolean requireIterable, JavaScriptNode targetNode) {
         this.context = context;
         this.values = values;
+        this.requireIterable = requireIterable;
         this.targetNode = targetNode;
     }
 
     public static EnumerateNode create(JSContext context, JavaScriptNode target, boolean values) {
-        return EnumerateNodeGen.create(context, values, target);
+        return EnumerateNodeGen.create(context, values, false, target);
     }
 
-    public static EnumerateNode create(JSContext context) {
-        return create(context, null, false);
+    public static EnumerateNode create(JSContext context, boolean values, boolean requireIterable) {
+        return EnumerateNodeGen.create(context, values, requireIterable, null);
     }
 
-    public EnumerateNode copyRecursive() {
-        return create(context, null, values);
+    EnumerateNode copyRecursive() {
+        return create(context, values, requireIterable);
     }
 
     @Override
@@ -107,7 +112,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return EnumerateNodeGen.create(context, values, cloneUninitialized(targetNode));
+        return EnumerateNodeGen.create(context, values, requireIterable, cloneUninitialized(targetNode));
     }
 
     @Specialization(guards = {"isJSType(iteratedObject)", "!isJSAdapter(iteratedObject)"})
@@ -115,7 +120,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
                     @Cached("createBinaryProfile()") ConditionProfile isObject) {
         Iterator<?> iterator;
         if (isObject.profile(JSRuntime.isObject(iteratedObject))) {
-            iterator = createEnumerateIterator(iteratedObject);
+            iterator = createEnumerateIterator(iteratedObject, values);
         } else {
             // null or undefined
             iterator = Collections.emptyIterator();
@@ -124,7 +129,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     @TruffleBoundary
-    private Iterator<?> createEnumerateIterator(DynamicObject iteratedObject) {
+    private static Iterator<?> createEnumerateIterator(DynamicObject iteratedObject, boolean values) {
         Iterator<?> iterator = new EnumerateIterator(iteratedObject);
         if (values) {
             iterator = IteratorUtil.convertIterator(iterator, key -> {
@@ -151,7 +156,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     EnumerateNode createValues() {
-        return create(context, null, true);
+        return create(context, true, false);
     }
 
     @Specialization(guards = {"isForeignObject(iteratedObject)"}, limit = "3")
@@ -168,7 +173,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             }
         }
 
-        return doEnumerateTruffleObjectIntl(context, iteratedObject, values, interop, keysInterop);
+        return doEnumerateTruffleObjectIntl(iteratedObject, interop, keysInterop);
     }
 
     @TruffleBoundary
@@ -197,8 +202,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return null;
     }
 
-    public static DynamicObject doEnumerateTruffleObjectIntl(JSContext context, Object iteratedObject, boolean values,
-                    InteropLibrary objInterop, InteropLibrary keysInterop) {
+    private DynamicObject doEnumerateTruffleObjectIntl(Object iteratedObject, InteropLibrary objInterop, InteropLibrary keysInterop) {
         try {
             if (objInterop.hasArrayElements(iteratedObject)) {
                 long longSize = objInterop.getArraySize(iteratedObject);
@@ -208,9 +212,15 @@ public abstract class EnumerateNode extends JavaScriptNode {
                 assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
                 long longSize = keysInterop.getArraySize(keysObj);
                 return enumerateForeignNonArray(context, iteratedObject, keysObj, longSize, values, objInterop, keysInterop);
+            } else if (objInterop.isString(iteratedObject)) {
+                String string = objInterop.asString(iteratedObject);
+                return enumerateString(string);
             }
         } catch (UnsupportedMessageException ex) {
             // swallow and default
+        }
+        if (requireIterable) {
+            throw Errors.createTypeErrorNotIterable(iteratedObject, this);
         }
         // in case of any errors, return an empty iterator
         return newEnumerateIterator(context, Collections.emptyIterator());
@@ -283,6 +293,10 @@ public abstract class EnumerateNode extends JavaScriptNode {
             }
         };
         return newEnumerateIterator(context, iterator);
+    }
+
+    private DynamicObject enumerateString(String string) {
+        return newEnumerateIterator(context, createEnumerateIterator(JSString.create(context, string), values));
     }
 
     private static DynamicObject newEnumerateIterator(JSContext context, Iterator<?> iterator) {
