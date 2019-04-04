@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,28 +38,53 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.truffleinterop;
+package com.oracle.truffle.js.runtime.joni;
 
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.js.runtime.joni.interop.ToLongNode;
+import com.oracle.truffle.js.runtime.joni.interop.ToStringNode;
+import com.oracle.truffle.js.runtime.joni.result.JoniNoMatchResult;
 
-@MessageResolution(receiverType = JSLazyString.class)
-public class JSLazyStringForeignAccessFactory {
+@ExportLibrary(InteropLibrary.class)
+public final class JoniCompiledRegexExecMethod implements TruffleObject {
 
-    @Resolve(message = "UNBOX")
-    abstract static class UnboxNode extends Node {
-        public Object access(JSLazyString target) {
-            return target.toString();
-        }
+    private final JoniCompiledRegex regex;
+
+    public JoniCompiledRegexExecMethod(JoniCompiledRegex regex) {
+        this.regex = regex;
     }
 
-    @Resolve(message = "IS_BOXED")
-    abstract static class IsBoxedNode extends Node {
-        @SuppressWarnings("unused")
-        public Object access(JSLazyString target) {
-            return true;
+    public JoniCompiledRegex getRegexObject() {
+        return regex;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] args,
+                    @Cached("create()") ToStringNode toStringNode,
+                    @Cached ToLongNode toLongNode,
+                    @Cached JoniCompiledRegexDispatchNode executeNode) throws ArityException, UnsupportedTypeException {
+        if (args.length != 2) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(2, args.length);
         }
+        String input = toStringNode.execute(args[0]);
+        long fromIndex = toLongNode.execute(args[1]);
+        if (fromIndex > Integer.MAX_VALUE) {
+            return JoniNoMatchResult.getInstance();
+        }
+        return executeNode.execute(getRegexObject(), input, (int) fromIndex);
     }
 }

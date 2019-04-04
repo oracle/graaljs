@@ -250,10 +250,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         if (year % 100 != 0) {
             return true;
         }
-        if (year % 400 != 0) {
-            return false;
-        }
-        return true;
+        return year % 400 == 0;
     }
 
     // 15.9.1.4

@@ -200,17 +200,17 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto, false, isAsyncProfile, setProtoProfile);
 
-            int length = 0;
+            long length = 0;
             boolean mustSetLength = true;
             if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(thisFnObj))) {
-                int targetLen = getFunctionLength(thisFnObj);
+                long targetLen = getFunctionLength(thisFnObj);
                 length = Math.max(0, targetLen - args.length);
                 if (targetLen == JSFunction.getLength(thisFnObj)) {
                     mustSetLength = false;
                 }
             }
             if (mustSetLengthProfile.profile(mustSetLength)) {
-                JSFunction.setFunctionLength(boundFunction, length);
+                JSFunction.setFunctionLength(boundFunction, JSRuntime.longToIntOrDouble(length));
             }
 
             Object targetName = getFunctionNameNode.getValue(thisFnObj);
@@ -228,14 +228,14 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return boundFunction;
         }
 
-        private int getFunctionLength(DynamicObject thisFnObj) {
+        private long getFunctionLength(DynamicObject thisFnObj) {
             Object len = getFunctionLengthNode.getValue(thisFnObj);
             if (len instanceof Integer) {
-                return (int) len;
+                return ((Integer) len).longValue();
             } else if (JSRuntime.isNumber(len)) {
-                return (int) JSRuntime.toInteger((Number) len);
+                return JSRuntime.toInteger((Number) len);
             }
-            return 0;
+            return 0L;
         }
 
         @TruffleBoundary
@@ -258,16 +258,16 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (DynamicObject) innerFunction, thisArg, args, proto, false, isAsyncProfile, setProtoProfile);
 
-            int length = 0;
+            long length = 0;
             boolean targetHasLength = JSObject.hasOwnProperty(thisObj, JSFunction.LENGTH);
             if (targetHasLength) {
                 Object targetLen = JSObject.get(thisObj, JSFunction.LENGTH);
                 if (JSRuntime.isNumber(targetLen)) {
-                    int targetLenInt = (int) JSRuntime.toInteger(targetLen);
+                    long targetLenInt = JSRuntime.toInteger(targetLen);
                     length = Math.max(0, targetLenInt - args.length);
                 }
             }
-            JSFunction.setFunctionLength(boundFunction, length);
+            JSFunction.setFunctionLength(boundFunction, JSRuntime.longToIntOrDouble(length));
 
             Object targetName = JSObject.get(thisObj, JSFunction.NAME);
             if (!JSRuntime.isString(targetName)) {

@@ -55,9 +55,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -79,18 +77,20 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
 
     public static final String ID = "FullExecutionTracerInstrument";
 
-    public Env environment;
+    private Env environment;
 
     public static void main(String[] args) throws IOException {
-        Context c = Context.create("js");
-        c.getEngine().getInstruments().get(ID).lookup(FullExecutionTracerInstrument.class);
-        c.eval(Source.newBuilder("js", new File(args[0])).build());
+        try (Context c = Context.create("js")) {
+            c.getEngine().getInstruments().get(ID).lookup(FullExecutionTracerInstrument.class);
+            c.eval(Source.newBuilder("js", new File(args[0])).build());
+        }
     }
 
     public static void trace(String code) {
-        Context c = Context.create("js");
-        c.getEngine().getInstruments().get(ID).lookup(FullExecutionTracerInstrument.class);
-        c.eval(Source.create("js", code));
+        try (Context c = Context.create("js")) {
+            c.getEngine().getInstruments().get(ID).lookup(FullExecutionTracerInstrument.class);
+            c.eval(Source.create("js", code));
+        }
     }
 
     @Override
@@ -166,7 +166,7 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
 
                     private String getAttributeFrom(EventContext cx, String name) {
                         try {
-                            return (String) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);
+                            return (String) InteropLibrary.getFactory().getUncached().readMember(((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);
                         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                             throw new RuntimeException(e);
                         }
@@ -201,6 +201,10 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
             }
         };
         return factory;
+    }
+
+    public Env getEnvironment() {
+        return environment;
     }
 
 }

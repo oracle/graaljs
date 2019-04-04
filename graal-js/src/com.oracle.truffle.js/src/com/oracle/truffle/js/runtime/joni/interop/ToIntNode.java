@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,37 +38,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.instrumentation;
+package com.oracle.truffle.js.runtime.joni.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = NodeObjectDescriptorKeys.class)
-public class NodeObjectDescriptorKeysFactory {
+@GenerateUncached
+public abstract class ToIntNode extends Node {
 
-    @Resolve(message = "READ")
-    abstract static class Read extends Node {
-        @TruffleBoundary
-        public Object access(NodeObjectDescriptorKeys target, Number index) {
-            return target.getKeyAt(index.intValue());
+    public abstract int execute(Object arg) throws UnsupportedTypeException;
+
+    @Specialization
+    static int doPrimitive(int arg) {
+        return arg;
+    }
+
+    @Specialization(guards = "args.fitsInInt(arg)", limit = "2")
+    static int doBoxed(Object arg, @CachedLibrary("arg") InteropLibrary args) throws UnsupportedTypeException {
+        try {
+            return args.asInt(arg);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{arg});
         }
     }
 
-    @Resolve(message = "HAS_SIZE")
-    abstract static class HasSize extends Node {
-
-        public boolean access(@SuppressWarnings("unused") NodeObjectDescriptorKeys target) {
-            return true;
-        }
-    }
-
-    @Resolve(message = "GET_SIZE")
-    abstract static class GetSize extends Node {
-
-        public Object access(NodeObjectDescriptorKeys target) {
-            return target.size();
-        }
+    public static ToIntNode create() {
+        return ToIntNodeGen.create();
     }
 }

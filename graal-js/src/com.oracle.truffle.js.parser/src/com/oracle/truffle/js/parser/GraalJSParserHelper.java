@@ -69,25 +69,29 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 
-public class GraalJSParserHelper {
+public final class GraalJSParserHelper {
 
     private static final String NEVER_PART_OF_COMPILATION_MESSAGE = "do not parse from compiled code";
 
-    public static FunctionNode parseScript(com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions) {
-        return parseScript(truffleSource, parserOptions, false, false);
+    private GraalJSParserHelper() {
+        // should not be constructed
     }
 
-    public static FunctionNode parseScript(com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions, boolean eval, boolean evalInGlobalScope) {
-        FunctionNode parsed = parseSource(truffleSource, parserOptions, false, eval);
+    public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions) {
+        return parseScript(context, truffleSource, parserOptions, false, false);
+    }
+
+    public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions, boolean eval, boolean evalInGlobalScope) {
+        FunctionNode parsed = parseSource(context, truffleSource, parserOptions, false, eval);
         GraalJSTranslator.earlyVariableDeclarationPass(parsed, parserOptions, eval, evalInGlobalScope);
         return parsed;
     }
 
-    public static FunctionNode parseModule(com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions) {
-        return parseSource(truffleSource, parserOptions, true, false);
+    public static FunctionNode parseModule(JSContext context, com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions) {
+        return parseSource(context, truffleSource, parserOptions, true, false);
     }
 
-    private static FunctionNode parseSource(com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions, boolean parseModule, boolean eval) {
+    private static FunctionNode parseSource(JSContext context, com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions, boolean parseModule, boolean eval) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         CharSequence code = truffleSource.getCharacters();
         com.oracle.js.parser.Source source = com.oracle.js.parser.Source.sourceFor(truffleSource.getName(), code, eval);
@@ -101,7 +105,7 @@ public class GraalJSParserHelper {
         }
         errors.setLimit(0);
 
-        Parser parser = createParser(env, source, errors, parserOptions);
+        Parser parser = createParser(context, env, source, errors, parserOptions);
         FunctionNode parsed = parseModule ? parser.parseModule(":module") : parser.parse();
         if (errors.hasErrors()) {
             throwErrors(truffleSource, errors);
@@ -109,7 +113,7 @@ public class GraalJSParserHelper {
         return parsed;
     }
 
-    public static Expression parseExpression(com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions) {
+    public static Expression parseExpression(JSContext context, com.oracle.truffle.api.source.Source truffleSource, GraalJSParserOptions parserOptions) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         CharSequence code = truffleSource.getCharacters();
         com.oracle.js.parser.Source source = com.oracle.js.parser.Source.sourceFor(truffleSource.getName(), code, true);
@@ -118,7 +122,7 @@ public class GraalJSParserHelper {
         ErrorManager errors = new ErrorManager.ThrowErrorManager();
         errors.setLimit(0);
 
-        Parser parser = createParser(env, source, errors, parserOptions);
+        Parser parser = createParser(context, env, source, errors, parserOptions);
         Expression expression = parser.parseExpression();
         if (errors.hasErrors()) {
             throwErrors(truffleSource, errors);
@@ -135,7 +139,7 @@ public class GraalJSParserHelper {
         return expression;
     }
 
-    private static Parser createParser(ScriptEnvironment env, com.oracle.js.parser.Source source, ErrorManager errors, GraalJSParserOptions parserOptions) {
+    private static Parser createParser(JSContext context, ScriptEnvironment env, com.oracle.js.parser.Source source, ErrorManager errors, GraalJSParserOptions parserOptions) {
         return new Parser(env, source, errors) {
             @Override
             protected void validateLexerToken(LexerToken lexerToken) {
@@ -144,7 +148,7 @@ public class GraalJSParserHelper {
                     // validate regular expression
                     if (JSTruffleOptions.ValidateRegExpLiterals) {
                         try {
-                            RegexCompilerInterface.validate(regex.getExpression(), regex.getOptions(), parserOptions.getEcmaScriptVersion());
+                            RegexCompilerInterface.validate(context, regex.getExpression(), regex.getOptions(), parserOptions.getEcmaScriptVersion());
                         } catch (JSException e) {
                             throw error(e.getRawMessage());
                         }
@@ -179,13 +183,13 @@ public class GraalJSParserHelper {
         return builder.build();
     }
 
-    public static void checkFunctionSyntax(GraalJSParserOptions parserOptions, String parameterList, String body, boolean generator, boolean async) {
+    public static void checkFunctionSyntax(JSContext context, GraalJSParserOptions parserOptions, String parameterList, String body, boolean generator, boolean async) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         ScriptEnvironment env = makeScriptEnvironment(parserOptions);
         ErrorManager errors = new com.oracle.js.parser.ErrorManager.ThrowErrorManager();
-        Parser parser = createParser(env, com.oracle.js.parser.Source.sourceFor(Evaluator.FUNCTION_SOURCE_NAME, parameterList), errors, parserOptions);
+        Parser parser = createParser(context, env, com.oracle.js.parser.Source.sourceFor(Evaluator.FUNCTION_SOURCE_NAME, parameterList), errors, parserOptions);
         parser.parseFormalParameterList();
-        parser = createParser(env, com.oracle.js.parser.Source.sourceFor(Evaluator.FUNCTION_SOURCE_NAME, body), errors, parserOptions);
+        parser = createParser(context, env, com.oracle.js.parser.Source.sourceFor(Evaluator.FUNCTION_SOURCE_NAME, body), errors, parserOptions);
         parser.parseFunctionBody(generator, async);
     }
 

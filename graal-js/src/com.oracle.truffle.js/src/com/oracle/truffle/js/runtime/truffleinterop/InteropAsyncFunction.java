@@ -40,24 +40,32 @@
  */
 package com.oracle.truffle.js.runtime.truffleinterop;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
+import com.oracle.truffle.js.nodes.promise.UnwrapPromiseNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Interop wrapper for async functions that unwraps the returned promise.
  */
-public final class InteropAsyncFunction implements TruffleObject {
-
-    private final DynamicObject function;
+@ExportLibrary(InteropLibrary.class)
+public final class InteropAsyncFunction extends InteropFunction {
 
     public InteropAsyncFunction(DynamicObject function) {
-        this.function = function;
-    }
-
-    public DynamicObject getFunction() {
-        return function;
+        super(function);
+        assert JSTruffleOptions.InteropCompletePromises;
     }
 
     public static boolean isInstance(TruffleObject object) {
@@ -81,8 +89,32 @@ public final class InteropAsyncFunction implements TruffleObject {
         }
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return JSObject.getJSContext(function).getInteropRuntime().getInteropAsyncFunctionForeignAccess();
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] arguments,
+                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @Cached JSInteropExecuteNode callNode,
+                    @Cached ExportValueNode exportNode,
+                    @Cached(value = "create(realm.getContext())") UnwrapPromiseNode unwrapPromise) throws UnsupportedMessageException {
+        JSContext context = realm.getContext();
+        context.interopBoundaryEnter();
+        Object result;
+        try {
+            result = callNode.execute(function, Undefined.instance, arguments);
+            result = exportNode.execute(result);
+        } finally {
+            context.interopBoundaryExit();
+        }
+        /*
+         * InteropCompletePromises semantics: interop calls to async functions return the async
+         * resolved value (if any). If the promise resolves, its value is made available by flushing
+         * the queue of pending jobs.
+         */
+        return unwrapPromise.execute((DynamicObject) result);
     }
 }

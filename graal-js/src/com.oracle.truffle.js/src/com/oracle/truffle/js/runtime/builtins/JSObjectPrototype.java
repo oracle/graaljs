@@ -100,12 +100,12 @@ public final class JSObjectPrototype extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, long propIdx) {
+    public boolean hasOwnProperty(DynamicObject thisObj, long index) {
         ScriptArray array = JSObject.getArray(thisObj);
-        if (array.hasElement(thisObj, propIdx)) {
+        if (array.hasElement(thisObj, index)) {
             return true;
         }
-        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(propIdx));
+        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(index));
     }
 
     @TruffleBoundary
@@ -175,16 +175,17 @@ public final class JSObjectPrototype extends JSBuiltinObject {
         return JSAbstractArray.ordinaryGetOwnPropertyArray(thisObj, key);
     }
 
+    @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
+    }
+
     /**
      * 9.4.7.2 SetImmutablePrototype ( O, V ).
      */
     @Override
     public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
-        Object oldPrototype = JSObject.getPrototype(thisObj);
-        if (oldPrototype == newPrototype) {
-            return true;
-        }
-        return false;
+        return JSObject.getPrototype(thisObj) == newPrototype;
     }
 
     @Override

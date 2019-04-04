@@ -114,9 +114,9 @@ public class TestNashornRunnable extends TestRunnable {
             }
         }
 
-        synchronized (TestNashorn.origOut) {
-            System.setErr(TestNashorn.origErr);
-            System.setOut(TestNashorn.origOut);
+        synchronized (((TestNashorn) suite).getOrigOut()) {
+            System.setErr(((TestNashorn) suite).getOrigErr());
+            System.setOut(((TestNashorn) suite).getOrigOut());
 
             String resultOutput = replaceNull(tc.getResultOutput()) + (hasException ? exceptionMessage : "");
             String resultError = replaceNull(tc.getResultError());

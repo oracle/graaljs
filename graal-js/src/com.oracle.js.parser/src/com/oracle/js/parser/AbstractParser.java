@@ -202,9 +202,8 @@ public abstract class AbstractParser {
         }
 
         final String comment = (String) lexer.getValueOf(token, isStrictMode);
-        final int len = comment.length();
         // 4 characters for directive comment marker //@\s or //#\s
-        if (len > 4 && comment.substring(4).startsWith(SOURCE_URL_PREFIX)) {
+        if (comment.startsWith(SOURCE_URL_PREFIX, 4)) {
             source.setExplicitURL(comment.substring(4 + SOURCE_URL_PREFIX.length()));
         }
     }
@@ -512,7 +511,7 @@ public abstract class AbstractParser {
         final long identToken = Token.recast(currentToken, IDENT);
         // Get IDENT.
         final String ident = (String) getValue(identToken);
-        return !ident.isEmpty() && Character.isJavaIdentifierStart(ident.charAt(0));
+        return ident != null && !ident.isEmpty() && Character.isJavaIdentifierStart(ident.charAt(0));
     }
 
     /**
@@ -561,7 +560,7 @@ public abstract class AbstractParser {
         } else if (value instanceof Number) {
             node = LiteralNode.newInstance(literalToken, finish, (Number) value, getNumberToStringConverter());
         } else if (value instanceof String) {
-            node = LiteralNode.newInstance(literalToken, finish, (String) value);
+            node = LiteralNode.newInstance(literalToken, (String) value);
         } else if (value instanceof LexerToken) {
             validateLexerToken((LexerToken) value);
             node = LiteralNode.newInstance(literalToken, finish, (LexerToken) value);

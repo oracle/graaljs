@@ -40,15 +40,14 @@
  */
 package com.oracle.truffle.trufflenode;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = RunnableInvoker.class)
+@ExportLibrary(InteropLibrary.class)
 public final class RunnableInvoker implements TruffleObject {
 
     private final Runnable runnable;
@@ -57,30 +56,31 @@ public final class RunnableInvoker implements TruffleObject {
         this.runnable = runnable;
     }
 
-    Runnable getRunnable() {
-        return runnable;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof RunnableInvoker;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isMemberInvocable(String name) {
+        return "run".equals(name);
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return RunnableInvokerForeign.ACCESS;
-    }
-
-    @Resolve(message = "INVOKE")
-    abstract static class RunnableInvokeNode extends Node {
-
-        public Object access(RunnableInvoker invoker, String identifier, @SuppressWarnings("unused") Object[] arguments) {
-            if ("run".equals(identifier)) {
-                invoker.getRunnable().run();
-                return null;
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(identifier);
-            }
+    @ExportMessage
+    Object invokeMember(String name, @SuppressWarnings("unused") Object[] args) throws UnknownIdentifierException {
+        if ("run".equals(name)) {
+            runnable.run();
+            return null;
+        } else {
+            throw UnknownIdentifierException.create(name);
         }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }

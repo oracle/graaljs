@@ -43,6 +43,7 @@ package com.oracle.truffle.js.scriptengine.test;
 import static org.junit.Assert.assertEquals;
 
 import javax.script.Compilable;
+import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
@@ -80,7 +81,10 @@ public class TestEngine {
     @Test
     public void declareVar() throws ScriptException {
         // @formatter:off
-        assertEquals(true, getEngine().eval(
+        ScriptEngine engine = getEngine();
+        engine.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.allowHostAccess", true);
+        engine.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.allowHostClassLookup", true);
+        assertEquals(true, engine.eval(
                         "var m = new javax.script.ScriptEngineManager();" +
                         "var engine = m.getEngineByName('Graal.js');" +
                         "var x;" +

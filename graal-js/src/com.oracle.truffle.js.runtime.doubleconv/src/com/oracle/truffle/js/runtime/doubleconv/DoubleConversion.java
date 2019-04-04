@@ -76,8 +76,14 @@ package com.oracle.truffle.js.runtime.doubleconv;
 
 /**
  * This class provides the public API for the double conversion package.
+ *
+ * Using double-conversion version 3.0.3.
  */
 public final class DoubleConversion {
+
+    private DoubleConversion() {
+        // should not be constructed
+    }
 
     private final static int BUFFER_LENGTH = 101;
 

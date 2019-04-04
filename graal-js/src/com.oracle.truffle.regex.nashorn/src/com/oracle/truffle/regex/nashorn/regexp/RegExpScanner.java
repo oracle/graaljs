@@ -70,7 +70,7 @@ import java.util.function.Predicate;
 import java.util.regex.PatternSyntaxException;
 
 import com.oracle.truffle.regex.nashorn.parser.Scanner;
-import com.oracle.truffle.regex.chardata.CodePointSet;
+import com.oracle.truffle.regex.chardata.CharacterSet;
 import com.oracle.truffle.regex.chardata.UnicodeCharacterProperties;
 
 /**
@@ -113,8 +113,8 @@ public final class RegExpScanner extends Scanner {
 
     private static final String NON_IDENT_ESCAPES = "$^*+(){}[]|\\.?-";
 
-    private static final CodePointSet ID_START = UnicodeCharacterProperties.getProperty("ID_Start");
-    private static final CodePointSet ID_CONTINUE = UnicodeCharacterProperties.getProperty("ID_Continue");
+    private static final CharacterSet ID_START = UnicodeCharacterProperties.getUnicodeProperty("ID_Start");
+    private static final CharacterSet ID_CONTINUE = UnicodeCharacterProperties.getUnicodeProperty("ID_Continue");
 
     private static class Capture {
         /** Zero-width negative lookarounds enclosing the capture. */

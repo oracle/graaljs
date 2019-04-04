@@ -1,5 +1,5 @@
 {
-  local labsjdk8 = {name: 'labsjdk', version: '8u202-jvmci-0.55', platformspecific: true},
+  local labsjdk8 = {name: 'labsjdk', version: '8u202-jvmci-0.57', platformspecific: true},
 
   local oraclejdk11 = {name : 'oraclejdk', version : "11+20", platformspecific: true},
 
@@ -34,6 +34,9 @@
       'Graal diagnostic output saved in (?P<filename>.+.zip)',
       'npm-debug.log', // created on npm errors
     ],
+    environment+: {
+      GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
+    },
   },
 
   linux: common + {

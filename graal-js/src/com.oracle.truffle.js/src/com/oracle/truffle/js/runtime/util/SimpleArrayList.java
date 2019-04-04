@@ -51,7 +51,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
  */
 public class SimpleArrayList<E> {
 
-    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+    public static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
     private static final int DEFAULT_CAPACITY = 8;
 
     private Object[] elements;
@@ -121,11 +121,15 @@ public class SimpleArrayList<E> {
     }
 
     private void ensureCapacityIntl(int minCapacity) throws OutOfMemoryError {
-        long newCapacity = elements.length + (elements.length >> 1);
+        long curCapacity = elements.length;
+        long newCapacity = curCapacity + (curCapacity >> 1L);
+        if (newCapacity < minCapacity) {
+            newCapacity = minCapacity;
+        }
         if (newCapacity < DEFAULT_CAPACITY) {
             newCapacity = DEFAULT_CAPACITY;
         }
-        if (newCapacity >= MAX_ARRAY_SIZE) {
+        if (newCapacity > MAX_ARRAY_SIZE) {
             if (MAX_ARRAY_SIZE < minCapacity) {
                 CompilerDirectives.transferToInterpreter();
                 throw new OutOfMemoryError();

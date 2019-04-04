@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -129,10 +128,8 @@ public abstract class JSToIntegerNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isForeignObject(object)")
-    protected int doCrossLanguage(TruffleObject object,
-                    @Cached("create()") JSUnboxOrGetNode unboxOrGetNode) {
-        Object unboxedForeign = unboxOrGetNode.executeWithTarget(object);
-        return JSRuntime.toInt32(getToNumberNode().executeNumber(unboxedForeign));
+    protected int doForeignObject(TruffleObject object) {
+        return JSRuntime.toInt32(getToNumberNode().executeNumber(object));
     }
 
     private JSToNumberNode getToNumberNode() {

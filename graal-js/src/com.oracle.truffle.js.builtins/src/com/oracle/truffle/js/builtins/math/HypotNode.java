@@ -59,7 +59,7 @@ public abstract class HypotNode extends MathOperation {
         double max = 0;
         for (int i = 0; i < length; i++) {
             double value = toDouble(args[i]);
-            isInfinite = isInfinite | Double.isInfinite(value);
+            isInfinite = isInfinite || Double.isInfinite(value);
             if (value > max) {
                 max = value;
             }

@@ -165,9 +165,9 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
 
     @TruffleBoundary
     @Override
-    public boolean defineOwnProperty(DynamicObject thisObj, Object propertyKey, PropertyDescriptor descriptor, boolean doThrow) {
+    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
         makeSlowArray(thisObj);
-        long index = JSRuntime.propertyKeyToArrayIndex(propertyKey);
+        long index = JSRuntime.propertyKeyToArrayIndex(key);
         Object oldValue = null;
         boolean isMapped = false;
         if (index >= 0) {
@@ -178,20 +178,20 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
             if (arrayType.hasElement(thisObj, index)) {
                 // apply the default attributes to the property first
                 JSContext context = JSObject.getJSContext(thisObj);
-                JSObjectUtil.putDataProperty(context, thisObj, propertyKey, get(thisObj, index), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(context, thisObj, key, get(thisObj, index), JSAttributes.getDefault());
                 if (arrayType.canDeleteElement(thisObj, index, false)) {
                     arraySetArrayType(thisObj, arrayType.deleteElement(thisObj, index, false));
                 }
             }
         }
 
-        boolean allowed = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, propertyKey, descriptor, doThrow);
+        boolean allowed = DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, key, descriptor, doThrow);
         if (!allowed) {
             return DefinePropertyUtil.reject(doThrow, "not allowed to defineProperty on an arguments object");
         }
 
-        if (isMapped && propertyKey instanceof String) {
-            definePropertyMapped(thisObj, (String) propertyKey, descriptor, index, oldValue, thisObj);
+        if (isMapped && key instanceof String) {
+            definePropertyMapped(thisObj, (String) key, descriptor, index, oldValue, thisObj);
         }
         return true;
     }
@@ -218,21 +218,21 @@ public abstract class JSAbstractArgumentsObject extends JSAbstractArray {
 
     @TruffleBoundary
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object property) {
-        assert JSRuntime.isPropertyKey(property);
+    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
 
-        PropertyDescriptor desc = ordinaryGetOwnPropertyArray(thisObj, property);
+        PropertyDescriptor desc = ordinaryGetOwnPropertyArray(thisObj, key);
         if (desc == null) {
             return null;
         }
-        long index = JSRuntime.propertyKeyToArrayIndex(property);
+        long index = JSRuntime.propertyKeyToArrayIndex(key);
         if (index >= 0) {
             boolean isMapped = JSArgumentsObject.isJSFastArgumentsObject(thisObj) || !wasIndexDisconnected(thisObj, index);
             if (isMapped) {
                 desc.setValue(super.get(thisObj, index));
             }
         }
-        if (desc.isDataDescriptor() && CALLER.equals(property) && JSFunction.isJSFunction(desc.getValue()) && JSFunction.isStrict((DynamicObject) desc.getValue())) {
+        if (desc.isDataDescriptor() && CALLER.equals(key) && JSFunction.isJSFunction(desc.getValue()) && JSFunction.isStrict((DynamicObject) desc.getValue())) {
             throw Errors.createTypeError("caller not allowed in strict mode");
         }
         return desc;

@@ -276,7 +276,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             } else {
                 CompilerDirectives.transferToInterpreter();
             }
-            return null;
+            return Undefined.instance;
         }
     }
 
@@ -290,7 +290,11 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @Specialization
         protected Object clazz(Object obj) {
-            return obj == null ? null : getName ? obj.getClass().getName() : obj.getClass();
+            return obj == null ? Null.instance : getName ? obj.getClass().getName() : wrap(obj.getClass());
+        }
+
+        private Object wrap(Class<? extends Object> class1) {
+            return getContext().getRealm().getEnv().asGuestValue(class1);
         }
     }
 
@@ -631,7 +635,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @TruffleBoundary
         @Specialization
-        protected Object heapDump(Object fileName0, Object live0) {
+        protected String heapDump(Object fileName0, Object live0) {
             String fileName = fileName0 == Undefined.instance ? HeapDump.defaultDumpName() : JSRuntime.toString(fileName0);
             boolean live = live0 == Undefined.instance ? true : JSRuntime.toBoolean(live0);
             try {
@@ -642,7 +646,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 throw JSException.create(JSErrorType.Error, getBuiltin().getFullName() + " unsupported", e, this);
             }
 
-            return Undefined.instance;
+            return fileName;
         }
     }
 

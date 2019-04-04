@@ -3,6 +3,13 @@
 This changelog summarizes major changes between GraalVM versions of the Graal JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 1.0.0 RC15
+* Removed non-standard `String.prototype.contains`; use `includes` instead.
+* ScriptEngine: security-relevant Context-options are now disabled by default.
+* Migrated to Truffle Libraries for interop.
+* `Polyglot` builtin enabled based on `Context.Builder.allowPolyglotAccess()`.
+* Added object rest and spread properties support for foreign objects.
+
 ## Version 1.0.0 RC14
 * Option `js.function-arguments-limit` to set an upper bound for function arguments and argument spreading (default: 65535).
 * Support for [HTML-like comments](https://tc39.github.io/ecma262/#sec-html-like-comments) added.
@@ -11,6 +18,7 @@ The main focus is on user-observable behavior of the engine.
   it sets the prototype of executable non-JS objects to `Function.prototype` and
   the prototype of all other non-JS objects to `Object.prototype`.
 * `--jvm.*` and `--native.*` command line options are deprecated and replaced by `--vm.*` options
+* Implemented [JSON superset](https://github.com/tc39/proposal-json-superset) proposal.
 
 ## Version 1.0.0 RC13
 * Made Java interop available in native images. Note that you have to configure the accessible classes and methods at native image build time (see [reflection configuration](https://github.com/oracle/graal/blob/master/substratevm/REFLECTION.md#manual-configuration)).

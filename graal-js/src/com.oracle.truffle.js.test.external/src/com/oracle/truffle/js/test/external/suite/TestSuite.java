@@ -602,8 +602,10 @@ public abstract class TestSuite {
                         timeoutCount++;
                     }
                 }
-            } else {
-                assert isSkipped(testFile) : testFile;
+            } else if (!isSkipped(testFile)) {
+                // skipped by TestRunnable
+                assert (testFile.getRealStatus() == TestFile.Status.SKIP) : testFile;
+                skippedTests.put(testFile.getFilePath(), testFile);
             }
         }
         analyzeResult(startTime);

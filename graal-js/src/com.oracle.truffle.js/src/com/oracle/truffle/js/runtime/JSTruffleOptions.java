@@ -46,7 +46,12 @@ import java.util.Map.Entry;
 
 import com.oracle.truffle.api.TruffleOptions;
 
-public class JSTruffleOptions {
+public final class JSTruffleOptions {
+
+    private JSTruffleOptions() {
+        // should not be constructed
+    }
+
     public static final String TRUFFLE_JS_OPTION_PREFIX = "truffle.js.";
     public static final String JS_OPTION_PREFIX = "js.";
     private static final String PARSER_OPTION_PREFIX = "parser.";
@@ -98,7 +103,7 @@ public class JSTruffleOptions {
     public static final boolean TrimLoadCache = booleanOption("TrimLoadCache", false);
     public static final boolean TrimCompiledRegexCache = booleanOption("TrimCompiledRegexCache", true);
     public static final int StackTraceLimit = integerOption("StackTraceLimit", 10);
-    public static final int StringLengthLimit = integerOption("StringLengthLimit", (1 << 28) - 16);
+    public static final int StringLengthLimit = integerOption("StringLengthLimit", (1 << 30) - 1 - 24); // v8::String::kMaxLength
     public static final int MaxTypedArrayLength = integerOption("MaxTypedArrayLength", 0x3fff_ffff);
     public static final int MaxApplyArgumentLength = integerOption("MaxApplyArgumentLength", 10_000_000);
     public static final int MaxExpectedPrototypeChainLength = integerOption("MaxExpectedPrototypeChainLength", 32766); // regress-578775.js
@@ -123,12 +128,17 @@ public class JSTruffleOptions {
     public static final boolean DirectByteBuffer = booleanOption("DirectByteBuffer", false);
 
     // ECMAScript specification options
+    public static final int ECMAScript5 = 5;
+    public static final int ECMAScript6 = 6;
+    public static final int ECMAScript2015 = 6;
+    public static final int ECMAScript2016 = 7;
     public static final int ECMAScript2017 = 8;
     public static final int ECMAScript2018 = 9;
     public static final int ECMAScript2019 = 10;
     public static final int ECMAScript2020 = 11;
-    private static final int LatestECMAScriptVersion = ECMAScript2020;
-    public static final int MaxECMAScriptVersion = integerOption("ECMAScriptVersion", LatestECMAScriptVersion);
+    public static final int ECMAScriptNumberYearDelta = 2009; // ES6==ES2015
+    public static final int LatestECMAScriptVersion = ECMAScript2019;
+    public static final int MaxECMAScriptVersion = integerOption("ECMAScriptVersion", ECMAScript2020);
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true);
 

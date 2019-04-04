@@ -47,7 +47,6 @@ import java.util.regex.Pattern;
 
 import com.ibm.icu.text.Collator;
 import com.ibm.icu.text.RuleBasedCollator;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -58,11 +57,11 @@ import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -315,13 +314,16 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     private static JSFunctionData createCompareFunctionData(JSContext context) {
         return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @Child private JSToStringNode toString1Node = JSToStringNode.create();
+            @Child private JSToStringNode toString2Node = JSToStringNode.create();
+
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
                 DynamicObject thisObj = (DynamicObject) JSArguments.getThisObject(arguments);
                 int argumentCount = JSArguments.getUserArgumentCount(arguments);
-                String one = (argumentCount > 0) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
-                String two = (argumentCount > 1) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
+                String one = (argumentCount > 0) ? toString1Node.executeString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
+                String two = (argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
                 return compare(thisObj, one, two);
             }
         }), 2, "compare");
@@ -329,13 +331,16 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     private static JSFunctionData createCaseSensitiveCompareFunctionData(JSContext context) {
         return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @Child private JSToStringNode toString1Node = JSToStringNode.create();
+            @Child private JSToStringNode toString2Node = JSToStringNode.create();
+
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
                 DynamicObject thisObj = (DynamicObject) JSArguments.getThisObject(arguments);
                 int argumentCount = JSArguments.getUserArgumentCount(arguments);
-                String one = (argumentCount > 0) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
-                String two = (argumentCount > 1) ? JSRuntime.toString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
+                String one = (argumentCount > 0) ? toString1Node.executeString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
+                String two = (argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
                 return caseSensitiveCompare(thisObj, one, two);
             }
         }), 2, "compare");
@@ -344,8 +349,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     private static DynamicObject createCompareFunctionGetter(JSRealm realm, JSContext context) {
         CallTarget ct = createGetCompareCallTarget(realm, context);
         JSFunctionData fd = JSFunctionData.create(context, ct, ct, 0, "get compare", false, false, false, true);
-        DynamicObject compareFunction = JSFunction.create(realm, fd);
-        return compareFunction;
+        return JSFunction.create(realm, fd);
     }
 
     @Override

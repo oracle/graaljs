@@ -47,6 +47,10 @@ package com.oracle.js.parser;
 final class Options {
     private static final String OPTION_NAME_PREFIX = "truffle.js.";
 
+    private Options() {
+        // should not be constructed
+    }
+
     /**
      * Convenience function for getting system properties in a safe way.
      *

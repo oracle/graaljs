@@ -97,6 +97,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Module;
@@ -113,9 +114,9 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -195,7 +196,6 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -271,10 +271,6 @@ public final class GraalJSAccess {
 
     private final boolean exposeGC;
 
-    // static accessors to JSRegExp properties (usually via nodes)
-    private static final TRegexUtil.TRegexCompiledRegexAccessor STATIC_COMPILED_REGEX_ACCESSOR = TRegexUtil.TRegexCompiledRegexAccessor.create();
-    private static final TRegexUtil.TRegexFlagsAccessor STATIC_FLAGS_ACCESSOR = TRegexUtil.TRegexFlagsAccessor.create();
-
     private GraalJSAccess(String[] args) throws Exception {
         try {
             Options options = Options.parseArguments(prepareArguments(args));
@@ -295,6 +291,14 @@ public final class GraalJSAccess {
             System.err.printf("ERROR: %s", iaex.getMessage());
             System.exit(1);
             throw iaex; // avoids compiler complaints that final fields are not initialized
+        } catch (PolyglotException pex) {
+            if (pex.isInternalError() || pex.getMessage() == null) {
+                pex.printStackTrace();
+            } else {
+                System.err.println("ERROR: " + pex.getMessage());
+            }
+            System.exit(pex.isExit() ? pex.getExitStatus() : 1);
+            throw pex;
         }
 
         mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
@@ -381,14 +385,41 @@ public final class GraalJSAccess {
     }
 
     private int valueTypeForeignObject(TruffleObject value, boolean useSharedBuffer) {
-        if (ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), value)) {
-            Object unboxedValue = JSInteropNodeUtil.unbox(value);
-            return valueType(unboxedValue, useSharedBuffer);
-        } else if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), value)) {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
+        if (interop.isExecutable(value)) {
             return FUNCTION_OBJECT;
+        } else if (interop.isNull(value)) {
+            return NULL_VALUE;
+        } else if (interop.isBoolean(value)) {
+            try {
+                return interop.asBoolean(value) ? BOOLEAN_VALUE_TRUE : BOOLEAN_VALUE_FALSE;
+            } catch (UnsupportedMessageException e) {
+                valueTypeError(value);
+                return UNKNOWN_TYPE;
+            }
+        } else if (interop.isString(value)) {
+            return STRING_VALUE;
+        } else if (interop.isNumber(value)) {
+            return valueTypeForeignNumber(value, interop, useSharedBuffer);
         } else {
             return ORDINARY_OBJECT;
         }
+    }
+
+    public int valueTypeForeignNumber(TruffleObject value, InteropLibrary interop, boolean useSharedBuffer) {
+        try {
+            return valueType(interop.asDouble(value), useSharedBuffer);
+        } catch (UnsupportedMessageException e) {
+            if (interop.fitsInLong(value)) {
+                try {
+                    return valueType(interop.asLong(value), useSharedBuffer);
+                } catch (UnsupportedMessageException ignore) {
+                    // fall through to error case
+                }
+            }
+        }
+        valueTypeError(value);
+        return UNKNOWN_TYPE;
     }
 
     private int valueTypeJSObject(DynamicObject obj, boolean useSharedBuffer) {
@@ -791,11 +822,11 @@ public final class GraalJSAccess {
         } else if (value instanceof PropertyReference) {
             return ((PropertyReference) value).toString();
         } else if (JSRuntime.isForeignObject(value)) {
-            TruffleObject truffleObject = (TruffleObject) value;
-            if (ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), truffleObject)) {
-                Object unboxedValue = JSInteropNodeUtil.unbox(truffleObject);
-                if (unboxedValue instanceof String) {
-                    return unboxedValue;
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
+            if (interop.isString(value)) {
+                try {
+                    return interop.asString(value);
+                } catch (UnsupportedMessageException e) {
                 }
             }
             return value;
@@ -1563,14 +1594,6 @@ public final class GraalJSAccess {
                         ExecuteNativePropertyHandlerNode.Mode.DELETER), proxy);
         JSObject.set(handler, JSProxy.DELETE_PROPERTY, deleter);
 
-        DynamicObject enumerator = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
-                        this,
-                        context,
-                        template,
-                        proxy,
-                        ExecuteNativePropertyHandlerNode.Mode.ENUMERATOR), proxy);
-        JSObject.set(handler, JSProxy.ENUMERATE, enumerator);
-
         DynamicObject ownKeys = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
                         this,
                         context,
@@ -1695,7 +1718,7 @@ public final class GraalJSAccess {
         String parameterList = params.toString();
 
         try {
-            GraalJSParserHelper.checkFunctionSyntax((GraalJSParserOptions) jsContext.getParserOptions(), parameterList, body, false, false);
+            GraalJSParserHelper.checkFunctionSyntax(jsContext, (GraalJSParserOptions) jsContext.getParserOptions(), parameterList, body, false, false);
         } catch (com.oracle.js.parser.ParserException ex) {
             // throw the correct JS error
             nodeEvaluator.parseFunction(jsContext, parameterList, body, false, false, sourceName);
@@ -1813,7 +1836,7 @@ public final class GraalJSAccess {
         String content = source.getCharacters().toString();
         FunctionNode parseResult = contextData.getFunctionNodeCache().get(content);
         if (parseResult == null) {
-            parseResult = GraalJSParserHelper.parseScript(source, (GraalJSParserOptions) context.getParserOptions());
+            parseResult = GraalJSParserHelper.parseScript(context, source, (GraalJSParserOptions) context.getParserOptions());
             contextData.getFunctionNodeCache().put(content, parseResult);
         }
         return parseResult;
@@ -2714,7 +2737,7 @@ public final class GraalJSAccess {
     }
 
     public static Object regexpCreate(JSContext context, String pattern, int v8Flags) {
-        TruffleObject compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context);
+        Object compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context, TRegexUtil.CompileRegexNode.getUncached());
         return JSRegExp.create(context, compiledRegexp);
     }
 
@@ -2725,8 +2748,8 @@ public final class GraalJSAccess {
 
     public static String regexpPattern(DynamicObject regexp) {
         assert JSRegExp.isJSRegExp(regexp);
-        TruffleObject compiledRegex = JSRegExp.getCompiledRegex(regexp);
-        return STATIC_COMPILED_REGEX_ACCESSOR.pattern(compiledRegex);
+        Object compiledRegex = JSRegExp.getCompiledRegex(regexp);
+        return TRegexUtil.InteropReadStringMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
     }
 
     @TruffleBoundary
@@ -2735,23 +2758,23 @@ public final class GraalJSAccess {
     }
 
     public static int regexpV8Flags(DynamicObject regexp) {
-        TruffleObject compiledRegex = JSRegExp.getCompiledRegex(regexp);
-        TruffleObject flagsObj = STATIC_COMPILED_REGEX_ACCESSOR.flags(compiledRegex);
+        Object compiledRegex = JSRegExp.getCompiledRegex(regexp);
+        Object flagsObj = TRegexUtil.InteropReadMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.FLAGS);
 
         int v8Flags = 0; // v8::RegExp::Flags::kNone
-        if (STATIC_FLAGS_ACCESSOR.global(flagsObj)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.GLOBAL)) {
             v8Flags |= 1; // v8::RegExp::Flags::kGlobal
         }
-        if (STATIC_FLAGS_ACCESSOR.ignoreCase(flagsObj)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.IGNORE_CASE)) {
             v8Flags |= 2; // v8::RegExp::Flags::kIgnoreCase
         }
-        if (STATIC_FLAGS_ACCESSOR.multiline(flagsObj)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.MULTILINE)) {
             v8Flags |= 4; // v8::RegExp::Flags::kMultiline
         }
-        if (STATIC_FLAGS_ACCESSOR.sticky(flagsObj)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.STICKY)) {
             v8Flags |= 8; // v8::RegExp::Flags::kSticky
         }
-        if (STATIC_FLAGS_ACCESSOR.unicode(flagsObj)) {
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.UNICODE)) {
             v8Flags |= 16; // v8::RegExp::Flags::kUnicode
         }
         return v8Flags;

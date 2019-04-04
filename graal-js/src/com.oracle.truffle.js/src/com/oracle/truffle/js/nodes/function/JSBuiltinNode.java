@@ -170,8 +170,7 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
         private JSBuiltinNode materialize() {
             CompilerAsserts.neverPartOfCompilation();
             JSBuiltinNode builtinNode = createBuiltinNode();
-            JSBuiltinNode resolved = replace(builtinNode, "lazy builtin");
-            return resolved;
+            return replace(builtinNode, "lazy builtin");
         }
 
         private JSBuiltinNode createBuiltinNode() {

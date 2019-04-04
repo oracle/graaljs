@@ -46,7 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode.JSToNumberWrapperNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -62,7 +62,7 @@ public abstract class RoundNode extends MathOperation {
     }
 
     protected static JavaScriptNode[] createCast(JavaScriptNode[] argumentNodes) {
-        argumentNodes[0] = JSToNumberWrapperNode.create(argumentNodes[0]);
+        argumentNodes[0] = JSToNumberNode.create(argumentNodes[0]);
         return argumentNodes;
     }
 

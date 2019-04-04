@@ -45,12 +45,12 @@ import java.util.EnumSet;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -140,14 +140,14 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object name) {
-        assert JSRuntime.isPropertyKey(name);
+    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
         DynamicObject overrides = getOverrides(store);
-        if (overrides != null && JSObject.hasOwnProperty(overrides, name)) {
-            return JSObject.get(overrides, name);
+        if (overrides != null && JSObject.hasOwnProperty(overrides, key)) {
+            return JSObject.get(overrides, key);
         }
 
-        return getIntl(store, name);
+        return getIntl(store, key);
     }
 
     @TruffleBoundary
@@ -162,44 +162,44 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return getIntl(store, (int) index);
     }
 
-    private static Object getIntl(DynamicObject thisObj, Object name) {
-        if (name instanceof Symbol) {
+    private static Object getIntl(DynamicObject thisObj, Object key) {
+        if (key instanceof Symbol) {
             return null;
         }
         DynamicObject adaptee = getAdaptee(thisObj);
         Object get = JSObject.get(adaptee, GET);
         if (JSFunction.isJSFunction(get)) {
-            return JSFunction.call((DynamicObject) get, thisObj, new Object[]{name});
+            return JSFunction.call((DynamicObject) get, thisObj, new Object[]{key});
         }
         return null;
     }
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, long propIdx) {
+    public boolean hasOwnProperty(DynamicObject thisObj, long index) {
         DynamicObject overrides = getOverrides(thisObj);
-        if (overrides != null && JSObject.hasOwnProperty(overrides, propIdx)) {
+        if (overrides != null && JSObject.hasOwnProperty(overrides, index)) {
             return true;
         }
-        return hasOwnPropertyIntl(thisObj, propIdx);
+        return hasOwnPropertyIntl(thisObj, index);
     }
 
     @TruffleBoundary
     @Override
-    public boolean hasOwnProperty(DynamicObject thisObj, Object propName) {
-        assert JSRuntime.isPropertyKey(propName);
+    public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
         DynamicObject overrides = getOverrides(thisObj);
-        if (overrides != null && JSObject.hasOwnProperty(overrides, propName)) {
+        if (overrides != null && JSObject.hasOwnProperty(overrides, key)) {
             return true;
         }
-        return hasOwnPropertyIntl(thisObj, propName);
+        return hasOwnPropertyIntl(thisObj, key);
     }
 
-    private static boolean hasOwnPropertyIntl(DynamicObject thisObj, Object property) {
+    private static boolean hasOwnPropertyIntl(DynamicObject thisObj, Object key) {
         DynamicObject adaptee = getAdaptee(thisObj);
         Object has = JSObject.get(adaptee, HAS);
         if (JSFunction.isJSFunction(has)) {
-            return JSRuntime.toBoolean(JSFunction.call((DynamicObject) has, thisObj, new Object[]{property}));
+            return JSRuntime.toBoolean(JSFunction.call((DynamicObject) has, thisObj, new Object[]{key}));
         }
         return false;
     }
@@ -241,32 +241,32 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, long propIdx, boolean isStrict) {
+    public boolean delete(DynamicObject thisObj, long index, boolean isStrict) {
         DynamicObject overrides = getOverrides(thisObj);
-        if (overrides != null && JSObject.delete(overrides, propIdx, isStrict)) {
+        if (overrides != null && JSObject.delete(overrides, index, isStrict)) {
             return true;
         }
 
         DynamicObject adaptee = getAdaptee(thisObj);
         Object delete = JSObject.get(adaptee, DELETE);
         if (JSFunction.isJSFunction(delete)) {
-            JSFunction.call((DynamicObject) delete, thisObj, new Object[]{propIdx});
+            JSFunction.call((DynamicObject) delete, thisObj, new Object[]{index});
         }
         return true;
     }
 
     @TruffleBoundary
     @Override
-    public boolean delete(DynamicObject thisObj, Object propName, boolean isStrict) {
+    public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
         DynamicObject overrides = getOverrides(thisObj);
-        if (overrides != null && JSObject.delete(overrides, propName, isStrict)) {
+        if (overrides != null && JSObject.delete(overrides, key, isStrict)) {
             return true;
         }
 
         DynamicObject adaptee = getAdaptee(thisObj);
         Object delete = JSObject.get(adaptee, DELETE);
         if (JSFunction.isJSFunction(delete)) {
-            JSFunction.call((DynamicObject) delete, thisObj, new Object[]{propName});
+            JSFunction.call((DynamicObject) delete, thisObj, new Object[]{key});
         }
         return true;
     }
@@ -344,22 +344,22 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public Object getMethodHelper(DynamicObject store, Object thisObj, Object name) {
-        if (name instanceof Symbol) {
+    public Object getMethodHelper(DynamicObject store, Object thisObj, Object key) {
+        if (key instanceof Symbol) {
             return null;
         }
         DynamicObject adaptee = getAdaptee(store);
         Object call = JSObject.get(adaptee, CALL);
         if (JSFunction.isJSFunction(call)) {
-            return JSFunction.bind(JSFunction.getRealm((DynamicObject) call), (DynamicObject) call, store, new Object[]{name});
+            return JSFunction.bind(JSFunction.getRealm((DynamicObject) call), (DynamicObject) call, store, new Object[]{key});
         } else {
-            throw createTypeErrorNoSuchFunction(store, name);
+            throw createTypeErrorNoSuchFunction(store, key);
         }
     }
 
     @TruffleBoundary
-    private JSException createTypeErrorNoSuchFunction(DynamicObject thisObj, Object name) {
-        return Errors.createTypeErrorFormat("%s has no such function \"%s\"", defaultToString(thisObj), name);
+    private JSException createTypeErrorNoSuchFunction(DynamicObject thisObj, Object key) {
+        return Errors.createTypeErrorFormat("%s has no such function \"%s\"", defaultToString(thisObj), key);
     }
 
     @Override
@@ -373,13 +373,14 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object propertyKey) {
+    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
         throw typeError();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
-    public ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return JSObject.getJSContext(object).getInteropRuntime().getForeignAccessFactory();
+    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(DynamicObject object) {
+        return JSForeignAccessFactoryForeign.ACCESS;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,69 +40,91 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
-public abstract class JSInteropInvokeNode extends JavaScriptBaseNode {
-    final JSContext context;
-    @Child private JSFunctionCallNode callNode;
-    @Child private IsCallableNode isCallableNode;
-    @Child private JSForeignToJSTypeNode importValueNode;
-
-    JSInteropInvokeNode(JSContext context) {
-        this.context = context;
-        this.callNode = JSFunctionCallNode.createCall();
-        this.isCallableNode = IsCallableNode.create();
-        this.importValueNode = JSForeignToJSTypeNode.create();
+@GenerateUncached
+public abstract class JSInteropInvokeNode extends JSInteropCallNode {
+    JSInteropInvokeNode() {
     }
 
-    public static JSInteropInvokeNode create(JSContext context) {
-        return JSInteropInvokeNodeGen.create(context);
+    public static JSInteropInvokeNode create() {
+        return JSInteropInvokeNodeGen.create();
     }
 
-    public abstract Object execute(DynamicObject receiver, String name, Object[] arguments);
+    public abstract Object execute(DynamicObject receiver, String name, Object[] arguments) throws UnknownIdentifierException, UnsupportedMessageException;
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedName.equals(name)"}, limit = "1")
     Object doCached(DynamicObject receiver, String name, Object[] arguments,
                     @Cached("name") String cachedName,
-                    @Cached("createGetProperty(cachedName)") PropertyGetNode functionPropertyGetNode) {
-        Object function = functionPropertyGetNode.getValue(receiver);
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
+                    @Cached("createGetProperty(cachedName, contextRef)") PropertyGetNode functionPropertyGetNode,
+                    @Shared("isCallable") @Cached IsCallableNode isCallableNode,
+                    @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
+                    @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
+        Object function = functionPropertyGetNode.getValueOrDefault(receiver, null);
+        if (function == null) {
+            throw UnknownIdentifierException.create(cachedName);
+        }
         if (isCallableNode.executeBoolean(function)) {
-            return callNode.executeCall(JSArguments.create(receiver, function, prepare(arguments)));
+            return callNode.executeCall(JSArguments.create(receiver, function, prepare(arguments, importValueNode)));
         } else {
-            throw UnknownIdentifierException.raise(cachedName);
+            throw UnsupportedMessageException.create();
         }
     }
 
+    @SuppressWarnings("unused")
     @Specialization(replaces = "doCached")
     Object doUncached(DynamicObject receiver, String name, Object[] arguments,
-                    @Cached("create(context)") ReadElementNode readNode) {
-        Object function = readNode.executeWithTargetAndIndex(receiver, name);
-        if (isCallableNode.executeBoolean(function)) {
-            return callNode.executeCall(JSArguments.create(receiver, function, prepare(arguments)));
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
+                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @Shared("isCallable") @Cached IsCallableNode isCallableNode,
+                    @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
+                    @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
+        Object function;
+        if (readNode == null) {
+            function = JSObject.getOrDefault(receiver, name, null, JSClassProfile.getUncached());
         } else {
-            throw UnknownIdentifierException.raise(name);
+            function = readNode.executeWithTargetAndIndexOrDefault(receiver, name, null);
+        }
+        if (function == null) {
+            throw UnknownIdentifierException.create(name);
+        }
+        if (isCallableNode.executeBoolean(function)) {
+            Object[] preparedArgs = prepare(arguments, importValueNode);
+            if (callNode == null) {
+                return JSRuntime.call(function, receiver, preparedArgs);
+            } else {
+                return callNode.executeCall(JSArguments.create(receiver, function, preparedArgs));
+            }
+        } else {
+            throw UnsupportedMessageException.create();
         }
     }
 
-    private Object[] prepare(Object[] arguments) {
-        for (int i = 0; i < arguments.length; i++) {
-            arguments[i] = importValueNode.executeWithTarget(arguments[i]);
-        }
-        return arguments;
+    PropertyGetNode createGetProperty(String name, ContextReference<JSRealm> contextRef) {
+        return PropertyGetNode.create(name, false, contextRef.get().getContext());
     }
 
-    PropertyGetNode createGetProperty(String name) {
-        return PropertyGetNode.create(name, false, context);
+    static ReadElementNode getUncachedRead() {
+        return null;
     }
 }

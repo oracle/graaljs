@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 
 public abstract class JavaScriptRootNode extends RootNode {
     private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
@@ -52,7 +53,7 @@ public abstract class JavaScriptRootNode extends RootNode {
         this(null, null, null);
     }
 
-    protected JavaScriptRootNode(AbstractJavaScriptLanguage lang, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
+    protected JavaScriptRootNode(JavaScriptLanguage lang, SourceSection sourceSection, FrameDescriptor frameDescriptor) {
         super(lang, substituteNullWithSharedEmptyFrameDescriptor(frameDescriptor));
         this.sourceSection = sourceSection;
     }

@@ -67,7 +67,7 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
     }
 
     public static JavaScriptNode create(JavaScriptNode child) {
-        if (child.isResultAlwaysOfType(Number.class)) {
+        if (child.isResultAlwaysOfType(Number.class) || child.isResultAlwaysOfType(int.class) || child.isResultAlwaysOfType(double.class)) {
             return child;
         }
         if (child instanceof JSConstantNode) {
@@ -80,7 +80,7 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
                 }
             }
         }
-        return JSToNumericWrapperNode.create(child);
+        return JSToNumericWrapperNodeGen.create(child);
     }
 
     @Specialization
@@ -134,13 +134,6 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
 
         protected JSToNumericWrapperNode(JavaScriptNode operand) {
             super(operand);
-        }
-
-        public static JavaScriptNode create(JavaScriptNode child) {
-            if (child.isResultAlwaysOfType(Number.class) || child.isResultAlwaysOfType(int.class) || child.isResultAlwaysOfType(double.class)) {
-                return child;
-            }
-            return JSToNumericWrapperNodeGen.create(child);
         }
 
         @Specialization

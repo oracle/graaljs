@@ -60,9 +60,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -98,6 +96,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructObject
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructPluralRulesNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRegExpNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRelativeTimeFormatNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSegmenterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
@@ -148,6 +147,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeListFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializePluralRulesNode;
 import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
+import com.oracle.truffle.js.nodes.intl.InitializeSegmenterNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -187,6 +187,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -227,6 +228,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         PluralRules(0),
         DateTimeFormat(0),
         RelativeTimeFormat(0),
+        Segmenter(0),
 
         Error(1),
         RangeError(1),
@@ -360,6 +362,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return construct ? (newTarget
                                 ? ConstructRelativeTimeFormatNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
                                 : ConstructRelativeTimeFormatNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
+                                : createCallRequiresNew(context, builtin);
+            case Segmenter:
+                return construct ? (newTarget
+                                ? ConstructSegmenterNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                : ConstructSegmenterNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
             case Object:
                 if (newTarget) {
@@ -830,7 +837,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private PropertyGetNode getConstructorNode;
         @Child private PropertyGetNode getSourceNode;
         @Child private PropertyGetNode getFlagsNode;
-        @Child private Node interopReadPatternNode;
+        @Child private TRegexUtil.InteropReadStringMemberNode interopReadPatternNode;
         private final BranchProfile regexpObject = BranchProfile.create();
         private final BranchProfile regexpMatcherObject = BranchProfile.create();
         private final BranchProfile regexpNonObject = BranchProfile.create();
@@ -865,7 +872,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             boolean isJSRegExp = JSRegExp.isJSRegExp(patternObj);
             if (isJSRegExp) {
                 regexpObject.enter();
-                TruffleObject compiledRegex = JSRegExp.getCompiledRegexUnchecked((DynamicObject) patternObj, isJSRegExp);
+                Object compiledRegex = JSRegExp.getCompiledRegexUnchecked((DynamicObject) patternObj, isJSRegExp);
                 if (flags == Undefined.instance) {
                     return getCreateRegExpNode().execute(compiledRegex);
                 } else {
@@ -874,7 +881,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     }
                     String flagsStr = flagsToString(flags);
                     regexpObjectNewFlagsBranch.enter();
-                    TruffleObject newCompiledRegex = getCompileRegexNode().compile(TRegexUtil.readPattern(getInteropReadPatternNode(), compiledRegex), flagsStr);
+                    Object newCompiledRegex = getCompileRegexNode().compile(getInteropReadPatternNode().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN), flagsStr);
                     return getCreateRegExpNode().execute(newCompiledRegex);
                 }
             } else if (hasMatchSymbol) {
@@ -894,7 +901,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             String patternStr = getPatternToStringNode().executeString(p);
             String flagsStr = flagsToString(f);
-            TruffleObject compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
+            Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
             return getCreateRegExpNode().execute(compiledRegex);
         }
 
@@ -906,10 +913,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return patternToStringNode;
         }
 
-        private Node getInteropReadPatternNode() {
+        private TRegexUtil.InteropReadStringMemberNode getInteropReadPatternNode() {
             if (interopReadPatternNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                interopReadPatternNode = insert(Message.READ.createNode());
+                interopReadPatternNode = insert(TRegexUtil.InteropReadStringMemberNode.create());
             }
             return interopReadPatternNode;
         }
@@ -1087,6 +1094,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getRelativeTimeFormatConstructor().getPrototype();
+        }
+    }
+
+    public abstract static class ConstructSegmenterNode extends ConstructWithNewTargetNode {
+
+        @Child InitializeSegmenterNode initializeSegmenterNode;
+
+        public ConstructSegmenterNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+            initializeSegmenterNode = InitializeSegmenterNode.createInitalizeSegmenterNode(context);
+        }
+
+        @Specialization
+        protected DynamicObject constructSegmenter(DynamicObject newTarget, Object locales, Object options) {
+            DynamicObject segmenter = swapPrototype(JSSegmenter.create(getContext()), newTarget);
+            return initializeSegmenterNode.executeInit(segmenter, locales, options);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getSegmenterConstructor().getPrototype();
         }
     }
 
@@ -1296,12 +1324,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Object callBigInt(Object[] args,
                         @Cached("create()") JSNumberToBigIntNode numberToBigIntNode,
                         @Cached("create()") JSToBigIntNode toBigIntNode) {
-
-            Object primitiveObj = toPrimitive(args[0]);
+            Object value = args[0];
+            Object primitiveObj = toPrimitive(value);
             if (JSRuntime.isNumber(primitiveObj)) {
                 return numberToBigIntNode.executeBigInt(primitiveObj);
             } else {
-                return toBigIntNode.executeBigInteger(args[0]);
+                return toBigIntNode.executeBigInteger(value);
             }
         }
     }
@@ -1830,7 +1858,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         }
                         Object k = readElement(nextItem, 0);
                         Object v = readElement(nextItem, 1);
-                        call(mapObj, adderFn, new Object[]{k, v});
+                        call(mapObj, adderFn, k, v);
                     }
                 } catch (Exception ex) {
                     iteratorCloseAbrupt(iter.getIterator());

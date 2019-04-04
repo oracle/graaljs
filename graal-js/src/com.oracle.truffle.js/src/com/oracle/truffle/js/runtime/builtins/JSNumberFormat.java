@@ -63,6 +63,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -707,6 +708,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
             private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
             private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
+            private final BranchProfile errorBranch = BranchProfile.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -719,6 +721,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                     InternalState state = getInternalState((DynamicObject) numberFormatObj);
 
                     if (state == null || !state.initialized) {
+                        errorBranch.enter();
                         throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
                     }
 
@@ -732,6 +735,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
                     return state.boundFormatFunction;
                 }
+                errorBranch.enter();
                 throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
             }
         });
@@ -752,8 +756,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     private static DynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {
         CallTarget ct = createGetFormatCallTarget(realm, context);
         JSFunctionData fd = JSFunctionData.create(context, ct, ct, 0, "get format", false, false, false, true);
-        DynamicObject compareFunction = JSFunction.create(realm, fd);
-        return compareFunction;
+        return JSFunction.create(realm, fd);
     }
 
     @Override

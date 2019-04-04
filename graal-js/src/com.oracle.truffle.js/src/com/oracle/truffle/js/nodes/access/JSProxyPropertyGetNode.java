@@ -62,7 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSReflectUtils;
 
 @NodeInfo(cost = NodeCost.NONE)
@@ -99,7 +99,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
             if (JSObject.isJSObject(target)) {
                 return JSReflectUtils.performOrdinaryGet((DynamicObject) target, propertyKey, receiver);
             } else {
-                return JSInteropNodeUtil.read(target, propertyKey);
+                return JSInteropUtil.readMemberOrDefault(target, propertyKey, Undefined.instance);
             }
         }
         Object trapResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, receiver));

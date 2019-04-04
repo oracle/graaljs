@@ -207,7 +207,7 @@ namespace v8 {
         TRACE
     }
 
-    EscapableHandleScope::EscapableHandleScope(Isolate* isolate) {
+    EscapableHandleScope::EscapableHandleScope(Isolate* isolate) : HandleScope(isolate) {
     }
 
     internal::Object** EscapableHandleScope::Escape(internal::Object** obj) {
@@ -332,9 +332,12 @@ namespace v8 {
     }
 
     HandleScope::~HandleScope() {
+        reinterpret_cast<GraalIsolate*> (isolate_)->HandleScopeExit();
     }
 
     HandleScope::HandleScope(Isolate* isolate) {
+        this->isolate_ = reinterpret_cast<internal::Isolate*> (isolate);
+        reinterpret_cast<GraalIsolate*> (isolate)->HandleScopeEnter();
     }
 
     void HeapProfiler::SetWrapperClassInfoProvider(unsigned short, RetainedObjectInfo* (*)(unsigned short, Local<Value>)) {

@@ -49,7 +49,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
@@ -345,17 +344,17 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return create(context, SparseArray.createSparseArray(), SparseArray.createArrayMap(), length);
     }
 
-    public static DynamicObject createLazyRegexArray(JSContext context, int length, TruffleObject regexResult, String input, DynamicObject groups) {
+    public static DynamicObject createLazyRegexArray(JSContext context, int length, Object regexResult, String input, DynamicObject groups) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         ScriptArray arrayType = LazyRegexResultArray.createLazyRegexResultArray();
-        Object array = ScriptArray.EMPTY_OBJECT_ARRAY;
+        Object array = new Object[length];
         ArrayAllocationSite site = null;
         int usedLength = 0;
         int indexOffset = 0;
         int arrayOffset = 0;
         int holeCount = 0;
         JSObjectFactory factory = context.getLazyRegexArrayFactory();
-        DynamicObject obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, groups);
+        DynamicObject obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, input, groups);
         assert isJSArray(obj);
         return obj;
     }

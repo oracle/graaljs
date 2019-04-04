@@ -120,17 +120,17 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
 
     @Specialization(guards = "!isInt")
     protected void doIntegerThrows(@SuppressWarnings("unused") int a) {
-        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+        throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
     @Specialization(guards = "!isInt")
     protected void doDoubleThrows(@SuppressWarnings("unused") double a) {
-        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+        throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
     @Specialization(guards = "isInt")
     protected void doBigIntThrows(@SuppressWarnings("unused") BigInt a) {
-        throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+        throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
     @Specialization(guards = "!isInt")
@@ -145,7 +145,7 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
                     @Cached("copyUninitialized()") JavaScriptNode innerOrNode) {
         Object numericA = toNumeric.execute(a);
         if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
-            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+            throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
         } else {
             return ((JSBitwiseOrConstantNode) innerOrNode).executeObject(numericA);
         }
@@ -164,7 +164,7 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
         if (profileIsBigInt.profile(JSRuntime.isBigInt(numericA))) {
             return doBigInt((BigInt) numericA);
         } else {
-            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+            throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
         }
     }
 

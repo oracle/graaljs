@@ -215,12 +215,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = {"object != null", "cachedClass != null", "object.getClass() == cachedClass"}, limit = "MAX_CLASSES")
-    protected TruffleObject doJavaObject(Object object, @Cached("getJavaObjectClass(object)") Class<?> cachedClass) {
-        return doJavaGeneric(cachedClass.cast(object));
-    }
-
-    @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isJSObject(object)", "!isForeignObject(object)"}, replaces = "doJavaObject")
+    @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isJSObject(object)", "!isForeignObject(object)"})
     protected TruffleObject doJavaGeneric(Object object) {
         // assume these to be Java objects
         assert !JSRuntime.isJSNative(object);

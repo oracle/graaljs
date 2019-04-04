@@ -52,6 +52,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.After;
 import org.junit.Before;
 
@@ -65,8 +66,7 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -153,8 +153,7 @@ public abstract class FineGrainedAccessTest {
 
     private Event getNextEvent() {
         assertFalse("empty queue!", events.isEmpty());
-        Event event = events.remove(0);
-        return event;
+        return events.remove(0);
     }
 
     static class AssertedEvent {
@@ -332,7 +331,7 @@ public abstract class FineGrainedAccessTest {
 
     public static Object getAttributeFrom(EventContext cx, String name) {
         try {
-            return ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);
+            return InteropLibrary.getFactory().getUncached().readMember(((InstrumentableNode) cx.getInstrumentedNode()).getNodeObject(), name);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new RuntimeException(e);
         }
@@ -371,9 +370,9 @@ public abstract class FineGrainedAccessTest {
     @Before
     public void initTest() {
         collecting = false;
-        context = Context.create("js");
+        context = Context.newBuilder("js").allowPolyglotAccess(PolyglotAccess.ALL).build();
         instrument = context.getEngine().getInstruments().get(TestingExecutionInstrument.ID).lookup(TestingExecutionInstrument.class);
-        instrumenter = instrument.environment.getInstrumenter();
+        instrumenter = instrument.getEnvironment().getInstrumenter();
         events = new ArrayList<>();
         stack = new Stack<>();
         factory = getTestFactory();
@@ -389,19 +388,17 @@ public abstract class FineGrainedAccessTest {
     // === common asserts
 
     protected static final Consumer<Event> assertReturnValue(Object expected) {
-        Consumer<Event> c = (e) -> {
+        return e -> {
             assertTrue(e.val instanceof Object[]);
             Object[] vals = (Object[]) e.val;
             assertEquals(vals[0], expected);
         };
-        return c;
     }
 
     protected static final Consumer<Event> assertLiteralType(LiteralExpressionTag.Type type) {
-        Consumer<Event> c = (e) -> {
+        return e -> {
             assertAttribute(e, TYPE, type.name());
         };
-        return c;
     }
 
     protected static final Consumer<Event> assertPropertyReadName(String name) {
@@ -451,7 +448,7 @@ public abstract class FineGrainedAccessTest {
         assertTrue(JSFunction.isJSFunction(e.val));
     };
 
-    protected static Consumer<Event> assertJSFunctionInput(String expectedFunctionName) {
+    protected static Consumer<Event> assertJSFunctionInputWithName(String expectedFunctionName) {
         return (e) -> {
             assertTrue(JSFunction.isJSFunction(e.val));
             assertTrue(JSFunction.getName((DynamicObject) e.val).equals(expectedFunctionName));

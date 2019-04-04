@@ -40,65 +40,70 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.*;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.object.*;
 import com.oracle.truffle.js.nodes.*;
 import com.oracle.truffle.js.runtime.*;
-import com.oracle.truffle.js.runtime.builtins.*;
 import com.oracle.truffle.js.runtime.objects.*;
 
 /**
  * ES6 12.2.9.3 Runtime Semantics: GetTemplateObject(templateLiteral).
  */
-public class GetTemplateObjectNode extends JavaScriptNode {
-    private final JSContext context;
+public abstract class GetTemplateObjectNode extends JavaScriptNode {
+    protected final JSContext context;
     @Child private ArrayLiteralNode rawStrings;
     @Child private ArrayLiteralNode cookedStrings;
-    @Child private RealmNode realmNode;
-
-    @CompilationFinal private DynamicObject cachedTemplate;
+    private final Object identity;
 
     protected GetTemplateObjectNode(JSContext context, ArrayLiteralNode rawStrings, ArrayLiteralNode cookedStrings) {
         this.context = context;
         this.rawStrings = rawStrings;
         this.cookedStrings = cookedStrings;
-        this.realmNode = RealmNode.create(context);
+        this.identity = this;
+    }
+
+    protected GetTemplateObjectNode(JSContext context, ArrayLiteralNode rawStrings, ArrayLiteralNode cookedStrings, Object identity) {
+        this.context = context;
+        this.rawStrings = rawStrings;
+        this.cookedStrings = cookedStrings;
+        this.identity = identity;
     }
 
     public static GetTemplateObjectNode create(JSContext context, ArrayLiteralNode rawStrings, ArrayLiteralNode cookedStrings) {
-        return new GetTemplateObjectNode(context, rawStrings, cookedStrings);
+        return GetTemplateObjectNodeGen.create(context, rawStrings, cookedStrings);
     }
 
-    @Override
-    public DynamicObject execute(VirtualFrame frame) {
-        if (cachedTemplate != null) {
-            return cachedTemplate;
-        }
+    @Specialization(guards = "!context.isMultiContext()", assumptions = "context.getSingleRealmAssumption()")
+    protected DynamicObject doCached(@SuppressWarnings("unused") VirtualFrame frame,
+                    @Cached("doUncached(frame)") DynamicObject cachedTemplate) {
+        return cachedTemplate;
+    }
 
-        CompilerDirectives.transferToInterpreterAndInvalidate();
+    @Specialization(replaces = "doCached")
+    protected DynamicObject doUncached(VirtualFrame frame) {
+        DynamicObject cached = Boundaries.mapGet(context.getRealm().getTemplateRegistry(), identity);
+        if (cached != null) {
+            return cached;
+        }
+        cached = buildTemplateObject(frame);
+        Boundaries.mapPut(context.getRealm().getTemplateRegistry(), identity, cached);
+        return cached;
+    }
+
+    private DynamicObject buildTemplateObject(VirtualFrame frame) {
         DynamicObject template = cookedStrings.executeDynamicObject(frame);
         DynamicObject rawObj = rawStrings.executeDynamicObject(frame);
         JSObject.setIntegrityLevel(rawObj, true);
         JSObjectUtil.putDataProperty(context, template, "raw", rawObj, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObject.setIntegrityLevel(template, true);
 
-        JSRealm realm = realmNode.execute(frame);
-        Map<List<String>, DynamicObject> templateRegistry = realm.getTemplateRegistry();
-        Object[] rawStringArray = JSArray.toArray(rawObj);
-        List<String> key = Arrays.asList(Arrays.copyOf(rawStringArray, rawStringArray.length, String[].class));
-        DynamicObject cached = templateRegistry.get(key);
-        if (cached == null) {
-            realm.getTemplateRegistry().put(key, cached = template);
-        }
-        return cachedTemplate = cached;
+        return template;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new GetTemplateObjectNode(context, cloneUninitialized(rawStrings), cloneUninitialized(cookedStrings));
+        return GetTemplateObjectNodeGen.create(context, cloneUninitialized(rawStrings), cloneUninitialized(cookedStrings), identity);
     }
 }

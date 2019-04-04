@@ -210,10 +210,7 @@ public final class SparseArray extends DynamicArray {
     @TruffleBoundary
     @Override
     public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        if (arrayMap(object, condition).containsKey(index)) {
-            return true;
-        }
-        return false;
+        return arrayMap(object, condition).containsKey(index);
     }
 
     @Override

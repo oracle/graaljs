@@ -44,12 +44,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode.JSToNumberWrapperNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 
 @NodeInfo(shortName = "+")
-public abstract class JSUnaryPlusNode extends JSToNumberWrapperNode {
+public abstract class JSUnaryPlusNode extends JSToNumberNode.JSToNumberUnaryNode {
 
     protected JSUnaryPlusNode(JavaScriptNode operand) {
         super(operand);

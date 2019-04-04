@@ -62,12 +62,13 @@ public class ExpressionsSourceSectionDumpInstrument extends TruffleInstrument {
 
     public static final String ID = "ExpressionsSourceSectionDumpInstrument";
 
-    public Env environment;
+    private Env environment;
 
     public static void main(String[] args) throws IOException {
-        Context c = Context.create("js");
-        c.getEngine().getInstruments().get(ID).lookup(ExpressionsSourceSectionDumpInstrument.class);
-        c.eval(Source.newBuilder("js", new File(args[0])).build());
+        try (Context c = Context.create("js")) {
+            c.getEngine().getInstruments().get(ID).lookup(ExpressionsSourceSectionDumpInstrument.class);
+            c.eval(Source.newBuilder("js", new File(args[0])).build());
+        }
     }
 
     @Override
@@ -93,5 +94,9 @@ public class ExpressionsSourceSectionDumpInstrument extends TruffleInstrument {
             public void onEnter(EventContext cx, VirtualFrame frame) {
             }
         };
+    }
+
+    public Env getEnvironment() {
+        return this.environment;
     }
 }

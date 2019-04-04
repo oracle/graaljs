@@ -302,4 +302,8 @@ public final class JSModuleNamespace extends JSBuiltinObject {
         return true;
     }
 
+    @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
+    }
 }

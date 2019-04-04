@@ -54,7 +54,7 @@ public class RepeatingLauncher extends JSLauncher {
     private int runs = 1;
 
     @Override
-    protected PreprocessResult preprocessArgument(String argument, String value, Map<String, String> polyglotOptions) {
+    protected PreprocessResult preprocessArgument(String argument, String value) {
         if (argument.equals("engines")) {
             engines = parsePositiveInteger(argument, value);
             return Consumed;
@@ -63,7 +63,7 @@ public class RepeatingLauncher extends JSLauncher {
             runs = parsePositiveInteger(argument, value);
             return Consumed;
         }
-        return super.preprocessArgument(argument, value, polyglotOptions);
+        return super.preprocessArgument(argument, value);
     }
 
     protected int parsePositiveInteger(String optName, String optValue) {

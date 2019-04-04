@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Locale;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -91,8 +92,10 @@ public class TestNashornCallable extends TestCallable {
         contextBuilder.out(out);
         ByteArrayOutputStream err = new ByteArrayOutputStream();
         contextBuilder.err(err);
-        contextBuilder.allowHostAccess(true);
+        contextBuilder.allowHostAccess(HostAccess.ALL);
+        contextBuilder.allowHostClassLookup((className) -> true);
         contextBuilder.allowIO(true);
+        contextBuilder.allowExperimentalOptions(true);
 
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion));
         contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(forceStrictMode));

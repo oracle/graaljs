@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
@@ -52,14 +52,11 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
  *
  * @see JSRuntime#isConstructor(Object)
  */
-public abstract class IsConstructorNode extends JSUnaryNode {
+@GenerateUncached
+public abstract class IsConstructorNode extends JavaScriptBaseNode {
 
-    protected IsConstructorNode(JavaScriptNode operand) {
-        super(operand);
+    protected IsConstructorNode() {
     }
-
-    @Override
-    public abstract boolean executeBoolean(VirtualFrame frame);
 
     public abstract boolean executeBoolean(Object operand);
 
@@ -85,16 +82,7 @@ public abstract class IsConstructorNode extends JSUnaryNode {
         return false;
     }
 
-    public static IsConstructorNode create(JavaScriptNode operand) {
-        return IsConstructorNodeGen.create(operand);
-    }
-
     public static IsConstructorNode create() {
-        return IsConstructorNodeGen.create(null);
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return IsConstructorNode.create(cloneUninitialized(getOperand()));
+        return IsConstructorNodeGen.create();
     }
 }

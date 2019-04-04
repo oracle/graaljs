@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,9 +51,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNodeGen.JSToStringWrapperNodeGen;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -125,6 +122,11 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     }
 
     @Specialization
+    protected String doBoolean(boolean value) {
+        return JSRuntime.booleanToString(value);
+    }
+
+    @Specialization
     protected String doInteger(int value) {
         return Boundaries.stringValueOf(value);
     }
@@ -135,18 +137,13 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected String doDouble(double d, @Cached("create()") JSDoubleToStringNode doubleToStringNode) {
-        return doubleToStringNode.executeString(d);
-    }
-
-    @Specialization
-    protected String doBoolean(boolean value) {
-        return JSRuntime.booleanToString(value);
-    }
-
-    @Specialization
     protected String doLong(long value) {
         return Boundaries.stringValueOf(value);
+    }
+
+    @Specialization
+    protected String doDouble(double d, @Cached("create()") JSDoubleToStringNode doubleToStringNode) {
+        return doubleToStringNode.executeString(d);
     }
 
     @Specialization(guards = "isJSObject(value)")
@@ -165,32 +162,10 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = "isTruffleJavaObject(object)")
-    protected String doTruffleJavaObject(TruffleObject object) {
-        String result = null;
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
-        Object javaObject = env.asHostObject(object);
-        if (javaObject != null) {
-            result = Boundaries.javaToString(javaObject);
-        }
-        return (result == null) ? Null.NAME : result;
-    }
-
-    @Specialization(guards = {"isForeignObject(object)", "!isTruffleJavaObject(object)"})
+    @Specialization(guards = {"isForeignObject(object)"})
     protected String doTruffleObject(TruffleObject object,
-                    @Cached("create()") JSUnboxOrGetNode interopUnboxNode) {
-        return getToStringNode().executeString(interopUnboxNode.executeWithTarget(object));
-    }
-
-    @Specialization(guards = {"cachedClass != null", "object.getClass() == cachedClass"}, limit = "MAX_CLASSES")
-    protected String doJavaObject(Object object, @Cached("getJavaObjectClass(object)") Class<?> cachedClass) {
-        return doJavaGeneric(cachedClass.cast(object));
-    }
-
-    @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isJSObject(object)", "!isForeignObject(object)"}, replaces = "doJavaObject")
-    protected String doJavaGeneric(Object object) {
-        assert object != null && !JSRuntime.isJSNative(object);
-        return Boundaries.stringValueOf(object);
+                    @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode) {
+        return getToStringNode().executeString(toPrimitiveNode.execute(object));
     }
 
     protected JSToStringNode getToStringNode() {

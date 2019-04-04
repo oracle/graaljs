@@ -52,6 +52,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -134,6 +135,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
             private final ConditionProfile isArrayBuffer = ConditionProfile.createBinaryProfile();
             private final ConditionProfile isDirectByteBuffer = ConditionProfile.createBinaryProfile();
+            private final BranchProfile errorBranch = BranchProfile.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -152,6 +154,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
                         return getDirectByteLength(buffer);
                     }
                 }
+                errorBranch.enter();
                 throw Errors.createTypeErrorArrayBufferExpected();
             }
         });

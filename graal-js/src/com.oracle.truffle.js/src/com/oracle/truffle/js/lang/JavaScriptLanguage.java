@@ -66,10 +66,8 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -116,7 +114,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSMetaObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -124,7 +121,6 @@ import com.oracle.truffle.js.runtime.objects.JSScope;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @ProvidedTags({StandardTags.CallTag.class,
@@ -157,7 +153,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, characterMimeTypes = {
                 JavaScriptLanguage.APPLICATION_MIME_TYPE,
                 JavaScriptLanguage.TEXT_MIME_TYPE,
-                JavaScriptLanguage.MODULE_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.REUSE, dependentLanguages = "regex")
+                JavaScriptLanguage.MODULE_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.REUSE, dependentLanguages = "regex", fileTypeDetectors = JSFileTypeDetector.class)
 public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final String TEXT_MIME_TYPE = "text/javascript";
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
@@ -205,7 +201,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
             RootNode rootNode = new RootNode(this) {
                 @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
-                @Child private ExportValueNode exportValueNode = ExportValueNode.create(context);
+                @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -214,7 +210,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     try {
                         context.interopBoundaryEnter();
                         Object result = directCallNode.call(program.argumentsToRun(realm));
-                        return exportValueNode.executeWithTarget(result, Undefined.instance);
+                        return exportValueNode.execute(result);
                     } finally {
                         context.interopBoundaryExit();
                     }
@@ -245,13 +241,13 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         final boolean strict = isStrictLocation(request.getLocation());
         final ExecutableNode executableNode = new ExecutableNode(this) {
             @Child private JavaScriptNode expression = insert(parseInline(source, context, requestFrame, strict));
-            @Child private ExportValueNode exportValueNode = ExportValueNode.create(context);
+            @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 assert getContextReference().get().getContext() == context : "unexpected JSContext";
                 Object result = expression.execute(frame);
-                return exportValueNode.executeWithTarget(result, Undefined.instance);
+                return exportValueNode.execute(result);
             }
         };
         return executableNode;
@@ -300,10 +296,10 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @TruffleBoundary
     @Override
     protected String toString(JSRealm realm, Object value) {
-        return toStringIntl(realm, value, 0);
+        return toString(realm, value, 0);
     }
 
-    protected String toStringIntl(JSRealm realm, Object value, int inDepth) {
+    private String toString(JSRealm realm, Object value, int inDepth) {
         int depth = inDepth + 1;
         if (depth >= MAX_TOSTRING_DEPTH) {
             return "..."; // bail-out from recursions or deep nesting
@@ -311,43 +307,69 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         if (value == null) {
             return "null";
         } else if (value instanceof JSMetaObject) {
-            String type = ((JSMetaObject) value).getClassName();
+            JSMetaObject metaObject = (JSMetaObject) value;
+            String type = metaObject.getClassName();
             if (type == null) {
-                type = ((JSMetaObject) value).getType();
+                String subType = metaObject.getSubtype();
+                if ("null".equals(subType)) {
+                    type = "null";
+                } else {
+                    type = metaObject.getType();
+                }
             }
             return type;
+        } else if (value instanceof InteropBoundFunction) {
+            return JSObject.safeToString(((InteropBoundFunction) value).getFunction());
         } else if (JSRuntime.isForeignObject(value)) {
-            TruffleObject truffleObject = (TruffleObject) value;
-            Env env = realm.getEnv();
-            try {
-                if (env.isHostObject(truffleObject)) {
-                    Object hostObject = env.asHostObject(truffleObject);
-                    Class<?> clazz = hostObject.getClass();
-                    if (clazz == Class.class) {
-                        clazz = (Class<?>) hostObject;
-                        return "JavaClass[" + clazz.getTypeName() + "]";
-                    } else {
-                        return "JavaObject[" + clazz.getTypeName() + "]";
-                    }
-                } else if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), truffleObject)) {
-                    return "null";
-                } else if (ForeignAccess.sendIsPointer(Message.IS_POINTER.createNode(), truffleObject)) {
-                    long pointer = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), truffleObject);
-                    return "Pointer[0x" + Long.toHexString(pointer) + "]";
-                } else if (ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), truffleObject)) {
-                    return "Array" + foreignArrayToString(realm, truffleObject, depth);
-                } else if (ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), truffleObject)) {
-                    return "Executable";
-                } else if (ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), truffleObject)) {
-                    return toStringIntl(realm, ForeignAccess.sendUnbox(Message.UNBOX.createNode(), truffleObject), depth);
-                } else {
-                    return "Object" + foreignObjectToString(realm, truffleObject, depth);
-                }
-            } catch (Exception e) {
-                return "Object";
-            }
+            return toStringForeignObject(realm, value, depth);
         }
         return JSRuntime.safeToString(value);
+    }
+
+    private String toStringForeignObject(JSRealm realm, Object value, int depth) {
+        Env env = realm.getEnv();
+        try {
+            if (env.isHostObject(value)) {
+                Object hostObject = env.asHostObject(value);
+                Class<?> clazz = hostObject.getClass();
+                if (clazz == Class.class) {
+                    clazz = (Class<?>) hostObject;
+                    return "JavaClass[" + clazz.getTypeName() + "]";
+                } else {
+                    return "JavaObject[" + clazz.getTypeName() + "]";
+                }
+            } else {
+                InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
+                if (interop.isNull(value)) {
+                    return "null";
+                } else if (interop.isPointer(value)) {
+                    long pointer = interop.asPointer(value);
+                    return "Pointer[0x" + Long.toHexString(pointer) + "]";
+                } else if (interop.hasArrayElements(value)) {
+                    return "Array" + foreignArrayToString(realm, value, depth);
+                } else if (interop.isExecutable(value)) {
+                    return "Executable";
+                } else if (interop.isString(value)) {
+                    return JSRuntime.safeToString(interop.asString(value));
+                } else if (interop.isBoolean(value)) {
+                    return JSRuntime.safeToString(interop.asBoolean(value));
+                } else if (interop.isNumber(value)) {
+                    Object unboxed = "Number";
+                    if (interop.fitsInInt(value)) {
+                        unboxed = interop.asInt(value);
+                    } else if (interop.fitsInLong(value)) {
+                        unboxed = interop.asLong(value);
+                    } else if (interop.fitsInDouble(value)) {
+                        unboxed = interop.asDouble(value);
+                    }
+                    return JSRuntime.safeToString(unboxed);
+                } else {
+                    return "Object" + foreignObjectToString(realm, value, depth);
+                }
+            }
+        } catch (Exception e) {
+            return "Object";
+        }
     }
 
     @TruffleBoundary
@@ -516,67 +538,48 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         String type;
         String subtype = null;
         String className = null;
-        String description;
 
         if (value instanceof JSMetaObject) {
             return "metaobject";
-        } else if (JSObject.isJSObject(value)) {
+        } else if (value == Undefined.instance) {
+            type = "undefined";
+        } else if (value == Null.instance) {
+            type = "object";
+            subtype = "null";
+        } else if (JSRuntime.isObject(value)) {
             DynamicObject obj = (DynamicObject) value;
             type = "object";
-            description = JSObject.safeToString(obj);
-            className = obj == Undefined.instance ? "undefined" : JSRuntime.getConstructorName(obj);
+            className = JSRuntime.getConstructorName(obj);
 
-            if (JSFunction.isJSFunction(obj)) {
-                DynamicObject func = obj;
-                if (JSFunction.isBoundFunction(func)) {
-                    func = JSFunction.getBoundTargetFunction(func);
-                }
-                description = JSObject.safeToString(func);
+            if (JSRuntime.isCallable(obj)) {
                 type = "function";
             } else if (JSArray.isJSArray(obj)) {
                 subtype = "array";
-                description = JSArray.CLASS_NAME + "[" + JSArray.arrayGetLength(obj) + "]";
             } else if (JSDate.isJSDate(obj)) {
                 subtype = "date";
-                description = JSDate.formatUTC(JSDate.getJSDateUTCFormat(), JSDate.getTimeMillisField(obj));
             } else if (JSSymbol.isJSSymbol(obj)) {
-                Symbol sym = JSSymbol.getSymbolData(obj);
                 type = "symbol";
-                description = "Symbol(" + sym.getName() + ")";
-            } else if (value == Undefined.instance) {
-                type = "undefined";
-                description = "undefined";
-            } else if (value == Null.instance) {
-                subtype = "null";
-                description = "null";
-            } else if (JSUserObject.isJSUserObject(obj)) {
-                description = className;
             }
         } else if (value instanceof InteropBoundFunction) {
             return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());
         } else if (JSRuntime.isForeignObject(value)) {
             assert !JSObject.isJSObject(value);
-            TruffleObject truffleObject = (TruffleObject) value;
-            if (JSInteropNodeUtil.isBoxed(truffleObject)) {
-                return findMetaObject(realm, JSInteropNodeUtil.unbox(truffleObject));
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
+            if (interop.isNull(value) || interop.isBoolean(value) || interop.isString(value) || interop.isNumber(value)) {
+                Object unboxed = JSInteropUtil.toPrimitiveOrDefault(value, Null.instance, interop, null);
+                assert !JSRuntime.isForeignObject(unboxed);
+                return findMetaObject(realm, unboxed);
             }
             type = "object";
             className = "Foreign";
-            description = "foreign TruffleObject";
         } else if (value == null) {
             type = "null";
-            description = "null";
         } else {
             // primitive
             type = JSRuntime.typeof(value);
-            if (value instanceof Symbol) {
-                description = "Symbol(" + ((Symbol) value).getName() + ")";
-            } else {
-                description = toString(realm, value);
-            }
         }
 
-        return new JSMetaObject(type, subtype, className, description, realm.getEnv());
+        return new JSMetaObject(type, subtype, className, realm.getEnv());
     }
 
     @Override
@@ -625,20 +628,20 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
     }
 
-    private String foreignArrayToString(JSRealm realm, TruffleObject truffleObject, int depth) throws InteropException {
+    private String foreignArrayToString(JSRealm realm, Object truffleObject, int depth) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
-        assert ForeignAccess.sendHasSize(JSInteropUtil.createHasSize(), truffleObject);
-        int size = ((Number) ForeignAccess.sendGetSize(JSInteropUtil.createGetSize(), truffleObject)).intValue();
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(truffleObject);
+        assert interop.hasArrayElements(truffleObject);
+        long size = interop.getArraySize(truffleObject);
         if (size == 0) {
             return "[]";
         }
-        Node readNode = JSInteropUtil.createRead();
         StringBuilder sb = new StringBuilder();
         sb.append('[');
-        for (int i = 0; i < size; i++) {
-            Object value = ForeignAccess.sendRead(readNode, truffleObject, i);
-            sb.append(value == truffleObject ? "(this)" : toStringIntl(realm, value, depth));
-            if (i + 1 < size) {
+        for (long i = 0; i < size; i++) {
+            Object value = interop.readArrayElement(truffleObject, i);
+            sb.append(value == truffleObject ? "(this)" : toString(realm, value, depth));
+            if (i < size - 1) {
                 sb.append(',').append(' ');
             }
         }
@@ -646,26 +649,29 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return sb.toString();
     }
 
-    private String foreignObjectToString(JSRealm realm, TruffleObject truffleObject, int depth) throws InteropException {
+    private String foreignObjectToString(JSRealm realm, Object truffleObject, int depth) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
-        if (!ForeignAccess.sendHasKeys(JSInteropUtil.createHasKeys(), truffleObject)) {
+        InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(truffleObject);
+        if (!objInterop.hasMembers(truffleObject)) {
             return "";
         }
-        TruffleObject keys = ForeignAccess.sendKeys(JSInteropUtil.createKeys(), truffleObject);
-        int keyCount = ((Number) ForeignAccess.sendGetSize(JSInteropUtil.createGetSize(), keys)).intValue();
+        Object keys = objInterop.getMembers(truffleObject);
+        InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keys);
+        long keyCount = keysInterop.getArraySize(keys);
         if (keyCount == 0) {
             return "{}";
         }
-        Node readNode = JSInteropUtil.createRead();
         StringBuilder sb = new StringBuilder();
         sb.append('{');
-        for (int i = 0; i < keyCount; i++) {
-            Object key = ForeignAccess.sendRead(readNode, keys, i);
-            Object value = ForeignAccess.sendRead(readNode, truffleObject, key);
-            sb.append(toStringIntl(realm, key, depth));
+        for (long i = 0; i < keyCount; i++) {
+            Object key = keysInterop.readArrayElement(keys, i);
+            assert InteropLibrary.getFactory().getUncached().isString(key);
+            String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
+            Object value = objInterop.readMember(truffleObject, stringKey);
+            sb.append(toString(realm, key, depth));
             sb.append('=');
-            sb.append(value == truffleObject ? "(this)" : toStringIntl(realm, value, depth));
-            if (i + 1 < keyCount) {
+            sb.append(value == truffleObject ? "(this)" : toString(realm, value, depth));
+            if (i < keyCount - 1) {
                 sb.append(',').append(' ');
             }
         }

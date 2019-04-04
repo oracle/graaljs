@@ -97,6 +97,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     private static final HiddenKey ARRAY_OFFSET_ID = new HiddenKey("arrayOffset");
     private static final HiddenKey HOLE_COUNT_ID = new HiddenKey("holeCount");
     public static final HiddenKey LAZY_REGEX_RESULT_ID = new HiddenKey("lazyRegexResult");
+    public static final HiddenKey LAZY_REGEX_ORIGINAL_INPUT_ID = new HiddenKey("lazyRegexResultOriginalInput");
     public static final Property ARRAY_PROPERTY;
     public static final Property ARRAY_TYPE_PROPERTY;
     private static final Property ALLOCATION_SITE_PROPERTY;
@@ -106,6 +107,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     private static final Property ARRAY_OFFSET_PROPERTY;
     private static final Property HOLE_COUNT_PROPERTY;
     public static final Property LAZY_REGEX_RESULT_PROPERTY;
+    public static final Property LAZY_REGEX_ORIGINAL_INPUT_PROPERTY;
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
@@ -119,6 +121,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         HOLE_COUNT_PROPERTY = JSObjectUtil.makeHiddenProperty(HOLE_COUNT_ID, allocator.locationForType(int.class), false);
         LAZY_REGEX_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(LAZY_REGEX_RESULT_ID,
                         allocator.locationForType(TruffleObject.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+        LAZY_REGEX_ORIGINAL_INPUT_PROPERTY = JSObjectUtil.makeHiddenProperty(LAZY_REGEX_ORIGINAL_INPUT_ID,
+                        allocator.locationForType(String.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
     }
 
     public static ScriptArray arrayGetArrayType(DynamicObject thisObj) {
@@ -230,6 +234,14 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return (TruffleObject) LAZY_REGEX_RESULT_PROPERTY.get(thisObj, arrayCondition);
     }
 
+    public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj) {
+        return arrayGetRegexResultOriginalInput(thisObj, JSArray.isJSArray(thisObj) && JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY);
+    }
+
+    public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj, boolean arrayCondition) {
+        return (String) LAZY_REGEX_ORIGINAL_INPUT_PROPERTY.get(thisObj, arrayCondition);
+    }
+
     public static void putArrayProperties(DynamicObject arrayPrototype, ScriptArray arrayType) {
         putHiddenProperty(arrayPrototype, ARRAY_PROPERTY, ScriptArray.EMPTY_OBJECT_ARRAY);
         putHiddenProperty(arrayPrototype, ARRAY_TYPE_PROPERTY, arrayType);
@@ -336,7 +348,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         if (array.isSealed()) {
             long minIndex = array.lastElementIndex(thisObj) + 1;
             if (length < minIndex) {
-                arraySetArrayType(thisObj, array = array.setLength(thisObj, minIndex, doThrow));
+                array = array.setLength(thisObj, minIndex, doThrow);
+                arraySetArrayType(thisObj, array);
                 return array.canDeleteElement(thisObj, minIndex - 1, doThrow);
             }
         }
@@ -480,12 +493,12 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public final boolean hasOwnProperty(DynamicObject thisObj, long propIdx) {
+    public final boolean hasOwnProperty(DynamicObject thisObj, long index) {
         ScriptArray array = arrayGetArrayType(thisObj);
-        if (array.hasElement(thisObj, propIdx)) {
+        if (array.hasElement(thisObj, index)) {
             return true;
         }
-        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(propIdx));
+        return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(index));
     }
 
     private static long findNextEnumerable(DynamicObject object, ScriptArray array, long indexParam) {
@@ -584,13 +597,13 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     @Override
-    public boolean defineOwnProperty(DynamicObject thisObj, Object propertyKey, PropertyDescriptor descriptor, boolean doThrow) {
-        if (propertyKey.equals(LENGTH)) {
-            return defineOwnPropertyLength(thisObj, propertyKey, descriptor, doThrow);
-        } else if (propertyKey instanceof String && JSRuntime.isArrayIndex((String) propertyKey)) {
-            return defineOwnPropertyIndex(thisObj, (String) propertyKey, descriptor, doThrow);
+    public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
+        if (key.equals(LENGTH)) {
+            return defineOwnPropertyLength(thisObj, key, descriptor, doThrow);
+        } else if (key instanceof String && JSRuntime.isArrayIndex((String) key)) {
+            return defineOwnPropertyIndex(thisObj, (String) key, descriptor, doThrow);
         } else {
-            return super.defineOwnProperty(thisObj, propertyKey, descriptor, doThrow);
+            return super.defineOwnProperty(thisObj, key, descriptor, doThrow);
         }
     }
 
@@ -771,18 +784,18 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     @Override
-    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object property) {
-        return ordinaryGetOwnPropertyArray(thisObj, property);
+    public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
+        return ordinaryGetOwnPropertyArray(thisObj, key);
     }
 
     /**
      * 9.1.5.1 OrdinaryGetOwnProperty (O, P), implemented for Arrays.
      */
     @TruffleBoundary
-    public static PropertyDescriptor ordinaryGetOwnPropertyArray(DynamicObject thisObj, Object propertyKey) {
-        assert JSRuntime.isPropertyKey(propertyKey) || propertyKey instanceof HiddenKey;
+    public static PropertyDescriptor ordinaryGetOwnPropertyArray(DynamicObject thisObj, Object key) {
+        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
 
-        long idx = JSRuntime.propertyKeyToArrayIndex(propertyKey);
+        long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (JSRuntime.isArrayIndex(idx)) {
             ScriptArray array = arrayGetArrayType(thisObj, false);
             if (array.hasElement(thisObj, idx)) {
@@ -790,11 +803,11 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
                 return PropertyDescriptor.createData(value, true, !array.isFrozen(), !array.isSealed());
             }
         }
-        Property x = thisObj.getShape().getProperty(propertyKey);
-        if (x == null) {
+        Property prop = thisObj.getShape().getProperty(key);
+        if (prop == null) {
             return null;
         }
-        return JSBuiltinObject.ordinaryGetOwnPropertyIntl(thisObj, propertyKey, x);
+        return JSBuiltinObject.ordinaryGetOwnPropertyIntl(thisObj, key, prop);
     }
 
     @Override
@@ -804,5 +817,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         } else {
             return JSRuntime.objectToConsoleString(obj, null);
         }
+    }
+
+    @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
     }
 }

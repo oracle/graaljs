@@ -109,7 +109,8 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                 Completion completion = Completion.create(completionType, value);
                 assert completion.isThrow() || completion.isReturn();
                 if (GeneratorState.SuspendedStart.equals(generatorState)) {
-                    setGeneratorState.setValue(generatorObject, generatorState = GeneratorState.Completed);
+                    generatorState = GeneratorState.Completed;
+                    setGeneratorState.setValue(generatorObject, generatorState);
                 }
                 if (GeneratorState.Completed.equals(generatorState)) {
                     if (completion.isReturn()) {
@@ -123,7 +124,8 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                 value = completion;
             }
 
-            setGeneratorState.setValue(generatorObject, generatorState = GeneratorState.Executing);
+            generatorState = GeneratorState.Executing;
+            setGeneratorState.setValue(generatorObject, generatorState);
 
             writeYieldValue.executeWrite(generatorFrame, value);
 

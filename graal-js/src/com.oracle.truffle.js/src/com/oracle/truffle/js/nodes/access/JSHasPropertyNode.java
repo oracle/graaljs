@@ -42,22 +42,22 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.IntToLongTypeSystem;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -168,29 +168,22 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         }
     }
 
-    protected ContextReference<JSRealm> contextReference() {
-        return AbstractJavaScriptLanguage.getCurrentLanguage().getContextReference();
-    }
-
     @Specialization(guards = "isForeignObject(object)")
     public boolean foreignObject(TruffleObject object, Object propertyName,
-                    @Cached("createKeyInfo()") Node keyInfoNode,
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,
                     @Cached("create()") JSHasPropertyNode hasInPrototype,
-                    @Cached("contextReference()") ContextReference<JSRealm> contextRef) {
-        Object key;
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) {
         if (propertyName instanceof Symbol) {
             return false;
         } else if (propertyName instanceof Number) {
-            key = propertyName;
+            long index = JSRuntime.longValue((Number) propertyName);
+            return index >= 0 && index < JSInteropUtil.getArraySize(object, interop, this);
         } else {
-            key = toStringNode.executeString(propertyName);
-        }
-        int result = ForeignAccess.sendKeyInfo(keyInfoNode, object, key);
-        if (KeyInfo.isExisting(result)) {
-            return true;
-        } else {
+            if (interop.isMemberExisting(object, toStringNode.executeString(propertyName))) {
+                return true;
+            }
             JSRealm realm = contextRef.get();
             if (realm.getContext().getContextOptions().hasForeignObjectPrototype()) {
                 DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(object);

@@ -42,14 +42,16 @@ package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.truffleinterop.JSLazyStringForeignAccessFactoryForeign;
 
+@ExportLibrary(InteropLibrary.class)
 public final class JSLazyString implements CharSequence, TruffleObject, JSLazyStringFlattened, JSLazyStringRaw {
     @TruffleBoundary
     public static CharSequence create(CharSequence left, CharSequence right) {
@@ -317,13 +319,19 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
     }
 
     @Override
-    public ForeignAccess getForeignAccess() {
-        return JSLazyStringForeignAccessFactoryForeign.ACCESS;
-    }
-
-    @Override
     public String getFlattenedString() {
         assert isFlat();
         return (String) left;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isString() {
+        return true;
+    }
+
+    @ExportMessage
+    String asString() {
+        return toString();
     }
 }

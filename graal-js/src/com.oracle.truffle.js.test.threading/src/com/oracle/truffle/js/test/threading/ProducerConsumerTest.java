@@ -46,6 +46,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
@@ -85,7 +86,7 @@ public class ProducerConsumerTest {
 
         @Override
         public void run() {
-            Context cx = Context.create("js");
+            Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).build();
             cx.getBindings("js").putMember("queue", queue);
             try {
                 sent = cx.eval("js", " var sent = 0;" +
@@ -113,7 +114,7 @@ public class ProducerConsumerTest {
 
         @Override
         public void run() {
-            Context cx = Context.create("js");
+            Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).build();
             cx.getBindings("js").putMember("queue", queue);
             try {
                 received = cx.eval("js", "var received = 0;" +

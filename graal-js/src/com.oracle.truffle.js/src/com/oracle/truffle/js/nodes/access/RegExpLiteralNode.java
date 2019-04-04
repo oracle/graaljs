@@ -44,22 +44,24 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.CompileRegexNode;
 
 public class RegExpLiteralNode extends JavaScriptNode {
     private final JSContext context;
     private final String pattern;
     private final String flags;
 
-    @CompilationFinal private TruffleObject regex;
+    @CompilationFinal private Object regex;
 
     @Child private CreateRegExpNode createRegExpNode;
+    @Child private TRegexUtil.CompileRegexNode compileRegExpNode;
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -89,9 +91,17 @@ public class RegExpLiteralNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         if (regex == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            regex = RegexCompilerInterface.compile(pattern, flags, context);
+            regex = RegexCompilerInterface.compile(pattern, flags, context, getCompileRegExpNode());
         }
         return getCreateRegExpNode().execute(regex);
+    }
+
+    private CompileRegexNode getCompileRegExpNode() {
+        if (compileRegExpNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            compileRegExpNode = insert(TRegexUtil.CompileRegexNode.create());
+        }
+        return compileRegExpNode;
     }
 
     private CreateRegExpNode getCreateRegExpNode() {

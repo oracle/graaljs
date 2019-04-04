@@ -57,6 +57,7 @@ ref_count(0) {
         fprintf(stderr, "NULL jobject passed to GraalHandleContent!\n");
     }
 #endif
+    isolate->HandleScopeReference(this);
 }
 
 GraalHandleContent::~GraalHandleContent() {
@@ -74,6 +75,11 @@ GraalHandleContent::~GraalHandleContent() {
             env->DeleteLocalRef(java_object_);
         }
     }
+#ifdef DEBUG
+    if (ref_count != 0) {
+        fprintf(stderr, "GraalHandleContent deleted while being referenced!\n");
+    }
+#endif
 }
 
 GraalHandleContent* GraalHandleContent::Copy(bool global) {

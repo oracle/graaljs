@@ -95,11 +95,18 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     private static ScriptNode translateScript(NodeFactory nodeFactory, JSContext context, Environment env, Source source, boolean isParentStrict, boolean isEval, boolean evalInGlobalScope) {
-        FunctionNode parserFunctionNode = GraalJSParserHelper.parseScript(source, ((GraalJSParserOptions) context.getParserOptions()).putStrict(isParentStrict), isEval, evalInGlobalScope);
+        FunctionNode parserFunctionNode = GraalJSParserHelper.parseScript(context, source, ((GraalJSParserOptions) context.getParserOptions()).putStrict(isParentStrict), isEval, evalInGlobalScope);
         Source src = source;
         String explicitURL = parserFunctionNode.getSource().getExplicitURL();
         if (explicitURL != null) {
-            src = Source.newBuilder(source.getLanguage(), source.getCharacters(), explicitURL).build();
+            // @formatter:off
+            src = Source.newBuilder(source.getLanguage(), source.getCharacters(), explicitURL).
+                            cached(source.isCached()).
+                            interactive(source.isInteractive()).
+                            internal(source.isInternal()).
+                            mimeType(source.getMimeType()).
+                            build();
+            // @formatter:on
         }
         return translateFunction(nodeFactory, context, env, src, isParentStrict, parserFunctionNode);
     }
@@ -113,7 +120,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     public static JSModuleRecord translateModule(NodeFactory factory, JSContext context, Source source, JSModuleLoader moduleLoader) {
-        FunctionNode parsed = GraalJSParserHelper.parseModule(source, ((GraalJSParserOptions) context.getParserOptions()).putStrict(true));
+        FunctionNode parsed = GraalJSParserHelper.parseModule(context, source, ((GraalJSParserOptions) context.getParserOptions()).putStrict(true));
         JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, null, true, parsed.getModule());
         JSModuleRecord moduleRecord = new JSModuleRecord(parsed.getModule(), context, moduleLoader, source, () -> translator.translateModule(parsed));
         translator.scriptOrModule = moduleRecord;

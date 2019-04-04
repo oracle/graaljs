@@ -103,7 +103,11 @@ public class ObjectSizeCalculator {
         int getSuperclassFieldPadding();
     }
 
-    public static class CurrentLayout {
+    public static final class CurrentLayout {
+        private CurrentLayout() {
+            // should not be constructed
+        }
+
         public static final MemoryLayoutSpecification SPEC = getEffectiveMemoryLayoutSpecification();
     }
 
@@ -424,7 +428,7 @@ public class ObjectSizeCalculator {
             /*
              * See ALERT above. The reflection code below duplicates the following sequence, and
              * avoids hard coding of java.lang.management.
-             * 
+             *
              * for (MemoryPoolMXBean mp : ManagementFactory.getMemoryPoolMXBeans()) { maxMemory +=
              * mp.getUsage().getMax(); }
              */

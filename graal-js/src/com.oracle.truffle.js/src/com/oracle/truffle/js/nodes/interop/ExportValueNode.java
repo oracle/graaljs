@@ -42,20 +42,21 @@ package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropAsyncFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
 
@@ -66,14 +67,17 @@ import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
  * @see JSRuntime#exportValue(Object)
  */
 @ImportStatic({JSTruffleOptions.class, JSFunction.class})
+@GenerateUncached
 public abstract class ExportValueNode extends JavaScriptBaseNode {
-    private final AbstractJavaScriptLanguage language;
 
-    ExportValueNode(AbstractJavaScriptLanguage language) {
-        this.language = language;
+    ExportValueNode() {
     }
 
-    public abstract Object executeWithTarget(Object property, Object thiz);
+    public final Object execute(Object value) {
+        return executeWithTarget(value, Undefined.instance);
+    }
+
+    public abstract Object executeWithTarget(Object value, Object thiz);
 
     @Specialization(guards = {"isJSFunction(function)", "!BindProgramResult", "!InteropCompletePromises || !isAsyncFunction(function)"})
     protected static TruffleObject doFunctionNoBind(DynamicObject function, @SuppressWarnings("unused") Object thiz) {
@@ -121,6 +125,11 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     }
 
     @Specialization
+    protected static long doLong(long value, @SuppressWarnings("unused") Object thiz) {
+        return value;
+    }
+
+    @Specialization
     protected static double doDouble(double value, @SuppressWarnings("unused") Object thiz) {
         return value;
     }
@@ -147,16 +156,11 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     @TruffleBoundary
     @Fallback
-    protected final Object doOther(Object value, @SuppressWarnings("unused") Object thiz) {
-        assert !(value instanceof TruffleObject);
-        return language.getContextReference().get().getEnv().asGuestValue(value);
+    protected static final Object doOther(Object value, @SuppressWarnings("unused") Object thiz) {
+        throw Errors.createTypeErrorFormat("Cannot convert to TruffleObject: %s", value == null ? null : value.getClass().getSimpleName());
     }
 
-    public static ExportValueNode create(AbstractJavaScriptLanguage language) {
-        return ExportValueNodeGen.create(language);
-    }
-
-    public static ExportValueNode create(JSContext context) {
-        return create(context.getLanguage());
+    public static ExportValueNode create() {
+        return ExportValueNodeGen.create();
     }
 }

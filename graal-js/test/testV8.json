@@ -206,136 +206,48 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "intl/segmenter/constructor-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/constructor.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/resolved-options.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-iterator-breakType.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-iterator-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-iterator-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-iterator-ownPropertyDescriptor.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/segmenter/segment-iterator-position.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-iterator-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/segmenter/segment-iterator.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line-following-modes.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/segment-line.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-word-following.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-word-iterable.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-word-next.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-word-preceding.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment-word.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/segment.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/subclassing.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "status" : "SKIP",
+    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl/segmenter/supported-locale.js",
     "status" : "FAIL",
@@ -449,9 +361,25 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
+    "filePath" : "mjsunit/compiler/regress-445907.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
     "filePath" : "mjsunit/compiler/regress-801097.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/compiler/string-add-try-catch.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
+    "filePath" : "mjsunit/compiler/string-concat-deopt.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
+    "filePath" : "mjsunit/compiler/string-concat-try-catch.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
   }, {
     "filePath" : "mjsunit/console.js",
     "status" : "FAIL",
@@ -669,10 +597,6 @@
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/templates.js",
-    "status" : "FAIL",
-    "comment" : "Not up to date with the latest spec. Passes on V8 with --no-harmony-template-escapes only."
-  }, {
     "filePath" : "mjsunit/es6/throw-type-error-function-restrictions.js",
     "status" : "FAIL"
   }, {
@@ -799,9 +723,81 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
+    "filePath" : "mjsunit/harmony/import-from-compilation-errored.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/import-from-evaluation-errored.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
     "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/harmony/import-from-instantiation-errored.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-1.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-10.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-11.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-12.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-13.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-14.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15.js",
     "status" : "FAIL",
@@ -814,6 +810,70 @@
     "filePath" : "mjsunit/harmony/modules-import-17.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-2.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-3.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-4.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-5.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-6.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-7.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-8.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-9.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-meta.js",
     "status" : "FAIL",
@@ -1214,6 +1274,10 @@
     "filePath" : "mjsunit/regress/regress-319722-ArrayBuffer.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/regress/regress-336820.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
     "filePath" : "mjsunit/regress/regress-3404.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1272,9 +1336,17 @@
     "filePath" : "mjsunit/regress/regress-4970.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/regress/regress-500980.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
     "filePath" : "mjsunit/regress/regress-5085.js",
     "status" : "SKIP",
     "comment" : "obj instanceof Proxy throws (as Proxy.prototype is not an object) but the test expects it to be false"
+  }, {
+    "filePath" : "mjsunit/regress/regress-5404.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
   }, {
     "filePath" : "mjsunit/regress/regress-543994.js",
     "status" : "SKIP",
@@ -1359,15 +1431,16 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
+    "filePath" : "mjsunit/regress/regress-678917.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
+  }, {
     "filePath" : "mjsunit/regress/regress-681984.js",
     "status" : "SKIP",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests. Repeatedly broke gate, thus deactivating (GR-8177)"
   }, {
     "filePath" : "mjsunit/regress/regress-682349.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/regress/regress-689016.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-705934.js",
@@ -1377,6 +1450,22 @@
     "filePath" : "mjsunit/regress/regress-740694.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-744292.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
+  }, {
+    "filePath" : "mjsunit/regress/regress-746909.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
   }, {
     "filePath" : "mjsunit/regress/regress-752764.js",
     "status" : "SKIP",
@@ -1389,6 +1478,10 @@
     "filePath" : "mjsunit/regress/regress-7773.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-779407.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
   }, {
     "filePath" : "mjsunit/regress/regress-786573.js",
     "status" : "FAIL",
@@ -1405,6 +1498,14 @@
     "filePath" : "mjsunit/regress/regress-799813.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-800651.js",
+    "ecmaVersion" : {
+      "minVersion" : 11,
+      "maxVersion" : 11
+    },
+    "status" : "PASS",
+    "comment" : "ECMAScript 2020 feature"
   }, {
     "filePath" : "mjsunit/regress/regress-8033.js",
     "status" : "FAIL",
@@ -1450,12 +1551,12 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
+    "filePath" : "mjsunit/regress/regress-869735.js",
+    "status" : "FAIL",
+    "comment" : "Function calls that use spread operator do not have the number of arguments limited by a constant but by the stack-size."
+  }, {
     "filePath" : "mjsunit/regress/regress-88591.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/regress/regress-896326.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "mjsunit/regress/regress-897512.js",
     "status" : "FAIL",
@@ -1498,10 +1599,6 @@
     "filePath" : "mjsunit/regress/regress-crbug-150545.js",
     "status" : "SKIP",
     "comment" : "infinite loops caused by not compiling V8 style"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-160010.js",
-    "status" : "FAIL",
-    "comment" : "timeout unknown"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-352586.js",
     "runInIsolation" : true,
@@ -1701,6 +1798,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-906043.js",
+    "status" : "FAIL",
+    "comment" : "Function calls that use spread operator do not have the number of arguments limited by a constant but by the stack-size."
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-909614.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -1745,6 +1846,10 @@
     "filePath" : "mjsunit/regress/regress-v8-5009.js",
     "status" : "SKIP",
     "comment" : "version()"
+  }, {
+    "filePath" : "mjsunit/regress/regress-v8-6716.js",
+    "status" : "FAIL",
+    "comment" : "Function calls that use spread operator do not have the number of arguments limited by a constant but by the stack-size."
   }, {
     "filePath" : "mjsunit/regress/regress-v8-7682.js",
     "status" : "FAIL",

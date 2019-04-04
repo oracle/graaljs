@@ -268,7 +268,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         boolean elementTypeIsBig = factory == TypedArrayFactory.BigInt64Array || factory == TypedArrayFactory.BigUint64Array;
         boolean sourceTypeIsBig = sourceType instanceof TypedArray.TypedBigIntArray;
         if (elementTypeIsBig != sourceTypeIsBig) {
-            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+            throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
         }
 
         TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);

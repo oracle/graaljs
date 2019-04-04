@@ -44,11 +44,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -109,8 +108,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCanNotMixBigIntWithOtherTypes() {
-        return createTypeError("Cannot mix BigInt and other types, use explicit conversions.");
+    public static JSException createTypeErrorCannotMixBigIntWithOtherTypes(Node originatingNode) {
+        return createTypeError("Cannot mix BigInt and other types, use explicit conversions.", originatingNode);
     }
 
     @TruffleBoundary
@@ -119,8 +118,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCanNotConvertBigIntToNumber() {
-        return createTypeError("Cannot convert a BigInt value to a number.");
+    public static JSException createTypeErrorCannotConvertBigIntToNumber(Node originatingNode) {
+        return createTypeError("Cannot convert a BigInt value to a number.", originatingNode);
     }
 
     @TruffleBoundary
@@ -157,6 +156,11 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorMethodCalledOnNonObjectOrWrongType(String method) {
         return createTypeErrorFormat("Method %s called on a non-object or on a wrong type of object.", method);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorSegmenterExpected() {
+        return createTypeError("Segmenter object expected.");
     }
 
     @TruffleBoundary
@@ -579,13 +583,13 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorInteropException(TruffleObject receiver, InteropException cause, Message message, Node originatingNode) {
+    public static JSException createTypeErrorInteropException(Object receiver, InteropException cause, String message, Node originatingNode) {
         String reason = cause.getMessage();
         if (reason == null) {
             reason = cause.getClass().getSimpleName();
         }
         String receiverStr = "foreign object";
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
         if (env.isHostObject(receiver)) {
             try {
                 receiverStr = receiver.toString();
@@ -597,7 +601,17 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNotATruffleObject(Message message) {
+    public static JSException createTypeErrorUnboxException(Object receiver, InteropException cause, Node originatingNode) {
+        return createTypeErrorInteropException(receiver, cause, "UNBOX", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorUnsupportedInteropType(Object value) {
+        return Errors.createTypeError("type " + value.getClass().getSimpleName() + " not supported in JavaScript");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorNotATruffleObject(String message) {
         return Errors.createTypeError("cannot call " + message + " on a non-interop object");
     }
 

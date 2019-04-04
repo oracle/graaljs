@@ -3,8 +3,8 @@ suite = {
 
   "name" : "graal-js",
 
-  "version" : "1.0.0-rc14",
-  "release" : True,
+  "version" : "1.0.0-rc15",
+  "release" : False,
   "groupId" : "org.graalvm.js",
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "db79f81716886b7883370cd6ea1bbf5c42966fa5",
+           "version" : "8312de35e6d63e8be21634a3ffc177bdbc3092e2",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -208,6 +208,7 @@ suite = {
       ],
       "exports" : ["com.oracle.truffle.js.runtime.java.adapter"],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
+      "jacoco" : "include",
       "javaCompliance" : "1.8",
       "checkstyleVersion" : "8.8",
       "workingSets" : "Truffle,JavaScript",
@@ -218,6 +219,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.js"],
       "exports" : [],
+      "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -232,6 +234,7 @@ suite = {
         "com.oracle.js.parser",
       ],
       "exports" : ["com.oracle.truffle.js.lang to org.graalvm.truffle"],
+      "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -245,6 +248,7 @@ suite = {
         "sdk:GRAAL_SDK"
       ],
       "exports" : [],
+      "jacoco" : "include",
       "javaCompliance" : "1.8",
       "checkstyleVersion" : "8.8",
       "workingSets" : "Truffle,JavaScript",
@@ -257,6 +261,7 @@ suite = {
         "sdk:LAUNCHER_COMMON",
       ],
       "exports" : [],
+      "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
@@ -267,6 +272,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "exports" : [],
+      "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
@@ -277,6 +283,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "exports" : [],
+      "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
@@ -288,6 +295,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.js.parser",
       ],
+      "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
@@ -301,6 +309,7 @@ suite = {
         "com.oracle.truffle.js.codec",
         "truffle:TRUFFLE_API",
       ],
+      "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
@@ -311,6 +320,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "exports" : [],
+      "jacoco" : "include",
       "findbugs" : "false",
 #     checkstyle and findbugs turned off to keep the source aligned
 #     with the original nashorn version as much as possible
@@ -325,6 +335,7 @@ suite = {
         "regex:TREGEX",
       ],
       "exports" : [],
+      "jacoco" : "include",
       "findbugs" : "false",
 #     checkstyle and findbugs turned off to keep the source aligned
 #     with the original nashorn version as much as possible
@@ -340,6 +351,7 @@ suite = {
         "NETBEANS_PROFILER",
         "com.oracle.truffle.js.builtins",
       ],
+      "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",
@@ -381,6 +393,7 @@ suite = {
         "sdk:GRAAL_SDK",
       ],
       "exports" : ["com.oracle.truffle.js.scriptengine"],
+      "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,JavaScript",

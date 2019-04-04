@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,40 +41,49 @@
 package com.oracle.truffle.js.runtime.joni;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.regex.CompiledRegexObject;
-import com.oracle.truffle.regex.RegexExecRootNode;
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexObject;
-import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.runtime.joni.result.JoniNoMatchResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniRegexResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniSingleResult;
+import com.oracle.truffle.js.runtime.joni.result.JoniStartsEndsIndexArrayResult;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Matcher;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Region;
-import com.oracle.truffle.regex.result.RegexResult;
-import com.oracle.truffle.regex.result.SingleResult;
-import com.oracle.truffle.regex.result.StartsEndsIndexArrayResult;
 
 /**
  * These nodes are instantiated only once and used for all Joni-RegExp. Therefore, we do not gain
  * anything from using ConditionProfiles.
  */
-public abstract class JoniRegexExecRootNode extends RegexExecRootNode {
+public abstract class JoniRegexExecRootNode extends RootNode {
 
-    @Child private InputToStringNode toStringNode = InputToStringNode.create();
-
+    private final SourceSection pseudoSource;
     private final boolean sticky;
 
-    public JoniRegexExecRootNode(RegexLanguage language, RegexSource source, boolean sticky) {
-        super(language, source);
+    private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
+
+    public JoniRegexExecRootNode(TruffleLanguage<?> language, SourceSection pseudoSource, boolean sticky) {
+        super(language, SHARED_EMPTY_FRAMEDESCRIPTOR);
+        this.pseudoSource = pseudoSource;
         this.sticky = sticky;
     }
 
     @Override
-    public RegexResult execute(VirtualFrame frame, RegexObject regexObject, Object input, int fromIndex) {
-        Regex impl = ((JoniCompiledRegex) ((CompiledRegexObject) regexObject.getCompiledRegexObject()).getCompiledRegex()).getJoniRegex();
-        Matcher matcher = sticky ? match(impl, toStringNode.execute(input), fromIndex) : search(impl, toStringNode.execute(input), fromIndex);
+    public final JoniRegexResult execute(VirtualFrame frame) {
+        Object[] args = frame.getArguments();
+        assert args.length == 3;
 
-        return (matcher != null) ? getMatchResult(regexObject, input, matcher) : RegexResult.NO_MATCH;
+        JoniCompiledRegex compiledRegex = (JoniCompiledRegex) args[0];
+        String input = (String) args[1];
+        int fromIndex = (int) args[2];
+        Regex impl = compiledRegex.getJoniRegex();
+        Matcher matcher = sticky ? match(impl, input, fromIndex) : search(impl, input, fromIndex);
+
+        return (matcher != null) ? getMatchResult(matcher) : JoniNoMatchResult.getInstance();
     }
 
     @TruffleBoundary
@@ -95,38 +104,43 @@ public abstract class JoniRegexExecRootNode extends RegexExecRootNode {
         return isMatch ? matcher : null;
     }
 
-    protected abstract RegexResult getMatchResult(RegexObject regex, Object input, Matcher matcher);
-
     @Override
-    protected String getEngineLabel() {
-        return "joni";
+    public SourceSection getSourceSection() {
+        return pseudoSource;
     }
 
-    private static RegexSource createPseudoSource(String name) {
-        String pattern = "/[" + name + "]/";
-        return new RegexSource(pattern);
+    @Override
+    public String toString() {
+        return "joni regex " + pseudoSource;
+    }
+
+    protected abstract JoniRegexResult getMatchResult(Matcher matcher);
+
+    private static SourceSection createPseudoSource(String name) {
+        String patternSrc = "/[" + name + "]/";
+        return Source.newBuilder("regex", patternSrc, patternSrc).build().createSection(0, patternSrc.length());
     }
 
     public static class Simple extends JoniRegexExecRootNode {
-        public Simple(RegexLanguage language, boolean sticky) {
+        public Simple(TruffleLanguage<?> language, boolean sticky) {
             super(language, createPseudoSource("JONI_SINGLETON_ROOT_NODE_" + (sticky ? "STICKY_" : "") + "SIMPLE"), sticky);
         }
 
         @Override
-        protected RegexResult getMatchResult(RegexObject regex, Object input, Matcher matcher) {
-            return new SingleResult(regex, input, matcher.getBegin(), matcher.getEnd());
+        protected JoniRegexResult getMatchResult(Matcher matcher) {
+            return new JoniSingleResult(matcher.getBegin(), matcher.getEnd());
         }
     }
 
     public static class Groups extends JoniRegexExecRootNode {
-        public Groups(RegexLanguage language, boolean sticky) {
+        public Groups(TruffleLanguage<?> language, boolean sticky) {
             super(language, createPseudoSource("JONI_SINGLETON_ROOT_NODE_" + (sticky ? "STICKY_" : "") + "GROUPS"), sticky);
         }
 
         @Override
-        protected RegexResult getMatchResult(RegexObject regex, Object input, Matcher matcher) {
+        protected JoniRegexResult getMatchResult(Matcher matcher) {
             Region reg = matcher.getRegion();
-            return new StartsEndsIndexArrayResult(regex, input, reg.beg, reg.end);
+            return new JoniStartsEndsIndexArrayResult(reg.beg, reg.end);
         }
     }
 }

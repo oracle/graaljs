@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,14 +38,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.interop;
+package com.oracle.truffle.js.runtime.joni;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropAsyncFunction;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.runtime.joni.result.JoniRegexResult;
 
-public final class InteropAsyncFunctionForeign extends InteropFunctionForeign {
-    public static final ForeignAccess ACCESS = ForeignAccess.create(InteropAsyncFunction.class, new InteropAsyncFunctionForeign());
+@ReportPolymorphism
+@GenerateUncached
+public abstract class JoniCompiledRegexDispatchNode extends Node {
 
-    private InteropAsyncFunctionForeign() {
+    public abstract JoniRegexResult execute(JoniCompiledRegex receiver, String input, int fromIndex);
+
+    @Specialization(guards = "receiver == cachedReceiver", limit = "4")
+    public static JoniRegexResult doCached(JoniCompiledRegex receiver, String input, int fromIndex,
+                    @SuppressWarnings("unused") @Cached("receiver") JoniCompiledRegex cachedReceiver,
+                    @Cached("create(cachedReceiver.getRegexCallTarget())") DirectCallNode directCallNode) {
+        return (JoniRegexResult) directCallNode.call(new Object[]{receiver, input, fromIndex});
+    }
+
+    @Specialization(replaces = "doCached")
+    public static JoniRegexResult doGeneric(JoniCompiledRegex receiver, String input, int fromIndex,
+                    @Cached IndirectCallNode indirectCallNode) {
+        return (JoniRegexResult) indirectCallNode.call(receiver.getRegexCallTarget(), new Object[]{receiver, input, fromIndex});
     }
 }

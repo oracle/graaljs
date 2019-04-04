@@ -47,33 +47,33 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = JSMetaObject.class)
+@ExportLibrary(InteropLibrary.class)
 public final class JSMetaObject implements TruffleObject {
     private final String type;
     private final String subtype;
     private final String className;
-    private final String description;
     private final Env env;
     private EconomicMap<String, String> map;
 
-    public JSMetaObject(String type, String subtype, String className, String description, TruffleLanguage.Env env) {
+    public JSMetaObject(String type, String subtype, String className, TruffleLanguage.Env env) {
         this.type = Objects.requireNonNull(type);
         this.subtype = subtype;
         this.className = className;
-        this.description = description;
         this.env = env;
     }
 
     public String getType() {
         return type;
+    }
+
+    public String getSubtype() {
+        return subtype;
     }
 
     public String getClassName() {
@@ -90,9 +90,6 @@ public final class JSMetaObject implements TruffleObject {
             if (className != null) {
                 map.put("className", className);
             }
-            if (description != null) {
-                map.put("description", description);
-            }
         }
         return map;
     }
@@ -101,41 +98,36 @@ public final class JSMetaObject implements TruffleObject {
         return object instanceof JSMetaObject;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return JSMetaObjectForeign.ACCESS;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
     }
 
-    @Resolve(message = "READ")
-    abstract static class ReadNode extends Node {
-        @TruffleBoundary
-        static Object access(JSMetaObject meta, String key) {
-            String value = meta.getMap().get(key);
-            if (value == null) {
-                throw UnknownIdentifierException.raise(key);
-            }
-            return value;
+    @ExportMessage
+    @TruffleBoundary
+    Object readMember(String key) throws UnknownIdentifierException {
+        String value = getMap().get(key);
+        if (value == null) {
+            throw UnknownIdentifierException.create(key);
         }
+        return value;
     }
 
-    @Resolve(message = "KEYS")
-    abstract static class KeysNode extends Node {
-        @TruffleBoundary
-        static Object access(JSMetaObject meta) {
-            String[] keys = new String[meta.getMap().size()];
-            int i = 0;
-            for (String key : meta.getMap().getKeys()) {
-                keys[i++] = key;
-            }
-            return meta.env.asGuestValue(keys);
+    @ExportMessage
+    @TruffleBoundary
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        String[] keys = new String[getMap().size()];
+        int i = 0;
+        for (String key : getMap().getKeys()) {
+            keys[i++] = key;
         }
+        return env.asGuestValue(keys);
     }
 
-    @Resolve(message = "KEY_INFO")
-    abstract static class KeyInfoNode extends Node {
-        @TruffleBoundary
-        static int access(JSMetaObject meta, String key) {
-            return meta.getMap().containsKey(key) ? KeyInfo.READABLE : KeyInfo.NONE;
-        }
+    @ExportMessage
+    @TruffleBoundary
+    boolean isMemberReadable(String key) {
+        return getMap().containsKey(key);
     }
 }

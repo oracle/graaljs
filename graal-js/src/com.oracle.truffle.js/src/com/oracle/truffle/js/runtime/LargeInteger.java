@@ -42,15 +42,20 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * This type represents an integer value, useful for all ranges up to JSRuntime.MAX_SAFE_INTEGER.
  */
+@ExportLibrary(InteropLibrary.class)
 @ValueType
 public final class LargeInteger extends Number implements Comparable<LargeInteger>, TruffleObject {
-    private final long value;
+    final long value;
 
     private LargeInteger(long value) {
         this.value = value;
@@ -142,8 +147,70 @@ public final class LargeInteger extends Number implements Comparable<LargeIntege
         return object instanceof LargeInteger;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LargeIntegerMessageResolutionForeign.ACCESS;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isNumber() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean fitsInLong() {
+        return true;
+    }
+
+    @ExportMessage
+    long asLong() {
+        return longValue();
+    }
+
+    @ExportMessage
+    boolean fitsInInt(@CachedLibrary("this.value") InteropLibrary numbers) {
+        return numbers.fitsInInt(value);
+    }
+
+    @ExportMessage
+    int asInt(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
+        return numbers.asInt(value);
+    }
+
+    @ExportMessage
+    boolean fitsInDouble(@CachedLibrary("this.value") InteropLibrary numbers) {
+        return numbers.fitsInDouble(value);
+    }
+
+    @ExportMessage
+    double asDouble(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
+        return numbers.asDouble(value);
+    }
+
+    @ExportMessage
+    boolean fitsInByte(@CachedLibrary("this.value") InteropLibrary numbers) {
+        return numbers.fitsInByte(value);
+    }
+
+    @ExportMessage
+    byte asByte(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
+        return numbers.asByte(value);
+    }
+
+    @ExportMessage
+    boolean fitsInShort(@CachedLibrary("this.value") InteropLibrary numbers) {
+        return numbers.fitsInShort(value);
+    }
+
+    @ExportMessage
+    short asShort(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
+        return numbers.asShort(value);
+    }
+
+    @ExportMessage
+    boolean fitsInFloat(@CachedLibrary("this.value") InteropLibrary numbers) {
+        return numbers.fitsInFloat(value);
+    }
+
+    @ExportMessage
+    float asFloat(@CachedLibrary("this.value") InteropLibrary numbers) throws UnsupportedMessageException {
+        return numbers.asFloat(value);
     }
 }

@@ -46,20 +46,22 @@ import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = JavaSuperAdapter.class)
+@ExportLibrary(InteropLibrary.class)
 public final class JavaSuperAdapter implements TruffleObject {
-    private final Object adapter;
+    final Object adapter;
 
     JavaSuperAdapter(Object adapter) {
         this.adapter = Objects.requireNonNull(adapter);
@@ -70,17 +72,18 @@ public final class JavaSuperAdapter implements TruffleObject {
         return adapter;
     }
 
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof JavaSuperAdapter;
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return JavaSuperAdapterForeign.ACCESS;
-    }
-
-    private static final class NameCache {
+    static final class NameCache {
         @CompilationFinal private Pair<String, String> cachedNameToSuper;
+        private static final NameCache UNCACHED = new NameCache(true);
+
+        NameCache() {
+        }
+
+        NameCache(boolean uncached) {
+            if (uncached) {
+                this.cachedNameToSuper = Pair.empty();
+            }
+        }
 
         String getSuperMethodName(String name) {
             if (cachedNameToSuper == null) {
@@ -100,46 +103,58 @@ public final class JavaSuperAdapter implements TruffleObject {
                 return JavaAdapterFactory.getSuperMethodName(name);
             }
         }
-    }
 
-    @Resolve(message = "READ")
-    abstract static class ReadNode extends Node {
-        @Child private Node readNode = Message.READ.createNode();
-        private final NameCache cache = new NameCache();
+        static NameCache create() {
+            return new NameCache();
+        }
 
-        Object access(JavaSuperAdapter superAdapter, String name) {
-            String superMethodName = cache.getSuperMethodName(name);
-            try {
-                return ForeignAccess.sendRead(readNode, (TruffleObject) superAdapter.getAdapter(), superMethodName);
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                throw e.raise();
-            }
+        static NameCache getUncached() {
+            return UNCACHED;
         }
     }
 
-    @Resolve(message = "INVOKE")
-    abstract static class InvokeNode extends Node {
-        @Child private Node invokeNode = Message.INVOKE.createNode();
-        private final NameCache cache = new NameCache();
-
-        Object access(JavaSuperAdapter superAdapter, String name, Object[] args) {
-            String superMethodName = cache.getSuperMethodName(name);
-            try {
-                return ForeignAccess.sendInvoke(invokeNode, (TruffleObject) superAdapter.getAdapter(), superMethodName, args);
-            } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
-                throw e.raise();
-            }
-        }
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
     }
 
-    @Resolve(message = "KEY_INFO")
-    abstract static class KeyInfoNode extends Node {
-        @Child private Node keyInfo = Message.KEY_INFO.createNode();
-        private final NameCache cache = new NameCache();
+    @ExportMessage
+    Object readMember(String name,
+                    @Shared("cache") @Cached NameCache cache,
+                    @CachedLibrary("this.adapter") InteropLibrary interop) throws UnsupportedMessageException, UnknownIdentifierException {
+        String superMethodName = cache.getSuperMethodName(name);
+        return interop.readMember(getAdapter(), superMethodName);
+    }
 
-        int access(JavaSuperAdapter superAdapter, String name) {
-            String superMethodName = cache.getSuperMethodName(name);
-            return ForeignAccess.sendKeyInfo(keyInfo, (TruffleObject) superAdapter.getAdapter(), superMethodName);
-        }
+    @ExportMessage
+    Object invokeMember(String name, Object[] args,
+                    @Shared("cache") @Cached NameCache cache,
+                    @CachedLibrary("this.adapter") InteropLibrary interop) throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        String superMethodName = cache.getSuperMethodName(name);
+        return interop.invokeMember(getAdapter(), superMethodName, args);
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(String name,
+                    @Shared("cache") @Cached NameCache cache,
+                    @CachedLibrary("this.adapter") InteropLibrary interop) {
+        String superMethodName = cache.getSuperMethodName(name);
+        return interop.isMemberReadable(getAdapter(), superMethodName);
+    }
+
+    @ExportMessage
+    boolean isMemberInvocable(String name,
+                    @Shared("cache") @Cached NameCache cache,
+                    @CachedLibrary("this.adapter") InteropLibrary interop) {
+        String superMethodName = cache.getSuperMethodName(name);
+        return interop.isMemberInvocable(getAdapter(), superMethodName);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    @TruffleBoundary
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }

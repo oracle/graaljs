@@ -835,13 +835,14 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     slot[v8::internal::Internals::kExternalMemoryOffset / v8::internal::kApiPointerSize] = (void*) 0;
     slot[v8::internal::Internals::kExternalMemoryLimitOffset / v8::internal::kApiPointerSize] = (void*) (64*1024*1024); // v8::internal::kExternalAllocationSoftLimit
 
+    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (this));
+
     // Undefined
     JNI_CALL(jobject, java_undefined, this, GraalAccessMethod::undefined_instance, Object);
     if (java_undefined == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.undefinedInstance() failed!\n")
     GraalMissingPrimitive* undefined_local = new GraalMissingPrimitive(this, java_undefined, true);
     undefined_instance_ = reinterpret_cast<GraalPrimitive*> (undefined_local->Copy(true));
     slot[root_offset + v8::internal::Internals::kUndefinedValueRootIndex] = undefined_instance_;
-    delete undefined_local;
 
     // Null
     JNI_CALL(jobject, java_null, this, GraalAccessMethod::null_instance, Object);
@@ -849,26 +850,22 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     GraalMissingPrimitive* null_local = new GraalMissingPrimitive(this, java_null, false);
     null_instance_ = reinterpret_cast<GraalPrimitive*> (null_local->Copy(true));
     slot[root_offset + v8::internal::Internals::kNullValueRootIndex] = null_instance_;
-    delete null_local;
 
     // True
     GraalBoolean* true_local = new GraalBoolean(this, true);
     true_instance_ = reinterpret_cast<GraalBoolean*> (true_local->Copy(true));
     slot[root_offset + v8::internal::Internals::kTrueValueRootIndex] = true_instance_;
-    delete true_local;
 
     // False
     GraalBoolean* false_local = new GraalBoolean(this, false);
     false_instance_ = reinterpret_cast<GraalBoolean*> (false_local->Copy(true));
     slot[root_offset + v8::internal::Internals::kFalseValueRootIndex] = false_instance_;
-    delete false_local;
 
     // EmptyString
     const jchar empty_string = 0;
     GraalString* empty_string_local = new GraalString(this, env->NewString(&empty_string, 0));
     GraalString* empty_string_global = reinterpret_cast<GraalString*> (empty_string_local->Copy(true));
     slot[root_offset + v8::internal::Internals::kEmptyStringRootIndex] = empty_string_global;
-    delete empty_string_local;
 
     // int32 placeholder
     JNI_CALL(jobject, java_int32_placeholder, this, GraalAccessMethod::isolate_get_int_placeholder, Object);
@@ -896,7 +893,6 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     if (internal_field_count_key == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.isolateCreateInternalFieldCountKey() failed!\n")
     GraalValue* internal_field_count_key_local = new GraalObject(this, internal_field_count_key);
     internal_field_count_key_ = reinterpret_cast<v8::Value*> (internal_field_count_key_local->Copy(true));
-    delete internal_field_count_key_local;
 
     sending_message_ = false;
     abort_on_uncaught_exception_callback_ = nullptr;
@@ -1007,7 +1003,6 @@ v8::Local<v8::Value> GraalIsolate::InternalFieldKey(int index) {
         JNI_CALL(jobject, key, this, GraalAccessMethod::isolate_create_internal_field_key, Object, (jint) index);
         GraalValue* key_local = new GraalObject(this, key);
         v8::Value* key_global = reinterpret_cast<v8::Value*> (key_local->Copy(true));
-        delete key_local;
         internal_field_keys[index] = key_global;
     }
     return internal_field_keys[index];
@@ -1108,7 +1103,6 @@ GraalNumber* GraalIsolate::CachedNumber(int value) {
         if (number_cache_[index] == nullptr) {
             GraalNumber* graal_number = GraalNumber::NewNotCached(this, value);
             number_cache_[index] = reinterpret_cast<GraalNumber*> (graal_number->Copy(true));
-            delete graal_number;
         }
         return number_cache_[index];
     }

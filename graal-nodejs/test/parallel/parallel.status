@@ -29,9 +29,6 @@ test-vm-preserves-property                                         : FAIL
 # reported through Isolate::AdjustAmountOfExternalAllocatedMemory
 test-memory-usage                                                  : FAIL
 
-# different error message ("illegal repeat count" x "Invalid string length")
-test-buffer-constants                                              : FAIL
-
 # different error message ("Expected ; but found y" x "Unexpected identifier")
 test-repl-pretty-custom-stack                                      : FAIL
 test-repl-pretty-stack                                             : FAIL

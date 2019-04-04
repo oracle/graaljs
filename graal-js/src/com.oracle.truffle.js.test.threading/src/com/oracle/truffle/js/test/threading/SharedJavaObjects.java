@@ -45,6 +45,7 @@ import static org.junit.Assert.assertEquals;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
 public class SharedJavaObjects {
@@ -54,8 +55,8 @@ public class SharedJavaObjects {
      */
     @Test(timeout = 30000)
     public void valueInTwoThreads() throws InterruptedException {
-        final Context cx1 = Context.create("js");
-        final Context cx2 = Context.create("js");
+        final Context cx1 = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).build();
+        final Context cx2 = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).build();
         final AtomicInteger counter = new AtomicInteger(200);
 
         try {

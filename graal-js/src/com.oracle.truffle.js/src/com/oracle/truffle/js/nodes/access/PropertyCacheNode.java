@@ -359,10 +359,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            if (JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj)) {
-                return true;
-            }
-            return false;
+            return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
         }
 
         @Override
@@ -408,7 +405,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             Shape depthShape = shape;
             DynamicObject depthProto = thisObj;
             for (int i = 0; i < depth; i++) {
-                Assumption stablePrototypeAssumption = depth == 0 ? null : JSShape.getPrototypeAssumption(depthShape);
+                Assumption stablePrototypeAssumption = i == 0 ? null : JSShape.getPrototypeAssumption(depthShape);
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
                 shapeCheckNodes[i] = new AssumptionShapeCheckNode(depthShape, key, context, true, stablePrototypeAssumption);
@@ -418,10 +415,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            if (!(JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj))) {
-                return false;
-            }
-            return true;
+            return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj);
         }
 
         @Override
@@ -527,10 +521,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         public boolean accept(Object thisObj) {
             DynamicObject expectedObj = this.expectedObjectRef.get();
-            if (thisObj != expectedObj) {
-                return false;
-            }
-            return true;
+            return thisObj == expectedObj;
         }
 
         @Override
@@ -777,17 +768,23 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean accept(Object thisObj) {
-            if (!(JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj))) {
+            if (!JSObject.isDynamicObject(thisObj)) {
                 return false;
             }
             DynamicObject current = (DynamicObject) thisObj;
+            boolean result = getShape().check(current);
+            if (!result) {
+                return false;
+            }
             for (int i = 0; i < shapeCheckNodes.length; i++) {
                 current = getPrototypeNodes[i].executeDynamicObject(current);
-                if (!shapeCheckNodes[i].accept(current)) {
+                result = shapeCheckNodes[i].accept(current);
+                if (!result) {
                     return false;
                 }
             }
-            return true;
+            // Return the shape check of the prototype we're going to access.
+            return result;
         }
 
         @ExplodeLoop
@@ -842,7 +839,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            return JSObject.isDynamicObject(thisObj) && getShape().check((DynamicObject) thisObj) && protoShapeCheck.accept(getPrototypeNode.executeDynamicObject((DynamicObject) thisObj));
+            if (JSObject.isDynamicObject(thisObj)) {
+                DynamicObject jsobj = (DynamicObject) thisObj;
+                if (getShape().check(jsobj)) {
+                    // Return the shape check of the prototype we're going to access.
+                    return protoShapeCheck.accept(getPrototypeNode.executeDynamicObject(jsobj));
+                }
+            }
+            return false;
         }
 
         @Override
@@ -958,15 +962,18 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         public boolean accept(Object thisObj) {
             DynamicObject current = jsclass.getIntrinsicDefaultProto(context.getRealm());
+            boolean result = true;
             for (int i = 0; i < shapeCheckNodes.length; i++) {
-                if (!shapeCheckNodes[i].accept(current)) {
+                result = shapeCheckNodes[i].accept(current);
+                if (!result) {
                     return false;
                 }
                 if (i < shapeCheckNodes.length - 1) {
                     current = getPrototypeNodes[i].executeDynamicObject(current);
                 }
             }
-            return true;
+            // Return the shape check of the prototype we're going to access.
+            return result;
         }
 
         @ExplodeLoop
@@ -1589,8 +1596,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         assert JSRuntime.isString(key);
         String origKey = key instanceof String ? (String) key : ((JSLazyString) key).toString();
         if (origKey.length() > 0 && Character.isLetter(origKey.charAt(0))) {
-            String accessorKey = getset + origKey.substring(0, 1).toUpperCase() + origKey.substring(1);
-            return accessorKey;
+            return getset + origKey.substring(0, 1).toUpperCase() + origKey.substring(1);
         }
         return null;
     }

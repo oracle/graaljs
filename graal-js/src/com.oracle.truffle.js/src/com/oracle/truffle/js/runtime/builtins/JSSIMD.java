@@ -156,8 +156,7 @@ public final class JSSIMD extends JSBuiltinObject {
         Object[] values = new Object[simdType.getNumberOfElements()];
         Arrays.fill(values, Null.instance);
         SIMDTypeFactory<? extends SIMDType> factory = simdType.getFactory();
-        DynamicObject simdObject = JSObject.create(context, context.getSIMDTypeFactory(factory), simdType, values);
-        return simdObject;
+        return JSObject.create(context, context.getSIMDTypeFactory(factory), simdType, values);
     }
 
     public static JSConstructor createConstructor(JSRealm realm, SIMDTypeFactory<? extends SIMDType> factory, JSConstructor taConstructor) {

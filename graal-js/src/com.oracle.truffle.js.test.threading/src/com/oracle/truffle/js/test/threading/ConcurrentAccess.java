@@ -49,6 +49,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
@@ -97,7 +98,7 @@ public class ConcurrentAccess {
     public void javaInteropThread() throws InterruptedException {
         final CountDownLatch endGate = new CountDownLatch(1);
         final AtomicReference<Throwable> exception = new AtomicReference<>(null);
-        final Context context = Context.newBuilder("js").allowHostAccess(true).build();
+        final Context context = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true).build();
 
         context.getBindings("js").putMember("onThreadException", new Thread.UncaughtExceptionHandler() {
 

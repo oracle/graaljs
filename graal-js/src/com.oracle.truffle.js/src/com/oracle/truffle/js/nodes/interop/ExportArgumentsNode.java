@@ -43,20 +43,18 @@ package com.oracle.truffle.js.nodes.interop;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class ExportArgumentsNode extends JavaScriptBaseNode {
     public abstract Object[] export(Object[] extractedUserArguments);
 
-    public static ExportArgumentsNode create(int expectedLength, AbstractJavaScriptLanguage language) {
+    public static ExportArgumentsNode create(int expectedLength) {
         final class VariableLength extends ExportArgumentsNode {
-            @Child private ExportValueNode exportNode = ExportValueNode.create(language);
+            @Child private ExportValueNode exportNode = ExportValueNode.create();
 
             @Override
             public Object[] export(Object[] extractedUserArguments) {
                 for (int i = 0; i < extractedUserArguments.length; i++) {
-                    extractedUserArguments[i] = exportNode.executeWithTarget(extractedUserArguments[i], Undefined.instance);
+                    extractedUserArguments[i] = exportNode.execute(extractedUserArguments[i]);
                 }
                 return extractedUserArguments;
             }
@@ -68,7 +66,7 @@ public abstract class ExportArgumentsNode extends JavaScriptBaseNode {
             FixedLength(int userArgumentCount) {
                 ExportValueNode[] exportNodeArray = new ExportValueNode[userArgumentCount];
                 for (int i = 0; i < exportNodeArray.length; i++) {
-                    exportNodeArray[i] = ExportValueNode.create(language);
+                    exportNodeArray[i] = ExportValueNode.create();
                 }
                 this.exportNodes = exportNodeArray;
             }
@@ -78,7 +76,7 @@ public abstract class ExportArgumentsNode extends JavaScriptBaseNode {
             public Object[] export(Object[] extractedUserArguments) {
                 if (extractedUserArguments.length == exportNodes.length) {
                     for (int i = 0; i < exportNodes.length; i++) {
-                        extractedUserArguments[i] = exportNodes[i].executeWithTarget(extractedUserArguments[i], Undefined.instance);
+                        extractedUserArguments[i] = exportNodes[i].execute(extractedUserArguments[i]);
                     }
                     return extractedUserArguments;
                 } else {

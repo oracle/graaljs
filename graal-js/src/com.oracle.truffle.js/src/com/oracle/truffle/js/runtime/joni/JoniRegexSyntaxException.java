@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,26 +38,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.runtime.joni;
 
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-@MessageResolution(receiverType = LargeInteger.class)
-public class LargeIntegerMessageResolution {
+public class JoniRegexSyntaxException extends RuntimeException implements TruffleException {
 
-    @Resolve(message = "IS_BOXED")
-    public abstract static class IsBoxedObject extends Node {
-        public Object access(@SuppressWarnings("unused") LargeInteger li) {
-            return true;
-        }
+    private static final String template = "Invalid regular expression: /%s/%s: %s";
+    private static final String templateNoFlags = "Invalid regular expression: %s: %s";
+    private static final String templatePosition = "Invalid regular expression: /%s/%s:%d: %s";
+
+    public JoniRegexSyntaxException(String msg) {
+        super(msg);
     }
 
-    @Resolve(message = "UNBOX")
-    public abstract static class UnboxObject extends Node {
-        public Object access(LargeInteger li) {
-            return li.doubleValue();
-        }
+    @TruffleBoundary
+    public JoniRegexSyntaxException(String pattern, String msg) {
+        super(String.format(templateNoFlags, pattern, msg));
+    }
+
+    @TruffleBoundary
+    public JoniRegexSyntaxException(String pattern, String flags, String msg) {
+        super(String.format(template, pattern, flags, msg));
+    }
+
+    @TruffleBoundary
+    public JoniRegexSyntaxException(String pattern, String flags, String msg, int position) {
+        super(String.format(templatePosition, pattern, flags, position, msg));
+    }
+
+    @TruffleBoundary
+    public JoniRegexSyntaxException(String pattern, String flags, String msg, Throwable ex) {
+        super(String.format(template, pattern, flags, msg), ex);
+    }
+
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public Node getLocation() {
+        return null;
+    }
+
+    @Override
+    public boolean isSyntaxError() {
+        return true;
     }
 }

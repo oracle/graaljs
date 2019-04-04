@@ -56,6 +56,8 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import javax.script.Bindings;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -68,14 +70,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -137,9 +134,9 @@ import com.oracle.truffle.js.runtime.builtins.JSURLEncoder;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
@@ -558,6 +555,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Child private JSLoadNode loadNode;
 
+        protected static final String EVAL_OBJ_FILE_NAME = "name";
+        protected static final String EVAL_OBJ_SOURCE = "script";
+
         protected final Object runImpl(JSRealm realm, Source source) {
             if (loadNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -580,6 +580,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary
         protected final Source sourceFromURL(URL url) {
+            assert getContext().isOptionNashornCompatibilityMode();
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, url).name(url.getFile()).build();
             } catch (IOException | SecurityException e) {
@@ -1135,9 +1136,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         private static final String NASHORN_PARSER_JS = "nashorn:parser.js";
         private static final String NASHORN_MOZILLA_COMPAT_JS = "nashorn:mozilla_compat.js";
 
-        private static final String EVAL_OBJ_FILE_NAME = "name";
-        private static final String EVAL_OBJ_SOURCE = "script";
-
         @Child private RealmNode realmNode;
 
         public JSGlobalLoadNode(JSContext context, JSBuiltin builtin) {
@@ -1155,7 +1153,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary(transferToInterpreterOnException = false)
         private Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;
-            if (path.indexOf(':') != -1) {
+            if (realm.getContext().isOptionNashornCompatibilityMode() && path.indexOf(':') != -1) {
                 source = sourceFromURI(path);
                 if (source != null) {
                     return source;
@@ -1182,23 +1180,27 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         protected Object loadURL(JSRealm realm, URL url) {
+            assert realm.getContext().isOptionNashornCompatibilityMode();
             return runImpl(realm, sourceFromURL(url));
         }
 
         @Specialization(guards = "isForeignObject(scriptObj)")
         protected Object loadTruffleObject(VirtualFrame frame, TruffleObject scriptObj,
-                        @Cached("createUnbox()") Node unboxNode) {
+                        @CachedLibrary(limit = "3") InteropLibrary interop) {
             JSRealm realm = realmNode.execute(frame);
             TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(scriptObj)) {
                 Object hostObject = env.asHostObject(scriptObj);
                 if (hostObject instanceof File) {
                     return loadFile(realm, (File) hostObject);
-                } else if (hostObject instanceof URL) {
+                } else if (realm.getContext().isOptionNashornCompatibilityMode() && hostObject instanceof URL) {
                     return loadURL(realm, (URL) hostObject);
                 }
             }
-            Object unboxed = JSInteropNodeUtil.unbox(scriptObj, unboxNode);
+            Object unboxed = JSInteropUtil.toPrimitiveOrDefault(scriptObj, Null.instance, interop, this);
+            if (unboxed == Null.instance) {
+                throw cannotLoadScript(scriptObj);
+            }
             String stringPath = toString1(unboxed);
             return loadString(frame, stringPath);
         }
@@ -1227,11 +1229,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromURI(String resource) {
-            if (JSTruffleOptions.SubstrateVM) {
+            if (JSTruffleOptions.SubstrateVM || !getContext().isOptionNashornCompatibilityMode()) {
                 return null;
             }
-            if (getContext().isOptionNashornCompatibilityMode() &&
-                            (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {
+            if ((resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {
                 return sourceFromResourceURL(resource);
             }
 
@@ -1314,8 +1315,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         protected Object load(DynamicObject from, Object[] args,
                         @Cached("create()") JSToStringNode toString2Node) {
-            String name = toString1(JSObject.get(from, "name"));
-            String script = toString2Node.executeString(JSObject.get(from, "script"));
+            String name = toString1(JSObject.get(from, EVAL_OBJ_FILE_NAME));
+            String script = toString2Node.executeString(JSObject.get(from, EVAL_OBJ_SOURCE));
             return loadIntl(name, script, args);
         }
 
@@ -1505,58 +1506,36 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     abstract static class JSGlobalImportScriptEngineGlobalBindingsNode extends JSBuiltinNode {
 
-        @Child private Node invokeKeySetNode = Message.INVOKE.createNode();
-        @Child private Node invokeIteratorNode = Message.INVOKE.createNode();
-        @Child private Node invokeHasNextNode = Message.INVOKE.createNode();
-        @Child private Node invokeNextNode = Message.INVOKE.createNode();
-
         JSGlobalImportScriptEngineGlobalBindingsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
         final Object importGlobalContext(TruffleObject globalContextBindings) {
-            try {
-                DynamicObject globalObject = getContext().getRealm().getGlobalObject();
-                Object keys = ForeignAccess.sendInvoke(invokeKeySetNode, globalContextBindings, "keySet");
-                if (!(keys instanceof TruffleObject)) {
-                    throw Errors.shouldNotReachHere();
-                }
-                Object iterator = ForeignAccess.sendInvoke(invokeIteratorNode, (TruffleObject) keys, "iterator");
-                if (!(iterator instanceof TruffleObject)) {
-                    throw Errors.shouldNotReachHere();
-                }
-                while (hasNext((TruffleObject) iterator)) {
-                    Object key = ForeignAccess.sendInvoke(invokeNextNode, (TruffleObject) iterator, "next");
-                    if (!(key instanceof String)) {
-                        throw Errors.shouldNotReachHere();
-                    }
-                    if (!globalObject.getShape().hasProperty(key) && !JSObject.getPrototype(globalObject).getShape().hasProperty(key)) {
-                        JSObjectUtil.defineProxyProperty(globalObject, key, new ScriptEngineGlobalScopeBindingsPropertyProxy(globalContextBindings, key), JSAttributes.getDefault());
-                    }
-                }
-            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
-                throw Errors.shouldNotReachHere();
-            }
-            return null;
+            doImport(globalContextBindings);
+            return Undefined.instance;
         }
 
-        private boolean hasNext(TruffleObject iterator) throws UnsupportedTypeException, ArityException, UnknownIdentifierException, UnsupportedMessageException {
-            Object hasNext = ForeignAccess.sendInvoke(invokeHasNextNode, iterator, "hasNext");
-            if (!(hasNext instanceof Boolean)) {
-                throw Errors.shouldNotReachHere();
+        @TruffleBoundary
+        private void doImport(TruffleObject globalContextBindings) {
+            DynamicObject globalObject = getContext().getRealm().getGlobalObject();
+            Bindings bindings = (Bindings) getContext().getRealm().getEnv().asHostObject(globalContextBindings);
+            for (Map.Entry<String, Object> entry : bindings.entrySet()) {
+                String key = entry.getKey();
+                if (!globalObject.getShape().hasProperty(key) && !JSObject.getPrototype(globalObject).getShape().hasProperty(key)) {
+                    JSObjectUtil.defineProxyProperty(globalObject, key, new ScriptEngineGlobalScopeBindingsPropertyProxy(getContext(), bindings, key), JSAttributes.getDefault());
+                }
             }
-            return (boolean) hasNext;
         }
 
         private static class ScriptEngineGlobalScopeBindingsPropertyProxy implements PropertyProxy {
 
-            private static final Node SLOW_INVOKE_NODE = Message.INVOKE.createNode();
-            private static final Node SLOW_IS_NULL_NODE = Message.IS_NULL.createNode();
-            private final TruffleObject globalContextBindings;
-            private final Object key;
+            private final JSContext context;
+            private final Bindings globalContextBindings;
+            private final String key;
 
-            ScriptEngineGlobalScopeBindingsPropertyProxy(TruffleObject globalContextBindings, Object key) {
+            ScriptEngineGlobalScopeBindingsPropertyProxy(JSContext context, Bindings globalContextBindings, String key) {
+                this.context = context;
                 this.globalContextBindings = globalContextBindings;
                 this.key = key;
             }
@@ -1564,15 +1543,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             @Override
             @TruffleBoundary
             public Object get(DynamicObject store) {
-                try {
-                    Object value = ForeignAccess.sendInvoke(SLOW_INVOKE_NODE, globalContextBindings, "get", key);
-                    if (value instanceof TruffleObject && ForeignAccess.sendIsNull(SLOW_IS_NULL_NODE, (TruffleObject) value)) {
-                        return Undefined.instance;
-                    }
-                    return value;
-                } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
-                    throw Errors.shouldNotReachHere();
+                Object value = globalContextBindings.get(key);
+                if (value == null) {
+                    return Undefined.instance;
                 }
+                return JSRuntime.importValue(context.getRealm().getEnv().asGuestValue(value));
             }
 
             @Override

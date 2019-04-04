@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,14 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.interop;
+package com.oracle.truffle.js.runtime.joni.result;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
+public final class JoniStartsEndsIndexArrayResult extends JoniRegexResult {
 
-public final class InteropBoundFunctionForeign extends InteropFunctionForeign {
-    public static final ForeignAccess ACCESS = ForeignAccess.create(InteropBoundFunction.class, new InteropBoundFunctionForeign());
+    private final int[] starts;
+    private final int[] ends;
 
-    private InteropBoundFunctionForeign() {
+    public JoniStartsEndsIndexArrayResult(int[] starts, int[] ends) {
+        this.starts = starts;
+        this.ends = ends;
+    }
+
+    public int[] getStarts() {
+        return starts;
+    }
+
+    public int[] getEnds() {
+        return ends;
     }
 }

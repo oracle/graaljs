@@ -236,7 +236,7 @@ public final class TestFile {
     public static final class EcmaVersion {
 
         public static final int MIN_VERSION = 5;
-        public static final int MAX_VERSION = JSTruffleOptions.MaxECMAScriptVersion;
+        public static final int MAX_VERSION = JSTruffleOptions.LatestECMAScriptVersion;
 
         private final int[] allVersions;
         private final int[] versions;
@@ -367,29 +367,23 @@ public final class TestFile {
      */
     public static final class Result {
 
-        public static final Result PASSED = new Result(null, null, false);
-        public static final Result IGNORED = new Result(null, null, false);
+        public static final Result PASSED = new Result(null, false);
+        public static final Result IGNORED = new Result(null, false);
 
         private final String details;
-        private final Throwable throwable;
         private final boolean timeout;
 
-        private Result(String details, Throwable throwable, boolean timeout) {
+        private Result(String details, boolean timeout) {
             this.details = details;
-            this.throwable = throwable;
             this.timeout = timeout;
         }
 
         public boolean isFailure() {
-            return details != null || throwable != null || timeout;
+            return details != null || timeout;
         }
 
         public String getDetails() {
             return details;
-        }
-
-        public Throwable getThrowable() {
-            return throwable;
         }
 
         public boolean isTimeout() {
@@ -400,43 +394,39 @@ public final class TestFile {
         public String toString() {
             return "Result{" +
                             "details='" + details + '\'' +
-                            ", throwable=" + throwable +
                             ", timeout=" + timeout +
                             '}';
         }
 
         // ~ Factories
 
-        public static Result failed(String details, Throwable throwable) {
-            assert details != null;
-            assert throwable != null;
-            return new Result(details, throwable, false);
-        }
-
         public static Result failed(Throwable throwable) {
             assert throwable != null;
-            return new Result(null, throwable, false);
+            return failed(detailsFromThrowable(throwable));
         }
 
         public static Result failed(String details) {
             assert details != null;
-            return new Result(details, null, false);
-        }
-
-        public static Result timeout(String details, Throwable throwable) {
-            assert details != null;
-            assert throwable != null;
-            return new Result(details, throwable, true);
+            return new Result(details, false);
         }
 
         public static Result timeout(Throwable throwable) {
             assert throwable != null;
-            return new Result(null, throwable, true);
+            return timeout(detailsFromThrowable(throwable));
         }
 
         public static Result timeout(String details) {
             assert details != null;
-            return new Result(details, null, true);
+            return new Result(details, true);
+        }
+
+        private static String detailsFromThrowable(Throwable throwable) {
+            String details = throwable.getClass().getName();
+            String message = throwable.getMessage();
+            if (message != null) {
+                details += ": " + message;
+            }
+            return details;
         }
 
     }

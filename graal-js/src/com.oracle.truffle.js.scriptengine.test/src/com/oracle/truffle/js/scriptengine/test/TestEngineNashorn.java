@@ -64,6 +64,7 @@ import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
 import com.oracle.truffle.js.scriptengine.GraalJSEngineFactory;
@@ -81,7 +82,8 @@ public class TestEngineNashorn {
     }
 
     private static ScriptEngine getEngineNashornCompat() {
-        return GraalJSScriptEngine.create(null, Context.newBuilder("js").allowHostAccess(true).option("js.nashorn-compat", "true"));
+        return GraalJSScriptEngine.create(null,
+                        Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true).allowExperimentalOptions(true).option("js.nashorn-compat", "true"));
     }
 
     private static void invertedAssertEquals(Object actual, Object expected) {
@@ -91,7 +93,7 @@ public class TestEngineNashorn {
     @Test
     public void argumentsTest() {
         final ScriptEngine e = getEngine();
-
+        e.put("polyglot.js.allowHostAccess", true);
         String[] args = new String[]{"hello", "world"};
         try {
             e.put("arguments", args);
@@ -311,6 +313,7 @@ public class TestEngineNashorn {
     @Test
     public void putGlobalFunctionTest() {
         final ScriptEngine e = getEngine();
+        e.put("polyglot.js.allowHostAccess", true);
 
         e.put("callable", new Callable<String>() {
             @Override
@@ -487,6 +490,8 @@ public class TestEngineNashorn {
         Map<String, Object> map = new HashMap<>();
         map.put("title", "Title example");
         map.put("comments", Arrays.asList(new Comment("author1", "content1"), new Comment("author2", "content2"), new Comment("author3", "content3")));
+        e.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.allowHostAccess", true);
+        e.getBindings(ScriptContext.ENGINE_SCOPE).put("polyglot.js.allowHostClassLookup", true);
         e.eval(script);
         assertEquals("ok", Objects.toString(((Invocable) e).invokeFunction("test", "string", map)));
     }

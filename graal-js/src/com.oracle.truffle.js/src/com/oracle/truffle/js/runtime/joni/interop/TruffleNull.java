@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.instrumentation;
+package com.oracle.truffle.js.runtime.joni.interop;
 
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = ForeignTestObject.class)
-public class ForeignTestObjectMessageResolution {
+@ExportLibrary(InteropLibrary.class)
+public final class TruffleNull implements TruffleObject {
 
-    @CanResolve
-    public abstract static class CanHandleTestMap extends Node {
-        public boolean test(TruffleObject o) {
-            return o instanceof ForeignTestObject;
-        }
+    private static final TruffleNull INSTANCE = new TruffleNull();
+
+    public static TruffleNull getInstance() {
+        return INSTANCE;
     }
 
-    @Resolve(message = "INVOKE")
-    abstract static class RunnableInvokeNode extends Node {
-
-        @SuppressWarnings("unused")
-        public Object access(ForeignTestObject invoker, String identifier, Object[] arguments) {
-            return 42;
-        }
+    private TruffleNull() {
     }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isNull() {
+        return true;
+    }
 }

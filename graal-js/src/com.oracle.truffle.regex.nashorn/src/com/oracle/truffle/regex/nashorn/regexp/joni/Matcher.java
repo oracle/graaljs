@@ -100,6 +100,10 @@ public abstract class Matcher extends IntHolder {
         return msaRegion;
     }
 
+    public final Region getEagerRegion() {
+        return msaRegion != null ? msaRegion : new Region(regex.numMem + 1);
+    }
+
     public final int getBegin() {
         return msaBegin;
     }

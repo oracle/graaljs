@@ -45,10 +45,10 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.WeakHashMap;
 
 import org.graalvm.options.OptionValues;
 
@@ -61,7 +61,6 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
@@ -99,6 +98,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -174,6 +174,7 @@ public class JSRealm {
     private final JSConstructor listFormatConstructor;
     private final JSConstructor dateTimeFormatConstructor;
     private final JSConstructor relativeTimeFormatConstructor;
+    private final JSConstructor segmenterConstructor;
     private final JSConstructor dateConstructor;
     @CompilationFinal(dimensions = 1) private final JSConstructor[] errorConstructors;
     private final JSConstructor callSiteConstructor;
@@ -210,6 +211,7 @@ public class JSRealm {
     private final DynamicObject arrayIteratorPrototype;
     private final DynamicObject setIteratorPrototype;
     private final DynamicObject mapIteratorPrototype;
+    private final DynamicObject segmentIteratorPrototype;
     private final DynamicObject stringIteratorPrototype;
     private final DynamicObject regExpStringIteratorPrototype;
     private final DynamicObject enumerateIteratorPrototype;
@@ -240,7 +242,7 @@ public class JSRealm {
     @CompilationFinal private DynamicObject simdTypeConstructor;
     @CompilationFinal private DynamicObject simdTypePrototype;
 
-    private volatile Map<List<String>, DynamicObject> templateRegistry;
+    private volatile Map<Object, DynamicObject> templateRegistry;
 
     private final DynamicObject globalScope;
 
@@ -259,8 +261,8 @@ public class JSRealm {
     private Object embedderData;
 
     /** Support for RegExp.$1. */
-    private TruffleObject regexResult;
-    private TruffleObject lazyStaticRegexResultCompiledRegex;
+    private Object regexResult;
+    private Object lazyStaticRegexResultCompiledRegex;
     private String lazyStaticRegexResultInputString = "";
     private long lazyStaticRegexResultFromIndex;
 
@@ -354,19 +356,21 @@ public class JSRealm {
             this.simdTypeConstructors = null;
         }
 
-        this.collatorConstructor = JSCollator.createConstructor(this);
-        this.numberFormatConstructor = JSNumberFormat.createConstructor(this);
-        this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
-        this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
-        this.listFormatConstructor = JSListFormat.createConstructor(this);
-        this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
-
         this.iteratorPrototype = createIteratorPrototype();
         this.arrayIteratorPrototype = es6 ? createArrayIteratorPrototype() : null;
         this.setIteratorPrototype = es6 ? createSetIteratorPrototype() : null;
         this.mapIteratorPrototype = es6 ? createMapIteratorPrototype() : null;
         this.stringIteratorPrototype = es6 ? createStringIteratorPrototype() : null;
         this.regExpStringIteratorPrototype = JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019 ? createRegExpStringIteratorPrototype() : null;
+
+        this.collatorConstructor = JSCollator.createConstructor(this);
+        this.numberFormatConstructor = JSNumberFormat.createConstructor(this);
+        this.dateTimeFormatConstructor = JSDateTimeFormat.createConstructor(this);
+        this.pluralRulesConstructor = JSPluralRules.createConstructor(this);
+        this.listFormatConstructor = JSListFormat.createConstructor(this);
+        this.relativeTimeFormatConstructor = JSRelativeTimeFormat.createConstructor(this);
+        this.segmenterConstructor = JSSegmenter.createConstructor(this);
+        this.segmentIteratorPrototype = JSSegmenter.createSegmentIteratorPrototype(context, this);
 
         this.generatorFunctionConstructor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
         this.generatorObjectPrototype = es6 ? (DynamicObject) generatorFunctionConstructor.getPrototype().get(JSObject.PROTOTYPE, null) : null;
@@ -528,6 +532,10 @@ public class JSRealm {
         return dateConstructor;
     }
 
+    public final JSConstructor getSegmenterConstructor() {
+        return segmenterConstructor;
+    }
+
     public final JSConstructor getSymbolConstructor() {
         return symbolConstructor;
     }
@@ -624,7 +632,7 @@ public class JSRealm {
         return javaPackageToPrimitiveFunction;
     }
 
-    public final Map<List<String>, DynamicObject> getTemplateRegistry() {
+    public final Map<Object, DynamicObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
         }
@@ -634,7 +642,7 @@ public class JSRealm {
     @TruffleBoundary
     private synchronized void createTemplateRegistry() {
         if (templateRegistry == null) {
-            templateRegistry = new HashMap<>();
+            templateRegistry = new WeakHashMap<>();
         }
     }
 
@@ -719,6 +727,10 @@ public class JSRealm {
         return regExpStringIteratorPrototype;
     }
 
+    public DynamicObject getSegmentIteratorPrototype() {
+        return segmentIteratorPrototype;
+    }
+
     /**
      * This function is used whenever a function is required that throws a TypeError. It is used by
      * some of the builtins that provide accessor functions that should not be called (e.g., as a
@@ -801,7 +813,7 @@ public class JSRealm {
         if (context.getContextOptions().isPrint()) {
             initGlobalPrintExtensions();
         }
-        if (context.getContextOptions().isPolyglotBuiltin()) {
+        if (context.getContextOptions().isPolyglotBuiltin() && getEnv().isPolyglotAccessAllowed()) {
             setupPolyglot();
         }
         if (context.isOptionDebugBuiltin()) {
@@ -920,12 +932,14 @@ public class JSRealm {
             DynamicObject pluralRulesFn = getPluralRulesConstructor().getFunctionObject();
             DynamicObject listFormatFn = getListFormatConstructor().getFunctionObject();
             DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor().getFunctionObject();
+            DynamicObject segmenterFn = getSegmenterConstructor().getFunctionObject();
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(segmenterFn), segmenterFn, JSAttributes.getDefaultNotEnumerable());
 
             putGlobalProperty(JSIntl.CLASS_NAME, intlObject);
         }
@@ -1031,12 +1045,16 @@ public class JSRealm {
     }
 
     private void setupPolyglot() {
-        DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_CLASS_NAME);
+        DynamicObject polyglotObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
+        JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, POLYGLOT_CLASS_NAME);
+
         if (getContext().isOptionDebugBuiltin()) {
-            JSObjectUtil.putFunctionsFromContainer(this, obj, POLYGLOT_INTERNAL_CLASS_NAME);
+            JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, POLYGLOT_INTERNAL_CLASS_NAME);
+        } else if (getContext().getContextOptions().isPolyglotEvalFile()) {
+            // already loaded above when `debug-builtin` is true
+            JSObjectUtil.putDataProperty(context, polyglotObject, "evalFile", lookupFunction(POLYGLOT_INTERNAL_CLASS_NAME, "evalFile"), JSAttributes.getDefaultNotEnumerable());
         }
-        putGlobalProperty(POLYGLOT_CLASS_NAME, obj);
+        putGlobalProperty(POLYGLOT_CLASS_NAME, polyglotObject);
     }
 
     private void addConsoleGlobals() {
@@ -1275,7 +1293,7 @@ public class JSRealm {
         TruffleContext nestedContext = getEnv().newContextBuilder().build();
         Object prev = nestedContext.enter();
         try {
-            JSRealm childRealm = AbstractJavaScriptLanguage.getCurrentJSRealm();
+            JSRealm childRealm = JavaScriptLanguage.getCurrentJSRealm();
             // "Realm" object is shared by all realms (V8 compatibility mode)
             childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
             return childRealm;
@@ -1308,7 +1326,7 @@ public class JSRealm {
         this.embedderData = embedderData;
     }
 
-    public TruffleObject getRegexResult() {
+    public Object getRegexResult() {
         assert context.isOptionRegexpStaticResult();
         if (regexResult == null) {
             regexResult = TRegexUtil.getTRegexEmptyResult();
@@ -1316,7 +1334,7 @@ public class JSRealm {
         return regexResult;
     }
 
-    public TruffleObject getLazyStaticRegexResultCompiledRegex() {
+    public Object getLazyStaticRegexResultCompiledRegex() {
         return lazyStaticRegexResultCompiledRegex;
     }
 
@@ -1328,10 +1346,12 @@ public class JSRealm {
         return lazyStaticRegexResultFromIndex;
     }
 
-    public void setRegexResult(TruffleObject regexResult) {
+    public void setRegexResult(Object tRegexCompiledRegex, String input, Object regexResult) {
         assert context.isOptionRegexpStaticResult();
         assert !context.getRegExpStaticResultUnusedAssumption().isValid();
-        assert TRegexUtil.readResultIsMatch(TRegexUtil.createReadNode(), regexResult);
+        assert TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(regexResult, TRegexUtil.Props.RegexResult.IS_MATCH);
+        lazyStaticRegexResultCompiledRegex = tRegexCompiledRegex;
+        lazyStaticRegexResultInputString = input;
         this.regexResult = regexResult;
     }
 
@@ -1340,7 +1360,7 @@ public class JSRealm {
      * globally. Instead, we store the values needed to calculate the result on demand, under the
      * assumption that this non-standard feature is often not used at all.
      */
-    private void setRegexResultLazy(TruffleObject tRegexCompiledRegex, String inputString, long fromIndex) {
+    private void setRegexResultLazy(Object tRegexCompiledRegex, String inputString, long fromIndex) {
         assert context.isOptionRegexpStaticResult();
         assert context.getRegExpStaticResultUnusedAssumption().isValid();
         lazyStaticRegexResultCompiledRegex = tRegexCompiledRegex;
@@ -1348,19 +1368,16 @@ public class JSRealm {
         lazyStaticRegexResultFromIndex = fromIndex;
     }
 
-    public void setStaticRegexResult(TruffleObject compiledRegex, String input, long fromIndex, TruffleObject result) {
+    public void setStaticRegexResult(Object compiledRegex, String input, long fromIndex, Object result) {
         if (context.getRegExpStaticResultUnusedAssumption().isValid()) {
             setRegexResultLazy(compiledRegex, input, fromIndex);
         } else {
-            setRegexResult(result);
+            setRegexResult(compiledRegex, input, result);
         }
     }
 
     public void switchToEagerStaticRegExpResults() {
         context.getRegExpStaticResultUnusedAssumption().invalidate();
-        lazyStaticRegexResultCompiledRegex = null;
-        lazyStaticRegexResultInputString = null;
-        lazyStaticRegexResultFromIndex = 0;
     }
 
     public OptionValues getOptions() {

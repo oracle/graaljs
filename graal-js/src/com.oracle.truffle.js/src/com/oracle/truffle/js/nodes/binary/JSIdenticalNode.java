@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -60,7 +61,6 @@ import com.oracle.truffle.js.nodes.unary.IsIdenticalIntegerNode;
 import com.oracle.truffle.js.nodes.unary.IsIdenticalStringNode;
 import com.oracle.truffle.js.nodes.unary.IsIdenticalUndefinedNode;
 import com.oracle.truffle.js.nodes.unary.IsNullNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -260,36 +260,17 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     protected boolean doNumberCached(Object a, Object b, //
                     @Cached("getJavaNumberClass(a)") Class<?> cachedClassA, //
                     @Cached("getJavaNumberClass(b)") Class<?> cachedClassB) {
-        return doDouble(JSRuntime.doubleValue((Number) cachedClassA.cast(a)), JSRuntime.doubleValue((Number) cachedClassB.cast(b)));
+        return doNumber((Number) cachedClassA.cast(a), (Number) cachedClassB.cast(b));
     }
 
     @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"}, replaces = "doNumberCached")
-    protected boolean doNumber(Object a, Object b) {
-        return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
-    }
-
-    @Specialization(guards = {"cachedClassA != null", "a.getClass() == cachedClassA"}, limit = "MAX_CLASSES")
-    protected static boolean doJavaObjectA(Object a, Object b, //
-                    @Cached("getJavaObjectClass(a)") @SuppressWarnings("unused") Class<?> cachedClassA) {
-        return doJavaGeneric(a, b);
-    }
-
-    @Specialization(guards = {"cachedClassB != null", "b.getClass() == cachedClassB"}, limit = "MAX_CLASSES")
-    protected static boolean doJavaObjectB(Object a, Object b, //
-                    @Cached("getJavaObjectClass(b)") @SuppressWarnings("unused") Class<?> cachedClassB) {
-        return doJavaGeneric(a, b);
-    }
-
-    @Specialization(guards = {"isJavaObject(a) || isJavaObject(b)"}, replaces = {"doJavaObjectA", "doJavaObjectB"})
-    protected static boolean doJavaGeneric(Object a, Object b) {
-        assert (a != null) && (b != null);
-        assert JSRuntime.isJavaObject(a) || JSRuntime.isJavaObject(b);
-        return a == b;
+    protected boolean doNumber(Number a, Number b) {
+        return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
     }
 
     @Specialization(guards = {"isTruffleJavaObject(a)", "isTruffleJavaObject(b)"})
     protected static boolean doTruffleJavaObjects(TruffleObject a, TruffleObject b) {
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
+        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
         return env.asHostObject(a) == env.asHostObject(b);
     }
 

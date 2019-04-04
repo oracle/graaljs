@@ -46,16 +46,15 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -69,7 +68,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
@@ -78,7 +76,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
  */
 @SuppressWarnings("unused")
 @NodeInfo(shortName = "typeof")
-@ImportStatic({JSInteropUtil.class, JSRuntime.class})
+@ImportStatic({JSRuntime.class})
 public abstract class TypeOfNode extends JSUnaryNode {
     protected static final int MAX_CLASSES = 3;
 
@@ -168,33 +166,20 @@ public abstract class TypeOfNode extends JSUnaryNode {
     }
 
     @TruffleBoundary
-    @Specialization(guards = "isForeignObject(operand)")
+    @Specialization(guards = "isForeignObject(operand)", limit = "5")
     protected String doTruffleObject(TruffleObject operand,
-                    @Cached("createIsExecutable()") Node isExecutable,
-                    @Cached("createIsBoxed()") Node isBoxedNode,
-                    @Cached("createUnbox()") Node unboxNode,
-                    @Cached("createIsInstantiable()") Node isInstantiable,
-                    @Cached("create()") TypeOfNode recTypeOf,
-                    @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {
-        if (ForeignAccess.sendIsBoxed(isBoxedNode, operand)) {
-            Object obj = foreignConvertNode.executeWithTarget(JSInteropNodeUtil.unbox(operand, unboxNode));
-            return recTypeOf.executeString(obj);
-        } else if (ForeignAccess.sendIsExecutable(isExecutable, operand) || ForeignAccess.sendIsInstantiable(isInstantiable, operand)) {
+                    @CachedLibrary("operand") InteropLibrary interop) {
+        if (interop.isBoolean(operand)) {
+            return JSBoolean.TYPE_NAME;
+        } else if (interop.isString(operand)) {
+            return JSString.TYPE_NAME;
+        } else if (interop.isNumber(operand)) {
+            return JSNumber.TYPE_NAME;
+        } else if (interop.isExecutable(operand) || interop.isInstantiable(operand)) {
             return JSFunction.TYPE_NAME;
         } else {
             return JSUserObject.TYPE_NAME;
         }
-    }
-
-    @Specialization(guards = {"cachedClass != null", "operand.getClass() == cachedClass"}, limit = "MAX_CLASSES")
-    protected String doOtherCached(Object operand,
-                    @Cached("getJavaObjectClass(operand)") Class<?> cachedClass) {
-        return JSUserObject.TYPE_NAME;
-    }
-
-    @Specialization(guards = {"isJavaObject(operand)"}, replaces = "doOtherCached")
-    protected String doOther(Object operand) {
-        return JSUserObject.TYPE_NAME;
     }
 
     @Fallback

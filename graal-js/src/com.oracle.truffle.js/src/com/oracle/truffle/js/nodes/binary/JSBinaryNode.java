@@ -87,10 +87,10 @@ public abstract class JSBinaryNode extends JavaScriptNode {
         return Math.abs(d) >= JSRuntime.TWO32;
     }
 
-    protected static void ensureBothSameNumericType(Object a, Object b, BranchProfile mixedNumericTypes) {
+    protected final void ensureBothSameNumericType(Object a, Object b, BranchProfile mixedNumericTypes) {
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, (a instanceof BigInt) != (b instanceof BigInt))) {
             mixedNumericTypes.enter();
-            throw Errors.createTypeErrorCanNotMixBigIntWithOtherTypes();
+            throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
         }
     }
 

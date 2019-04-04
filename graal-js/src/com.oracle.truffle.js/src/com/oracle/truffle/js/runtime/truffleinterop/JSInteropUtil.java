@@ -40,8 +40,23 @@
  */
 package com.oracle.truffle.js.runtime.truffleinterop;
 
-import com.oracle.truffle.api.interop.Message;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
  * Utility class for interop operations. Provides methods that can be used in Cached annotations of
@@ -53,67 +68,167 @@ public final class JSInteropUtil {
         // this class should not be instantiated
     }
 
-    public static Node createHasSize() {
-        return Message.HAS_SIZE.createNode();
+    public static long getArraySize(Object foreignObj, InteropLibrary interop, Node originatingNode) {
+        try {
+            return interop.getArraySize(foreignObj);
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(foreignObj, e, "getArraySize", originatingNode);
+        }
     }
 
-    public static Node createGetSize() {
-        return Message.GET_SIZE.createNode();
+    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue) {
+        if (!(member instanceof String)) {
+            return defaultValue;
+        }
+        try {
+            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readMember(obj, (String) member));
+        } catch (UnknownIdentifierException e) {
+            return defaultValue;
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, "readMember", null);
+        }
     }
 
-    public static Node createRead() {
-        return Message.READ.createNode();
+    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, JSForeignToJSTypeNode importValue, Node originatingNode) {
+        if (!(member instanceof String)) {
+            return defaultValue;
+        }
+        try {
+            return importValue.executeWithTarget(interop.readMember(obj, (String) member));
+        } catch (UnknownIdentifierException e) {
+            return defaultValue;
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, "readMember", originatingNode);
+        }
     }
 
-    public static Node createWrite() {
-        return Message.WRITE.createNode();
+    public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue, InteropLibrary interop, JSForeignToJSTypeNode importValue, Node originatingNode) {
+        try {
+            return importValue.executeWithTarget(interop.readArrayElement(obj, index));
+        } catch (InvalidArrayIndexException e) {
+            return defaultValue;
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", originatingNode);
+        }
     }
 
-    public static Node createHasKeys() {
-        return Message.HAS_KEYS.createNode();
+    public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue) {
+        try {
+            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readArrayElement(obj, index));
+        } catch (InvalidArrayIndexException e) {
+            return defaultValue;
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", null);
+        }
     }
 
-    public static Node createKeys() {
-        return Message.KEYS.createNode();
+    public static void writeMember(Object obj, Object member, Object value) {
+        if (!(member instanceof String)) {
+            return;
+        }
+        try {
+            InteropLibrary.getFactory().getUncached().writeMember(obj, (String) member, JSRuntime.exportValue(value));
+        } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, "writeMember", null);
+        }
     }
 
-    public static Node createIsBoxed() {
-        return Message.IS_BOXED.createNode();
+    public static void writeMember(Object obj, Object member, Object value, InteropLibrary interop, ExportValueNode exportValue, Node originatingNode) {
+        if (!(member instanceof String)) {
+            return;
+        }
+        try {
+            interop.writeMember(obj, (String) member, exportValue.execute(value));
+        } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, "writeMember", originatingNode);
+        }
     }
 
-    public static Node createUnbox() {
-        return Message.UNBOX.createNode();
+    public static Object toPrimitiveOrDefault(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
+        if (interop.isNull(obj)) {
+            return Null.instance;
+        }
+        try {
+            if (interop.isBoolean(obj)) {
+                return interop.asBoolean(obj);
+            } else if (interop.isString(obj)) {
+                return interop.asString(obj);
+            } else if (interop.isNumber(obj)) {
+                if (interop.fitsInInt(obj)) {
+                    return interop.asInt(obj);
+                } else if (interop.fitsInLong(obj)) {
+                    return interop.asLong(obj);
+                } else if (interop.fitsInDouble(obj)) {
+                    return interop.asDouble(obj);
+                }
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(obj, e, originatingNode);
+        }
+        return defaultValue;
     }
 
-    public static Node createIsNull() {
-        return Message.IS_NULL.createNode();
+    @TruffleBoundary
+    public static List<Object> keys(Object obj) {
+        try {
+            Object keysObj = InteropLibrary.getFactory().getUncached().getMembers(obj);
+            InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keysObj);
+            long size = keysInterop.getArraySize(keysObj);
+            if (size < 0 || size >= Integer.MAX_VALUE) {
+                throw Errors.createRangeErrorInvalidArrayLength();
+            }
+            List<Object> keys = new ArrayList<>((int) size);
+            for (int i = 0; i < size; i++) {
+                Object key = keysInterop.readArrayElement(keysObj, i);
+                assert InteropLibrary.getFactory().getUncached().isString(key);
+                keys.add(key);
+            }
+            return keys;
+        } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", null);
+        }
     }
 
-    public static Node createCall() {
-        return Message.EXECUTE.createNode();
+    @TruffleBoundary
+    public static boolean hasProperty(TruffleObject obj, Object key) {
+        if (key instanceof String) {
+            return InteropLibrary.getFactory().getUncached().isMemberExisting(obj, (String) key);
+        } else {
+            return false;
+        }
     }
 
-    public static Node createInvoke() {
-        return Message.INVOKE.createNode();
+    @TruffleBoundary
+    public static boolean remove(TruffleObject obj, Object key) {
+        if (key instanceof String) {
+            try {
+                InteropLibrary.getFactory().getUncached().removeMember(obj, (String) key);
+            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                throw Errors.createTypeErrorInteropException(obj, e, "removeMember", null);
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
 
-    public static Node createNew() {
-        return Message.NEW.createNode();
+    @TruffleBoundary
+    public static Object call(Object function, Object[] args) {
+        Object[] exportedArgs = JSRuntime.exportValueArray(args);
+        try {
+            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().execute(function, exportedArgs));
+        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+            throw Errors.createTypeErrorInteropException(function, e, "execute", null);
+        }
     }
 
-    public static Node createRemove() {
-        return Message.REMOVE.createNode();
-    }
-
-    public static Node createIsExecutable() {
-        return Message.IS_EXECUTABLE.createNode();
-    }
-
-    public static Node createIsInstantiable() {
-        return Message.IS_INSTANTIABLE.createNode();
-    }
-
-    public static Node createKeyInfo() {
-        return Message.KEY_INFO.createNode();
+    @TruffleBoundary
+    public static Object construct(Object target, Object[] args) {
+        Object[] exportedArgs = JSRuntime.exportValueArray(args);
+        try {
+            return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().instantiate(target, exportedArgs));
+        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+            throw Errors.createTypeErrorInteropException(target, e, "instantiate", null);
+        }
     }
 }

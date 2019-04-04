@@ -138,12 +138,6 @@ public final class NativeAccess {
 
     public static native ByteBuffer getCoreModuleBinarySnapshot(String modulePath);
 
-    public static native long createAsyncHandle(long loopAddress, Runnable onEventHandled);
-
-    public static native void closeAsyncHandle(long asyncHandle);
-
-    public static native void sendAsyncHandle(long asyncHandle);
-
     public static native void notifyPromiseHook(int changeType, Object promise, Object parentPromise);
 
     public static native void notifyPromiseRejectionTracker(Object promise, int operation, Object value);

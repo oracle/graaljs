@@ -41,8 +41,10 @@
 package com.oracle.truffle.js.scriptengine.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -51,7 +53,11 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.script.SimpleBindings;
 
+import java.util.function.Predicate;
+
 import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
 public class TestBindings {
@@ -264,6 +270,7 @@ public class TestBindings {
     @Test
     public void setArgs1() throws ScriptException {
         ScriptEngine engine = getEngine();
+        engine.put("polyglot.js.allowHostAccess", true);
         engine.put(argsName, defaultArgs);
         assertEquals(defaultArgs[0], engine.eval(argsName + "[0];"));
         assertEquals(defaultArgs[1], engine.eval(argsName + "[1];"));
@@ -274,6 +281,7 @@ public class TestBindings {
     public void setArgs2() throws ScriptException {
         ScriptEngine engine = getEngine();
         Bindings bindings = new SimpleBindings();
+        bindings.put("polyglot.js.allowHostAccess", true);
         bindings.put(argsName, defaultArgs);
         engine.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
         assertEquals(defaultArgs[0], engine.eval(argsName + "[0];"));
@@ -298,5 +306,96 @@ public class TestBindings {
         assertTrue(result);
         result = (boolean) engine.eval(varName + " === '" + defaultVarValue + "';");
         assertTrue(result);
+    }
+
+    @Test
+    public void testJSMapInScope() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings global = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        engine.eval("jsObj = {a: 1}", global);
+        Object globalResult = engine.eval("JSON.stringify(jsObj)", global);
+        assertNotNull(globalResult);
+    }
+
+    @Test(expected = ScriptException.class)
+    public void testNoHostAccessByDefault() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("javaObj", new Object());
+        // should fail
+        engine.eval("(javaObj instanceof Java.type('java.lang.Object'));");
+        fail();
+    }
+
+    @Test
+    public void testSetContextOptionsViaGraalJSBindings() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", true);
+        bindings.put("javaObj", new Object());
+        assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"));
+    }
+
+    @Test
+    public void testSetContextOptionsViaGraalJSBindings2() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", (Predicate<String>) s -> true);
+        bindings.put("javaObj", new Object());
+        assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testTrySetContextOptionsAfterInitViaGraalJSBindings1() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        // force context initialization
+        engine.eval("dummy = 42;");
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        // should fail
+        bindings.put("polyglot.js.allowHostAccess", true);
+        fail();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testTrySetContextOptionsAfterInitViaGraalJSBindings2() {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        // force context initialization
+        bindings.put("javaObj", new Object());
+        // should fail
+        bindings.put("polyglot.js.allowHostAccess", true);
+        fail();
+    }
+
+    @Test
+    public void testSetContextOptionsViaSimpleBindings() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = new SimpleBindings();
+        bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", true);
+        bindings.put("javaObj", new Object());
+        assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));", bindings));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testTrySetContextOptionsAfterInitViaSimpleBindings() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = new SimpleBindings();
+        // force context initialization
+        engine.eval("dummy = 42;", bindings);
+        bindings.put("polyglot.js.allowHostAccess", true);
+        bindings.put("polyglot.js.allowHostClassLookup", true);
+        // should fail
+        engine.eval("(javaObj instanceof Java.type('java.lang.Object'));", bindings);
+        fail();
+    }
+
+    @Test
+    public void testSetContextBuilder() throws ScriptException {
+        ScriptEngine engine = GraalJSScriptEngine.create(null, Context.newBuilder("js").allowExperimentalOptions(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup(s -> true));
+        engine.put("javaObj", new Object());
+        assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"));
     }
 }

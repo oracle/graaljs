@@ -43,12 +43,10 @@ package com.oracle.truffle.js.nodes;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import javax.script.Bindings;
-
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -74,6 +72,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -311,16 +310,20 @@ public final class JSGuards {
         return JSRelativeTimeFormat.isJSRelativeTimeFormat(value);
     }
 
+    public static boolean isJSSegmenter(DynamicObject value) {
+        return JSSegmenter.isJSSegmenter(value);
+    }
+
+    public static boolean isJSSegmenter(Object value) {
+        return JSSegmenter.isJSSegmenter(value);
+    }
+
     public static boolean isNumber(Object operand) {
         return JSRuntime.isNumber(operand);
     }
 
     public static boolean isJavaNumber(Object operand) {
         return JSRuntime.isJavaNumber(operand);
-    }
-
-    public static boolean isJavaObject(Object operand) {
-        return JSRuntime.isJavaObject(operand);
     }
 
     public static boolean isNumberInteger(Object thisObj) {
@@ -467,10 +470,6 @@ public final class JSGuards {
         return value instanceof List;
     }
 
-    public static boolean isBindings(Object value) {
-        return value instanceof Bindings;
-    }
-
     public static boolean isJavaPackage(Object target) {
         return JavaPackage.isJavaPackage(target);
     }
@@ -499,7 +498,7 @@ public final class JSGuards {
         return Math.abs(d) >= JSRuntime.TWO32;
     }
 
-    public static boolean isLongFitsInt32(long value) {
+    public static boolean isLongRepresentableAsInt32(long value) {
         return JSRuntime.longIsRepresentableAsInt(value);
     }
 
@@ -551,13 +550,6 @@ public final class JSGuards {
         return null;
     }
 
-    public static Class<?> getJavaObjectClass(Object value) {
-        if (value != null && JSRuntime.isJavaObject(value)) {
-            return value.getClass();
-        }
-        return null;
-    }
-
     public static JSClass getJSClassChecked(DynamicObject object) {
         if (JSObject.isJSObject(object)) {
             return JSObject.getJSClass(object);
@@ -570,8 +562,12 @@ public final class JSGuards {
         return a == b;
     }
 
-    public static boolean isJavaPrimitive(Object o) {
-        return o.getClass().isPrimitive();
+    public static boolean isJavaPrimitive(Object value) {
+        return JSRuntime.isJavaPrimitive(value);
+    }
+
+    public static boolean isJavaPrimitiveNumber(Object value) {
+        return value instanceof Number && JSRuntime.isJavaPrimitive(value);
     }
 
     public static boolean isNullOrUndefined(Object value) {
@@ -583,7 +579,7 @@ public final class JSGuards {
     }
 
     public static boolean isTruffleJavaObject(TruffleObject object) {
-        return AbstractJavaScriptLanguage.getCurrentEnv().isHostObject(object);
+        return JavaScriptLanguage.getCurrentEnv().isHostObject(object);
     }
 
     public static boolean isArrayIndexLengthInRange(String str) {

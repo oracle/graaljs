@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,30 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 
-public class JSInteropRuntime {
-    private final ForeignAccess foreignAccess;
-    private final ForeignAccess boundFunctionForeignAccess;
-    private final ForeignAccess asyncFunctionForeignAccess;
-
-    public JSInteropRuntime(ForeignAccess foreignAccess, ForeignAccess boundFunctionForeignAccess, ForeignAccess asyncFunctionForeignAccess) {
-        this.foreignAccess = foreignAccess;
-        this.boundFunctionForeignAccess = boundFunctionForeignAccess;
-        this.asyncFunctionForeignAccess = asyncFunctionForeignAccess;
+public abstract class JSInteropCallNode extends JavaScriptBaseNode {
+    protected JSInteropCallNode() {
     }
 
-    public ForeignAccess getForeignAccessFactory() {
-        return foreignAccess;
+    protected static Object[] prepare(Object[] arguments, JSForeignToJSTypeNode importValueNode) {
+        for (int i = 0; i < arguments.length; i++) {
+            arguments[i] = importValueNode.executeWithTarget(arguments[i]);
+        }
+        return arguments;
     }
 
-    public ForeignAccess getInteropBoundFunctionForeignAccess() {
-        return boundFunctionForeignAccess;
-    }
-
-    public ForeignAccess getInteropAsyncFunctionForeignAccess() {
-        return asyncFunctionForeignAccess;
+    protected static JSFunctionCallNode getUncachedCall() {
+        return null;
     }
 }

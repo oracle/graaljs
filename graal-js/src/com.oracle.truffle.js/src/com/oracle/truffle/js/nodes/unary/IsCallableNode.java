@@ -41,32 +41,28 @@
 package com.oracle.truffle.js.nodes.unary;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.Symbol;
 
 /**
  * Represents abstract operation IsCallable.
  *
  * @see JSRuntime#isCallable(Object)
  */
-@ImportStatic({JSInteropUtil.class})
-public abstract class IsCallableNode extends JSUnaryNode {
+@GenerateUncached
+public abstract class IsCallableNode extends JavaScriptBaseNode {
 
-    protected IsCallableNode(JavaScriptNode operand) {
-        super(operand);
+    protected IsCallableNode() {
     }
-
-    @Override
-    public abstract boolean executeBoolean(VirtualFrame frame);
 
     public abstract boolean executeBoolean(Object operand);
 
@@ -88,34 +84,43 @@ public abstract class IsCallableNode extends JSUnaryNode {
         return JSRuntime.isCallableProxy(proxy);
     }
 
-    @Specialization(guards = "isForeignObject(obj)")
+    @Specialization(guards = {"isJSType(object)", "!isJSFunction(object)", "!isJSProxy(object)"})
+    protected static boolean doJSTypeOther(@SuppressWarnings("unused") DynamicObject object) {
+        return false;
+    }
+
+    @Specialization(guards = "isForeignObject(obj)", limit = "3")
     protected static boolean doTruffleObject(TruffleObject obj,
-                    @Cached("createIsExecutable()") Node isExecutableNode) {
-        return ForeignAccess.sendIsExecutable(isExecutableNode, obj);
+                    @CachedLibrary("obj") InteropLibrary interop) {
+        return interop.isExecutable(obj);
     }
 
-    @SuppressWarnings("unused")
     @Specialization
-    protected static boolean doCharSequence(CharSequence string) {
+    protected static boolean doCharSequence(@SuppressWarnings("unused") CharSequence charSequence) {
         return false;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"!isJSFunction(other)", "!isJSProxy(other)"})
-    protected static boolean doOther(Object other) {
+    @Specialization
+    protected static boolean doNumber(@SuppressWarnings("unused") Number number) {
         return false;
     }
 
-    public static IsCallableNode create(JavaScriptNode operand) {
-        return IsCallableNodeGen.create(operand);
+    @Specialization
+    protected static boolean doBoolean(@SuppressWarnings("unused") boolean value) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doSymbol(@SuppressWarnings("unused") Symbol symbol) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doBigInt(@SuppressWarnings("unused") BigInt bigInt) {
+        return false;
     }
 
     public static IsCallableNode create() {
-        return IsCallableNodeGen.create(null);
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return IsCallableNode.create(cloneUninitialized(getOperand()));
+        return IsCallableNodeGen.create();
     }
 }

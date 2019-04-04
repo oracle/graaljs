@@ -46,14 +46,11 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -119,17 +116,9 @@ public abstract class GetIteratorNode extends JavaScriptNode {
 
     @Specialization(guards = "isForeignObject(iteratedObject)")
     protected IteratorRecord doGetIteratorWithForeignObject(TruffleObject iteratedObject,
-                    @Cached("createEnumerateValues()") EnumerateNode enumerateNode,
-                    @Cached("createIsBoxed()") Node isBoxedNode,
-                    @Cached("create()") JSUnboxOrGetNode unboxNode,
-                    @Cached("create(getContext())") GetIteratorNode getIteratorNode) {
-        if (ForeignAccess.sendIsBoxed(isBoxedNode, iteratedObject)) {
-            Object unboxed = unboxNode.executeWithTarget(iteratedObject);
-            return getIteratorNode.execute(unboxed);
-        } else {
-            DynamicObject iterator = enumerateNode.execute(iteratedObject);
-            return IteratorRecord.create(iterator, getNextMethodNode.getValue(iterator), false);
-        }
+                    @Cached("createEnumerateValues()") EnumerateNode enumerateNode) {
+        DynamicObject iterator = enumerateNode.execute(iteratedObject);
+        return IteratorRecord.create(iterator, getNextMethodNode.getValue(iterator), false);
     }
 
     protected EnumerateNode createEnumerateValues() {

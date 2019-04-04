@@ -12,24 +12,25 @@ Nashorn features available by default:
 
 ## Nashorn compatibility mode
 Graal JavaScript provides a Nashorn compatibility mode.
-Some of the functionality necessary for Nashorn compatibility is only available when the `js.nashorn.compat` option is enabled.
+Some of the functionality necessary for Nashorn compatibility is only available when the `js.nashorn-compat` option is enabled.
 This is the case for Nashorn-specific extensions that Graal JavaScript does not want to expose by default.
+Note that you have to enable [experimental options](Options.md#Stable and Experimental options) to use this flag.
 
 The `js.nashorn-compat` option can be set using a command line option:
 ```
-$ js --js.nashorn-compat=true
+$ js --experimental-options --js.nashorn-compat=true
 ```
 
 Or using the polyglot API:
 ```java
 import org.graalvm.polyglot.Context;
 
-try (Context context = Context.newBuilder().option("js.nashorn-compat", "true").build()) {
+try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("js.nashorn-compat", "true").build()) {
     context.eval("js", "print(__LINE__)");
 }
 ```
 
-Or using a system property when starting a Java application:
+Or using a system property when starting a Java application (remember to enable `allowExperimentalOptions` on the `Context.Builder` in your application as well):
 ```
 $ java -Dpolyglot.js.nashorn-compat=true MyApplication
 ```
@@ -45,7 +46,7 @@ Functionality only available under this flag includes:
 
 ## Nashorn syntax extensions
 
-[Nashorn syntax extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions) can be enabled using the `js.syntax-extensions` option.
+[Nashorn syntax extensions](https://wiki.openjdk.java.net/display/Nashorn/Nashorn+extensions) can be enabled using the `js.syntax-extensions` experimental option.
 They're also enabled by default in Nashorn compatibility mode (`js.nashorn-compat`).
 
 ## Intentional design differences
@@ -60,6 +61,8 @@ Graal JavaScript is shipped with ScriptEngine support.
 It registers under several names, including "graal.js", "JavaScript", "js".
 Be sure to activate the Nashorn compatibility mode as described above if you need full Nashorn compatibility.
 Depending on the build setup, GraalVM might still ship Nashorn and provide it via ScriptEngine.
+
+For more details, see [ScriptEngine.md](ScriptEngine.md).
 
 ### `ClassFilter`
 Graal JavaScript supports a class filter when starting with a polyglot `Context`.

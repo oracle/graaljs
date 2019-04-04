@@ -49,7 +49,11 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public class JSReflectUtils {
+public final class JSReflectUtils {
+
+    private JSReflectUtils() {
+        // should not be constructed
+    }
 
     // Implementation of OrdinaryGet (O, P, Receiver)
     @TruffleBoundary(transferToInterpreterOnException = false)

@@ -64,11 +64,9 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -161,6 +159,8 @@ public class ScopeInstrumentTest {
     }
 
     private static class DefaultScopeTester implements ScopeTester {
+        private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
         @Override
         public void testScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception {
             Scope dynamicScope = findFirstLocalScope(env, node, frame);
@@ -178,26 +178,26 @@ public class ScopeInstrumentTest {
                 vars = (TruffleObject) dynamicScope.getVariables();
                 varCount = getSize(getKeys(vars));
                 assertEquals("Line = " + line + ", num vars:", numVars, varCount);
-                assertTrue("Var a: ", hasKey(vars, "a"));
-                assertTrue("Var b: ", hasKey(vars, "b"));
+                assertTrue("Var a: ", INTEROP.isMemberReadable(vars, "a"));
+                assertTrue("Var b: ", INTEROP.isMemberReadable(vars, "b"));
                 if (setVars >= 1) {
-                    assertEquals("Var a: ", 10, read(vars, "a"));
+                    assertEquals("Var a: ", 10, INTEROP.readMember(vars, "a"));
                 }
                 if (setVars >= 2) {
-                    assertEquals("Var b: ", 20, read(vars, "b"));
+                    assertEquals("Var b: ", 20, INTEROP.readMember(vars, "b"));
                 }
 
                 // Lexical access:
                 vars = (TruffleObject) lexicalScope.getVariables();
                 varCount = getSize(getKeys(vars));
                 assertEquals("Line = " + line + ", num vars:", numVars, varCount);
-                assertTrue("Var a: ", hasKey(vars, "a"));
-                assertTrue("Var b: ", hasKey(vars, "b"));
+                assertTrue("Var a: ", INTEROP.isMemberReadable(vars, "a"));
+                assertTrue("Var b: ", INTEROP.isMemberReadable(vars, "b"));
                 if (setVars >= 1) {
-                    assertTrue(isNull(read(vars, "a")));
+                    assertTrue(INTEROP.isNull(INTEROP.readMember(vars, "a")));
                 }
                 if (setVars >= 2) {
-                    assertTrue(isNull(read(vars, "b")));
+                    assertTrue(INTEROP.isNull(INTEROP.readMember(vars, "b")));
                 }
             }
             if (line == 6) {
@@ -226,46 +226,32 @@ public class ScopeInstrumentTest {
             assertNull(globalScope.getNode());
             assertNull(globalScope.getArguments());
             TruffleObject variables = (TruffleObject) globalScope.getVariables();
-            TruffleObject keys = getKeys(variables);
+            Object keys = getKeys(variables);
             assertNotNull(keys);
             assertTrue("number of keys >= 1", getSize(keys) >= 1);
             String functionName = "testFunction";
             assertTrue(hasValue(keys, "testFunction"));
-            TruffleObject function = (TruffleObject) read(variables, functionName);
-            assertTrue(ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), function));
+            Object function = INTEROP.readMember(variables, functionName);
+            assertTrue(INTEROP.isExecutable(function));
         }
 
-        private static TruffleObject getKeys(TruffleObject object) throws UnsupportedMessageException {
-            return ForeignAccess.sendKeys(Message.KEYS.createNode(), object);
+        private static Object getKeys(TruffleObject object) throws UnsupportedMessageException {
+            return INTEROP.getMembers(object);
         }
 
-        private static int getSize(TruffleObject keys) throws UnsupportedMessageException {
-            Number size = (Number) ForeignAccess.sendGetSize(Message.GET_SIZE.createNode(), keys);
-            return size.intValue();
+        private static int getSize(Object keys) throws UnsupportedMessageException {
+            return (int) INTEROP.getArraySize(keys);
         }
 
-        private static boolean hasValue(TruffleObject object, String key) throws UnsupportedMessageException, UnknownIdentifierException {
+        private static boolean hasValue(Object object, String key) throws UnsupportedMessageException, InvalidArrayIndexException {
             int size = getSize(object);
             for (int i = 0; i < size; i++) {
-                Object read = read(object, i);
+                Object read = INTEROP.readArrayElement(object, i);
                 if (read instanceof String && key.equals(read)) {
                     return true;
                 }
             }
             return false;
-        }
-
-        private static boolean hasKey(TruffleObject object, String key) {
-            int keyInfo = ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), object, key);
-            return KeyInfo.isReadable(keyInfo);
-        }
-
-        private static Object read(TruffleObject object, Object key) throws UnknownIdentifierException, UnsupportedMessageException {
-            return ForeignAccess.sendRead(Message.READ.createNode(), object, key);
-        }
-
-        private static boolean isNull(Object object) {
-            return ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) object);
         }
     }
 }

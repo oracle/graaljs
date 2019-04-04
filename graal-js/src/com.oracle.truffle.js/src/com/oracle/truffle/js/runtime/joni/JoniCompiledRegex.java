@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,15 +41,35 @@
 package com.oracle.truffle.js.runtime.joni;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.regex.CompiledRegex;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.js.runtime.joni.interop.ToLongNode;
+import com.oracle.truffle.js.runtime.joni.interop.ToStringNode;
+import com.oracle.truffle.js.runtime.joni.interop.TruffleNull;
+import com.oracle.truffle.js.runtime.joni.interop.TruffleReadOnlyKeysArray;
+import com.oracle.truffle.js.runtime.joni.result.JoniNoMatchResult;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
 
-public class JoniCompiledRegex implements CompiledRegex {
+@ExportLibrary(InteropLibrary.class)
+public class JoniCompiledRegex extends AbstractConstantKeysObject {
 
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("exec", "pattern", "flags", "groupCount", "groups");
+
+    private final String pattern;
+    private final JoniRegexFlags flags;
     private final Regex joniRegex;
     private final CallTarget regexCallTarget;
 
-    public JoniCompiledRegex(Regex joniRegex, CallTarget regexCallTarget) {
+    public JoniCompiledRegex(String pattern, JoniRegexFlags flags, Regex joniRegex, CallTarget regexCallTarget) {
+        this.pattern = pattern;
+        this.flags = flags;
         this.joniRegex = joniRegex;
         this.regexCallTarget = regexCallTarget;
     }
@@ -58,8 +78,63 @@ public class JoniCompiledRegex implements CompiledRegex {
         return joniRegex;
     }
 
-    @Override
     public CallTarget getRegexCallTarget() {
         return regexCallTarget;
+    }
+
+    public JoniCompiledRegexExecMethod getExecMethod() {
+        // this allocation should get virtualized and optimized away by graal
+        return new JoniCompiledRegexExecMethod(this);
+    }
+
+    @Override
+    public TruffleReadOnlyKeysArray getKeys() {
+        return KEYS;
+    }
+
+    @Override
+    public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
+        switch (symbol) {
+            case "exec":
+                return getExecMethod();
+            case "pattern":
+                return pattern;
+            case "flags":
+                return flags;
+            case "groupCount":
+                return joniRegex.numberOfCaptures() + 1;
+            case "groups":
+                return TruffleNull.getInstance();
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.create(symbol);
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isMemberInvocable(String member) {
+        return "exec".equals(member);
+    }
+
+    @ExportMessage
+    Object invokeMember(String member, Object[] args,
+                    @Cached("create()") ToStringNode toStringNode,
+                    @Cached ToLongNode toLongNode,
+                    @Cached JoniCompiledRegexDispatchNode executeNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        if (!"exec".equals(member)) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+        if (args.length != 2) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(2, args.length);
+        }
+        String input = toStringNode.execute(args[0]);
+        long fromIndex = toLongNode.execute(args[1]);
+        if (fromIndex > Integer.MAX_VALUE) {
+            return JoniNoMatchResult.getInstance();
+        }
+        return executeNode.execute(this, input, (int) fromIndex);
     }
 }

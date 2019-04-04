@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.array.dyn;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
@@ -49,15 +48,14 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
-import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResultOriginalInput;
 
 public final class LazyRegexResultArray extends AbstractConstantArray {
 
     public static final LazyRegexResultArray LAZY_REGEX_RESULT_ARRAY = new LazyRegexResultArray(INTEGRITY_LEVEL_NONE, createCache());
-
-    private static final TRegexUtil.TRegexMaterializeResultNode SLOW_PATH_RESULT_MATERIALIZE_NODE = TRegexUtil.TRegexMaterializeResultNode.create();
 
     public static LazyRegexResultArray createLazyRegexResultArray() {
         return LAZY_REGEX_RESULT_ARRAY;
@@ -67,26 +65,24 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
         super(integrityLevel, cache);
     }
 
-    private static Object[] getArray(DynamicObject object) {
-        if (arrayGetArray(object) == ScriptArray.EMPTY_OBJECT_ARRAY) {
-            arraySetArray(object, new Object[(int) arrayGetLength(object)]);
-        }
-        return (Object[]) arrayGetArray(object);
+    private static Object[] getArray(DynamicObject object, boolean condition) {
+        return (Object[]) arrayGetArray(object, condition);
     }
 
-    public static Object materializeGroup(TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, int index) {
-        final Object[] internalArray = getArray(object);
+    public static Object materializeGroup(TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, int index, boolean condition) {
+        Object[] internalArray = getArray(object, condition);
         if (internalArray[index] == null) {
-            internalArray[index] = materializeResultNode.materializeGroup(arrayGetRegexResult(object), index);
+            internalArray[index] = materializeResultNode.materializeGroup(arrayGetRegexResult(object, condition), index, arrayGetRegexResultOriginalInput(object, condition));
         }
         return internalArray[index];
     }
 
-    public ScriptArray createWritable(TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, long index, Object value) {
-        for (int i = 0; i < arrayGetLength(object); i++) {
-            materializeGroup(materializeResultNode, object, i);
+    public ScriptArray createWritable(TRegexUtil.TRegexMaterializeResultNode materializeResultNode, DynamicObject object, long index, Object value, boolean condition) {
+        boolean lrraCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultArray;
+        for (int i = 0; i < lengthInt(object); i++) {
+            materializeGroup(materializeResultNode, object, i, lrraCondition);
         }
-        final Object[] internalArray = getArray(object);
+        final Object[] internalArray = getArray(object, condition);
         AbstractObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, internalArray.length, internalArray.length, internalArray, integrityLevel);
         if (JSTruffleOptions.TraceArrayTransitions) {
             traceArrayTransition(this, newArray, index, value);
@@ -94,38 +90,31 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
         return newArray;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static Object[] slowPathMaterializeFull(DynamicObject object) {
-        return SLOW_PATH_RESULT_MATERIALIZE_NODE.materializeFull(arrayGetRegexResult(object));
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static Object slowPathMaterializeGroup(DynamicObject object, int index) {
-        return SLOW_PATH_RESULT_MATERIALIZE_NODE.materializeGroup(arrayGetRegexResult(object), index);
-    }
-
     @Override
     public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        final Object[] internalArray = getArray(object);
+        boolean lrraCondition = condition && arrayGetArrayType(object, condition) instanceof LazyRegexResultArray;
+        final Object[] internalArray = getArray(object, condition);
         if (internalArray[index] == null) {
-            internalArray[index] = slowPathMaterializeGroup(object, index);
+            internalArray[index] = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeGroup(arrayGetRegexResult(object, lrraCondition), index,
+                            arrayGetRegexResultOriginalInput(object, lrraCondition));
         }
         return internalArray[index];
     }
 
     @Override
     public boolean hasElement(DynamicObject object, long index, boolean condition) {
-        return index >= 0 && index < arrayGetLength(object);
+        return index >= 0 && index < lengthInt(object, condition);
     }
 
     @Override
     public int lengthInt(DynamicObject object, boolean condition) {
-        return (int) arrayGetLength(object);
+        return (int) arrayGetLength(object, condition);
     }
 
     @Override
     public AbstractObjectArray createWriteableObject(DynamicObject object, long index, Object value, boolean condition, ProfileHolder profile) {
-        Object[] array = slowPathMaterializeFull(object);
+        Object[] array = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeFull(arrayGetRegexResult(object), lengthInt(object, condition),
+                        arrayGetRegexResultOriginalInput(object));
         AbstractObjectArray newArray;
         newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, array.length, array.length, array, integrityLevel);
         if (JSTruffleOptions.TraceArrayTransitions) {
@@ -171,7 +160,7 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
 
     @Override
     public Object[] toArray(DynamicObject object) {
-        return slowPathMaterializeFull(object);
+        return TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeFull(arrayGetRegexResult(object), lengthInt(object), arrayGetRegexResultOriginalInput(object));
     }
 
     @Override

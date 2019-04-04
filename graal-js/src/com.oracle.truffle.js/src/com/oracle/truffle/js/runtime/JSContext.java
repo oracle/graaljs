@@ -53,6 +53,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -65,18 +67,19 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.nodes.interop.InteropAsyncFunctionForeign;
-import com.oracle.truffle.js.nodes.interop.InteropBoundFunctionForeign;
-import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -111,6 +114,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -124,7 +128,7 @@ import com.oracle.truffle.js.runtime.builtins.SIMDType.SIMDTypeFactory;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.java.adapter.JavaAdapterFactory;
-import com.oracle.truffle.js.runtime.joni.JoniRegexCompiler;
+import com.oracle.truffle.js.runtime.joni.JoniRegexEngine;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSPrototypeData;
@@ -137,17 +141,12 @@ import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
-import com.oracle.truffle.regex.CachingRegexEngine;
-import com.oracle.truffle.regex.RegexCompiler;
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexOptions;
-import org.graalvm.options.OptionValues;
 
 public class JSContext {
     private final Evaluator evaluator;
     private final JSFunctionLookup functionLookup;
 
-    private final AbstractJavaScriptLanguage language;
+    private final JavaScriptLanguage language;
     private TruffleLanguage.Env truffleLanguageEnv;
 
     private final Shape emptyShape;
@@ -200,13 +199,15 @@ public class JSContext {
 
     private final Object nodeFactory;
 
-    private JSInteropRuntime interopRuntime;
     private final TimeProfiler timeProfiler;
 
     private final JSObjectFactory.BoundProto moduleNamespaceFactory;
 
-    /** The RegExp engine, as obtained from RegexLanguage. */
-    private TruffleObject regexEngine;
+    /** The RegExp engine in use, may be JoniRegexEngine or the TRegex engine. */
+    @CompilationFinal private Object regexEngine;
+
+    /** The TRegex engine, as obtained from RegexLanguage. */
+    @CompilationFinal private Object tRegexEngine;
 
     private PromiseRejectionTracker promiseRejectionTracker;
     private final Assumption promiseRejectionTrackerNotUsedAssumption;
@@ -250,6 +251,7 @@ public class JSContext {
         PromiseValueThunk,
         PromiseThrower,
         ImportModuleDynamically,
+        JavaPackageToPrimitive,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
@@ -367,6 +369,8 @@ public class JSContext {
     private final JSObjectFactory dateTimeFormatFactory;
     private final JSObjectFactory listFormatFactory;
     private final JSObjectFactory relativeTimeFormatFactory;
+    private final JSObjectFactory segmenterFactory;
+    private final JSObjectFactory segmentIteratorFactory;
 
     private final JSObjectFactory javaImporterFactory;
     private final JSObjectFactory javaPackageFactory;
@@ -377,7 +381,7 @@ public class JSContext {
 
     private final int factoryCount;
 
-    protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
+    protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
         this.contextOptions = contextOptions;
 
@@ -515,6 +519,8 @@ public class JSContext {
         this.pluralRulesFactory = builder.create(JSPluralRules.INSTANCE);
         this.listFormatFactory = builder.create(JSListFormat.INSTANCE);
         this.relativeTimeFormatFactory = builder.create(JSRelativeTimeFormat.INSTANCE);
+        this.segmenterFactory = builder.create(JSSegmenter.INSTANCE);
+        this.segmentIteratorFactory = builder.create(JSRealm::getSegmentIteratorPrototype, JSSegmenter::makeInitialSegmentIteratorShape);
 
         this.javaPackageFactory = builder.create(objectPrototypeSupplier, JavaPackage.INSTANCE::makeInitialShape);
         boolean nashornCompat = isOptionNashornCompatibilityMode() || JSTruffleOptions.NashornCompatibilityMode;
@@ -529,8 +535,6 @@ public class JSContext {
         this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
         this.factoryCount = builder.finish();
-
-        this.interopRuntime = new JSInteropRuntime(JSForeignAccessFactoryForeign.ACCESS, InteropBoundFunctionForeign.ACCESS, InteropAsyncFunctionForeign.ACCESS);
     }
 
     public final JSFunctionLookup getFunctionLookup() {
@@ -589,7 +593,7 @@ public class JSContext {
         return regExpStaticResultUnusedAssumption;
     }
 
-    public static JSContext createContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, AbstractJavaScriptLanguage lang, TruffleLanguage.Env env) {
+    public static JSContext createContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
         return new JSContext(evaluator, lookup, contextOptions, lang, env);
     }
 
@@ -648,12 +652,11 @@ public class JSContext {
     }
 
     private LocalTimeZoneHolder getLocalTimeZoneHolder() {
-        if (localTimeZoneHolder != null) {
-            return localTimeZoneHolder;
-        } else {
+        if (localTimeZoneHolder == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return localTimeZoneHolder = new LocalTimeZoneHolder();
+            localTimeZoneHolder = new LocalTimeZoneHolder();
         }
+        return localTimeZoneHolder;
     }
 
     public final ZoneId getLocalTimeZoneId() {
@@ -736,10 +739,6 @@ public class JSContext {
         if (--interopCallStackDepth == 0) {
             processAllPendingPromiseJobs();
         }
-    }
-
-    public JSInteropRuntime getInteropRuntime() {
-        return interopRuntime;
     }
 
     public TimeProfiler getTimeProfiler() {
@@ -909,6 +908,14 @@ public class JSContext {
         return relativeTimeFormatFactory;
     }
 
+    public final JSObjectFactory getSegmenterFactory() {
+        return segmenterFactory;
+    }
+
+    public final JSObjectFactory getSegmentIteratorFactory() {
+        return segmentIteratorFactory;
+    }
+
     public final JSObjectFactory getDateTimeFormatFactory() {
         return dateTimeFormatFactory;
     }
@@ -933,54 +940,68 @@ public class JSContext {
         return dictionaryObjectFactory;
     }
 
+    private static final String REGEX_LANGUAGE_ID = "regex";
+    private static final String REGEX_OPTION_U180E_WHITESPACE = "U180EWhitespace";
+    private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";
+    private static final String REGEX_OPTION_DUMP_AUTOMATA = "DumpAutomata";
+    private static final String REGEX_OPTION_STEP_EXECUTION = "StepExecution";
+    private static final String REGEX_OPTION_ALWAYS_EAGER = "AlwaysEager";
+
     private String createRegexEngineOptions() {
         StringBuilder options = new StringBuilder(30);
         if (JSTruffleOptions.U180EWhitespace) {
-            options.append(RegexOptions.U180E_WHITESPACE_NAME + "=true,");
+            options.append(REGEX_OPTION_U180E_WHITESPACE + "=true,");
         }
         if (JSTruffleOptions.RegexRegressionTestMode) {
-            options.append(RegexOptions.REGRESSION_TEST_MODE_NAME + "=true,");
+            options.append(REGEX_OPTION_REGRESSION_TEST_MODE + "=true,");
         }
         if (getContextOptions().isRegexDumpAutomata()) {
-            options.append(RegexOptions.DUMP_AUTOMATA_NAME + "=true,");
+            options.append(REGEX_OPTION_DUMP_AUTOMATA + "=true,");
         }
         if (getContextOptions().isRegexStepExecution()) {
-            options.append(RegexOptions.STEP_EXECUTION_NAME + "=true,");
+            options.append(REGEX_OPTION_STEP_EXECUTION + "=true,");
         }
         if (getContextOptions().isRegexAlwaysEager()) {
-            options.append(RegexOptions.ALWAYS_EAGER_NAME + "=true,");
+            options.append(REGEX_OPTION_ALWAYS_EAGER + "=true,");
         }
         return options.toString();
     }
 
-    @SuppressWarnings("checkstyle:NoWhitespaceBefore")
-    public TruffleObject getRegexEngine() {
+    public Object getRegexEngine() {
         if (regexEngine == null) {
-            RegexCompiler joniCompiler = new JoniRegexCompiler(null);
-            if (JSTruffleOptions.UseTRegex) {
-                TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(RegexLanguage.ID, "", "TRegex Engine Builder Request").build()).call();
-                String regexOptions = createRegexEngineOptions();
-                try {
-                    regexEngine = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), regexEngineBuilder, regexOptions, joniCompiler);
-                } catch (InteropException ex) {
-                    throw ex.raise();
-                }
-            } else {
-                // Checkstyle: stop
-                // @formatter:off
-                RegexOptions regexOptions = RegexOptions.newBuilder()
-                        .u180eWhitespace(JSTruffleOptions.U180EWhitespace)
-                        .regressionTestMode(JSTruffleOptions.RegexRegressionTestMode)
-                        .dumpAutomata(getContextOptions().isRegexDumpAutomata())
-                        .stepExecution(getContextOptions().isRegexStepExecution())
-                        .alwaysEager(getContextOptions().isRegexAlwaysEager())
-                        .build();
-                // @formatter:on
-                // Checkstyle: resume
-                regexEngine = new CachingRegexEngine(joniCompiler, regexOptions);
-            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            regexEngine = createRegexEngine();
         }
         return regexEngine;
+    }
+
+    public Object getTRegexEngine() {
+        if (tRegexEngine == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            tRegexEngine = createTRegexEngine();
+        }
+        return tRegexEngine;
+    }
+
+    @TruffleBoundary
+    private Object createRegexEngine() {
+        if (JSTruffleOptions.UseTRegex) {
+            return getTRegexEngine();
+        } else {
+            return new JoniRegexEngine(null);
+        }
+    }
+
+    @TruffleBoundary
+    private Object createTRegexEngine() {
+        TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").build()).call();
+        String regexOptions = createRegexEngineOptions();
+        JoniRegexEngine fallbackCompiler = new JoniRegexEngine(null);
+        try {
+            return InteropLibrary.getFactory().getUncached().execute(regexEngineBuilder, regexOptions, fallbackCompiler);
+        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+            throw Errors.shouldNotReachHere(e);
+        }
     }
 
     private static class LocalTimeZoneHolder {
@@ -1012,13 +1033,13 @@ public class JSContext {
     private synchronized Map<Shape, JSShapeData> createShapeDataMap() {
         Map<Shape, JSShapeData> map = shapeDataMap;
         if (map == null) {
-            return shapeDataMap = new WeakHashMap<>();
-        } else {
-            return map;
+            map = new WeakHashMap<>();
+            shapeDataMap = map;
         }
+        return map;
     }
 
-    public AbstractJavaScriptLanguage getLanguage() {
+    public JavaScriptLanguage getLanguage() {
         return language;
     }
 
@@ -1031,7 +1052,7 @@ public class JSContext {
     }
 
     /** CallTarget for an empty function that returns undefined. */
-    private static CallTarget createEmptyFunctionCallTarget(AbstractJavaScriptLanguage lang) {
+    private static CallTarget createEmptyFunctionCallTarget(JavaScriptLanguage lang) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -1044,7 +1065,7 @@ public class JSContext {
         return speciesGetterFunctionCallTarget;
     }
 
-    private static CallTarget createSpeciesGetterFunctionCallTarget(AbstractJavaScriptLanguage lang) {
+    private static CallTarget createSpeciesGetterFunctionCallTarget(JavaScriptLanguage lang) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -1081,7 +1102,7 @@ public class JSContext {
         return result;
     }
 
-    private static RootCallTarget createNotConstructibleCallTarget(AbstractJavaScriptLanguage lang, boolean generator) {
+    private static RootCallTarget createNotConstructibleCallTarget(JavaScriptLanguage lang, boolean generator) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -1471,6 +1492,10 @@ public class JSContext {
         singleRealmAssumption.check();
     }
 
+    public final Assumption getSingleRealmAssumption() {
+        return singleRealmAssumption;
+    }
+
     public JSContextOptions getContextOptions() {
         return contextOptions;
     }
@@ -1581,11 +1606,14 @@ public class JSContext {
 
     private JSFunctionData protoGetterFunction() {
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
+            @Child private JSToObjectNode toObjectNode = JSToObjectNode.createToObject(JSContext.this);
+            @Child private GetPrototypeNode getPrototypeNode = GetPrototypeNode.create();
+
             @Override
             public Object execute(VirtualFrame frame) {
-                Object obj = JSRuntime.toObject(JSContext.this, JSArguments.getThisObject(frame.getArguments()));
+                TruffleObject obj = toObjectNode.executeTruffleObject(JSArguments.getThisObject(frame.getArguments()));
                 if (JSObject.isJSObject(obj)) {
-                    return JSObject.getPrototype((DynamicObject) obj);
+                    return getPrototypeNode.executeJSObject(obj);
                 }
                 return Null.instance;
             }

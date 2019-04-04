@@ -49,52 +49,75 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSClassProfile extends NodeCloneable {
-    @CompilationFinal private JSClass expectedJSClass;
-    @CompilationFinal private boolean polymorphicJSClass;
-
-    private JSClassProfile() {
+public abstract class JSClassProfile extends NodeCloneable {
+    JSClassProfile() {
     }
 
     public static JSClassProfile create() {
-        return new JSClassProfile();
+        return new JSClassProfile.Cached();
+    }
+
+    public static JSClassProfile getUncached() {
+        return UNCACHED;
     }
 
     public JSClass getJSClass(DynamicObject jsobject) {
-        ObjectType jsobjectClass = JSShape.getJSClassNoCast(jsobject.getShape());
-        if (!polymorphicJSClass) {
-            if (jsobjectClass == expectedJSClass) {
-                return expectedJSClass;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (expectedJSClass == null) {
-                    expectedJSClass = (JSClass) jsobjectClass;
-                } else {
-                    polymorphicJSClass = true;
-                }
-            }
-        }
-        return (JSClass) jsobjectClass;
+        return (JSClass) JSShape.getJSClassNoCast(jsobject.getShape());
     }
 
     public JSClass profile(JSClass jsobjectClass) {
-        if (!polymorphicJSClass) {
-            if (jsobjectClass == expectedJSClass) {
-                return expectedJSClass;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (expectedJSClass == null) {
-                    expectedJSClass = jsobjectClass;
-                } else {
-                    polymorphicJSClass = true;
-                }
-            }
-        }
         return jsobjectClass;
     }
 
-    @Override
-    public String toString() {
-        return polymorphicJSClass ? "polymorphic" : Boundaries.stringValueOf(expectedJSClass);
+    private static final class Cached extends JSClassProfile {
+        @CompilationFinal private JSClass expectedJSClass;
+        @CompilationFinal private boolean polymorphicJSClass;
+
+        @Override
+        public JSClass getJSClass(DynamicObject jsobject) {
+            ObjectType jsobjectClass = JSShape.getJSClassNoCast(jsobject.getShape());
+            if (!polymorphicJSClass) {
+                if (jsobjectClass == expectedJSClass) {
+                    return expectedJSClass;
+                } else {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    if (expectedJSClass == null) {
+                        expectedJSClass = (JSClass) jsobjectClass;
+                    } else {
+                        polymorphicJSClass = true;
+                    }
+                }
+            }
+            return (JSClass) jsobjectClass;
+        }
+
+        @Override
+        public JSClass profile(JSClass jsobjectClass) {
+            if (!polymorphicJSClass) {
+                if (jsobjectClass == expectedJSClass) {
+                    return expectedJSClass;
+                } else {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    if (expectedJSClass == null) {
+                        expectedJSClass = jsobjectClass;
+                    } else {
+                        polymorphicJSClass = true;
+                    }
+                }
+            }
+            return jsobjectClass;
+        }
+
+        @Override
+        public String toString() {
+            return "JSClass(" + (polymorphicJSClass ? "polymorphic" : Boundaries.stringValueOf(expectedJSClass)) + ")";
+        }
     }
+
+    private static final JSClassProfile UNCACHED = new JSClassProfile() {
+        @Override
+        public String toString() {
+            return "JSClass(uncached)";
+        }
+    };
 }

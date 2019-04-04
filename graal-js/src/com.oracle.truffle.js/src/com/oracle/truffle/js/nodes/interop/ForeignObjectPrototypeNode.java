@@ -40,37 +40,31 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * Node that returns a suitable prototype for a foreign object.
  */
-@ImportStatic(value = JSInteropUtil.class)
 public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
-    private final ContextReference<JSRealm> contextRef = AbstractJavaScriptLanguage.getCurrentLanguage().getContextReference();
 
     public abstract DynamicObject executeDynamicObject(TruffleObject truffleObject);
 
-    @Specialization
+    @Specialization(limit = "3")
     public DynamicObject doTruffleObject(TruffleObject truffleObject,
-                    @Cached("createHasSize()") Node hasSizeNode,
-                    @Cached("createIsExecutable()") Node isExecutableNode) {
-        JSRealm realm = contextRef.get();
+                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @CachedLibrary("truffleObject") InteropLibrary interop) {
         assert realm.getContext().getContextOptions().hasForeignObjectPrototype();
-        if (ForeignAccess.sendHasSize(hasSizeNode, truffleObject)) {
+        if (interop.hasArrayElements(truffleObject)) {
             return realm.getArrayConstructor().getPrototype();
-        } else if (ForeignAccess.sendIsExecutable(isExecutableNode, truffleObject)) {
+        } else if (interop.isExecutable(truffleObject)) {
             return realm.getFunctionPrototype();
         } else {
             return realm.getObjectPrototype();

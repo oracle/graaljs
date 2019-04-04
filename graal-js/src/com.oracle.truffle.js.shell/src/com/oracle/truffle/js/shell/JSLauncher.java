@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.shell;
 
 import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Consumed;
-import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.ConsumedPolyglotOption;
 import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.MissingValue;
 import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Unhandled;
 
@@ -114,10 +113,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
                     }
                 }
 
-                switch (preprocessArgument(flag, polyglotOptions)) {
-                    case ConsumedPolyglotOption:
-                        iterator.remove();
-                        // fall through
+                switch (preprocessArgument(flag)) {
                     case Consumed:
                         continue;
                     case MissingValue:
@@ -135,14 +131,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
                     value = null;
                 }
 
-                switch ((preprocessArgument(flag, value, polyglotOptions))) {
-                    case ConsumedPolyglotOption:
-                        iterator.remove();
-                        if (equalsIndex < 0 && value != null) {
-                            iterator.previous();
-                        }
-                        iterator.remove();
-                        // fall through
+                switch ((preprocessArgument(flag, value))) {
                     case Consumed:
                         continue;
                     case MissingValue:
@@ -164,12 +153,11 @@ public class JSLauncher extends AbstractLanguageLauncher {
 
     public enum PreprocessResult {
         Consumed,
-        ConsumedPolyglotOption,
         Unhandled,
         MissingValue
     }
 
-    protected PreprocessResult preprocessArgument(String argument, Map<String, String> polyglotOptions) {
+    protected PreprocessResult preprocessArgument(String argument) {
         switch (argument) {
             case "printResult":
             case "print-result":
@@ -181,26 +169,11 @@ public class JSLauncher extends AbstractLanguageLauncher {
             case "version":
                 versionAction = VersionAction.PrintAndExit;
                 return Consumed;
-            case "syntax-extensions":
-                polyglotOptions.put("js.syntax-extensions", "true");
-                return ConsumedPolyglotOption;
-            case "scripting":
-                polyglotOptions.put("js.scripting", "true");
-                return ConsumedPolyglotOption;
-            case "no-shebang":
-                polyglotOptions.put("js.shebang", "false");
-                return ConsumedPolyglotOption;
-            case "strict":
-                polyglotOptions.put("js.strict", "true");
-                return ConsumedPolyglotOption;
-            case "no-constasvar":
-                polyglotOptions.put("js.const-as-var", "false");
-                return ConsumedPolyglotOption;
         }
         return Unhandled;
     }
 
-    protected PreprocessResult preprocessArgument(String argument, String value, @SuppressWarnings("unused") Map<String, String> polyglotOptions) {
+    protected PreprocessResult preprocessArgument(String argument, String value) {
         switch (argument) {
             case "eval":
                 if (value == null) {
@@ -283,8 +256,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
         printOption("-e, --eval CODE",      "evaluate the code");
         printOption("-f, --file FILE",      "load script file");
         printOption("--module FILE",        "load module file");
-        printOption("--no-constasvar",      "disallows parsing of 'const' declarations as 'var'");
-        printOption("--no-shebang",         "disallows support for files starting with '#!'");
         printOption("--syntax-extensions",  "enable non-spec syntax extensions");
         printOption("--print-result",       "print the return value of each FILE");
         printOption("--scripting",          "enable scripting features (Nashorn compatibility option)");
@@ -299,8 +270,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
         args.addAll(Arrays.asList(
                         "-e", "--eval",
                         "-f", "--file",
-                        "--no-constasvar",
-                        "--no-shebang",
                         "--syntax-extensions",
                         "--print-result",
                         "--version",

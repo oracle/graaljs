@@ -59,14 +59,13 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -81,7 +80,6 @@ import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode.FrameBlockScopeNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -359,9 +357,20 @@ public abstract class JSScope {
         private final RootNode rootNode;
 
         protected JSFunctionScope(Node node, MaterializedFrame frame) {
-            super(node, frame);
+            super(node, getFunctionFrame(frame));
             this.rootNode = findRootNode(node);
             assert frame == null || rootNode == null || frame.getFrameDescriptor() == rootNode.getFrameDescriptor();
+        }
+
+        private static MaterializedFrame getFunctionFrame(MaterializedFrame frame) {
+            if (frame != null && frame.getArguments().length > 0) {
+                Object arg0 = frame.getArguments()[0];
+                if (arg0 instanceof MaterializedFrame) {
+                    // arg0 is generatorFrame
+                    return (MaterializedFrame) arg0;
+                }
+            }
+            return frame;
         }
 
         private static RootNode findRootNode(Node node) {
@@ -409,7 +418,7 @@ public abstract class JSScope {
                 Object thisObject = JSArguments.getThisObject(args);
                 Object function = JSArguments.getFunctionObject(args);
                 if (JSFunction.isJSFunction(function) && !JSFunction.isStrict((DynamicObject) function)) {
-                    JSRealm realm = AbstractJavaScriptLanguage.getCurrentJSRealm();
+                    JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
                     if (thisObject == Undefined.instance || thisObject == Null.instance) {
                         thisObject = realm.getGlobalObject();
                     } else {
@@ -484,6 +493,7 @@ public abstract class JSScope {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class VariablesMapObject implements TruffleObject {
 
         final Map<String, ? extends Variable> slots;
@@ -496,82 +506,82 @@ public abstract class JSScope {
             this.frame = frame;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return VariablesMapMessageResolutionForeign.ACCESS;
-        }
-
         public static boolean isInstance(TruffleObject obj) {
             return obj instanceof VariablesMapObject;
         }
 
-        @MessageResolution(receiverType = VariablesMapObject.class)
-        static final class VariablesMapMessageResolution {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
 
-            @Resolve(message = "KEYS")
-            abstract static class VarsMapKeysNode extends Node {
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return new VariableNamesObject(slots.keySet());
+        }
 
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap) {
-                    return new VariableNamesObject(varMap.slots.keySet());
-                }
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberReadable(String name) {
+            Variable slot = slots.get(name);
+            if (slot == null) {
+                return false;
             }
+            return true;
+        }
 
-            @Resolve(message = "KEY_INFO")
-            abstract static class VarsMapKeyInfoNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap, Object key) {
-                    Variable slot = varMap.slots.get(key);
-                    if (slot == null) {
-                        return KeyInfo.NONE;
-                    }
-                    if (varMap.frame == null) {
-                        return KeyInfo.READABLE;
-                    }
-                    return KeyInfo.READABLE | (slot.isWritable() ? KeyInfo.MODIFIABLE : 0);
-                }
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberModifiable(String name) {
+            Variable slot = slots.get(name);
+            if (slot == null) {
+                return false;
+            } else if (frame == null) {
+                return false;
             }
+            return slot.isWritable();
+        }
 
-            @Resolve(message = "READ")
-            abstract static class VarsMapReadNode extends Node {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isMemberInsertable(@SuppressWarnings("unused") String name) {
+            return false;
+        }
 
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap, String name) {
-                    Variable slot = varMap.slots.get(name);
-                    if (slot == null) {
-                        throw UnknownIdentifierException.raise(name);
-                    } else if (varMap.frame == null) {
-                        return Undefined.instance;
-                    } else {
-                        Object value = slot.get(varMap.frame, varMap.args);
-                        return getInteropValue(value);
-                    }
-                }
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String name) throws UnknownIdentifierException {
+            Variable slot = slots.get(name);
+            if (slot == null) {
+                throw UnknownIdentifierException.create(name);
+            } else if (frame == null) {
+                return Undefined.instance;
+            } else {
+                Object value = slot.get(frame, args);
+                return getInteropValue(value);
             }
+        }
 
-            @Resolve(message = "WRITE")
-            abstract static class VarsMapWriteNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap, String name, Object value) {
-                    if (varMap.frame == null) {
-                        throw UnsupportedMessageException.raise(Message.WRITE);
-                    }
-                    Variable slot = varMap.slots.get(name);
-                    if (slot == null) {
-                        throw UnknownIdentifierException.raise(name);
-                    } else if (slot.isWritable()) {
-                        slot.set(varMap.frame, varMap.args, value);
-                        return value;
-                    } else {
-                        throw UnsupportedMessageException.raise(Message.WRITE);
-                    }
-                }
+        @ExportMessage
+        @TruffleBoundary
+        void writeMember(String name, Object value) throws UnsupportedMessageException, UnknownIdentifierException {
+            if (frame == null) {
+                throw UnsupportedMessageException.create();
+            }
+            Variable slot = slots.get(name);
+            if (slot == null) {
+                throw UnknownIdentifierException.create(name);
+            } else if (slot.isWritable()) {
+                slot.set(frame, args, value);
+            } else {
+                throw UnsupportedMessageException.create();
             }
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class VariableNamesObject implements TruffleObject {
 
         final List<String> names;
@@ -585,54 +595,40 @@ public abstract class JSScope {
             this.names = names;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return VariableNamesMessageResolutionForeign.ACCESS;
-        }
-
         public static boolean isInstance(TruffleObject obj) {
             return obj instanceof VariableNamesObject;
         }
 
-        @MessageResolution(receiverType = VariableNamesObject.class)
-        static final class VariableNamesMessageResolution {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
 
-            @Resolve(message = "HAS_SIZE")
-            abstract static class VarNamesHasSizeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(VariableNamesObject varNames) {
-                    return true;
-                }
+        @ExportMessage
+        @TruffleBoundary
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(index)) {
+                throw InvalidArrayIndexException.create(index);
             }
+            return names.get((int) index);
+        }
 
-            @Resolve(message = "GET_SIZE")
-            abstract static class VarNamesGetSizeNode extends Node {
+        @ExportMessage
+        long getArraySize() {
+            return names.size();
+        }
 
-                public Object access(VariableNamesObject varNames) {
-                    return varNames.names.size();
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class VarNamesReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariableNamesObject varNames, int index) {
-                    try {
-                        return varNames.names.get(index);
-                    } catch (IndexOutOfBoundsException ioob) {
-                        throw UnknownIdentifierException.raise(Integer.toString(index));
-                    }
-                }
-            }
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0L && index < names.size();
         }
     }
 
     /**
      * Wraps a dynamic scope object, filters out dead variables, and prevents const assignment.
      */
-    @MessageResolution(receiverType = DynamicScopeWrapper.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class DynamicScopeWrapper implements TruffleObject {
         final DynamicObject scope;
 
@@ -648,67 +644,70 @@ public abstract class JSScope {
             return JSProperty.isConst(wrapper.scope.getShape().getProperty(name));
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return DynamicScopeWrapperForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        @Resolve(message = "KEYS")
-        abstract static class KeysNode extends Node {
-            @TruffleBoundary
-            public Object access(DynamicScopeWrapper wrapper) {
-                List<String> keys = new ArrayList<>();
-                for (Object key : wrapper.scope.getShape().getKeys()) {
-                    if (key instanceof String) {
-                        Object value = wrapper.scope.get(key);
-                        if (value != null && value != Dead.instance()) {
-                            keys.add((String) key);
-                        }
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            List<String> keys = new ArrayList<>();
+            for (Object key : scope.getShape().getKeys()) {
+                if (key instanceof String) {
+                    Object value = scope.get(key);
+                    if (value != null && value != Dead.instance()) {
+                        keys.add((String) key);
                     }
                 }
-                return new VariableNamesObject(keys);
+            }
+            return new VariableNamesObject(keys);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberReadable(String name) {
+            Object value = scope.get(name);
+            if (value == null || value == Dead.instance()) {
+                return false;
+            }
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberModifiable(String name) {
+            return isMemberReadable(name) && !isConst(this, name);
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isMemberInsertable(@SuppressWarnings("unused") String name) {
+            return false;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String name) throws UnknownIdentifierException {
+            Object value = scope.get(name);
+            if (value == null || value == Dead.instance()) {
+                throw UnknownIdentifierException.create(name);
+            } else {
+                return getInteropValue(value);
             }
         }
 
-        @Resolve(message = "KEY_INFO")
-        abstract static class KeyInfoNode extends Node {
-            @TruffleBoundary
-            public Object access(DynamicScopeWrapper wrapper, String name) {
-                Object value = wrapper.scope.get(name);
-                if (value == null || value == Dead.instance()) {
-                    return KeyInfo.NONE;
-                }
-                return KeyInfo.READABLE | (!isConst(wrapper, name) ? KeyInfo.MODIFIABLE : 0);
-            }
-
-        }
-
-        @Resolve(message = "READ")
-        abstract static class ReadNode extends Node {
-            @TruffleBoundary
-            public Object access(DynamicScopeWrapper wrapper, String name) {
-                Object value = wrapper.scope.get(name);
-                if (value == null || value == Dead.instance()) {
-                    throw UnknownIdentifierException.raise(name);
-                } else {
-                    return getInteropValue(value);
-                }
-            }
-        }
-
-        @Resolve(message = "WRITE")
-        abstract static class WriteNode extends Node {
-            @TruffleBoundary
-            public Object access(DynamicScopeWrapper wrapper, String name, Object value) {
-                Object curValue = wrapper.scope.get(name);
-                if (curValue == null || curValue == Dead.instance()) {
-                    throw UnknownIdentifierException.raise(name);
-                } else if (!isConst(wrapper, name)) {
-                    wrapper.scope.set(name, value);
-                    return curValue;
-                } else {
-                    throw UnsupportedMessageException.raise(Message.WRITE);
-                }
+        @ExportMessage
+        @TruffleBoundary
+        void writeMember(String name, Object value) throws UnsupportedMessageException, UnknownIdentifierException {
+            Object curValue = scope.get(name);
+            if (curValue == null || curValue == Dead.instance()) {
+                throw UnknownIdentifierException.create(name);
+            } else if (!isConst(this, name)) {
+                scope.set(name, value);
+            } else {
+                throw UnsupportedMessageException.create();
             }
         }
     }

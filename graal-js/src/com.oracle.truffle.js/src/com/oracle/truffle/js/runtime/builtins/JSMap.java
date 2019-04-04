@@ -51,6 +51,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -109,6 +110,7 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
     private static DynamicObject createSizeGetterFunction(JSRealm realm) {
         JSContext context = realm.getContext();
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            private final BranchProfile errorBranch = BranchProfile.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -116,6 +118,7 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
                 if (JSMap.isJSMap(obj)) {
                     return JSMap.getMapSize((DynamicObject) obj);
                 } else {
+                    errorBranch.enter();
                     throw Errors.createTypeErrorMapExpected();
                 }
             }

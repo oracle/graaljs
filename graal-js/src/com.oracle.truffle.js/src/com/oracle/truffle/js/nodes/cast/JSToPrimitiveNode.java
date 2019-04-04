@@ -41,23 +41,30 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.JSUnboxOrGetNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -108,6 +115,11 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     @Specialization
     protected LargeInteger doLargeInteger(LargeInteger value) {
+        return value;
+    }
+
+    @Specialization
+    protected long doLong(long value) {
         return value;
     }
 
@@ -190,26 +202,62 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return hint == Hint.Number || hint == Hint.None;
     }
 
-    @Specialization(guards = "isTruffleJavaObject(object)")
-    protected Object doTruffleJavaObject(TruffleObject object) {
-        TruffleLanguage.Env env = AbstractJavaScriptLanguage.getCurrentEnv();
-        Object javaObject = env.asHostObject(object);
-        return (javaObject == null) ? Null.instance : doGeneric(javaObject);
+    protected final boolean isHintStringOrDefault() {
+        return hint == Hint.String || hint == Hint.None;
     }
 
-    @Specialization(guards = {"isForeignObject(object)", "!isTruffleJavaObject(object)"})
-    protected Object doCrossLanguage(TruffleObject object,
-                    @Cached("create()") JSUnboxOrGetNode unboxOrGet) {
-        return unboxOrGet.executeWithTarget(object);
+    @Specialization(guards = "isForeignObject(object)", limit = "5")
+    protected Object doTruffleJavaObject(TruffleObject object,
+                    @CachedLibrary("object") InteropLibrary interop,
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
+                    @Cached("create()") JSForeignToJSTypeNode toJSType) {
+        if (interop.isNull(object)) {
+            return Null.instance;
+        }
+        TruffleLanguage.Env env = contextRef.get().getEnv();
+        if (env.isHostObject(object)) {
+            Object javaObject = env.asHostObject(object);
+            if (javaObject == null) {
+                return Null.instance;
+            } else if (JSGuards.isJavaPrimitiveNumber(javaObject)) {
+                return toJSType.executeWithTarget(javaObject);
+            } else {
+                if (isHintStringOrDefault()) {
+                    return JSRuntime.toJSNull(Boundaries.javaToString(javaObject));
+                } else {
+                    throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+                }
+            }
+        }
+        try {
+            if (interop.isBoolean(object)) {
+                return interop.asBoolean(object);
+            } else if (interop.isString(object)) {
+                return interop.asString(object);
+            } else if (interop.isNumber(object)) {
+                if (interop.fitsInInt(object)) {
+                    return interop.asInt(object);
+                } else if (interop.fitsInLong(object)) {
+                    return interop.asLong(object);
+                } else if (interop.fitsInDouble(object)) {
+                    return interop.asDouble(object);
+                }
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(object, e, this);
+        }
+        if (isHintStringOrDefault()) {
+            boolean hasSize = interop.hasArrayElements(object);
+            return JSRuntime.objectToConsoleString(object, hasSize ? null : "foreign");
+        } else {
+            throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+        }
     }
 
     @Fallback
-    protected static Object doGeneric(Object value) {
+    protected Object doFallback(Object value) {
         assert value != null;
-        if (value instanceof Number) {
-            return value;
-        }
-        return JSRuntime.toJSNull(Boundaries.javaToString(value));
+        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
     }
 
     protected static PropertyNode createGetToPrimitive(DynamicObject object) {

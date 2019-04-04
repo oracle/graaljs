@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,54 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.joni;
+package com.oracle.truffle.js.runtime.joni.interop;
+
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@ImportStatic(JSInteropUtil.class)
-public abstract class InputCharAtNode extends Node {
+@ExportLibrary(InteropLibrary.class)
+public class TruffleReadOnlyKeysArray implements TruffleObject {
 
-    public static InputCharAtNode create() {
-        return InputCharAtNodeGen.create();
+    @CompilationFinal(dimensions = 1) private final String[] keys;
+
+    public TruffleReadOnlyKeysArray(String... keys) {
+        this.keys = keys;
+        Arrays.sort(this.keys);
     }
 
-    public abstract char execute(Object input, int index);
-
-    @Specialization
-    public char doCharAt(String input, int index) {
-        return input.charAt(index);
+    public boolean contains(String key) {
+        return Arrays.binarySearch(keys, key) >= 0;
     }
 
-    @Specialization
-    public char doCharAt(TruffleObject input, int index, @Cached("createRead()") Node readNode) {
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
+    }
+
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < keys.length;
+    }
+
+    @ExportMessage
+    long getArraySize() {
+        return keys.length;
+    }
+
+    @ExportMessage
+    String readArrayElement(long index) throws InvalidArrayIndexException {
         try {
-            Object c = ForeignAccess.sendRead(readNode, input, index);
-            if (c instanceof Character) {
-                return (char) c;
-            }
+            return keys[(int) index];
+        } catch (ArrayIndexOutOfBoundsException e) {
             CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.raise(new Object[]{c});
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw e.raise();
+            throw InvalidArrayIndexException.create(index);
         }
     }
 }

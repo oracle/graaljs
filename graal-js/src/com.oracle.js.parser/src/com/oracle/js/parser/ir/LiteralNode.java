@@ -292,12 +292,11 @@ public abstract class LiteralNode<T> extends Expression {
      * Create a new string literal
      *
      * @param token token
-     * @param finish finish
      * @param value string value
      *
      * @return the new literal node
      */
-    public static LiteralNode<String> newInstance(final long token, final int finish, final String value) {
+    public static LiteralNode<String> newInstance(final long token, final String value) {
         long tokenWithDelimiter = Token.withDelimiter(token);
         int newFinish = Token.descPosition(tokenWithDelimiter) + Token.descLength(tokenWithDelimiter);
         return new StringLiteralNode(tokenWithDelimiter, newFinish, value);

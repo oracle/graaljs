@@ -62,6 +62,10 @@ import com.oracle.truffle.js.runtime.objects.PropertyReference;
                 Object[].class})
 public class JSTypes {
 
+    protected JSTypes() {
+        // should not be constructed
+    }
+
     @ImplicitCast
     public static double intToDouble(int value) {
         return value;
@@ -70,6 +74,11 @@ public class JSTypes {
     @ImplicitCast
     public static double largeIntegerToDouble(LargeInteger value) {
         return value.doubleValue();
+    }
+
+    @ImplicitCast
+    public static double longToDouble(long value) {
+        return value;
     }
 
     @TypeCast(double.class)

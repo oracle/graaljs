@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -65,12 +69,8 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
-
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
 
 /**
  * Methods for dealing with JS objects (access, creation, instanceof, cast).
@@ -287,7 +287,7 @@ public final class JSObject {
         if (isJSObject(obj)) {
             return get((DynamicObject) obj, key);
         } else {
-            return JSInteropNodeUtil.read(obj, key);
+            return JSInteropUtil.readMemberOrDefault(obj, key, Undefined.instance);
         }
     }
 
@@ -296,7 +296,7 @@ public final class JSObject {
         if (isJSObject(obj)) {
             return get((DynamicObject) obj, index);
         } else {
-            return JSInteropNodeUtil.read(obj, index);
+            return JSInteropUtil.readArrayElementOrDefault(obj, index, Undefined.instance);
         }
     }
 
@@ -352,17 +352,17 @@ public final class JSObject {
     }
 
     @TruffleBoundary
-    public static boolean delete(DynamicObject obj, long propIdx) {
-        return JSObject.getJSClass(obj).delete(obj, propIdx, false);
+    public static boolean delete(DynamicObject obj, long index) {
+        return JSObject.getJSClass(obj).delete(obj, index, false);
     }
 
     @TruffleBoundary
-    public static boolean delete(DynamicObject obj, long propIdx, boolean isStrict) {
-        return JSObject.getJSClass(obj).delete(obj, propIdx, isStrict);
+    public static boolean delete(DynamicObject obj, long index, boolean isStrict) {
+        return JSObject.getJSClass(obj).delete(obj, index, isStrict);
     }
 
-    public static boolean delete(DynamicObject obj, long propIdx, boolean isStrict, JSClassProfile classProfile) {
-        return classProfile.getJSClass(obj).delete(obj, propIdx, isStrict);
+    public static boolean delete(DynamicObject obj, long index, boolean isStrict, JSClassProfile classProfile) {
+        return classProfile.getJSClass(obj).delete(obj, index, isStrict);
     }
 
     @TruffleBoundary
@@ -382,40 +382,40 @@ public final class JSObject {
     }
 
     @TruffleBoundary
-    public static boolean hasOwnProperty(DynamicObject obj, long propIdx) {
-        return JSObject.getJSClass(obj).hasOwnProperty(obj, propIdx);
+    public static boolean hasOwnProperty(DynamicObject obj, long index) {
+        return JSObject.getJSClass(obj).hasOwnProperty(obj, index);
     }
 
-    public static boolean hasOwnProperty(DynamicObject obj, long propIdx, JSClassProfile classProfile) {
-        return classProfile.getJSClass(obj).hasOwnProperty(obj, propIdx);
+    public static boolean hasOwnProperty(DynamicObject obj, long index, JSClassProfile classProfile) {
+        return classProfile.getJSClass(obj).hasOwnProperty(obj, index);
     }
 
     @TruffleBoundary
-    public static boolean hasOwnProperty(DynamicObject obj, Object propertyKey) {
-        assert JSRuntime.isPropertyKey(propertyKey);
-        return JSObject.getJSClass(obj).hasOwnProperty(obj, propertyKey);
+    public static boolean hasOwnProperty(DynamicObject obj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
+        return JSObject.getJSClass(obj).hasOwnProperty(obj, key);
     }
 
-    public static boolean hasOwnProperty(DynamicObject obj, Object propertyKey, JSClassProfile classProfile) {
-        assert JSRuntime.isPropertyKey(propertyKey);
-        return classProfile.getJSClass(obj).hasOwnProperty(obj, propertyKey);
+    public static boolean hasOwnProperty(DynamicObject obj, Object key, JSClassProfile classProfile) {
+        assert JSRuntime.isPropertyKey(key);
+        return classProfile.getJSClass(obj).hasOwnProperty(obj, key);
     }
 
-    public static boolean hasOwnProperty(TruffleObject target, Object propertyKey) {
+    public static boolean hasOwnProperty(TruffleObject target, Object key) {
         if (isJSObject(target)) {
-            return hasOwnProperty((DynamicObject) target, propertyKey);
+            return hasOwnProperty((DynamicObject) target, key);
         } else {
-            return JSInteropNodeUtil.hasProperty(target, propertyKey);
+            return JSInteropUtil.hasProperty(target, key);
         }
     }
 
     @TruffleBoundary
-    public static boolean hasProperty(DynamicObject obj, long propIdx) {
-        return JSObject.getJSClass(obj).hasProperty(obj, propIdx);
+    public static boolean hasProperty(DynamicObject obj, long index) {
+        return JSObject.getJSClass(obj).hasProperty(obj, index);
     }
 
-    public static boolean hasProperty(DynamicObject obj, long propIdx, JSClassProfile classProfile) {
-        return classProfile.getJSClass(obj).hasProperty(obj, propIdx);
+    public static boolean hasProperty(DynamicObject obj, long index, JSClassProfile classProfile) {
+        return classProfile.getJSClass(obj).hasProperty(obj, index);
     }
 
     @TruffleBoundary

@@ -140,7 +140,7 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
 
     @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isBigInt(object)", "!isJSObject(object)"}, replaces = "doJavaObject")
     protected Object doJavaGeneric(Object object) {
-        assert JSRuntime.isJavaObject(object) || JSRuntime.isForeignObject(object);
+        assert JSRuntime.isForeignObject(object);
         return object;
     }
 

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -57,6 +55,7 @@ public final class SpreadArgumentNode extends JavaScriptNode {
     @Child private GetIteratorNode getIteratorNode;
     @Child private IteratorStepSpecialNode iteratorStepNode;
     private final BranchProfile errorBranch = BranchProfile.create();
+    private final BranchProfile listGrowProfile = BranchProfile.create();
     private final JSContext context;
 
     private SpreadArgumentNode(JSContext context, JavaScriptNode arg) {
@@ -74,47 +73,11 @@ public final class SpreadArgumentNode extends JavaScriptNode {
         return new SpreadArgumentNode(context, arg);
     }
 
-    public Object[] executeFillObjectArray(VirtualFrame frame, Object[] arguments, int delta) {
-        IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
-        Object[] args = arguments;
-        int i = 0;
-        for (;;) {
-            Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
-            if (nextArg == null) {
-                break;
-            }
-            if (delta + i >= args.length) {
-                args = Arrays.copyOf(args, args.length + (args.length + 1) / 2);
-            }
-            args[delta + i++] = nextArg;
-            if (i > context.getContextOptions().getFunctionArgumentsLimit()) {
-                errorBranch.enter();
-                throw Errors.createRangeError("spreaded function argument count exceeds limit");
-            }
-        }
-        return delta + i == args.length ? args : Arrays.copyOf(args, delta + i);
-    }
-
-    @Override
-    public Object[] executeObjectArray(VirtualFrame frame) {
-        IteratorRecord iteratorRecord = getIteratorNode.execute(frame);
-        Object[] args = new Object[0];
-        for (int i = 0;; i++) {
-            Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
-            if (nextArg == null) {
-                break;
-            }
-            if (i >= args.length) {
-                args = Arrays.copyOf(args, args.length + 1);
-            }
-            args[i] = nextArg;
-        }
-        return args;
-    }
-
     @Override
     public Object[] execute(VirtualFrame frame) {
-        return executeObjectArray(frame);
+        SimpleArrayList<Object> argList = new SimpleArrayList<>();
+        executeToList(frame, argList, listGrowProfile);
+        return argList.toArray();
     }
 
     public void executeToList(VirtualFrame frame, SimpleArrayList<Object> argList, BranchProfile growProfile) {
@@ -123,6 +86,10 @@ public final class SpreadArgumentNode extends JavaScriptNode {
             Object nextArg = iteratorStepNode.execute(frame, iteratorRecord);
             if (nextArg == null) {
                 break;
+            }
+            if (argList.size() >= context.getFunctionArgumentsLimit()) {
+                errorBranch.enter();
+                throw Errors.createRangeError("spreaded function argument count exceeds limit");
             }
             argList.add(nextArg, growProfile);
         }

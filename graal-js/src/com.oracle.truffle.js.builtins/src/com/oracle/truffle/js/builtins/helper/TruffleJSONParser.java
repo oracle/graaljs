@@ -65,6 +65,8 @@ public class TruffleJSONParser {
     protected static final char[] BooleanFalseLiteral = new char[]{'f', 'a', 'l', 's', 'e'};
     protected static final int MAX_PARSE_DEPTH = 100000;
 
+    private static final String MALFORMED_NUMBER = "malformed number";
+
     public TruffleJSONParser(JSContext context) {
         this.context = context;
     }
@@ -340,7 +342,7 @@ public class TruffleJSONParser {
             sign = -1;
         }
         if (!posValid()) {
-            error("malformed number");
+            error(MALFORMED_NUMBER);
         }
         int startPos = pos;
         int fractionPos = -1;
@@ -349,7 +351,7 @@ public class TruffleJSONParser {
         while (JSRuntime.isAsciiDigit(c) || c == '.') {
             if (c == '.') {
                 if (fractionPos >= 0) {
-                    error("malformed number");
+                    error(MALFORMED_NUMBER);
                 }
                 fractionPos = pos;
             } else if (pos == startPos && c == '0') {
@@ -373,7 +375,7 @@ public class TruffleJSONParser {
             }
         }
         if (fractionPos == startPos || fractionPos == (pos - 1)) {
-            error("malformed number");
+            error(MALFORMED_NUMBER);
         }
         String valueStr;
 
@@ -428,7 +430,7 @@ public class TruffleJSONParser {
             sign = 1;
         }
         if (!posValid()) {
-            error("malformed number");
+            error(MALFORMED_NUMBER);
         }
         cur = get();
         int startPos = pos;
@@ -489,8 +491,9 @@ public class TruffleJSONParser {
 
     @TruffleBoundary
     public static RuntimeException createSyntaxError(Exception ex, JSContext context) {
-        throw context.isOptionV8CompatibilityMode() ? Errors.createSyntaxError(ex.getMessage().replace("\r\n", "\n")) : Errors.createSyntaxError("Invalid JSON: " +
-                        ex.getMessage().replace("\r\n", "\n"));
+        throw context.isOptionV8CompatibilityMode() ? Errors.createSyntaxError(ex.getMessage().replace("\r\n", "\n"))
+                        : Errors.createSyntaxError("Invalid JSON: " +
+                                        ex.getMessage().replace("\r\n", "\n"));
     }
 
     // ************************* Helper Functions ****************************************//

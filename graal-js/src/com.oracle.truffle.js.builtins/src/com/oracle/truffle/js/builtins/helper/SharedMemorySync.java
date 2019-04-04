@@ -62,7 +62,11 @@ import sun.misc.Unsafe;
 /**
  * Implementation of the synchronization primitives of ECMA2017 Shared Memory model.
  */
-public class SharedMemorySync {
+public final class SharedMemorySync {
+
+    private SharedMemorySync() {
+        // should not be constructed
+    }
 
     private static final class SyncUtils {
         @TruffleBoundary
@@ -156,7 +160,7 @@ public class SharedMemorySync {
 
     // ##### Atomic Fetch-or-Get primitives
     @TruffleBoundary
-    public static Object atomicFetchOrGetUnsigned(JSContext cx, DynamicObject target, int intArrayOffset, Object expected, Object replacement) {
+    public static long atomicFetchOrGetUnsigned(JSContext cx, DynamicObject target, int intArrayOffset, Object expected, Object replacement) {
         cx.getJSAgent().atomicSectionEnter(target);
         long read = JSRuntime.toUInt32(doVolatileGet(target, intArrayOffset));
         if (read == JSRuntime.toUInt32(expected)) {

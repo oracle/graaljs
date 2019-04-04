@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
@@ -48,11 +49,14 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -78,6 +82,7 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectValues
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -91,6 +96,7 @@ import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -99,10 +105,10 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -111,8 +117,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropNodeUtil;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.Pair;
 
@@ -227,7 +231,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         return null;
     }
 
-    @ImportStatic(value = {JSInteropUtil.class})
     public abstract static class ObjectGetPrototypeOfNode extends ObjectOperation {
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
 
@@ -325,7 +328,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic(JSInteropUtil.class)
     public abstract static class ObjectGetOwnPropertyNamesOrSymbolsNode extends ObjectOperation {
         protected final boolean symbols;
 
@@ -351,12 +353,31 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return JSArray.createConstantEmptyArray(getContext());
         }
 
-        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"})
+        @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"}, limit = "3")
         protected DynamicObject getForeignObjectNames(TruffleObject thisObj,
-                        @Cached("createKeys()") Node keysNode,
-                        @Cached("createRead()") Node readNode,
-                        @Cached("createGetSize()") Node getSizeNode) {
-            return JSArray.createConstant(getContext(), Boundaries.listToArray(JSInteropNodeUtil.keys(thisObj, keysNode, readNode, getSizeNode, true)));
+                        @CachedLibrary("thisObj") InteropLibrary interop,
+                        @CachedLibrary(limit = "3") InteropLibrary members) {
+            Object[] array;
+            if (interop.hasMembers(thisObj)) {
+                try {
+                    Object keysObj = interop.getMembers(thisObj);
+                    long size = members.getArraySize(keysObj);
+                    if (size < 0 || size >= Integer.MAX_VALUE) {
+                        throw Errors.createRangeErrorInvalidArrayLength();
+                    }
+                    array = new Object[(int) size];
+                    for (int i = 0; i < size; i++) {
+                        Object key = members.readArrayElement(keysObj, i);
+                        assert InteropLibrary.getFactory().getUncached().isString(key);
+                        array[i] = key;
+                    }
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    array = ScriptArray.EMPTY_OBJECT_ARRAY;
+                }
+            } else {
+                array = ScriptArray.EMPTY_OBJECT_ARRAY;
+            }
+            return JSArray.createConstant(getContext(), array);
         }
     }
 
@@ -580,8 +601,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    @ImportStatic(value = JSInteropUtil.class)
     public abstract static class ObjectKeysNode extends ObjectOperation {
+        @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
         private final ConditionProfile hasElements = ConditionProfile.createBinaryProfile();
         private final ConditionProfile oneElement = ConditionProfile.createBinaryProfile();
         private final ValueProfile listClassProfile = ValueProfile.createClassProfile();
@@ -592,7 +613,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSType(thisObj)")
         protected DynamicObject keysDynamicObject(DynamicObject thisObj) {
-            List<? extends Object> propertyList = listClassProfile.profile(JSObject.enumerableOwnNames(toOrAsObject(thisObj)));
+            List<? extends Object> propertyList = listClassProfile.profile(enumerableOwnPropertyNames(toOrAsObject(thisObj)));
             return keysIntl(propertyList);
         }
 
@@ -621,13 +642,34 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return keysDynamicObject(toOrAsObject(thisObj));
         }
 
-        @Specialization(guards = "isForeignObject(thisObj)")
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "3")
         protected DynamicObject keys(TruffleObject thisObj,
-                        @Cached("createKeys()") Node keysNode,
-                        @Cached("createRead()") Node readNode,
-                        @Cached("createGetSize()") Node getSizeNode) {
-            List<Object> propertyList = listClassProfile.profile(JSInteropNodeUtil.keys(thisObj, keysNode, readNode, getSizeNode, true));
-            return keysIntl(propertyList);
+                        @CachedLibrary("thisObj") InteropLibrary interop,
+                        @CachedLibrary(limit = "3") InteropLibrary members) {
+            return keysIntl(getKeysList(interop, members, thisObj));
+        }
+
+        private static List<Object> getKeysList(InteropLibrary interop, InteropLibrary members, TruffleObject obj) {
+            if (interop.hasMembers(obj)) {
+                try {
+                    Object keysObj = interop.getMembers(obj);
+                    long size = members.getArraySize(keysObj);
+                    if (size < 0 || size >= Integer.MAX_VALUE) {
+                        throw Errors.createRangeErrorInvalidArrayLength();
+                    }
+                    List<Object> keys = new ArrayList<>((int) size);
+                    for (int i = 0; i < size; i++) {
+                        Object key = members.readArrayElement(keysObj, i);
+                        assert InteropLibrary.getFactory().getUncached().isString(key);
+                        keys.add(key);
+                    }
+                    return keys;
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    return Collections.emptyList();
+                }
+            } else {
+                return Collections.emptyList();
+            }
         }
 
         private DynamicObject keysIntl(List<? extends Object> propertyList) {
@@ -652,6 +694,14 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 assert propName instanceof String;
                 arr[i++] = propName;
             }
+        }
+
+        private List<? extends Object> enumerableOwnPropertyNames(DynamicObject obj) {
+            if (enumerableOwnPropertyNamesNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                enumerableOwnPropertyNamesNode = insert(EnumerableOwnPropertyNamesNode.createKeys(getContext()));
+            }
+            return enumerableOwnPropertyNamesNode.execute(obj);
         }
     }
 
@@ -791,9 +841,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class ObjectValuesOrEntriesNode extends ObjectOperation {
         private final boolean entries;
 
-        @Child private Node keysNode;
-        @Child private Node readNode;
-        @Child private Node getSizeNode;
+        @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
+        @Child private InteropLibrary interop;
+        @Child private InteropLibrary members;
+        @Child private JSForeignToJSTypeNode importValue;
+        @Child private InteropLibrary asString;
 
         public ObjectValuesOrEntriesNode(JSContext context, JSBuiltin builtin, boolean entries) {
             super(context, builtin);
@@ -802,7 +854,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSObject(obj)")
         protected DynamicObject valuesOrEntriesJSObject(DynamicObject obj) {
-            List<Object> list = enumerableOwnProperties(obj);
+            List<? extends Object> list = enumerableOwnPropertyNames(obj);
             return JSRuntime.createArrayFromList(getContext(), list);
         }
 
@@ -810,58 +862,64 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected DynamicObject valuesOrEntriesGeneric(Object obj,
                         @Cached("createBinaryProfile()") ConditionProfile isJSObjectProfile) {
             TruffleObject thisObj = toTruffleObject(obj);
-            List<Object> list = isJSObjectProfile.profile(JSObject.isJSObject(thisObj)) ? enumerableOwnProperties((DynamicObject) thisObj) : enumerableOwnPropertiesForeign(thisObj);
+            List<? extends Object> list;
+            if (isJSObjectProfile.profile(JSObject.isJSObject(thisObj))) {
+                list = enumerableOwnPropertyNames((DynamicObject) thisObj);
+            } else {
+                list = enumerableOwnPropertyNamesForeign(thisObj);
+            }
             return JSRuntime.createArrayFromList(getContext(), list);
         }
 
-        @TruffleBoundary
-        protected List<Object> enumerableOwnProperties(DynamicObject thisObj) {
-            JSClass jsclass = JSObject.getJSClass(thisObj);
-            boolean isProxy = JSProxy.isProxy(thisObj);
-            List<Object> properties = new ArrayList<>();
-            for (Object key : jsclass.ownPropertyKeys(thisObj)) {
-                if (key instanceof String) {
-                    PropertyDescriptor desc = jsclass.getOwnProperty(thisObj, key);
-                    if (desc != null && desc.getEnumerable()) {
-                        // don't call [[Get]] a second time, unless it could have a side affect.
-                        Object value = (desc.isAccessorDescriptor() || isProxy) ? jsclass.get(thisObj, key) : desc.getValue();
-                        if (entries) {
-                            properties.add(JSArray.createConstant(getContext(), new Object[]{key, value}));
-                        } else {
-                            properties.add(value);
-                        }
-
-                    }
-                }
-            }
-            return properties;
-        }
-
-        protected List<Object> enumerableOwnPropertiesForeign(TruffleObject thisObj) {
-            assert JSRuntime.isForeignObject(thisObj);
-            if (keysNode == null || readNode == null || getSizeNode == null) {
+        protected List<? extends Object> enumerableOwnPropertyNames(DynamicObject obj) {
+            if (enumerableOwnPropertyNamesNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                keysNode = insert(JSInteropUtil.createKeys());
-                readNode = insert(JSInteropUtil.createRead());
-                getSizeNode = insert(JSInteropUtil.createGetSize());
+                enumerableOwnPropertyNamesNode = insert(entries ? EnumerableOwnPropertyNamesNode.createKeysValues(getContext()) : EnumerableOwnPropertyNamesNode.createValues(getContext()));
             }
-            return enumerableOwnPropertiesForeignIntl(thisObj, JSInteropNodeUtil.keys(thisObj, keysNode, readNode, getSizeNode, true));
+            return enumerableOwnPropertyNamesNode.execute(obj);
         }
 
-        @TruffleBoundary
-        private List<Object> enumerableOwnPropertiesForeignIntl(TruffleObject thisObj, List<Object> keysList) {
-            List<Object> properties = new ArrayList<>(keysList.size());
-            for (Object key : keysList) {
-                assert key instanceof String;
-
-                Object value = JSRuntime.importValue(JSInteropNodeUtil.read(thisObj, key, readNode));
-                if (entries) {
-                    properties.add(JSArray.createConstant(getContext(), new Object[]{key, value}));
-                } else {
-                    properties.add(value);
-                }
+        protected List<Object> enumerableOwnPropertyNamesForeign(TruffleObject thisObj) {
+            assert JSRuntime.isForeignObject(thisObj);
+            if (interop == null || members == null || importValue == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interop = insert(InteropLibrary.getFactory().createDispatched(3));
+                members = insert(InteropLibrary.getFactory().createDispatched(3));
+                importValue = insert(JSForeignToJSTypeNode.create());
             }
-            return properties;
+            try {
+                Object keysObj = interop.getMembers(thisObj);
+                long size = members.getArraySize(keysObj);
+                if (size < 0 || size >= Integer.MAX_VALUE) {
+                    throw Errors.createRangeErrorInvalidArrayLength();
+                }
+                List<Object> values = new ArrayList<>((int) size);
+                for (int i = 0; i < size; i++) {
+                    Object key = members.readArrayElement(keysObj, i);
+                    String stringKey = asStringKey(key);
+                    Object value = importValue.executeWithTarget(interop.readMember(thisObj, stringKey));
+                    if (entries) {
+                        value = JSArray.createConstant(getContext(), new Object[]{key, value});
+                    }
+                    values.add(value);
+                }
+                return values;
+            } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
+                return Collections.emptyList();
+            }
+        }
+
+        private String asStringKey(Object key) throws UnsupportedMessageException {
+            assert InteropLibrary.getFactory().getUncached().isString(key);
+            if (key instanceof String) {
+                return (String) key;
+            } else {
+                if (asString == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    asString = insert(InteropLibrary.getFactory().createDispatched(3));
+                }
+                return asString.asString(key);
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,89 +40,85 @@
  */
 package com.oracle.truffle.js.runtime.joni;
 
+import java.util.regex.PatternSyntaxException;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.CompiledRegexObject;
-import com.oracle.truffle.regex.RegexCompiler;
-import com.oracle.truffle.regex.RegexFlags;
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexRootNode;
-import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.js.runtime.joni.interop.ToStringNode;
 import com.oracle.truffle.regex.nashorn.regexp.RegExpScanner;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Option;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Regex;
 import com.oracle.truffle.regex.nashorn.regexp.joni.Syntax;
 import com.oracle.truffle.regex.nashorn.regexp.joni.exception.SyntaxException;
 
-import java.util.regex.PatternSyntaxException;
+@ExportLibrary(InteropLibrary.class)
+public final class JoniRegexEngine implements TruffleObject {
 
-public final class JoniRegexCompiler extends RegexCompiler {
-
-    private final RegexLanguage language;
+    private final TruffleLanguage<?> language;
     // For Joni, we want to share call targets to avoid excessive splitting.
     private CallTarget searchSimpleCallTarget;
     private CallTarget searchGroupCallTarget;
     private CallTarget matchSimpleCallTarget;
     private CallTarget matchGroupCallTarget;
 
-    public JoniRegexCompiler(RegexLanguage language) {
+    public JoniRegexEngine(TruffleLanguage<?> language) {
         this.language = language;
     }
 
     private CallTarget getSearchSimpleCallTarget() {
         if (searchSimpleCallTarget == null) {
-            searchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Simple(language, false)));
+            searchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Simple(language, false));
         }
         return searchSimpleCallTarget;
     }
 
     private CallTarget getSearchGroupCallTarget() {
         if (searchGroupCallTarget == null) {
-            searchGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Groups(language, false)));
+            searchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Groups(language, false));
         }
         return searchGroupCallTarget;
     }
 
     private CallTarget getMatchSimpleCallTarget() {
         if (matchSimpleCallTarget == null) {
-            matchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Simple(language, true)));
+            matchSimpleCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Simple(language, true));
         }
         return matchSimpleCallTarget;
     }
 
     private CallTarget getMatchGroupCallTarget() {
         if (matchGroupCallTarget == null) {
-            matchGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new JoniRegexExecRootNode.Groups(language, true)));
+            matchGroupCallTarget = Truffle.getRuntime().createCallTarget(new JoniRegexExecRootNode.Groups(language, true));
         }
         return matchGroupCallTarget;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    @Override
-    public TruffleObject compile(RegexSource source) throws UnsupportedRegexException {
-        try {
-            RegexFlags flags = RegexFlags.parseFlags(source.getFlags());
-            Regex implementation = createJoniRegex(source.getPattern(), flags);
-            CallTarget callTarget;
-            boolean group = PatternAnalyzer.containsGroup(source.getPattern());
-            if (flags.isSticky()) {
-                callTarget = group ? getMatchGroupCallTarget() : getMatchSimpleCallTarget();
-            } else {
-                callTarget = group ? getSearchGroupCallTarget() : getSearchSimpleCallTarget();
-            }
-            return new CompiledRegexObject(new JoniCompiledRegex(implementation, callTarget));
-        } catch (UnsupportedRegexException e) {
-            e.setReason("Joni: " + e.getReason());
-            e.setRegex(source);
-            throw e;
+    @TruffleBoundary
+    public TruffleObject compile(String pattern, String flags) {
+        JoniRegexFlags parsedFlags = JoniRegexFlags.parseFlags(flags);
+        Regex implementation = createJoniRegex(pattern, parsedFlags);
+        CallTarget callTarget;
+        boolean group = PatternAnalyzer.containsGroup(pattern);
+        if (parsedFlags.isSticky()) {
+            callTarget = group ? getMatchGroupCallTarget() : getMatchSimpleCallTarget();
+        } else {
+            callTarget = group ? getSearchGroupCallTarget() : getSearchSimpleCallTarget();
         }
+        return new JoniCompiledRegex(pattern, parsedFlags, implementation, callTarget);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static Regex createJoniRegex(String pattern, RegexFlags flags) throws UnsupportedRegexException {
+    @TruffleBoundary
+    private static Regex createJoniRegex(String pattern, JoniRegexFlags flags) {
         try {
             char[] chars = RegExpScanner.scan(pattern).getJavaPattern().toCharArray();
             return new Regex(chars, 0, chars.length, getOptions(flags), Syntax.JAVASCRIPT);
@@ -132,14 +128,14 @@ public final class JoniRegexCompiler extends RegexCompiler {
             // unsupported feature encountered by the preprocessor). Joni's SyntaxExceptions signal
             // syntax errors in the pattern (since we are using a preprocessor, these would
             // either mean a bug in the preprocessor or an unsupported feature encountered by Joni).
-            throw new UnsupportedRegexException(e.getMessage(), e);
+            throw new RuntimeException("Joni: " + e.getMessage(), e);
         }
     }
 
-    private static int getOptions(RegexFlags flags) throws UnsupportedRegexException {
+    private static int getOptions(JoniRegexFlags flags) {
         int option = Option.SINGLELINE;
         if (flags.isUnicode()) {
-            throw new UnsupportedRegexException("unicode mode not supported");
+            throw new RuntimeException("Joni: unicode mode not supported");
         }
         if (flags.isIgnoreCase()) {
             option |= Option.IGNORECASE;
@@ -152,5 +148,24 @@ public final class JoniRegexCompiler extends RegexCompiler {
             option |= Option.MULTILINE;
         }
         return option;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] args,
+                    @Cached ToStringNode patternToStringNode,
+                    @Cached ToStringNode flagsToStringNode) throws ArityException, UnsupportedTypeException {
+        if (!(args.length == 1 || args.length == 2)) {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(2, args.length);
+        }
+        String pattern = patternToStringNode.execute(args[0]);
+        String flags = args.length == 2 ? flagsToStringNode.execute(args[1]) : "";
+        return compile(pattern, flags);
     }
 }

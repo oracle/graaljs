@@ -47,38 +47,45 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
 
 public final class JSContextOptions {
     @CompilationFinal private ParserOptions parserOptions;
     @CompilationFinal private OptionValues optionValues;
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, help = "ECMAScript Version.") //
+    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "ECMAScript Version.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(
-                    JSTruffleOptions.MaxECMAScriptVersion,
+                    JSTruffleOptions.LatestECMAScriptVersion,
                     new OptionType<>(
                                     "ecmascript-version",
-                                    JSTruffleOptions.MaxECMAScriptVersion,
                                     new Function<String, Integer>() {
 
                                         @Override
                                         public Integer apply(String t) {
                                             try {
                                                 int version = Integer.parseInt(t);
+
+                                                int minYearVersion = JSTruffleOptions.ECMAScript6 + JSTruffleOptions.ECMAScriptNumberYearDelta;
+                                                int maxYearVersion = JSTruffleOptions.MaxECMAScriptVersion + JSTruffleOptions.ECMAScriptNumberYearDelta;
+                                                if (minYearVersion <= version && version <= maxYearVersion) {
+                                                    version -= JSTruffleOptions.ECMAScriptNumberYearDelta;
+                                                }
                                                 if (version < 5 || version > JSTruffleOptions.MaxECMAScriptVersion) {
-                                                    throw new IllegalArgumentException("Supported values are between 5 and " + JSTruffleOptions.MaxECMAScriptVersion + ".");
+                                                    throw new IllegalArgumentException(
+                                                                    "Supported values are 5 to " + JSTruffleOptions.MaxECMAScriptVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
                                                 }
                                                 return version;
                                             } catch (NumberFormatException e) {
@@ -106,7 +113,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHEBANG = new OptionKey<>(false);
 
     public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
-    @Option(name = STRICT_NAME, category = OptionCategory.USER, help = "Enforce strict mode.") //
+    @Option(name = STRICT_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Enforce strict mode.") //
     public static final OptionKey<Boolean> STRICT = new OptionKey<>(false);
 
     public static final String CONST_AS_VAR_NAME = JS_OPTION_PREFIX + "const-as-var";
@@ -118,7 +125,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> FUNCTION_STATEMENT_ERROR = new OptionKey<>(false);
 
     public static final String INTL_402_NAME = JS_OPTION_PREFIX + "intl-402";
-    @Option(name = INTL_402_NAME, category = OptionCategory.USER, help = "Enable ECMAScript Internationalization API.") //
+    @Option(name = INTL_402_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Enable ECMAScript Internationalization API.") //
     public static final OptionKey<Boolean> INTL_402 = new OptionKey<>(false);
     @CompilationFinal private boolean intl402;
 
@@ -142,7 +149,6 @@ public final class JSContextOptions {
     public static final String ATOMICS_NAME = JS_OPTION_PREFIX + "atomics";
     @Option(name = ATOMICS_NAME, category = OptionCategory.USER, help = "Enable ES2017 Atomics.") //
     public static final OptionKey<Boolean> ATOMICS = new OptionKey<>(true);
-    @CompilationFinal private boolean atomics;
 
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
     @Option(name = V8_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the Google V8 engine.") //
@@ -231,8 +237,12 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
 
     public static final String POLYGLOT_BUILTIN_NAME = JS_OPTION_PREFIX + "polyglot-builtin";
-    @Option(name = POLYGLOT_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Polyglot' global property.") //
+    @Option(name = POLYGLOT_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Polyglot' global property.", deprecated = true) //
     public static final OptionKey<Boolean> POLYGLOT_BUILTIN = new OptionKey<>(true);
+
+    public static final String POLYGLOT_EVALFILE_NAME = JS_OPTION_PREFIX + "polyglot-evalfile";
+    @Option(name = POLYGLOT_EVALFILE_NAME, category = OptionCategory.USER, help = "Provide 'Polyglot.evalFile' function.") //
+    public static final OptionKey<Boolean> POLYGLOT_EVALFILE = new OptionKey<>(true);
 
     public static final String AWAIT_OPTIMIZATION_NAME = JS_OPTION_PREFIX + "await-optimization";
     @Option(name = AWAIT_OPTIMIZATION_NAME, category = OptionCategory.INTERNAL, help = "Use PromiseResolve for Await.") //
@@ -277,7 +287,6 @@ public final class JSContextOptions {
     public static final String SIMDJS_NAME = JS_OPTION_PREFIX + "simdjs";
     @Option(name = SIMDJS_NAME, category = OptionCategory.EXPERT, help = "Provide an experimental implementation of the SIMD.js proposal.") //
     public static final OptionKey<Boolean> SIMDJS = new OptionKey<>(false);
-    @CompilationFinal private boolean simdjs;
 
     // limit originally from TestV8 regress-1122.js, regress-605470.js
     public static final String FUNCTION_ARGUMENTS_LIMIT_NAME = JS_OPTION_PREFIX + "function-arguments-limit";
@@ -316,7 +325,6 @@ public final class JSContextOptions {
             arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
         });
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME);
-        this.atomics = readBooleanOption(ATOMICS, ATOMICS_NAME);
         this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, msg -> {
             v8CompatibilityModeCyclicAssumption.invalidate(msg);
             v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
@@ -342,7 +350,6 @@ public final class JSContextOptions {
         this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME);
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
         this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME);
-        this.simdjs = readBooleanOption(SIMDJS, SIMDJS_NAME);
         this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT, FUNCTION_ARGUMENTS_LIMIT_NAME);
     }
 
@@ -406,13 +413,13 @@ public final class JSContextOptions {
         return helpMessage + " (default:" + key.getDefaultValue() + ")";
     }
 
-    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, String help) {
-        return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).build();
+    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, OptionStability stability, String help) {
+        return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).stability(stability).build();
     }
 
     public static void describeOptions(List<OptionDescriptor> options) {
-        for (OptionDescriptor optionDescriptor : new JSContextOptionsOptionDescriptors()) {
-            options.add(newOptionDescriptor(optionDescriptor.getKey(), optionDescriptor.getName(), optionDescriptor.getCategory(), optionDescriptor.getHelp()));
+        for (OptionDescriptor desc : new JSContextOptionsOptionDescriptors()) {
+            options.add(newOptionDescriptor(desc.getKey(), desc.getName(), desc.getCategory(), desc.getStability(), desc.getHelp()));
         }
     }
 
@@ -456,7 +463,7 @@ public final class JSContextOptions {
         if (getEcmaScriptVersion() < 8) {
             return false;
         }
-        return atomics;
+        return ATOMICS.getValue(optionValues);
     }
 
     public boolean isV8CompatibilityMode() {
@@ -571,8 +578,12 @@ public final class JSContextOptions {
         return POLYGLOT_BUILTIN.getValue(optionValues);
     }
 
+    public boolean isPolyglotEvalFile() {
+        return POLYGLOT_EVALFILE.getValue(optionValues);
+    }
+
     public boolean isSIMDjs() {
-        return simdjs;
+        return SIMDJS.getValue(optionValues);
     }
 
     public long getFunctionArgumentsLimit() {
@@ -589,7 +600,6 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.regexpStaticResult ? 1 : 0);
         hash = 53 * hash + (this.arraySortInherited ? 1 : 0);
         hash = 53 * hash + (this.sharedArrayBuffer ? 1 : 0);
-        hash = 53 * hash + (this.atomics ? 1 : 0);
         hash = 53 * hash + (this.v8CompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.v8RealmBuiltin ? 1 : 0);
         hash = 53 * hash + (this.nashornCompatibilityMode ? 1 : 0);
@@ -606,7 +616,6 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
         hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
         hash = 53 * hash + (this.hasForeignObjectPrototype ? 1 : 0);
-        hash = 53 * hash + (this.simdjs ? 1 : 0);
         hash = 53 * hash + (int) this.functionArgumentsLimit;
         return hash;
     }
@@ -639,9 +648,6 @@ public final class JSContextOptions {
             return false;
         }
         if (this.sharedArrayBuffer != other.sharedArrayBuffer) {
-            return false;
-        }
-        if (this.atomics != other.atomics) {
             return false;
         }
         if (this.v8CompatibilityMode != other.v8CompatibilityMode) {
@@ -690,9 +696,6 @@ public final class JSContextOptions {
             return false;
         }
         if (this.hasForeignObjectPrototype != other.hasForeignObjectPrototype) {
-            return false;
-        }
-        if (this.simdjs != other.simdjs) {
             return false;
         }
         if (this.functionArgumentsLimit != other.functionArgumentsLimit) {

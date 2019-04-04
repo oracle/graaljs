@@ -291,7 +291,7 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     mode, vmArgs, progArgs = setupNodeEnvironment(args)
     if mode == 'Debug':
         progArgs += ['-m', 'debug']
-    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs', '-Xmx4g'] + vmArgs))
+    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs', '-Xmx8g'] + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     return mx.run([python_cmd(), join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
@@ -435,6 +435,8 @@ def _parseArgs(args):
     if mx.suite('compiler', fatalIfMissing=False):
         import mx_compiler
         vmArgs = mx_compiler._parseVmArgs(vmArgs)
+    else:
+        vmArgs += mx.java_debug_args()
 
     for arg in ['-d64', '-server']:
         if arg in vmArgs:
@@ -466,7 +468,7 @@ def _prepare_svm_env():
     import mx_vm
     libpolyglot = join(mx_vm.graalvm_home(), 'jre', 'lib', 'polyglot', mx.add_lib_suffix(mx.add_lib_prefix('polyglot')))
     if not exists(libpolyglot):
-        mx.abort("Cannot find polyglot library. Did you forget to build it using 'mx --env svm build'?")
+        mx.abort("Cannot find polyglot library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(libpolyglot))
     _setEnvVar('NODE_JVM_LIB', libpolyglot)
     _setEnvVar('ICU4J_DATA_PATH', join(mx.suite('graal-js').dir, 'lib', 'icu4j', 'icudt'))
 
@@ -488,6 +490,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
     polyglot_lib_build_args=[
         "-H:JNIConfigurationResources=svmnodejs.jniconfig",
+        "-H:ReflectionConfigurationResources=svmnodejs.reflectconfig",
     ],
     polyglot_lib_jar_dependencies=[
         "graal-nodejs:TRUFFLENODE"
