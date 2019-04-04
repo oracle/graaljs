@@ -40,10 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -212,14 +211,15 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
             if (path.startsWith("file:")) {
                 path = path.substring("file:".length());
             }
-            String fileSeparator = context.getRealm().getEnv().getFileNameSeparator();
+            Env env = context.getRealm().getEnv();
+            String fileSeparator = env.getFileNameSeparator();
             if (fileSeparator.equals("\\") && path.startsWith("/")) {
                 // on Windows, remove first "/" from /c:/test/dir/ style paths
                 path = path.substring(1);
             }
-            Path filePath = Paths.get(path).toAbsolutePath();
-            Path parentPath = filePath.getParent();
-            String dirPath = (parentPath == null) ? "" : parentPath.toString();
+            TruffleFile filePath = env.getTruffleFile(path).getAbsoluteFile();
+            TruffleFile parentPath = filePath.getParent();
+            String dirPath = (parentPath == null) ? "" : parentPath.getPath();
             if (!dirPath.isEmpty() && !(dirPath.charAt(dirPath.length() - 1) == '/' || fileSeparator.equals(String.valueOf(dirPath.charAt(dirPath.length() - 1))))) {
                 dirPath += fileSeparator;
             }
