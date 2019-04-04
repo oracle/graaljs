@@ -232,6 +232,10 @@ public final class JSContextOptions {
     @Option(name = LOAD_NAME, category = OptionCategory.USER, help = "Provide 'load' global function.") //
     public static final OptionKey<Boolean> LOAD = new OptionKey<>(true);
 
+    public static final String LOAD_FROM_URL_NAME = JS_OPTION_PREFIX + "load-from-url";
+    @Option(name = LOAD_FROM_URL_NAME, category = OptionCategory.USER, help = "Allow 'load' to access URLs.") //
+    public static final OptionKey<Boolean> LOAD_FROM_URL = new OptionKey<>(false);
+
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
     @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
@@ -584,6 +588,10 @@ public final class JSContextOptions {
 
     public boolean isSIMDjs() {
         return SIMDJS.getValue(optionValues);
+    }
+
+    public boolean isLoadFromURL() {
+        return LOAD_FROM_URL.getValue(optionValues);
     }
 
     public long getFunctionArgumentsLimit() {

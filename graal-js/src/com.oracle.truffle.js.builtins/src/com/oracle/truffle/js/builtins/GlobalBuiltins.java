@@ -580,7 +580,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary
         protected final Source sourceFromURL(URL url) {
-            assert getContext().isOptionNashornCompatibilityMode();
+            assert getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromURL();
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, url).name(url.getFile()).build();
             } catch (IOException | SecurityException e) {
@@ -1153,7 +1153,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary(transferToInterpreterOnException = false)
         private Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;
-            if (realm.getContext().isOptionNashornCompatibilityMode() && path.indexOf(':') != -1) {
+            JSContext ctx = realm.getContext();
+            if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL()) && path.indexOf(':') != -1) {
                 source = sourceFromURI(path);
                 if (source != null) {
                     return source;
@@ -1229,7 +1230,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromURI(String resource) {
-            if (JSTruffleOptions.SubstrateVM || !getContext().isOptionNashornCompatibilityMode()) {
+            if (JSTruffleOptions.SubstrateVM || !getContext().isOptionNashornCompatibilityMode() && !getContext().isOptionLoadFromURL()) {
                 return null;
             }
             if ((resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {

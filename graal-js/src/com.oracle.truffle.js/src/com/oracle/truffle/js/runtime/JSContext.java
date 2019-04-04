@@ -1626,4 +1626,8 @@ public class JSContext {
             throw Errors.createEvalDisabled();
         }
     }
+
+    public boolean isOptionLoadFromURL() {
+        return contextOptions.isLoadFromURL();
+    }
 }
