@@ -68,12 +68,6 @@ local common = import '../common.jsonnet';
     timelimit: '10:00',
   },
 
-  local tck = {
-    run+: [
-      ['mx', 'tck'],
-    ],
-  },
-
   builds: [
     // jdk 8 - linux
     graalJs + common.jdk8 + common.gate + common.linux + gateGraalImport + {environment+: {GATE_TAGS: 'style,fullbuild'}}    + {name: 'js-gate-style-fullbuild-graal-import-jdk8-linux-amd64'},
@@ -82,7 +76,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'directbytebuffer'}}   + {name: 'js-gate-directbytebuffer-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'cloneuninitialized'}} + {name: 'js-gate-cloneuninitialized-graal-tip-jdk8-linux-amd64'},
     graalJs + common.jdk8 + common.gate + common.linux + gateGraalTip    + {environment+: {GATE_TAGS: 'lazytranslation'}}    + {name: 'js-gate-lazytranslation-graal-tip-jdk8-linux-amd64'},
-    graalJs + common.jdk8 + common.gate + common.linux + gateGraalImport + tck + {environment+: {GATE_TAGS: 'fullbuild'}}    + {name: 'js-gate-tck-graal-import-jdk8-linux-amd64'},
+    graalJs + common.jdk8 + common.gate + common.linux + gateGraalImport + {environment+: {GATE_TAGS: 'tck,build'}}          + {name: 'js-gate-tck-build-graal-import-jdk8-linux-amd64'},
 
     // jdk8 - coverage
     graalJs + common.jdk8 + {targets: ['weekly']} + common.linux + gateCoverage  + {environment+: {GATE_TAGS: 'fullbuild,default'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
