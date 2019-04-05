@@ -208,14 +208,14 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
 
     public static class InternalState {
 
-        public boolean initialized = false;
-        public ListFormatter listFormatter;
+        private boolean initialized = false;
+        private ListFormatter listFormatter;
 
-        public String locale;
-        public Locale javaLocale;
+        private String locale;
+        private Locale javaLocale;
 
-        public String type = IntlUtil.CONJUNCTION;
-        public String style = IntlUtil.LONG;
+        private String type = IntlUtil.CONJUNCTION;
+        private String style = IntlUtil.LONG;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);
@@ -223,6 +223,22 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
             JSObjectUtil.defineDataProperty(result, IntlUtil.TYPE, type, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
             return result;
+        }
+
+        public boolean isInitialized() {
+            return initialized;
+        }
+
+        public void setInitialized(boolean initialized) {
+            this.initialized = initialized;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public void setStyle(String style) {
+            this.style = style;
         }
     }
 

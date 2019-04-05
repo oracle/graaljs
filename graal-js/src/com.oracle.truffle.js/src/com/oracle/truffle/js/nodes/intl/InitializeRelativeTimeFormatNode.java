@@ -96,10 +96,10 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
             String optStyle = getStyleOption.executeValue(options);
             String optNumeric = getNumericOption.executeValue(options);
 
-            state.initialized = true;
+            state.setInitialized(true);
 
-            state.style = optStyle;
-            state.numeric = optNumeric;
+            state.setStyle(optStyle);
+            state.setNumeric(optNumeric);
 
             JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
             JSRelativeTimeFormat.setupInternalRelativeTimeFormatter(state);

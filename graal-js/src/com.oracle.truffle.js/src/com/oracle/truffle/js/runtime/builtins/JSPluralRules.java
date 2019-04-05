@@ -159,9 +159,9 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
 
     public static class InternalState extends JSNumberFormat.BasicInternalState {
 
-        public String type = IntlUtil.CARDINAL;
-        public PluralRules pluralRules;
-        public List<Object> pluralCategories = new LinkedList<>();
+        private String type = IntlUtil.CARDINAL;
+        private PluralRules pluralRules;
+        private List<Object> pluralCategories = new LinkedList<>();
 
         @Override
         void fillResolvedOptions(JSContext context, DynamicObject result) {
@@ -169,6 +169,10 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
             JSObjectUtil.defineDataProperty(result, IntlUtil.TYPE, type, JSAttributes.getDefault());
             super.fillResolvedOptions(context, result);
             JSObjectUtil.defineDataProperty(result, "pluralCategories", JSRuntime.createArrayFromList(context, pluralCategories), JSAttributes.getDefault());
+        }
+
+        public void setType(String type) {
+            this.type = type;
         }
     }
 

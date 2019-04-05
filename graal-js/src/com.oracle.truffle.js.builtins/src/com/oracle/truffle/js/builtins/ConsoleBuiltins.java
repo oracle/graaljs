@@ -142,6 +142,8 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
     public abstract static class JSConsoleOperation extends JSBuiltinNode {
 
+        protected static final String DEFAULT = "default";
+
         public JSConsoleOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -206,7 +208,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject count(Object label) {
-            String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
+            String key = label == Undefined.instance ? DEFAULT : toStringNode.executeString(label);
             int count = 0;
             JSConsoleUtil console = getConsoleUtil();
             Map<String, Integer> countMap = console.getCountMap();
@@ -238,7 +240,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject count(Object label) {
-            String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
+            String key = label == Undefined.instance ? DEFAULT : toStringNode.executeString(label);
             getConsoleUtil().getCountMap().remove(key);
             return Undefined.instance;
         }
@@ -292,7 +294,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject time(Object label) {
-            String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
+            String key = label == Undefined.instance ? DEFAULT : toStringNode.executeString(label);
             getConsoleUtil().getTimeMap().put(key, getContext().getRealm().currentTimeMillis());
             return Undefined.instance;
         }
@@ -311,7 +313,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject timeEnd(Object label) {
-            String key = label == Undefined.instance ? "default" : toStringNode.executeString(label);
+            String key = label == Undefined.instance ? DEFAULT : toStringNode.executeString(label);
             Map<String, Long> timeMap = getConsoleUtil().getTimeMap();
             if (timeMap.containsKey(key)) {
                 long start = timeMap.remove(key);
@@ -337,7 +339,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject timeLog(Object... data) {
-            String key = data.length == 0 || data[0] == Undefined.instance ? "default" : toStringNode.executeString(data[0]);
+            String key = data.length == 0 || data[0] == Undefined.instance ? DEFAULT : toStringNode.executeString(data[0]);
             Map<String, Long> timeMap = getConsoleUtil().getTimeMap();
             if (timeMap.containsKey(key)) {
                 long start = timeMap.get(key);

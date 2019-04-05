@@ -233,18 +233,18 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     public static class InternalState {
 
-        public boolean initializedCollator = false;
-        public Collator collator;
+        private boolean initializedCollator = false;
+        private Collator collator;
 
-        DynamicObject boundCompareFunction = null;
+        private DynamicObject boundCompareFunction = null;
 
-        public String locale;
-        public String usage = IntlUtil.SORT;
-        public String sensitivity = IntlUtil.VARIANT;
-        public String collation = IntlUtil.DEFAULT;
-        public boolean ignorePunctuation = false;
-        public boolean numeric = false;
-        public String caseFirst = IntlUtil.FALSE;
+        private String locale;
+        private String usage = IntlUtil.SORT;
+        private String sensitivity = IntlUtil.VARIANT;
+        private String collation = IntlUtil.DEFAULT;
+        private boolean ignorePunctuation = false;
+        private boolean numeric = false;
+        private String caseFirst = IntlUtil.FALSE;
 
         DynamicObject toResolvedOptionsObject(JSContext context) {
             DynamicObject result = JSUserObject.create(context);

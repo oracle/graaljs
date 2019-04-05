@@ -120,6 +120,8 @@ public class Lexer extends Scanner {
     /** Map to intern strings during parsing (memory footprint). */
     private final Map<String, String> internedStrings;
 
+    private static final String MESSAGE_INVALID_HEX = "invalid.hex";
+
     private static final String JAVASCRIPT_WHITESPACE_HIGH =
         "\u1680" + // Ogham space mark
         "\u2000" + // en quad
@@ -775,7 +777,7 @@ public class Lexer extends Scanner {
             final int digit = convertDigit(ch0, 16);
 
             if (digit == -1) {
-                error(Lexer.message("invalid.hex"), type, position, limit - position);
+                error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
                 return i == 0 ? -1 : value;
             }
 
@@ -804,7 +806,7 @@ public class Lexer extends Scanner {
                     skip(1);
                     return value;
                 } else {
-                    error(Lexer.message("invalid.hex"), type, position, limit - position);
+                    error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
                     skip(1);
                     return -1;
                 }
@@ -813,14 +815,14 @@ public class Lexer extends Scanner {
             final int digit = convertDigit(ch0, 16);
 
             if (digit == -1) {
-                error(Lexer.message("invalid.hex"), type, position, limit - position);
+                error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
                 return i == 0 ? -1 : value;
             }
 
             value = digit | value << 4;
 
             if (value > 1114111) {
-                error(Lexer.message("invalid.hex"), type, position, limit - position);
+                error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
                 return -1;
             }
 
@@ -1148,13 +1150,13 @@ public class Lexer extends Scanner {
                 switch (quote) {
                 case '`':
                     // Mark the beginning of an exec string.
-                    add(EXECSTRING, stringState.position, stringState.limit);
+                    add(EXECSTRING, stringState.position, stringState.getLimit());
                     // Frame edit string with left brace.
                     add(LBRACE, stringState.position, stringState.position);
                     // Process edit string.
                     editString(type, stringState);
                     // Frame edit string with right brace.
-                    add(RBRACE, stringState.limit, stringState.limit);
+                    add(RBRACE, stringState.getLimit(), stringState.getLimit());
                     break;
                 case '"':
                     // Only edit double quoted strings.
@@ -1162,14 +1164,14 @@ public class Lexer extends Scanner {
                     break;
                 case '\'':
                     // Add string token without editing.
-                    add(type, stringState.position, stringState.limit);
+                    add(type, stringState.position, stringState.getLimit());
                     break;
                 default:
                     break;
                 }
             } else {
                 /// Add string token without editing.
-                add(type, stringState.position, stringState.limit);
+                add(type, stringState.position, stringState.getLimit());
             }
         }
     }
@@ -1209,12 +1211,12 @@ public class Lexer extends Scanner {
                 skip(1);
                 // Record end of string.
                 stringState.setLimit(position - 1);
-                add(type == TEMPLATE ? type : TEMPLATE_TAIL, stringState.position, stringState.limit);
+                add(type == TEMPLATE ? type : TEMPLATE_TAIL, stringState.position, stringState.getLimit());
                 return;
             } else if (ch0 == '$' && ch1 == '{') {
                 skip(2);
                 stringState.setLimit(position - 2);
-                add(type == TEMPLATE ? TEMPLATE_HEAD : type, stringState.position, stringState.limit);
+                add(type == TEMPLATE ? TEMPLATE_HEAD : type, stringState.position, stringState.getLimit());
                 return;
             } else if (ch0 == '\\') {
                 skip(1);
@@ -1886,7 +1888,7 @@ public class Lexer extends Scanner {
                 editString(STRING, stringState);
             } else {
                 // Add here string.
-                add(STRING, stringState.position, stringState.limit);
+                add(STRING, stringState.position, stringState.getLimit());
             }
 
             // Scan rest of original line.

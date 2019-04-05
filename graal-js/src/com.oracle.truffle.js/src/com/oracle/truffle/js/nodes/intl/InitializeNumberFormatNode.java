@@ -122,11 +122,11 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
             String optCurrency = getCurrencyOption.executeValue(options);
             String optCurrencyDisplay = getCurrencyDisplayOption.executeValue(options);
 
-            state.initialized = true;
+            state.setInitialized(true);
 
             JSNumberFormat.setLocaleAndNumberingSystem(context, state, locales);
 
-            state.style = optStyle;
+            state.setStyle(optStyle);
             String currencyCode = optCurrency;
             if (currencyCode != null && !JSNumberFormat.isWellFormedCurrencyCode(currencyCode)) {
                 throw Errors.createRangeErrorCurrencyNotWellFormed(currencyCode);
@@ -135,17 +135,17 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
                 if (currencyCode == null) {
                     throw Errors.createTypeErrorFormat("Currency can not be undefined when style is \"%s\"", IntlUtil.CURRENCY);
                 } else {
-                    state.currency = IntlUtil.toUpperCase(currencyCode);
+                    state.setCurrency(IntlUtil.toUpperCase(currencyCode));
                 }
             }
-            int cDigits = JSNumberFormat.currencyDigits(state.currency);
+            int cDigits = JSNumberFormat.currencyDigits(state.getCurrency());
             int mnfdDefault = cDigits;
             int mxfdDefault = cDigits;
-            if (state.style.equals(IntlUtil.CURRENCY)) {
-                state.currencyDisplay = optCurrencyDisplay;
+            if (state.getStyle().equals(IntlUtil.CURRENCY)) {
+                state.setCurrencyDisplay(optCurrencyDisplay);
             } else {
                 mnfdDefault = 0;
-                if (state.style.equals(IntlUtil.PERCENT)) {
+                if (state.getStyle().equals(IntlUtil.PERCENT)) {
                     mxfdDefault = 0;
                 } else {
                     mxfdDefault = 3;

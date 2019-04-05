@@ -198,10 +198,10 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     public static class InternalState extends JSNumberFormat.BasicInternalState {
 
-        public RelativeDateTimeFormatter relativeDateTimeFormatter;
+        private RelativeDateTimeFormatter relativeDateTimeFormatter;
 
-        public String style = "long";
-        public String numeric = "always";
+        private String style = "long";
+        private String numeric = "always";
 
         @Override
         DynamicObject toResolvedOptionsObject(JSContext context) {
@@ -210,6 +210,14 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
             JSObjectUtil.defineDataProperty(result, "style", style, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(result, "numeric", numeric, JSAttributes.getDefault());
             return result;
+        }
+
+        public void setStyle(String style) {
+            this.style = style;
+        }
+
+        public void setNumeric(String numeric) {
+            this.numeric = numeric;
         }
     }
 

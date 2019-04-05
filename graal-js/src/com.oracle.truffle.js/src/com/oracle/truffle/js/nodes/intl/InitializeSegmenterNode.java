@@ -91,7 +91,7 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
             getLocaleMatcherOption.executeValue(options);
             String optGranularity = getGranularityOption.executeValue(options);
 
-            state.initialized = true;
+            state.setInitialized(true);
 
             JSSegmenter.setLocale(context, state, locales);
             JSSegmenter.setupInternalBreakIterator(state, optGranularity);
