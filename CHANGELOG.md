@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the Graal JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 1.0.0 RC16
+* provide `js.load-from-url` to allow loading from a URL.
+
 ## Version 1.0.0 RC15
 * Removed non-standard `String.prototype.contains`; use `includes` instead.
 * ScriptEngine: security-relevant Context-options are now disabled by default.
