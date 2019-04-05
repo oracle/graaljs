@@ -52,10 +52,10 @@ def _graal_js_gate_runner(args, tasks):
 
     gateTestConfigs = {
         GraalJsDefaultTags.default: ['gate'],
-        'noic': ['gate', '-Dtruffle.js.PropertyCacheLimit=0', '-Dtruffle.js.FunctionCacheLimit=0'],
-        'directbytebuffer': ['gate', '-Dtruffle.js.DirectByteBuffer=true'],
-        'cloneuninitialized': ['gate', '-Dtruffle.js.TestCloneUninitialized=true'],
-        'lazytranslation': ['gate', '-Dtruffle.js.LazyTranslation=true'],
+        'noic': ['-Dtruffle.js.PropertyCacheLimit=0', '-Dtruffle.js.FunctionCacheLimit=0', 'gate'],
+        'directbytebuffer': ['-Dtruffle.js.DirectByteBuffer=true', 'gate'],
+        'cloneuninitialized': ['-Dtruffle.js.TestCloneUninitialized=true', 'gate'],
+        'lazytranslation': ['-Dtruffle.js.LazyTranslation=true', 'gate'],
     }
 
     gateTestCommands = {
@@ -294,14 +294,8 @@ def testv8(args, nonZeroIsFatal=True):
         cwd=_suite.dir
     )
 
-def testinstrumentation(args, nonZeroIsFatal=True):
-    unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.js.test.instrumentation'])
-
-def testthreading(args, nonZeroIsFatal=True):
-    unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.js.test.threading'])
-
 def testunittests(args, nonZeroIsFatal=True):
-    unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.js.test'])
+    unittest(['--enable-timing', '--very-verbose'] + args + ['com.oracle.truffle.js.test'])
 
 def deploy_binary_if_master(args):
     """If the active branch is 'master', deploy binaries for the primary suite to remote maven repository."""
@@ -376,8 +370,6 @@ mx.update_commands(_suite, {
     'test262': [test262, ''],
     'testnashorn': [testnashorn, ''],
     'testv8': [testv8, ''],
-    'testinstrumentation': [testinstrumentation, ''],
-    'testunittests': [testunittests, ''],
     'unpackIcuData': [unpackIcuData, ''],
 })
 

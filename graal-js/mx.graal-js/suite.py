@@ -357,6 +357,22 @@ suite = {
       "workingSets" : "Truffle,JavaScript",
     },
 
+    "com.oracle.truffle.js.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "exports" : ["com.oracle.truffle.js.test"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+        "mx:JUNIT",
+        "GRAALJS",
+      ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.js",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,JavaScript",
+      "testProject" : True,
+    },
+
     "com.oracle.truffle.js.test.instrumentation" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -555,7 +571,7 @@ suite = {
     },
 
     "TRUFFLE_JS_TESTS" : {
-      "dependencies" : ["com.oracle.truffle.js.test.external", "com.oracle.truffle.js.test.instrumentation", "com.oracle.truffle.js.test.threading"],
+      "dependencies" : ["com.oracle.truffle.js.test", "com.oracle.truffle.js.test.external", "com.oracle.truffle.js.test.instrumentation", "com.oracle.truffle.js.test.threading"],
       "exclude" : [
         "mx:HAMCREST",
         "mx:JUNIT",
@@ -565,7 +581,12 @@ suite = {
         "NASHORN_INTERNAL_TESTS",
       ],
       "distDependencies" : ["GRAALJS"],
+      "license": [
+        "UPL",
+      ],
       "maven" : False,
+      "description" : "Graal JavaScript Tests",
+      "allowsJavadocWarnings": True,
     },
 
     "ICU4J-DIST" : {
