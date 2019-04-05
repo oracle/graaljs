@@ -38,6 +38,7 @@ _suite = mx.suite('graal-js')
 
 class GraalJsDefaultTags:
     default = 'default'
+    tck = 'tck'
     all = 'all'
 
 def _graal_js_gate_runner(args, tasks):
@@ -71,6 +72,11 @@ def _graal_js_gate_runner(args, tasks):
             with Task(testName, tasks, tags=[testName, testConfigName, GraalJsDefaultTags.all]) as t:
                 if t:
                     gateTestCommands[testCommandName](gateTestConfigs[testConfigName])
+
+    with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck]) as t:
+        if t:
+            import mx_truffle
+            mx_truffle._tck([])
 
 add_gate_runner(_suite, _graal_js_gate_runner)
 

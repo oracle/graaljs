@@ -114,15 +114,15 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         }
     }
 
-    @Specialization(guards = "isForeignObject(iteratedObject)")
-    protected IteratorRecord doGetIteratorWithForeignObject(TruffleObject iteratedObject,
+    @Specialization(guards = {"isForeignObject(iteratedObject)"})
+    protected IteratorRecord doForeignIterable(TruffleObject iteratedObject,
                     @Cached("createEnumerateValues()") EnumerateNode enumerateNode) {
         DynamicObject iterator = enumerateNode.execute(iteratedObject);
         return IteratorRecord.create(iterator, getNextMethodNode.getValue(iterator), false);
     }
 
     protected EnumerateNode createEnumerateValues() {
-        return EnumerateNode.create(getContext(), null, true);
+        return EnumerateNode.create(getContext(), true, true);
     }
 
     @Override

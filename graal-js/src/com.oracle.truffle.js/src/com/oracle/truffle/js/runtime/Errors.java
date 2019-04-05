@@ -232,6 +232,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotIterable(Object value, Node originatingNode) {
+        return Errors.createTypeError(JSRuntime.safeToString(value) + "  is not iterable", originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorInvalidPrototype(Object value) {
         return Errors.createTypeError("Object prototype may only be an Object or null: " + JSRuntime.safeToString(value));
     }
