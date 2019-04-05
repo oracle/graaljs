@@ -62,8 +62,7 @@ def _graal_js_gate_runner(args, tasks):
         'Test262': test262,
         'TestNashorn': testnashorn,
         'TestV8': testv8,
-        'TestInstrumentation': testinstrumentation,
-        'TestThreading': testthreading,
+        'TestUnittest': testunittests,
     }
 
     for testCommandName in gateTestCommands:
@@ -301,6 +300,9 @@ def testinstrumentation(args, nonZeroIsFatal=True):
 def testthreading(args, nonZeroIsFatal=True):
     unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.js.test.threading'])
 
+def testunittests(args, nonZeroIsFatal=True):
+    unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.js.test'])
+
 def deploy_binary_if_master(args):
     """If the active branch is 'master', deploy binaries for the primary suite to remote maven repository."""
     primary_branch = 'master'
@@ -375,6 +377,7 @@ mx.update_commands(_suite, {
     'testnashorn': [testnashorn, ''],
     'testv8': [testv8, ''],
     'testinstrumentation': [testinstrumentation, ''],
+    'testunittests': [testunittests, ''],
     'unpackIcuData': [unpackIcuData, ''],
 })
 
