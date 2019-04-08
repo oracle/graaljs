@@ -405,19 +405,17 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
     #endif
 
     #if defined(DEBUG)
-        options.push_back({const_cast<char*>("-Xdebug"), nullptr});
-        options.push_back({const_cast<char*>("-Xnoagent"), nullptr});
-        std::string debugParam = "-Xrunjdwp:transport=dt_socket";
         std::string debugPort = getstdenv("DEBUG_PORT");
         if (!debugPort.empty()) {
+            options.push_back({const_cast<char*>("-Xdebug"), nullptr});
+            options.push_back({const_cast<char*>("-Xnoagent"), nullptr});
+            std::string debugParam = "-Xrunjdwp:transport=dt_socket";
             // do not debug child processes
             UnsetEnv("DEBUG_PORT"); 
             debugParam += ",server=n,suspend=y,address=";
             debugParam += debugPort;
-        } else {
-            debugParam += ",server=y,suspend=n";
+            options.push_back({const_cast<char*>(debugParam.c_str()), nullptr});
         }
-        options.push_back({const_cast<char*>(debugParam.c_str()), nullptr});
         options.push_back({const_cast<char*>("-Dtruffle.node.js.verbose=true"), nullptr});
         options.push_back({const_cast<char*>("-Dgraal.TruffleCompilationExceptionsArePrinted=true"), nullptr});
     #endif
