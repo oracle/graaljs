@@ -40,13 +40,19 @@
  */
 package com.oracle.truffle.js.test;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.After;
+import org.junit.Before;
 
-public class MainTest {
+public abstract class JSTest {
+    protected TestHelper testHelper;
 
-    @Test
-    public void testMain() {
-        Assert.assertTrue(true);
+    @Before
+    public void setup() {
+        testHelper = new TestHelper();
+    }
+
+    @After
+    public void close() {
+        testHelper.close();
     }
 }

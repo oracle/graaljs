@@ -38,29 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.nashorn;
+package com.oracle.truffle.js.test.polyglot;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.junit.Assert;
-import org.junit.Test;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Shape;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
+/**
+ * Mockup object for a {@link DynamicObject}. Used for testing purposes, to replace the existing
+ * JavaScript object type to simulate usage of a non-JS DynamicObject.
+ *
+ */
+@ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
+public final class ForeignDynamicObject extends ObjectType {
+    private static final ObjectType SINGLETON = new ForeignDynamicObject();
+    private static final Layout LAYOUT = Layout.createLayout();
+    private static final Shape emptyShape = LAYOUT.createShape(SINGLETON);
 
-public class JSONWriterTest {
-    private static String testIntl(String sourceText) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").build()) {
-            Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "json-writer-test").buildLiteral());
-            Assert.assertTrue(result.isString());
-            return result.asString();
-        }
+    private ForeignDynamicObject() {
     }
 
-    @Test
-    public void testParseToJSON() {
-        String result = testIntl("parseToJSON(\"{a:'foo'}\",'test','test2')");
-        Assert.assertTrue(result.startsWith("{\"loc\":{\"source\":\"test\",\"start\":"));
+    public static DynamicObject createNew() {
+        return emptyShape.newInstance();
+    }
+
+    @Override
+    public Class<?> dispatch() {
+        return ForeignDynamicObject.class;
     }
 }

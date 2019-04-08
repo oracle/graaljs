@@ -38,29 +38,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.nashorn;
+package com.oracle.truffle.js.test.polyglot;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.junit.Assert;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
-public class JSONWriterTest {
-    private static String testIntl(String sourceText) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").build()) {
-            Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "json-writer-test").buildLiteral());
-            Assert.assertTrue(result.isString());
-            return result.asString();
-        }
-    }
+public class ForeignTestMapTest {
 
     @Test
-    public void testParseToJSON() {
-        String result = testIntl("parseToJSON(\"{a:'foo'}\",'test','test2')");
-        Assert.assertTrue(result.startsWith("{\"loc\":{\"source\":\"test\",\"start\":"));
+    public void equalTest() {
+        ForeignTestMap a = new ForeignTestMap();
+        a.getContainer().put("BOX", "boxed_A");
+        ForeignTestMap a2 = new ForeignTestMap();
+        a2.getContainer().put("BOX", "boxed_A");
+        ForeignTestMap b = new ForeignTestMap();
+        b.getContainer().put("BOX", "boxed_B");
+
+        assertTrue(JSRuntime.equal(a, a));
+        assertTrue(JSRuntime.equal(a, a2));
+        assertTrue(JSRuntime.equal(a2, a2));
+
+        assertFalse(JSRuntime.equal(a, b));
+        assertFalse(JSRuntime.equal(a2, b));
+        assertFalse(JSRuntime.equal(a, 0));
+        assertFalse(JSRuntime.equal(a, true));
     }
 }
