@@ -275,6 +275,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
             public void init() {
                 if (reasonNode == null || getPromiseNode == null || rejectPromiseNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     reasonNode = insert(AccessIndexedArgumentNode.create(0));
                     getPromiseNode = insert(PropertyGetNode.createGetHidden(PROMISE_KEY, context));
                     rejectPromiseNode = insert(RejectPromiseNode.create(context));
