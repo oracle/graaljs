@@ -143,8 +143,7 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         public DynamicObject execute(DynamicObject segmenter, String value) {
             assert JSSegmenter.isJSSegmenter(segmenter);
-            BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter);
-            icuIterator.setText(value);
+            BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter, value);
             Granularity granularity = JSSegmenter.getGranularity(segmenter);
             return JSObject.createWithRealm(context, context.getSegmentIteratorFactory(), context.getRealm(), value, icuIterator, granularity, null, 0);
         }

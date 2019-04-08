@@ -270,10 +270,12 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static BreakIterator createBreakIterator(DynamicObject segmenterObj) {
+    public static BreakIterator createBreakIterator(DynamicObject segmenterObj, String text) {
         InternalState state = getInternalState(segmenterObj);
         ULocale ulocale = ULocale.forLocale(state.javaLocale);
-        return state.granularity.getIterator(ulocale);
+        BreakIterator icuIterator = state.granularity.getIterator(ulocale);
+        icuIterator.setText(text);
+        return icuIterator;
     }
 
     public static Granularity getGranularity(DynamicObject segmenterObj) {
