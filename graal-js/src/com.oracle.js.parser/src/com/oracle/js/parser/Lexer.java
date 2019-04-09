@@ -261,12 +261,14 @@ public class Lexer extends Scanner {
      * @param state
      *            Captured state.
      */
-    void restoreState(final State state) {
+    @Override
+    void restoreState(final Scanner.State state) {
         super.restoreState(state);
 
-        pendingLine = state.pendingLine;
-        linePosition = state.linePosition;
-        last = state.last;
+        Lexer.State lexerState = (Lexer.State)state;
+        pendingLine = lexerState.pendingLine;
+        linePosition = lexerState.linePosition;
+        last = lexerState.last;
     }
 
     /**

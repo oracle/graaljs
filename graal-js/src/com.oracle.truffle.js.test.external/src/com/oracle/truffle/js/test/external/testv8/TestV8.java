@@ -132,7 +132,7 @@ public class TestV8 extends TestSuite {
         return testFile.getFilePath().contains("-skip-") || super.isSkipped(testFile);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         SuiteConfig config = new SuiteConfig(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
 
         TimeZone pstZone = TimeZone.getTimeZone("PST"); // =Californian Time (PST)
