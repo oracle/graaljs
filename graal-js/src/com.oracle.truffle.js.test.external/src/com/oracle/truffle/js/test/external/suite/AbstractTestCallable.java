@@ -42,53 +42,45 @@ package com.oracle.truffle.js.test.external.suite;
 
 import java.io.File;
 import java.io.OutputStream;
-import java.util.Map;
+import java.util.concurrent.Callable;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 
-public class TestCallable extends AbstractTestCallable {
+public abstract class AbstractTestCallable implements Callable<Object> {
 
-    private final Context.Builder contextBuilder;
+    private final Source[] prequelSources;
+    private final Source testSource;
+    private final File scriptFile;
+    private final TestSuite suite;
 
-    public TestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile, int ecmaScriptVersion, Map<String, String> options) {
-        super(suite, prequelSources, testSource, scriptFile);
-
-        this.contextBuilder = Context.newBuilder(JavaScriptLanguage.ID);
-        contextBuilder.allowIO(true);
-        contextBuilder.allowExperimentalOptions(true);
-        contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion));
-        contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(false));
-        contextBuilder.option(JSContextOptions.SYNTAX_EXTENSIONS_NAME, Boolean.toString(false));
-        contextBuilder.option(JSContextOptions.SHEBANG_NAME, Boolean.toString(false));
-        contextBuilder.option(JSContextOptions.CONST_AS_VAR_NAME, Boolean.toString(false));
-        contextBuilder.options(options);
+    public AbstractTestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile) {
+        this.prequelSources = prequelSources;
+        this.testSource = testSource;
+        this.scriptFile = scriptFile;
+        this.suite = suite;
     }
 
-    @Override
-    public Object call() throws Exception {
-        try (Context context = contextBuilder.build()) {
-            for (Source source : getPrequelSources()) {
-                context.eval(JavaScriptLanguage.ID, source.getCharacters());
-            }
-            return context.eval(getTestSource());
-        } catch (Exception e) {
-            throw e;
-        } finally {
-            // resultOut = out.toString();
-            // resultErr = err.toString();
-        }
+    protected Source[] getPrequelSources() {
+        return prequelSources;
     }
 
-    @Override
-    public void setOutput(OutputStream out) {
-        contextBuilder.out(out);
+    protected Source getTestSource() {
+        return testSource;
     }
 
-    @Override
-    public void setError(OutputStream err) {
-        contextBuilder.err(err);
+    protected File getScriptFile() {
+        return scriptFile;
     }
+
+    protected SuiteConfig getConfig() {
+        return suite.getConfig();
+    }
+
+    protected String getScriptFileContent() {
+        return testSource.getCharacters().toString();
+    }
+
+    public abstract void setOutput(OutputStream out);
+
+    public abstract void setError(OutputStream err);
 }

@@ -133,20 +133,15 @@ public class TestV8 extends TestSuite {
     }
 
     public static void main(String[] args) throws Exception {
-        SuiteConfig config = new SuiteConfig(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
+        SuiteConfig.Builder configBuilder = new SuiteConfig.Builder(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
 
         TimeZone pstZone = TimeZone.getTimeZone("PST"); // =Californian Time (PST)
         TimeZone.setDefault(pstZone);
 
         System.out.println("Checking your Javascript conformance. Using Google V8 testsuite.\n");
 
-        if (args.length > 0) {
-            for (String arg : args) {
-                TestSuite.parseDefaultArgs(arg, config);
-            }
-        }
-
-        TestV8 suite = new TestV8(config);
+        TestSuite.parseDefaultArgs(args, configBuilder);
+        TestV8 suite = new TestV8(configBuilder.build());
         System.exit(suite.runTestSuite(TEST_DIRS));
     }
 }

@@ -113,7 +113,7 @@ public class TestNashornCallable extends TestCallable {
         }
 
         try (Context context = contextBuilder.build()) {
-            for (Source source : prequelSources) {
+            for (Source source : getPrequelSources()) {
                 context.eval(JavaScriptLanguage.ID, source.getCharacters());
             }
             return context.eval(org.graalvm.polyglot.Source.newBuilder(JavaScriptLanguage.ID, getScriptFile()).name(getScriptFile().getPath()).build());

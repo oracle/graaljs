@@ -298,6 +298,11 @@ public final class JSContextOptions {
     public static final OptionKey<Long> FUNCTION_ARGUMENTS_LIMIT = new OptionKey<>(65535L);
     @CompilationFinal private long functionArgumentsLimit;
 
+    public static final String TEST262_MODE_NAME = JS_OPTION_PREFIX + "test262-mode";
+    @Option(name = TEST262_MODE_NAME, category = OptionCategory.INTERNAL, help = "Expose global property $262 needed for running the Test262 harness.") //
+    public static final OptionKey<Boolean> TEST262_MODE = new OptionKey<>(false);
+    @CompilationFinal private boolean test262Mode;
+
     public JSContextOptions(ParserOptions parserOptions) {
         this.parserOptions = parserOptions;
         cacheOptions();
@@ -355,6 +360,7 @@ public final class JSContextOptions {
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
         this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME);
         this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT, FUNCTION_ARGUMENTS_LIMIT_NAME);
+        this.test262Mode = readBooleanOption(TEST262_MODE, TEST262_MODE_NAME);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -598,6 +604,10 @@ public final class JSContextOptions {
         return functionArgumentsLimit;
     }
 
+    public boolean isTest262Mode() {
+        return test262Mode;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -625,6 +635,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
         hash = 53 * hash + (this.hasForeignObjectPrototype ? 1 : 0);
         hash = 53 * hash + (int) this.functionArgumentsLimit;
+        hash = 53 * hash + (this.test262Mode ? 1 : 0);
         return hash;
     }
 
@@ -707,6 +718,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.functionArgumentsLimit != other.functionArgumentsLimit) {
+            return false;
+        }
+        if (this.test262Mode != other.test262Mode) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

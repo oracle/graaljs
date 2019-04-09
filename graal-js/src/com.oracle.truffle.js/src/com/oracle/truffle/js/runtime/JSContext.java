@@ -430,7 +430,7 @@ public class JSContext {
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
 
-        if (JSTruffleOptions.Test262Mode || JSTruffleOptions.TestV8Mode) {
+        if (contextOptions.isTest262Mode() || JSTruffleOptions.TestV8Mode) {
             this.setJSAgent(new DebugJSAgent(env, contextOptions.canAgentBlock()));
         } else {
             this.setJSAgent(new MainJSAgent());

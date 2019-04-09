@@ -240,7 +240,7 @@ def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""
     _location = join(_suite.dir, 'lib', 'test262')
     _default_vm_args = [
-        '-Dtruffle.js.Test262Mode=true',
+        '-Dpolyglot.js.test262-mode=true',
     ]
     return _run_test_suite(
         location=_location,

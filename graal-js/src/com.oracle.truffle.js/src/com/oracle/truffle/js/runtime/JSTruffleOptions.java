@@ -150,7 +150,6 @@ public final class JSTruffleOptions {
     public static final boolean U180EWhitespace = booleanOption("U180EWhitespace", MaxECMAScriptVersion <= 6);
 
     // Test engine options. Used to expose internal behavior only in these test setups.
-    public static final boolean Test262Mode = booleanOption("Test262Mode", false);
     public static final boolean TestV8Mode = booleanOption("TestV8Mode", false);
 
     public static final boolean ValidateRegExpLiterals = booleanOption("ValidateRegExpLiterals", !TestV8Mode);

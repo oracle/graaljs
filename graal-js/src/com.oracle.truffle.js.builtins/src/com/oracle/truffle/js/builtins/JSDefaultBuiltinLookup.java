@@ -163,9 +163,7 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
             defineBuiltins(new RegExpStringIteratorPrototypeBuiltins());
         }
 
-        if (JSTruffleOptions.Test262Mode) {
-            defineBuiltins(new Test262Builtins());
-        }
+        defineBuiltins(new Test262Builtins());
         if (JSTruffleOptions.TestV8Mode) {
             defineBuiltins(new TestV8Builtins());
         }

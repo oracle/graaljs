@@ -83,9 +83,13 @@ public class Test262 extends TestSuite {
     }
 
     public Source[] getHarnessSources(boolean strict, boolean async, Stream<String> includes) {
-        Source prologSource = Source.newBuilder("js", strict ? "var strict_mode = true;" : "var strict_mode = false;", "").buildLiteral();
-        Stream<Source> prologStream = Stream.of(prologSource);
-
+        Stream<Source> prologStream;
+        if (getConfig().isExtLauncher()) {
+            prologStream = Stream.empty();
+        } else {
+            Source prologSource = Source.newBuilder("js", strict ? "var strict_mode = true;" : "var strict_mode = false;", "").buildLiteral();
+            prologStream = Stream.of(prologSource);
+        }
         String harnessLocation = getConfig().getSuiteHarnessLoc();
         Stream<String> harnessNamesStream = Stream.of(COMMON_PREQUEL_FILES);
         if (async) {
@@ -108,7 +112,11 @@ public class Test262 extends TestSuite {
         if (prefix.isEmpty()) {
             return source;
         }
-        return Source.newBuilder("js", prefix + source.getCharacters(), source.getName()).buildLiteral();
+        try {
+            return Source.newBuilder("js", new File(source.getPath())).content(prefix + source.getCharacters()).build();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -160,20 +168,16 @@ public class Test262 extends TestSuite {
     }
 
     public static void main(String[] args) throws Exception {
-        SuiteConfig config = new SuiteConfig(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
+        SuiteConfig.Builder configBuilder = new SuiteConfig.Builder(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
 
         TimeZone pstZone = TimeZone.getTimeZone("PST"); // =Californian Time (PST)
         TimeZone.setDefault(pstZone);
 
         System.out.println("Checking your Javascript conformance. Using ECMAScript Test262 testsuite.\n");
 
-        if (args.length > 0) {
-            for (String arg : args) {
-                TestSuite.parseDefaultArgs(arg, config);
-            }
-        }
+        TestSuite.parseDefaultArgs(args, configBuilder);
 
-        Test262 suite = new Test262(config);
+        Test262 suite = new Test262(configBuilder.build());
         System.exit(suite.runTestSuite(TEST_DIRS));
     }
 }
