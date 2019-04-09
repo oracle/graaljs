@@ -60,7 +60,10 @@ public class JSONWriterTest {
 
     @Test
     public void testParseToJSON() {
-        String result = testIntl("parseToJSON(\"{a:'foo'}\",'test','test2')");
+        String source = "var a=0;; const b={a:'foo'}; let c=[1,2,3]; var r=/a/g; label: function foo(){ var x=a?b:c; x+=3;x=1*2+(3-4)/5*Math.sqrt(5);" +
+                        "while(true) { if (true) { break; } else { continue; }; }; for (var i=0;i<10;i++); for (var x in Object); return ++a+b.a; };" +
+                        "foo(c[0],c.a); try{ switch(a) { case 0: { with (b) {}; break; } default: throw 'hallo'; }; } catch (e) { }";
+        String result = testIntl("parseToJSON(\"" + source + "\",'test','test2')");
         Assert.assertTrue(result.startsWith("{\"loc\":{\"source\":\"test\",\"start\":"));
     }
 }
