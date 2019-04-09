@@ -38,32 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.nashorn;
+package com.oracle.truffle.js.test.builtins;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
 
-public class JSONWriterTest {
-    private static String testIntl(String sourceText) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").build()) {
-            Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "json-writer-test").buildLiteral());
-            Assert.assertTrue(result.isString());
-            return result.asString();
+/**
+ * String.prototype.* behavior not sufficiently tested by test262.
+ */
+public class StringPrototypeBuiltins {
+
+    private static boolean testIntl(String sourceText) {
+        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).build()) {
+            Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "string-prototype-test").buildLiteral());
+            return result.asBoolean();
         }
     }
 
     @Test
-    public void testParseToJSON() {
-        String source = "var a=0;; const b={a:'foo'}; let c=[1,2,3]; var r=/a/g; label: function foo(){ var x=a?b:c; x+=3;x=1*2+(3-4)/5*Math.sqrt(5);" +
-                        "while(true) { if (true) { break; } else { continue; }; }; for (var i=0;i<10;i++); for (var x in Object); return ++a+b.a; };" +
-                        "foo(c[0],c.a); try{ switch(a) { case 0: { with (b) {}; break; } default: throw 'hallo'; }; } catch (e) { }";
-        String result = testIntl("parseToJSON(\"" + source + "\",'test','test2')");
-        Assert.assertTrue(result.startsWith("{\"loc\":{\"source\":\"test\",\"start\":"));
+    public void testLocaleCompare() {
+        assertTrue(testIntl("'abc'.localeCompare('abc') === 0;"));
+        assertFalse(testIntl("'abc'.localeCompare('def') === 0;"));
     }
+
 }

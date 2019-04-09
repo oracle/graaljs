@@ -41,11 +41,15 @@
 package com.oracle.truffle.js.test.simd;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
@@ -55,17 +59,31 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
  * of Test262. Purpose of those tests is to ensure basic test coverage of the functionality.
  */
 public class SIMDTest {
-    private static void testIntl(String sourceText) {
+    private static void test(String sourceText) {
+        Assert.assertTrue(testIntl(sourceText));
+    }
+
+    private static boolean testIntl(String sourceText) {
         try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.SIMDJS_NAME, "true").build()) {
             Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "simd-test").buildLiteral());
-            Assert.assertTrue(result.asBoolean());
+            return result.asBoolean();
         }
+    }
+
+    private static void testIntlFailed(String sourceText, String expectedMessage) {
+        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.SIMDJS_NAME, "true").build()) {
+            context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "simd-test").buildLiteral());
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage().contains(expectedMessage));
+            return;
+        }
+        Assert.fail();
     }
 
     private static void testArithmeticOp(String type, String size, String inputA, String inputB, String op, String expected) {
         String cType = type + size;
         String bType = "Bool" + size;
-        testIntl("var result = SIMD." + cType + "." + op + "(SIMD." + cType + "(" + inputA + "), SIMD." + cType + "(" + inputB + ")); SIMD." + bType + ".allTrue(SIMD." + cType +
+        test("var result = SIMD." + cType + "." + op + "(SIMD." + cType + "(" + inputA + "), SIMD." + cType + "(" + inputB + ")); SIMD." + bType + ".allTrue(SIMD." + cType +
                         ".equal(result, SIMD." + cType + "(" + expected + ")));");
     }
 
@@ -124,16 +142,224 @@ public class SIMDTest {
                         "mul", "2, 4, 6, 8, 10, 12, 14, 16");
     }
 
+    @Test
+    public void testSimdCheck() {
+        testIntlFailed("SIMD.Int32x4.check({})", "not a SIMD Object");
+        test("var a = SIMD.Int32x4(1, 2, 3, 4); SIMD.Bool32x4.allTrue(SIMD.Int32x4.equal(a, SIMD.Int32x4.check(a)));");
+    }
+
+    @Test
+    public void testSimdSplat() {
+        test("var a = SIMD.Int32x4(42, 42, 42, 42); SIMD.Bool32x4.allTrue(SIMD.Int32x4.equal(a, SIMD.Int32x4.splat(42)));");
+    }
+
+    @Test
+    public void testSimdMin() {
+        test("var a = SIMD.Float32x4(1, 2, 3, 4); SIMD.Bool32x4.allTrue(SIMD.Float32x4.equal(a, SIMD.Float32x4.min(a, a)));");
+    }
+
+    @Test
+    public void testSimdMax() {
+        test("var a = SIMD.Float32x4(1, 2, 3, 4); SIMD.Bool32x4.allTrue(SIMD.Float32x4.equal(a, SIMD.Float32x4.max(a, a)));");
+    }
+
+    @Test
+    public void testSimdMinNum() {
+        test("var a = SIMD.Float32x4(1, 2, 3, 4); SIMD.Bool32x4.allTrue(SIMD.Float32x4.equal(a, SIMD.Float32x4.minNum(a, a)));");
+    }
+
+    @Test
+    public void testSimdMaxNum() {
+        test("var a = SIMD.Float32x4(1, 2, 3, 4); SIMD.Bool32x4.allTrue(SIMD.Float32x4.equal(a, SIMD.Float32x4.maxNum(a, a)));");
+    }
+
+    @Test
+    public void testSimdNeg() {
+        test("var inp = SIMD.Float32x4(1, 2, 3, 4); var exp = SIMD.Float32x4(-1, -2, -3, -4); SIMD.Bool32x4.allTrue(SIMD.Float32x4.equal(exp, SIMD.Float32x4.neg(inp)));");
+        test("var inp = SIMD.Int32x4(1, 2, 3, 4); var exp = SIMD.Int32x4(-1, -2, -3, -4); SIMD.Bool32x4.allTrue(SIMD.Int32x4.equal(exp, SIMD.Int32x4.neg(inp)));");
+        // conv missing
+        test("var inp = SIMD.Uint32x4(1, 2, 3, 4); var exp = SIMD.Uint32x4(-1, -2, -3, -4); SIMD.Bool32x4.allTrue(SIMD.Uint32x4.equal(exp, SIMD.Uint32x4.neg(inp)));");
+        test("var inp = SIMD.Int16x8(1, 2, 3, 4, 5, 6, 7, 8); var exp = SIMD.Int16x8(-1, -2, -3, -4, -5, -6, -7, -8); SIMD.Bool16x8.allTrue(SIMD.Int16x8.equal(exp, SIMD.Int16x8.neg(inp)));");
+        // testIntl("var inp = SIMD.Uint16x8(1, 2, 3, 4, 5, 6, 7, 8); var exp = SIMD.Uint16x8(-1,
+        // -2, -3, -4, -5, -6, -7, -8); SIMD.Bool16x8.allTrue(SIMD.Uint16x8.equal(exp,
+        // SIMD.Uint16x8.neg(inp)));");
+        test("var inp = SIMD.Int8x16(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8); var exp = SIMD.Int8x16(-1, -2, -3, -4, -5, -6, -7, -8, -1, -2, -3, -4, -5, -6, -7, -8); SIMD.Bool8x16.allTrue(SIMD.Int8x16.equal(exp, SIMD.Int8x16.neg(inp)));");
+        // testIntl("var inp = SIMD.Uint8x16(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8); var
+        // exp = SIMD.Uint8x16(-1, -2, -3, -4, -5, -6, -7, -8, -1, -2, -3, -4, -5, -6, -7, -8);
+        // SIMD.Bool8x16.allTrue(SIMD.Uint8x16.equal(exp, SIMD.Uint8x16.neg(inp)));");
+    }
+
+    @Test
+    public void testSimdSqrt() {
+        test("var inp = SIMD.Float32x4(9, 16, 25, 36); var exp = SIMD.Float32x4(3, 4, 5, 6); SIMD.Bool32x4.allTrue(SIMD.Float32x4.equal(exp, SIMD.Float32x4.sqrt(inp)));");
+    }
+
+    @Test
+    public void testSimdReciprocalApproximation() {
+        test("var inp = SIMD.Float32x4(2, 4, 8, 16); var exp = SIMD.Float32x4(0.5, 0.25, 0.125, 0.0625); SIMD.Bool32x4.allTrue(SIMD.Float32x4.equal(exp, SIMD.Float32x4.reciprocalApproximation(inp)));");
+    }
+
+    @Test
+    public void testSimdReciprocalSqrtApproximation() {
+        test("var inp = SIMD.Float32x4(4, 16, 64, 256); var exp = SIMD.Float32x4(0.5, 0.25, 0.125, 0.0625); SIMD.Bool32x4.allTrue(SIMD.Float32x4.equal(exp, SIMD.Float32x4.reciprocalSqrtApproximation(inp)));");
+    }
+
+    @Test
+    public void testSimdAbs() {
+        test("var inp = SIMD.Float32x4(-1, 2, -3, 4); var exp = SIMD.Float32x4(1, 2, 3, 4); SIMD.Bool32x4.allTrue(SIMD.Float32x4.equal(exp, SIMD.Float32x4.abs(inp)));");
+    }
+
+    @Test
+    public void testSimdAnd() {
+        test("var inp = SIMD.Int32x4(1, 2, 3, 4); var exp = inp; SIMD.Bool32x4.allTrue(SIMD.Int32x4.equal(exp, SIMD.Int32x4.and(inp, inp)));");
+        test("var inp = SIMD.Uint32x4(1, 2, 3, 4); var exp = inp; SIMD.Bool32x4.allTrue(SIMD.Uint32x4.equal(exp, SIMD.Uint32x4.and(inp, inp)));");
+        test("var inp = SIMD.Int16x8(1, 2, 3, 4, 5, 6, 7, 8); var exp = inp; SIMD.Bool16x8.allTrue(SIMD.Int16x8.equal(exp, SIMD.Int16x8.and(inp, inp)));");
+        test("var inp = SIMD.Uint16x8(1, 2, 3, 4, 5, 6, 7, 8); var exp = inp; SIMD.Bool16x8.allTrue(SIMD.Uint16x8.equal(exp, SIMD.Uint16x8.and(inp, inp)));");
+        test("var inp = SIMD.Int8x16(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8); var exp = inp; SIMD.Bool8x16.allTrue(SIMD.Int8x16.equal(exp, SIMD.Int8x16.and(inp, inp)));");
+        test("var inp = SIMD.Uint8x16(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8); var exp = inp; SIMD.Bool8x16.allTrue(SIMD.Uint8x16.equal(exp, SIMD.Uint8x16.and(inp, inp)));");
+    }
+
+    @Test
+    public void testSimdXor() {
+        test("var inp = SIMD.Int32x4(1, 2, 3, 4); var exp = SIMD.Int32x4.splat(0); SIMD.Bool32x4.allTrue(SIMD.Int32x4.equal(exp, SIMD.Int32x4.xor(inp, inp)));");
+        test("var inp = SIMD.Uint32x4(1, 2, 3, 4); var exp = SIMD.Uint32x4.splat(0); SIMD.Bool32x4.allTrue(SIMD.Uint32x4.equal(exp, SIMD.Uint32x4.xor(inp, inp)));");
+        test("var inp = SIMD.Int16x8(1, 2, 3, 4, 5, 6, 7, 8); var exp = SIMD.Int16x8.splat(0); SIMD.Bool16x8.allTrue(SIMD.Int16x8.equal(exp, SIMD.Int16x8.xor(inp, inp)));");
+        test("var inp = SIMD.Uint16x8(1, 2, 3, 4, 5, 6, 7, 8); var exp = SIMD.Uint16x8.splat(0); SIMD.Bool16x8.allTrue(SIMD.Uint16x8.equal(exp, SIMD.Uint16x8.xor(inp, inp)));");
+        test("var inp = SIMD.Int8x16(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8); var exp = SIMD.Int8x16.splat(0); SIMD.Bool8x16.allTrue(SIMD.Int8x16.equal(exp, SIMD.Int8x16.xor(inp, inp)));");
+        test("var inp = SIMD.Uint8x16(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8); var exp = SIMD.Uint8x16.splat(0); SIMD.Bool8x16.allTrue(SIMD.Uint8x16.equal(exp, SIMD.Uint8x16.xor(inp, inp)));");
+    }
+
+    @Test
+    public void testSimdOr() {
+        test("var inp = SIMD.Int32x4(1, 2, 3, 4); var exp = inp; SIMD.Bool32x4.allTrue(SIMD.Int32x4.equal(exp, SIMD.Int32x4.or(inp, inp)));");
+        test("var inp = SIMD.Uint32x4(1, 2, 3, 4); var exp = inp; SIMD.Bool32x4.allTrue(SIMD.Uint32x4.equal(exp, SIMD.Uint32x4.or(inp, inp)));");
+        test("var inp = SIMD.Int16x8(1, 2, 3, 4, 5, 6, 7, 8); var exp = inp; SIMD.Bool16x8.allTrue(SIMD.Int16x8.equal(exp, SIMD.Int16x8.or(inp, inp)));");
+        test("var inp = SIMD.Uint16x8(1, 2, 3, 4, 5, 6, 7, 8); var exp = inp; SIMD.Bool16x8.allTrue(SIMD.Uint16x8.equal(exp, SIMD.Uint16x8.or(inp, inp)));");
+        test("var inp = SIMD.Int8x16(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8); var exp = inp; SIMD.Bool8x16.allTrue(SIMD.Int8x16.equal(exp, SIMD.Int8x16.or(inp, inp)));");
+        test("var inp = SIMD.Uint8x16(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8); var exp = inp; SIMD.Bool8x16.allTrue(SIMD.Uint8x16.equal(exp, SIMD.Uint8x16.or(inp, inp)));");
+    }
+
+    @Test
+    public void testSimdNot() {
+        test("var inp = SIMD.Int32x4.splat(1); var exp = SIMD.Int32x4.splat(-2); SIMD.Bool32x4.allTrue(SIMD.Int32x4.equal(exp, SIMD.Int32x4.not(inp)));");
+        test("var inp = SIMD.Uint32x4.splat(1); var exp = SIMD.Uint32x4.splat(-2); SIMD.Bool32x4.allTrue(SIMD.Uint32x4.equal(exp, SIMD.Uint32x4.not(inp)));");
+        test("var inp = SIMD.Int16x8.splat(1); var exp = SIMD.Int16x8.splat(-2); SIMD.Bool16x8.allTrue(SIMD.Int16x8.equal(exp, SIMD.Int16x8.not(inp)));");
+        // testIntl("var inp = SIMD.Uint16x8.splat(1); var exp = SIMD.Uint16x8.splat(-2);
+        // SIMD.Bool16x8.allTrue(SIMD.Uint16x8.equal(exp, SIMD.Uint16x8.not(inp)));");
+        test("var inp = SIMD.Int8x16.splat(1); var exp = SIMD.Int8x16.splat(-2); SIMD.Bool8x16.allTrue(SIMD.Int8x16.equal(exp, SIMD.Int8x16.not(inp)));");
+        // testIntl("var inp = SIMD.Uint8x16.splat(1); var exp = SIMD.Uint8x16.splat(-2);
+        // SIMD.Bool8x16.allTrue(SIMD.Uint8x16.equal(exp, SIMD.Uint8x16.not(inp)));");
+    }
+
+    private static boolean testBoolean(String type, String size, int inputA, int inputB, String op) {
+        String cType = type + size;
+        String bType = "Bool" + size;
+        return testIntl("var inpA = SIMD." + cType + ".splat(" + inputA + "); var inpB = SIMD." + cType + ".splat(" + inputB + "); SIMD." + bType + ".allTrue(SIMD." + cType + "." + op +
+                        "(inpA, inpB));");
+    }
+
+    @Test
+    public void testSimdCompare() {
+        testCompare("Int", "32x4");
+        testCompare("Int", "16x8");
+        testCompare("Int", "8x16");
+        testCompare("Uint", "32x4");
+        testCompare("Uint", "16x8");
+        testCompare("Uint", "8x16");
+        testCompare("Float", "32x4");
+    }
+
+    public void testCompare(String type, String size) {
+        String lessThan = "lessThan";
+        assertTrue(testBoolean(type, size, 2, 3, lessThan));
+        assertFalse(testBoolean(type, size, 3, 3, lessThan));
+        assertFalse(testBoolean(type, size, 4, 3, lessThan));
+
+        String lessThanOrEqual = "lessThanOrEqual";
+        assertTrue(testBoolean(type, size, 2, 3, lessThanOrEqual));
+        assertTrue(testBoolean(type, size, 3, 3, lessThanOrEqual));
+        assertFalse(testBoolean(type, size, 4, 3, lessThanOrEqual));
+
+        String greaterThan = "greaterThan";
+        assertFalse(testBoolean(type, size, 2, 3, greaterThan));
+        assertFalse(testBoolean(type, size, 3, 3, greaterThan));
+        assertTrue(testBoolean(type, size, 4, 3, greaterThan));
+
+        String greaterThanOrEqual = "greaterThanOrEqual";
+        assertFalse(testBoolean(type, size, 2, 3, greaterThanOrEqual));
+        assertTrue(testBoolean(type, size, 3, 3, greaterThanOrEqual));
+        assertTrue(testBoolean(type, size, 4, 3, greaterThanOrEqual));
+    }
+
+    @Test
+    public void testSimdNotEqual() {
+        test("SIMD.Bool32x4.allTrue(SIMD.Float32x4.notEqual(SIMD.Float32x4.splat(1), SIMD.Float32x4.splat(2)));");
+        test("SIMD.Bool32x4.allTrue(SIMD.Int32x4.notEqual(SIMD.Int32x4.splat(1), SIMD.Int32x4.splat(2)));");
+        test("SIMD.Bool32x4.allTrue(SIMD.Uint32x4.notEqual(SIMD.Uint32x4.splat(1), SIMD.Uint32x4.splat(2)));");
+        test("SIMD.Bool16x8.allTrue(SIMD.Int16x8.notEqual(SIMD.Int16x8.splat(1), SIMD.Int16x8.splat(2)));");
+        test("SIMD.Bool16x8.allTrue(SIMD.Uint16x8.notEqual(SIMD.Uint16x8.splat(1), SIMD.Uint16x8.splat(2)));");
+        test("SIMD.Bool8x16.allTrue(SIMD.Int8x16.notEqual(SIMD.Int8x16.splat(1), SIMD.Int8x16.splat(2)));");
+        test("SIMD.Bool8x16.allTrue(SIMD.Uint8x16.notEqual(SIMD.Uint8x16.splat(1), SIMD.Uint8x16.splat(2)));");
+    }
+
+    @Test
+    public void testSimdAnyTrue() {
+        assertFalse(testIntl("SIMD.Bool32x4.anyTrue(SIMD.Bool32x4(false, false, false, false));"));
+        assertTrue(testIntl("SIMD.Bool32x4.anyTrue(SIMD.Bool32x4(true, false, false, false));"));
+        assertTrue(testIntl("SIMD.Bool32x4.anyTrue(SIMD.Bool32x4(false, true, false, false));"));
+        assertTrue(testIntl("SIMD.Bool32x4.anyTrue(SIMD.Bool32x4(false, false, true, false));"));
+        assertTrue(testIntl("SIMD.Bool32x4.anyTrue(SIMD.Bool32x4(false, false, false, true));"));
+    }
+
+    @Test
+    public void testSimdShiftLeftByScalar() {
+        test("var inp = SIMD.Int32x4(1, 2, 3, 4); var exp = SIMD.Int32x4(2, 4, 6, 8); SIMD.Bool32x4.allTrue(SIMD.Int32x4.equal(exp, SIMD.Int32x4.shiftLeftByScalar(inp, 1)));");
+        test("var inp = SIMD.Uint32x4.splat(2); var exp = SIMD.Uint32x4.splat(4); SIMD.Bool32x4.allTrue(SIMD.Uint32x4.equal(exp, SIMD.Uint32x4.shiftLeftByScalar(inp, 1)));");
+        test("var inp = SIMD.Int16x8.splat(2); var exp = SIMD.Int16x8.splat(4); SIMD.Bool16x8.allTrue(SIMD.Int16x8.equal(exp, SIMD.Int16x8.shiftLeftByScalar(inp, 1)));");
+        test("var inp = SIMD.Uint16x8.splat(2); var exp = SIMD.Uint16x8.splat(4); SIMD.Bool16x8.allTrue(SIMD.Uint16x8.equal(exp, SIMD.Uint16x8.shiftLeftByScalar(inp, 1)));");
+        test("var inp = SIMD.Int8x16.splat(2); var exp = SIMD.Int8x16.splat(4); SIMD.Bool8x16.allTrue(SIMD.Int8x16.equal(exp, SIMD.Int8x16.shiftLeftByScalar(inp, 1)));");
+        test("var inp = SIMD.Uint8x16.splat(2); var exp = SIMD.Uint8x16.splat(4); SIMD.Bool8x16.allTrue(SIMD.Uint8x16.equal(exp, SIMD.Uint8x16.shiftLeftByScalar(inp, 1)));");
+    }
+
+    @Test
+    public void testSimdShiftRightByScalar() {
+        test("var inp = SIMD.Int32x4(2, 4, 6, 8); var exp = SIMD.Int32x4(1, 2, 3, 4); SIMD.Bool32x4.allTrue(SIMD.Int32x4.equal(exp, SIMD.Int32x4.shiftRightByScalar(inp, 1)));");
+        test("var inp = SIMD.Uint32x4.splat(4); var exp = SIMD.Uint32x4.splat(2); SIMD.Bool32x4.allTrue(SIMD.Uint32x4.equal(exp, SIMD.Uint32x4.shiftRightByScalar(inp, 1)));");
+        test("var inp = SIMD.Int16x8.splat(4); var exp = SIMD.Int16x8.splat(2); SIMD.Bool16x8.allTrue(SIMD.Int16x8.equal(exp, SIMD.Int16x8.shiftRightByScalar(inp, 1)));");
+        test("var inp = SIMD.Uint16x8.splat(4); var exp = SIMD.Uint16x8.splat(2); SIMD.Bool16x8.allTrue(SIMD.Uint16x8.equal(exp, SIMD.Uint16x8.shiftRightByScalar(inp, 1)));");
+        test("var inp = SIMD.Int8x16.splat(4); var exp = SIMD.Int8x16.splat(2); SIMD.Bool8x16.allTrue(SIMD.Int8x16.equal(exp, SIMD.Int8x16.shiftRightByScalar(inp, 1)));");
+        test("var inp = SIMD.Uint8x16.splat(4); var exp = SIMD.Uint8x16.splat(2); SIMD.Bool8x16.allTrue(SIMD.Uint8x16.equal(exp, SIMD.Uint8x16.shiftRightByScalar(inp, 1)));");
+    }
+
+    @Test
+    public void testSimdExtractLane() {
+        test("var inp = SIMD.Int32x4.splat(0); SIMD.Int32x4.extractLane(SIMD.Int32x4.replaceLane(inp, 0, 42), 0) === 42;");
+        test("var inp = SIMD.Uint32x4.splat(0); SIMD.Uint32x4.extractLane(SIMD.Uint32x4.replaceLane(inp, 0, 42), 0) === 42;");
+        test("var inp = SIMD.Int16x8.splat(0); SIMD.Int16x8.extractLane(SIMD.Int16x8.replaceLane(inp, 0, 42), 0) === 42;");
+        test("var inp = SIMD.Uint16x8.splat(0); SIMD.Uint16x8.extractLane(SIMD.Uint16x8.replaceLane(inp, 0, 42), 0) === 42;");
+        test("var inp = SIMD.Int8x16.splat(0); SIMD.Int8x16.extractLane(SIMD.Int8x16.replaceLane(inp, 0, 42), 0) === 42;");
+        test("var inp = SIMD.Uint8x16.splat(0); SIMD.Uint8x16.extractLane(SIMD.Uint8x16.replaceLane(inp, 0, 42), 0) === 42;");
+    }
+
+    // select
+    // addSature
+    // swizzle
+    // store
+    // load
+    // shuffle
+    // fromTIMD
+    // fromTIMDBits
+
     @Ignore
     @Test
     public void failingTest1() {
-        testIntl("SIMD.Uint16x8.equal();");
+        test("SIMD.Uint16x8.equal();");
     }
 
     @Ignore
     @Test
     public void failingTest2() {
-        testIntl("SIMD.Float32x4.add(0,0);");
+        test("SIMD.Float32x4.add(0,0);");
     }
 
 }

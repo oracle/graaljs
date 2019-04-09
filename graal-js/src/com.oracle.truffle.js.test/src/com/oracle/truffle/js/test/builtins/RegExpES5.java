@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.nashorn;
+package com.oracle.truffle.js.test.builtins;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -49,21 +49,66 @@ import org.junit.Test;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 
-public class JSONWriterTest {
-    private static String testIntl(String sourceText) {
-        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").build()) {
-            Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "json-writer-test").buildLiteral());
-            Assert.assertTrue(result.isString());
-            return result.asString();
+/**
+ * String.prototype.split, String.prototype.match, String.prototype.search, and
+ * String.prototype.replace show special behavior in ES5.
+ *
+ */
+public class RegExpES5 {
+
+    private static void test(String sourceText) {
+        Assert.assertTrue(testIntl(sourceText));
+    }
+
+    private static boolean testIntl(String sourceText) {
+        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "5").build()) {
+            Value result = context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, "regexp-es5-test").buildLiteral());
+            return result.asBoolean();
         }
     }
 
     @Test
-    public void testParseToJSON() {
-        String source = "var a=0;; const b={a:'foo'}; let c=[1,2,3]; var r=/a/g; label: function foo(){ var x=a?b:c; x+=3;x=1*2+(3-4)/5*Math.sqrt(5);" +
-                        "while(true) { if (true) { break; } else { continue; }; }; for (var i=0;i<10;i++); for (var x in Object); return ++a+b.a; };" +
-                        "foo(c[0],c.a); try{ switch(a) { case 0: { with (b) {}; break; } default: throw 'hallo'; }; } catch (e) { }";
-        String result = testIntl("parseToJSON(\"" + source + "\",'test','test2')");
-        Assert.assertTrue(result.startsWith("{\"loc\":{\"source\":\"test\",\"start\":"));
+    public void testSplitES5() {
+        test("'ab_cd_ef'.split(/_/).length === 3");
+        test("'abcdef'.split(/_/).length === 1");
+
+        test("'ab_cd_ef'.split('_').length === 3");
+        test("'ab_cd_ef'.split().length === 1");
     }
+
+    @Test
+    public void testMatchES5() {
+        test("'ab_cd_ef'.match(/_/).length === 1");
+        test("'ab_cd_ef'.match(/_/g).length === 2");
+        test("'abcdef'.match(/_/) === null");
+
+        test("'ab_cd_ef'.match('_').length === 1");
+        test("'ab_cd_ef'.match().length === 1");
+        test("'abcdef'.match('X') === null");
+    }
+
+    @Test
+    public void testSearchES5() {
+        test("'ab_cd_ef'.search(/_/) === 2");
+        test("'abcdef'.search(/_/) === -1");
+        test("'abcdef'.search() === 0");
+    }
+
+    @Test
+    public void testReplaceES5() {
+        test("'ab_cd_ef'.replace(/_/, 'X') === 'abXcd_ef'");
+        test("'ab_cd_ef'.replace(/_/g, 'X') === 'abXcdXef'");
+        test("'abcdef'.replace(/_/) === 'abcdef'");
+
+        test("'ab_cd_ef'.replace('_', 'X') === 'abXcd_ef'");
+        test("'ab_cd_ef'.replace(undefined, 'X') === 'ab_cd_ef'");
+        test("'abcdef'.replace('X', 'X') === 'abcdef'");
+
+        // with substitution
+        test("'ab_cd_ef'.replace(/_/, 'X$$') === 'abX$cd_ef'");
+        test("'ab_cd_ef'.replace(/_/, 'X$&') === 'abX_cd_ef'");
+        test("'ab_cd_ef'.replace(/_/, 'X$\\'') === 'abXcd_efcd_ef'");
+        test("'ab_cd_ef'.replace(/(_)/, 'X$1') === 'abX_cd_ef'");
+    }
+
 }
