@@ -353,7 +353,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             destination='bin/<exe:js>',
             jar_distributions=['graal-js:GRAALJS_LAUNCHER'],
             main_class='com.oracle.truffle.js.shell.JSLauncher',
-            build_args=['--language:js']
+            build_args=[],
+            language='js',
         )
     ],
     boot_jars=['graal-js:GRAALJS_SCRIPTENGINE']
