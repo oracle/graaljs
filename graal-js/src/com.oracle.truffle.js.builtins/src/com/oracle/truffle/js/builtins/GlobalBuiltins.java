@@ -472,8 +472,13 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             } catch (IOException e) {
                 throw Errors.createTypeError(e.getMessage());
             } catch (InterruptedException e) {
-                throw Errors.createTypeError(e.getMessage());
+                throw rethrow(e);
             }
+        }
+
+        @SuppressWarnings({"unchecked"})
+        static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+            throw (E) ex;
         }
 
         private static Thread captureThread(IOException[] exception, int exceptionIdx, StringBuilder outBuffer, InputStream stream, String name) {

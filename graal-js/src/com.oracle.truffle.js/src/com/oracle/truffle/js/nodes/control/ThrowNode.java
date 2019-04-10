@@ -112,7 +112,7 @@ public class ThrowNode extends StatementNode {
             getErrorNode = insert(PropertyGetNode.create(JSError.EXCEPTION_PROPERTY_NAME, JSObject.getJSContext(errorObj)));
         }
         Object exception = getErrorNode.getValue(errorObj);
-        return exception instanceof GraalJSException ? (GraalJSException) exception : null;
+        return (GraalJSException) exception;
 
     }
 

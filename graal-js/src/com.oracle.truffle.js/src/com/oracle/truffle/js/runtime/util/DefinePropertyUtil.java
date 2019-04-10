@@ -172,6 +172,9 @@ public final class DefinePropertyUtil {
             if (!currentConfigurable) { // 11.a.
                 // Accessor currentAccessor = (Accessor) current.get(obj, false);
                 Accessor currentAccessor = getAccessorFromDescriptor(currentDesc, doThrow);
+                if (currentAccessor == null) {
+                    return false;
+                }
 
                 if (descriptor.hasSet() && !JSRuntime.isSameValue(descriptor.getSet(), currentAccessor.getSetter())) {
                     return reject(doThrow, nonConfigurableMessage(key));
@@ -224,7 +227,7 @@ public final class DefinePropertyUtil {
                     // Accessor currentAccessor = (Accessor) current.get(obj, false);
                     Accessor currentAccessor = getAccessorFromDescriptor(currentDesc, doThrow);
                     Accessor newAccessor = getAccessorFromDescriptor(descriptor, doThrow);
-                    if (newAccessor == null) {
+                    if (newAccessor == null || currentAccessor == null) {
                         assert !doThrow; // should have thrown
                         return false;
                     }
