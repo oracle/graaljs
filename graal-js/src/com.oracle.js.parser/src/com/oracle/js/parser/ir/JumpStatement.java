@@ -57,7 +57,7 @@ public abstract class JumpStatement extends Statement {
      * @param finish     finish
      * @param labelName  label name for break or null if none
      */
-    protected JumpStatement(final int lineNumber, final long token, final int finish, final String labelName) {
+    JumpStatement(final int lineNumber, final long token, final int finish, final String labelName) {
         super(lineNumber, token, finish);
         this.labelName = labelName;
     }
@@ -66,7 +66,7 @@ public abstract class JumpStatement extends Statement {
      * Copy constructor.
      * @param jumpStatement the original jump statement.
      */
-    protected JumpStatement(final JumpStatement jumpStatement) {
+    JumpStatement(final JumpStatement jumpStatement) {
         super(jumpStatement);
         this.labelName = jumpStatement.labelName;
     }
