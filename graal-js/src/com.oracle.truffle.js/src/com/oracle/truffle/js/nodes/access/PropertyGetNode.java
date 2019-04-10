@@ -1339,24 +1339,25 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             JSRealm realm = JSFunction.getRealm(functionObj);
             // Function kind guaranteed by shape check, see JSFunction
+            DynamicObject prototype;
             if (kind == CONSTRUCTOR) {
                 assert JSFunction.getFunctionData(functionObj).isConstructor();
                 if (setConstructor == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setConstructor = insert(CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR));
                 }
-                DynamicObject prototype = JSUserObject.create(context, realm);
+                prototype = JSUserObject.create(context, realm);
                 setConstructor.executeVoid(prototype, functionObj);
-                JSFunction.setClassPrototype(functionObj, prototype);
-                return prototype;
             } else if (kind == GENERATOR) {
                 assert JSFunction.getFunctionData(functionObj).isGenerator();
-                return JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+                prototype = JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
             } else {
                 assert kind == ASYNC_GENERATOR;
                 assert JSFunction.getFunctionData(functionObj).isAsyncGenerator();
-                return JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+                prototype = JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
             }
+            JSFunction.setClassPrototype(functionObj, prototype);
+            return prototype;
         }
     }
 
