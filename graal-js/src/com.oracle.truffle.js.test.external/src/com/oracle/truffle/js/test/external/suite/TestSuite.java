@@ -541,7 +541,7 @@ public abstract class TestSuite {
         return reason.replace("<", "&lt;");
     }
 
-    public int runTestSuite(String[] selectedTestDirs) {
+    public int runTestSuite(String[] selectedTestDirs) throws InterruptedException {
         long startTime = System.currentTimeMillis();
 
         deleteFiles(getReportFileName(), getHTMLFileName());
@@ -731,17 +731,14 @@ public abstract class TestSuite {
         return gatePassed ? 0 : 1;
     }
 
-    private void findAndExecute(Collection<TestFile> orderedTestFiles, List<Runnable> isolatedRunnables) {
-        ExecutorService exe = null;
-        List<Callable<Void>> callables = null;
+    private void findAndExecute(Collection<TestFile> orderedTestFiles, List<Runnable> isolatedRunnables) throws InterruptedException {
         if (config.isUseThreads()) {
-            callables = new ArrayList<>(orderedTestFiles.size());
-            exe = initThreads();
-        }
-        for (TestFile testFile : orderedTestFiles) {
-            if (!isSkipped(testFile)) {
-                TestRunnable runnable = createTestRunnable(testFile);
-                if (config.isUseThreads()) {
+            ExecutorService exe = initThreads();
+            List<Callable<Void>> callables = new ArrayList<>(orderedTestFiles.size());
+
+            for (TestFile testFile : orderedTestFiles) {
+                if (!isSkipped(testFile)) {
+                    TestRunnable runnable = createTestRunnable(testFile);
                     if (testFile.getRunInIsolation()) {
                         isolatedRunnables.add(runnable);
                     } else {
@@ -750,18 +747,16 @@ public abstract class TestSuite {
                             return null;
                         });
                     }
-                } else {
-                    runnable.run();
                 }
             }
-        }
-        if (config.isUseThreads()) {
-            try {
-                List<Future<Void>> results = exe.invokeAll(callables, config.getTimeoutOverall(), TimeUnit.SECONDS);
-                checkResults(results);
-            } catch (InterruptedException e) {
-                log("Interrupted exception, exiting: " + e.getMessage());
-                System.exit(-1);
+
+            List<Future<Void>> results = exe.invokeAll(callables, config.getTimeoutOverall(), TimeUnit.SECONDS);
+            checkResults(results);
+        } else {
+            for (TestFile testFile : orderedTestFiles) {
+                if (!isSkipped(testFile)) {
+                    createTestRunnable(testFile).run();
+                }
             }
         }
     }

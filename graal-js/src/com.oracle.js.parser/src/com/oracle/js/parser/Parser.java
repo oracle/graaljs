@@ -4038,6 +4038,10 @@ loop:
             case TEMPLATE:
             case TEMPLATE_HEAD: {
                 // tagged template literal
+                if (lhs == null) {
+                    throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
+                }
+
                 final int callLine = line;
                 final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
@@ -6030,7 +6034,7 @@ loop:
                 Expression classDeclaration = classDeclaration(false, false, false);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration, false));
                 IdentNode classIdent = getClassDeclarationName(classDeclaration);
-                module.addLocalExportEntry(ExportEntry.exportSpecifier(classIdent.getName()));
+                module.addLocalExportEntry(ExportEntry.exportSpecifier(classIdent != null ? classIdent.getName() : ""));
                 break;
             }
             case FUNCTION: {

@@ -578,8 +578,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructArrayWithIntLength(DynamicObject newTarget, Object[] args) {
             int length = (int) args[0];
             if (JSTruffleOptions.TrackArrayAllocationSites && arrayAllocationSite != null && arrayAllocationSite.isTyped()) {
-                return swapPrototype(JSArray.create(getContext(), arrayAllocationSite.getInitialArrayType(), ((AbstractWritableArray) arrayAllocationSite.getInitialArrayType()).allocateArray(length),
-                                length), newTarget);
+                ScriptArray initialType = arrayAllocationSite.getInitialArrayType();
+                // help checker tool see this is always true, guarded by isTyped()
+                if (initialType != null) {
+                    return swapPrototype(JSArray.create(getContext(), initialType, ((AbstractWritableArray) initialType).allocateArray(length), length), newTarget);
+                }
             }
             return swapPrototype(JSArray.createConstantEmptyArray(getContext(), arrayAllocationSite, length), newTarget);
         }
