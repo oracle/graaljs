@@ -1209,7 +1209,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return e.getResult();
                 }
             } else {
-                return arrayLengthRead.executeDouble((DynamicObject) thisObj, guard);
+                return arrayLengthRead.executeDouble(receiverCheck.getStore(thisObj), guard);
             }
         }
 
