@@ -44,8 +44,8 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -67,9 +67,9 @@ import org.graalvm.polyglot.Source;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
+import com.oracle.truffle.js.test.external.suite.TestExtProcessCallable;
 import com.oracle.truffle.js.test.external.suite.TestFile;
 import com.oracle.truffle.js.test.external.suite.TestRunnable;
-import com.oracle.truffle.js.test.external.suite.TestExtProcessCallable;
 import com.oracle.truffle.js.test.external.suite.TestSuite;
 import com.oracle.truffle.js.test.external.suite.TestSuite.TestThread;
 
@@ -87,9 +87,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(", ");
-
-    private static final Pattern EXTERNAL_LAUNCHER_ERROR_PATTERN = Pattern.compile("^(\\w+Error)(?::|\\s+at)");
-    private static final Pattern EXTERNAL_LAUNCHER_EXCEPTION_PATTERN = Pattern.compile("^([\\w\\.]+Exception):");
 
     private static final Map<String, String> commonOptions;
     private static final Map<String, String> commonOptionsExtLauncher;
@@ -294,7 +291,7 @@ public class Test262Runnable extends TestRunnable {
             outputStream = makeDualStream(byteArrayOutputStream, System.out);
         }
         if (suite.getConfig().isExtLauncher()) {
-            return runExternalLauncher(ecmaVersion, file, testSource, negative, asyncTest, strict, module, negativeExpectedMessage, harnessSources, options, byteArrayOutputStream, outputStream);
+            return runExternalLauncher(ecmaVersion, testSource, negative, asyncTest, strict, module, negativeExpectedMessage, harnessSources, options, byteArrayOutputStream, outputStream);
         } else {
             return runInJVM(ecmaVersion, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, options, byteArrayOutputStream, outputStream);
         }
@@ -332,7 +329,7 @@ public class Test262Runnable extends TestRunnable {
                 if (negative) {
                     return processFailedNegativeRun(ecmaVersion, negativeExpectedMessage, cause.getMessage());
                 } else {
-                    suite.logFail(testFile, failedMsg(ecmaVersion), cause);
+                    logFailure(ecmaVersion, cause);
                     return TestFile.Result.failed(cause);
                 }
             } else {
@@ -341,9 +338,10 @@ public class Test262Runnable extends TestRunnable {
         }
     }
 
-    private TestFile.Result runExternalLauncher(int ecmaVersion, File file, Source testSource, boolean negative, boolean asyncTest, boolean strict, boolean module, String negativeExpectedMessage,
+    private TestFile.Result runExternalLauncher(int ecmaVersion, Source testSource, boolean negative, boolean asyncTest, boolean strict, boolean module, String negativeExpectedMessage,
                     Source[] harnessSources, Map<String, String> options, OutputStream byteArrayOutputStream, OutputStream outputStream) {
-        TestExtProcessCallable tc = new TestExtProcessCallable(suite, harnessSources, testSource, file, ecmaVersion, strict, module, options, suite.getConfig().getExtLauncher(), suite.getExtLauncherPipePool());
+        TestExtProcessCallable tc = new TestExtProcessCallable(suite, ecmaVersion, options, suite.getConfig().getExtLauncher(), createExtLauncherArgs(harnessSources, testSource, strict, module),
+                        suite.getExtLauncherPipePool());
         tc.setOutput(outputStream);
         tc.setError(outputStream);
         try {
@@ -352,27 +350,18 @@ public class Test262Runnable extends TestRunnable {
                     return processSuccessfulRun(ecmaVersion, negative, asyncTest, byteArrayOutputStream);
                 case FAILURE:
                     String output = byteArrayOutputStream.toString();
-                    Matcher errorMatcher = EXTERNAL_LAUNCHER_ERROR_PATTERN.matcher(output);
                     if (negative) {
-                        if (errorMatcher.find()) {
-                            return processFailedNegativeRun(ecmaVersion, negativeExpectedMessage, errorMatcher.group(1));
+                        String errorMessage = extLauncherFindErrorMessage(output);
+                        if (errorMessage != null) {
+                            return processFailedNegativeRun(ecmaVersion, negativeExpectedMessage, errorMessage);
                         } else {
-                            suite.logFail(testFile, failedMsg(ecmaVersion),
-                                            "negative test, was expected to fail, what it did, but no error message was found in the output:\n\n\"" +
-                                                            output + "\"\n\n" + "expected: " + negativeExpectedMessage);
+                            logFailure(ecmaVersion, "negative test, was expected to fail, what it did, but no error message was found in the output:\n\n\"" +
+                                            output + "\"\n\n" + "expected: " + negativeExpectedMessage);
                             return TestFile.Result.failed("could not find error message of negative test" + ecmaVersionToString(ecmaVersion));
                         }
                     } else {
-                        String error;
-                        Matcher exceptionMatcher = EXTERNAL_LAUNCHER_EXCEPTION_PATTERN.matcher(output);
-                        if (errorMatcher.find()) {
-                            error = output.substring(errorMatcher.start(), output.indexOf('\n', errorMatcher.start()));
-                        } else if (exceptionMatcher.find()) {
-                            error = output.substring(exceptionMatcher.start(), output.indexOf('\n', exceptionMatcher.start()));
-                        } else {
-                            error = output;
-                        }
-                        suite.logFail(testFile, failedMsg(ecmaVersion), error);
+                        String error = extLauncherFindError(output);
+                        logFailure(ecmaVersion, error);
                         return TestFile.Result.failed(error);
                     }
                 case TIMEOUT:
@@ -386,15 +375,35 @@ public class Test262Runnable extends TestRunnable {
         }
     }
 
+    private static List<String> createExtLauncherArgs(Source[] harnessSources, Source testSource, boolean strict, boolean module) {
+        ArrayList<String> args = new ArrayList<>((strict || module ? 4 : 3) + harnessSources.length * (strict ? 2 : 1));
+        args.add("--eval");
+        args.add(strict ? "\"var strict_mode = true;\"" : "\"var strict_mode = false;\"");
+        for (Source prequelSource : harnessSources) {
+            assert prequelSource.getPath() != null;
+            if (strict) {
+                args.add("--strict-file");
+            }
+            args.add(prequelSource.getPath());
+        }
+        if (module) {
+            args.add("--module");
+        } else if (strict) {
+            args.add("--strict-file");
+        }
+        args.add(testSource.getPath());
+        return args;
+    }
+
     private TestFile.Result processSuccessfulRun(int ecmaVersion, boolean negative, boolean asyncTest, OutputStream byteArrayOutputStream) {
         if (negative) {
-            suite.logFail(testFile, failedMsg(ecmaVersion), "negative test, was expected to fail but didn't");
+            logFailure(ecmaVersion, "negative test, was expected to fail but didn't");
             return TestFile.Result.failed("negative test expected to fail" + ecmaVersionToString(ecmaVersion));
         }
         if (asyncTest) {
             String stdout = byteArrayOutputStream.toString();
             if (!stdout.contains(ASYNC_TEST_COMPLETE)) {
-                suite.logFail(testFile, failedMsg(ecmaVersion), String.format("async test; expected output: '%s' actual: '%s'", ASYNC_TEST_COMPLETE, stdout));
+                logFailure(ecmaVersion, String.format("async test; expected output: '%s' actual: '%s'", ASYNC_TEST_COMPLETE, stdout));
                 return TestFile.Result.failed("async test failed" + ecmaVersionToString(ecmaVersion));
             }
         }
@@ -411,21 +420,8 @@ public class Test262Runnable extends TestRunnable {
     }
 
     private TestFile.Result failNegativeWrongException(int ecmaVersion, String expectedMessage, String actualMessage) {
-        suite.logFail(testFile, failedMsg(ecmaVersion),
-                        "negative test, was expected to fail, what it did, but for wrong reasons:\n\n" + actualMessage + "\n\n" + "expected: " + expectedMessage);
+        logFailure(ecmaVersion, "negative test, was expected to fail, what it did, but for wrong reasons:\n\n" + actualMessage + "\n\n" + "expected: " + expectedMessage);
         return TestFile.Result.failed("negative test expected to fail with different reasons" + ecmaVersionToString(ecmaVersion));
-    }
-
-    private void logTimeout(int ecmaVersion) {
-        suite.logFail(testFile, "TIMEOUT" + ecmaVersionToString(ecmaVersion), "");
-    }
-
-    private static String failedMsg(int ecmaVersion) {
-        return "FAILED" + ecmaVersionToString(ecmaVersion);
-    }
-
-    private static String ecmaVersionToString(int ecmaVersion) {
-        return " (ES" + ecmaVersion + ")";
     }
 
     private static Source createSource(File file, String prefix, String code, boolean module) {
@@ -496,16 +492,5 @@ public class Test262Runnable extends TestRunnable {
 
     private static boolean isAsyncTest(List<String> scriptCodeList) {
         return scriptCodeList.stream().anyMatch(s -> s.contains("$DONE"));
-    }
-
-    private static OutputStream makeDualStream(OutputStream s1, OutputStream s2) {
-        return new OutputStream() {
-
-            @Override
-            public void write(int b) throws IOException {
-                s1.write(b);
-                s2.write(b);
-            }
-        };
     }
 }

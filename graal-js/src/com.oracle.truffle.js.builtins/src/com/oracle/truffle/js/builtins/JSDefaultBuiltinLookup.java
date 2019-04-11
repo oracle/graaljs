@@ -164,9 +164,8 @@ public class JSDefaultBuiltinLookup extends JSBuiltinLookup {
         }
 
         defineBuiltins(new Test262Builtins());
-        if (JSTruffleOptions.TestV8Mode) {
-            defineBuiltins(new TestV8Builtins());
-        }
+        defineBuiltins(new TestV8Builtins());
+
         defineBuiltins(new PolyglotBuiltins());
         defineBuiltins(new PolyglotInternalBuiltins());
         defineBuiltins(new DebugBuiltins());

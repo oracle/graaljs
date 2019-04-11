@@ -277,16 +277,12 @@ def testnashorn(args, nonZeroIsFatal=True):
 def testv8(args, nonZeroIsFatal=True):
     """run the testV8 conformance suite"""
     _location = join(_suite.dir, 'lib', 'testv8')
-    _default_vm_args = [
-        '-Dtruffle.js.V8LegacyConst=true',
-        '-Dtruffle.js.TestV8Mode=true',
-    ]
     _stack_size = '2m' if mx.get_arch() is 'sparcv9' else '1m'
     _run_test_suite(
         location=_location,
         library_names=['TESTV8'],
         custom_args=args,
-        default_vm_args=_default_vm_args,
+        default_vm_args=[],
         max_heap='8g',
         stack_size=_stack_size,
         main_class='com.oracle.truffle.js.test.external.testv8.TestV8',

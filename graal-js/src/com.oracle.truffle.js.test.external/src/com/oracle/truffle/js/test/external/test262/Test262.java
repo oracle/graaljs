@@ -112,11 +112,7 @@ public class Test262 extends TestSuite {
         if (prefix.isEmpty()) {
             return source;
         }
-        try {
-            return Source.newBuilder("js", new File(source.getPath())).content(prefix + source.getCharacters()).build();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return Source.newBuilder("js", new File(source.getPath())).content(prefix + source.getCharacters()).buildLiteral();
     }
 
     @Override

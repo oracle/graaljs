@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.test.external.suite;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -53,8 +52,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -77,37 +74,22 @@ public class TestExtProcessCallable extends AbstractTestCallable {
     private OutputStream stdout;
     private OutputStream stderr;
 
-    public TestExtProcessCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile, int ecmaScriptVersion, boolean strict, boolean module, Map<String, String> options,
-                    String launcherPath, ExecutorService executorService) {
-        super(suite, prequelSources, testSource, scriptFile);
+    public TestExtProcessCallable(TestSuite suite, int ecmaScriptVersion, Map<String, String> options, String launcherPath, List<String> args, ExecutorService executorService) {
+        super(suite);
         this.executorService = executorService;
         assert ecmaScriptVersion <= JSTruffleOptions.MaxECMAScriptVersion;
-        this.cmd = createCommand(launcherPath, ecmaScriptVersion, strict, module, options);
+        this.cmd = createCommand(launcherPath, ecmaScriptVersion, options, args);
     }
 
-    private List<String> createCommand(String launcherPath, int ecmaScriptVersion, boolean strict, boolean module, Map<String, String> options) {
-        List<String> ret = new ArrayList<>(CONSTANT_OPTIONS.size() + 4 + options.size() + getPrequelSources().length);
+    private static List<String> createCommand(String launcherPath, int ecmaScriptVersion, Map<String, String> options, List<String> args) {
+        List<String> ret = new ArrayList<>(1 + CONSTANT_OPTIONS.size() + options.size() + args.size());
         ret.add(launcherPath);
         ret.addAll(CONSTANT_OPTIONS);
         ret.add(optionToString(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion)));
         for (Map.Entry<String, String> entry : options.entrySet()) {
             ret.add(optionToString(entry.getKey(), entry.getValue()));
         }
-        ret.add("--eval");
-        ret.add(strict ? "\"var strict_mode = true;\"" : "\"var strict_mode = false;\"");
-        for (Source prequelSource : getPrequelSources()) {
-            assert prequelSource.getPath() != null;
-            if (strict) {
-                ret.add("--strict-file");
-            }
-            ret.add(prequelSource.getPath());
-        }
-        if (module) {
-            ret.add("--module");
-        } else if (strict) {
-            ret.add("--strict-file");
-        }
-        ret.add(getTestSource().getPath());
+        ret.addAll(args);
         return ret;
     }
 

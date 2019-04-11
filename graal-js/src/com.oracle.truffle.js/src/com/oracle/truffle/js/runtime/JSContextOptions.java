@@ -162,6 +162,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> V8_REALM_BUILTIN = new OptionKey<>(false);
     @CompilationFinal private boolean v8RealmBuiltin;
 
+    public static final String V8_LEGACY_CONST_NAME = JS_OPTION_PREFIX + "v8-legacy-const";
+    @Option(name = V8_LEGACY_CONST_NAME, category = OptionCategory.INTERNAL, help = "Emulate v8 behavior when trying to mutate const variables in non-strict mode.") //
+    public static final OptionKey<Boolean> V8_LEGACY_CONST = new OptionKey<>(false);
+    @CompilationFinal private boolean v8LegacyConst;
+
     public static final String NASHORN_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "nashorn-compat";
     @Option(name = NASHORN_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the OpenJDK Nashorn engine.") //
     public static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
@@ -299,9 +304,19 @@ public final class JSContextOptions {
     @CompilationFinal private long functionArgumentsLimit;
 
     public static final String TEST262_MODE_NAME = JS_OPTION_PREFIX + "test262-mode";
-    @Option(name = TEST262_MODE_NAME, category = OptionCategory.INTERNAL, help = "Expose global property $262 needed for running the Test262 harness.") //
+    @Option(name = TEST262_MODE_NAME, category = OptionCategory.INTERNAL, help = "Expose global property $262 needed to run the Test262 harness.") //
     public static final OptionKey<Boolean> TEST262_MODE = new OptionKey<>(false);
     @CompilationFinal private boolean test262Mode;
+
+    public static final String TESTV8_MODE_NAME = JS_OPTION_PREFIX + "testV8-mode";
+    @Option(name = TESTV8_MODE_NAME, category = OptionCategory.INTERNAL, help = "Expose internals needed to run the TestV8 harness.") //
+    public static final OptionKey<Boolean> TESTV8_MODE = new OptionKey<>(false);
+    @CompilationFinal private boolean testV8Mode;
+
+    public static final String VALIDATE_REGEXP_LITERALS_NAME = JS_OPTION_PREFIX + "validate-regexp-literals";
+    @Option(name = VALIDATE_REGEXP_LITERALS_NAME, category = OptionCategory.INTERNAL, help = "Validate regexp literals at parse time.") //
+    public static final OptionKey<Boolean> VALIDATE_REGEXP_LITERALS = new OptionKey<>(true);
+    @CompilationFinal private boolean validateRegExpLiterals;
 
     public JSContextOptions(ParserOptions parserOptions) {
         this.parserOptions = parserOptions;
@@ -339,6 +354,7 @@ public final class JSContextOptions {
             v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
         });
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
+        this.v8LegacyConst = readBooleanOption(V8_LEGACY_CONST, V8_LEGACY_CONST_NAME);
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
         this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, msg -> {
             directByteBufferCyclicAssumption.invalidate(msg);
@@ -361,6 +377,8 @@ public final class JSContextOptions {
         this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME);
         this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT, FUNCTION_ARGUMENTS_LIMIT_NAME);
         this.test262Mode = readBooleanOption(TEST262_MODE, TEST262_MODE_NAME);
+        this.testV8Mode = readBooleanOption(TESTV8_MODE, TESTV8_MODE_NAME);
+        this.validateRegExpLiterals = readBooleanOption(VALIDATE_REGEXP_LITERALS, VALIDATE_REGEXP_LITERALS_NAME);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -516,6 +534,10 @@ public final class JSContextOptions {
         return v8RealmBuiltin;
     }
 
+    public boolean isV8LegacyConst() {
+        return v8LegacyConst;
+    }
+
     public boolean canAgentBlock() {
         return agentCanBlock;
     }
@@ -608,6 +630,14 @@ public final class JSContextOptions {
         return test262Mode;
     }
 
+    public boolean isTestV8Mode() {
+        return testV8Mode;
+    }
+
+    public boolean isValidateRegExpLiterals() {
+        return validateRegExpLiterals;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -620,6 +650,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.sharedArrayBuffer ? 1 : 0);
         hash = 53 * hash + (this.v8CompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.v8RealmBuiltin ? 1 : 0);
+        hash = 53 * hash + (this.v8LegacyConst ? 1 : 0);
         hash = 53 * hash + (this.nashornCompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.debug ? 1 : 0);
         hash = 53 * hash + (this.directByteBuffer ? 1 : 0);
@@ -636,6 +667,8 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.hasForeignObjectPrototype ? 1 : 0);
         hash = 53 * hash + (int) this.functionArgumentsLimit;
         hash = 53 * hash + (this.test262Mode ? 1 : 0);
+        hash = 53 * hash + (this.testV8Mode ? 1 : 0);
+        hash = 53 * hash + (this.validateRegExpLiterals ? 1 : 0);
         return hash;
     }
 
@@ -673,6 +706,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.v8RealmBuiltin != other.v8RealmBuiltin) {
+            return false;
+        }
+        if (this.v8LegacyConst != other.v8LegacyConst) {
             return false;
         }
         if (this.nashornCompatibilityMode != other.nashornCompatibilityMode) {
@@ -721,6 +757,12 @@ public final class JSContextOptions {
             return false;
         }
         if (this.test262Mode != other.test262Mode) {
+            return false;
+        }
+        if (this.testV8Mode != other.testV8Mode) {
+            return false;
+        }
+        if (this.validateRegExpLiterals != other.validateRegExpLiterals) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

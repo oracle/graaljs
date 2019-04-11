@@ -51,10 +51,16 @@ import org.graalvm.polyglot.Source;
 
 public class TestCallable extends AbstractTestCallable {
 
+    private final Source[] prequelSources;
+    private final Source testSource;
+    private final File scriptFile;
     private final Context.Builder contextBuilder;
 
     public TestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile, int ecmaScriptVersion, Map<String, String> options) {
-        super(suite, prequelSources, testSource, scriptFile);
+        super(suite);
+        this.prequelSources = prequelSources;
+        this.testSource = testSource;
+        this.scriptFile = scriptFile;
 
         this.contextBuilder = Context.newBuilder(JavaScriptLanguage.ID);
         contextBuilder.allowIO(true);
@@ -65,6 +71,22 @@ public class TestCallable extends AbstractTestCallable {
         contextBuilder.option(JSContextOptions.SHEBANG_NAME, Boolean.toString(false));
         contextBuilder.option(JSContextOptions.CONST_AS_VAR_NAME, Boolean.toString(false));
         contextBuilder.options(options);
+    }
+
+    protected Source[] getPrequelSources() {
+        return prequelSources;
+    }
+
+    protected Source getTestSource() {
+        return testSource;
+    }
+
+    protected File getScriptFile() {
+        return scriptFile;
+    }
+
+    protected String getScriptFileContent() {
+        return testSource.getCharacters().toString();
     }
 
     @Override

@@ -40,44 +40,19 @@
  */
 package com.oracle.truffle.js.test.external.suite;
 
-import java.io.File;
 import java.io.OutputStream;
 import java.util.concurrent.Callable;
 
-import org.graalvm.polyglot.Source;
-
 public abstract class AbstractTestCallable implements Callable<Object> {
 
-    private final Source[] prequelSources;
-    private final Source testSource;
-    private final File scriptFile;
     private final TestSuite suite;
 
-    public AbstractTestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile) {
-        this.prequelSources = prequelSources;
-        this.testSource = testSource;
-        this.scriptFile = scriptFile;
+    public AbstractTestCallable(TestSuite suite) {
         this.suite = suite;
-    }
-
-    protected Source[] getPrequelSources() {
-        return prequelSources;
-    }
-
-    protected Source getTestSource() {
-        return testSource;
-    }
-
-    protected File getScriptFile() {
-        return scriptFile;
     }
 
     protected SuiteConfig getConfig() {
         return suite.getConfig();
-    }
-
-    protected String getScriptFileContent() {
-        return testSource.getCharacters().toString();
     }
 
     public abstract void setOutput(OutputStream out);

@@ -45,7 +45,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.TimeZone;
 
 import org.graalvm.polyglot.Source;
@@ -74,6 +76,23 @@ public class TestV8 extends TestSuite {
 
     public TestV8(SuiteConfig config) {
         super(config);
+        this.mockupSource = loadV8Mockup();
+    }
+
+    private Source loadV8Mockup() {
+        InputStream resourceStream = TestV8.class.getResourceAsStream("/com/oracle/truffle/js/test/external/resources/v8mockup.js");
+        try {
+            if (getConfig().isExtLauncher()) {
+                File tmpFile = File.createTempFile("v8mockup", ".js");
+                tmpFile.deleteOnExit();
+                Files.copy(resourceStream, tmpFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                return Source.newBuilder(JavaScriptLanguage.ID, tmpFile).internal(true).build();
+            } else {
+                return Source.newBuilder(JavaScriptLanguage.ID, new InputStreamReader(resourceStream, StandardCharsets.UTF_8), "v8mockup.js").internal(true).build();
+            }
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     @Override
@@ -111,19 +130,7 @@ public class TestV8 extends TestSuite {
         return "testv8.txt";
     }
 
-    private static Source loadV8Mockup() {
-        InputStream resourceStream = TestV8.class.getResourceAsStream("/com/oracle/truffle/js/test/external/resources/v8mockup.js");
-        try {
-            return Source.newBuilder(JavaScriptLanguage.ID, new InputStreamReader(resourceStream, StandardCharsets.UTF_8), "v8mockup.js").internal(true).build();
-        } catch (IOException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
     protected Source getMockupSource() {
-        if (this.mockupSource == null) {
-            this.mockupSource = loadV8Mockup();
-        }
         return this.mockupSource;
     }
 
@@ -134,6 +141,9 @@ public class TestV8 extends TestSuite {
 
     public static void main(String[] args) throws Exception {
         SuiteConfig.Builder configBuilder = new SuiteConfig.Builder(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
+
+        // increase default per-test timeout
+        configBuilder.setTimeoutTest(120);
 
         TimeZone pstZone = TimeZone.getTimeZone("PST"); // =Californian Time (PST)
         TimeZone.setDefault(pstZone);
