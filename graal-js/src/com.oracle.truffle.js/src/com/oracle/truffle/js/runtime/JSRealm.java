@@ -44,7 +44,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
@@ -280,6 +282,16 @@ public class JSRealm {
     @CompilationFinal private JSConsoleUtil consoleUtil;
     private JSModuleLoader moduleLoader;
 
+    /**
+     * List of realms (for Realm built-in). The list is available in top-level realm only (not in
+     * child realms).
+     */
+    private final List<JSRealm> realmList;
+    /**
+     * Parent realm (for a child realm) or {@code null} for a top-level realm.
+     */
+    private JSRealm parentRealm;
+
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
@@ -402,6 +414,8 @@ public class JSRealm {
         this.errorStream = System.err;
         this.outputWriter = new PrintWriterWrapper(outputStream, true);
         this.errorWriter = new PrintWriterWrapper(errorStream, true);
+
+        this.realmList = (context.getContextOptions().isV8RealmBuiltin() && (env == null || !isChildRealm())) ? new ArrayList<>() : null;
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1249,7 +1263,7 @@ public class JSRealm {
         return jsAdapterConstructor;
     }
 
-    public TruffleLanguage.Env getEnv() {
+    public final TruffleLanguage.Env getEnv() {
         return truffleLanguageEnv;
     }
 
@@ -1294,8 +1308,19 @@ public class JSRealm {
         Object prev = nestedContext.enter();
         try {
             JSRealm childRealm = JavaScriptLanguage.getCurrentJSRealm();
-            // "Realm" object is shared by all realms (V8 compatibility mode)
-            childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
+            childRealm.parentRealm = this;
+
+            if (getContext().getContextOptions().isV8RealmBuiltin()) {
+                // "Realm" object is shared by all realms (V8 compatibility mode)
+                childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
+
+                JSRealm topLevelRealm = this;
+                while (topLevelRealm.parentRealm != null) {
+                    topLevelRealm = topLevelRealm.parentRealm;
+                }
+                topLevelRealm.addToRealmList(childRealm);
+            }
+
             return childRealm;
         } finally {
             nestedContext.leave(prev);
@@ -1310,11 +1335,11 @@ public class JSRealm {
         this.preparingStackTrace = preparingStackTrace;
     }
 
-    public TruffleContext getTruffleContext() {
+    public final TruffleContext getTruffleContext() {
         return getEnv().getContext();
     }
 
-    public boolean isChildRealm() {
+    public final boolean isChildRealm() {
         return getTruffleContext().getParent() != null;
     }
 
@@ -1534,4 +1559,30 @@ public class JSRealm {
             };
         }
     }
+
+    public JSRealm getParent() {
+        return parentRealm;
+    }
+
+    synchronized void addToRealmList(JSRealm newRealm) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert !realmList.contains(newRealm);
+        realmList.add(newRealm);
+    }
+
+    public synchronized JSRealm getFromRealmList(int idx) {
+        CompilerAsserts.neverPartOfCompilation();
+        return realmList.get(idx);
+    }
+
+    public synchronized int getIndexFromRealmList(JSRealm rlm) {
+        CompilerAsserts.neverPartOfCompilation();
+        return realmList.indexOf(rlm);
+    }
+
+    public synchronized void removeFromRealmList(int idx) {
+        CompilerAsserts.neverPartOfCompilation();
+        realmList.set(idx, null);
+    }
+
 }
