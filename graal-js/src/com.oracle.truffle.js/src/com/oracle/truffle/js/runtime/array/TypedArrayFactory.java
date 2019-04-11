@@ -40,8 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigInt64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigUint64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectBigInt64Array;
@@ -229,4 +233,20 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     }
 
     static final TypedArrayFactory[] FACTORIES = TypedArrayFactory.values();
+    private static TypedArrayFactory[] factoriesNoBigInt;
+
+    public static TypedArrayFactory[] getNoBigIntFactories() {
+        if (factoriesNoBigInt == null) {
+            TypedArrayFactory[] allFactories = TypedArrayFactory.values();
+            List<TypedArrayFactory> noBigIntFactories = new ArrayList<>(allFactories.length);
+            for (TypedArrayFactory fact : allFactories) {
+                if (!JSRuntime.isTypedArrayBigIntFactory(fact)) {
+                    noBigIntFactories.add(fact);
+                }
+            }
+            factoriesNoBigInt = noBigIntFactories.toArray(new TypedArrayFactory[0]);
+        }
+        return factoriesNoBigInt;
+    }
+
 }

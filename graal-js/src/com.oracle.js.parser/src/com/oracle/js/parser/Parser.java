@@ -243,6 +243,9 @@ public class Parser extends AbstractParser {
     /** Is shebang supported */
     private final boolean shebang;
 
+    /** Is BigInt supported */
+    private final boolean allowBigInt;
+
     private List<Statement> functionDeclarations;
 
     private final ParserContext lc;
@@ -301,6 +304,7 @@ public class Parser extends AbstractParser {
         this.namespace = new Namespace(env.getNamespace());
         this.scripting = env.scripting && env.syntaxExtensions;
         this.shebang = env.shebang || scripting;
+        this.allowBigInt = env.allowBigInt;
         if (this.scripting) {
             this.lineInfoReceiver = new Lexer.LineInfoReceiver() {
                 @Override
@@ -355,7 +359,7 @@ public class Parser extends AbstractParser {
      */
     private void prepareLexer(final int startPos, final int len) {
         stream = new TokenStream();
-        lexer  = new Lexer(source, startPos, len, stream, scripting, isES6(), shebang, isModule, reparsedFunction != null);
+        lexer  = new Lexer(source, startPos, len, stream, scripting, isES6(), shebang, isModule, reparsedFunction != null, allowBigInt);
         lexer.line = lexer.pendingLine = lineOffset + 1;
         line = lineOffset;
     }
@@ -458,7 +462,7 @@ public class Parser extends AbstractParser {
     public void parseFormalParameterList() {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting, isES6(), shebang, isModule);
+            lexer  = new Lexer(source, stream, scripting, isES6(), shebang, isModule, allowBigInt);
 
             scanFirstToken();
 
@@ -479,7 +483,7 @@ public class Parser extends AbstractParser {
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting, isES6(), shebang, isModule);
+            lexer  = new Lexer(source, stream, scripting, isES6(), shebang, isModule, allowBigInt);
             final int functionLine = line;
 
             scanFirstToken();
@@ -4717,7 +4721,7 @@ loop:
         }
 
         stream.reset();
-        lexer = parserState.createLexer(source, lexer, stream, scripting, isES6(), shebang, isModule);
+        lexer = parserState.createLexer(source, lexer, stream, scripting, isES6(), shebang, isModule, allowBigInt);
         line = parserState.line;
         linePosition = parserState.linePosition;
         // Doesn't really matter, but it's safe to treat it as if there were a semicolon before
@@ -4743,8 +4747,8 @@ loop:
             this.linePosition = linePosition;
         }
 
-        Lexer createLexer(final Source source, final Lexer lexer, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule) {
-            final Lexer newLexer = new Lexer(source, position, lexer.limit - position, stream, scripting, es6, shebang, isModule, true);
+        Lexer createLexer(final Source source, final Lexer lexer, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
+            final Lexer newLexer = new Lexer(source, position, lexer.limit - position, stream, scripting, es6, shebang, isModule, true, allowBigInt);
             newLexer.restoreState(new Lexer.State(position, Integer.MAX_VALUE, line, -1, linePosition, SEMICOLON));
             return newLexer;
         }

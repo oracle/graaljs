@@ -490,9 +490,9 @@ public class JSContext {
         this.arrayBufferFactory = builder.create(JSArrayBuffer.HEAP_INSTANCE);
         this.directArrayBufferFactory = builder.create(JSArrayBuffer.DIRECT_INSTANCE);
         this.sharedArrayBufferFactory = isOptionSharedArrayBuffer() ? builder.create(JSSharedArrayBuffer.INSTANCE) : null;
-        this.typedArrayFactories = new JSObjectFactory[TypedArray.factories().length];
-        this.directTypedArrayFactories = new JSObjectFactory[TypedArray.factories().length];
-        for (TypedArrayFactory factory : TypedArray.factories()) {
+        this.typedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
+        this.directTypedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
+        for (TypedArrayFactory factory : TypedArray.factories(this)) {
             directTypedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p, true));
             typedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p, false));
         }

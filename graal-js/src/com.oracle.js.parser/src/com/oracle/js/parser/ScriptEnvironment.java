@@ -107,8 +107,11 @@ public final class ScriptEnvironment {
     /** is this environment in strict mode? */
     final boolean strict;
 
+    /** is BigInt supported? */
+    final boolean allowBigInt;
+
     private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean earlyLvalueError, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
-                    boolean constAsVar, FunctionStatementBehavior functionStatementBehavior, PrintWriter dumpOnError) {
+                    boolean constAsVar, boolean allowBigInt, FunctionStatementBehavior functionStatementBehavior, PrintWriter dumpOnError) {
         this.namespace = new Namespace();
         this.err = dumpOnError;
 
@@ -122,6 +125,7 @@ public final class ScriptEnvironment {
         this.scripting = scripting;
         this.shebang = shebang;
         this.ecmaScriptVersion = ecmaScriptVersion;
+        this.allowBigInt = allowBigInt;
     }
 
     /**
@@ -160,6 +164,7 @@ public final class ScriptEnvironment {
         private boolean scripting;
         private boolean shebang;
         private boolean strict;
+        private boolean allowBigInt;
         private FunctionStatementBehavior functionStatementBehavior = FunctionStatementBehavior.ERROR;
         private PrintWriter dumpOnError;
 
@@ -206,6 +211,11 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder allowBigInt(boolean allowBigInt) {
+            this.allowBigInt = allowBigInt;
+            return this;
+        }
+
         public Builder functionStatementBehavior(FunctionStatementBehavior functionStatementBehavior) {
             this.functionStatementBehavior = functionStatementBehavior;
             return this;
@@ -217,7 +227,7 @@ public final class ScriptEnvironment {
         }
 
         public ScriptEnvironment build() {
-            return new ScriptEnvironment(strict, ecmaScriptVersion, earlyLvalueError, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar,
+            return new ScriptEnvironment(strict, ecmaScriptVersion, earlyLvalueError, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt,
                             functionStatementBehavior, dumpOnError);
         }
     }

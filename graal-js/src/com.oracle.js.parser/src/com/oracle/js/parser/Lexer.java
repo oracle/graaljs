@@ -104,6 +104,9 @@ public class Lexer extends Scanner {
     /** True if parsing a module. */
     private final boolean isModule;
 
+    /** True if BigInts are supported. */
+    private final boolean allowBigInt;
+
     /** Pending new line number and position. */
     int pendingLine;
 
@@ -169,8 +172,8 @@ public class Lexer extends Scanner {
      * @param shebang   do we support shebang
      * @param isModule  are we in module
      */
-    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule) {
-        this(source, 0, source.getLength(), stream, scripting, es6, shebang, isModule, false);
+    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
+        this(source, 0, source.getLength(), stream, scripting, es6, shebang, isModule, false, allowBigInt);
     }
 
     /**
@@ -188,7 +191,7 @@ public class Lexer extends Scanner {
      * function body. This is used with the feature where the parser is skipping nested function bodies to
      * avoid reading ahead unnecessarily when we skip the function bodies.
      */
-    public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean pauseOnFunctionBody) {
+    public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean pauseOnFunctionBody, final boolean allowBigInt) {
         super(source.getContent().toString().toCharArray(), 1, start, len);
         this.source      = source;
         this.stream      = stream;
@@ -197,6 +200,7 @@ public class Lexer extends Scanner {
         this.shebang     = shebang;
         this.nested      = false;
         this.isModule    = isModule;
+        this.allowBigInt = allowBigInt;
         this.pendingLine = 1;
         this.last        = EOL;
 
@@ -214,6 +218,7 @@ public class Lexer extends Scanner {
         shebang = lexer.shebang;
         nested = true;
         isModule = lexer.isModule;
+        allowBigInt = lexer.allowBigInt;
 
         pendingLine = state.pendingLine;
         linePosition = state.linePosition;
@@ -1402,7 +1407,7 @@ public class Lexer extends Scanner {
             }
         }
 
-        if (ch0 == 'n' && (type == DECIMAL || type == BINARY_NUMBER || type == OCTAL || type == HEXADECIMAL)) {
+        if (ch0 == 'n' && allowBigInt && (type == DECIMAL || type == BINARY_NUMBER || type == OCTAL || type == HEXADECIMAL)) {
             // Skip n
             skip(1);
             type = BIGINT;

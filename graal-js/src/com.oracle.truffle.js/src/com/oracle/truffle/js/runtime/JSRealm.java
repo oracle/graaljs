@@ -316,7 +316,6 @@ public class JSRealm {
         this.arrayConstructor = JSArray.createConstructor(this);
         this.booleanConstructor = JSBoolean.createConstructor(this);
         this.numberConstructor = JSNumber.createConstructor(this);
-        this.bigIntConstructor = JSBigInt.createConstructor(this);
         this.stringConstructor = JSString.createConstructor(this);
         this.regExpConstructor = JSRegExp.createConstructor(this);
         this.dateConstructor = JSDate.createConstructor(this);
@@ -345,7 +344,7 @@ public class JSRealm {
         this.callSiteConstructor = JSError.createCallSiteConstructor(this);
 
         this.arrayBufferConstructor = JSArrayBuffer.createConstructor(this);
-        this.typedArrayConstructors = new JSConstructor[TypedArray.factories().length];
+        this.typedArrayConstructors = new JSConstructor[TypedArray.factories(context).length];
         initializeTypedArrayConstructors();
         this.dataViewConstructor = JSDataView.createConstructor(this);
 
@@ -354,6 +353,11 @@ public class JSRealm {
             initializeSIMDTypeConstructors();
         } else {
             this.simdTypeConstructors = null;
+        }
+        if (context.getContextOptions().isBigInt()) {
+            this.bigIntConstructor = JSBigInt.createConstructor(this);
+        } else {
+            this.bigIntConstructor = null;
         }
 
         this.iteratorPrototype = createIteratorPrototype();
@@ -409,7 +413,7 @@ public class JSRealm {
         typedArrayConstructor = taConst.getFunctionObject();
         typedArrayPrototype = taConst.getPrototype();
 
-        for (TypedArrayFactory factory : TypedArray.factories()) {
+        for (TypedArrayFactory factory : TypedArray.factories(context)) {
             JSConstructor constructor = JSArrayBufferView.createConstructor(this, factory, taConst);
             typedArrayConstructors[factory.getFactoryIndex()] = constructor;
         }
@@ -769,7 +773,6 @@ public class JSRealm {
         putGlobalProperty(JSString.CLASS_NAME, getStringConstructor().getFunctionObject());
         putGlobalProperty(JSDate.CLASS_NAME, getDateConstructor().getFunctionObject());
         putGlobalProperty(JSNumber.CLASS_NAME, getNumberConstructor().getFunctionObject());
-        putGlobalProperty(JSBigInt.CLASS_NAME, getBigIntConstructor().getFunctionObject());
         putGlobalProperty(JSBoolean.CLASS_NAME, getBooleanConstructor().getFunctionObject());
         putGlobalProperty(JSRegExp.CLASS_NAME, getRegExpConstructor().getFunctionObject());
         putGlobalProperty(JSMath.CLASS_NAME, mathObject);
@@ -790,7 +793,7 @@ public class JSRealm {
         }
 
         putGlobalProperty(JSArrayBuffer.CLASS_NAME, getArrayBufferConstructor().getFunctionObject());
-        for (TypedArrayFactory factory : TypedArray.factories()) {
+        for (TypedArrayFactory factory : TypedArray.factories(context)) {
             putGlobalProperty(factory.getName(), getArrayBufferViewConstructor(factory).getFunctionObject());
         }
         putGlobalProperty(JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
@@ -801,6 +804,9 @@ public class JSRealm {
                 JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
             }
             putGlobalProperty(JSSIMD.SIMD_OBJECT_NAME, simdObject);
+        }
+        if (context.getContextOptions().isBigInt()) {
+            putGlobalProperty(JSBigInt.CLASS_NAME, getBigIntConstructor().getFunctionObject());
         }
 
         if (context.isOptionNashornCompatibilityMode()) {

@@ -54,6 +54,7 @@ import java.security.PrivilegedAction;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -253,8 +254,12 @@ public abstract class TypedArray extends ScriptArray {
 
     public abstract void setBufferElement(DynamicObject buffer, int index, boolean littleEndian, boolean condition, Object value);
 
-    public static TypedArrayFactory[] factories() {
-        return TypedArrayFactory.FACTORIES;
+    public static TypedArrayFactory[] factories(JSContext context) {
+        if (context.getContextOptions().isBigInt()) {
+            return TypedArrayFactory.FACTORIES;
+        } else {
+            return TypedArrayFactory.getNoBigIntFactories();
+        }
     }
 
     public abstract static class TypedIntArray<T> extends TypedArray {

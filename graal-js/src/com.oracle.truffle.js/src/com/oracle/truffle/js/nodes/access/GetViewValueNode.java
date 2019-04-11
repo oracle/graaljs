@@ -65,7 +65,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
     @Child private JSToBooleanNode toBooleanNode;
 
     protected GetViewValueNode(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian) {
-        this(context, typedArrayFactoryFromType(type), view, requestIndex, isLittleEndian);
+        this(context, typedArrayFactoryFromType(type, context), view, requestIndex, isLittleEndian);
     }
 
     protected GetViewValueNode(JSContext context, TypedArrayFactory factory, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian) {
@@ -77,8 +77,8 @@ public abstract class GetViewValueNode extends JavaScriptNode {
         this.toBooleanNode = factory.getBytesPerElement() == 1 ? null : JSToBooleanNode.create();
     }
 
-    static TypedArrayFactory typedArrayFactoryFromType(String type) {
-        for (TypedArrayFactory factory : TypedArray.factories()) {
+    static TypedArrayFactory typedArrayFactoryFromType(String type, JSContext context) {
+        for (TypedArrayFactory factory : TypedArray.factories(context)) {
             if (factory.getName().startsWith(type)) {
                 return factory;
             }
