@@ -42,8 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -86,7 +84,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -1435,24 +1432,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             String input = (String) getOriginalInputNode.getValue(store);
             return materializeNode.materializeGroup(regexResult, groupIndex, input);
         }
-    }
-
-    public static final class MapPropertyGetNode extends LinkedPropertyGetNode {
-        public MapPropertyGetNode(ReceiverCheckNode receiverCheck) {
-            super(receiverCheck);
-        }
-
-        @Override
-        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            Map<?, ?> map = (Map<?, ?>) thisObj;
-            Object value = Boundaries.mapGet(map, root.getKey());
-            if (value != null) {
-                return value;
-            } else {
-                return Null.instance;
-            }
-        }
-
     }
 
     /**
