@@ -244,17 +244,6 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             throw Errors.createTypeError("Java.type expects one string argument");
         }
 
-        static Class<?> asJavaClass(Object javaType, TruffleLanguage.Env env) {
-            if (env.isHostObject(javaType)) {
-                Object clazz = env.asHostObject(javaType);
-                if (clazz instanceof Class<?>) {
-                    return (Class<?>) clazz;
-                }
-            }
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalArgumentException();
-        }
-
         static Object lookupJavaType(String name, TruffleLanguage.Env env) {
             if (env != null && env.isHostLookupAllowed()) {
                 try {
