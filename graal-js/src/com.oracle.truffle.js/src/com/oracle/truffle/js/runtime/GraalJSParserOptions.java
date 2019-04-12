@@ -49,6 +49,7 @@ import static com.oracle.truffle.js.runtime.JSContextOptions.SCRIPTING;
 import static com.oracle.truffle.js.runtime.JSContextOptions.SHEBANG;
 import static com.oracle.truffle.js.runtime.JSContextOptions.STRICT;
 import static com.oracle.truffle.js.runtime.JSContextOptions.SYNTAX_EXTENSIONS;
+import static com.oracle.truffle.js.runtime.JSContextOptions.BIGINT;
 
 import org.graalvm.options.OptionValues;
 
@@ -65,6 +66,7 @@ public final class GraalJSParserOptions implements ParserOptions {
     private final boolean dumpOnError;
     private final boolean emptyStatements;
     private final boolean annexB;
+    private final boolean allowBigInt;
 
     public GraalJSParserOptions() {
         this.strict = false;
@@ -77,10 +79,11 @@ public final class GraalJSParserOptions implements ParserOptions {
         this.dumpOnError = false;
         this.emptyStatements = false;
         this.annexB = JSTruffleOptions.AnnexB;
+        this.allowBigInt = false;
     }
 
     private GraalJSParserOptions(boolean strict, boolean scripting, boolean shebang, int ecmaScriptVersion, boolean syntaxExtensions, boolean constAsVar, boolean functionStatementError,
-                    boolean dumpOnError, boolean emptyStatements, boolean annexB) {
+                    boolean dumpOnError, boolean emptyStatements, boolean annexB, boolean allowBigInt) {
         this.strict = strict;
         this.scripting = scripting;
         this.shebang = shebang;
@@ -91,6 +94,7 @@ public final class GraalJSParserOptions implements ParserOptions {
         this.dumpOnError = dumpOnError;
         this.emptyStatements = emptyStatements;
         this.annexB = annexB;
+        this.allowBigInt = allowBigInt;
     }
 
     public boolean isStrict() {
@@ -143,6 +147,10 @@ public final class GraalJSParserOptions implements ParserOptions {
         return annexB;
     }
 
+    public boolean isAllowBigInt() {
+        return allowBigInt;
+    }
+
     @Override
     public GraalJSParserOptions putOptions(OptionValues optionValues) {
         GraalJSParserOptions opts = this;
@@ -154,6 +162,7 @@ public final class GraalJSParserOptions implements ParserOptions {
         opts = opts.putConstAsVar(CONST_AS_VAR.getValue(optionValues));
         opts = opts.putFunctionStatementError(FUNCTION_STATEMENT_ERROR.getValue(optionValues));
         opts = opts.putAnnexB(ANNEX_B.getValue(optionValues));
+        opts = opts.putAllowBigInt(BIGINT.getValue(optionValues));
         return opts;
     }
 
@@ -163,42 +172,42 @@ public final class GraalJSParserOptions implements ParserOptions {
 
     public GraalJSParserOptions putStrict(boolean strict) {
         if (strict != this.strict) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
     public GraalJSParserOptions putScripting(boolean scripting) {
         if (scripting != this.scripting) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
     public GraalJSParserOptions putShebang(boolean shebang) {
         if (shebang != this.shebang) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
     public GraalJSParserOptions putEcmaScriptVersion(int ecmaScriptVersion) {
         if (ecmaScriptVersion != this.ecmaScriptVersion) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
     public GraalJSParserOptions putSyntaxExtensions(boolean syntaxExtensions) {
         if (syntaxExtensions != this.syntaxExtensions) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
     public GraalJSParserOptions putConstAsVar(boolean constAsVar) {
         if (constAsVar != this.constAsVar) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
@@ -206,14 +215,21 @@ public final class GraalJSParserOptions implements ParserOptions {
     public GraalJSParserOptions putFunctionStatementError(boolean functionStatementError) {
         if (functionStatementError != this.functionStatementError) {
             return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements,
-                            annexB);
+                            annexB, allowBigInt);
         }
         return this;
     }
 
     public GraalJSParserOptions putAnnexB(boolean annexB) {
         if (annexB != this.annexB) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB);
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+        }
+        return this;
+    }
+
+    public GraalJSParserOptions putAllowBigInt(boolean allowBigInt) {
+        if (allowBigInt != this.allowBigInt) {
+            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
@@ -232,6 +248,7 @@ public final class GraalJSParserOptions implements ParserOptions {
         result = prime * result + (shebang ? 1231 : 1237);
         result = prime * result + (strict ? 1231 : 1237);
         result = prime * result + (syntaxExtensions ? 1231 : 1237);
+        result = prime * result + (allowBigInt ? 1231 : 1237);
         return result;
     }
 
@@ -263,6 +280,8 @@ public final class GraalJSParserOptions implements ParserOptions {
         } else if (strict != other.strict) {
             return false;
         } else if (syntaxExtensions != other.syntaxExtensions) {
+            return false;
+        } else if (allowBigInt != other.allowBigInt) {
             return false;
         }
         return true;

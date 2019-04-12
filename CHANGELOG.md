@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 1.0.0 RC16
 * provide `js.load-from-url` to allow loading from a URL.
+* provide `js.bigint` option to enable the BigInt proposal, available only in ECMAScript 2019 or later (enabled by default for those version, set to `false` to disable).
 
 ## Version 1.0.0 RC15
 * Removed non-standard `String.prototype.contains`; use `includes` instead.

@@ -263,6 +263,10 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> DISABLE_WITH = new OptionKey<>(false);
     @CompilationFinal private boolean disableWith;
 
+    public static final String BIGINT_NAME = JS_OPTION_PREFIX + "bigint";
+    @Option(name = BIGINT_NAME, category = OptionCategory.USER, help = "Provide an implementation of the BigInt proposal.") //
+    public static final OptionKey<Boolean> BIGINT = new OptionKey<>(true);
+
     public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
     @Option(name = REGEX_DUMP_AUTOMATA_NAME, category = OptionCategory.INTERNAL, help = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.") //
     public static final OptionKey<Boolean> REGEX_DUMP_AUTOMATA = new OptionKey<>(false);
@@ -592,6 +596,13 @@ public final class JSContextOptions {
 
     public boolean isLoadFromURL() {
         return LOAD_FROM_URL.getValue(optionValues);
+    }
+
+    public boolean isBigInt() {
+        if (getEcmaScriptVersion() < JSTruffleOptions.ECMAScript2019) {
+            return false;
+        }
+        return BIGINT.getValue(optionValues);
     }
 
     public long getFunctionArgumentsLimit() {
