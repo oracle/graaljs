@@ -152,4 +152,15 @@ class InteropFunction implements TruffleObject {
                     @CachedLibrary("this.function") InteropLibrary delegate) {
         return delegate.hasMemberWriteSideEffects(function, key);
     }
+
+    @ExportMessage
+    final boolean isInstantiable(@CachedLibrary("this.function") InteropLibrary delegate) {
+        return delegate.isInstantiable(function);
+    }
+
+    @ExportMessage
+    final Object instantiate(Object[] args,
+                    @CachedLibrary("this.function") InteropLibrary delegate) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        return delegate.instantiate(function, args);
+    }
 }
