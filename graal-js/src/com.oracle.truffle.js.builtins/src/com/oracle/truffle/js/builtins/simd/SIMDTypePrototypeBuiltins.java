@@ -226,9 +226,9 @@ public final class SIMDTypePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        protected Object doToString(DynamicObject a) {
+        protected Object doValueOf(DynamicObject a) {
             if (!JSSIMD.isJSSIMD(a)) {
-                throw Errors.createTypeError("");
+                throw Errors.createSIMDExpected();
             }
             return a;
         }
