@@ -69,14 +69,12 @@ class InteropFunction implements TruffleObject {
         return true;
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
                     @CachedLibrary("this.function") InteropLibrary delegate) throws UnsupportedMessageException {
         return delegate.getMembers(function);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final boolean isMemberInvocable(String key,
                     @CachedLibrary("this.function") InteropLibrary delegate) {
@@ -90,63 +88,54 @@ class InteropFunction implements TruffleObject {
         return delegate.invokeMember(function, key, arguments);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final boolean isMemberReadable(String key,
                     @CachedLibrary("this.function") InteropLibrary delegate) {
         return delegate.isMemberReadable(function, key);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final Object readMember(String key,
                     @CachedLibrary("this.function") InteropLibrary delegate) throws UnsupportedMessageException, UnknownIdentifierException {
         return delegate.readMember(function, key);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final boolean isMemberModifiable(String key,
                     @CachedLibrary("this.function") InteropLibrary delegate) {
         return delegate.isMemberModifiable(function, key);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final boolean isMemberInsertable(String key,
                     @CachedLibrary("this.function") InteropLibrary delegate) {
         return delegate.isMemberInsertable(function, key);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final void writeMember(String key, Object value,
                     @CachedLibrary("this.function") InteropLibrary delegate) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         delegate.writeMember(function, key, value);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final boolean isMemberRemovable(String key,
                     @CachedLibrary("this.function") InteropLibrary delegate) {
         return delegate.isMemberRemovable(function, key);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final void removeMember(String key,
                     @CachedLibrary("this.function") InteropLibrary delegate) throws UnsupportedMessageException, UnknownIdentifierException {
         delegate.removeMember(function, key);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final boolean hasMemberReadSideEffects(String key,
                     @CachedLibrary("this.function") InteropLibrary delegate) {
         return delegate.hasMemberReadSideEffects(function, key);
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     final boolean hasMemberWriteSideEffects(String key,
                     @CachedLibrary("this.function") InteropLibrary delegate) {
