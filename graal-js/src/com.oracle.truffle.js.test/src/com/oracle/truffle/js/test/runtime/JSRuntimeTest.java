@@ -59,15 +59,22 @@ import com.oracle.truffle.js.nodes.binary.JSEqualNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -206,6 +213,114 @@ public class JSRuntimeTest extends JSTest {
             String r1 = JSRuntime.typeof(v1);
             String r2 = node.executeString(v1);
             assertTrue("wrong outcode of typeof for i=" + i, r1.equals(r2));
+        }
+    }
+
+    @Test
+    public void testSafeToStringCollections() {
+        DynamicObject map = JSMap.create(testHelper.getJSContext());
+        JSMap.getInternalMap(map).put("foo", "bar");
+        assertEquals("Map(1) {\"foo\" => \"bar\"}", JSRuntime.safeToString(map));
+
+        DynamicObject set = JSSet.create(testHelper.getJSContext());
+        JSSet.getInternalSet(set).put("foo", "UNUSED");
+        assertEquals("Set(1) {\"foo\"}", JSRuntime.safeToString(set));
+    }
+
+    @Test
+    public void testIsArrayIndex() {
+        // Boxed Integer
+        assertFalse(JSRuntime.isArrayIndex(Integer.valueOf(-1)));
+        assertTrue(JSRuntime.isArrayIndex(Integer.valueOf(0)));
+        assertTrue(JSRuntime.isArrayIndex(Integer.valueOf(Integer.MAX_VALUE)));
+        // Boxed Double
+        assertFalse(JSRuntime.isArrayIndex(Double.valueOf(-1)));
+        assertTrue(JSRuntime.isArrayIndex(Double.valueOf(0)));
+        assertTrue(JSRuntime.isArrayIndex(Double.valueOf(4294967294L)));
+        assertFalse(JSRuntime.isArrayIndex(Double.valueOf(4294967295L)));
+        // Boxed Long
+        assertFalse(JSRuntime.isArrayIndex(Long.valueOf(-1)));
+        assertTrue(JSRuntime.isArrayIndex(Long.valueOf(0)));
+        assertTrue(JSRuntime.isArrayIndex(Long.valueOf(4294967294L)));
+        assertFalse(JSRuntime.isArrayIndex(Long.valueOf(4294967295L)));
+        // String
+        assertFalse(JSRuntime.isArrayIndex("-1"));
+        assertTrue(JSRuntime.isArrayIndex("0"));
+        assertFalse(JSRuntime.isArrayIndex((Object) "-1"));
+        assertTrue(JSRuntime.isArrayIndex((Object) "0"));
+        assertTrue(JSRuntime.isArrayIndex((Object) "4294967294"));
+        assertFalse(JSRuntime.isArrayIndex((Object) "4294967295"));
+        assertFalse(JSRuntime.isArrayIndex((Object) "99999999999999999999999"));
+        assertFalse(JSRuntime.isArrayIndex((Object) "NaN"));
+        assertFalse(JSRuntime.isArrayIndex(null));
+    }
+
+    @Test
+    public void testIsPrototypeOf() {
+        JSContext ctx = testHelper.getJSContext();
+        DynamicObject parent1 = JSUserObject.create(ctx);
+        DynamicObject parent2 = JSUserObject.create(ctx);
+        DynamicObject child1 = JSUserObject.createWithPrototype(parent1, ctx);
+        DynamicObject grandchild1 = JSUserObject.createWithPrototype(child1, ctx);
+
+        assertFalse(JSRuntime.isPrototypeOf(parent1, parent2));
+        assertFalse(JSRuntime.isPrototypeOf(parent1, parent1));
+        assertFalse(JSRuntime.isPrototypeOf(parent1, grandchild1));
+        assertFalse(JSRuntime.isPrototypeOf(child1, grandchild1));
+        assertFalse(JSRuntime.isPrototypeOf(grandchild1, grandchild1));
+
+        assertTrue(JSRuntime.isPrototypeOf(child1, parent1));
+        assertTrue(JSRuntime.isPrototypeOf(grandchild1, child1));
+        assertTrue(JSRuntime.isPrototypeOf(grandchild1, parent1));
+    }
+
+    @Test
+    public void testToPropertyKey() {
+        // no conversion necessary
+        assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey("test")));
+        assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey(Symbol.SYMBOL_SEARCH)));
+
+        // conversion necessary
+        assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey(1)));
+        assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey(true)));
+        assertTrue(JSRuntime.isPropertyKey(JSRuntime.toPropertyKey(JSUserObject.create(testHelper.getJSContext()))));
+    }
+
+    @Test
+    public void testCall() {
+        JSContext ctx = testHelper.getJSContext();
+        DynamicObject thisObj = JSUserObject.create(ctx);
+        Object[] defaultArgs = new Object[]{"foo", 42, false};
+
+        DynamicObject fnObj = JSFunction.create(ctx.getRealm(), JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(ctx.getLanguage(), null, null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object[] args = frame.getArguments();
+                return "" + JSArguments.getUserArgument(args, 0) + JSArguments.getUserArgument(args, 1) + JSArguments.getUserArgument(args, 2);
+            }
+        }), 0, "test"));
+
+        assertEquals("foo42false", JSRuntime.call(fnObj, thisObj, defaultArgs));
+        assertEquals("foo42false", JSRuntime.call(JSProxy.create(ctx, fnObj, JSUserObject.create(ctx)), thisObj, defaultArgs));
+    }
+
+    @Test
+    public void testConstruct() {
+        JSContext ctx = testHelper.getJSContext();
+        DynamicObject arrayCtrFn = ctx.getRealm().getArrayConstructor().getFunctionObject();
+        Object result = JSRuntime.construct(arrayCtrFn, new Object[]{10});
+        assertTrue(JSArray.isJSArray(result));
+        assertEquals(10, JSArray.arrayGetLength((DynamicObject) result));
+
+        result = JSRuntime.construct(JSProxy.create(ctx, arrayCtrFn, JSUserObject.create(ctx)), new Object[]{10});
+        assertTrue(JSArray.isJSArray(result));
+        assertEquals(10, JSArray.arrayGetLength((DynamicObject) result));
+
+        try {
+            JSRuntime.construct(JSUserObject.create(ctx), new Object[]{10});
+            assertTrue(false);
+        } catch (Exception ex) {
+            assertTrue(ex.getMessage().contains("not a function"));
         }
     }
 }
