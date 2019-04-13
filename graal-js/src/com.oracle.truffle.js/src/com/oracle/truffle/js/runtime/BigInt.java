@@ -318,37 +318,37 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean fitsInByte() {
-        return value.bitLength() <= Byte.SIZE - 1;
+        return value.bitLength() < Byte.SIZE;
     }
 
     @ExportMessage
     @TruffleBoundary
     boolean fitsInShort() {
-        return value.bitLength() <= Short.SIZE - 1;
+        return value.bitLength() < Short.SIZE;
     }
 
     @ExportMessage
     @TruffleBoundary
     boolean fitsInInt() {
-        return value.bitLength() <= Integer.SIZE - 1;
+        return value.bitLength() < Integer.SIZE;
     }
 
     @ExportMessage
     @TruffleBoundary
     public boolean fitsInLong() {
-        return value.bitLength() <= Long.SIZE - 1;
+        return value.bitLength() < Long.SIZE;
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     boolean fitsInFloat() {
-        return value.bitLength() <= Float.SIZE - 1;
+        return value.bitLength() < Float.SIZE;
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     boolean fitsInDouble() {
-        return value.bitLength() <= Double.SIZE - 1;
+        return value.bitLength() < Double.SIZE;
     }
 
     @ExportMessage
@@ -391,15 +391,12 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         }
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
     float asFloat() throws UnsupportedMessageException {
         return asInt(); // Float.SIZE == Integer.SIZE
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
-    @TruffleBoundary
     double asDouble() throws UnsupportedMessageException {
         return asLong(); // Double.SIZE == Long.SIZE
     }
