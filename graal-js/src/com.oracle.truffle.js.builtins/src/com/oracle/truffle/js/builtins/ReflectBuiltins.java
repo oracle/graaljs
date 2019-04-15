@@ -84,6 +84,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.JSReflectUtils;
 
@@ -403,6 +404,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             Object proxy = args[0];
             Object propertyKey = JSRuntime.getArgOrUndefined(args, 1);
             Object value = JSRuntime.getArgOrUndefined(args, 2);
+            Object receiver = JSRuntime.getArg(args, 3, proxy);
 
             Object key = toPropertyKeyNode.execute(propertyKey);
             DynamicObject proxyObj = (DynamicObject) proxy;
@@ -411,7 +413,23 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             TruffleObject pxTarget = JSProxy.getTarget(proxyObj);
             TruffleObject trap = JSProxy.getTrapFromObject(handler, JSProxy.SET);
 
-            Object[] trapArgs = new Object[]{pxTarget, key, value, proxyObj};
+            while (trap == Undefined.instance) {
+                if (JSProxy.isProxy(pxTarget)) {
+                    proxyObj = (DynamicObject) pxTarget;
+                    handler = JSProxy.getHandler(proxyObj);
+                    pxTarget = JSProxy.getTarget(proxyObj);
+                    trap = JSProxy.getTrapFromObject(handler, JSProxy.SET);
+                } else if (JSModuleNamespace.isJSModuleNamespace(pxTarget)) {
+                    return false;
+                } else if (JSObject.isJSObject(pxTarget)) {
+                    return JSReflectUtils.performOrdinarySet((DynamicObject) pxTarget, key, value, receiver);
+                } else {
+                    JSInteropUtil.writeMember(pxTarget, key, value);
+                    return true;
+                }
+            }
+
+            Object[] trapArgs = new Object[]{pxTarget, key, value, receiver};
             boolean booleanTrapResult = toBooleanNode.executeBoolean(JSRuntime.call(trap, handler, trapArgs));
             if (!booleanTrapResult) {
                 return false;
