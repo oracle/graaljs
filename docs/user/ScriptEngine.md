@@ -1,6 +1,6 @@
-# Graal JavaScript ScriptEngine implementation 
+# GraalVM JavaScript ScriptEngine implementation
 
-Graal JavaScript provides a JSR-223 compliant `javax.script.ScriptEngine` implementation.
+GraalVM JavaScript provides a JSR-223 compliant `javax.script.ScriptEngine` implementation.
 Note that this is feature is provided for legacy reasons in order to allow easier migration for implementations currently based on a `ScriptEngine`.
 We strongly encourage users to use the `org.graalvm.polyglot.Context` interface in order to control many of the settings directly.
 

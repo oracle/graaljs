@@ -1,4 +1,4 @@
-# Graal JavaScript Options
+# GraalVM JavaScript Options
 
 GraalVM JavaScript can be configured with several options provided when starting the engine.
 Additional options control the behaviour of the `js` binary launcher.
@@ -27,7 +27,7 @@ Note that the `-f` flag is optional and can be omitted in most cases, as any add
 
 ### --version
 
-Prints the version information of Graal JavaScript and then exits.
+Prints the version information of GraalVM JavaScript and then exits.
 
 ### --strict
 
@@ -79,7 +79,7 @@ Available versions:
 * `8` or `2017` for ECMAScript 2017
 * `9` or `2018` for ECMAScript 2018
 * `10` or `2019` for ECMAScript 2019 (latest finalized version of the specification)
-* `11` or `2020` for ECMAScript 2020 (currently in draft stage, not fully supported by Graal JavaScript)
+* `11` or `2020` for ECMAScript 2020 (currently in draft stage, not fully supported by GraalVM JavaScript)
 
 ### intl-402
 
@@ -93,5 +93,5 @@ Expects a Boolean value, the default is `false`.
 Stability: stable
 
 Enables JavaScript's strict mode for all scripts.
-Expects a boolean value, default is false.
+Expects a boolean value, default is `false`.
 
