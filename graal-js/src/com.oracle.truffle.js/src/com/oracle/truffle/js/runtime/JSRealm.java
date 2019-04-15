@@ -949,9 +949,9 @@ public class JSRealm {
         DynamicObject graalObject = JSUserObject.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
         JSObjectUtil.putDataProperty(context, graalObject, "language", JavaScriptLanguage.NAME, flags);
-        JSObjectUtil.putDataProperty(context, graalObject, "versionJS", JavaScriptLanguage.VERSION_NUMBER, flags);
         if (GRAALVM_VERSION != null) {
             JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION, flags);
+            JSObjectUtil.putDataProperty(context, graalObject, "versionJS", GRAALVM_VERSION, flags);
         }
         JSObjectUtil.putDataProperty(context, graalObject, "isGraalRuntime", JSFunction.create(this, isGraalRuntimeFunction(context)), flags);
         putGlobalProperty("Graal", graalObject);
