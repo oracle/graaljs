@@ -73,6 +73,7 @@ public class DebugJSAgent extends JSAgent {
     private boolean quit;
     private Object debugReceiveBroadcast;
 
+    @TruffleBoundary
     public DebugJSAgent(TruffleLanguage.Env env, boolean canBlock) {
         super(canBlock);
         this.optionValues = env.getOptions();
@@ -80,6 +81,7 @@ public class DebugJSAgent extends JSAgent {
         this.spawnedAgent = new LinkedList<>();
     }
 
+    @TruffleBoundary
     public Object startNewAgent(String source) {
         final AtomicReference<Object> result = new AtomicReference<>(null);
         final CountDownLatch barrier = new CountDownLatch(1);
@@ -133,22 +135,26 @@ public class DebugJSAgent extends JSAgent {
         return result.get();
     }
 
+    @TruffleBoundary
     public void setDebugReceiveBroadcast(Object lambda) {
         this.debugReceiveBroadcast = lambda;
     }
 
+    @TruffleBoundary
     public AgentExecutor registerChildAgent(Thread thread, DebugJSAgent jsAgent) {
         AgentExecutor spawned = new AgentExecutor(thread, jsAgent);
         spawnedAgent.add(spawned);
         return spawned;
     }
 
+    @TruffleBoundary
     public void broadcast(Object sab) {
         for (AgentExecutor e : spawnedAgent) {
             e.pushMessage(sab);
         }
     }
 
+    @TruffleBoundary
     public Object getReport() {
         for (AgentExecutor e : spawnedAgent) {
             if (e.jsAgent.reportValues.size() > 0) {
@@ -158,6 +164,7 @@ public class DebugJSAgent extends JSAgent {
         return Null.instance;
     }
 
+    @TruffleBoundary
     public void sleep(int time) {
         try {
             Thread.sleep(time);
@@ -166,10 +173,12 @@ public class DebugJSAgent extends JSAgent {
         }
     }
 
+    @TruffleBoundary
     public void report(Object value) {
         this.reportValues.push(value);
     }
 
+    @TruffleBoundary
     public void leaving() {
         quit = true;
     }
@@ -191,17 +200,20 @@ public class DebugJSAgent extends JSAgent {
 
         private ConcurrentLinkedDeque<Object> incoming;
 
+        @TruffleBoundary
         AgentExecutor(Thread thread, DebugJSAgent jsAgent) {
             this.thread = thread;
             this.jsAgent = jsAgent;
             this.incoming = new ConcurrentLinkedDeque<>();
         }
 
+        @TruffleBoundary
         private void pushMessage(Object sab) {
             incoming.add(sab);
             thread.interrupt();
         }
 
+        @TruffleBoundary
         public void executeBroadcastCallback() {
             assert jsAgent.debugReceiveBroadcast != null;
             while (incoming.size() > 0) {

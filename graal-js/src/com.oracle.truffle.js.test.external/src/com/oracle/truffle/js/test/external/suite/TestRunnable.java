@@ -45,14 +45,20 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Source;
 
 public abstract class TestRunnable implements Runnable {
+
+    protected static final Pattern EXTERNAL_LAUNCHER_ERROR_PATTERN = Pattern.compile("^(\\w+Error)(?::|\\s+at)");
+    protected static final Pattern EXTERNAL_LAUNCHER_EXCEPTION_PATTERN = Pattern.compile("^([\\w\\.]+Exception):");
 
     private static final ConcurrentMap<Integer, Source[]> HARNESS_SOURCES = new ConcurrentHashMap<>();
 
@@ -118,10 +124,72 @@ public abstract class TestRunnable implements Runnable {
         }).toArray(Source[]::new));
     }
 
+    protected void logFailure(int ecmaVersion, Throwable cause) {
+        suite.logFail(testFile, failedMsg(ecmaVersion), cause);
+    }
+
+    protected void logFailure(int ecmaVersion, String msg) {
+        suite.logFail(testFile, failedMsg(ecmaVersion), msg);
+    }
+
+    protected void logTimeout(int ecmaVersion) {
+        suite.logFail(testFile, timeoutMsg(ecmaVersion), "");
+    }
+
+    protected static String failedMsg(int ecmaVersion) {
+        return "FAILED" + ecmaVersionToString(ecmaVersion);
+    }
+
+    protected static String timeoutMsg(int ecmaVersion) {
+        return "TIMEOUT" + ecmaVersionToString(ecmaVersion);
+    }
+
+    protected static String ecmaVersionToString(int ecmaVersion) {
+        return " (ES" + ecmaVersion + ")";
+    }
+
+    protected static String extLauncherFindErrorMessage(String output) {
+        Matcher matcher = EXTERNAL_LAUNCHER_ERROR_PATTERN.matcher(output);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    protected static String extLauncherFindError(String output) {
+        String line = extLauncherFindLine(EXTERNAL_LAUNCHER_ERROR_PATTERN, output);
+        if (line != null) {
+            return line;
+        }
+        line = extLauncherFindLine(EXTERNAL_LAUNCHER_EXCEPTION_PATTERN, output);
+        if (line != null) {
+            return line;
+        }
+        return output;
+    }
+
+    private static String extLauncherFindLine(Pattern pattern, String output) {
+        Matcher matcher = pattern.matcher(output);
+        if (matcher.find()) {
+            return output.substring(matcher.start(), output.indexOf('\n', matcher.start()));
+        }
+        return null;
+    }
+
+    protected static OutputStream makeDualStream(OutputStream s1, OutputStream s2) {
+        return new OutputStream() {
+
+            @Override
+            public void write(int b) throws IOException {
+                s1.write(b);
+                s2.write(b);
+            }
+        };
+    }
+
     // ~ Inner classes
 
     public interface TestTask {
         TestFile.Result run(int ecmaVersion);
     }
-
 }

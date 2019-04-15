@@ -825,10 +825,10 @@ public class JSRealm {
         if (context.isOptionDebugBuiltin()) {
             putGlobalProperty(JSTruffleOptions.DebugPropertyName, createDebugObject());
         }
-        if (JSTruffleOptions.Test262Mode) {
+        if (context.getContextOptions().isTest262Mode()) {
             putGlobalProperty(JSTest262.GLOBAL_PROPERTY_NAME, JSTest262.create(this));
         }
-        if (JSTruffleOptions.TestV8Mode) {
+        if (context.getContextOptions().isTestV8Mode()) {
             putGlobalProperty(JSTestV8.CLASS_NAME, JSTestV8.create(this));
         }
         if (context.getEcmaScriptVersion() >= 6) {

@@ -2448,7 +2448,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         // if scopeVar is const, the assignment will never succeed and is only there to perform
         // the temporal dead zone check and throw a ReferenceError instead of a TypeError
         if (!initializationAssignment && scopeVar.isConst()) {
-            if (JSTruffleOptions.V8LegacyConst && !environment.isStrictMode()) {
+            if (context.getContextOptions().isV8LegacyConst() && !environment.isStrictMode()) {
                 // Note that there is no TDZ check for const in this mode either.
                 return rhs;
             }
@@ -2486,7 +2486,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      * If this is an attempt to change the value of an immutable binding, throw a runtime TypeError.
      */
     private JavaScriptNode checkMutableBinding(JavaScriptNode rhsNode, Object identifier) {
-        if (JSTruffleOptions.V8LegacyConst && !environment.isStrictMode()) {
+        if (context.getContextOptions().isV8LegacyConst() && !environment.isStrictMode()) {
             return rhsNode;
         }
         // evaluate rhs and throw TypeError

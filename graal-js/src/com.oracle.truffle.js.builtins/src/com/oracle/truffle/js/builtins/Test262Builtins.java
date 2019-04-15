@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -119,23 +118,21 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
                 return Test262EvalScriptNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
 
             default:
-                if (!JSTruffleOptions.SubstrateVM) {
-                    switch (builtinEnum) {
-                        case agentStart:
-                            return Test262AgentStartNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                        case agentBroadcast:
-                            return Test262AgentBroadcastNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                        case agentGetReport:
-                            return Test262AgentGetReportNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                        case agentSleep:
-                            return Test262AgentSleepNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                        case agentReceiveBroadcast:
-                            return Test262AgentReceiveBroadcastNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                        case agentReport:
-                            return Test262AgentReportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                        case agentLeaving:
-                            return Test262AgentLeavingNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                    }
+                switch (builtinEnum) {
+                    case agentStart:
+                        return Test262AgentStartNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                    case agentBroadcast:
+                        return Test262AgentBroadcastNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                    case agentGetReport:
+                        return Test262AgentGetReportNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
+                    case agentSleep:
+                        return Test262AgentSleepNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                    case agentReceiveBroadcast:
+                        return Test262AgentReceiveBroadcastNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                    case agentReport:
+                        return Test262AgentReportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                    case agentLeaving:
+                        return Test262AgentLeavingNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
                 }
         }
         return null;
