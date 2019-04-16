@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.external.suite;
 
 import java.io.File;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.Map;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -56,7 +57,11 @@ public class TestCallable extends AbstractTestCallable {
     private final File scriptFile;
     private final Context.Builder contextBuilder;
 
-    public TestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile, int ecmaScriptVersion, Map<String, String> options) {
+    public TestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile, int ecmaScriptVersion) {
+        this(suite, prequelSources, testSource, scriptFile, ecmaScriptVersion, Collections.emptyMap());
+    }
+
+    public TestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile, int ecmaScriptVersion, Map<String, String> extraOptions) {
         super(suite);
         this.prequelSources = prequelSources;
         this.testSource = testSource;
@@ -70,7 +75,8 @@ public class TestCallable extends AbstractTestCallable {
         contextBuilder.option(JSContextOptions.SYNTAX_EXTENSIONS_NAME, Boolean.toString(false));
         contextBuilder.option(JSContextOptions.SHEBANG_NAME, Boolean.toString(false));
         contextBuilder.option(JSContextOptions.CONST_AS_VAR_NAME, Boolean.toString(false));
-        contextBuilder.options(options);
+        contextBuilder.options(suite.getCommonOptions());
+        contextBuilder.options(extraOptions);
     }
 
     protected Source[] getPrequelSources() {

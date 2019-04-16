@@ -45,10 +45,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -69,31 +69,34 @@ public class TestExtProcessCallable extends AbstractTestCallable {
                     optionToString(JSContextOptions.SHEBANG_NAME, Boolean.toString(false)),
                     optionToString(JSContextOptions.CONST_AS_VAR_NAME, Boolean.toString(false)));
 
-    private final ExecutorService executorService;
     private final List<String> cmd;
     private OutputStream stdout;
     private OutputStream stderr;
 
-    public TestExtProcessCallable(TestSuite suite, int ecmaScriptVersion, Map<String, String> options, String launcherPath, List<String> args, ExecutorService executorService) {
-        super(suite);
-        this.executorService = executorService;
-        assert ecmaScriptVersion <= JSTruffleOptions.MaxECMAScriptVersion;
-        this.cmd = createCommand(launcherPath, ecmaScriptVersion, options, args);
+    public TestExtProcessCallable(TestSuite suite, int ecmaScriptVersion, List<String> args) {
+        this(suite, ecmaScriptVersion, args, Collections.emptyMap());
     }
 
-    private static List<String> createCommand(String launcherPath, int ecmaScriptVersion, Map<String, String> options, List<String> args) {
-        List<String> ret = new ArrayList<>(1 + CONSTANT_OPTIONS.size() + options.size() + args.size());
-        ret.add(launcherPath);
+    public TestExtProcessCallable(TestSuite suite, int ecmaScriptVersion, List<String> args, Map<String, String> extraOptions) {
+        super(suite);
+        assert ecmaScriptVersion <= JSTruffleOptions.MaxECMAScriptVersion;
+        this.cmd = createCommand(suite, ecmaScriptVersion, extraOptions, args);
+    }
+
+    private static List<String> createCommand(TestSuite suite, int ecmaScriptVersion, Map<String, String> extraOptions, List<String> args) {
+        List<String> ret = new ArrayList<>(1 + CONSTANT_OPTIONS.size() + suite.getCommonExtLauncherOptions().size() + extraOptions.size() + args.size());
+        ret.add(suite.getConfig().getExtLauncher());
         ret.addAll(CONSTANT_OPTIONS);
         ret.add(optionToString(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion)));
-        for (Map.Entry<String, String> entry : options.entrySet()) {
+        ret.addAll(suite.getCommonExtLauncherOptions());
+        for (Map.Entry<String, String> entry : extraOptions.entrySet()) {
             ret.add(optionToString(entry.getKey(), entry.getValue()));
         }
         ret.addAll(args);
         return ret;
     }
 
-    private static String optionToString(String key, String value) {
+    public static String optionToString(String key, String value) {
         return value.isEmpty() ? key : "--" + key + "=" + value;
     }
 
@@ -105,10 +108,10 @@ public class TestExtProcessCallable extends AbstractTestCallable {
         Future<?> stdoutPipe = null;
         Future<?> stderrPipe = null;
         if (stdout != null) {
-            stdoutPipe = executorService.submit(pipe(p.getInputStream(), stdout));
+            stdoutPipe = suite.getExtLauncherPipePool().submit(pipe(p.getInputStream(), stdout));
         }
         if (stderr != null) {
-            stderrPipe = executorService.submit(pipe(p.getErrorStream(), stderr));
+            stderrPipe = suite.getExtLauncherPipePool().submit(pipe(p.getErrorStream(), stderr));
         }
         if (!p.waitFor(getConfig().getTimeoutTest(), TimeUnit.SECONDS)) {
             p.destroyForcibly();

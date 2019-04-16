@@ -88,18 +88,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(", ");
 
-    private static final Map<String, String> commonOptions;
-    private static final Map<String, String> commonOptionsExtLauncher;
-    static {
-        Map<String, String> options = new HashMap<>();
-        options.put(JSContextOptions.INTL_402_NAME, "true");
-        commonOptions = Collections.unmodifiableMap(options);
-
-        Map<String, String> extLauncherOptions = new HashMap<>(options);
-        extLauncherOptions.put(JSContextOptions.TEST262_MODE_NAME, "true");
-        commonOptionsExtLauncher = Collections.unmodifiableMap(extLauncherOptions);
-    }
-
     private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Array.prototype.flat",
                     "Array.prototype.flatMap",
@@ -213,6 +201,14 @@ public class Test262Runnable extends TestRunnable {
                     "import.meta"
     }));
 
+    private static final Map<String, String> EXTRA_OPTIONS_AGENT_CANNOT_BLOCK;
+
+    static {
+        Map<String, String> initExtraOptions = new HashMap<>();
+        initExtraOptions.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
+        EXTRA_OPTIONS_AGENT_CANNOT_BLOCK = Collections.unmodifiableMap(initExtraOptions);
+    }
+
     public Test262Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
     }
@@ -244,14 +240,7 @@ public class Test262Runnable extends TestRunnable {
 
         Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
 
-        final Map<String, String> commonOpts = suite.getConfig().isExtLauncher() ? commonOptionsExtLauncher : commonOptions;
-        final Map<String, String> options;
-        if (agentCannotBlock) {
-            options = new HashMap<>(commonOpts);
-            options.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
-        } else {
-            options = commonOpts;
-        }
+        final Map<String, String> extraOptions = agentCannotBlock ? EXTRA_OPTIONS_AGENT_CANNOT_BLOCK : Collections.emptyMap();
 
         boolean supported = true;
         boolean requiresES2020 = false;
@@ -276,14 +265,14 @@ public class Test262Runnable extends TestRunnable {
         testSource = createSource(file, prefix, TestSuite.toPrintableCode(scriptCodeList), module);
         final Source src = testSource;
         if (supported) {
-            testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, src, negative, asyncTest, runStrict, module, negativeExpectedMessage, harnessSources, options)));
+            testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, src, negative, asyncTest, runStrict, module, negativeExpectedMessage, harnessSources, extraOptions)));
         } else {
             testFile.setStatus(TestFile.Status.SKIP);
         }
     }
 
     private TestFile.Result runInternal(int ecmaVersion, File file, Source testSource, boolean negative, boolean asyncTest, boolean strict, boolean module, String negativeExpectedMessage,
-                    Source[] harnessSources, Map<String, String> options) {
+                    Source[] harnessSources, Map<String, String> extraOptions) {
         suite.logVerbose(getName() + ecmaVersionToString(ecmaVersion));
         OutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         OutputStream outputStream = byteArrayOutputStream;
@@ -291,17 +280,17 @@ public class Test262Runnable extends TestRunnable {
             outputStream = makeDualStream(byteArrayOutputStream, System.out);
         }
         if (suite.getConfig().isExtLauncher()) {
-            return runExternalLauncher(ecmaVersion, testSource, negative, asyncTest, strict, module, negativeExpectedMessage, harnessSources, options, byteArrayOutputStream, outputStream);
+            return runExternalLauncher(ecmaVersion, testSource, negative, asyncTest, strict, module, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
         } else {
-            return runInJVM(ecmaVersion, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, options, byteArrayOutputStream, outputStream);
+            return runInJVM(ecmaVersion, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
         }
     }
 
     private TestFile.Result runInJVM(int ecmaVersion, File file, Source testSource, boolean negative, boolean asyncTest, String negativeExpectedMessage, Source[] harnessSources,
-                    Map<String, String> options, OutputStream byteArrayOutputStream, OutputStream outputStream) {
+                    Map<String, String> extraOptions, OutputStream byteArrayOutputStream, OutputStream outputStream) {
         Future<Object> future = null;
         try {
-            TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, options);
+            TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, extraOptions);
             tc.setOutput(outputStream);
             tc.setError(outputStream);
             if (suite.executeWithSeparateThreads() && getConfig().isUseThreads()) {
@@ -339,9 +328,8 @@ public class Test262Runnable extends TestRunnable {
     }
 
     private TestFile.Result runExternalLauncher(int ecmaVersion, Source testSource, boolean negative, boolean asyncTest, boolean strict, boolean module, String negativeExpectedMessage,
-                    Source[] harnessSources, Map<String, String> options, OutputStream byteArrayOutputStream, OutputStream outputStream) {
-        TestExtProcessCallable tc = new TestExtProcessCallable(suite, ecmaVersion, options, suite.getConfig().getExtLauncher(), createExtLauncherArgs(harnessSources, testSource, strict, module),
-                        suite.getExtLauncherPipePool());
+                    Source[] harnessSources, Map<String, String> extraOptions, OutputStream byteArrayOutputStream, OutputStream outputStream) {
+        TestExtProcessCallable tc = new TestExtProcessCallable(suite, ecmaVersion, createExtLauncherArgs(harnessSources, testSource, strict, module), extraOptions);
         tc.setOutput(outputStream);
         tc.setError(outputStream);
         try {
