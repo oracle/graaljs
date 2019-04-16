@@ -197,7 +197,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     public static final EconomicSet<String> MAGIC_BINDINGS_OPTION_KEYS = EconomicSet.create();
     static final EconomicMap<String, MagicBindingsOptionSetter> MAGIC_BINDINGS_OPTION_MAP = EconomicMap.create();
-    private static final boolean NASHORN_COMPATIBILITY_MODE = Boolean.getBoolean(NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY);
+    public static final boolean NASHORN_COMPATIBILITY_MODE = Boolean.getBoolean(NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY);
 
     static {
         for (MagicBindingsOptionSetter setter : MAGIC_OPTION_SETTERS) {
@@ -219,7 +219,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     GraalJSScriptEngine(Engine engine, Context.Builder contextConfig) {
         Engine engineToUse = engine;
         if (engineToUse == null) {
-            engineToUse = Engine.create();
+            engineToUse = Engine.newBuilder().allowExperimentalOptions(true).build();
         }
         Context.Builder contextConfigToUse = contextConfig;
         if (contextConfigToUse == null) {

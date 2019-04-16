@@ -45,6 +45,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -319,6 +320,8 @@ public class TestBindings {
 
     @Test(expected = ScriptException.class)
     public void testNoHostAccessByDefault() throws ScriptException {
+        // nashorn compatibility mode allows everything
+        assumeFalse(GraalJSScriptEngine.NASHORN_COMPATIBILITY_MODE);
         ScriptEngine engine = getEngine();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("javaObj", new Object());
