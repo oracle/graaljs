@@ -45,7 +45,7 @@ import java.util.concurrent.Callable;
 
 public abstract class AbstractTestCallable implements Callable<Object> {
 
-    private final TestSuite suite;
+    protected final TestSuite suite;
 
     public AbstractTestCallable(TestSuite suite) {
         this.suite = suite;

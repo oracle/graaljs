@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.test.external.suite;
 
 import java.nio.file.Paths;
+import java.util.Map;
 
 public class SuiteConfig {
 
@@ -219,6 +220,16 @@ public class SuiteConfig {
 
     public String getExtLauncher() {
         return extLauncher;
+    }
+
+    public void addCommonOptions(Map<String, String> options) {
+        if (isCompile()) {
+            if (isExtLauncher()) {
+                options.put("vm.Dgraal.TruffleCompileImmediately", "true");
+            } else {
+                System.out.println("WARNING: the \"compile\" option has no effect without \"externallauncher\". Use \"-Dgraal.TruffleCompileImmediately=true\" instead!");
+            }
+        }
     }
 
     public static class Builder {

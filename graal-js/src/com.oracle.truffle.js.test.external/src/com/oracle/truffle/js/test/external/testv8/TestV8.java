@@ -48,11 +48,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.external.suite.SuiteConfig;
 import com.oracle.truffle.js.test.external.suite.TestFile;
 import com.oracle.truffle.js.test.external.suite.TestRunnable;
@@ -72,11 +77,24 @@ public class TestV8 extends TestSuite {
     private static final String TESTS_CONFIG_FILE = "testV8.json";
     private static final String FAILED_TESTS_FILE = "testv8.failed";
 
-    private Source mockupSource;
+    private final Source mockupSource;
+    private final Map<String, String> commonOptions;
+    private final List<String> commonOptionsExtLauncher;
 
     public TestV8(SuiteConfig config) {
         super(config);
         this.mockupSource = loadV8Mockup();
+        Map<String, String> options = new HashMap<>();
+        options.put(JSContextOptions.TESTV8_MODE_NAME, "true");
+        options.put(JSContextOptions.VALIDATE_REGEXP_LITERALS_NAME, "false");
+        options.put(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
+        options.put(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
+        options.put(JSContextOptions.V8_LEGACY_CONST_NAME, "true");
+        options.put(JSContextOptions.INTL_402_NAME, "true");
+        options.put(JSContextOptions.SHELL_NAME, "true"); // readbuffer, quit
+        config.addCommonOptions(options);
+        commonOptions = Collections.unmodifiableMap(options);
+        commonOptionsExtLauncher = optionsToExtLauncherOptions(options);
     }
 
     private Source loadV8Mockup() {
@@ -131,7 +149,17 @@ public class TestV8 extends TestSuite {
     }
 
     protected Source getMockupSource() {
-        return this.mockupSource;
+        return mockupSource;
+    }
+
+    @Override
+    public Map<String, String> getCommonOptions() {
+        return commonOptions;
+    }
+
+    @Override
+    public List<String> getCommonExtLauncherOptions() {
+        return commonOptionsExtLauncher;
     }
 
     @Override

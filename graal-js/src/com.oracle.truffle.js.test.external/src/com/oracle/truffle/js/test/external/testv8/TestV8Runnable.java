@@ -46,16 +46,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.ExitException;
-import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
 import com.oracle.truffle.js.test.external.suite.TestExtProcessCallable;
 import com.oracle.truffle.js.test.external.suite.TestFile;
@@ -64,19 +60,6 @@ import com.oracle.truffle.js.test.external.suite.TestSuite;
 
 public class TestV8Runnable extends TestRunnable {
     private static final int LONG_RUNNING_TEST_SECONDS = 55;
-
-    private static final Map<String, String> commonOptions;
-    static {
-        Map<String, String> options = new HashMap<>();
-        options.put(JSContextOptions.TESTV8_MODE_NAME, "true");
-        options.put(JSContextOptions.VALIDATE_REGEXP_LITERALS_NAME, "false");
-        options.put(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
-        options.put(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
-        options.put(JSContextOptions.V8_LEGACY_CONST_NAME, "true");
-        options.put(JSContextOptions.INTL_402_NAME, "true");
-        options.put(JSContextOptions.SHELL_NAME, "true"); // readbuffer, quit
-        commonOptions = Collections.unmodifiableMap(options);
-    }
 
     public TestV8Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
@@ -140,7 +123,7 @@ public class TestV8Runnable extends TestRunnable {
         sources[sources.length - 1] = Source.newBuilder(JavaScriptLanguage.ID, createTestFileNamePrefix(file), "").buildLiteral();
         sources[sources.length - 2] = ((TestV8) suite).getMockupSource();
 
-        TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion, commonOptions);
+        TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion);
         if (!suite.getConfig().isPrintFullOutput()) {
             tc.setOutput(DUMMY_OUTPUT_STREAM);
         }
@@ -172,7 +155,7 @@ public class TestV8Runnable extends TestRunnable {
             args.add("--module");
         }
         args.add(file.getPath());
-        TestExtProcessCallable tc = new TestExtProcessCallable(suite, ecmaVersion, commonOptions, suite.getConfig().getExtLauncher(), args, suite.getExtLauncherPipePool());
+        TestExtProcessCallable tc = new TestExtProcessCallable(suite, ecmaVersion, args);
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         tc.setOutput(byteArrayOutputStream);
         tc.setError(byteArrayOutputStream);
@@ -200,7 +183,7 @@ public class TestV8Runnable extends TestRunnable {
     }
 
     private static String createTestFileNamePrefix(File file) {
-        return "\nTEST_FILE_NAME = \"" + file.getPath().replaceAll("\\\\", "\\\\\\\\") + "\"\n";
+        return "TEST_FILE_NAME = \"" + file.getPath().replaceAll("\\\\", "\\\\\\\\") + "\"";
     }
 
     private void reportStart() {

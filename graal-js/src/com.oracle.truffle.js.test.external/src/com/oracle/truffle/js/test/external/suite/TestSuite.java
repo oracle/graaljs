@@ -150,6 +150,18 @@ public abstract class TestSuite {
 
     protected abstract File getUnexpectedlyFailedTestsFile();
 
+    public abstract Map<String, String> getCommonOptions();
+
+    public abstract List<String> getCommonExtLauncherOptions();
+
+    protected static List<String> optionsToExtLauncherOptions(Map<String, String> options) {
+        List<String> ret = new ArrayList<>(options.size());
+        for (Map.Entry<String, String> entry : options.entrySet()) {
+            ret.add(TestExtProcessCallable.optionToString(entry.getKey(), entry.getValue()));
+        }
+        return Collections.unmodifiableList(ret);
+    }
+
     /**
      * This function defines whether the actual executors are run as separate threads. This enables
      * per-thread timeouts, e.g. for testing other (non well-behaving) engines.
@@ -418,14 +430,6 @@ public abstract class TestSuite {
             }
         } catch (FileNotFoundException ex) {
             System.out.println("cannot write output file: " + ex.getMessage());
-        }
-    }
-
-    public int calcNumberOfCores(int availableNumberOfCores) {
-        if (config.isCompile()) {
-            return Math.min(availableNumberOfCores, 2);
-        } else {
-            return availableNumberOfCores;
         }
     }
 
@@ -816,7 +820,7 @@ public abstract class TestSuite {
 
     private ExecutorService initThreads() {
         int numberOfCores = Runtime.getRuntime().availableProcessors();
-        int usingNumberOfCores = Math.min(calcNumberOfCores(numberOfCores), 4);
+        int usingNumberOfCores = Math.min(numberOfCores, 4);
         logVerbose("Number of cores available: " + numberOfCores + ", using: " + usingNumberOfCores);
         return executeWithSeparateThreads() ? Executors.newFixedThreadPool(usingNumberOfCores, TestThread::new) : Executors.newFixedThreadPool(usingNumberOfCores);
     }
@@ -979,7 +983,8 @@ public abstract class TestSuite {
             }
             switch (key) {
                 case "help":
-                    System.out.println("usage: " + builder.getSuiteName() + " [gate [regenerateconfig] [resume]] [verbose|verbosefail] [printscript] [regression] [filter=] [single=] [nothreads]\n");
+                    System.out.println("usage: " + builder.getSuiteName() +
+                                    " [gate [regenerateconfig] [resume]] [verbose|verbosefail] [printscript] [regression] [filter=] [single=] [nothreads] [externallauncher=X [compile]]\n");
                     System.out.println(" gate                   run the gate tests (checking against expected conformance)");
                     System.out.println(" regenerateconfig       after running the gate, write new configuration file");
                     System.out.println(" resume                 run previously failed tests first");
@@ -996,7 +1001,9 @@ public abstract class TestSuite {
                     System.out.println(" timeouttest=X          test aborted after X seconds. Not available in all modes");
                     System.out.println(" location=X             the base directory of the test suite");
                     System.out.println(" config=X               the base directory of the test suite config file");
-                    System.out.println(" outputfilter=x         ignore a given string when comparing with the expected output");
+                    System.out.println(" outputfilter=X         ignore a given string when comparing with the expected output");
+                    System.out.println(" externallauncher=X     run tests by invoking a given native image of JSLauncher");
+                    System.out.println(" compile                run externallauncher with TruffleCompileImmediately");
                     System.exit(-2);
                     break;
                 case "nothreads":
