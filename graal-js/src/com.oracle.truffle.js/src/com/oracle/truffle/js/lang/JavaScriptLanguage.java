@@ -165,7 +165,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final String NAME = "JavaScript";
     public static final String ID = "js";
 
-    private static final int MAX_TOSTRING_DEPTH = 10;
+    private static final int MAX_TOSTRING_DEPTH = 3;
 
     private volatile JSContext languageContext;
     private volatile boolean multiContext;
