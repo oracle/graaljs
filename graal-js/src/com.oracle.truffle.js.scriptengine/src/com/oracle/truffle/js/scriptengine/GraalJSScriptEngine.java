@@ -80,9 +80,9 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static final String ERR_SYMBOL = "$$internal.err$$";
     private static final String JS_SYNTAX_EXTENSIONS_OPTION = "js.syntax-extensions";
     private static final String JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION = "js.script-engine-global-scope-import";
-    public static final String SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME = "importScriptEngineGlobalBindings";
+    private static final String SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME = "importScriptEngineGlobalBindings";
     private static final String NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY = "polyglot.js.nashorn-compat";
-    public static final String MAGIC_OPTION_PREFIX = "polyglot.js.";
+    static final String MAGIC_OPTION_PREFIX = "polyglot.js.";
 
     interface MagicBindingsOptionSetter {
 
@@ -195,9 +195,9 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                     }
     };
 
-    public static final EconomicSet<String> MAGIC_BINDINGS_OPTION_KEYS = EconomicSet.create();
+    private static final EconomicSet<String> MAGIC_BINDINGS_OPTION_KEYS = EconomicSet.create();
     static final EconomicMap<String, MagicBindingsOptionSetter> MAGIC_BINDINGS_OPTION_MAP = EconomicMap.create();
-    public static final boolean NASHORN_COMPATIBILITY_MODE = Boolean.getBoolean(NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY);
+    private static final boolean NASHORN_COMPATIBILITY_MODE = Boolean.getBoolean(NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY);
 
     static {
         for (MagicBindingsOptionSetter setter : MAGIC_OPTION_SETTERS) {
@@ -546,11 +546,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                     "    return new Proxy(target, handler);\n" +
                     "}});\n";
 
-    public static IllegalArgumentException magicOptionValueErrorBool(String name, Object v) {
+    private static IllegalArgumentException magicOptionValueErrorBool(String name, Object v) {
         return new IllegalArgumentException(String.format("failed to set graal-js option \"%s\": expected a boolean value, got \"%s\"", name, v));
-    }
-
-    public static IllegalStateException magicOptionContextInitializedError(String name) {
-        return new IllegalStateException(String.format("failed to set graal-js option \"%s\": js context is already initialized", name));
     }
 }

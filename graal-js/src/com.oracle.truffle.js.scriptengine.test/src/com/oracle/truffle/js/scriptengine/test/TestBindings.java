@@ -62,6 +62,9 @@ import org.graalvm.polyglot.HostAccess;
 import org.junit.Test;
 
 public class TestBindings {
+
+    private static final String SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME = "importScriptEngineGlobalBindings";
+
     private static final String argsName = "arguments";
     private static final String[] defaultArgs = new String[]{"arg0", "arg1"};
     private static final String varName = "boundVarName";
@@ -292,7 +295,7 @@ public class TestBindings {
     @Test
     public void importFunctionInvisible() throws ScriptException {
         ScriptEngine engine = getEngine();
-        boolean result = (boolean) engine.eval("typeof " + GraalJSScriptEngine.SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME + " === 'undefined';");
+        boolean result = (boolean) engine.eval("typeof " + SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME + " === 'undefined';");
         assertTrue(result);
     }
 
@@ -300,10 +303,10 @@ public class TestBindings {
     public void importFunctionOverwrite() throws ScriptException {
         ScriptEngine engine = getEngine();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
-        bindings.put(GraalJSScriptEngine.SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME, defaultVarValue);
+        bindings.put(SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME, defaultVarValue);
         Bindings globalBindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
         globalBindings.put(varName, defaultVarValue);
-        boolean result = (boolean) engine.eval(GraalJSScriptEngine.SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME + " === '" + defaultVarValue + "';");
+        boolean result = (boolean) engine.eval(SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME + " === '" + defaultVarValue + "';");
         assertTrue(result);
         result = (boolean) engine.eval(varName + " === '" + defaultVarValue + "';");
         assertTrue(result);
@@ -321,7 +324,7 @@ public class TestBindings {
     @Test(expected = ScriptException.class)
     public void testNoHostAccessByDefault() throws ScriptException {
         // nashorn compatibility mode allows everything
-        assumeFalse(GraalJSScriptEngine.NASHORN_COMPATIBILITY_MODE);
+        assumeFalse(Boolean.getBoolean("polyglot.js.nashorn-compat"));
         ScriptEngine engine = getEngine();
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("javaObj", new Object());
