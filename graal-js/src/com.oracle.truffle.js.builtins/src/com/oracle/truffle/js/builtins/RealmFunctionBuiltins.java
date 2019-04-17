@@ -104,12 +104,20 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         return null;
     }
 
-    protected static int toRealmIndexOrThrow(JSContext context, Object index) {
+    protected static JSRealm topLevelRealm(JSContext context) {
+        JSRealm realm = context.getRealm();
+        while (realm.getParent() != null) {
+            realm = realm.getParent();
+        }
+        return realm;
+    }
+
+    protected static int toRealmIndexOrThrow(JSRealm topLevelRealm, Object index) {
         int realmIdx = JSRuntime.intValue(JSRuntime.toNumber(index));
         if (realmIdx < 0) {
             throw Errors.createTypeError("Invalid realm index");
         }
-        JSRealm jsrealm = context.getFromRealmList(realmIdx);
+        JSRealm jsrealm = topLevelRealm.getFromRealmList(realmIdx);
         if (jsrealm == null) {
             throw Errors.createTypeError("Invalid realm index");
         }
@@ -126,7 +134,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Specialization
         protected Object createRealm() {
             JSRealm newRealm = getContext().getRealm().createChildRealm();
-            return getContext().getIndexFromRealmList(newRealm);
+            return topLevelRealm(getContext()).getIndexFromRealmList(newRealm);
         }
     }
 
@@ -139,8 +147,9 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object dispose(Object index) {
-            int realmIndex = toRealmIndexOrThrow(getContext(), index);
-            getContext().removeFromRealmList(realmIndex);
+            JSRealm topLevelRealm = topLevelRealm(getContext());
+            int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
+            topLevelRealm.removeFromRealmList(realmIndex);
             return Undefined.instance;
         }
     }
@@ -154,8 +163,9 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object global(Object index) {
-            int realmIndex = toRealmIndexOrThrow(getContext(), index);
-            JSRealm jsrealm = getContext().getFromRealmList(realmIndex);
+            JSRealm topLevelRealm = topLevelRealm(getContext());
+            int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
+            JSRealm jsrealm = topLevelRealm.getFromRealmList(realmIndex);
             return jsrealm.getGlobalObject();
         }
 
@@ -170,7 +180,8 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object current() {
-            return getContext().getIndexFromRealmList(getContext().getRealm());
+            JSRealm topLevelRealm = topLevelRealm(getContext());
+            return topLevelRealm.getIndexFromRealmList(getContext().getRealm());
         }
     }
 
@@ -183,8 +194,9 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object eval(Object index, Object code) {
-            int realmIndex = toRealmIndexOrThrow(getContext(), index);
-            JSRealm jsrealm = getContext().getFromRealmList(realmIndex);
+            JSRealm topLevelRealm = topLevelRealm(getContext());
+            int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
+            JSRealm jsrealm = topLevelRealm.getFromRealmList(realmIndex);
             String sourceText = JSRuntime.toString(code);
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).build();
             return jsrealm.getContext().getEvaluator().evaluate(jsrealm, this, source);

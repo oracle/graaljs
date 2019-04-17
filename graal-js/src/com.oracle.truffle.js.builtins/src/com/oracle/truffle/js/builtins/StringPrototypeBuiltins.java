@@ -2474,7 +2474,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * String.prototype.matchAll draft proposal.
      */
     public static class CreateRegExpStringIteratorNode extends JavaScriptBaseNode {
-        private final DynamicObject regExpStringIteratorPrototype;
+        private final JSContext context;
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
         @Child private PropertySetNode setIteratingRegExpNode;
         @Child private PropertySetNode setIteratedStringNode;
@@ -2483,7 +2483,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertySetNode setDoneNode;
 
         public CreateRegExpStringIteratorNode(JSContext context) {
-            this.regExpStringIteratorPrototype = context.getRealm().getRegExpStringIteratorPrototype();
+            this.context = context;
             // The CreateRegExpStringIteratorNode is used only in the MatchAllIteratorNode, where
             // it is lazily constructed just before its first execution. Furthermore, an execution
             // of the CreateRegExpStringIteratorNode necessitates the execution of all its children,
@@ -2498,6 +2498,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         public DynamicObject createIterator(VirtualFrame frame, Object regex, String string, Boolean global, Boolean fullUnicode) {
+            DynamicObject regExpStringIteratorPrototype = context.getRealm().getRegExpStringIteratorPrototype();
             DynamicObject iterator = createObjectNode.executeDynamicObject(frame, regExpStringIteratorPrototype);
             setIteratingRegExpNode.setValue(iterator, regex);
             setIteratedStringNode.setValue(iterator, string);
