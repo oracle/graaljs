@@ -57,7 +57,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -352,7 +351,7 @@ public abstract class TestSuite {
         if (testFile.getRunInIsolation()) {
             runInIsolationTests.put(filePath, testFile);
         }
-        processStatus(testFile.getRealStatus(), testFile);
+        processStatus(testFile.getRealStatus(config), testFile);
         return testFile;
     }
 
@@ -615,7 +614,7 @@ public abstract class TestSuite {
                 }
             } else if (!isSkipped(testFile)) {
                 // skipped by TestRunnable
-                assert (testFile.getRealStatus() == TestFile.Status.SKIP) : testFile;
+                assert (testFile.getRealStatus(config) == TestFile.Status.SKIP) : testFile;
                 skippedTests.put(testFile.getFilePath(), testFile);
             }
         }
@@ -721,14 +720,7 @@ public abstract class TestSuite {
                 List<TestFile> addTests = new ArrayList<>(unexpectedlyFailed.size());
                 for (TestFile testFile : unexpectedlyFailed) {
                     TestFile failingTestFile = new TestFile(testFile.getFilePath());
-                    EnumMap<TestFile.Endianness, TestFile.Status> statusOverrides = testFile.getStatusOverrides();
-                    if (statusOverrides != null) {
-                        failingTestFile.setStatus(testFile.getStatus());
-                        statusOverrides.put(TestFile.Endianness.current(), TestFile.Status.FAIL);
-                        failingTestFile.setStatusOverrides(statusOverrides);
-                    } else {
-                        failingTestFile.setStatus(TestFile.Status.FAIL);
-                    }
+                    failingTestFile.setStatus(TestFile.Status.FAIL);
                     if (!comment.isEmpty()) {
                         failingTestFile.setComment(comment);
                     }
@@ -791,7 +783,7 @@ public abstract class TestSuite {
         for (TestFile testFile : failedTests.values()) {
             assert testFile.hasRun() : testFile;
             assert !testFile.hasPassed() : testFile;
-            if (testFile.getRealStatus() != TestFile.Status.FAIL) {
+            if (testFile.getRealStatus(config) != TestFile.Status.FAIL) {
                 System.out.println("Unexpectedly failed '" + testFile.getFilePath() + "', please update the configuration file!");
                 unexpectedlyFailed.put(testFile.getFilePath(), testFile);
             }
