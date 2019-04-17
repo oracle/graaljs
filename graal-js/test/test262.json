@@ -1653,6 +1653,13 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/basic.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "Fails on SVM due to timezone issues, see GR-4538"
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -1820,6 +1827,13 @@
     "filePath" : "intl402/supportedLocalesOf-returned-array-elements-are-frozen.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "intl402/supportedLocalesOf-unicode-extensions-ignored.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "Segfaults on SVM, see GR-15064"
   }, {
     "filePath" : "language/block-scope/syntax/redeclaration/inner-block-var-name-redeclaration-attempt-with-class.js",
     "status" : "FAIL",
