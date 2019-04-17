@@ -66,7 +66,6 @@ import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -2773,16 +2772,6 @@ public final class JSRuntime {
         } else {
             throw Errors.createTypeErrorUnsupportedInteropType(value);
         }
-    }
-
-    @TruffleBoundary
-    public static JSFunctionData getFunctionData(TruffleObject callable) {
-        if (JSFunction.isJSFunction(callable)) {
-            return JSFunction.getFunctionData((DynamicObject) callable);
-        } else if (JSProxy.isProxy(callable)) {
-            return getFunctionData(JSProxy.getTarget((DynamicObject) callable));
-        }
-        return null; // could be a TruffleObject (as Proxy's target)
     }
 
     public static boolean intIsRepresentableAsFloat(int value) {

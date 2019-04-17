@@ -665,4 +665,9 @@ public final class Errors {
         return Errors.createTypeError("Iterator result " + JSRuntime.safeToString(value) + " is not an object", originatingNode);
     }
 
+    @TruffleBoundary
+    public static JSException createSIMDExpected() {
+        return Errors.createTypeError("SIMD type expected");
+    }
+
 }

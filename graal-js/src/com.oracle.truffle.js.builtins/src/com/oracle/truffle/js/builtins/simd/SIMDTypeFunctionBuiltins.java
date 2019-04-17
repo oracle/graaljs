@@ -351,10 +351,10 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         protected final SIMDType simdContext;
         protected final BranchProfile errorBranch = BranchProfile.create();
         protected final ValueProfile typedArrayProfile = ValueProfile.createIdentityProfile();
-        @Child private JSToLengthNode toLengthNode = JSToLengthNode.create();
-        @Child private JSEqualNode equalNode = JSEqualNode.create();
-        @Child private JSToNumberNode toNumberNode = JSToNumberNode.create();
-        @Child protected JSToUInt32Node toUInt32Node = JSToUInt32Node.create();
+        @Child private JSToLengthNode toLengthNode;
+        @Child private JSEqualNode equalNode;
+        @Child private JSToNumberNode toNumberNode;
+        @Child protected JSToUInt32Node toUInt32Node;
 
         @Children protected final SIMDCastNode[] castNodes;
 
@@ -455,9 +455,6 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
         // 5.1.2 SIMDToLane( max, lane )
         public int simdToLane(int max, Object lane) {
-            /*
-             * Object index = toNumber(frame, lane); int in = toInt32(frame, index);
-             */
             Number index = getToNumberNode().executeNumber(lane);
             int in = JSRuntime.toInt32(index);
             if ((!sameValueZero(index, getToLengthNode().executeLong(index))) || in < 0 || in >= max) {
@@ -465,17 +462,6 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 throw Errors.createRangeError("lane out of bounds!");
             }
             return in;
-        }
-
-        // 5.1.3 SIMDExtractLane( value, lane )
-        public Object simdExtractLane(DynamicObject value, int lane) {
-            assert JSSIMD.isJSSIMD(value);
-            return getLane(value, lane);
-        }
-
-        // 5.1.5 MaybeFlushDenormal( n, descriptor )
-        public Object maybeFlushDenormal(Object n, @SuppressWarnings("unused") SIMDType descriptor) {
-            return n;
         }
 
         // SIMDLoad( dataBlock, descriptor, byteOffset [, length] )
@@ -492,10 +478,6 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 Boundaries.listAdd(elements, 0);
             }
             return simdCreate(descriptor, elements);
-        }
-
-        protected Object simdLoadFromTypedArray(DynamicObject tarray, Object index, SIMDType descriptor) {
-            return simdLoadFromTypedArray(tarray, index, descriptor, descriptor.getFactory().getNumberOfElements());
         }
 
         // SIMDLoadFromTypedArray( tarray, index, descriptor [, length] )
@@ -549,16 +531,10 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             }
         }
 
-        // SIMDStoreInTypedArray( tarray, index, descriptor, n [, length] )
-        protected Object simdStoreInTypedArray(DynamicObject tarray, Object index, SIMDType descriptor, DynamicObject n) {
-            int length = descriptor.getNumberOfElements();
-            return simdStoreInTypedArray(tarray, index, descriptor, n, length);
-        }
-
         protected Object simdStoreInTypedArray(DynamicObject tarray, Object index, @SuppressWarnings("unused") SIMDType descriptor, DynamicObject n, int length) {
             if (!JSSIMD.isJSSIMD(n)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("invalid type");
+                throw Errors.createSIMDExpected();
             }
 
             if (!JSArrayBufferView.isJSArrayBufferView(tarray)) {
@@ -735,10 +711,9 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @Specialization
         protected Object doCheck(Object a) {
-            // SIMDType descriptor = null;
             if (!JSSIMD.isJSSIMD(a) || JSSIMD.simdTypeGetSIMDType((DynamicObject) a) != simdContext) {
                 errorBranch.enter();
-                throw Errors.createTypeError("Parameter is not a SIMD Object");
+                throw Errors.createSIMDExpected();
             }
             return a;
         }
@@ -1808,7 +1783,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
         protected Object doSelect(DynamicObject selector, DynamicObject a, DynamicObject b) {
             if (!JSSIMD.isJSSIMD(a) || !JSSIMD.isJSSIMD(b)) {
                 errorBranch.enter();
-                throw createTypeErrorInvalidArgumentType();
+                throw Errors.createSIMDExpected();
             }
             SIMDType selDescriptor = simdBoolType(simdContext);
             if (selDescriptor != JSSIMD.simdTypeGetSIMDType(selector)) {
@@ -2117,7 +2092,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             }
             if (!JSSIMD.isJSSIMD(simd)) {
                 errorBranch.enter();
-                throw createTypeErrorInvalidArgumentType();
+                throw Errors.createSIMDExpected();
             }
 
             return simdStoreInTypedArray(tarray, index, simdContext, simd, length);
@@ -2230,10 +2205,9 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @Specialization
         protected Object doFrom(DynamicObject a) {
-
             if (!JSSIMD.isJSSIMD(a)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("");
+                throw Errors.createSIMDExpected();
             }
             if (!fromTIMDGuard(timd, simdContext)) {
                 errorBranch.enter();
@@ -2337,7 +2311,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
 
             if (!JSSIMD.isJSSIMD(value)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("");
+                throw Errors.createSIMDExpected();
             }
             SIMDType olddesc = JSSIMD.simdTypeGetSIMDType((DynamicObject) value);
 

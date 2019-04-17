@@ -421,7 +421,7 @@ public class ObjectSizeCalculator {
         }
 
         final String strVmVersion = System.getProperty("java.vm.version");
-        final int vmVersion = Integer.parseInt(strVmVersion.substring(0, strVmVersion.indexOf('.')));
+        final int vmVersion = getVMVersion(strVmVersion);
         if (vmVersion >= 17) {
             long maxMemory = 0;
 
@@ -507,6 +507,14 @@ public class ObjectSizeCalculator {
                 return 8;
             }
         };
+    }
+
+    private static int getVMVersion(final String strVmVersion) {
+        try {
+            return Integer.parseInt(strVmVersion.substring(0, strVmVersion.indexOf('.')));
+        } catch (Exception ex) {
+            return 18;
+        }
     }
 
     private static final Unsafe UNSAFE = getUnsafe();
