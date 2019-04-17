@@ -163,8 +163,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         noType);
         // +
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull));
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY));
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, ANY, nonNumeric));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY, JavaScriptVerifier.numericVerifier(null)));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, ANY, nonNumeric, JavaScriptVerifier.numericVerifier(null)));
         // -
         ops.add(createBinaryOperator(context, "-", TypeDescriptor.NUMBER, ANY, ANY));
         // *
@@ -248,7 +248,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.union(
                                         TypeDescriptor.STRING,
                                         TypeDescriptor.OBJECT,
-                                        TypeDescriptor.ARRAY)));
+                                        TypeDescriptor.ARRAY,
+                                        TypeDescriptor.NULL)));
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
                         TypeDescriptor.NULL,
@@ -576,6 +577,37 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         final Value arg = snippetRun.getParameters().get(0);
                         if (!arg.hasMembers()) {
                             return;
+                        }
+                    }
+                    super.accept(snippetRun);
+                }
+            };
+        }
+
+        /**
+         * Creates a {@link ResultVerifier} which correctly handles return type for plus operator
+         * parameters which are intersection of numeric and non numeric.
+         *
+         * @param next the next {@link ResultVerifier} to be called, null for last one
+         * @return the {@link ResultVerifier}
+         */
+        static ResultVerifier numericVerifier(ResultVerifier next) {
+            return new JavaScriptVerifier(next) {
+                @Override
+                public void accept(SnippetRun snippetRun) throws PolyglotException {
+                    boolean allNumeric = true;
+                    if (snippetRun.getException() == null) {
+                        TypeDescriptor numericTypes = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN);
+                        for (Value actualParameter : snippetRun.getParameters()) {
+                            allNumeric &= numericTypes.isAssignable(TypeDescriptor.forValue(actualParameter));
+                        }
+                        if (allNumeric) {
+                            TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());
+                            if (!TypeDescriptor.NUMBER.isAssignable(resultType)) {
+                                throw new AssertionError(String.format("Result is out of type bounds. Expected: NUMBER, Got: %s.", resultType));
+                            } else {
+                                return;
+                            }
                         }
                     }
                     super.accept(snippetRun);
