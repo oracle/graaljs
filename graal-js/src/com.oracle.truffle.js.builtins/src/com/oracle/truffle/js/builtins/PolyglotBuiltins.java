@@ -258,15 +258,13 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object doMaybeUnbox(TruffleObject identifier, Object value,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
             if (interop.isString(identifier)) {
-                Object unboxed;
+                String unboxed;
                 try {
                     unboxed = interop.asString(identifier);
                 } catch (UnsupportedMessageException e) {
                     throw Errors.createTypeErrorUnboxException(identifier, e, this);
                 }
-                if (unboxed instanceof String) {
-                    return doString((String) unboxed, value, interop);
-                }
+                return doString(unboxed, value, interop);
             }
             return doInvalid(identifier, value);
         }
@@ -288,7 +286,13 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
                         @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) {
             Object polyglotBindings = getContext().getRealm().getEnv().getPolyglotBindings();
-            return JSInteropUtil.readMemberOrDefault(polyglotBindings, identifier, Null.instance, interop, importValueNode, this);
+            try {
+                return importValueNode.executeWithTarget(interop.readMember(polyglotBindings, identifier));
+            } catch (UnknownIdentifierException e) {
+                throw Errors.createReferenceErrorNotDefined(identifier, this);
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(polyglotBindings, e, "readMember", this);
+            }
         }
 
         @Specialization(guards = {"!isString(identifier)"})
@@ -296,15 +300,13 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
                         @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) {
             if (interop.isString(identifier)) {
-                Object unboxed;
+                String unboxed;
                 try {
                     unboxed = interop.asString(identifier);
                 } catch (UnsupportedMessageException e) {
                     throw Errors.createTypeErrorUnboxException(identifier, e, this);
                 }
-                if (unboxed instanceof String) {
-                    return doString((String) unboxed, interop, importValueNode);
-                }
+                return doString(unboxed, interop, importValueNode);
             }
             return doInvalid(identifier);
         }
