@@ -43,11 +43,16 @@ package com.oracle.truffle.js.test.external.test262;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Source;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.external.suite.SuiteConfig;
 import com.oracle.truffle.js.test.external.suite.TestFile;
 import com.oracle.truffle.js.test.external.suite.TestRunnable;
@@ -78,14 +83,27 @@ public class Test262 extends TestSuite {
     private static final String TESTS_CONFIG_FILE = "test262.json";
     private static final String FAILED_TESTS_FILE = "test262.failed";
 
+    private final Map<String, String> commonOptions;
+    private final List<String> commonOptionsExtLauncher;
+
     public Test262(SuiteConfig config) {
         super(config);
+        Map<String, String> options = new HashMap<>();
+        options.put(JSContextOptions.INTL_402_NAME, "true");
+        options.put(JSContextOptions.TEST262_MODE_NAME, "true");
+        config.addCommonOptions(options);
+        commonOptions = Collections.unmodifiableMap(options);
+        commonOptionsExtLauncher = optionsToExtLauncherOptions(options);
     }
 
     public Source[] getHarnessSources(boolean strict, boolean async, Stream<String> includes) {
-        Source prologSource = Source.newBuilder("js", strict ? "var strict_mode = true;" : "var strict_mode = false;", "").buildLiteral();
-        Stream<Source> prologStream = Stream.of(prologSource);
-
+        Stream<Source> prologStream;
+        if (getConfig().isExtLauncher()) {
+            prologStream = Stream.empty();
+        } else {
+            Source prologSource = Source.newBuilder("js", strict ? "var strict_mode = true;" : "var strict_mode = false;", "").buildLiteral();
+            prologStream = Stream.of(prologSource);
+        }
         String harnessLocation = getConfig().getSuiteHarnessLoc();
         Stream<String> harnessNamesStream = Stream.of(COMMON_PREQUEL_FILES);
         if (async) {
@@ -108,7 +126,7 @@ public class Test262 extends TestSuite {
         if (prefix.isEmpty()) {
             return source;
         }
-        return Source.newBuilder("js", prefix + source.getCharacters(), source.getName()).buildLiteral();
+        return Source.newBuilder("js", new File(source.getPath())).content(prefix + source.getCharacters()).buildLiteral();
     }
 
     @Override
@@ -151,6 +169,16 @@ public class Test262 extends TestSuite {
     }
 
     @Override
+    public Map<String, String> getCommonOptions() {
+        return commonOptions;
+    }
+
+    @Override
+    public List<String> getCommonExtLauncherOptions() {
+        return commonOptionsExtLauncher;
+    }
+
+    @Override
     protected boolean isTestExecutable(String name) {
         /*
          * Files bearing a name ending in `_FIXTURE.js` should not be interpreted as standalone
@@ -159,21 +187,17 @@ public class Test262 extends TestSuite {
         return !name.endsWith("_FIXTURE.js");
     }
 
-    public static void main(String[] args) {
-        SuiteConfig config = new SuiteConfig(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
+    public static void main(String[] args) throws Exception {
+        SuiteConfig.Builder configBuilder = new SuiteConfig.Builder(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
 
         TimeZone pstZone = TimeZone.getTimeZone("PST"); // =Californian Time (PST)
         TimeZone.setDefault(pstZone);
 
         System.out.println("Checking your Javascript conformance. Using ECMAScript Test262 testsuite.\n");
 
-        if (args.length > 0) {
-            for (String arg : args) {
-                TestSuite.parseDefaultArgs(arg, config);
-            }
-        }
+        TestSuite.parseDefaultArgs(args, configBuilder);
 
-        Test262 suite = new Test262(config);
+        Test262 suite = new Test262(configBuilder.build());
         System.exit(suite.runTestSuite(TEST_DIRS));
     }
 }

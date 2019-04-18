@@ -242,17 +242,13 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.NULL,
                         ANY));
         // for of
-        final TypeDescriptor noType = TypeDescriptor.intersection();
         res.add(createStatement(context, "for-of", "for (let v of {1});",
                         TypeDescriptor.NULL,
                         JavaScriptVerifier.foreignOrHasIteratorVerifier(context, null),
                         TypeDescriptor.union(
                                         TypeDescriptor.STRING,
                                         TypeDescriptor.OBJECT,
-                                        TypeDescriptor.ARRAY,
-                                        TypeDescriptor.EXECUTABLE_ANY,
-                                        TypeDescriptor.NULL,
-                                        noType)));
+                                        TypeDescriptor.ARRAY)));
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
                         TypeDescriptor.NULL,
@@ -549,7 +545,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     if (snippetRun.getException() != null) {
                         final Value param = snippetRun.getParameters().get(0);
                         final Value paramMeta = param.getMetaObject();
-                        final String type = paramMeta.hasMember("type") ? paramMeta.getMember("type").asString() : null;
+                        final String type = (paramMeta != null && paramMeta.hasMember("type")) ? paramMeta.getMember("type").asString() : null;
                         final boolean jsObject = type != null && ("object".equals(type) || "function".equals(type)) && paramMeta.hasMember("className");
                         boolean hasIterator = false;
                         try {

@@ -69,7 +69,7 @@ public final class TestFileUtil {
         mergedTestFile.setEcmaVersion(ecmaVersion != null ? ecmaVersion : first.getEcmaVersion());
         TestFile.Status status = second.getStatus();
         mergedTestFile.setStatus(status != null ? status : first.getStatus());
-        EnumMap<TestFile.Endianness, TestFile.Status> statusOverrides = second.getStatusOverrides();
+        EnumMap<TestFile.StatusOverrideCondition, TestFile.Status> statusOverrides = second.getStatusOverrides();
         mergedTestFile.setStatusOverrides(statusOverrides != null ? statusOverrides : first.getStatusOverrides());
         Boolean runInIsolation = second.getRunInIsolation();
         mergedTestFile.setRunInIsolation(runInIsolation != null ? runInIsolation : first.getRunInIsolation());

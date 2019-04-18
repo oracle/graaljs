@@ -931,7 +931,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             if (!JSTruffleOptions.SubstrateVM) {
                 try {
                     if (testMapClass == null) {
-                        testMapClass = Class.forName("com.oracle.truffle.js.test.interop.object.ForeignTestMap");
+                        testMapClass = Class.forName("com.oracle.truffle.js.test.polyglot.ForeignTestMap");
                     }
                     return getContext().getRealm().getEnv().asGuestValue(testMapClass.newInstance());
                 } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
@@ -963,7 +963,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             if (!JSTruffleOptions.SubstrateVM) {
                 try {
                     if (testMapClass == null) {
-                        testMapClass = Class.forName("com.oracle.truffle.js.test.interop.object.ForeignDynamicObject");
+                        testMapClass = Class.forName("com.oracle.truffle.js.test.polyglot.ForeignDynamicObject");
                     }
                     Method createNew = testMapClass.getMethod("createNew");
                     return createNew.invoke(null);

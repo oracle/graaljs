@@ -113,7 +113,7 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
                     return true;
                 }
             } else {
-                throw GraalJSScriptEngine.magicOptionContextInitializedError(name);
+                throw magicOptionContextInitializedError(name);
             }
         }
         requireContext();
@@ -157,5 +157,9 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
         if (context != null) {
             context.close();
         }
+    }
+
+    private static IllegalStateException magicOptionContextInitializedError(String name) {
+        return new IllegalStateException(String.format("failed to set graal-js option \"%s\": js context is already initialized", name));
     }
 }

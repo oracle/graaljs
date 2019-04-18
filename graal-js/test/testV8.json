@@ -217,10 +217,6 @@
     "status" : "SKIP",
     "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
-    "filePath" : "intl/segmenter/segment-iterator-ownPropertyDescriptor.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/segmenter/segment-iterator.js",
     "status" : "SKIP",
     "comment" : "line granularity support was removed from Intl.Segmenter"
@@ -1447,6 +1443,13 @@
     "status" : "SKIP",
     "comment" : "REGEX language cannot be initialized after StackOverflow"
   }, {
+    "filePath" : "mjsunit/regress/regress-707066.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "times out on SVM, maybe due to GR-15203"
+  }, {
     "filePath" : "mjsunit/regress/regress-740694.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
@@ -1609,8 +1612,12 @@
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-385002.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
     "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests"
+    "comment" : "test with (expected) stack overflows that might influence other tests; times out on SVM, maybe due to GR-15203"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-387031.js",
     "status" : "FAIL"
@@ -1733,6 +1740,13 @@
     "filePath" : "mjsunit/regress/regress-crbug-754177.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-762472.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15203"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-762874-1.js",
     "status" : "SKIP",

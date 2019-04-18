@@ -100,10 +100,10 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
                                 "When style is '%s', 'unit' is the only allowed value for the type option.", this, IntlUtil.NARROW);
             }
 
-            state.initialized = true;
+            state.setInitialized(true);
 
-            state.type = optType;
-            state.style = optStyle;
+            state.setType(optType);
+            state.setStyle(optStyle);
 
             JSListFormat.setLocale(context, state, locales);
             JSListFormat.setupInternalListFormatter(state);

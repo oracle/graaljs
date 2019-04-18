@@ -42,10 +42,8 @@ package com.oracle.truffle.js.runtime;
 
 import java.time.ZoneId;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.WeakHashMap;
@@ -265,8 +263,6 @@ public class JSContext {
 
     private volatile Map<Shape, JSShapeData> shapeDataMap;
 
-    private List<JSRealm> realmList;
-
     final Assumption noChildRealmsAssumption;
     private final Assumption singleRealmAssumption;
     private final boolean isMultiContext;
@@ -430,13 +426,10 @@ public class JSContext {
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
 
-        if (JSTruffleOptions.Test262Mode || JSTruffleOptions.TestV8Mode) {
+        if (contextOptions.isTest262Mode() || contextOptions.isTestV8Mode()) {
             this.setJSAgent(new DebugJSAgent(env, contextOptions.canAgentBlock()));
         } else {
             this.setJSAgent(new MainJSAgent());
-        }
-        if (contextOptions.isV8RealmBuiltin()) {
-            this.realmList = new ArrayList<>();
         }
 
         this.throwerFunctionData = throwTypeErrorFunction();
@@ -490,9 +483,9 @@ public class JSContext {
         this.arrayBufferFactory = builder.create(JSArrayBuffer.HEAP_INSTANCE);
         this.directArrayBufferFactory = builder.create(JSArrayBuffer.DIRECT_INSTANCE);
         this.sharedArrayBufferFactory = isOptionSharedArrayBuffer() ? builder.create(JSSharedArrayBuffer.INSTANCE) : null;
-        this.typedArrayFactories = new JSObjectFactory[TypedArray.factories().length];
-        this.directTypedArrayFactories = new JSObjectFactory[TypedArray.factories().length];
-        for (TypedArrayFactory factory : TypedArray.factories()) {
+        this.typedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
+        this.directTypedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
+        for (TypedArrayFactory factory : TypedArray.factories(this)) {
             directTypedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p, true));
             typedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p, false));
         }
@@ -606,11 +599,12 @@ public class JSContext {
         truffleLanguageEnv = env;
         JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
-        if (realmList != null) {
-            addToRealmList(newRealm);
-        }
+
         if (isTop) {
             newRealm.initRealmBuiltinObject();
+            if (contextOptions.isV8RealmBuiltin()) {
+                newRealm.addToRealmList(newRealm);
+            }
         }
 
         realmInit.set(REALM_INITIALIZED);
@@ -1178,27 +1172,6 @@ public class JSContext {
         return result;
     }
 
-    private synchronized void addToRealmList(JSRealm newRealm) {
-        CompilerAsserts.neverPartOfCompilation();
-        assert !realmList.contains(newRealm);
-        realmList.add(newRealm);
-    }
-
-    public synchronized JSRealm getFromRealmList(int idx) {
-        CompilerAsserts.neverPartOfCompilation();
-        return realmList.get(idx);
-    }
-
-    public synchronized int getIndexFromRealmList(JSRealm rlm) {
-        CompilerAsserts.neverPartOfCompilation();
-        return realmList.indexOf(rlm);
-    }
-
-    public synchronized void removeFromRealmList(int idx) {
-        CompilerAsserts.neverPartOfCompilation();
-        realmList.set(idx, null);
-    }
-
     public JSAgent getJSAgent() {
         assert agent != null : "Null agent!";
         return agent;
@@ -1625,5 +1598,9 @@ public class JSContext {
         if (isOptionDisableEval()) {
             throw Errors.createEvalDisabled();
         }
+    }
+
+    public boolean isOptionLoadFromURL() {
+        return contextOptions.isLoadFromURL();
     }
 }

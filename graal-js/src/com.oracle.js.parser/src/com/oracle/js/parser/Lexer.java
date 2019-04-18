@@ -104,6 +104,9 @@ public class Lexer extends Scanner {
     /** True if parsing a module. */
     private final boolean isModule;
 
+    /** True if BigInts are supported. */
+    private final boolean allowBigInt;
+
     /** Pending new line number and position. */
     int pendingLine;
 
@@ -119,6 +122,8 @@ public class Lexer extends Scanner {
 
     /** Map to intern strings during parsing (memory footprint). */
     private final Map<String, String> internedStrings;
+
+    private static final String MESSAGE_INVALID_HEX = "invalid.hex";
 
     private static final String JAVASCRIPT_WHITESPACE_HIGH =
         "\u1680" + // Ogham space mark
@@ -167,8 +172,8 @@ public class Lexer extends Scanner {
      * @param shebang   do we support shebang
      * @param isModule  are we in module
      */
-    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule) {
-        this(source, 0, source.getLength(), stream, scripting, es6, shebang, isModule, false);
+    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
+        this(source, 0, source.getLength(), stream, scripting, es6, shebang, isModule, false, allowBigInt);
     }
 
     /**
@@ -186,7 +191,7 @@ public class Lexer extends Scanner {
      * function body. This is used with the feature where the parser is skipping nested function bodies to
      * avoid reading ahead unnecessarily when we skip the function bodies.
      */
-    public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean pauseOnFunctionBody) {
+    public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean pauseOnFunctionBody, final boolean allowBigInt) {
         super(source.getContent().toString().toCharArray(), 1, start, len);
         this.source      = source;
         this.stream      = stream;
@@ -195,6 +200,7 @@ public class Lexer extends Scanner {
         this.shebang     = shebang;
         this.nested      = false;
         this.isModule    = isModule;
+        this.allowBigInt = allowBigInt;
         this.pendingLine = 1;
         this.last        = EOL;
 
@@ -212,6 +218,7 @@ public class Lexer extends Scanner {
         shebang = lexer.shebang;
         nested = true;
         isModule = lexer.isModule;
+        allowBigInt = lexer.allowBigInt;
 
         pendingLine = state.pendingLine;
         linePosition = state.linePosition;
@@ -259,12 +266,14 @@ public class Lexer extends Scanner {
      * @param state
      *            Captured state.
      */
-    void restoreState(final State state) {
+    @Override
+    void restoreState(final Scanner.State state) {
         super.restoreState(state);
 
-        pendingLine = state.pendingLine;
-        linePosition = state.linePosition;
-        last = state.last;
+        Lexer.State lexerState = (Lexer.State)state;
+        pendingLine = lexerState.pendingLine;
+        linePosition = lexerState.linePosition;
+        last = lexerState.last;
     }
 
     /**
@@ -775,7 +784,7 @@ public class Lexer extends Scanner {
             final int digit = convertDigit(ch0, 16);
 
             if (digit == -1) {
-                error(Lexer.message("invalid.hex"), type, position, limit - position);
+                error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
                 return i == 0 ? -1 : value;
             }
 
@@ -804,7 +813,7 @@ public class Lexer extends Scanner {
                     skip(1);
                     return value;
                 } else {
-                    error(Lexer.message("invalid.hex"), type, position, limit - position);
+                    error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
                     skip(1);
                     return -1;
                 }
@@ -813,14 +822,14 @@ public class Lexer extends Scanner {
             final int digit = convertDigit(ch0, 16);
 
             if (digit == -1) {
-                error(Lexer.message("invalid.hex"), type, position, limit - position);
+                error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
                 return i == 0 ? -1 : value;
             }
 
             value = digit | value << 4;
 
             if (value > 1114111) {
-                error(Lexer.message("invalid.hex"), type, position, limit - position);
+                error(Lexer.message(MESSAGE_INVALID_HEX), type, position, limit - position);
                 return -1;
             }
 
@@ -1148,13 +1157,13 @@ public class Lexer extends Scanner {
                 switch (quote) {
                 case '`':
                     // Mark the beginning of an exec string.
-                    add(EXECSTRING, stringState.position, stringState.limit);
+                    add(EXECSTRING, stringState.position, stringState.getLimit());
                     // Frame edit string with left brace.
                     add(LBRACE, stringState.position, stringState.position);
                     // Process edit string.
                     editString(type, stringState);
                     // Frame edit string with right brace.
-                    add(RBRACE, stringState.limit, stringState.limit);
+                    add(RBRACE, stringState.getLimit(), stringState.getLimit());
                     break;
                 case '"':
                     // Only edit double quoted strings.
@@ -1162,14 +1171,14 @@ public class Lexer extends Scanner {
                     break;
                 case '\'':
                     // Add string token without editing.
-                    add(type, stringState.position, stringState.limit);
+                    add(type, stringState.position, stringState.getLimit());
                     break;
                 default:
                     break;
                 }
             } else {
                 /// Add string token without editing.
-                add(type, stringState.position, stringState.limit);
+                add(type, stringState.position, stringState.getLimit());
             }
         }
     }
@@ -1209,12 +1218,12 @@ public class Lexer extends Scanner {
                 skip(1);
                 // Record end of string.
                 stringState.setLimit(position - 1);
-                add(type == TEMPLATE ? type : TEMPLATE_TAIL, stringState.position, stringState.limit);
+                add(type == TEMPLATE ? type : TEMPLATE_TAIL, stringState.position, stringState.getLimit());
                 return;
             } else if (ch0 == '$' && ch1 == '{') {
                 skip(2);
                 stringState.setLimit(position - 2);
-                add(type == TEMPLATE ? TEMPLATE_HEAD : type, stringState.position, stringState.limit);
+                add(type == TEMPLATE ? TEMPLATE_HEAD : type, stringState.position, stringState.getLimit());
                 return;
             } else if (ch0 == '\\') {
                 skip(1);
@@ -1398,7 +1407,7 @@ public class Lexer extends Scanner {
             }
         }
 
-        if (ch0 == 'n' && (type == DECIMAL || type == BINARY_NUMBER || type == OCTAL || type == HEXADECIMAL)) {
+        if (ch0 == 'n' && allowBigInt && (type == DECIMAL || type == BINARY_NUMBER || type == OCTAL || type == HEXADECIMAL)) {
             // Skip n
             skip(1);
             type = BIGINT;
@@ -1886,7 +1895,7 @@ public class Lexer extends Scanner {
                 editString(STRING, stringState);
             } else {
                 // Add here string.
-                add(STRING, stringState.position, stringState.limit);
+                add(STRING, stringState.position, stringState.getLimit());
             }
 
             // Scan rest of original line.

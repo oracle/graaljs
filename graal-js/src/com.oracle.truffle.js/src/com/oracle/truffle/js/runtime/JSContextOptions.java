@@ -162,6 +162,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> V8_REALM_BUILTIN = new OptionKey<>(false);
     @CompilationFinal private boolean v8RealmBuiltin;
 
+    public static final String V8_LEGACY_CONST_NAME = JS_OPTION_PREFIX + "v8-legacy-const";
+    @Option(name = V8_LEGACY_CONST_NAME, category = OptionCategory.INTERNAL, help = "Emulate v8 behavior when trying to mutate const variables in non-strict mode.") //
+    public static final OptionKey<Boolean> V8_LEGACY_CONST = new OptionKey<>(false);
+    @CompilationFinal private boolean v8LegacyConst;
+
     public static final String NASHORN_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "nashorn-compat";
     @Option(name = NASHORN_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the OpenJDK Nashorn engine.") //
     public static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
@@ -232,6 +237,10 @@ public final class JSContextOptions {
     @Option(name = LOAD_NAME, category = OptionCategory.USER, help = "Provide 'load' global function.") //
     public static final OptionKey<Boolean> LOAD = new OptionKey<>(true);
 
+    public static final String LOAD_FROM_URL_NAME = JS_OPTION_PREFIX + "load-from-url";
+    @Option(name = LOAD_FROM_URL_NAME, category = OptionCategory.USER, help = "Allow 'load' to access URLs.") //
+    public static final OptionKey<Boolean> LOAD_FROM_URL = new OptionKey<>(false);
+
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
     @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
@@ -258,6 +267,10 @@ public final class JSContextOptions {
     @Option(name = DISABLE_WITH_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to use the 'with' statement.") //
     public static final OptionKey<Boolean> DISABLE_WITH = new OptionKey<>(false);
     @CompilationFinal private boolean disableWith;
+
+    public static final String BIGINT_NAME = JS_OPTION_PREFIX + "bigint";
+    @Option(name = BIGINT_NAME, category = OptionCategory.USER, help = "Provide an implementation of the BigInt proposal.") //
+    public static final OptionKey<Boolean> BIGINT = new OptionKey<>(true);
 
     public static final String REGEX_DUMP_AUTOMATA_NAME = JS_OPTION_PREFIX + "regex.dump-automata";
     @Option(name = REGEX_DUMP_AUTOMATA_NAME, category = OptionCategory.INTERNAL, help = "Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.") //
@@ -293,6 +306,21 @@ public final class JSContextOptions {
     @Option(name = FUNCTION_ARGUMENTS_LIMIT_NAME, category = OptionCategory.EXPERT, help = "Maximum number of arguments for functions.") //
     public static final OptionKey<Long> FUNCTION_ARGUMENTS_LIMIT = new OptionKey<>(65535L);
     @CompilationFinal private long functionArgumentsLimit;
+
+    public static final String TEST262_MODE_NAME = JS_OPTION_PREFIX + "test262-mode";
+    @Option(name = TEST262_MODE_NAME, category = OptionCategory.INTERNAL, help = "Expose global property $262 needed to run the Test262 harness.") //
+    public static final OptionKey<Boolean> TEST262_MODE = new OptionKey<>(false);
+    @CompilationFinal private boolean test262Mode;
+
+    public static final String TESTV8_MODE_NAME = JS_OPTION_PREFIX + "testV8-mode";
+    @Option(name = TESTV8_MODE_NAME, category = OptionCategory.INTERNAL, help = "Expose internals needed to run the TestV8 harness.") //
+    public static final OptionKey<Boolean> TESTV8_MODE = new OptionKey<>(false);
+    @CompilationFinal private boolean testV8Mode;
+
+    public static final String VALIDATE_REGEXP_LITERALS_NAME = JS_OPTION_PREFIX + "validate-regexp-literals";
+    @Option(name = VALIDATE_REGEXP_LITERALS_NAME, category = OptionCategory.INTERNAL, help = "Validate regexp literals at parse time.") //
+    public static final OptionKey<Boolean> VALIDATE_REGEXP_LITERALS = new OptionKey<>(true);
+    @CompilationFinal private boolean validateRegExpLiterals;
 
     public JSContextOptions(ParserOptions parserOptions) {
         this.parserOptions = parserOptions;
@@ -330,6 +358,7 @@ public final class JSContextOptions {
             v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
         });
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
+        this.v8LegacyConst = readBooleanOption(V8_LEGACY_CONST, V8_LEGACY_CONST_NAME);
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
         this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, msg -> {
             directByteBufferCyclicAssumption.invalidate(msg);
@@ -351,6 +380,9 @@ public final class JSContextOptions {
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
         this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME);
         this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT, FUNCTION_ARGUMENTS_LIMIT_NAME);
+        this.test262Mode = readBooleanOption(TEST262_MODE, TEST262_MODE_NAME);
+        this.testV8Mode = readBooleanOption(TESTV8_MODE, TESTV8_MODE_NAME);
+        this.validateRegExpLiterals = readBooleanOption(VALIDATE_REGEXP_LITERALS, VALIDATE_REGEXP_LITERALS_NAME);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -506,6 +538,10 @@ public final class JSContextOptions {
         return v8RealmBuiltin;
     }
 
+    public boolean isV8LegacyConst() {
+        return v8LegacyConst;
+    }
+
     public boolean canAgentBlock() {
         return agentCanBlock;
     }
@@ -586,8 +622,31 @@ public final class JSContextOptions {
         return SIMDJS.getValue(optionValues);
     }
 
+    public boolean isLoadFromURL() {
+        return LOAD_FROM_URL.getValue(optionValues);
+    }
+
+    public boolean isBigInt() {
+        if (getEcmaScriptVersion() < JSTruffleOptions.ECMAScript2019) {
+            return false;
+        }
+        return BIGINT.getValue(optionValues);
+    }
+
     public long getFunctionArgumentsLimit() {
         return functionArgumentsLimit;
+    }
+
+    public boolean isTest262Mode() {
+        return test262Mode;
+    }
+
+    public boolean isTestV8Mode() {
+        return testV8Mode;
+    }
+
+    public boolean isValidateRegExpLiterals() {
+        return validateRegExpLiterals;
     }
 
     @Override
@@ -602,6 +661,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.sharedArrayBuffer ? 1 : 0);
         hash = 53 * hash + (this.v8CompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.v8RealmBuiltin ? 1 : 0);
+        hash = 53 * hash + (this.v8LegacyConst ? 1 : 0);
         hash = 53 * hash + (this.nashornCompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.debug ? 1 : 0);
         hash = 53 * hash + (this.directByteBuffer ? 1 : 0);
@@ -617,6 +677,9 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
         hash = 53 * hash + (this.hasForeignObjectPrototype ? 1 : 0);
         hash = 53 * hash + (int) this.functionArgumentsLimit;
+        hash = 53 * hash + (this.test262Mode ? 1 : 0);
+        hash = 53 * hash + (this.testV8Mode ? 1 : 0);
+        hash = 53 * hash + (this.validateRegExpLiterals ? 1 : 0);
         return hash;
     }
 
@@ -654,6 +717,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.v8RealmBuiltin != other.v8RealmBuiltin) {
+            return false;
+        }
+        if (this.v8LegacyConst != other.v8LegacyConst) {
             return false;
         }
         if (this.nashornCompatibilityMode != other.nashornCompatibilityMode) {
@@ -699,6 +765,15 @@ public final class JSContextOptions {
             return false;
         }
         if (this.functionArgumentsLimit != other.functionArgumentsLimit) {
+            return false;
+        }
+        if (this.test262Mode != other.test262Mode) {
+            return false;
+        }
+        if (this.testV8Mode != other.testV8Mode) {
+            return false;
+        }
+        if (this.validateRegExpLiterals != other.validateRegExpLiterals) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

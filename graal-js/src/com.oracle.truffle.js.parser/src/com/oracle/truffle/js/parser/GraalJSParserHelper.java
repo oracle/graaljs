@@ -66,7 +66,6 @@ import com.oracle.truffle.js.runtime.GraalJSParserOptions;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 
 public final class GraalJSParserHelper {
@@ -146,7 +145,7 @@ public final class GraalJSParserHelper {
                 if (lexerToken instanceof RegexToken) {
                     final RegexToken regex = (RegexToken) lexerToken;
                     // validate regular expression
-                    if (JSTruffleOptions.ValidateRegExpLiterals) {
+                    if (context.getContextOptions().isValidateRegExpLiterals()) {
                         try {
                             RegexCompilerInterface.validate(context, regex.getExpression(), regex.getOptions(), parserOptions.getEcmaScriptVersion());
                         } catch (JSException e) {
@@ -172,6 +171,7 @@ public final class GraalJSParserHelper {
         builder.scripting(parserOptions.isScripting());
         builder.shebang(parserOptions.isShebang());
         builder.constAsVar(parserOptions.isConstAsVar());
+        builder.allowBigInt(parserOptions.isAllowBigInt());
         if (parserOptions.isFunctionStatementError()) {
             builder.functionStatementBehavior(FunctionStatementBehavior.ERROR);
         } else {

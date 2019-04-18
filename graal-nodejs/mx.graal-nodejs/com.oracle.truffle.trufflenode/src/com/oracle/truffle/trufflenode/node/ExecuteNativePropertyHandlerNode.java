@@ -238,19 +238,29 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         if (JSRuntime.isArrayIndex(key)) {
             if (indexedHandler != null) {
                 if (indexedHandler.getDescriptor() != 0) {
-                    return executeDescriptorCallback(holder, arguments, false);
+                    Object result = executeDescriptorCallback(holder, arguments, false);
+                    if (result != null) {
+                        return result;
+                    }
+                } else {
+                    desc = executeGetOwnPropertyDescriptorHelper(holder, arguments, false);
                 }
-                desc = executeGetOwnPropertyDescriptorHelper(holder, arguments, false);
-            } else {
+            }
+            if (desc == null) {
                 desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
             }
         } else if (!stringKeysOnly || JSRuntime.isString(key)) {
             if (namedHandler != null) {
                 if (namedHandler.getDescriptor() != 0) {
-                    return executeDescriptorCallback(holder, arguments, true);
+                    Object result = executeDescriptorCallback(holder, arguments, true);
+                    if (result != null) {
+                        return result;
+                    }
+                } else {
+                    desc = executeGetOwnPropertyDescriptorHelper(holder, arguments, true);
                 }
-                desc = executeGetOwnPropertyDescriptorHelper(holder, arguments, true);
-            } else {
+            }
+            if (desc == null) {
                 desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
                 if (desc == null && indexedHandler != null) {
                     // handles a suspicious part of indexedinterceptors-test in nan package
@@ -282,7 +292,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                 }
             }
         }
-        return (result == null) ? Undefined.instance : result;
+        return result;
     }
 
     @CompilerDirectives.TruffleBoundary

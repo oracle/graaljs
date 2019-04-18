@@ -42,8 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -86,7 +84,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNodeGen;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -1209,7 +1206,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return e.getResult();
                 }
             } else {
-                return arrayLengthRead.executeDouble((DynamicObject) thisObj, guard);
+                return arrayLengthRead.executeDouble(receiverCheck.getStore(thisObj), guard);
             }
         }
 
@@ -1339,24 +1336,25 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             JSRealm realm = JSFunction.getRealm(functionObj);
             // Function kind guaranteed by shape check, see JSFunction
+            DynamicObject prototype;
             if (kind == CONSTRUCTOR) {
                 assert JSFunction.getFunctionData(functionObj).isConstructor();
                 if (setConstructor == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setConstructor = insert(CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR));
                 }
-                DynamicObject prototype = JSUserObject.create(context, realm);
+                prototype = JSUserObject.create(context, realm);
                 setConstructor.executeVoid(prototype, functionObj);
-                JSFunction.setClassPrototype(functionObj, prototype);
-                return prototype;
             } else if (kind == GENERATOR) {
                 assert JSFunction.getFunctionData(functionObj).isGenerator();
-                return JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+                prototype = JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
             } else {
                 assert kind == ASYNC_GENERATOR;
                 assert JSFunction.getFunctionData(functionObj).isAsyncGenerator();
-                return JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+                prototype = JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
             }
+            JSFunction.setClassPrototype(functionObj, prototype);
+            return prototype;
         }
     }
 
@@ -1434,24 +1432,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             String input = (String) getOriginalInputNode.getValue(store);
             return materializeNode.materializeGroup(regexResult, groupIndex, input);
         }
-    }
-
-    public static final class MapPropertyGetNode extends LinkedPropertyGetNode {
-        public MapPropertyGetNode(ReceiverCheckNode receiverCheck) {
-            super(receiverCheck);
-        }
-
-        @Override
-        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            Map<?, ?> map = (Map<?, ?>) thisObj;
-            Object value = Boundaries.mapGet(map, root.getKey());
-            if (value != null) {
-                return value;
-            } else {
-                return Null.instance;
-            }
-        }
-
     }
 
     /**

@@ -45,7 +45,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -140,6 +142,16 @@ public class TestNashorn extends TestSuite {
         return "testnashorn.txt";
     }
 
+    @Override
+    public Map<String, String> getCommonOptions() {
+        return Collections.emptyMap();
+    }
+
+    @Override
+    public List<String> getCommonExtLauncherOptions() {
+        return Collections.emptyList();
+    }
+
     public static void writeResult(String name, String result) {
         try {
             String flatName = toFlatName(name);
@@ -220,29 +232,21 @@ public class TestNashorn extends TestSuite {
             exit(-2);
         }
 
-        SuiteConfig config = new SuiteConfig(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
+        SuiteConfig.Builder configBuilder = new SuiteConfig.Builder(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
 
         TimeZone pstZone = TimeZone.getTimeZone("PST"); // Californian Time (PST)
         TimeZone.setDefault(pstZone);
 
         System.out.println("Checking your Javascript conformance. Using Nashorn testsuite.\n");
 
-        if (args.length > 0) {
-            for (String arg : args) {
-                if (arg.equals("saveoutput")) {
-                    config.setSaveOutput(true);
-                    config.setHtmlOutput(true);
-                } else {
-                    TestSuite.parseDefaultArgs(arg, config);
-                }
-            }
-        }
+        TestSuite.parseDefaultArgs(args, configBuilder);
 
         // always generate html output for 'single=' param
-        if (config.getEndsWithFilter() != null) {
-            config.setSaveOutput(true);
-            config.setHtmlOutput(true);
+        if (configBuilder.getEndsWithFilter() != null) {
+            configBuilder.setSaveOutput(true);
+            configBuilder.setHtmlOutput(true);
         }
+        SuiteConfig config = configBuilder.build();
         if (config.isSaveOutput()) {
             initializeSaveOutput();
         }

@@ -44,6 +44,8 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.Map;
+import java.util.function.Predicate;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -75,7 +77,7 @@ public final class TestFile {
     private final String filePath;
     private EcmaVersion ecmaVersion;
     private Status status;
-    private EnumMap<Endianness, Status> statusOverrides;
+    private EnumMap<StatusOverrideCondition, Status> statusOverrides;
     private Boolean runInIsolation;
     private String blockedBy;
     private String comment;
@@ -100,7 +102,7 @@ public final class TestFile {
     }
 
     /**
-     * Method {@link #getRealStatus()} should be preferred.
+     * Method {@link #getRealStatus(SuiteConfig)} should be preferred.
      */
     public Status getStatus() {
         return status;
@@ -110,11 +112,11 @@ public final class TestFile {
         this.status = status;
     }
 
-    public EnumMap<Endianness, Status> getStatusOverrides() {
+    public EnumMap<StatusOverrideCondition, Status> getStatusOverrides() {
         return statusOverrides;
     }
 
-    public void setStatusOverrides(EnumMap<Endianness, Status> statusOverrides) {
+    public void setStatusOverrides(EnumMap<StatusOverrideCondition, Status> statusOverrides) {
         this.statusOverrides = statusOverrides;
     }
 
@@ -175,19 +177,18 @@ public final class TestFile {
     }
 
     /**
-     * Returns real status.
-     * <p>
-     * It means {@link #getStatusOverrides() overriden status} for the {@link Endianness#current()
-     * current endianness} if defined, {@link #getStatus() status} otherwise.
+     * Returns the first matching entry of {@code overrideStatus}, if any, otherwise returns
+     * {@link #getStatus()}.
      *
      * @return real status
      */
     @JsonIgnore
-    public Status getRealStatus() {
+    public Status getRealStatus(SuiteConfig config) {
         if (statusOverrides != null) {
-            Status overridenStatus = statusOverrides.get(Endianness.current());
-            if (overridenStatus != null) {
-                return overridenStatus;
+            for (Map.Entry<StatusOverrideCondition, Status> entry : statusOverrides.entrySet()) {
+                if (entry.getKey().getCondition().test(config)) {
+                    return entry.getValue();
+                }
             }
         }
         return status;
@@ -342,22 +343,23 @@ public final class TestFile {
     }
 
     /**
-     * Represents endianness.
+     * Represents a condition for overriding {@link TestFile#getStatus()}.
      */
-    public enum Endianness {
-        BIG_ENDIAN,
-        LITTLE_ENDIAN;
+    public enum StatusOverrideCondition {
 
-        private static final ByteOrder NATIVE_BYTE_ORDER = ByteOrder.nativeOrder();
+        BIG_ENDIAN(cfg -> ByteOrder.BIG_ENDIAN.equals(ByteOrder.nativeOrder())),
+        LITTLE_ENDIAN(cfg -> ByteOrder.LITTLE_ENDIAN.equals(ByteOrder.nativeOrder())),
+        SVM(cfg -> cfg.isExtLauncher());
 
-        public static Endianness current() {
-            if (NATIVE_BYTE_ORDER.equals(ByteOrder.BIG_ENDIAN)) {
-                return BIG_ENDIAN;
-            }
-            assert NATIVE_BYTE_ORDER.equals(ByteOrder.LITTLE_ENDIAN) : NATIVE_BYTE_ORDER;
-            return LITTLE_ENDIAN;
+        private final Predicate<SuiteConfig> condition;
+
+        StatusOverrideCondition(Predicate<SuiteConfig> condition) {
+            this.condition = condition;
         }
 
+        public Predicate<SuiteConfig> getCondition() {
+            return condition;
+        }
     }
 
     /**
@@ -428,7 +430,5 @@ public final class TestFile {
             }
             return details;
         }
-
     }
-
 }

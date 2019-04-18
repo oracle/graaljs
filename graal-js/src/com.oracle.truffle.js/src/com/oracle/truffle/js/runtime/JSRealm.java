@@ -44,7 +44,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
@@ -280,6 +282,16 @@ public class JSRealm {
     @CompilationFinal private JSConsoleUtil consoleUtil;
     private JSModuleLoader moduleLoader;
 
+    /**
+     * List of realms (for Realm built-in). The list is available in top-level realm only (not in
+     * child realms).
+     */
+    private final List<JSRealm> realmList;
+    /**
+     * Parent realm (for a child realm) or {@code null} for a top-level realm.
+     */
+    private JSRealm parentRealm;
+
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
@@ -316,7 +328,6 @@ public class JSRealm {
         this.arrayConstructor = JSArray.createConstructor(this);
         this.booleanConstructor = JSBoolean.createConstructor(this);
         this.numberConstructor = JSNumber.createConstructor(this);
-        this.bigIntConstructor = JSBigInt.createConstructor(this);
         this.stringConstructor = JSString.createConstructor(this);
         this.regExpConstructor = JSRegExp.createConstructor(this);
         this.dateConstructor = JSDate.createConstructor(this);
@@ -345,7 +356,7 @@ public class JSRealm {
         this.callSiteConstructor = JSError.createCallSiteConstructor(this);
 
         this.arrayBufferConstructor = JSArrayBuffer.createConstructor(this);
-        this.typedArrayConstructors = new JSConstructor[TypedArray.factories().length];
+        this.typedArrayConstructors = new JSConstructor[TypedArray.factories(context).length];
         initializeTypedArrayConstructors();
         this.dataViewConstructor = JSDataView.createConstructor(this);
 
@@ -354,6 +365,11 @@ public class JSRealm {
             initializeSIMDTypeConstructors();
         } else {
             this.simdTypeConstructors = null;
+        }
+        if (context.getContextOptions().isBigInt()) {
+            this.bigIntConstructor = JSBigInt.createConstructor(this);
+        } else {
+            this.bigIntConstructor = null;
         }
 
         this.iteratorPrototype = createIteratorPrototype();
@@ -402,6 +418,8 @@ public class JSRealm {
         this.errorStream = System.err;
         this.outputWriter = new PrintWriterWrapper(outputStream, true);
         this.errorWriter = new PrintWriterWrapper(errorStream, true);
+
+        this.realmList = (context.getContextOptions().isV8RealmBuiltin() && (env == null || !isChildRealm())) ? new ArrayList<>() : null;
     }
 
     private void initializeTypedArrayConstructors() {
@@ -409,7 +427,7 @@ public class JSRealm {
         typedArrayConstructor = taConst.getFunctionObject();
         typedArrayPrototype = taConst.getPrototype();
 
-        for (TypedArrayFactory factory : TypedArray.factories()) {
+        for (TypedArrayFactory factory : TypedArray.factories(context)) {
             JSConstructor constructor = JSArrayBufferView.createConstructor(this, factory, taConst);
             typedArrayConstructors[factory.getFactoryIndex()] = constructor;
         }
@@ -769,7 +787,6 @@ public class JSRealm {
         putGlobalProperty(JSString.CLASS_NAME, getStringConstructor().getFunctionObject());
         putGlobalProperty(JSDate.CLASS_NAME, getDateConstructor().getFunctionObject());
         putGlobalProperty(JSNumber.CLASS_NAME, getNumberConstructor().getFunctionObject());
-        putGlobalProperty(JSBigInt.CLASS_NAME, getBigIntConstructor().getFunctionObject());
         putGlobalProperty(JSBoolean.CLASS_NAME, getBooleanConstructor().getFunctionObject());
         putGlobalProperty(JSRegExp.CLASS_NAME, getRegExpConstructor().getFunctionObject());
         putGlobalProperty(JSMath.CLASS_NAME, mathObject);
@@ -790,7 +807,7 @@ public class JSRealm {
         }
 
         putGlobalProperty(JSArrayBuffer.CLASS_NAME, getArrayBufferConstructor().getFunctionObject());
-        for (TypedArrayFactory factory : TypedArray.factories()) {
+        for (TypedArrayFactory factory : TypedArray.factories(context)) {
             putGlobalProperty(factory.getName(), getArrayBufferViewConstructor(factory).getFunctionObject());
         }
         putGlobalProperty(JSDataView.CLASS_NAME, getDataViewConstructor().getFunctionObject());
@@ -801,6 +818,9 @@ public class JSRealm {
                 JSObjectUtil.putDataProperty(context, simdObject, factory.getName(), getSIMDTypeConstructor(factory).getFunctionObject(), JSAttributes.getDefaultNotEnumerable());
             }
             putGlobalProperty(JSSIMD.SIMD_OBJECT_NAME, simdObject);
+        }
+        if (context.getContextOptions().isBigInt()) {
+            putGlobalProperty(JSBigInt.CLASS_NAME, getBigIntConstructor().getFunctionObject());
         }
 
         if (context.isOptionNashornCompatibilityMode()) {
@@ -819,10 +839,10 @@ public class JSRealm {
         if (context.isOptionDebugBuiltin()) {
             putGlobalProperty(JSTruffleOptions.DebugPropertyName, createDebugObject());
         }
-        if (JSTruffleOptions.Test262Mode) {
+        if (context.getContextOptions().isTest262Mode()) {
             putGlobalProperty(JSTest262.GLOBAL_PROPERTY_NAME, JSTest262.create(this));
         }
-        if (JSTruffleOptions.TestV8Mode) {
+        if (context.getContextOptions().isTestV8Mode()) {
             putGlobalProperty(JSTestV8.CLASS_NAME, JSTestV8.create(this));
         }
         if (context.getEcmaScriptVersion() >= 6) {
@@ -1249,7 +1269,7 @@ public class JSRealm {
         return jsAdapterConstructor;
     }
 
-    public TruffleLanguage.Env getEnv() {
+    public final TruffleLanguage.Env getEnv() {
         return truffleLanguageEnv;
     }
 
@@ -1294,8 +1314,19 @@ public class JSRealm {
         Object prev = nestedContext.enter();
         try {
             JSRealm childRealm = JavaScriptLanguage.getCurrentJSRealm();
-            // "Realm" object is shared by all realms (V8 compatibility mode)
-            childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
+            childRealm.parentRealm = this;
+
+            if (getContext().getContextOptions().isV8RealmBuiltin()) {
+                // "Realm" object is shared by all realms (V8 compatibility mode)
+                childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
+
+                JSRealm topLevelRealm = this;
+                while (topLevelRealm.parentRealm != null) {
+                    topLevelRealm = topLevelRealm.parentRealm;
+                }
+                topLevelRealm.addToRealmList(childRealm);
+            }
+
             return childRealm;
         } finally {
             nestedContext.leave(prev);
@@ -1310,11 +1341,11 @@ public class JSRealm {
         this.preparingStackTrace = preparingStackTrace;
     }
 
-    public TruffleContext getTruffleContext() {
+    public final TruffleContext getTruffleContext() {
         return getEnv().getContext();
     }
 
-    public boolean isChildRealm() {
+    public final boolean isChildRealm() {
         return getTruffleContext().getParent() != null;
     }
 
@@ -1534,4 +1565,30 @@ public class JSRealm {
             };
         }
     }
+
+    public JSRealm getParent() {
+        return parentRealm;
+    }
+
+    synchronized void addToRealmList(JSRealm newRealm) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert !realmList.contains(newRealm);
+        realmList.add(newRealm);
+    }
+
+    public synchronized JSRealm getFromRealmList(int idx) {
+        CompilerAsserts.neverPartOfCompilation();
+        return realmList.get(idx);
+    }
+
+    public synchronized int getIndexFromRealmList(JSRealm rlm) {
+        CompilerAsserts.neverPartOfCompilation();
+        return realmList.indexOf(rlm);
+    }
+
+    public synchronized void removeFromRealmList(int idx) {
+        CompilerAsserts.neverPartOfCompilation();
+        realmList.set(idx, null);
+    }
+
 }

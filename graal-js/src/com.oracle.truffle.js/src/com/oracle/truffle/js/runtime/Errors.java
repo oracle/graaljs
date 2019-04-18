@@ -232,6 +232,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotIterable(Object value, Node originatingNode) {
+        return Errors.createTypeError(JSRuntime.safeToString(value) + "  is not iterable", originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorInvalidPrototype(Object value) {
         return Errors.createTypeError("Object prototype may only be an Object or null: " + JSRuntime.safeToString(value));
     }
@@ -658,6 +663,11 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorIteratorResultNotObject(Object value, Node originatingNode) {
         return Errors.createTypeError("Iterator result " + JSRuntime.safeToString(value) + " is not an object", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createSIMDExpected() {
+        return Errors.createTypeError("SIMD type expected");
     }
 
 }

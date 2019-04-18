@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -71,7 +72,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
     @Child private JSToBigIntNode toBigIntNode;
 
     protected SetViewValueNode(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian, JavaScriptNode value) {
-        this(context, GetViewValueNode.typedArrayFactoryFromType(type), view, requestIndex, isLittleEndian, value);
+        this(context, GetViewValueNode.typedArrayFactoryFromType(type, context), view, requestIndex, isLittleEndian, value);
     }
 
     protected SetViewValueNode(JSContext context, TypedArrayFactory factory, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian, JavaScriptNode value) {
@@ -82,7 +83,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         this.isLittleEndianNode = isLittleEndian;
         this.valueNode = value;
         this.toBooleanNode = factory.getBytesPerElement() == 1 ? null : JSToBooleanNode.create();
-        if (isBigIntView()) {
+        if (JSRuntime.isTypedArrayBigIntFactory(factory)) {
             this.toBigIntNode = JSToBigIntNode.create();
         } else {
             this.toNumberNode = JSToNumberNode.create();
@@ -104,7 +105,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         DynamicObject buffer = JSDataView.getArrayBuffer(dataView);
 
         long getIndex = toIndexNode.executeLong(requestIndex);
-        Object numberValue = isBigIntView() ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
+        Object numberValue = JSRuntime.isTypedArrayBigIntFactory(factory) ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
         boolean isLittleEndian = factory.getBytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
 
         if (!context.getTypedArrayNotDetachedAssumption().isValid()) {
@@ -126,10 +127,6 @@ public abstract class SetViewValueNode extends JavaScriptNode {
         TypedArray strategy = typeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true));
         strategy.setBufferElement(buffer, bufferIndex, isLittleEndian, JSDataView.isJSDataView(view), numberValue);
         return Undefined.instance;
-    }
-
-    private boolean isBigIntView() {
-        return factory == TypedArrayFactory.BigInt64Array || factory == TypedArrayFactory.BigUint64Array;
     }
 
     public static SetViewValueNode create(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian, JavaScriptNode value) {

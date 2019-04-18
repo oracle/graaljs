@@ -40,37 +40,26 @@
  */
 package com.oracle.truffle.js.test.external.testv8;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.ExitException;
-import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
+import com.oracle.truffle.js.test.external.suite.TestExtProcessCallable;
 import com.oracle.truffle.js.test.external.suite.TestFile;
 import com.oracle.truffle.js.test.external.suite.TestRunnable;
 import com.oracle.truffle.js.test.external.suite.TestSuite;
 
 public class TestV8Runnable extends TestRunnable {
     private static final int LONG_RUNNING_TEST_SECONDS = 55;
-
-    private static final Map<String, String> commonOptions;
-    static {
-        Map<String, String> options = new HashMap<>();
-        options.put(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
-        options.put(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
-        options.put(JSContextOptions.INTL_402_NAME, "true");
-        options.put(JSContextOptions.SHELL_NAME, "true"); // readbuffer, quit
-        commonOptions = Collections.unmodifiableMap(options);
-    }
 
     public TestV8Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
@@ -99,42 +88,19 @@ public class TestV8Runnable extends TestRunnable {
     }
 
     private TestFile.Result runInternal(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module) {
-        final String ecmaVersionSuffix = " (ES" + ecmaVersion + ")";
-        suite.logVerbose(getName() + ecmaVersionSuffix);
+        suite.logVerbose(getName() + ecmaVersionToString(ecmaVersion));
         TestFile.Result testResult;
 
         long startDate = System.currentTimeMillis();
-        String testFileNamePrefix = "\nTEST_FILE_NAME = \"" + file.getPath().replaceAll("\\\\", "\\\\\\\\") + "\"\n";
-        Source testFileNamePrefixSource = Source.newBuilder(JavaScriptLanguage.ID, testFileNamePrefix, "").buildLiteral();
-        Source[] prequelSources = loadHarnessSources(ecmaVersion);
-        Source[] sources = Arrays.copyOf(prequelSources, prequelSources.length + 2);
-        sources[sources.length - 1] = testFileNamePrefixSource;
-        sources[sources.length - 2] = ((TestV8) suite).getMockupSource();
-
-        TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion, commonOptions);
-        if (!suite.getConfig().isPrintFullOutput()) {
-            tc.setOutput(DUMMY_OUTPUT_STREAM);
-        }
         reportStart();
-        try {
-            tc.call();
-            testResult = TestFile.Result.PASSED;
-        } catch (Throwable e) {
-            if (e instanceof ExitException && ((ExitException) e).getStatus() == 0) {
-                testResult = TestFile.Result.PASSED;
-            } else {
-                testResult = TestFile.Result.failed(e);
-                if (!negative && !shouldThrow) {
-                    suite.logFail(testFile, "FAILED" + ecmaVersionSuffix, e);
-                }
-            }
+        if (suite.getConfig().isExtLauncher()) {
+            testResult = runExtLauncher(ecmaVersion, file, negative, shouldThrow, module);
+        } else {
+            testResult = runInJVM(ecmaVersion, file, negative, shouldThrow, module);
         }
-        reportEnd(startDate);
-
-        assert testResult != null : testFile;
         if (negative) {
             if (!testResult.isFailure()) {
-                suite.logFail(testFile, "FAILED" + ecmaVersionSuffix, "negative test, was expected to fail but didn't");
+                logFailure(ecmaVersion, "negative test, was expected to fail but didn't");
             } else {
                 testResult = TestFile.Result.PASSED;
             }
@@ -142,12 +108,82 @@ public class TestV8Runnable extends TestRunnable {
         // test with --throws must fail
         if (shouldThrow) {
             if (!testResult.isFailure()) {
-                suite.logFail(testFile, "FAILED" + ecmaVersionSuffix, "--throws test, was expected to fail but didn't");
+                logFailure(ecmaVersion, "--throws test, was expected to fail but didn't");
             } else {
                 testResult = TestFile.Result.PASSED;
             }
         }
+        reportEnd(startDate);
         return testResult;
+    }
+
+    private TestFile.Result runInJVM(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module) {
+        Source[] prequelSources = loadHarnessSources(ecmaVersion);
+        Source[] sources = Arrays.copyOf(prequelSources, prequelSources.length + 2);
+        sources[sources.length - 1] = Source.newBuilder(JavaScriptLanguage.ID, createTestFileNamePrefix(file), "").buildLiteral();
+        sources[sources.length - 2] = ((TestV8) suite).getMockupSource();
+
+        TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion);
+        if (!suite.getConfig().isPrintFullOutput()) {
+            tc.setOutput(DUMMY_OUTPUT_STREAM);
+        }
+        try {
+            tc.call();
+            return TestFile.Result.PASSED;
+        } catch (Throwable e) {
+            if (e instanceof ExitException && ((ExitException) e).getStatus() == 0) {
+                return TestFile.Result.PASSED;
+            } else {
+                if (!negative && !shouldThrow) {
+                    logFailure(ecmaVersion, e);
+                }
+                return TestFile.Result.failed(e);
+            }
+        }
+    }
+
+    private TestFile.Result runExtLauncher(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module) {
+        Source[] prequelSources = loadHarnessSources(ecmaVersion);
+        List<String> args = new ArrayList<>(prequelSources.length + (module ? 5 : 4));
+        for (Source prequelSrc : prequelSources) {
+            args.add(prequelSrc.getPath());
+        }
+        args.add("--eval");
+        args.add(createTestFileNamePrefix(file));
+        args.add(((TestV8) suite).getMockupSource().getPath());
+        if (module) {
+            args.add("--module");
+        }
+        args.add(file.getPath());
+        TestExtProcessCallable tc = new TestExtProcessCallable(suite, ecmaVersion, args);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        tc.setOutput(byteArrayOutputStream);
+        tc.setError(byteArrayOutputStream);
+        try {
+            switch (tc.call()) {
+                case SUCCESS:
+                    return TestFile.Result.PASSED;
+                case FAILURE:
+                    if (negative || shouldThrow) {
+                        return TestFile.Result.failed("TestV8 expected failure");
+                    } else {
+                        String error = extLauncherFindError(byteArrayOutputStream.toString());
+                        logFailure(ecmaVersion, error);
+                        return TestFile.Result.failed(error);
+                    }
+                case TIMEOUT:
+                    logTimeout(ecmaVersion);
+                    return TestFile.Result.timeout("TIMEOUT");
+                default:
+                    throw new IllegalStateException("should not reach here");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String createTestFileNamePrefix(File file) {
+        return "TEST_FILE_NAME = \"" + file.getPath().replaceAll("\\\\", "\\\\\\\\") + "\"";
     }
 
     private void reportStart() {

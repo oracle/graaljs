@@ -51,6 +51,14 @@ describe('vm', function () {
         assert.strictEqual(stack, 'inner');
         delete Error.prepareStackTrace;
     });
+    it('should handle Reflect.getOwnPropertyDescriptor(this,"Function")', function () {
+        var desc = vm.runInNewContext('Reflect.getOwnPropertyDescriptor(this,"Function")');
+        assert.strictEqual(typeof desc.value, 'function');
+        assert.strictEqual(desc.value.name, 'Function');
+        assert.strictEqual(desc.writable, true);
+        assert.strictEqual(desc.enumerable, false);
+        assert.strictEqual(desc.configurable, true);
+    });
     it('should handle non-configurable properties of sandbox', function () {
         var sandbox = {};
         var value = 42;

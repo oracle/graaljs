@@ -108,7 +108,7 @@ public class Scanner {
         public final int position;
 
         /** Scan limit. */
-        public int limit;
+        private int limit;
 
         /** Current line number. */
         public final int line;
@@ -125,6 +125,10 @@ public class Scanner {
          */
         void setLimit(final int limit) {
             this.limit = limit;
+        }
+
+        int getLimit() {
+            return limit;
         }
 
         boolean isEmpty() {

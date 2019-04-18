@@ -324,8 +324,9 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     }
 
     private void checkSameSourceSection(SourceSection newSection) {
-        if (!getSourceSection().equals(newSection)) {
-            throw new IllegalStateException(String.format("Source section is already assigned. Old: %s, new: %s", getSourceSection(), newSection));
+        SourceSection sourceSection = getSourceSection();
+        if (sourceSection != null && !sourceSection.equals(newSection)) {
+            throw new IllegalStateException(String.format("Source section is already assigned. Old: %s, new: %s", sourceSection, newSection));
         }
     }
 

@@ -92,7 +92,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
     private final Engine engine;
 
     public GraalJSEngineFactory() {
-        this.engine = Engine.create();
+        this.engine = Engine.newBuilder().allowExperimentalOptions(true).build();
     }
 
     GraalJSEngineFactory(Engine engine) {

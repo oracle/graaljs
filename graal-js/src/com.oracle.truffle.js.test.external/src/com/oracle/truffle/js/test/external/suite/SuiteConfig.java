@@ -41,241 +41,348 @@
 package com.oracle.truffle.js.test.external.suite;
 
 import java.nio.file.Paths;
+import java.util.Map;
 
 public class SuiteConfig {
+
     // config: main
     private final String suiteName;
     private final String suiteDescription;
 
-    // config: files and paths
-    private final String suiteTestsRelLoc;
-    private final String suiteHarnessRelLoc;
-    private String suiteLoc;
-    private String suiteTestsLoc;
-    private String suiteHarnessLoc;
-    private String suiteConfigLoc;
+    private final String suiteLoc;
+    private final String suiteTestsLoc;
+    private final String suiteHarnessLoc;
+    private final String suiteConfigLoc;
 
     // config: options
-    private boolean useThreads;
-    private boolean verbose;
-    private boolean verboseFail;
-    private boolean runOnGate;
-    private boolean gateResume;
-    private boolean printScript;
-    private boolean saveOutput;
-    private boolean compile;
-    private boolean htmlOutput;
-    private boolean textOutput;
-    private boolean regenerateConfig;
-    private int compileCount;
-    private int timeoutTest; // individual timeouts not supported by all engines
-    private int timeoutOverall;
-    private String containsFilter;
-    private String regexFilter;
-    private String endsWithFilter;
-    private boolean printFullOutput;
-    private String outputFilter;
+    private final boolean useThreads;
+    private final boolean verbose;
+    private final boolean verboseFail;
+    private final boolean runOnGate;
+    private final boolean gateResume;
+    private final boolean printScript;
+    private final boolean saveOutput;
+    private final boolean compile;
+    private final boolean htmlOutput;
+    private final boolean textOutput;
+    private final boolean regenerateConfig;
+    private final int compileCount;
+    private final int timeoutTest; // individual timeouts not supported by all engines
+    private final int timeoutOverall;
+    private final String containsFilter;
+    private final String regexFilter;
+    private final String endsWithFilter;
+    private final boolean printFullOutput;
+    private final String outputFilter;
 
-    public SuiteConfig(String suiteName, String suiteDescription, String defaultSuiteLoc, String defaultSuiteConfigLoc, String suiteTestsRelLoc, String suiteHarnessRelLoc) {
+    private final String extLauncher;
+
+    SuiteConfig(String suiteName, String suiteDescription,
+                    String suiteLoc, String suiteTestsLoc, String suiteHarnessLoc, String suiteConfigLoc,
+                    boolean useThreads, boolean verbose, boolean verboseFail, boolean runOnGate, boolean gateResume, boolean printScript, boolean saveOutput, boolean compile,
+                    boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int compileCount, int timeoutTest, int timeoutOverall, String containsFilter, String regexFilter,
+                    String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher) {
         this.suiteName = suiteName;
         this.suiteDescription = suiteDescription;
-        this.suiteTestsRelLoc = suiteTestsRelLoc;
-        this.suiteHarnessRelLoc = suiteHarnessRelLoc;
-        this.suiteConfigLoc = defaultSuiteConfigLoc;
-        this.compileCount = 100;
-        this.timeoutTest = TestSuite.INDIVIDUAL_TIMEOUT_SECONDS;
-        this.timeoutOverall = TestSuite.OVERALL_TIMEOUT_SECONDS;
-        this.useThreads = true;
-        setSuiteLoc(defaultSuiteLoc);
+        this.suiteLoc = suiteLoc;
+        this.suiteTestsLoc = suiteTestsLoc;
+        this.suiteHarnessLoc = suiteHarnessLoc;
+        this.suiteConfigLoc = suiteConfigLoc;
+        this.useThreads = useThreads;
+        this.verbose = verbose;
+        this.verboseFail = verboseFail;
+        this.runOnGate = runOnGate;
+        this.gateResume = gateResume;
+        this.printScript = printScript;
+        this.saveOutput = saveOutput;
+        this.compile = compile;
+        this.htmlOutput = htmlOutput;
+        this.textOutput = textOutput;
+        this.regenerateConfig = regenerateConfig;
+        this.compileCount = compileCount;
+        this.timeoutTest = timeoutTest;
+        this.timeoutOverall = timeoutOverall;
+        this.containsFilter = containsFilter;
+        this.regexFilter = regexFilter;
+        this.endsWithFilter = endsWithFilter;
+        this.printFullOutput = printFullOutput;
+        this.outputFilter = outputFilter;
+        this.extLauncher = extLauncher;
     }
 
-    public synchronized String getSuiteName() {
+    public String getSuiteName() {
         return suiteName;
     }
 
-    public synchronized String getSuiteDescription() {
+    public String getSuiteDescription() {
         return suiteDescription;
     }
 
-    public synchronized String getSuiteLoc() {
+    public String getSuiteLoc() {
         return suiteLoc;
     }
 
-    public synchronized String getSuiteConfigLoc() {
+    public String getSuiteConfigLoc() {
         return suiteConfigLoc;
     }
 
-    public synchronized String getSuiteTestsLoc() {
+    public String getSuiteTestsLoc() {
         return suiteTestsLoc;
     }
 
-    public synchronized String getSuiteHarnessLoc() {
+    public String getSuiteHarnessLoc() {
         return suiteHarnessLoc;
     }
 
-    public synchronized boolean isUseThreads() {
+    public boolean isUseThreads() {
         return useThreads;
     }
 
-    public synchronized boolean isVerbose() {
+    public boolean isVerbose() {
         return verbose;
     }
 
-    public synchronized boolean isVerboseFail() {
+    public boolean isVerboseFail() {
         return verboseFail;
     }
 
-    public synchronized boolean isRunOnGate() {
+    public boolean isRunOnGate() {
         return runOnGate;
     }
 
-    public synchronized boolean isGateResume() {
+    public boolean isGateResume() {
         return gateResume;
     }
 
-    public synchronized boolean isPrintScript() {
+    public boolean isPrintScript() {
         return printScript;
     }
 
-    public synchronized boolean isSaveOutput() {
+    public boolean isSaveOutput() {
         return saveOutput;
     }
 
-    public synchronized boolean isCompile() {
+    public boolean isCompile() {
         return compile;
     }
 
-    public synchronized boolean isHtmlOutput() {
+    public boolean isHtmlOutput() {
         return htmlOutput;
     }
 
-    public synchronized boolean isTextOutput() {
+    public boolean isTextOutput() {
         return textOutput;
     }
 
-    public synchronized boolean isRegenerateConfig() {
+    public boolean isRegenerateConfig() {
         return regenerateConfig;
     }
 
-    public synchronized int getCompileCount() {
+    public int getCompileCount() {
         return compileCount;
-    }
-
-    public synchronized void setSuiteLoc(String suiteLoc) {
-        this.suiteLoc = suiteLoc;
-        this.suiteTestsLoc = Paths.get(this.suiteLoc, this.suiteTestsRelLoc).toString();
-        this.suiteHarnessLoc = Paths.get(this.suiteLoc, this.suiteHarnessRelLoc).toString();
-    }
-
-    public synchronized void setSuiteConfigLoc(String suiteConfigLoc) {
-        this.suiteConfigLoc = suiteConfigLoc;
-    }
-
-    public synchronized void setUseThreads(boolean useThreads) {
-        this.useThreads = useThreads;
-    }
-
-    public synchronized void setVerbose(boolean verbose) {
-        this.verbose = verbose;
-    }
-
-    public synchronized void setVerboseFail(boolean verboseFail) {
-        this.verboseFail = verboseFail;
-    }
-
-    public synchronized void setRunOnGate(boolean runOnGate) {
-        this.runOnGate = runOnGate;
-    }
-
-    public synchronized void setGateResume(boolean gateResume) {
-        this.gateResume = gateResume;
-    }
-
-    public synchronized void setPrintScript(boolean printScript) {
-        this.printScript = printScript;
-    }
-
-    public synchronized void setSaveOutput(boolean saveOutput) {
-        this.saveOutput = saveOutput;
-    }
-
-    public synchronized void setCompile(boolean compile) {
-        this.compile = compile;
-    }
-
-    public synchronized void setHtmlOutput(boolean htmlOutput) {
-        this.htmlOutput = htmlOutput;
-    }
-
-    public synchronized void setTextOutput(boolean textOutput) {
-        this.textOutput = textOutput;
-    }
-
-    public synchronized void setRegenerateConfig(boolean regenerateConfig) {
-        this.regenerateConfig = regenerateConfig;
-    }
-
-    public synchronized void setCompileCount(int compileCount) {
-        this.compileCount = compileCount;
     }
 
     /**
      * Define the timeout of a single test. Used only in combination with
      * executeWithSeparateThreads() == true;
      */
-    public synchronized int getTimeoutTest() {
+    public int getTimeoutTest() {
         return timeoutTest;
     }
 
-    public synchronized void setTimeoutTest(int timeout) {
-        this.timeoutTest = timeout;
-    }
-
-    public synchronized int getTimeoutOverall() {
+    public int getTimeoutOverall() {
         return timeoutOverall;
     }
 
-    public synchronized void setTimeoutOverall(int timeoutOverall) {
-        this.timeoutOverall = timeoutOverall;
-    }
-
-    public synchronized String getContainsFilter() {
+    public String getContainsFilter() {
         return containsFilter;
     }
 
-    public synchronized String getRegexFilter() {
+    public String getRegexFilter() {
         return regexFilter;
     }
 
-    public synchronized void setContainsFilter(String containsFilter) {
-        this.containsFilter = containsFilter;
-    }
-
-    public synchronized void setRegexFilter(String regexFilter) {
-        this.regexFilter = regexFilter;
-    }
-
-    public synchronized String getEndsWithFilter() {
+    public String getEndsWithFilter() {
         return endsWithFilter;
     }
 
-    public synchronized void setEndsWithFilter(String endsWithFilter) {
-        this.endsWithFilter = endsWithFilter;
-    }
-
-    public synchronized boolean isPrintFullOutput() {
+    public boolean isPrintFullOutput() {
         return printFullOutput;
     }
 
-    public synchronized void setPrintFullOutput(boolean fullOutput) {
-        this.printFullOutput = fullOutput;
-    }
-
-    public synchronized String getOutputFilter() {
+    public String getOutputFilter() {
         return outputFilter;
     }
 
-    public synchronized void setOutputFilter(String outputFilter) {
-        this.outputFilter = outputFilter;
+    public boolean isExtLauncher() {
+        return extLauncher != null;
+    }
+
+    public String getExtLauncher() {
+        return extLauncher;
+    }
+
+    public void addCommonOptions(Map<String, String> options) {
+        if (isCompile()) {
+            if (isExtLauncher()) {
+                options.put("vm.Dgraal.TruffleCompileImmediately", "true");
+            } else {
+                System.out.println("WARNING: the \"compile\" option has no effect without \"externallauncher\". Use \"-Dgraal.TruffleCompileImmediately=true\" instead!");
+            }
+        }
+    }
+
+    public static class Builder {
+        // config: main
+        private final String suiteName;
+        private final String suiteDescription;
+
+        // config: files and paths
+        private final String suiteTestsRelLoc;
+        private final String suiteHarnessRelLoc;
+        private String suiteLoc;
+        private String suiteTestsLoc;
+        private String suiteHarnessLoc;
+        private String suiteConfigLoc;
+
+        // config: options
+        private boolean useThreads;
+        private boolean verbose;
+        private boolean verboseFail;
+        private boolean runOnGate;
+        private boolean gateResume;
+        private boolean printScript;
+        private boolean saveOutput;
+        private boolean compile;
+        private boolean htmlOutput;
+        private boolean textOutput;
+        private boolean regenerateConfig;
+        private int compileCount;
+        private int timeoutTest; // individual timeouts not supported by all engines
+        private int timeoutOverall;
+        private String containsFilter;
+        private String regexFilter;
+        private String endsWithFilter;
+        private boolean printFullOutput;
+        private String outputFilter;
+
+        private String extLauncher;
+
+        public Builder(String suiteName, String suiteDescription, String defaultSuiteLoc, String defaultSuiteConfigLoc, String suiteTestsRelLoc, String suiteHarnessRelLoc) {
+            this.suiteName = suiteName;
+            this.suiteDescription = suiteDescription;
+            this.suiteTestsRelLoc = suiteTestsRelLoc;
+            this.suiteHarnessRelLoc = suiteHarnessRelLoc;
+            this.suiteConfigLoc = defaultSuiteConfigLoc;
+            this.compileCount = 100;
+            this.timeoutTest = TestSuite.INDIVIDUAL_TIMEOUT_SECONDS;
+            this.timeoutOverall = TestSuite.OVERALL_TIMEOUT_SECONDS;
+            this.useThreads = true;
+            setSuiteLoc(defaultSuiteLoc);
+        }
+
+        public String getSuiteName() {
+            return suiteName;
+        }
+
+        public Object getEndsWithFilter() {
+            return endsWithFilter;
+        }
+
+        public void setSuiteLoc(String suiteLoc) {
+            this.suiteLoc = suiteLoc;
+            this.suiteTestsLoc = Paths.get(this.suiteLoc, this.suiteTestsRelLoc).toString();
+            this.suiteHarnessLoc = Paths.get(this.suiteLoc, this.suiteHarnessRelLoc).toString();
+        }
+
+        public void setSuiteConfigLoc(String suiteConfigLoc) {
+            this.suiteConfigLoc = suiteConfigLoc;
+        }
+
+        public void setUseThreads(boolean useThreads) {
+            this.useThreads = useThreads;
+        }
+
+        public void setVerbose(boolean verbose) {
+            this.verbose = verbose;
+        }
+
+        public void setVerboseFail(boolean verboseFail) {
+            this.verboseFail = verboseFail;
+        }
+
+        public void setRunOnGate(boolean runOnGate) {
+            this.runOnGate = runOnGate;
+        }
+
+        public void setGateResume(boolean gateResume) {
+            this.gateResume = gateResume;
+        }
+
+        public void setPrintScript(boolean printScript) {
+            this.printScript = printScript;
+        }
+
+        public void setSaveOutput(boolean saveOutput) {
+            this.saveOutput = saveOutput;
+        }
+
+        public void setCompile(boolean compile) {
+            this.compile = compile;
+        }
+
+        public void setHtmlOutput(boolean htmlOutput) {
+            this.htmlOutput = htmlOutput;
+        }
+
+        public void setTextOutput(boolean textOutput) {
+            this.textOutput = textOutput;
+        }
+
+        public void setRegenerateConfig(boolean regenerateConfig) {
+            this.regenerateConfig = regenerateConfig;
+        }
+
+        public void setCompileCount(int compileCount) {
+            this.compileCount = compileCount;
+        }
+
+        public void setTimeoutTest(int timeout) {
+            this.timeoutTest = timeout;
+        }
+
+        public void setTimeoutOverall(int timeoutOverall) {
+            this.timeoutOverall = timeoutOverall;
+        }
+
+        public void setContainsFilter(String containsFilter) {
+            this.containsFilter = containsFilter;
+        }
+
+        public void setRegexFilter(String regexFilter) {
+            this.regexFilter = regexFilter;
+        }
+
+        public void setEndsWithFilter(String endsWithFilter) {
+            this.endsWithFilter = endsWithFilter;
+        }
+
+        public void setPrintFullOutput(boolean fullOutput) {
+            this.printFullOutput = fullOutput;
+        }
+
+        public void setOutputFilter(String outputFilter) {
+            this.outputFilter = outputFilter;
+        }
+
+        public void setExtLauncher(String extLauncher) {
+            this.extLauncher = extLauncher;
+        }
+
+        public SuiteConfig build() {
+            return new SuiteConfig(suiteName, suiteDescription, suiteLoc, suiteTestsLoc, suiteHarnessLoc, suiteConfigLoc, useThreads, verbose, verboseFail, runOnGate, gateResume, printScript,
+                            saveOutput, compile, htmlOutput, textOutput, regenerateConfig, compileCount, timeoutTest, timeoutOverall, containsFilter, regexFilter,
+                            endsWithFilter, printFullOutput, outputFilter, extLauncher);
+        }
     }
 }

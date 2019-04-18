@@ -49,6 +49,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -193,6 +195,12 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 }
                 addModule(value);
                 return Consumed;
+            case "strict-file":
+                if (value == null) {
+                    return MissingValue;
+                }
+                addStrictFile(value);
+                return Consumed;
         }
         return Unhandled;
     }
@@ -236,6 +244,10 @@ public class JSLauncher extends AbstractLanguageLauncher {
 
     void addModule(String file) {
         unparsedSources.add(new UnparsedSource(file, SourceType.MODULE));
+    }
+
+    void addStrictFile(String file) {
+        unparsedSources.add(new UnparsedSource(file, SourceType.STRICT));
     }
 
     @Override
@@ -329,6 +341,8 @@ public class JSLauncher extends AbstractLanguageLauncher {
             status = runREPL(context);
         }
         context.close();
+        System.out.flush();
+        System.err.flush();
         return status;
     }
 
@@ -391,6 +405,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
         FILE,
         EVAL,
         MODULE,
+        STRICT,
     }
 
     private static final class UnparsedSource {
@@ -410,6 +425,8 @@ public class JSLauncher extends AbstractLanguageLauncher {
                     return Source.newBuilder("js", src, "<eval_script>").buildLiteral();
                 case MODULE:
                     return Source.newBuilder("js", new File(src)).mimeType(MODULE_MIME_TYPE).build();
+                case STRICT:
+                    return Source.newBuilder("js", new File(src)).content("\"use strict\";" + new String(Files.readAllBytes(Paths.get(src)), "UTF-8")).build();
                 default:
                     throw new IllegalStateException();
             }

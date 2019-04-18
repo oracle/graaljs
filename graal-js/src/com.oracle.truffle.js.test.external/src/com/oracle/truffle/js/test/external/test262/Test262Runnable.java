@@ -44,8 +44,8 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -67,6 +67,7 @@ import org.graalvm.polyglot.Source;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
+import com.oracle.truffle.js.test.external.suite.TestExtProcessCallable;
 import com.oracle.truffle.js.test.external.suite.TestFile;
 import com.oracle.truffle.js.test.external.suite.TestRunnable;
 import com.oracle.truffle.js.test.external.suite.TestSuite;
@@ -86,13 +87,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(", ");
-
-    private static final Map<String, String> commonOptions;
-    static {
-        Map<String, String> options = new HashMap<>();
-        options.put(JSContextOptions.INTL_402_NAME, "true");
-        commonOptions = Collections.unmodifiableMap(options);
-    }
 
     private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Array.prototype.flat",
@@ -207,6 +201,14 @@ public class Test262Runnable extends TestRunnable {
                     "import.meta"
     }));
 
+    private static final Map<String, String> EXTRA_OPTIONS_AGENT_CANNOT_BLOCK;
+
+    static {
+        Map<String, String> initExtraOptions = new HashMap<>();
+        initExtraOptions.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
+        EXTRA_OPTIONS_AGENT_CANNOT_BLOCK = Collections.unmodifiableMap(initExtraOptions);
+    }
+
     public Test262Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
     }
@@ -226,9 +228,6 @@ public class Test262Runnable extends TestRunnable {
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
 
-        String prefix = runStrict ? "\"use strict\";" : "";
-        org.graalvm.polyglot.Source testSource = createSource(file, prefix + TestSuite.toPrintableCode(scriptCodeList), module);
-
         if (getConfig().isPrintScript()) {
             synchronized (suite) {
                 System.out.println("================================================================");
@@ -241,13 +240,7 @@ public class Test262Runnable extends TestRunnable {
 
         Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
 
-        final Map<String, String> options;
-        if (agentCannotBlock) {
-            options = new HashMap<>(commonOptions);
-            options.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
-        } else {
-            options = commonOptions;
-        }
+        final Map<String, String> extraOptions = agentCannotBlock ? EXTRA_OPTIONS_AGENT_CANNOT_BLOCK : Collections.emptyMap();
 
         boolean supported = true;
         boolean requiresES2020 = false;
@@ -267,96 +260,160 @@ public class Test262Runnable extends TestRunnable {
             int version = requiresES2020 ? JSTruffleOptions.ECMAScript2020 : JSTruffleOptions.LatestECMAScriptVersion;
             ecmaVersion = TestFile.EcmaVersion.forVersions(version);
         }
-
+        String prefix = runStrict ? "\"use strict\";" : "";
+        Source testSource = null;
+        testSource = createSource(file, prefix, TestSuite.toPrintableCode(scriptCodeList), module);
+        final Source src = testSource;
         if (supported) {
-            testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, options)));
+            testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, src, negative, asyncTest, runStrict, module, negativeExpectedMessage, harnessSources, extraOptions)));
         } else {
             testFile.setStatus(TestFile.Status.SKIP);
         }
     }
 
-    private TestFile.Result runInternal(int ecmaVersion, File file, org.graalvm.polyglot.Source testSource, boolean negative, boolean asyncTest, String negativeExpectedMessage,
-                    Source[] harnessSources, Map<String, String> options) {
-        final String ecmaVersionSuffix = " (ES" + ecmaVersion + ")";
-        suite.logVerbose(getName() + ecmaVersionSuffix);
-        TestFile.Result testResult;
-
+    private TestFile.Result runInternal(int ecmaVersion, File file, Source testSource, boolean negative, boolean asyncTest, boolean strict, boolean module, String negativeExpectedMessage,
+                    Source[] harnessSources, Map<String, String> extraOptions) {
+        suite.logVerbose(getName() + ecmaVersionToString(ecmaVersion));
         OutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         OutputStream outputStream = byteArrayOutputStream;
         if (getConfig().isPrintFullOutput()) {
             outputStream = makeDualStream(byteArrayOutputStream, System.out);
         }
+        if (suite.getConfig().isExtLauncher()) {
+            return runExternalLauncher(ecmaVersion, testSource, negative, asyncTest, strict, module, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
+        } else {
+            return runInJVM(ecmaVersion, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
+        }
+    }
 
-        TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, options);
-        tc.setOutput(outputStream);
-        tc.setError(outputStream);
-
-        String negativeThrowCauseMsg = null;
-        Throwable negativeThrowCause = null;
+    private TestFile.Result runInJVM(int ecmaVersion, File file, Source testSource, boolean negative, boolean asyncTest, String negativeExpectedMessage, Source[] harnessSources,
+                    Map<String, String> extraOptions, OutputStream byteArrayOutputStream, OutputStream outputStream) {
         Future<Object> future = null;
         try {
-            Thread t = Thread.currentThread();
-            if (suite.executeWithSeparateThreads() && getConfig().isUseThreads() && t instanceof TestThread) {
+            TestCallable tc = new TestCallable(suite, harnessSources, testSource, file, ecmaVersion, extraOptions);
+            tc.setOutput(outputStream);
+            tc.setError(outputStream);
+            if (suite.executeWithSeparateThreads() && getConfig().isUseThreads()) {
+                Thread t = Thread.currentThread();
+                assert t instanceof TestThread;
                 future = ((TestThread) t).getExecutor().submit(tc);
                 future.get(getConfig().getTimeoutTest(), TimeUnit.SECONDS);
             } else {
                 tc.call();
             }
-            testResult = TestFile.Result.PASSED;
+            return processSuccessfulRun(ecmaVersion, negative, asyncTest, byteArrayOutputStream);
         } catch (TimeoutException e) {
-            testResult = TestFile.Result.timeout(e);
-            suite.logFail(testFile, "TIMEOUT" + ecmaVersionSuffix, "");
+            logTimeout(ecmaVersion);
             if (future != null) {
-                boolean result = future.cancel(true);
-                if (!result) {
+                if (!future.cancel(true)) {
                     suite.logVerbose("Could not cancel!" + getName());
                 }
             }
-        } catch (Throwable e) {
-            Throwable cause = e;
+            return TestFile.Result.timeout(e);
+        } catch (Throwable cause) {
             if (suite.executeWithSeparateThreads()) {
-                cause = e.getCause() != null ? e.getCause() : e;
+                cause = cause.getCause() != null ? cause.getCause() : cause;
             }
-
-            testResult = TestFile.Result.failed(cause);
-            if (negative) {
-                negativeThrowCause = cause;
-                negativeThrowCauseMsg = cause.getMessage();
+            if (cause instanceof PolyglotException) {
+                if (negative) {
+                    return processFailedNegativeRun(ecmaVersion, negativeExpectedMessage, cause.getMessage());
+                } else {
+                    logFailure(ecmaVersion, cause);
+                    return TestFile.Result.failed(cause);
+                }
             } else {
-                suite.logFail(testFile, "FAILED" + ecmaVersionSuffix, cause);
+                return failNegativeWrongException(ecmaVersion, negativeExpectedMessage, cause.toString());
             }
         }
-
-        if (asyncTest && !negative) {
-            String stdout = byteArrayOutputStream.toString();
-            if (!stdout.contains(ASYNC_TEST_COMPLETE)) {
-                testResult = TestFile.Result.failed("async test failed" + ecmaVersionSuffix);
-                suite.logFail(testFile, "FAILED" + ecmaVersionSuffix, String.format("async test; expected output: '%s' actual: '%s'", ASYNC_TEST_COMPLETE, stdout));
-            }
-        }
-
-        assert testResult != null : testFile;
-        // Negate if this test must fail according to the specification.
-        if (negative) {
-            if (!testResult.isFailure()) {
-                testResult = TestFile.Result.failed("negative test expected to fail" + ecmaVersionSuffix);
-                suite.logFail(testFile, "FAILED" + ecmaVersionSuffix, "negative test, was expected to fail but didn't");
-            } else if (negativeThrowCause instanceof PolyglotException &&
-                            ((negativeThrowCauseMsg != null && negativeThrowCauseMsg.contains(negativeExpectedMessage)) || negativeExpectedMessage.equals("."))) {
-                // e.g. 11.13.1-4-29gs.js has "negative: ."
-                testResult = TestFile.Result.PASSED;
-            } else {
-                suite.logFail(testFile, "FAILED" + ecmaVersionSuffix, "negative test, was expected to fail, what it did, but for wrong reasons:\n\n" +
-                                (negativeThrowCause instanceof PolyglotException ? negativeThrowCauseMsg : negativeThrowCause) + "\n\n" +
-                                "expected: " + negativeExpectedMessage);
-                testResult = TestFile.Result.failed("negative test expected to fail with different reasons" + ecmaVersionSuffix);
-            }
-        }
-        return testResult;
     }
 
-    private static Source createSource(File testFile, String code, boolean module) {
-        Source.Builder builder = Source.newBuilder("js", testFile).content(code);
+    private TestFile.Result runExternalLauncher(int ecmaVersion, Source testSource, boolean negative, boolean asyncTest, boolean strict, boolean module, String negativeExpectedMessage,
+                    Source[] harnessSources, Map<String, String> extraOptions, OutputStream byteArrayOutputStream, OutputStream outputStream) {
+        TestExtProcessCallable tc = new TestExtProcessCallable(suite, ecmaVersion, createExtLauncherArgs(harnessSources, testSource, strict, module), extraOptions);
+        tc.setOutput(outputStream);
+        tc.setError(outputStream);
+        try {
+            switch (tc.call()) {
+                case SUCCESS:
+                    return processSuccessfulRun(ecmaVersion, negative, asyncTest, byteArrayOutputStream);
+                case FAILURE:
+                    String output = byteArrayOutputStream.toString();
+                    if (negative) {
+                        String errorMessage = extLauncherFindErrorMessage(output);
+                        if (errorMessage != null) {
+                            return processFailedNegativeRun(ecmaVersion, negativeExpectedMessage, errorMessage);
+                        } else {
+                            logFailure(ecmaVersion, "negative test, was expected to fail, what it did, but no error message was found in the output:\n\n\"" +
+                                            output + "\"\n\n" + "expected: " + negativeExpectedMessage);
+                            return TestFile.Result.failed("could not find error message of negative test" + ecmaVersionToString(ecmaVersion));
+                        }
+                    } else {
+                        String error = extLauncherFindError(output);
+                        logFailure(ecmaVersion, error);
+                        return TestFile.Result.failed(error);
+                    }
+                case TIMEOUT:
+                    logTimeout(ecmaVersion);
+                    return TestFile.Result.timeout("TIMEOUT");
+                default:
+                    throw new IllegalStateException("should not reach here");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static List<String> createExtLauncherArgs(Source[] harnessSources, Source testSource, boolean strict, boolean module) {
+        ArrayList<String> args = new ArrayList<>((strict || module ? 4 : 3) + harnessSources.length * (strict ? 2 : 1));
+        args.add("--eval");
+        args.add(strict ? "\"var strict_mode = true;\"" : "\"var strict_mode = false;\"");
+        for (Source prequelSource : harnessSources) {
+            assert prequelSource.getPath() != null;
+            if (strict) {
+                args.add("--strict-file");
+            }
+            args.add(prequelSource.getPath());
+        }
+        if (module) {
+            args.add("--module");
+        } else if (strict) {
+            args.add("--strict-file");
+        }
+        args.add(testSource.getPath());
+        return args;
+    }
+
+    private TestFile.Result processSuccessfulRun(int ecmaVersion, boolean negative, boolean asyncTest, OutputStream byteArrayOutputStream) {
+        if (negative) {
+            logFailure(ecmaVersion, "negative test, was expected to fail but didn't");
+            return TestFile.Result.failed("negative test expected to fail" + ecmaVersionToString(ecmaVersion));
+        }
+        if (asyncTest) {
+            String stdout = byteArrayOutputStream.toString();
+            if (!stdout.contains(ASYNC_TEST_COMPLETE)) {
+                logFailure(ecmaVersion, String.format("async test; expected output: '%s' actual: '%s'", ASYNC_TEST_COMPLETE, stdout));
+                return TestFile.Result.failed("async test failed" + ecmaVersionToString(ecmaVersion));
+            }
+        }
+        return TestFile.Result.PASSED;
+    }
+
+    private TestFile.Result processFailedNegativeRun(int ecmaVersion, String negativeExpectedMessage, String actualMessage) {
+        // e.g. 11.13.1-4-29gs.js has "negative: ."
+        if ((actualMessage != null && actualMessage.contains(negativeExpectedMessage)) || negativeExpectedMessage.equals(".")) {
+            return TestFile.Result.PASSED;
+        } else {
+            return failNegativeWrongException(ecmaVersion, negativeExpectedMessage, actualMessage);
+        }
+    }
+
+    private TestFile.Result failNegativeWrongException(int ecmaVersion, String expectedMessage, String actualMessage) {
+        logFailure(ecmaVersion, "negative test, was expected to fail, what it did, but for wrong reasons:\n\n" + actualMessage + "\n\n" + "expected: " + expectedMessage);
+        return TestFile.Result.failed("negative test expected to fail with different reasons" + ecmaVersionToString(ecmaVersion));
+    }
+
+    private static Source createSource(File file, String prefix, String code, boolean module) {
+        Source.Builder builder = Source.newBuilder("js", file).content(prefix + code);
         if (module) {
             builder.mimeType(MODULE_MIME_TYPE);
         }
@@ -423,16 +480,5 @@ public class Test262Runnable extends TestRunnable {
 
     private static boolean isAsyncTest(List<String> scriptCodeList) {
         return scriptCodeList.stream().anyMatch(s -> s.contains("$DONE"));
-    }
-
-    private static OutputStream makeDualStream(OutputStream s1, OutputStream s2) {
-        return new OutputStream() {
-
-            @Override
-            public void write(int b) throws IOException {
-                s1.write(b);
-                s2.write(b);
-            }
-        };
     }
 }

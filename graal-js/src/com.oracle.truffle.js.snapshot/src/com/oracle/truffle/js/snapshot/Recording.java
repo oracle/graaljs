@@ -1065,7 +1065,7 @@ public class Recording {
         public int getId(Object node) {
             Object key = getKey(node);
             if (!varIndexMap.containsKey(key)) {
-                throw new RuntimeException("Entry not found: " + node + "(" + node.getClass() + ")");
+                throw new RuntimeException("Entry not found: " + node + "(" + (node != null ? node.getClass() : "null") + ")");
             }
             return varIndexMap.get(key);
         }

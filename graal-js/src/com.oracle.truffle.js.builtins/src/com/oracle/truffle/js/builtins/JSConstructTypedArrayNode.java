@@ -105,11 +105,11 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
     public JSConstructTypedArrayNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
-        this.factory = findTypedArrayFactory(builtin.getName());
+        this.factory = findTypedArrayFactory(builtin.getName(), context);
     }
 
-    private static TypedArrayFactory findTypedArrayFactory(String name) {
-        for (TypedArrayFactory typedArrayFactory : TypedArray.factories()) {
+    private static TypedArrayFactory findTypedArrayFactory(String name, JSContext context) {
+        for (TypedArrayFactory typedArrayFactory : TypedArray.factories(context)) {
             if (typedArrayFactory.getName().equals(name)) {
                 return typedArrayFactory;
             }
@@ -265,7 +265,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         checkDetachedBuffer(srcData);
 
-        boolean elementTypeIsBig = factory == TypedArrayFactory.BigInt64Array || factory == TypedArrayFactory.BigUint64Array;
+        boolean elementTypeIsBig = JSRuntime.isTypedArrayBigIntFactory(factory);
         boolean sourceTypeIsBig = sourceType instanceof TypedArray.TypedBigIntArray;
         if (elementTypeIsBig != sourceTypeIsBig) {
             throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);

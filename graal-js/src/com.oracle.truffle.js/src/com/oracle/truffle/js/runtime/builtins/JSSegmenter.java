@@ -246,10 +246,10 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
     public static class InternalState {
 
-        public boolean initialized = false;
+        private boolean initialized = false;
 
-        public String locale;
-        public Locale javaLocale;
+        private String locale;
+        private Locale javaLocale;
 
         public Granularity granularity = Granularity.GRAPHEME;
 
@@ -259,13 +259,23 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
             JSObjectUtil.defineDataProperty(result, IntlUtil.GRANULARITY, granularity.getName(), JSAttributes.getDefault());
             return result;
         }
+
+        public boolean isInitialized() {
+            return initialized;
+        }
+
+        public void setInitialized(boolean initialized) {
+            this.initialized = initialized;
+        }
     }
 
     @TruffleBoundary
-    public static BreakIterator createBreakIterator(DynamicObject segmenterObj) {
+    public static BreakIterator createBreakIterator(DynamicObject segmenterObj, String text) {
         InternalState state = getInternalState(segmenterObj);
         ULocale ulocale = ULocale.forLocale(state.javaLocale);
-        return state.granularity.getIterator(ulocale);
+        BreakIterator icuIterator = state.granularity.getIterator(ulocale);
+        icuIterator.setText(text);
+        return icuIterator;
     }
 
     public static Granularity getGranularity(DynamicObject segmenterObj) {

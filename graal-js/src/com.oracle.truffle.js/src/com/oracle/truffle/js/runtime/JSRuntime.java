@@ -56,6 +56,7 @@ import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -65,7 +66,6 @@ import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -2774,16 +2774,6 @@ public final class JSRuntime {
         }
     }
 
-    @TruffleBoundary
-    public static JSFunctionData getFunctionData(TruffleObject callable) {
-        if (JSFunction.isJSFunction(callable)) {
-            return JSFunction.getFunctionData((DynamicObject) callable);
-        } else if (JSProxy.isProxy(callable)) {
-            return getFunctionData(JSProxy.getTarget((DynamicObject) callable));
-        }
-        return null; // could be a TruffleObject (as Proxy's target)
-    }
-
     public static boolean intIsRepresentableAsFloat(int value) {
         return (MIN_SAFE_INTEGER_IN_FLOAT <= value && value <= MAX_SAFE_INTEGER_IN_FLOAT);
     }
@@ -2803,5 +2793,9 @@ public final class JSRuntime {
     @SuppressWarnings("unchecked")
     public static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
         throw (E) ex;
+    }
+
+    public static boolean isTypedArrayBigIntFactory(TypedArrayFactory factory) {
+        return factory == TypedArrayFactory.BigInt64Array || factory == TypedArrayFactory.BigUint64Array;
     }
 }

@@ -261,56 +261,60 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             if (callNode == null) {
                 callNode = rootNode(element);
             }
-            switch (stackFrameType(callNode)) {
-                case STACK_FRAME_JS: {
-                    RootNode rootNode = callNode.getRootNode();
-                    assert JSRuntime.isJSRootNode(rootNode);
-                    final Object[] arguments;
-                    if (JSRuntime.isJSFunctionRootNode(rootNode)) {
-                        arguments = element.getFrame().getArguments();
-                    } else if (((JavaScriptRootNode) rootNode).isResumption()) {
-                        // first argument is the context frame
-                        Frame frame = (Frame) element.getFrame().getArguments()[0];
-                        arguments = frame.getArguments();
-                    } else {
-                        break;
-                    }
-                    Object thisObj = JSArguments.getThisObject(arguments);
-                    Object functionObj = JSArguments.getFunctionObject(arguments);
-                    if (JSFunction.isJSFunction(functionObj)) {
-                        DynamicObject function = (DynamicObject) functionObj;
-                        JSFunctionData functionData = JSFunction.getFunctionData(function);
-                        if (functionData.isStrict()) {
-                            inStrictMode = true;
-                        } else if (functionData.isBuiltin() && JSFunction.isStrictBuiltin(function)) {
-                            inStrictMode = true;
+
+            // this check for code style analyzers
+            if (callNode != null) {
+                switch (stackFrameType(callNode)) {
+                    case STACK_FRAME_JS: {
+                        RootNode rootNode = callNode.getRootNode();
+                        assert JSRuntime.isJSRootNode(rootNode);
+                        final Object[] arguments;
+                        if (JSRuntime.isJSFunctionRootNode(rootNode)) {
+                            arguments = element.getFrame().getArguments();
+                        } else if (((JavaScriptRootNode) rootNode).isResumption()) {
+                            // first argument is the context frame
+                            Frame frame = (Frame) element.getFrame().getArguments()[0];
+                            arguments = frame.getArguments();
+                        } else {
+                            break;
                         }
-                        if (skippingFrames && function == skipFramesUpTo) {
-                            skippingFrames = false;
-                            return true; // skip this frame as well
-                        }
-                        JSRealm realm = JSFunction.getRealm(function);
-                        if (JSFunction.isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
-                            return true;
-                        }
-                        if (!skippingFrames) {
-                            if (functionData.isAsync() && !functionData.isGenerator() && JSRuntime.isJSFunctionRootNode(rootNode)) {
-                                // async function calls produce two frames, skip one
+                        Object thisObj = JSArguments.getThisObject(arguments);
+                        Object functionObj = JSArguments.getFunctionObject(arguments);
+                        if (JSFunction.isJSFunction(functionObj)) {
+                            DynamicObject function = (DynamicObject) functionObj;
+                            JSFunctionData functionData = JSFunction.getFunctionData(function);
+                            if (functionData.isStrict()) {
+                                inStrictMode = true;
+                            } else if (functionData.isBuiltin() && JSFunction.isStrictBuiltin(function)) {
+                                inStrictMode = true;
+                            }
+                            if (skippingFrames && function == skipFramesUpTo) {
+                                skippingFrames = false;
+                                return true; // skip this frame as well
+                            }
+                            JSRealm realm = JSFunction.getRealm(function);
+                            if (JSFunction.isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
                                 return true;
                             }
-                            stackTrace.add(processJSFrame(rootNode, callNode, thisObj, function, inStrictMode));
+                            if (!skippingFrames) {
+                                if (functionData.isAsync() && !functionData.isGenerator() && JSRuntime.isJSFunctionRootNode(rootNode)) {
+                                    // async function calls produce two frames, skip one
+                                    return true;
+                                }
+                                stackTrace.add(processJSFrame(rootNode, callNode, thisObj, function, inStrictMode));
+                            }
                         }
+                        break;
                     }
-                    break;
+                    case STACK_FRAME_FOREIGN:
+                        if (!skippingFrames) {
+                            JSStackTraceElement elem = processForeignFrame(callNode, inStrictMode);
+                            if (elem != null) {
+                                stackTrace.add(elem);
+                            }
+                        }
+                        break;
                 }
-                case STACK_FRAME_FOREIGN:
-                    if (!skippingFrames) {
-                        JSStackTraceElement elem = processForeignFrame(callNode, inStrictMode);
-                        if (elem != null) {
-                            stackTrace.add(elem);
-                        }
-                    }
-                    break;
             }
             return stackTrace.size() < stackTraceLimit;
         }
@@ -318,6 +322,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         public List<JSStackTraceElement> getStackTrace() {
             return stackTrace;
         }
+
     }
 
     private static JSStackTraceElement processJSFrame(RootNode rootNode, Node node, Object thisObj, DynamicObject functionObj, boolean inStrictMode) {
@@ -355,7 +360,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     }
 
     private static boolean isEvalSource(Source source) {
-        return source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX);
+        return source != null && source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX);
     }
 
     private static boolean isInternalFunctionName(String functionName) {

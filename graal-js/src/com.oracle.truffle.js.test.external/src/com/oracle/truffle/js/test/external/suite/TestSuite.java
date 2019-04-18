@@ -57,7 +57,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -112,6 +111,7 @@ public abstract class TestSuite {
     private List<String> textOutputList;
     private final List<String> htmlOutputList;
     private final List<TestRunnable> activeTests = new ArrayList<>();
+    private final ExecutorService extLauncherPipePool;
 
     public TestSuite(SuiteConfig config) {
         assert config != null;
@@ -121,10 +121,16 @@ public abstract class TestSuite {
 
         this.htmlOutputList = config.isHtmlOutput() ? new ArrayList<>() : null;
         this.textOutputList = config.isTextOutput() ? new ArrayList<>() : null;
+        this.extLauncherPipePool = config.isExtLauncher() ? Executors.newCachedThreadPool() : null;
     }
 
     public final SuiteConfig getConfig() {
         return config;
+    }
+
+    public ExecutorService getExtLauncherPipePool() {
+        assert config.isExtLauncher() && extLauncherPipePool != null;
+        return extLauncherPipePool;
     }
 
     /**
@@ -142,6 +148,18 @@ public abstract class TestSuite {
     protected abstract File getTestsConfigFile();
 
     protected abstract File getUnexpectedlyFailedTestsFile();
+
+    public abstract Map<String, String> getCommonOptions();
+
+    public abstract List<String> getCommonExtLauncherOptions();
+
+    protected static List<String> optionsToExtLauncherOptions(Map<String, String> options) {
+        List<String> ret = new ArrayList<>(options.size());
+        for (Map.Entry<String, String> entry : options.entrySet()) {
+            ret.add(TestExtProcessCallable.optionToString(entry.getKey(), entry.getValue()));
+        }
+        return Collections.unmodifiableList(ret);
+    }
 
     /**
      * This function defines whether the actual executors are run as separate threads. This enables
@@ -333,7 +351,7 @@ public abstract class TestSuite {
         if (testFile.getRunInIsolation()) {
             runInIsolationTests.put(filePath, testFile);
         }
-        processStatus(testFile.getRealStatus(), testFile);
+        processStatus(testFile.getRealStatus(config), testFile);
         return testFile;
     }
 
@@ -411,14 +429,6 @@ public abstract class TestSuite {
             }
         } catch (FileNotFoundException ex) {
             System.out.println("cannot write output file: " + ex.getMessage());
-        }
-    }
-
-    public int calcNumberOfCores(int availableNumberOfCores) {
-        if (config.isCompile()) {
-            return Math.min(availableNumberOfCores, 2);
-        } else {
-            return availableNumberOfCores;
         }
     }
 
@@ -541,7 +551,7 @@ public abstract class TestSuite {
         return reason.replace("<", "&lt;");
     }
 
-    public int runTestSuite(String[] selectedTestDirs) {
+    public int runTestSuite(String[] selectedTestDirs) throws InterruptedException {
         long startTime = System.currentTimeMillis();
 
         deleteFiles(getReportFileName(), getHTMLFileName());
@@ -604,7 +614,7 @@ public abstract class TestSuite {
                 }
             } else if (!isSkipped(testFile)) {
                 // skipped by TestRunnable
-                assert (testFile.getRealStatus() == TestFile.Status.SKIP) : testFile;
+                assert (testFile.getRealStatus(config) == TestFile.Status.SKIP) : testFile;
                 skippedTests.put(testFile.getFilePath(), testFile);
             }
         }
@@ -710,14 +720,7 @@ public abstract class TestSuite {
                 List<TestFile> addTests = new ArrayList<>(unexpectedlyFailed.size());
                 for (TestFile testFile : unexpectedlyFailed) {
                     TestFile failingTestFile = new TestFile(testFile.getFilePath());
-                    EnumMap<TestFile.Endianness, TestFile.Status> statusOverrides = testFile.getStatusOverrides();
-                    if (statusOverrides != null) {
-                        failingTestFile.setStatus(testFile.getStatus());
-                        statusOverrides.put(TestFile.Endianness.current(), TestFile.Status.FAIL);
-                        failingTestFile.setStatusOverrides(statusOverrides);
-                    } else {
-                        failingTestFile.setStatus(TestFile.Status.FAIL);
-                    }
+                    failingTestFile.setStatus(TestFile.Status.FAIL);
                     if (!comment.isEmpty()) {
                         failingTestFile.setComment(comment);
                     }
@@ -731,17 +734,14 @@ public abstract class TestSuite {
         return gatePassed ? 0 : 1;
     }
 
-    private void findAndExecute(Collection<TestFile> orderedTestFiles, List<Runnable> isolatedRunnables) {
-        ExecutorService exe = null;
-        List<Callable<Void>> callables = null;
+    private void findAndExecute(Collection<TestFile> orderedTestFiles, List<Runnable> isolatedRunnables) throws InterruptedException {
         if (config.isUseThreads()) {
-            callables = new ArrayList<>(orderedTestFiles.size());
-            exe = initThreads();
-        }
-        for (TestFile testFile : orderedTestFiles) {
-            if (!isSkipped(testFile)) {
-                TestRunnable runnable = createTestRunnable(testFile);
-                if (config.isUseThreads()) {
+            ExecutorService exe = initThreads();
+            List<Callable<Void>> callables = new ArrayList<>(orderedTestFiles.size());
+
+            for (TestFile testFile : orderedTestFiles) {
+                if (!isSkipped(testFile)) {
+                    TestRunnable runnable = createTestRunnable(testFile);
                     if (testFile.getRunInIsolation()) {
                         isolatedRunnables.add(runnable);
                     } else {
@@ -750,18 +750,16 @@ public abstract class TestSuite {
                             return null;
                         });
                     }
-                } else {
-                    runnable.run();
                 }
             }
-        }
-        if (config.isUseThreads()) {
-            try {
-                List<Future<Void>> results = exe.invokeAll(callables, config.getTimeoutOverall(), TimeUnit.SECONDS);
-                checkResults(results);
-            } catch (InterruptedException e) {
-                log("Interrupted exception, exiting: " + e.getMessage());
-                System.exit(-1);
+
+            List<Future<Void>> results = exe.invokeAll(callables, config.getTimeoutOverall(), TimeUnit.SECONDS);
+            checkResults(results);
+        } else {
+            for (TestFile testFile : orderedTestFiles) {
+                if (!isSkipped(testFile)) {
+                    createTestRunnable(testFile).run();
+                }
             }
         }
     }
@@ -785,7 +783,7 @@ public abstract class TestSuite {
         for (TestFile testFile : failedTests.values()) {
             assert testFile.hasRun() : testFile;
             assert !testFile.hasPassed() : testFile;
-            if (testFile.getRealStatus() != TestFile.Status.FAIL) {
+            if (testFile.getRealStatus(config) != TestFile.Status.FAIL) {
                 System.out.println("Unexpectedly failed '" + testFile.getFilePath() + "', please update the configuration file!");
                 unexpectedlyFailed.put(testFile.getFilePath(), testFile);
             }
@@ -814,7 +812,7 @@ public abstract class TestSuite {
 
     private ExecutorService initThreads() {
         int numberOfCores = Runtime.getRuntime().availableProcessors();
-        int usingNumberOfCores = Math.min(calcNumberOfCores(numberOfCores), 4);
+        int usingNumberOfCores = Math.min(numberOfCores, 4);
         logVerbose("Number of cores available: " + numberOfCores + ", using: " + usingNumberOfCores);
         return executeWithSeparateThreads() ? Executors.newFixedThreadPool(usingNumberOfCores, TestThread::new) : Executors.newFixedThreadPool(usingNumberOfCores);
     }
@@ -964,91 +962,117 @@ public abstract class TestSuite {
         return activeTests;
     }
 
-    public static void parseDefaultArgs(String arg, SuiteConfig config) {
-        String lowercaseArg = arg.toLowerCase(Locale.US);
-        if (lowercaseArg.equals("help")) {
-            System.out.println("usage: " + config.getSuiteName() + " [gate [regenerateconfig] [resume]] [verbose|verbosefail] [printscript] [regression] [filter=] [single=] [nothreads]\n");
-            System.out.println(" gate                   run the gate tests (checking against expected conformance)");
-            System.out.println(" regenerateconfig       after running the gate, write new configuration file");
-            System.out.println(" resume                 run previously failed tests first");
-            System.out.println(" regression             writes " + config.getSuiteName() + ".txt and " + config.getSuiteName() + ".html result files");
-            System.out.println(" filter=X               executes only tests that have X in their filename");
-            System.out.println(" regex=X                executes only tests that have their filename matching given regex");
-            System.out.println(" single=X               executes only tests that match filename X");
-            System.out.println(" printscript            print sourcecode of all executed scripts (use in combination with \"filter\")");
-            System.out.println(" verbose                print all tests");
-            System.out.println(" verbosefail            print failing tests");
-            System.out.println(" nothreads              run all tests in the main thread");
-            System.out.println(" compile                execute the tests repeatedly so they are compiled by Graal - handle with care");
-            System.out.println(" timeoutoverall=X       overall testrun aborted after X seconds");
-            System.out.println(" timeouttest=X          test aborted after X seconds. Not available in all modes");
-            System.out.println(" location=X             the base directory of the test suite");
-            System.out.println(" config=X               the base directory of the test suite config file");
-            System.out.println(" outputfilter=x         ignore a given string when comparing with the expected output");
-            System.exit(-2);
-        } else if (lowercaseArg.equals("nothreads")) {
-            config.setUseThreads(false);
-        } else if (lowercaseArg.equals("verbose")) {
-            config.setVerbose(true);
-        } else if (lowercaseArg.equals("verbosefail")) {
-            config.setVerbose(false);
-            config.setVerboseFail(true);
-        } else if (lowercaseArg.equals("printscript")) {
-            config.setPrintScript(true);
-        } else if (lowercaseArg.equals("compile")) {
-            config.setCompile(true);
-        } else if (lowercaseArg.equals("regression")) {
-            config.setVerbose(false);
-            config.setVerboseFail(false);
-            config.setHtmlOutput(true);
-            config.setTextOutput(true);
-        } else if (lowercaseArg.equals("gate")) {
-            config.setVerbose(false);
-            config.setVerboseFail(false);
-            config.setHtmlOutput(true);
-            config.setTextOutput(true);
-            config.setRunOnGate(true);
-        } else if (lowercaseArg.equals("regenerateconfig")) {
-            config.setRegenerateConfig(true);
-            config.setRunOnGate(true); // forcing gate
-        } else if (lowercaseArg.equals("resume")) {
-            config.setGateResume(true);
-            config.setRunOnGate(true); // forcing gate
-        } else if (lowercaseArg.startsWith("timeouttest=")) {
-            int timeout = parseArgInteger(arg);
-            config.setTimeoutTest(timeout);
-        } else if (lowercaseArg.startsWith("timeoutoverall=")) {
-            int timeout = parseArgInteger(arg);
-            config.setTimeoutOverall(timeout);
-        } else if (lowercaseArg.startsWith("filter=")) {
-            String filter = arg.substring("filter=".length());
-            config.setContainsFilter(filter);
-        } else if (lowercaseArg.startsWith("regex=")) {
-            String filter = arg.substring("regex=".length());
-            config.setRegexFilter(filter);
-        } else if (lowercaseArg.startsWith("single=")) {
-            String filter = arg.substring("single=".length());
-            config.setEndsWithFilter(filter);
-            config.setPrintFullOutput(true);
-            config.setVerboseFail(true);
-        } else if (lowercaseArg.startsWith("location=")) {
-            String location = arg.substring("location=".length());
-            config.setSuiteLoc(location);
-        } else if (lowercaseArg.startsWith("config=")) {
-            String configLoc = arg.substring("config=".length());
-            config.setSuiteConfigLoc(configLoc);
-        } else if (lowercaseArg.startsWith("outputfilter=")) {
-            String outputFilter = arg.substring("outputfilter=".length());
-            config.setOutputFilter(outputFilter);
-        } else {
-            System.out.println("unrecognized argument: " + arg + "\nCall \"" + config.getSuiteName() + " help\" for more information.");
-            System.exit(-2);
+    public static void parseDefaultArgs(String[] args, SuiteConfig.Builder builder) {
+        for (String rawArg : args) {
+            String key;
+            String value = null;
+            int equalsPos = rawArg.indexOf('=');
+            if (equalsPos > 0) {
+                key = rawArg.substring(0, equalsPos).toLowerCase(Locale.US);
+                value = rawArg.substring(equalsPos + 1);
+            } else {
+                key = rawArg.toLowerCase(Locale.US);
+            }
+            switch (key) {
+                case "help":
+                    System.out.println("usage: " + builder.getSuiteName() +
+                                    " [gate [regenerateconfig] [resume]] [verbose|verbosefail] [printscript] [regression] [filter=] [single=] [nothreads] [externallauncher=X [compile]]\n");
+                    System.out.println(" gate                   run the gate tests (checking against expected conformance)");
+                    System.out.println(" regenerateconfig       after running the gate, write new configuration file");
+                    System.out.println(" resume                 run previously failed tests first");
+                    System.out.println(" regression             writes " + builder.getSuiteName() + ".txt and " + builder.getSuiteName() + ".html result files");
+                    System.out.println(" filter=X               executes only tests that have X in their filename");
+                    System.out.println(" regex=X                executes only tests that have their filename matching given regex");
+                    System.out.println(" single=X               executes only tests that match filename X");
+                    System.out.println(" printscript            print sourcecode of all executed scripts (use in combination with \"filter\")");
+                    System.out.println(" verbose                print all tests");
+                    System.out.println(" verbosefail            print failing tests");
+                    System.out.println(" nothreads              run all tests in the main thread");
+                    System.out.println(" compile                execute the tests repeatedly so they are compiled by Graal - handle with care");
+                    System.out.println(" timeoutoverall=X       overall testrun aborted after X seconds");
+                    System.out.println(" timeouttest=X          test aborted after X seconds. Not available in all modes");
+                    System.out.println(" location=X             the base directory of the test suite");
+                    System.out.println(" config=X               the base directory of the test suite config file");
+                    System.out.println(" outputfilter=X         ignore a given string when comparing with the expected output");
+                    System.out.println(" externallauncher=X     run tests by invoking a given native image of JSLauncher");
+                    System.out.println(" compile                run externallauncher with TruffleCompileImmediately");
+                    System.exit(-2);
+                    break;
+                case "nothreads":
+                    builder.setUseThreads(false);
+                    break;
+                case "verbose":
+                    builder.setVerbose(true);
+                    break;
+                case "verbosefail":
+                    builder.setVerbose(false);
+                    builder.setVerboseFail(true);
+                    break;
+                case "printscript":
+                    builder.setPrintScript(true);
+                    break;
+                case "compile":
+                    builder.setCompile(true);
+                    break;
+                case "regression":
+                    builder.setVerbose(false);
+                    builder.setVerboseFail(false);
+                    builder.setHtmlOutput(true);
+                    builder.setTextOutput(true);
+                    break;
+                case "gate":
+                    builder.setVerbose(false);
+                    builder.setVerboseFail(false);
+                    builder.setHtmlOutput(true);
+                    builder.setTextOutput(true);
+                    builder.setRunOnGate(true);
+                    break;
+                case "regenerateconfig":
+                    builder.setRegenerateConfig(true);
+                    builder.setRunOnGate(true); // forcing gate
+                    break;
+                case "resume":
+                    builder.setGateResume(true);
+                    builder.setRunOnGate(true); // forcing gate
+                    break;
+                case "timeouttest":
+                    builder.setTimeoutTest(Integer.parseInt(value));
+                    break;
+                case "timeoutoverall":
+                    builder.setTimeoutOverall(Integer.parseInt(value));
+                    break;
+                case "filter":
+                    builder.setContainsFilter(value);
+                    break;
+                case "regex":
+                    builder.setRegexFilter(value);
+                    break;
+                case "single":
+                    builder.setEndsWithFilter(value);
+                    builder.setPrintFullOutput(true);
+                    builder.setVerboseFail(true);
+                    break;
+                case "location":
+                    builder.setSuiteLoc(value);
+                    break;
+                case "config":
+                    builder.setSuiteConfigLoc(value);
+                    break;
+                case "outputfilter":
+                    builder.setOutputFilter(value);
+                    break;
+                case "saveoutput":
+                    builder.setSaveOutput(true);
+                    builder.setHtmlOutput(true);
+                    break;
+                case "externallauncher":
+                    builder.setExtLauncher(value);
+                    break;
+                default:
+                    System.out.println("unrecognized argument: " + key + "\nCall \"" + builder.getSuiteName() + " help\" for more information.");
+                    System.exit(-2);
+            }
         }
-    }
-
-    private static int parseArgInteger(String arg) {
-        String str = arg.substring(arg.indexOf("=") + 1);
-        return Integer.parseInt(str);
     }
 
     public static class TestThread extends Thread {

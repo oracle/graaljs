@@ -202,10 +202,6 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         return hint == Hint.Number || hint == Hint.None;
     }
 
-    protected final boolean isHintStringOrDefault() {
-        return hint == Hint.String || hint == Hint.None;
-    }
-
     @Specialization(guards = "isForeignObject(object)", limit = "5")
     protected Object doTruffleJavaObject(TruffleObject object,
                     @CachedLibrary("object") InteropLibrary interop,
@@ -222,11 +218,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
             } else if (JSGuards.isJavaPrimitiveNumber(javaObject)) {
                 return toJSType.executeWithTarget(javaObject);
             } else {
-                if (isHintStringOrDefault()) {
-                    return JSRuntime.toJSNull(Boundaries.javaToString(javaObject));
-                } else {
-                    throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
-                }
+                return JSRuntime.toJSNull(Boundaries.javaToString(javaObject));
             }
         }
         try {
@@ -246,12 +238,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorUnboxException(object, e, this);
         }
-        if (isHintStringOrDefault()) {
-            boolean hasSize = interop.hasArrayElements(object);
-            return JSRuntime.objectToConsoleString(object, hasSize ? null : "foreign");
-        } else {
-            throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
-        }
+        boolean hasSize = interop.hasArrayElements(object);
+        return JSRuntime.objectToConsoleString(object, hasSize ? null : "foreign");
     }
 
     @Fallback

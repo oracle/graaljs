@@ -38,6 +38,7 @@ _suite = mx.suite('graal-js')
 
 class GraalJsDefaultTags:
     default = 'default'
+    tck = 'tck'
     all = 'all'
 
 def _graal_js_gate_runner(args, tasks):
@@ -51,18 +52,17 @@ def _graal_js_gate_runner(args, tasks):
 
     gateTestConfigs = {
         GraalJsDefaultTags.default: ['gate'],
-        'noic': ['gate', '-Dtruffle.js.PropertyCacheLimit=0', '-Dtruffle.js.FunctionCacheLimit=0'],
-        'directbytebuffer': ['gate', '-Dtruffle.js.DirectByteBuffer=true'],
-        'cloneuninitialized': ['gate', '-Dtruffle.js.TestCloneUninitialized=true'],
-        'lazytranslation': ['gate', '-Dtruffle.js.LazyTranslation=true'],
+        'noic': ['-Dtruffle.js.PropertyCacheLimit=0', '-Dtruffle.js.FunctionCacheLimit=0', 'gate'],
+        'directbytebuffer': ['-Dtruffle.js.DirectByteBuffer=true', 'gate'],
+        'cloneuninitialized': ['-Dtruffle.js.TestCloneUninitialized=true', 'gate'],
+        'lazytranslation': ['-Dtruffle.js.LazyTranslation=true', 'gate'],
     }
 
     gateTestCommands = {
         'Test262': test262,
         'TestNashorn': testnashorn,
         'TestV8': testv8,
-        'TestInstrumentation': testinstrumentation,
-        'TestThreading': testthreading,
+        'TestUnittest': testunittests,
     }
 
     for testCommandName in gateTestCommands:
@@ -71,6 +71,11 @@ def _graal_js_gate_runner(args, tasks):
             with Task(testName, tasks, tags=[testName, testConfigName, GraalJsDefaultTags.all]) as t:
                 if t:
                     gateTestCommands[testCommandName](gateTestConfigs[testConfigName])
+
+    with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck]) as t:
+        if t:
+            import mx_truffle
+            mx_truffle._tck([])
 
 add_gate_runner(_suite, _graal_js_gate_runner)
 
@@ -235,7 +240,7 @@ def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""
     _location = join(_suite.dir, 'lib', 'test262')
     _default_vm_args = [
-        '-Dtruffle.js.Test262Mode=true',
+        '-Dpolyglot.js.test262-mode=true',
     ]
     return _run_test_suite(
         location=_location,
@@ -272,16 +277,12 @@ def testnashorn(args, nonZeroIsFatal=True):
 def testv8(args, nonZeroIsFatal=True):
     """run the testV8 conformance suite"""
     _location = join(_suite.dir, 'lib', 'testv8')
-    _default_vm_args = [
-        '-Dtruffle.js.V8LegacyConst=true',
-        '-Dtruffle.js.TestV8Mode=true',
-    ]
     _stack_size = '2m' if mx.get_arch() is 'sparcv9' else '1m'
     _run_test_suite(
         location=_location,
         library_names=['TESTV8'],
         custom_args=args,
-        default_vm_args=_default_vm_args,
+        default_vm_args=[],
         max_heap='8g',
         stack_size=_stack_size,
         main_class='com.oracle.truffle.js.test.external.testv8.TestV8',
@@ -289,11 +290,8 @@ def testv8(args, nonZeroIsFatal=True):
         cwd=_suite.dir
     )
 
-def testinstrumentation(args, nonZeroIsFatal=True):
-    unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.js.test.instrumentation'])
-
-def testthreading(args, nonZeroIsFatal=True):
-    unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.js.test.threading'])
+def testunittests(args, nonZeroIsFatal=True):
+    unittest(['--enable-timing', '--very-verbose'] + args + ['com.oracle.truffle.js.test'])
 
 def deploy_binary_if_master(args):
     """If the active branch is 'master', deploy binaries for the primary suite to remote maven repository."""
@@ -368,7 +366,6 @@ mx.update_commands(_suite, {
     'test262': [test262, ''],
     'testnashorn': [testnashorn, ''],
     'testv8': [testv8, ''],
-    'testinstrumentation': [testinstrumentation, ''],
     'unpackIcuData': [unpackIcuData, ''],
 })
 
