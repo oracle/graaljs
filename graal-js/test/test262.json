@@ -1649,9 +1649,58 @@
     "status" : "FAIL",
     "comment" : "GR-6710 BigInt proposal"
   }, {
+    "filePath" : "intl402/Collator/prototype/compare/non-normative-sensitivity.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
     "filePath" : "intl402/Collator/usage-de.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+  }, {
+    "filePath" : "intl402/constructors-string-and-single-element-array.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
+    "filePath" : "intl402/Date/prototype/returns-same-results-as-DateTimeFormat.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/date-time-options.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/ignore-invalid-unicode-ext-values.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/bound-to-datetimeformat-instance.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/main.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/basic.js",
     "status" : "PASS",
@@ -1667,6 +1716,13 @@
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/resolved-locale-with-hc-unicode.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/required-date-time-formats.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
   }, {
     "filePath" : "intl402/fallback-locales-are-supported.js",
     "status" : "SKIP",
@@ -1696,6 +1752,13 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
+    "filePath" : "intl402/language-tags-valid.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
     "filePath" : "intl402/language-tags-with-underscore.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -1712,9 +1775,30 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
+    "filePath" : "intl402/Number/prototype/toLocaleString/returns-same-results-as-NumberFormat.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
     "filePath" : "intl402/NumberFormat/currencyDisplay-unit.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/ignore-invalid-unicode-ext-values.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/bound-to-numberformat-instance.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-fraction-digits-precision.js",
     "status" : "FAIL",
@@ -1723,6 +1807,27 @@
     "filePath" : "intl402/NumberFormat/prototype/format/format-fraction-digits.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits-precision.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/main.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "comment" : "GR-15359"
   }, {
     "filePath" : "intl402/NumberFormat/style-unit.js",
     "status" : "FAIL",

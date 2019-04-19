@@ -52,6 +52,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -102,6 +103,9 @@ public class TestExtProcessCallable extends AbstractTestCallable {
 
     @Override
     public TestShellCallableResult call() throws Exception {
+        if (suite.getConfig().isPrintCommand()) {
+            suite.log(cmd.stream().collect(Collectors.joining(" ")));
+        }
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.redirectErrorStream(true);
         Process p = pb.start();
