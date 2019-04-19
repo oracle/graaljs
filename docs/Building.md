@@ -1,9 +1,9 @@
-## Graal JavaScript
+## Building GraalVM JavaScript
 
-This document describes how to build and run Graal JavaScript.
+This document describes how to build and run GraalVM JavaScript.
 
-Building yourself should only be necessary if you are contributing to Graal JavaScript or you want to try out the latest features.
-The average user will prefer the pre-built binaries as part of [GraalVM](http://www.graalvm.org/downloads/) or the Graal JavaScript JAR files published to Maven (see [blog post](https://medium.com/graalvm/graalvms-javascript-engine-on-jdk11-with-high-performance-3e79f968a819)).
+Building yourself should only be necessary if you are contributing to GraalVM JavaScript or you want to try out the latest features.
+The average user will prefer the pre-built binaries as part of [GraalVM](http://www.graalvm.org/downloads/) or the GraalVM JavaScript JAR files published to Maven (see [blog post](https://medium.com/graalvm/graalvms-javascript-engine-on-jdk11-with-high-performance-3e79f968a819)).
 
 ### Prerequisites
 
@@ -13,7 +13,7 @@ The average user will prefer the pre-built binaries as part of [GraalVM](http://
 
 ### Building
 
-1. to build Graal JavaScript from sources you need to clone more than one repository. We recommend to do it in a dedicated directory:
+1. to build GraalVM JavaScript from sources you need to clone more than one repository. We recommend to do it in a dedicated directory:
     ```bash
     mkdir graalvm
     cd graalvm
@@ -49,27 +49,27 @@ The average user will prefer the pre-built binaries as part of [GraalVM](http://
 
 ### Running
 
-To start the Graal JavaScript command line interpreter or run a JavaScript file:
+To start the GraalVM JavaScript command line interpreter or run a JavaScript file:
 ```bash
 cd graaljs/graal-js
 mx js [OPTION]... [FILE]...
 ```
 
-Assuming that you also built the Graal compiler (using the instructions in `graal/compiler/README.md`), here is how you can use it to run Graal JavaScript: 
+Assuming that you also built the GraalVM compiler (using the instructions in `graal/compiler/README.md`), here is how you can use it to run GraalVM JavaScript:
 ```bash
 cd graaljs/graal-js
 mx --dynamicimports /compiler --jdk jvmci js [OPTION]... [FILE]...
 ```
 
 
-## Node.js on Graal JavaScript
+## Node.js on GraalVM JavaScript
 
-Here we describe how to build and run Node.js on Graal JavaScript.
+Here we describe how to build and run Node.js on GraalVM JavaScript.
 
 
 ### Prerequisites
 
-* the same for Graal JavaScript
+* the same for GraalVM JavaScript
 * the same for Node.js:
   * `gcc` and `g++` 4.9.4 or newer, or
   * `clang` and `clang++` 3.4.2 or newer (macOS: latest Xcode Command Line Tools)
@@ -78,7 +78,7 @@ Here we describe how to build and run Node.js on Graal JavaScript.
 
 ### Building
 
-To build both Graal JavaScript and Node.js:
+To build both GraalVM JavaScript and Node.js:
 ```bash
 cd graaljs/graal-nodejs
 mx build
@@ -93,7 +93,7 @@ cd graaljs/graal-nodejs
 mx node [OPTION]... [FILE]...
 ```
 
-Assuming that you also built the Graal compiler (using the instructions in `graal/compiler/README.md`), here is how you can use it to run Node.js on Graal JavaScript:
+Assuming that you also built the GraalVM Compiler (using the instructions in `graal/compiler/README.md`), here is how you can use it to run Node.js on GraalVM JavaScript:
 ```bash
 cd graaljs/graal-nodejs
 mx --dynamicimports /compiler --jdk jvmci node [OPTION]... [FILE]...
@@ -104,7 +104,7 @@ mx --dynamicimports /compiler --jdk jvmci node [OPTION]... [FILE]...
 
 - `mx` clones the `graal` repository next to `graaljs`
 
-- if you already cloned `graaljs`, you can update to a newer version by running:
+- if you already cloned `graaljs`, you can update to a newer version of `graal` by running:
     ```bash
     cd graaljs
     git pull
@@ -113,9 +113,9 @@ mx --dynamicimports /compiler --jdk jvmci node [OPTION]... [FILE]...
     mx build
     ```
 
-- Graal JavaScript depends on the `truffle` API provided in the `graal` repository. There is no need to build code from this repository, this is done automatically when you build Graal JavaScript with `mx build`
+- GraalVM JavaScript depends on `truffle` and `sdk` provided in the `graal` repository. There is no need to build code from this repository, this is done automatically when you build GraalVM JavaScript with `mx build`
 
-- to print the help message of both Graal JavaScript and Node.js on Graal JavaScript, pass the `--help` option:
+- to print the help message of both GraalVM JavaScript and Node.js on GraalVM JavaScript, pass the `--help` option:
 ```bash
 cd graaljs/graal-js
 mx js --help

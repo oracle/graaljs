@@ -1,23 +1,23 @@
-# Graal JavaScript language compatibility
+# GraalVM JavaScript language compatibility
 
-Graal JavaScript is a JavaScript (ECMAScript) language execution runtime.
+GraalVM JavaScript is a JavaScript (ECMAScript) language execution runtime.
 This document explains the public API it provides to user applications written in JavaScript.
 
 * [ECMAScript language compliance](#ecmascript-language-compliance)
 * [Compatibility extensions](#compatibility-extensions)
-* [Graal JavaScript extensions](#graal-javascript-extensions)
+* [GraalVM JavaScript extensions](#graal-javascript-extensions)
 
 ## ECMAScript language compliance
 
-Graal JavaScript implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
-Graal JavaScript is compatible with the 2019 edition of ECMAScript (sometimes referred to as "version 10" or "ES10"), see [http://www.ecma-international.org/ecma-262/](http://www.ecma-international.org/ecma-262/).
+GraalVM JavaScript implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
+GraalVM JavaScript is compatible with the 2019 edition of ECMAScript (sometimes referred to as "version 10" or "ES10"), see [http://www.ecma-international.org/ecma-262/](http://www.ecma-international.org/ecma-262/).
 (Remark: at the time of writing of this document, ECMAScript 2019 had been finalized, but the specification document was not yet published.)
 Some features of the upcoming ECMAScript 2020 are already implemented and are available behind specific flags.
 Older versions starting from ECMAScript 5 can be enabled with a config flag.
 It is recommended to use a fixed ECMAScript version, with the most recent published ECMAScript 2019 specification being a reasonable target.
 For informations on the flags, see the *--help* message of the executable.
 
-Graal JavaScript provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
+GraalVM JavaScript provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
 Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, SharedArrayBuffer, String, Symbol, TypedArray, WeakMap, WeakSet
 
 Some additional objects are available under flags (run `js --help` for the list of available flags):
@@ -45,14 +45,14 @@ Functionality of a few other built-ins is then also updated according to the spe
 
 ### Regular Expressions
 
-Graal JavaScript strives to support all regular expression features of ECMAScript.
+GraalVM JavaScript strives to support all regular expression features of ECMAScript.
 It employs two regular expression engines:
 * [TRegex](https://github.com/oracle/graal/tree/master/regex), an advanced engine producing tree-based automata with high peak performance.
 * [Joni](https://github.com/jruby/joni), an adopted port of Nashorn's regular expression engine (a bytecode compiler).
 
 While both engines support most regular expressions, they lack support for some of the advaced features of the newest ECMAScript specifications.
 TRegex is the default engine, and Joni will be used in case a feature is not supported in TRegex.
-In the rare case several features are mixed in one regular expression so no single engine can execute the expression, Graal JavaScript has to throw a JavaScript Error.
+In the rare case several features are mixed in one regular expression so no single engine can execute the expression, GraalVM JavaScript has to throw a JavaScript Error.
 We are working on improving both engines to limit the number of unsupported regular expressions.
 
 The current status of feature support in both engines is listed below (features not listed are supported by both engines):
@@ -75,18 +75,18 @@ Unicode mode (`'u'` flag)                                                       
 <br/>
 
 We are currently working on implementing negative lookahead and more support for lookbehind in TRegex. On the other hand, full support of backreferences is out of scope for a finite state automaton engine like TRegex.
-Graal JavaScript uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the Joni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
+GrGraalVMaal JavaScript uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the Joni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
 For more details on the implementation of the engines, see [RegExpImplementation.md](../contributor/RegExpImplementation.md).
 
 ## Compatibility extensions
 
-The following objects and methods are available in Graal JavaScript for compatibility with other JavaScript execution engines.
+The following objects and methods are available in GraalVM JavaScript for compatibility with other JavaScript execution engines.
 Note that the behaviour of such methods might not strictly match the semantics of those methods in all existing engines.
 
 ### Language features
 
 #### Conditional catch clauses
-Graal JavaScript supports conditional catch clauses if the `js.syntax-extensions` option is enabled:
+GraalVM JavaScript supports conditional catch clauses if the `js.syntax-extensions` option is enabled:
 
 ```js
 try {
@@ -126,7 +126,7 @@ Provides a best-effort human readable output.
 A global `console` object is provided that offers several methods for debugging purposes.
 These methods strive to provide similar functionality as provided in other engines, but do not guarantee identical results.
 
-Note that those methods behave differently when Graal JavaScript is executed in Node.js mode (i.e., the `node` executable is started instead of `js`).
+Note that those methods behave differently when GraalVM JavaScript is executed in Node.js mode (i.e., the `node` executable is started instead of `js`).
 Node.js provides its own implementation that is used instead.
 
 * `console.log`, `console.info`, and `console.debug`: an alias for `print(...arg)`
@@ -192,22 +192,22 @@ This functionality is deprecated in most JavaScript engines.
 In recent ECMAScript versions, getters and setters are natively supported by the language.
 
 ### Nashorn scripting mode
-Graal JavaScript provides a scripting mode compatible to the one provided by the Nashorn engine.
-It is enabled with the `js.scripting` option:
+GraalVM JavaScript provides a scripting mode compatible to the one provided by the Nashorn engine.
+It is enabled with the `js.scripting` option, make also sure to have `--experimental-options` set:
 
 ```
-$ js --js.scripting=true
+$ js --experimental-options --js.scripting=true
 ```
 
 In scripting mode, several properties and functions are added to the global object, including [readFully](#readfile), [readLine](#readline), `$ARG`, `$ENV`, and `$EXEC`.
 
-## Graal JavaScript extensions
+## GraalVM JavaScript extensions
 
 ### Graal
 
 The `Graal` object is provided as property of the global object.
 It provides Graal-specific information.
-The existence of the property can be used to identify whether the Graal JavaScript engine is the current language engine.
+The existence of the property can be used to identify whether the GraalVM JavaScript engine is the current language engine.
 
 ```js
 if (typeof Graal != 'undefined') {
@@ -217,11 +217,11 @@ if (typeof Graal != 'undefined') {
 }
 ```
 
-The Graal object is available in Graal JavaScript by default, unless deactivated by an option (`js.graal-builtin=false`).
+The Graal object is available in GraalVM JavaScript by default, unless deactivated by an option (`js.graal-builtin=false`).
 
 #### `Graal.versionJS`
 
-Provides the version number of Graal JavaScript.
+Provides the version number of GraalVM JavaScript.
 
 #### `Graal.versionGraalVM`
 
@@ -229,9 +229,9 @@ Provides the version of the GraalVM, if the current engine is executed on a Graa
 
 #### `Graal.isGraalRuntime`
 
-Provides whether Graal JavaScript is executed on a Graal-enabled runtime.
-If `true`, hot code is compiled by the Graal compiler, resulting in high peak performance.
-If `false`, Graal JavaScript will not be optimized by the Graal compiler, typically resulting in lower performance.
+Provides whether GraalVM JavaScript is executed on a Graal-enabled runtime.
+If `true`, hot code is compiled by the GraalVM Compiler, resulting in high peak performance.
+If `false`, GraalVM JavaScript will not be optimized by the GraalVM Compiler, typically resulting in lower performance.
 
 ### Java
 
@@ -241,7 +241,7 @@ Note that some functions require a Nashorn compatibility mode flag to be set.
 On the GraalVM, this flag can be set with:
 
 ```
-$ js --jvm --js.nashorn-compat=true
+$ js --jvm --experimental-options --js.nashorn-compat=true
 ```
 
 #### `Java.type(className)`
@@ -382,7 +382,7 @@ It is also available when `js.debug-builtin` is activated.
 
 requires starting the engine with the `js.debug-builtin` flag.
 
-`Debug` is a Graal JavaScript specific function object that provides functionality for debugging JavaScript code and the Graal JavaScript compiler.
+`Debug` is a GraalVM JavaScript specific function object that provides functionality for debugging JavaScript code and the GraalVM JavaScript compiler.
 This API might change without notice, do not use for production purposes!
 
 ### Global functions
