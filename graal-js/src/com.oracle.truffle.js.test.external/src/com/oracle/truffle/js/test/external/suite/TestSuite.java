@@ -984,6 +984,7 @@ public abstract class TestSuite {
                     System.out.println(" filter=X               executes only tests that have X in their filename");
                     System.out.println(" regex=X                executes only tests that have their filename matching given regex");
                     System.out.println(" single=X               executes only tests that match filename X");
+                    System.out.println(" printcommand           print command line of all executed scripts (use in combination with \"filter\")");
                     System.out.println(" printscript            print sourcecode of all executed scripts (use in combination with \"filter\")");
                     System.out.println(" verbose                print all tests");
                     System.out.println(" verbosefail            print failing tests");
@@ -1007,6 +1008,9 @@ public abstract class TestSuite {
                 case "verbosefail":
                     builder.setVerbose(false);
                     builder.setVerboseFail(true);
+                    break;
+                case "printcommand":
+                    builder.setPrintCommand(true);
                     break;
                 case "printscript":
                     builder.setPrintScript(true);

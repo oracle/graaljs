@@ -60,6 +60,7 @@ public class SuiteConfig {
     private final boolean verboseFail;
     private final boolean runOnGate;
     private final boolean gateResume;
+    private final boolean printCommand;
     private final boolean printScript;
     private final boolean saveOutput;
     private final boolean compile;
@@ -79,7 +80,7 @@ public class SuiteConfig {
 
     SuiteConfig(String suiteName, String suiteDescription,
                     String suiteLoc, String suiteTestsLoc, String suiteHarnessLoc, String suiteConfigLoc,
-                    boolean useThreads, boolean verbose, boolean verboseFail, boolean runOnGate, boolean gateResume, boolean printScript, boolean saveOutput, boolean compile,
+                    boolean useThreads, boolean verbose, boolean verboseFail, boolean runOnGate, boolean gateResume, boolean printCommand, boolean printScript, boolean saveOutput, boolean compile,
                     boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int compileCount, int timeoutTest, int timeoutOverall, String containsFilter, String regexFilter,
                     String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher) {
         this.suiteName = suiteName;
@@ -93,6 +94,7 @@ public class SuiteConfig {
         this.verboseFail = verboseFail;
         this.runOnGate = runOnGate;
         this.gateResume = gateResume;
+        this.printCommand = printCommand;
         this.printScript = printScript;
         this.saveOutput = saveOutput;
         this.compile = compile;
@@ -152,6 +154,10 @@ public class SuiteConfig {
 
     public boolean isGateResume() {
         return gateResume;
+    }
+
+    public boolean isPrintCommand() {
+        return printCommand;
     }
 
     public boolean isPrintScript() {
@@ -226,6 +232,7 @@ public class SuiteConfig {
         if (isCompile()) {
             if (isExtLauncher()) {
                 options.put("vm.Dgraal.TruffleCompileImmediately", "true");
+                options.put("vm.Dgraal.TruffleBackgroundCompilation", "false");
             } else {
                 System.out.println("WARNING: the \"compile\" option has no effect without \"externallauncher\". Use \"-Dgraal.TruffleCompileImmediately=true\" instead!");
             }
@@ -251,6 +258,7 @@ public class SuiteConfig {
         private boolean verboseFail;
         private boolean runOnGate;
         private boolean gateResume;
+        private boolean printCommand;
         private boolean printScript;
         private boolean saveOutput;
         private boolean compile;
@@ -319,6 +327,10 @@ public class SuiteConfig {
             this.gateResume = gateResume;
         }
 
+        public void setPrintCommand(boolean printCommand) {
+            this.printCommand = printCommand;
+        }
+
         public void setPrintScript(boolean printScript) {
             this.printScript = printScript;
         }
@@ -380,8 +392,8 @@ public class SuiteConfig {
         }
 
         public SuiteConfig build() {
-            return new SuiteConfig(suiteName, suiteDescription, suiteLoc, suiteTestsLoc, suiteHarnessLoc, suiteConfigLoc, useThreads, verbose, verboseFail, runOnGate, gateResume, printScript,
-                            saveOutput, compile, htmlOutput, textOutput, regenerateConfig, compileCount, timeoutTest, timeoutOverall, containsFilter, regexFilter,
+            return new SuiteConfig(suiteName, suiteDescription, suiteLoc, suiteTestsLoc, suiteHarnessLoc, suiteConfigLoc, useThreads, verbose, verboseFail, runOnGate, gateResume, printCommand,
+                            printScript, saveOutput, compile, htmlOutput, textOutput, regenerateConfig, compileCount, timeoutTest, timeoutOverall, containsFilter, regexFilter,
                             endsWithFilter, printFullOutput, outputFilter, extLauncher);
         }
     }
