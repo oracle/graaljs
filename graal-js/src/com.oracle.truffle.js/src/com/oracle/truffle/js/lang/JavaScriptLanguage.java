@@ -150,7 +150,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 InputNodeTag.class,
 })
 
-@TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, version = JavaScriptLanguage.VERSION_NUMBER, characterMimeTypes = {
+@TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, implementationName = JavaScriptLanguage.IMPLEMENTATION_NAME, characterMimeTypes = {
                 JavaScriptLanguage.APPLICATION_MIME_TYPE,
                 JavaScriptLanguage.TEXT_MIME_TYPE,
                 JavaScriptLanguage.MODULE_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.REUSE, dependentLanguages = "regex", fileTypeDetectors = JSFileTypeDetector.class)
@@ -161,8 +161,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final String SCRIPT_SOURCE_NAME_SUFFIX = ".js";
     public static final String MODULE_SOURCE_NAME_SUFFIX = ".mjs";
 
-    public static final String VERSION_NUMBER = "1.0"; // also in GraalJSEngineFactory
     public static final String NAME = "JavaScript";
+    public static final String IMPLEMENTATION_NAME = "GraalVM JavaScript";
     public static final String ID = "js";
 
     private static final int MAX_TOSTRING_DEPTH = 10;
