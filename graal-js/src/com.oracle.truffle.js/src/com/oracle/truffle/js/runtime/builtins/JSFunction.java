@@ -1047,7 +1047,7 @@ public final class JSFunction extends JSBuiltinObject {
                 public Object visitFrame(FrameInstance frameInstance) {
                     RootNode rootNode = getFrameRootNode(frameInstance);
                     if (JSRuntime.isJSFunctionRootNode(rootNode)) {
-                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
                         DynamicObject function = (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
                         if (function == thiz) {
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
@@ -1090,7 +1090,7 @@ public final class JSFunction extends JSBuiltinObject {
                 public Object visitFrame(FrameInstance frameInstance) {
                     RootNode rootNode = getFrameRootNode(frameInstance);
                     if (JSRuntime.isJSFunctionRootNode(rootNode)) {
-                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
                         DynamicObject function = (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
                         if (seenThis) {
                             SourceSection ss = rootNode.getSourceSection();
