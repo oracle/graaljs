@@ -204,17 +204,19 @@ public abstract class EnumerateNode extends JavaScriptNode {
 
     private DynamicObject doEnumerateTruffleObjectIntl(Object iteratedObject, InteropLibrary objInterop, InteropLibrary keysInterop) {
         try {
-            if (objInterop.hasArrayElements(iteratedObject)) {
-                long longSize = objInterop.getArraySize(iteratedObject);
-                return enumerateForeignArrayLike(context, iteratedObject, longSize, values, objInterop);
-            } else if (objInterop.hasMembers(iteratedObject)) {
-                Object keysObj = objInterop.getMembers(iteratedObject);
-                assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
-                long longSize = keysInterop.getArraySize(keysObj);
-                return enumerateForeignNonArray(context, iteratedObject, keysObj, longSize, values, objInterop, keysInterop);
-            } else if (objInterop.isString(iteratedObject)) {
-                String string = objInterop.asString(iteratedObject);
-                return enumerateString(string);
+            if (!objInterop.isNull(iteratedObject)) {
+                if (objInterop.hasArrayElements(iteratedObject)) {
+                    long longSize = objInterop.getArraySize(iteratedObject);
+                    return enumerateForeignArrayLike(context, iteratedObject, longSize, values, objInterop);
+                } else if (objInterop.hasMembers(iteratedObject)) {
+                    Object keysObj = objInterop.getMembers(iteratedObject);
+                    assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
+                    long longSize = keysInterop.getArraySize(keysObj);
+                    return enumerateForeignNonArray(context, iteratedObject, keysObj, longSize, values, objInterop, keysInterop);
+                } else if (objInterop.isString(iteratedObject)) {
+                    String string = objInterop.asString(iteratedObject);
+                    return enumerateString(string);
+                }
             }
         } catch (UnsupportedMessageException ex) {
             // swallow and default

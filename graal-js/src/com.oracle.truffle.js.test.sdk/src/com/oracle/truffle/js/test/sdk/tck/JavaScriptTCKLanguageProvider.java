@@ -163,8 +163,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         noType);
         // +
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull));
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY));
-        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, ANY, nonNumeric));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY, JavaScriptVerifier.numericVerifier(null)));
+        ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, ANY, nonNumeric, JavaScriptVerifier.numericVerifier(null)));
         // -
         ops.add(createBinaryOperator(context, "-", TypeDescriptor.NUMBER, ANY, ANY));
         // *
@@ -576,6 +576,41 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         final Value arg = snippetRun.getParameters().get(0);
                         if (!arg.hasMembers()) {
                             return;
+                        }
+                    }
+                    super.accept(snippetRun);
+                }
+            };
+        }
+
+        /**
+         * Creates a {@link ResultVerifier} which correctly handles return type for plus operator
+         * parameters which are intersection of numeric and non numeric. This verifier solve a
+         * problem when the actual plus operator parameter is both number and non numeric type. In
+         * this case the plus snippet taking non numeric type and {@code ANY} is used and
+         * {@code STRING} return type is expected but as the parameter is also numeric type the
+         * actual result is {@code NUMBER}.
+         *
+         * @param next the next {@link ResultVerifier} to be called, null for last one
+         * @return the {@link ResultVerifier}
+         */
+        static ResultVerifier numericVerifier(ResultVerifier next) {
+            return new JavaScriptVerifier(next) {
+                @Override
+                public void accept(SnippetRun snippetRun) throws PolyglotException {
+                    boolean allNumeric = true;
+                    if (snippetRun.getException() == null) {
+                        TypeDescriptor numericTypes = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN);
+                        for (Value actualParameter : snippetRun.getParameters()) {
+                            allNumeric &= numericTypes.isAssignable(TypeDescriptor.forValue(actualParameter));
+                        }
+                        if (allNumeric) {
+                            TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());
+                            if (!TypeDescriptor.NUMBER.isAssignable(resultType)) {
+                                throw new AssertionError(String.format("Result is out of type bounds. Expected: NUMBER, Got: %s.", resultType));
+                            } else {
+                                return;
+                            }
                         }
                     }
                     super.accept(snippetRun);
