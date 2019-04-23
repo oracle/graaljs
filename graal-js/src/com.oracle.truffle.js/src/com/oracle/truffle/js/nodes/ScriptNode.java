@@ -86,6 +86,11 @@ public final class ScriptNode {
         return JSArguments.createZeroArg(thisObj, JSFunction.create(realm, functionData));
     }
 
+    public Object runWithThisObjectWithArguments(JSRealm realm, Object thisObj, Object[] args) {
+        Object[] preparedArgs = JSArguments.create(thisObj, JSFunction.create(realm, functionData), args);
+        return callTarget.call(preparedArgs);
+    }
+
     public Object run(Object[] args) {
         return callTarget.call(args);
     }
