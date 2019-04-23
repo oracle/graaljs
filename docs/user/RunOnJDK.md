@@ -6,7 +6,7 @@ This guarantees best possible performance by using the [GraalVM Compiler](https:
 As GraalVM JavaScript is a Java application, it is possible to execute it on a stock Java VM like OpenJDK.
 When executed without the GraalVM Compiler as optimizing compiler, performance of GraalVM JavaScript will be significantly worse.
 While the JIT compilers available on stock JVMs can execute and JIT-compile the GraalVM JavaScript codebase, they cannot optimize it to its full performance potential.
-This document describes how to run GraalVM JavaScript on stock Java VMs, while using the GraalVm Compiler as JIT compiler to guarantee best possible performance.
+This document describes how to run GraalVM JavaScript on stock Java VMs, and shows how you can use the GraalVm Compiler as JIT compiler to guarantee best possible performance.
 
 ## GraalVM JavaScript on Maven
 GraalVM and GraalVM JavaScript are open source and are regularly pushed to Maven by the community.
@@ -35,11 +35,27 @@ The relevant files are:
 * $GRAALVM/jre/lib/boot/graaljs-scriptengine.jar - GraalVM JavaScript's ScriptEngine/JSR 223 support (optional)
 
 ## GraalVM JavaScript on JDK 8
-This command line executes GraalVM JavaScript on a JDK 8, starting a JavaScript console:
+The following command line executes GraalVM JavaScript on a JDK 8, starting a JavaScript console.
+Note that this variant does not include the Graal Compiler as optimizing compiler, so the perfomance of GraalVM JavaScript will be supoptimal.
+See the JDK 11 example below how to improve on this.
 
+*On Linux*
 ```
 GRAALVM=/path/to/GraalVM
 /path/to/jdk8/bin/java -cp $GRAALVM/jre/lib/graalvm/launcher-common.jar:$GRAALVM/jre/lib/graalvm/graaljs-launcher.jar:$GRAALVM/jre/languages/js/graaljs.jar:$GRAALVM/jre/lib/truffle/truffle-api.jar:$GRAALVM/jre/lib/boot/graal-sdk.jar:$GRAALVM/jre/lib/boot/graaljs-scriptengine.jar:$GRAALVM/jre/tools/regex/tregex.jar com.oracle.truffle.js.shell.JSLauncher
+```
+
+*On MacOS*
+Identical to the Linux command, but for the path to GraalVM you need to add `Contents/Home`
+```
+GRAALVM=/path/to/graalvm/Contents/Home
+```
+
+*On Windows*
+GraalVM JavaScript offers preliminary support for Windows:
+```
+set GRAALVM=c:\path\to\graalvm
+%GRAALVM%\bin\java -cp %GRAALVM%\jre\lib\graalvm\launcher-common.jar;%GRAALVM%\jre\lib\graalvm\graaljs-launcher.jar;%GRAALVM%\jre\languages\js\graaljs.jar;%GRAALVM%\jre\lib\truffle\truffle-api.jar;%GRAALVM%\jre\lib\boot\graal-sdk.jar;%GRAALVM%\jre\lib\boot\graaljs-scriptengine.jar;%GRAALVM%\jre\tools\regex\tregex.jar com.oracle.truffle.js.shell.JSLauncher
 ```
 
 To start a Java application instead and launch GraalVM JavaScript via GraalVM SDK's `Context` (encouraged) or a `ScriptEngine` (supported, but discouraged), the launcher-common.jar and the graaljs-launcher.jar can be omitted (see example below).
