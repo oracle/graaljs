@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 
@@ -50,7 +49,6 @@ public abstract class HypotNode extends MathOperation {
         super(context, builtin);
     }
 
-    @ExplodeLoop
     @Specialization
     protected double hypot(Object... args) {
         int length = args.length;
