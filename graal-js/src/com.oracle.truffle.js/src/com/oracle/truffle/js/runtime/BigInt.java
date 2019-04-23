@@ -312,7 +312,7 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
     @ExportMessage
     boolean isNumber() {
-        return fitsInLong();
+        return fitsInLong() || fitsInDouble();
     }
 
     @ExportMessage
@@ -341,14 +341,30 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    boolean fitsInFloat() {
-        return value.bitLength() < Float.SIZE;
+    boolean fitsInDouble() {
+        if (value.bitLength() <= 53) { // 53 = size of double mantissa + 1
+            return true;
+        } else {
+            double doubleValue = value.doubleValue();
+            if (!Double.isFinite(doubleValue)) {
+                return false;
+            }
+            return new BigDecimal(doubleValue).toBigIntegerExact().equals(value);
+        }
     }
 
     @ExportMessage
     @TruffleBoundary
-    boolean fitsInDouble() {
-        return value.bitLength() < Double.SIZE;
+    boolean fitsInFloat() {
+        if (value.bitLength() <= 24) { // 24 = size of float mantissa + 1
+            return true;
+        } else {
+            float floatValue = value.floatValue();
+            if (!Float.isFinite(floatValue)) {
+                return false;
+            }
+            return new BigDecimal(floatValue).toBigIntegerExact().equals(value);
+        }
     }
 
     @ExportMessage
@@ -392,12 +408,23 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     float asFloat() throws UnsupportedMessageException {
-        return asInt(); // Float.SIZE == Integer.SIZE
+        if (fitsInFloat()) {
+            return value.floatValue();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     @ExportMessage
+    @TruffleBoundary
     double asDouble() throws UnsupportedMessageException {
-        return asLong(); // Double.SIZE == Long.SIZE
+        if (fitsInDouble()) {
+            return value.doubleValue();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
+
 }
