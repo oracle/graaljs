@@ -48,8 +48,11 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 
 public class AccessVarArgsNode extends AccessIndexedArgumentNode {
+    private static final int MAX_UNROLL = 250;
     private static final int UNINITIALIZED = -2;
+    /** Unstable or too large argument count. */
     private static final int UNSTABLE = -1;
+
     /** Expected/profiled stable user argument count or {@link #UNSTABLE}. */
     @CompilationFinal private int userArgumentCount;
 
@@ -75,13 +78,16 @@ public class AccessVarArgsNode extends AccessIndexedArgumentNode {
         if (profile(index >= currentUserArgumentCount)) {
             return JSArguments.EMPTY_ARGUMENTS_ARRAY;
         } else {
-
             int constantUserArgumentCount = userArgumentCount;
 
             if (constantUserArgumentCount == UNINITIALIZED) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                constantUserArgumentCount = currentUserArgumentCount;
-                userArgumentCount = currentUserArgumentCount;
+                if (currentUserArgumentCount <= MAX_UNROLL) {
+                    constantUserArgumentCount = currentUserArgumentCount;
+                } else {
+                    constantUserArgumentCount = UNSTABLE;
+                }
+                userArgumentCount = constantUserArgumentCount;
             }
 
             if (constantUserArgumentCount == UNSTABLE) {

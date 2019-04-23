@@ -45,6 +45,8 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 
 public abstract class ExportArgumentsNode extends JavaScriptBaseNode {
+    private static final int MAX_FIXED = 250;
+
     public abstract Object[] export(Object[] extractedUserArguments);
 
     public static ExportArgumentsNode create(int expectedLength) {
@@ -86,7 +88,7 @@ public abstract class ExportArgumentsNode extends JavaScriptBaseNode {
             }
         }
 
-        if (expectedLength >= 0) {
+        if (expectedLength >= 0 && expectedLength <= MAX_FIXED) {
             return new FixedLength(expectedLength);
         } else {
             return new VariableLength();
