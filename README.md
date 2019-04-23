@@ -43,6 +43,14 @@ It provides high compatibility with existing npm packages, with high likelyhood 
 This includes npm packages with native implementations.
 Note that you will need to re-compile from source with GraalVM JavaScript if you want to run binaries that have been compiled for Node.js based on V8, or any other compatible engine.
 
+### Compatibility on Operating Systems
+
+The core JavaScript engine is a Java application and is thus in principle compatible with every operating system that provides a compatible JVM, [see `RunOnJDK.md`](docs/user/RunOnJDK.md).
+We test and support GraalVM JavaScript currently in full extent on Linux and MacOS.
+For Windows, a preliminary preview version is available.
+
+Some features, including the Node.js support, are currently not supported on all platforms (e.g. Windows).
+
 ## GraalVM JavaScript Reference Manual
 
 A reference manual for GraalVM JavaScript is available on the [GraalVM website](https://www.graalvm.org/docs/reference-manual/languages/js/).
