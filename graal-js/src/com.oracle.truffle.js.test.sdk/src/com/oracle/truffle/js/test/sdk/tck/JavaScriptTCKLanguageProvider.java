@@ -248,8 +248,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.union(
                                         TypeDescriptor.STRING,
                                         TypeDescriptor.OBJECT,
-                                        TypeDescriptor.ARRAY,
-                                        TypeDescriptor.NULL)));
+                                        TypeDescriptor.ARRAY)));
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
                         TypeDescriptor.NULL,
@@ -586,7 +585,11 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
 
         /**
          * Creates a {@link ResultVerifier} which correctly handles return type for plus operator
-         * parameters which are intersection of numeric and non numeric.
+         * parameters which are intersection of numeric and non numeric. This verifier solve a
+         * problem when the actual plus operator parameter is both number and non numeric type. In
+         * this case the plus snippet taking non numeric type and {@code ANY} is used and
+         * {@code STRING} return type is expected but as the parameter is also numeric type the
+         * actual result is {@code NUMBER}.
          *
          * @param next the next {@link ResultVerifier} to be called, null for last one
          * @return the {@link ResultVerifier}
