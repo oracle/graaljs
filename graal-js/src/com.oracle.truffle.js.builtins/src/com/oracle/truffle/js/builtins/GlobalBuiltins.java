@@ -115,7 +115,6 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.ExitException;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConsoleUtil;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
@@ -314,7 +313,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalLoad builtinEnum) {
             switch (builtinEnum) {
                 case load:
-                    return JSGlobalLoadNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                    return JSGlobalLoadNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
                 case loadWithNewGlobal:
                     return JSGlobalLoadWithNewGlobalNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
             }
@@ -555,12 +554,25 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     public abstract static class JSLoadOperation extends JSGlobalOperation {
         public JSLoadOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.realmNode = RealmNode.create(context);
         }
 
+        @Child protected RealmNode realmNode;
         @Child private JSLoadNode loadNode;
 
         protected static final String EVAL_OBJ_FILE_NAME = "name";
         protected static final String EVAL_OBJ_SOURCE = "script";
+
+        // nashorn load pseudo URL prefixes
+        private static final String LOAD_CLASSPATH = "classpath:";
+        private static final String LOAD_FX = "fx:";
+        private static final String LOAD_NASHORN = "nashorn:";
+        // nashorn default paths
+        private static final String RESOURCES_PATH = "resources/";
+        private static final String FX_RESOURCES_PATH = "resources/fx/";
+        private static final String NASHORN_BASE_PATH = "jdk/nashorn/internal/runtime/";
+        private static final String NASHORN_PARSER_JS = "nashorn:parser.js";
+        private static final String NASHORN_MOZILLA_COMPAT_JS = "nashorn:mozilla_compat.js";
 
         protected final Object runImpl(JSRealm realm, Source source) {
             if (loadNode == null) {
@@ -613,6 +625,76 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected static final String fileGetPath(File file) {
             return file.getPath();
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        protected Source sourceFromPath(String path, JSRealm realm) {
+            Source source = null;
+            JSContext ctx = realm.getContext();
+            if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL()) && path.indexOf(':') != -1) {
+                source = sourceFromURI(path);
+                if (source != null) {
+                    return source;
+                }
+            }
+
+            try {
+                TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
+                if (file.isRegularFile()) {
+                    source = sourceFromTruffleFile(file);
+                }
+            } catch (SecurityException e) {
+                throw Errors.createErrorFromException(e);
+            }
+
+            if (source == null) {
+                throw cannotLoadScript(path);
+            }
+            return source;
+        }
+
+        private Source sourceFromURI(String resource) {
+            if (JSTruffleOptions.SubstrateVM || !getContext().isOptionNashornCompatibilityMode() && !getContext().isOptionLoadFromURL()) {
+                return null;
+            }
+            if ((resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {
+                return sourceFromResourceURL(resource);
+            }
+
+            try {
+                URL url = new URL(resource);
+                return sourceFromURL(url);
+            } catch (MalformedURLException e) {
+            }
+            return null;
+        }
+
+        private Source sourceFromResourceURL(String resource) {
+            assert getContext().isOptionNashornCompatibilityMode();
+            InputStream stream = null;
+            if (resource.startsWith(LOAD_NASHORN)) {
+                if (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS)) {
+                    stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
+                }
+            } else if (!JSTruffleOptions.SubstrateVM) {
+                if (resource.startsWith(LOAD_CLASSPATH)) {
+                    stream = ClassLoader.getSystemResourceAsStream(resource.substring(LOAD_CLASSPATH.length()));
+                } else if (resource.startsWith(LOAD_FX)) {
+                    stream = ClassLoader.getSystemResourceAsStream(NASHORN_BASE_PATH + FX_RESOURCES_PATH + resource.substring(LOAD_FX.length()));
+                }
+            }
+            if (stream != null) {
+                try {
+                    return Source.newBuilder(JavaScriptLanguage.ID, new InputStreamReader(stream, StandardCharsets.UTF_8), resource).build();
+                } catch (IOException | SecurityException e) {
+                }
+            }
+            return null;
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        protected static JSException cannotLoadScript(Object script) {
+            return Errors.createTypeError("Cannot load script: " + JSRuntime.safeToString(script));
         }
     }
 
@@ -1129,68 +1211,20 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     @ImportStatic(value = JSInteropUtil.class)
     public abstract static class JSGlobalLoadNode extends JSLoadOperation {
-        // nashorn load pseudo URL prefixes
-        private static final String LOAD_CLASSPATH = "classpath:";
-        private static final String LOAD_FX = "fx:";
-        private static final String LOAD_NASHORN = "nashorn:";
-        // nashorn default paths
-        private static final String RESOURCES_PATH = "resources/";
-        private static final String FX_RESOURCES_PATH = "resources/fx/";
-        private static final String NASHORN_BASE_PATH = "jdk/nashorn/internal/runtime/";
-        private static final String NASHORN_PARSER_JS = "nashorn:parser.js";
-        private static final String NASHORN_MOZILLA_COMPAT_JS = "nashorn:mozilla_compat.js";
-
-        @Child private RealmNode realmNode;
 
         public JSGlobalLoadNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.realmNode = RealmNode.create(context);
         }
 
         @Specialization
-        protected Object loadString(VirtualFrame frame, String path) {
+        protected Object loadString(VirtualFrame frame, String path, @SuppressWarnings("unused") Object[] args) {
             JSRealm realm = realmNode.execute(frame);
             Source source = sourceFromPath(path, realm);
             return runImpl(realm, source);
         }
 
-        @TruffleBoundary(transferToInterpreterOnException = false)
-        private Source sourceFromPath(String path, JSRealm realm) {
-            Source source = null;
-            JSContext ctx = realm.getContext();
-            if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL()) && path.indexOf(':') != -1) {
-                source = sourceFromURI(path);
-                if (source != null) {
-                    return source;
-                }
-            }
-
-            try {
-                TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
-                if (file.isRegularFile()) {
-                    source = sourceFromTruffleFile(file);
-                }
-            } catch (SecurityException e) {
-                throw Errors.createErrorFromException(e);
-            }
-
-            if (source == null) {
-                throw cannotLoadScript(path);
-            }
-            return source;
-        }
-
-        protected Object loadFile(JSRealm realm, File file) {
-            return runImpl(realm, sourceFromFileName(fileGetPath(file), realm));
-        }
-
-        protected Object loadURL(JSRealm realm, URL url) {
-            assert realm.getContext().isOptionNashornCompatibilityMode();
-            return runImpl(realm, sourceFromURL(url));
-        }
-
         @Specialization(guards = "isForeignObject(scriptObj)")
-        protected Object loadTruffleObject(VirtualFrame frame, TruffleObject scriptObj,
+        protected Object loadTruffleObject(VirtualFrame frame, TruffleObject scriptObj, Object[] args,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {
             JSRealm realm = realmNode.execute(frame);
             TruffleLanguage.Env env = realm.getEnv();
@@ -1207,74 +1241,39 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 throw cannotLoadScript(scriptObj);
             }
             String stringPath = toString1(unboxed);
-            return loadString(frame, stringPath);
+            return loadString(frame, stringPath, args);
         }
 
         @Specialization(guards = "isJSObject(scriptObj)")
-        protected Object loadScriptObj(VirtualFrame frame, DynamicObject scriptObj,
+        protected Object loadScriptObj(VirtualFrame frame, DynamicObject scriptObj, Object[] args,
                         @Cached("create()") JSToStringNode sourceToStringNode) {
             JSRealm realm = realmNode.execute(frame);
             if (JSObject.hasProperty(scriptObj, EVAL_OBJ_FILE_NAME) && JSObject.hasProperty(scriptObj, EVAL_OBJ_SOURCE)) {
                 Object scriptNameObj = JSObject.get(scriptObj, EVAL_OBJ_FILE_NAME);
                 Object sourceObj = JSObject.get(scriptObj, EVAL_OBJ_SOURCE);
-                return evalImpl(realm, toString1(scriptNameObj), sourceToStringNode.executeString(sourceObj));
+                return evalImpl(realm, toString1(scriptNameObj), sourceToStringNode.executeString(sourceObj), args);
             } else {
                 throw cannotLoadScript(scriptObj);
             }
         }
 
         @Specialization(guards = {"!isString(fileName)", "!isForeignObject(fileName)", "!isJSObject(fileName)"})
-        protected Object loadConvertToString(VirtualFrame frame, Object fileName) {
-            return loadString(frame, toString1(fileName));
+        protected Object loadConvertToString(VirtualFrame frame, Object fileName, Object[] args) {
+            return loadString(frame, toString1(fileName), args);
+        }
+
+        protected Object loadFile(JSRealm realm, File file) {
+            return runImpl(realm, sourceFromFileName(fileGetPath(file), realm));
+        }
+
+        protected Object loadURL(JSRealm realm, URL url) {
+            assert realm.getContext().isOptionNashornCompatibilityMode();
+            return runImpl(realm, sourceFromURL(url));
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private Object evalImpl(JSRealm realm, String fileName, String source) {
+        protected Object evalImpl(JSRealm realm, String fileName, String source, @SuppressWarnings("unused") Object[] args) {
             return loadStringImpl(getContext(), fileName, source).run(realm);
-        }
-
-        private Source sourceFromURI(String resource) {
-            if (JSTruffleOptions.SubstrateVM || !getContext().isOptionNashornCompatibilityMode() && !getContext().isOptionLoadFromURL()) {
-                return null;
-            }
-            if ((resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {
-                return sourceFromResourceURL(resource);
-            }
-
-            try {
-                URL url = new URL(resource);
-                return sourceFromURL(url);
-            } catch (MalformedURLException e) {
-            }
-            return null;
-        }
-
-        private Source sourceFromResourceURL(String resource) {
-            assert getContext().isOptionNashornCompatibilityMode();
-            InputStream stream = null;
-            if (resource.startsWith(LOAD_NASHORN)) {
-                if (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS)) {
-                    stream = JSContext.class.getResourceAsStream(RESOURCES_PATH + resource.substring(LOAD_NASHORN.length()));
-                }
-            } else if (!JSTruffleOptions.SubstrateVM) {
-                if (resource.startsWith(LOAD_CLASSPATH)) {
-                    stream = ClassLoader.getSystemResourceAsStream(resource.substring(LOAD_CLASSPATH.length()));
-                } else if (resource.startsWith(LOAD_FX)) {
-                    stream = ClassLoader.getSystemResourceAsStream(NASHORN_BASE_PATH + FX_RESOURCES_PATH + resource.substring(LOAD_FX.length()));
-                }
-            }
-            if (stream != null) {
-                try {
-                    return Source.newBuilder(JavaScriptLanguage.ID, new InputStreamReader(stream, StandardCharsets.UTF_8), resource).build();
-                } catch (IOException | SecurityException e) {
-                }
-            }
-            return null;
-        }
-
-        @TruffleBoundary(transferToInterpreterOnException = false)
-        private static JSException cannotLoadScript(Object script) {
-            return Errors.createTypeError("Cannot load script: " + JSRuntime.safeToString(script));
         }
     }
 
@@ -1282,64 +1281,19 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      * Implementation of non-standard method loadWithNewGlobal() as defined by Nashorn.
      *
      */
-    public abstract static class JSGlobalLoadWithNewGlobalNode extends JSLoadOperation {
+    public abstract static class JSGlobalLoadWithNewGlobalNode extends JSGlobalLoadNode {
 
         public JSGlobalLoadWithNewGlobalNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization
-        protected Object loadURL(URL from, @SuppressWarnings("unused") Object[] args) {
-            return runImpl(createRealm(), sourceFromURL(from));
-        }
-
-        @Specialization(guards = "!isJSObject(from)")
-        protected Object load(Object from, @SuppressWarnings("unused") Object[] args) {
-            String name = toString1(from);
-            URL url = toURL(name);
-            if (url == null) {
-                return fail(name);
-            }
-            return runImpl(createRealm(), sourceFromURL(url));
-        }
-
-        @TruffleBoundary
-        private static Object fail(String name) {
-            throw Errors.createTypeError("Cannot load script from " + name);
-        }
-
-        @TruffleBoundary
-        private static URL toURL(String urlStr) {
-            try {
-                return new URL(urlStr);
-            } catch (MalformedURLException e) {
-                return null;
-            }
-        }
-
-        @Specialization
-        protected Object load(DynamicObject from, Object[] args,
-                        @Cached("create()") JSToStringNode toString2Node) {
-            String name = toString1(JSObject.get(from, EVAL_OBJ_FILE_NAME));
-            String script = toString2Node.executeString(JSObject.get(from, EVAL_OBJ_SOURCE));
-            return loadIntl(name, script, args);
-        }
-
+        @Override
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private Object loadIntl(String name, String script, Object[] args) {
-            JSRealm childRealm = createRealm();
-            ScriptNode scriptNode = loadStringImpl(childRealm.getContext(), name, script);
-            DynamicObject globalObject = childRealm.getGlobalObject();
-            if (args.length > 0) {
-                DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), childRealm, args);
-                JSRuntime.createDataProperty(globalObject, JSFunction.ARGUMENTS, argObj);
-            }
-            return scriptNode.run(JSArguments.create(globalObject, JSFunction.create(childRealm, scriptNode.getFunctionData()), args));
-        }
-
-        @TruffleBoundary
-        private JSRealm createRealm() {
-            return getContext().getRealm().createChildRealm();
+        protected Object evalImpl(JSRealm realm, String fileName, String source, Object[] args) {
+            JSRealm newRealm = realm.createChildRealm();
+            DynamicObject argObj = JSArgumentsObject.createStrict(getContext(), newRealm, args);
+            JSRuntime.createDataProperty(newRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
+            return loadStringImpl(getContext(), fileName, source).run(newRealm);
         }
     }
 
