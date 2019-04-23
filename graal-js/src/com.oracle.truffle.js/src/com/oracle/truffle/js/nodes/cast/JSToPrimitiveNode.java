@@ -210,13 +210,16 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         if (interop.isNull(object)) {
             return Null.instance;
         }
-        TruffleLanguage.Env env = contextRef.get().getEnv();
+        JSRealm realm = contextRef.get();
+        TruffleLanguage.Env env = realm.getEnv();
         if (env.isHostObject(object)) {
             Object javaObject = env.asHostObject(object);
             if (javaObject == null) {
                 return Null.instance;
             } else if (JSGuards.isJavaPrimitiveNumber(javaObject)) {
                 return toJSType.executeWithTarget(javaObject);
+            } else if (realm.getContext().isOptionNashornCompatibilityMode() && javaObject instanceof Number) {
+                return JSRuntime.doubleValueVirtual((Number) javaObject);
             } else {
                 return JSRuntime.toJSNull(Boundaries.javaToString(javaObject));
             }

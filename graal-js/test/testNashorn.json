@@ -150,10 +150,6 @@
     "status" : "SKIP",
     "comment" : "Loading the 'nashorn' engine"
   }, {
-    "filePath" : "basic/JDK-8010732.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
     "filePath" : "basic/JDK-8010924.js",
     "status" : "SKIP",
     "comment" : "Loading the 'nashorn' engine"
