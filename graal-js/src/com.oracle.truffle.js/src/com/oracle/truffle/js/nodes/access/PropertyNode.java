@@ -94,6 +94,9 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
             JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, this);
             PropertyNode propertyNode = PropertyNode.createProperty(cache.getContext(), clonedTarget, cache.getKey());
             transferSourceSectionAndTags(this, propertyNode);
+            if (cache.isMethod()) {
+                propertyNode.cache.setMethod();
+            }
             return propertyNode;
         }
         return this;
