@@ -42,7 +42,6 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
@@ -155,7 +154,6 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     }
 
     @Test
-    @Ignore
     public void readMulti() {
         String src = "function Bar() {};" +
                         "var bar = new Bar();" +
@@ -220,7 +218,6 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     }
 
     @Test
-    @Ignore
     public void readPrototypeInCall() {
         String src = "var addProperty = function(color, func) {" +
                         "  String.prototype.__defineGetter__(color, func);" +
