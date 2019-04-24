@@ -412,7 +412,6 @@ public final class JSFunction extends JSBuiltinObject {
         if (context.isSingleRealm()) {
             realm = context.getRealm();
             assert realm == JSFunction.getRealm(boundTargetFunction);
-            CompilerAsserts.partialEvaluationConstant(realm);
         } else {
             realm = JSFunction.getRealm(boundTargetFunction);
         }
