@@ -940,6 +940,7 @@ public class JSContext {
     private static final String REGEX_OPTION_DUMP_AUTOMATA = "DumpAutomata";
     private static final String REGEX_OPTION_STEP_EXECUTION = "StepExecution";
     private static final String REGEX_OPTION_ALWAYS_EAGER = "AlwaysEager";
+    private static final String REGEX_OPTION_FEATURE_SET_TREGEX_JONI = "FeatureSet=TRegexJoni";
 
     private String createRegexEngineOptions() {
         StringBuilder options = new StringBuilder(30);
@@ -958,6 +959,7 @@ public class JSContext {
         if (getContextOptions().isRegexAlwaysEager()) {
             options.append(REGEX_OPTION_ALWAYS_EAGER + "=true,");
         }
+        options.append(REGEX_OPTION_FEATURE_SET_TREGEX_JONI + ",");
         return options.toString();
     }
 

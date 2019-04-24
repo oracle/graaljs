@@ -105,16 +105,22 @@ public final class JoniRegexEngine implements TruffleObject {
 
     @TruffleBoundary
     public TruffleObject compile(String pattern, String flags) {
-        JoniRegexFlags parsedFlags = JoniRegexFlags.parseFlags(flags);
-        Regex implementation = createJoniRegex(pattern, parsedFlags);
-        CallTarget callTarget;
-        boolean group = PatternAnalyzer.containsGroup(pattern);
-        if (parsedFlags.isSticky()) {
-            callTarget = group ? getMatchGroupCallTarget() : getMatchSimpleCallTarget();
-        } else {
-            callTarget = group ? getSearchGroupCallTarget() : getSearchSimpleCallTarget();
+        try {
+            JoniRegexFlags parsedFlags = JoniRegexFlags.parseFlags(flags);
+            Regex implementation = createJoniRegex(pattern, parsedFlags);
+            CallTarget callTarget;
+            boolean group = PatternAnalyzer.containsGroup(pattern);
+            if (parsedFlags.isSticky()) {
+                callTarget = group ? getMatchGroupCallTarget() : getMatchSimpleCallTarget();
+            } else {
+                callTarget = group ? getSearchGroupCallTarget() : getSearchSimpleCallTarget();
+            }
+            return new JoniCompiledRegex(pattern, parsedFlags, implementation, callTarget);
+        } catch (JoniUnsupportedRegexException e) {
+            e.setReason("Joni: " + e.getReason());
+            e.setRegex(pattern, flags);
+            throw e;
         }
-        return new JoniCompiledRegex(pattern, parsedFlags, implementation, callTarget);
     }
 
     @TruffleBoundary
@@ -128,14 +134,14 @@ public final class JoniRegexEngine implements TruffleObject {
             // unsupported feature encountered by the preprocessor). Joni's SyntaxExceptions signal
             // syntax errors in the pattern (since we are using a preprocessor, these would
             // either mean a bug in the preprocessor or an unsupported feature encountered by Joni).
-            throw new RuntimeException("Joni: " + e.getMessage(), e);
+            throw new JoniUnsupportedRegexException(e.getMessage(), e);
         }
     }
 
     private static int getOptions(JoniRegexFlags flags) {
         int option = Option.SINGLELINE;
         if (flags.isUnicode()) {
-            throw new RuntimeException("Joni: unicode mode not supported");
+            throw new JoniUnsupportedRegexException("unicode mode not supported");
         }
         if (flags.isIgnoreCase()) {
             option |= Option.IGNORECASE;
