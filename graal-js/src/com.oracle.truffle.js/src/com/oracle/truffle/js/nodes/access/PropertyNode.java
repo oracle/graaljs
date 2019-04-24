@@ -87,12 +87,17 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadPropertyExpressionTag.class) && !isScopeAccess()) {
-            if (target != null && !target.hasSourceSection()) {
-                JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, this);
-                PropertyNode propertyNode = PropertyNode.createProperty(cache.getContext(), clonedTarget, cache.getKey());
-                transferSourceSectionAndTags(this, propertyNode);
-                return propertyNode;
+            if (target instanceof JSTaggedExecutionNode) {
+                // this node is already materialized
+                return this;
             }
+            JavaScriptNode clonedTarget = JSTaggedExecutionNode.createForInput(target, this);
+            PropertyNode propertyNode = PropertyNode.createProperty(cache.getContext(), clonedTarget, cache.getKey());
+            transferSourceSectionAndTags(this, propertyNode);
+            if (cache.isMethod()) {
+                propertyNode.cache.setMethod();
+            }
+            return propertyNode;
         }
         return this;
     }

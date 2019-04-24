@@ -112,7 +112,14 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadPropertyExpressionTag.class) && !isScopeAccess() && globalObjectNode == null) {
-            transferSourceSectionAddExpressionTag(this, getGlobalObjectNode());
+            GlobalObjectNode global = GlobalObjectNode.create(context);
+            GlobalPropertyNode materialized = new GlobalPropertyNode(context, propertyName, global);
+            if (this.cache != null && this.cache.isMethod()) {
+                materialized.getCache().setMethod();
+            }
+            transferSourceSectionAndTags(this, materialized);
+            transferSourceSection(this, global);
+            return materialized;
         }
         return this;
     }

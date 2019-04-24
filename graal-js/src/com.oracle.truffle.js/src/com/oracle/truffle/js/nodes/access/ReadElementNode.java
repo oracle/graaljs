@@ -140,7 +140,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ReadElementExpressionTag.class) && materializationNeeded()) {
+        if (materializedTags.contains(ReadElementExpressionTag.class) && !alreadyMaterialized()) {
             JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
             JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
@@ -150,9 +150,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return this;
     }
 
-    private boolean materializationNeeded() {
-        // Materialization is needed only if we don't have source sections.
-        return (targetNode != null && !targetNode.hasSourceSection()) || (indexNode != null && !indexNode.hasSourceSection());
+    private boolean alreadyMaterialized() {
+        return targetNode instanceof JSTaggedExecutionNode || indexNode instanceof JSTaggedExecutionNode;
     }
 
     @Override

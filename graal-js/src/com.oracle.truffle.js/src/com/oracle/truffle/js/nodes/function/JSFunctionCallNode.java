@@ -735,7 +735,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 materializeInstrumentableArguments();
                 InvokeNode invoke = (InvokeNode) createInvoke(null, getArgumentNodes(), isNew(flags), isNewTarget(flags));
                 JavaScriptNode target = functionTargetNode.getTarget();
-                invoke.targetNode = !target.isInstrumentable() ? JSInputGeneratingNodeWrapper.create(target) : target;
+                invoke.targetNode = !target.isInstrumentable() ? JSInputGeneratingNodeWrapper.create(target) : (JavaScriptNode) target.materializeInstrumentableNodes(materializedTags);
                 invoke.functionTargetNode = JSMaterializedInvokeTargetableNode.createFor(functionTargetNode);
                 transferSourceSectionAndTags(functionTargetNode, invoke.functionTargetNode);
                 transferSourceSectionAndTags(this, invoke);
