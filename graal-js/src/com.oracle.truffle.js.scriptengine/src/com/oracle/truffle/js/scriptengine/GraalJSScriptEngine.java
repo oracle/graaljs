@@ -192,6 +192,19 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                         public Builder setOption(Builder builder, Object value) {
                             return builder.allowAllAccess(toBoolean(this, value));
                         }
+                    },
+                    new MagicBindingsOptionSetter() {
+
+                        @Override
+                        public String getOptionKey() {
+                            return MAGIC_OPTION_PREFIX + "nashorn-compat";
+                        }
+
+                        @Override
+                        public Builder setOption(Builder builder, Object value) {
+                            boolean val = toBoolean(this, value);
+                            return (val ? builder.allowAllAccess(true) : builder).option("js.nashorn-compat", String.valueOf(val));
+                        }
                     }
     };
 
