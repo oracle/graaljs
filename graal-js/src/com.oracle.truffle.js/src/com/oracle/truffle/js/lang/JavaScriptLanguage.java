@@ -518,7 +518,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
-        return firstOptions.equals(newOptions) || toContextOptions(firstOptions).equals(toContextOptions(newOptions));
+        return firstOptions.equals(newOptions);
     }
 
     private static JSContextOptions toContextOptions(OptionValues optionValues) {
