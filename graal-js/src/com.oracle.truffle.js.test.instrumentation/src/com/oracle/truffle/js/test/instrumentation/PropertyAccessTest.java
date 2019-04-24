@@ -137,7 +137,6 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     }
 
     @Test
-    @Ignore
     public void read2() {
         String src = "var a = {log:function(){}}; a.log(42);";
         evalWithTag(src, ReadPropertyExpressionTag.class);
@@ -185,7 +184,6 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     }
 
     @Test
-    @Ignore
     public void readMissingSourceSection() {
         String src = "function bar(){};" +
                         "function foo(){" +
