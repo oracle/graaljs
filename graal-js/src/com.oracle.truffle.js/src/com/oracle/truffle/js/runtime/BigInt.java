@@ -312,43 +312,59 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
 
     @ExportMessage
     boolean isNumber() {
-        return fitsInLong();
+        return fitsInLong() || fitsInDouble();
     }
 
     @ExportMessage
     @TruffleBoundary
     boolean fitsInByte() {
-        return value.bitLength() <= 7;
+        return value.bitLength() < Byte.SIZE;
     }
 
     @ExportMessage
     @TruffleBoundary
     boolean fitsInShort() {
-        return value.bitLength() <= 15;
+        return value.bitLength() < Short.SIZE;
     }
 
     @ExportMessage
     @TruffleBoundary
     boolean fitsInInt() {
-        return value.bitLength() <= 31;
+        return value.bitLength() < Integer.SIZE;
     }
 
     @ExportMessage
     @TruffleBoundary
     public boolean fitsInLong() {
-        return value.bitLength() <= 63;
+        return value.bitLength() < Long.SIZE;
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     boolean fitsInDouble() {
-        return fitsInInt();
+        if (value.bitLength() <= 53) { // 53 = size of double mantissa + 1
+            return true;
+        } else {
+            double doubleValue = value.doubleValue();
+            if (!Double.isFinite(doubleValue)) {
+                return false;
+            }
+            return new BigDecimal(doubleValue).toBigIntegerExact().equals(value);
+        }
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
+    @TruffleBoundary
     boolean fitsInFloat() {
-        return false;
+        if (value.bitLength() <= 24) { // 24 = size of float mantissa + 1
+            return true;
+        } else {
+            float floatValue = value.floatValue();
+            if (!Float.isFinite(floatValue)) {
+                return false;
+            }
+            return new BigDecimal(floatValue).toBigIntegerExact().equals(value);
+        }
     }
 
     @ExportMessage
@@ -391,16 +407,24 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         }
     }
 
-    @SuppressWarnings("static-method")
+    @ExportMessage
+    @TruffleBoundary
+    float asFloat() throws UnsupportedMessageException {
+        if (fitsInFloat()) {
+            return value.floatValue();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
     @ExportMessage
     @TruffleBoundary
     double asDouble() throws UnsupportedMessageException {
-        return asInt();
+        if (fitsInDouble()) {
+            return value.doubleValue();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    float asFloat() throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
-    }
 }
