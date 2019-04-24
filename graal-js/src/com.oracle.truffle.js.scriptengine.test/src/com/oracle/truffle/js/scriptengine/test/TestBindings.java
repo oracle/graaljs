@@ -404,4 +404,16 @@ public class TestBindings {
         engine.put("javaObj", new Object());
         assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));"));
     }
+
+    @Test
+    public void testEnableNashornCompat() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("polyglot.js.nashorn-compat", true);
+        bindings.put("javaObj", new Object());
+        // nashorn-compat implies allowAllAccess
+        assertTrue((boolean) engine.eval("(javaObj instanceof Java.type('java.lang.Object'));", bindings));
+        // should not throw
+        engine.eval("JavaImporter");
+    }
 }
