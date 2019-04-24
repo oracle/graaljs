@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.instrumentation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
@@ -192,6 +193,7 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
     }
 
     @Test
+    @Ignore
     public void nestedInvokeReads() {
         evalWithTag("function setKey(obj, keys) {" +
                         " obj.a;" +
