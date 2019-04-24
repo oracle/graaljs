@@ -41,7 +41,10 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -53,6 +56,8 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
 
     @Child private JavaScriptNode tryBlock;
     @Child private JavaScriptNode finallyBlock;
+    private final BranchProfile catchBranch = BranchProfile.create();
+    private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
     TryFinallyNode(JavaScriptNode tryBlock, JavaScriptNode finallyBlock) {
         this.tryBlock = tryBlock;
@@ -71,10 +76,21 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
     @Override
     public Object execute(VirtualFrame frame) {
         Object result;
+        boolean abort = false;
         try {
             result = tryBlock.execute(frame);
+        } catch (ControlFlowException cfe) {
+            throw cfe;
+        } catch (Throwable ex) {
+            catchBranch.enter();
+            if (!TryCatchNode.shouldCatch(ex, typeProfile)) {
+                abort = true;
+            }
+            throw ex;
         } finally {
-            finallyBlock.execute(frame);
+            if (!abort) {
+                finallyBlock.execute(frame);
+            }
         }
         return result;
     }
@@ -85,6 +101,7 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
         if (state == Undefined.instance) {
             Object result;
             boolean yieldedInTry = false;
+            boolean abort = false;
             Throwable ex = null;
             try {
                 try {
@@ -92,12 +109,19 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
                 } catch (YieldException e) {
                     yieldedInTry = true;
                     throw e;
-                } catch (Throwable e) {
-                    ex = e;
-                    throw e;
+                } catch (ControlFlowException cfe) {
+                    ex = cfe;
+                    throw cfe;
+                } catch (Throwable ex2) {
+                    catchBranch.enter();
+                    if (!TryCatchNode.shouldCatch(ex2, typeProfile)) {
+                        abort = true;
+                    }
+                    ex = ex2;
+                    throw ex2;
                 }
             } finally {
-                if (!yieldedInTry) {
+                if (!abort && !yieldedInTry) {
                     try {
                         finallyBlock.execute(frame);
                     } catch (YieldException e) {
