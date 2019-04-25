@@ -44,12 +44,9 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.ref.Reference;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -57,7 +54,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -81,8 +77,6 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugIsHolesArrayNode
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugJSStackNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugLoadModuleNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugNeverPartOfCompilationNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugObjectSizeHistogramNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugObjectSizeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintObjectNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugPrintSourceAttributionNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugShapeNodeGen;
@@ -92,9 +86,7 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemProperties
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugSystemPropertyNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugToJavaStringNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
-import com.oracle.truffle.js.builtins.helper.ClassHistogramElement;
 import com.oracle.truffle.js.builtins.helper.HeapDump;
-import com.oracle.truffle.js.builtins.helper.ObjectSizeCalculator;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -108,7 +100,6 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -163,20 +154,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         systemProperty(1),
         systemProperties(0),
         neverPartOfCompilation(0),
-        dumpHeap(2),
-
-        objectSize(1) {
-            @Override
-            public boolean isAOTSupported() {
-                return false;
-            }
-        },
-        objectSizeHistogram(3) {
-            @Override
-            public boolean isAOTSupported() {
-                return false;
-            }
-        };
+        dumpHeap(2);
 
         private final int length;
 
@@ -248,15 +226,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
             case dumpHeap:
                 return DebugHeapDumpNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
-            default:
-                if (!JSTruffleOptions.SubstrateVM) {
-                    switch (builtinEnum) {
-                        case objectSize:
-                            return DebugObjectSizeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                        case objectSizeHistogram:
-                            return DebugObjectSizeHistogramNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
-                    }
-                }
         }
         return null;
     }
@@ -554,77 +523,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 throw Errors.createTypeError("assert: expected integer here, got " + value.getClass().getSimpleName() + ", message: " + JSRuntime.toString(message));
             }
             return Undefined.instance;
-        }
-    }
-
-    public abstract static class DebugObjectSizeNode extends JSBuiltinNode {
-        public DebugObjectSizeNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @TruffleBoundary
-        @Specialization
-        protected double objectSize(Object object) {
-            if (object == null) {
-                return Double.NaN;
-            }
-            return new ObjectSizeCalculator(ObjectSizeCalculator.CurrentLayout.SPEC, defaultPredicate()).calculateObjectSize(object);
-        }
-
-        private static Predicate<Object> defaultPredicate() {
-            return o -> !(o instanceof Reference || o instanceof Class<?> || o instanceof TruffleRuntime || o instanceof ClassValue<?>);
-        }
-    }
-
-    public abstract static class DebugObjectSizeHistogramNode extends JSBuiltinNode {
-        public DebugObjectSizeHistogramNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @TruffleBoundary
-        @Specialization
-        protected Object objectSizeHistogram(Object object, Object limit0, Object pred0) {
-            if (object == null) {
-                return Undefined.instance;
-            }
-
-            Predicate<Object> predicate = DebugObjectSizeNode.defaultPredicate();
-            if (JSFunction.isJSFunction(pred0)) {
-                predicate = predicate.and(o -> Boolean.TRUE.equals(JSFunction.call((DynamicObject) pred0, Undefined.instance, new Object[]{o})));
-            }
-
-            ObjectSizeCalculator osc = new ObjectSizeCalculator(ObjectSizeCalculator.CurrentLayout.SPEC, predicate);
-            final long totalSize = osc.calculateObjectSize(object);
-            final List<ClassHistogramElement> list = osc.getClassHistogram();
-
-            final StringBuilder sb = new StringBuilder();
-            Collections.sort(list, (o1, o2) -> Long.compare(o2.getBytes(), o1.getBytes()));
-
-            int limit = JSRuntime.toInt32(limit0);
-            limit = limit == 0 ? 20 : limit;
-
-            final int maxClassNameLength = 100;
-            String formatString = "%-" + maxClassNameLength + "s %10d bytes (%8d instances)";
-            int totalInstances = 0;
-            for (final ClassHistogramElement e : list) {
-                totalInstances += e.getInstances();
-            }
-            sb.append(String.format(formatString, "Total Size", totalSize, totalInstances)).append('\n');
-            for (int i = 0; i < maxClassNameLength + 38; i++) {
-                sb.append('-');
-            }
-            sb.append('\n');
-            for (final ClassHistogramElement e : list) {
-                String className = e.getClazz().getName().replaceFirst("^(.+)(...)(.{" + (maxClassNameLength - 3) + "})$", "...$3");
-                final String line = String.format(formatString, className, e.getBytes(), e.getInstances());
-                sb.append(line).append('\n');
-                if (--limit == 0) {
-                    sb.append("...").append('\n');
-                    break;
-                }
-            }
-
-            return sb.toString();
         }
     }
 
