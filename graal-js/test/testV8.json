@@ -67,9 +67,6 @@
   }, {
     "filePath" : "intl/date-format/month-far-future.js",
     "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
     "comment" : "GR-15359"
   }, {
     "filePath" : "intl/date-format/property-override.js",
