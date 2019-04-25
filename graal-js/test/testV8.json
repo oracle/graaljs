@@ -1389,8 +1389,12 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-475705.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
     "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests"
+    "comment" : "test with (expected) stack overflows that might influence other tests; sometimes fails on SVM (GR-15488)"
   }, {
     "filePath" : "mjsunit/regress/regress-487981.js",
     "runInIsolation" : true,
