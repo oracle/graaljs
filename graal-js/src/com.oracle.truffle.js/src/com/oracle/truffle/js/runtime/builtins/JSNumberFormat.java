@@ -527,6 +527,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     private static final Map<NumberFormat.Field, String> fieldToTypeMap = new HashMap<>();
     private static volatile boolean fieldToTypeMapInitialized = false;
 
+    @TruffleBoundary
     private static void initializeFieldToTypeMap() {
         fieldToTypeMap.put(NumberFormat.Field.INTEGER, "integer");
         fieldToTypeMap.put(NumberFormat.Field.DECIMAL_SEPARATOR, "decimal");
