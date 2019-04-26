@@ -75,8 +75,10 @@ import com.oracle.truffle.regex.nashorn.regexp.joni.constants.OPCode;
 import com.oracle.truffle.regex.nashorn.regexp.joni.encoding.IntHolder;
 import com.oracle.truffle.regex.nashorn.regexp.joni.exception.ErrorMessages;
 import com.oracle.truffle.regex.nashorn.regexp.joni.exception.InternalException;
+import com.oracle.truffle.regex.nashorn.regexp.joni.exception.JoniInterruptedException;
 
 class ByteCodeMachine extends StackMachine {
+
     private int bestLen;          // return value
     private int s = 0;            // current char
 
@@ -157,6 +159,9 @@ class ByteCodeMachine extends StackMachine {
 
         final int[] c = this.code;
         while (true) {
+            if (Thread.interrupted()) {
+                throw new JoniInterruptedException();
+            }
             if (Config.DEBUG_MATCH) {
                 debugMatchLoop();
             }
