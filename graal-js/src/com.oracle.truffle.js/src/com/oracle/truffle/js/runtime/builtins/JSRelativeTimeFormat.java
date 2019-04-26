@@ -243,7 +243,9 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     }
 
     private static final Map<String, RelativeDateTimeFormatter.RelativeDateTimeUnit> TimeUnitMAP = new HashMap<>();
-    static {
+    private static volatile boolean timeUnitMapInitialized = false;
+
+    private static void initTimeUnitMap() {
         TimeUnitMAP.put("second", RelativeDateTimeUnit.SECOND);
         TimeUnitMAP.put("seconds", RelativeDateTimeUnit.SECOND);
         TimeUnitMAP.put("minute", RelativeDateTimeUnit.MINUTE);
@@ -262,8 +264,23 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         TimeUnitMAP.put("years", RelativeDateTimeUnit.YEAR);
     }
 
+    private static void ensureTimeUnitMapInitialized() {
+        if (!timeUnitMapInitialized) {
+            synchronized (TimeUnitMAP) {
+                if (!timeUnitMapInitialized) {
+                    initTimeUnitMap();
+                }
+            }
+        }
+    }
+
+    private static RelativeDateTimeFormatter.RelativeDateTimeUnit toRelTimeUnit(String unit) {
+        ensureTimeUnitMapInitialized();
+        return TimeUnitMAP.get(unit);
+    }
+
     private static RelativeDateTimeUnit singularRelativeTimeUnit(String functionName, String unit) {
-        RelativeDateTimeUnit result = TimeUnitMAP.get(unit);
+        RelativeDateTimeUnit result = toRelTimeUnit(unit);
         if (result != null) {
             return result;
         } else {
