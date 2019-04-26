@@ -502,24 +502,28 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
             synchronized (fieldToTypeMap) {
                 if (!fieldToTypeMapInitialized) {
                     fieldToTypeMapInitialized = true;
-
-                    fieldToTypeMap.put(DateFormat.Field.AM_PM, "dayPeriod");
-                    fieldToTypeMap.put(DateFormat.Field.ERA, "era");
-                    fieldToTypeMap.put(DateFormat.Field.YEAR, "year");
-                    fieldToTypeMap.put(DateFormat.Field.MONTH, "month");
-                    fieldToTypeMap.put(DateFormat.Field.DOW_LOCAL, "weekday");
-                    fieldToTypeMap.put(DateFormat.Field.DAY_OF_WEEK, "weekday");
-                    fieldToTypeMap.put(DateFormat.Field.DAY_OF_MONTH, "day");
-                    fieldToTypeMap.put(DateFormat.Field.HOUR0, "hour");
-                    fieldToTypeMap.put(DateFormat.Field.HOUR1, "hour");
-                    fieldToTypeMap.put(DateFormat.Field.HOUR_OF_DAY0, "hour");
-                    fieldToTypeMap.put(DateFormat.Field.HOUR_OF_DAY1, "hour");
-                    fieldToTypeMap.put(DateFormat.Field.MINUTE, "minute");
-                    fieldToTypeMap.put(DateFormat.Field.SECOND, "second");
-                    fieldToTypeMap.put(DateFormat.Field.TIME_ZONE, "timeZoneName");
+                    initializeFieldToTypeMap();
                 }
             }
         }
+    }
+
+    @TruffleBoundary
+    private static void initializeFieldToTypeMap() {
+        fieldToTypeMap.put(DateFormat.Field.AM_PM, "dayPeriod");
+        fieldToTypeMap.put(DateFormat.Field.ERA, "era");
+        fieldToTypeMap.put(DateFormat.Field.YEAR, "year");
+        fieldToTypeMap.put(DateFormat.Field.MONTH, "month");
+        fieldToTypeMap.put(DateFormat.Field.DOW_LOCAL, "weekday");
+        fieldToTypeMap.put(DateFormat.Field.DAY_OF_WEEK, "weekday");
+        fieldToTypeMap.put(DateFormat.Field.DAY_OF_MONTH, "day");
+        fieldToTypeMap.put(DateFormat.Field.HOUR0, "hour");
+        fieldToTypeMap.put(DateFormat.Field.HOUR1, "hour");
+        fieldToTypeMap.put(DateFormat.Field.HOUR_OF_DAY0, "hour");
+        fieldToTypeMap.put(DateFormat.Field.HOUR_OF_DAY1, "hour");
+        fieldToTypeMap.put(DateFormat.Field.MINUTE, "minute");
+        fieldToTypeMap.put(DateFormat.Field.SECOND, "second");
+        fieldToTypeMap.put(DateFormat.Field.TIME_ZONE, "timeZoneName");
     }
 
     private static String fieldToType(DateFormat.Field field) {

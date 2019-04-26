@@ -245,6 +245,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     private static final Map<String, RelativeDateTimeFormatter.RelativeDateTimeUnit> TimeUnitMAP = new HashMap<>();
     private static volatile boolean timeUnitMapInitialized = false;
 
+    @TruffleBoundary
     private static void initTimeUnitMap() {
         TimeUnitMAP.put("second", RelativeDateTimeUnit.SECOND);
         TimeUnitMAP.put("seconds", RelativeDateTimeUnit.SECOND);
