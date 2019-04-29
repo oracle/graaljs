@@ -63,12 +63,10 @@ import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -131,12 +129,6 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSToStringNode toStringNode;
         @Child private JSToIntegerNode toIntegerNode;
         @Child private JSToNumberNode toNumberNode;
-
-        @TruffleBoundary
-        protected JSException noNumberFailure(Object value) {
-            String message = (JSObject.isDynamicObject(value) ? JSObject.safeToString((DynamicObject) value) : value.toString()) + " is not a Number";
-            throw Errors.createTypeError(message);
-        }
 
         protected Number getNumberValue(DynamicObject obj) {
             return JSNumber.valueOf(obj);
@@ -238,7 +230,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSNumber(thisObj)", "!isJavaNumber(thisObj)"})
         protected String toStringNoNumber(Object thisObj, Object radix) {
-            throw noNumberFailure(thisObj);
+            throw Errors.createTypeErrorNotANumber(thisObj);
         }
 
         private String toStringIntl(double numberVal, Object radix) {
@@ -288,7 +280,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)"})
         protected String toLocaleString(Object thisNumber) {
-            throw noNumberFailure(thisNumber);
+            throw Errors.createTypeErrorNotANumber(thisNumber);
         }
     }
 
@@ -327,7 +319,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = {"!isJSNumber(notANumber)", "!isJavaNumber(notANumber)"})
         @SuppressWarnings("unused")
         protected String failForNonNumbers(Object notANumber, Object locales, Object options) {
-            throw noNumberFailure(notANumber);
+            throw Errors.createTypeErrorNotANumber(notANumber);
         }
     }
 
@@ -349,7 +341,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)"})
         protected Object valueOf(Object thisNumber) {
-            throw noNumberFailure(thisNumber);
+            throw Errors.createTypeErrorNotANumber(thisNumber);
         }
     }
 
@@ -377,7 +369,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)"})
         protected String toFixedGeneric(Object thisNumber, Object fractionDigits) {
-            throw noNumberFailure(thisNumber);
+            throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 
         private String toFixedIntl(double value, int digits) {
@@ -431,7 +423,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)"})
         protected String toExponential(Object thisNumber, Object fractionDigits) {
-            throw noNumberFailure(thisNumber);
+            throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 
         public String toExponentialIntl(int digits, double value) {
@@ -488,7 +480,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSNumber(thisNumber)", "!isJavaNumber(thisNumber)"})
         protected String toPrecision(Object thisNumber, Object precision) {
-            throw noNumberFailure(thisNumber);
+            throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 
         private String toPrecisionIntl(double thisNumberVal, long lPrecision) {
