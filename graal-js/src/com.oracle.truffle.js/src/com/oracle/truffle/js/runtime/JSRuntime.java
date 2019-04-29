@@ -924,14 +924,9 @@ public final class JSRuntime {
             isAnyArray = true;
             isArray = true;
             length = arrayGetLength(obj);
-            sb.append('(');
-            sb.append(length);
-            sb.append(") ");
         } else if (JSArrayBufferView.isJSArrayBufferView(obj)) {
             isAnyArray = true;
-            sb.append('(');
-            sb.append(JSArrayBufferView.typedArrayGetLength((DynamicObject) obj));
-            sb.append(')');
+            length = JSArrayBufferView.typedArrayGetLength((DynamicObject) obj);
         } else if (JSString.isJSString(obj)) {
             length = JSString.getStringLength((DynamicObject) obj);
         }
@@ -1096,9 +1091,7 @@ public final class JSRuntime {
         if (name != null) {
             sb.append(name);
         }
-        sb.append('(');
-        sb.append(map.size());
-        sb.append(") {");
+        sb.append('{');
 
         boolean isFirst = true;
         JSHashMap.Cursor cursor = map.getEntries();
