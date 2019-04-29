@@ -560,18 +560,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     @Override
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return defaultToString(obj);
         } else {
-            TruffleObject target = JSProxy.getTargetNonProxy(obj);
-            if (JSFunction.isJSFunction(target)) {
-                return "Proxy " + JSObject.safeToString((DynamicObject) target); // callable proxy
-            } else if (JSObject.isJSObject(target)) {
-                return JSRuntime.objectToConsoleString(target, "Proxy");
-            } else {
-                return JSRuntime.safeToString(target); // eg. foreign TruffleObject
-            }
+            Object target = getTarget(obj);
+            Object handler = getHandler(obj);
+            return "Proxy[" + JSRuntime.safeToString(target, depth - 1) + ", " + JSRuntime.safeToString(handler, depth - 1) + "]";
         }
     }
 

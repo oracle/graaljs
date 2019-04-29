@@ -130,7 +130,7 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
     }
 
     @Override
-    public String safeToString(DynamicObject object) {
+    public String safeToString(DynamicObject object, int depth) {
         return "[JavaImporter]";
     }
 

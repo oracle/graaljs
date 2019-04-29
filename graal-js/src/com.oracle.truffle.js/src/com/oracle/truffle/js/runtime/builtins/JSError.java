@@ -432,9 +432,9 @@ public final class JSError extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
-            return super.safeToString(obj);
+            return super.safeToString(obj, depth);
         } else {
             Object name = getPropertyWithoutSideEffect(obj, NAME);
             Object message = getPropertyWithoutSideEffect(obj, MESSAGE);

@@ -81,7 +81,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     }
 
     @Override
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         return defaultToString(obj);
     }
 

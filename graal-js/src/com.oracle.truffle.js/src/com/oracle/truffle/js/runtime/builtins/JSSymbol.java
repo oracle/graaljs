@@ -157,7 +157,7 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         return "[" + CLASS_NAME + "]";
     }
 

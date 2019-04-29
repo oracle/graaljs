@@ -241,8 +241,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorUnboxException(object, e, this);
         }
-        boolean hasSize = interop.hasArrayElements(object);
-        return JSRuntime.objectToConsoleString(object, hasSize ? null : "foreign");
+        return JSRuntime.objectToConsoleString(object, null);
     }
 
     @Fallback

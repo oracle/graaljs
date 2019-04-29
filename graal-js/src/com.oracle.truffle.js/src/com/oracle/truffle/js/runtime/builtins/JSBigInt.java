@@ -134,12 +134,12 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
 
     @TruffleBoundary
     @Override
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
-            return super.safeToString(obj);
+            return super.safeToString(obj, depth);
         } else {
             BigInt primitiveValue = JSBigInt.valueOf(obj);
-            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj),
+            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj), depth,
                             new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }

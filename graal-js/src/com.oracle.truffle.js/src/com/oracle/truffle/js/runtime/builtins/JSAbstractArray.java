@@ -880,11 +880,11 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     @Override
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return defaultToString(obj);
         } else {
-            return JSRuntime.objectToConsoleString(obj, null);
+            return JSRuntime.objectToConsoleString(obj, null, depth);
         }
     }
 

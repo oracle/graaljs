@@ -165,8 +165,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final String IMPLEMENTATION_NAME = "GraalVM JavaScript";
     public static final String ID = "js";
 
-    private static final int MAX_TOSTRING_DEPTH = 3;
-
     private volatile JSContext languageContext;
     private volatile boolean multiContext;
 
@@ -296,12 +294,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @TruffleBoundary
     @Override
     protected String toString(JSRealm realm, Object value) {
-        return toString(realm, value, 0);
+        return toString(realm, value, JSRuntime.TO_STRING_MAX_DEPTH);
     }
 
-    private String toString(JSRealm realm, Object value, int inDepth) {
-        int depth = inDepth + 1;
-        if (depth >= MAX_TOSTRING_DEPTH) {
+    private String toString(JSRealm realm, Object value, int depth) {
+        if (depth < 0) {
             return "..."; // bail-out from recursions or deep nesting
         }
         if (value == null) {
@@ -323,7 +320,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         } else if (JSRuntime.isForeignObject(value)) {
             return toStringForeignObject(realm, value, depth);
         }
-        return JSRuntime.safeToString(value);
+        return JSRuntime.safeToString(value, depth);
     }
 
     private String toStringForeignObject(JSRealm realm, Object value, int depth) {
@@ -350,9 +347,9 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 } else if (interop.isExecutable(value)) {
                     return "Executable";
                 } else if (interop.isString(value)) {
-                    return JSRuntime.safeToString(interop.asString(value));
+                    return JSRuntime.safeToString(interop.asString(value), 0);
                 } else if (interop.isBoolean(value)) {
-                    return JSRuntime.safeToString(interop.asBoolean(value));
+                    return JSRuntime.safeToString(interop.asBoolean(value), 0);
                 } else if (interop.isNumber(value)) {
                     Object unboxed = "Number";
                     if (interop.fitsInInt(value)) {
@@ -362,7 +359,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     } else if (interop.fitsInDouble(value)) {
                         unboxed = interop.asDouble(value);
                     }
-                    return JSRuntime.safeToString(unboxed);
+                    return JSRuntime.safeToString(unboxed, 0);
                 } else {
                     return "Object" + foreignObjectToString(realm, value, depth);
                 }
@@ -635,12 +632,14 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         long size = interop.getArraySize(truffleObject);
         if (size == 0) {
             return "[]";
+        } else if (depth <= 0) {
+            return "[...]";
         }
         StringBuilder sb = new StringBuilder();
         sb.append('[');
         for (long i = 0; i < size; i++) {
             Object value = interop.readArrayElement(truffleObject, i);
-            sb.append(value == truffleObject ? "(this)" : toString(realm, value, depth));
+            sb.append(value == truffleObject ? "(this)" : toString(realm, value, depth - 1));
             if (i < size - 1) {
                 sb.append(',').append(' ');
             }
@@ -660,6 +659,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         long keyCount = keysInterop.getArraySize(keys);
         if (keyCount == 0) {
             return "{}";
+        } else if (depth <= 0) {
+            return "{...}";
         }
         StringBuilder sb = new StringBuilder();
         sb.append('{');
@@ -668,9 +669,9 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             assert InteropLibrary.getFactory().getUncached().isString(key);
             String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
             Object value = objInterop.readMember(truffleObject, stringKey);
-            sb.append(toString(realm, key, depth));
+            sb.append(toString(realm, key, depth - 1));
             sb.append('=');
-            sb.append(value == truffleObject ? "(this)" : toString(realm, value, depth));
+            sb.append(value == truffleObject ? "(this)" : toString(realm, value, depth - 1));
             if (i < keyCount - 1) {
                 sb.append(',').append(' ');
             }

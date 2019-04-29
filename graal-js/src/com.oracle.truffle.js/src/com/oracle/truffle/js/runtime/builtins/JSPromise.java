@@ -125,8 +125,8 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
     }
 
     @Override
-    public String safeToString(DynamicObject obj) {
-        return JSRuntime.objectToConsoleString(obj, CLASS_NAME,
+    public String safeToString(DynamicObject obj, int depth) {
+        return JSRuntime.objectToConsoleString(obj, CLASS_NAME, depth,
                         new String[]{"PromiseStatus", "PromiseValue"},
                         new Object[]{getStatus(obj), getValue(obj)});
     }

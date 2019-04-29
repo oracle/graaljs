@@ -442,11 +442,11 @@ public abstract class JSBuiltinObject extends JSClass {
     }
 
     @Override
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return defaultToString(obj);
         } else {
-            return JSRuntime.objectToConsoleString(obj, getClassName(obj));
+            return JSRuntime.objectToConsoleString(obj, getClassName(obj), depth);
         }
     }
 

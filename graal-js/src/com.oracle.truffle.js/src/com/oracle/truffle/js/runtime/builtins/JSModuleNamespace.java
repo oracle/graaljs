@@ -151,7 +151,7 @@ public final class JSModuleNamespace extends JSBuiltinObject {
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         return "[" + CLASS_NAME + "]";
     }
 

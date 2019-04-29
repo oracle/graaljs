@@ -792,7 +792,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
 
     @TruffleBoundary
     @Override
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         double time = getTimeMillisField(obj);
         String formattedDate;
         if (isTimeValid(time)) {

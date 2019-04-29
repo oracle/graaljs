@@ -138,12 +138,12 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
 
     @TruffleBoundary
     @Override
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return "[Boolean " + valueOf(obj) + "]";
         } else {
             boolean primitiveValue = JSBoolean.valueOf(obj);
-            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj),
+            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj), depth,
                             new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }

@@ -805,7 +805,7 @@ public final class JSFunction extends JSBuiltinObject {
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         RootNode rn = ((RootCallTarget) JSFunction.getCallTarget(obj)).getRootNode();
         SourceSection ssect = rn.getSourceSection();
         String source = (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) ? "function " + JSFunction.getName(obj) + "() { [native code] }" : ssect.getCharacters().toString();
