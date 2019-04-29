@@ -120,7 +120,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSScope;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @ProvidedTags({StandardTags.CallTag.class,
@@ -180,7 +180,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     public boolean isObjectOfLanguage(Object o) {
-        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof BigInt || o instanceof JSLazyString || o instanceof LargeInteger || o instanceof InteropBoundFunction ||
+        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof BigInt || o instanceof JSLazyString || o instanceof LargeInteger || o instanceof InteropFunction ||
                         o instanceof JSMetaObject;
     }
 
@@ -318,8 +318,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 }
             }
             return type;
-        } else if (value instanceof InteropBoundFunction) {
-            return JSObject.safeToString(((InteropBoundFunction) value).getFunction());
+        } else if (value instanceof InteropFunction) {
+            return JSRuntime.safeToString(((InteropFunction) value).getFunction());
         } else if (JSRuntime.isForeignObject(value)) {
             return toStringForeignObject(realm, value, depth);
         }
@@ -560,8 +560,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             } else if (JSSymbol.isJSSymbol(obj)) {
                 type = "symbol";
             }
-        } else if (value instanceof InteropBoundFunction) {
-            return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());
+        } else if (value instanceof InteropFunction) {
+            return findMetaObject(realm, ((InteropFunction) value).getFunction());
         } else if (JSRuntime.isForeignObject(value)) {
             assert !JSObject.isJSObject(value);
             InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);

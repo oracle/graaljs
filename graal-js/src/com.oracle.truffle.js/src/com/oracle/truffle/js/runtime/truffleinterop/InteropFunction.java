@@ -52,7 +52,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 
 @ExportLibrary(InteropLibrary.class)
-class InteropFunction implements TruffleObject {
+public class InteropFunction implements TruffleObject {
     final DynamicObject function;
 
     InteropFunction(DynamicObject function) {
