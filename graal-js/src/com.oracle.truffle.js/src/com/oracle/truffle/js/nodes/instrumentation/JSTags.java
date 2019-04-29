@@ -69,7 +69,6 @@ public final class JSTags {
                     ControlFlowRootTag.class,
                     ControlFlowBlockTag.class,
                     ControlFlowBranchTag.class,
-
     };
 
     // ##### ECMA218 12.x - JavaScript Expressions
