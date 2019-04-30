@@ -6,7 +6,7 @@ if (!common.hasCrypto)
 const assert = require('assert');
 const http2 = require('http2');
 
-const serverTimeout = common.platformTimeout(200);
+const serverTimeout = common.platformTimeout(2000);
 
 let requests = 0;
 const mustNotCall = () => {
