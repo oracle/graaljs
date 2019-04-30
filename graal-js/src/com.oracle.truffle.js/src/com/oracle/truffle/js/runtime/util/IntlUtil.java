@@ -369,7 +369,7 @@ public final class IntlUtil {
                                 Path homePath = Paths.get(ctx.getLanguage().getTruffleLanguageHome());
                                 String newDataPath = homePath.resolve("icu4j").resolve("icudt").toString();
                                 System.setProperty(ICU4J_DATA_PATH_SYS_PROPERTY, newDataPath);
-                            } catch (InvalidPathException ipe) {
+                            } catch (Exception e) {
                                 throw Errors.createICU4JDataError();
                             }
                         }
