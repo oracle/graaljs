@@ -41,12 +41,13 @@
 package com.oracle.truffle.js.runtime;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -83,8 +84,8 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyReference;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.util.IteratorUtil;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
 public final class JSRuntime {
@@ -325,10 +326,8 @@ public final class JSRuntime {
             return Null.instance;
         } else if (interop.isBoolean(tObj) || interop.isString(tObj) || interop.isNumber(tObj)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
-        } else if (depth >= 0) {
-            return JSRuntime.objectToConsoleString(tObj, null, depth);
         } else {
-            return "...";
+            return JSRuntime.foreignToString(tObj, depth);
         }
     }
 
@@ -891,58 +890,55 @@ public final class JSRuntime {
             } else {
                 return numberToString(number);
             }
+        } else if (value instanceof InteropFunction) {
+            return safeToString(((InteropFunction) value).getFunction());
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value) : value;
-            return safeToString(toPrimitiveFromForeign((TruffleObject) value, depth), 0);
+            return foreignToString(value, depth);
         } else {
             return String.valueOf(value);
         }
     }
 
     @TruffleBoundary
-    public static String objectToConsoleString(TruffleObject obj, String name) {
-        return objectToConsoleString(obj, name, TO_STRING_MAX_DEPTH);
-    }
-
-    @TruffleBoundary
-    public static String objectToConsoleString(TruffleObject obj, String name, int depth) {
+    public static String objectToConsoleString(DynamicObject obj, String name, int depth) {
         return objectToConsoleString(obj, name, depth, null, null);
     }
 
     @TruffleBoundary
-    public static String objectToConsoleString(TruffleObject obj, String name, int depth, String[] internalKeys, Object[] internalValues) {
-        assert !JSFunction.isJSFunction(obj) && !JSProxy.isProxy(obj);
+    public static String objectToConsoleString(DynamicObject obj, String name, int depth, String[] internalKeys, Object[] internalValues) {
+        assert JSObject.isJSObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isProxy(obj);
         StringBuilder sb = new StringBuilder();
 
         if (name != null) {
             sb.append(name);
         }
-        boolean isAnyArray = false; // also TypedArrays
+        boolean isArrayLike = false; // also TypedArrays
         boolean isArray = false;
         long length = -1;
-        if (isArrayLike(obj)) {
-            isAnyArray = true;
+        if (JSArray.isJSArray(obj)) {
+            isArrayLike = true;
             isArray = true;
             length = arrayGetLength(obj);
         } else if (JSArrayBufferView.isJSArrayBufferView(obj)) {
-            isAnyArray = true;
-            length = JSArrayBufferView.typedArrayGetLength((DynamicObject) obj);
+            isArrayLike = true;
+            length = JSArrayBufferView.typedArrayGetLength(obj);
         } else if (JSString.isJSString(obj)) {
-            length = JSString.getStringLength((DynamicObject) obj);
+            length = JSString.getStringLength(obj);
         }
         boolean isStringObj = JSString.isJSString(obj);
         long prevArrayIndex = -1;
 
         if (depth <= 0) {
-            sb.append(isAnyArray ? "[...]" : "{...}");
+            sb.append(isArrayLike ? "[...]" : "{...}");
             return sb.toString();
         }
 
-        sb.append(isAnyArray ? '[' : '{');
+        sb.append(isArrayLike ? '[' : '{');
         int propertyCount = 0;
-        for (Object key : ownPropertyKeys(obj, isArray, length)) {
-            PropertyDescriptor desc = getOwnProperty(obj, key);
-            if ((isAnyArray || isStringObj) && key.equals("length") || (isStringObj && JSRuntime.isArrayIndex(key) && JSRuntime.parseArrayIndexRaw(key.toString()) < length)) {
+        for (Object key : JSObject.ownPropertyKeys(obj)) {
+            PropertyDescriptor desc = JSObject.getOwnProperty(obj, key);
+            if ((isArrayLike || isStringObj) && key.equals("length") || (isStringObj && JSRuntime.isArrayIndex(key) && JSRuntime.parseArrayIndexRaw(key.toString()) < length)) {
                 // length for arrays is printed as very first item
                 // don't print individual characters (and length) for Strings
                 continue;
@@ -975,7 +971,7 @@ public final class JSRuntime {
                     prevArrayIndex = Math.max(prevArrayIndex, length);
                 }
             }
-            if (!isAnyArray || !JSRuntime.isArrayIndex(key)) {
+            if (!isArrayLike || !JSRuntime.isArrayIndex(key)) {
                 // print keys, but don't print array-indices
                 sb.append(key);
                 sb.append(": ");
@@ -983,7 +979,7 @@ public final class JSRuntime {
             String valueStr = null;
             if (desc.isDataDescriptor()) {
                 Object value = desc.getValue();
-                valueStr = toPrintableValue(value, depth);
+                valueStr = toPrintableValue(value, depth, obj);
             } else if (desc.isAccessorDescriptor()) {
                 valueStr = "accessor";
             } else {
@@ -1006,40 +1002,121 @@ public final class JSRuntime {
             assert internalValues != null;
             appendInternalFields(sb, internalKeys, internalValues, propertyCount <= 0, depth);
         }
-        sb.append(isAnyArray ? ']' : '}');
+        sb.append(isArrayLike ? ']' : '}');
         return sb.toString();
     }
 
-    private static boolean isArrayLike(TruffleObject obj) {
-        return JSArray.isJSArray(obj) || (isForeignObject(obj) && InteropLibrary.getFactory().getUncached().hasArrayElements(obj));
+    @TruffleBoundary
+    public static String foreignToString(Object value) {
+        return foreignToString(value, TO_STRING_MAX_DEPTH);
     }
 
-    private static PropertyDescriptor getOwnProperty(TruffleObject obj, Object key) {
-        if (JSObject.isJSObject(obj)) {
-            return JSObject.getOwnProperty((DynamicObject) obj, key);
-        } else if (key instanceof Integer) {
-            return PropertyDescriptor.createDataDefault(JSInteropUtil.readArrayElementOrDefault(obj, ((Integer) key).longValue(), Undefined.instance));
-        } else {
-            return PropertyDescriptor.createDataDefault(JSInteropUtil.readMemberOrDefault(obj, key, Undefined.instance));
+    private static String foreignToString(Object value, int depth) {
+        CompilerAsserts.neverPartOfCompilation();
+        TruffleLanguage.Env env;
+        try {
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
+            if (interop.isNull(value)) {
+                return "null";
+            } else if (interop.isPointer(value)) {
+                long pointer = interop.asPointer(value);
+                return "Pointer[0x" + Long.toHexString(pointer) + "]";
+            } else if (interop.hasArrayElements(value)) {
+                return foreignArrayToString(value, depth);
+            } else if (interop.isString(value)) {
+                return interop.asString(value);
+            } else if (interop.isBoolean(value)) {
+                return booleanToString(interop.asBoolean(value));
+            } else if (interop.isNumber(value)) {
+                Object unboxed = "Number";
+                if (interop.fitsInInt(value)) {
+                    unboxed = interop.asInt(value);
+                } else if (interop.fitsInLong(value)) {
+                    unboxed = interop.asLong(value);
+                } else if (interop.fitsInDouble(value)) {
+                    unboxed = interop.asDouble(value);
+                }
+                return JSRuntime.safeToString(unboxed, 0);
+            } else if ((env = JavaScriptLanguage.getCurrentEnv()).isHostObject(value)) {
+                Object hostObject = env.asHostObject(value);
+                Class<?> clazz = hostObject.getClass();
+                if (clazz == Class.class) {
+                    clazz = (Class<?>) hostObject;
+                    return "JavaClass[" + clazz.getTypeName() + "]";
+                } else {
+                    return "JavaObject[" + clazz.getTypeName() + "]";
+                }
+            } else if (interop.isExecutable(value)) {
+                return "Executable";
+            } else if (interop.hasMembers(value)) {
+                return foreignObjectToString(value, depth);
+            } else {
+                return "Object";
+            }
+        } catch (InteropException e) {
+            return "Object";
         }
     }
 
-    private static Iterable<? extends Object> ownPropertyKeys(TruffleObject obj, boolean isArray, long size) {
-        if (JSObject.isJSObject(obj)) {
-            return JSObject.ownPropertyKeys((DynamicObject) obj);
-        } else {
-            if (isArray) {
-                // Foreign arrays don't answer the KEYS message
-                // they just have keys from 0 to length-1
-                return IteratorUtil.rangeIterable((int) Math.min(size, Integer.MAX_VALUE));
-            } else {
-                if (InteropLibrary.getFactory().getUncached().hasMembers(obj)) {
-                    return JSInteropUtil.keys(obj);
-                } else {
-                    return Collections.emptyList();
-                }
+    private static String foreignArrayToString(Object truffleObject, int depth) throws InteropException {
+        CompilerAsserts.neverPartOfCompilation();
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(truffleObject);
+        assert interop.hasArrayElements(truffleObject);
+        long size = interop.getArraySize(truffleObject);
+        if (size == 0) {
+            return "[]";
+        } else if (depth <= 0) {
+            return "[...]";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append('[');
+        for (long i = 0; i < size; i++) {
+            if (i >= JSTruffleOptions.MaxConsolePrintProperties) {
+                sb.append(", ...");
+                break;
+            }
+            Object value = interop.readArrayElement(truffleObject, i);
+            sb.append(toPrintableValue(value, depth - 1, truffleObject));
+            if (i < size - 1) {
+                sb.append(',').append(' ');
             }
         }
+        sb.append(']');
+        return sb.toString();
+    }
+
+    private static String foreignObjectToString(Object truffleObject, int depth) throws InteropException {
+        CompilerAsserts.neverPartOfCompilation();
+        InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(truffleObject);
+        assert objInterop.hasMembers(truffleObject);
+        Object keys = objInterop.getMembers(truffleObject);
+        InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keys);
+        long keyCount = keysInterop.getArraySize(keys);
+        if (keyCount == 0) {
+            return "{}";
+        } else if (depth <= 0) {
+            return "{...}";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        for (long i = 0; i < keyCount; i++) {
+            if (i >= JSTruffleOptions.MaxConsolePrintProperties) {
+                sb.append(", ...");
+                break;
+            }
+            Object key = keysInterop.readArrayElement(keys, i);
+            assert InteropLibrary.getFactory().getUncached().isString(key);
+            String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
+            Object value = objInterop.readMember(truffleObject, stringKey);
+            sb.append(stringKey);
+            sb.append(": ");
+            sb.append(toPrintableValue(value, depth - 1, truffleObject));
+            if (i < keyCount - 1) {
+                sb.append(',').append(' ');
+            }
+        }
+        sb.append('}');
+        return sb.toString();
     }
 
     @TruffleBoundary
@@ -1052,8 +1129,10 @@ public final class JSRuntime {
         }
     }
 
-    private static String toPrintableValue(Object value, int depth) {
-        if (value instanceof CharSequence) {
+    private static String toPrintableValue(Object value, int depth, Object parent) {
+        if (value == parent) {
+            return "(this)";
+        } else if (value instanceof CharSequence) {
             return quote(truncateString((CharSequence) value));
         } else {
             return safeToString(value, depth - 1);
@@ -1101,23 +1180,19 @@ public final class JSRuntime {
         while (cursor.advance()) {
             Object key = cursor.getKey();
             if (key != null) {
-                collectionElementToString(sb, isMap, isFirst, key, cursor.getValue(), depth);
+                if (!isFirst) {
+                    sb.append(", ");
+                }
+                sb.append(toPrintableValue(key, depth, obj));
+                if (isMap) {
+                    sb.append(" => ");
+                    sb.append(toPrintableValue(cursor.getValue(), depth - 1, obj));
+                }
                 isFirst = false;
             }
         }
         sb.append('}');
         return sb.toString();
-    }
-
-    private static void collectionElementToString(StringBuilder sb, boolean isMap, boolean first, Object key, Object value, int depth) {
-        if (!first) {
-            sb.append(", ");
-        }
-        sb.append(toPrintableValue(key, depth));
-        if (isMap) {
-            sb.append(" => ");
-            sb.append(toPrintableValue(value, depth));
-        }
     }
 
     private static void appendInternalFields(StringBuilder sb, String[] internalKeys, Object[] internalValues, boolean first, int depth) {
@@ -1127,7 +1202,7 @@ public final class JSRuntime {
             if (seenProperty) {
                 sb.append(", ");
             }
-            sb.append("[[").append(internalKeys[i]).append("]]: ").append(toPrintableValue(internalValues[i], depth));
+            sb.append("[[").append(internalKeys[i]).append("]]: ").append(toPrintableValue(internalValues[i], depth, null));
             seenProperty = true;
         }
     }

@@ -87,7 +87,7 @@ public class JavaBuiltinsTest extends JSTest {
             return result.asString();
         } catch (Exception ex) {
             assertTrue(failedMessage != null);
-            assertTrue(ex.getMessage().contains(failedMessage));
+            assertTrue(ex.getMessage(), ex.getMessage().contains(failedMessage));
             return "FAILED_AS_EXPECTED";
         }
     }
@@ -157,7 +157,7 @@ public class JavaBuiltinsTest extends JSTest {
 
     @Test
     public void testJavaSuper() {
-        test("var t = Java.super({a:'foo'}); ''+t;", "Message not supported");
+        test("var t = Java.super({a:'foo'}); ''+t;");
     }
 
     @Test

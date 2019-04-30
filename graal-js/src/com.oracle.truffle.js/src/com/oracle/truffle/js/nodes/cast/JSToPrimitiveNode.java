@@ -241,7 +241,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorUnboxException(object, e, this);
         }
-        return JSRuntime.objectToConsoleString(object, null);
+        return JSRuntime.foreignToString(object);
     }
 
     @Fallback

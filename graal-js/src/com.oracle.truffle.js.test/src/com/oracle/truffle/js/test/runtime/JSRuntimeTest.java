@@ -220,11 +220,11 @@ public class JSRuntimeTest extends JSTest {
     public void testSafeToStringCollections() {
         DynamicObject map = JSMap.create(testHelper.getJSContext());
         JSMap.getInternalMap(map).put("foo", "bar");
-        assertEquals("Map(1) {\"foo\" => \"bar\"}", JSRuntime.safeToString(map));
+        assertEquals("Map{\"foo\" => \"bar\"}", JSRuntime.safeToString(map));
 
         DynamicObject set = JSSet.create(testHelper.getJSContext());
         JSSet.getInternalSet(set).put("foo", "UNUSED");
-        assertEquals("Set(1) {\"foo\"}", JSRuntime.safeToString(set));
+        assertEquals("Set{\"foo\"}", JSRuntime.safeToString(set));
     }
 
     @Test
