@@ -242,33 +242,33 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         return realm.getRelativeTimeFormatConstructor().getPrototype();
     }
 
-    private static final Map<String, RelativeDateTimeFormatter.RelativeDateTimeUnit> TimeUnitMAP = new HashMap<>();
-    private static volatile boolean timeUnitMapInitialized = false;
+    private static volatile Map<String, RelativeDateTimeFormatter.RelativeDateTimeUnit> timeUnitMap;
 
     @TruffleBoundary
     private static void initTimeUnitMap() {
-        TimeUnitMAP.put("second", RelativeDateTimeUnit.SECOND);
-        TimeUnitMAP.put("seconds", RelativeDateTimeUnit.SECOND);
-        TimeUnitMAP.put("minute", RelativeDateTimeUnit.MINUTE);
-        TimeUnitMAP.put("minutes", RelativeDateTimeUnit.MINUTE);
-        TimeUnitMAP.put("hour", RelativeDateTimeUnit.HOUR);
-        TimeUnitMAP.put("hours", RelativeDateTimeUnit.HOUR);
-        TimeUnitMAP.put("day", RelativeDateTimeUnit.DAY);
-        TimeUnitMAP.put("days", RelativeDateTimeUnit.DAY);
-        TimeUnitMAP.put("week", RelativeDateTimeUnit.WEEK);
-        TimeUnitMAP.put("weeks", RelativeDateTimeUnit.WEEK);
-        TimeUnitMAP.put("month", RelativeDateTimeUnit.MONTH);
-        TimeUnitMAP.put("months", RelativeDateTimeUnit.MONTH);
-        TimeUnitMAP.put("quarter", RelativeDateTimeUnit.QUARTER);
-        TimeUnitMAP.put("quarters", RelativeDateTimeUnit.QUARTER);
-        TimeUnitMAP.put("year", RelativeDateTimeUnit.YEAR);
-        TimeUnitMAP.put("years", RelativeDateTimeUnit.YEAR);
+        timeUnitMap = new HashMap<>();
+        timeUnitMap.put("second", RelativeDateTimeUnit.SECOND);
+        timeUnitMap.put("seconds", RelativeDateTimeUnit.SECOND);
+        timeUnitMap.put("minute", RelativeDateTimeUnit.MINUTE);
+        timeUnitMap.put("minutes", RelativeDateTimeUnit.MINUTE);
+        timeUnitMap.put("hour", RelativeDateTimeUnit.HOUR);
+        timeUnitMap.put("hours", RelativeDateTimeUnit.HOUR);
+        timeUnitMap.put("day", RelativeDateTimeUnit.DAY);
+        timeUnitMap.put("days", RelativeDateTimeUnit.DAY);
+        timeUnitMap.put("week", RelativeDateTimeUnit.WEEK);
+        timeUnitMap.put("weeks", RelativeDateTimeUnit.WEEK);
+        timeUnitMap.put("month", RelativeDateTimeUnit.MONTH);
+        timeUnitMap.put("months", RelativeDateTimeUnit.MONTH);
+        timeUnitMap.put("quarter", RelativeDateTimeUnit.QUARTER);
+        timeUnitMap.put("quarters", RelativeDateTimeUnit.QUARTER);
+        timeUnitMap.put("year", RelativeDateTimeUnit.YEAR);
+        timeUnitMap.put("years", RelativeDateTimeUnit.YEAR);
     }
 
     private static void ensureTimeUnitMapInitialized() {
-        if (!timeUnitMapInitialized) {
-            synchronized (TimeUnitMAP) {
-                if (!timeUnitMapInitialized) {
+        if (timeUnitMap == null) {
+            synchronized (timeUnitMap) {
+                if (timeUnitMap == null) {
                     initTimeUnitMap();
                 }
             }
@@ -277,7 +277,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     private static RelativeDateTimeFormatter.RelativeDateTimeUnit toRelTimeUnit(String unit) {
         ensureTimeUnitMapInitialized();
-        return TimeUnitMAP.get(unit);
+        return timeUnitMap.get(unit);
     }
 
     private static RelativeDateTimeUnit singularRelativeTimeUnit(String functionName, String unit) {

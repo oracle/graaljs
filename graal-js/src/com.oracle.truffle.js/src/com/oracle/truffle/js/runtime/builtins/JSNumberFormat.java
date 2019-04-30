@@ -524,11 +524,11 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         return numberFormat.format(x);
     }
 
-    private static final Map<NumberFormat.Field, String> fieldToTypeMap = new HashMap<>();
-    private static volatile boolean fieldToTypeMapInitialized = false;
+    private static volatile Map<NumberFormat.Field, String> fieldToTypeMap;
 
     @TruffleBoundary
     private static void initializeFieldToTypeMap() {
+        fieldToTypeMap = new HashMap<>();
         fieldToTypeMap.put(NumberFormat.Field.INTEGER, "integer");
         fieldToTypeMap.put(NumberFormat.Field.DECIMAL_SEPARATOR, "decimal");
         fieldToTypeMap.put(NumberFormat.Field.FRACTION, "fraction");
@@ -538,9 +538,9 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     private static void ensureFieldToTypeMapInitialized() {
-        if (!fieldToTypeMapInitialized) {
+        if (fieldToTypeMap == null) {
             synchronized (fieldToTypeMap) {
-                if (!fieldToTypeMapInitialized) {
+                if (fieldToTypeMap == null) {
                     initializeFieldToTypeMap();
                 }
             }

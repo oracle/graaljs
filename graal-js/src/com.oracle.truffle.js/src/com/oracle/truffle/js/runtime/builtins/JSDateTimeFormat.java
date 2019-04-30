@@ -493,15 +493,13 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         throw Errors.createRangeError("Provided date is not in valid range.");
     }
 
-    static final Map<DateFormat.Field, String> fieldToTypeMap = new HashMap<>();
-    static volatile boolean fieldToTypeMapInitialized = false;
+    private static volatile Map<DateFormat.Field, String> fieldToTypeMap;
 
     private static void ensureFieldToTypeMapInitialized() {
 
-        if (!fieldToTypeMapInitialized) {
+        if (fieldToTypeMap == null) {
             synchronized (fieldToTypeMap) {
-                if (!fieldToTypeMapInitialized) {
-                    fieldToTypeMapInitialized = true;
+                if (fieldToTypeMap == null) {
                     initializeFieldToTypeMap();
                 }
             }
@@ -510,6 +508,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     @TruffleBoundary
     private static void initializeFieldToTypeMap() {
+        fieldToTypeMap = new HashMap<>();
         fieldToTypeMap.put(DateFormat.Field.AM_PM, "dayPeriod");
         fieldToTypeMap.put(DateFormat.Field.ERA, "era");
         fieldToTypeMap.put(DateFormat.Field.YEAR, "year");
