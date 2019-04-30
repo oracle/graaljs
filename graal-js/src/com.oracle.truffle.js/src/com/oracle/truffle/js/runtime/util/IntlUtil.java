@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -369,7 +368,7 @@ public final class IntlUtil {
                                 Path homePath = Paths.get(ctx.getLanguage().getTruffleLanguageHome());
                                 String newDataPath = homePath.resolve("icu4j").resolve("icudt").toString();
                                 System.setProperty(ICU4J_DATA_PATH_SYS_PROPERTY, newDataPath);
-                            } catch (InvalidPathException ipe) {
+                            } catch (Exception e) {
                                 throw Errors.createICU4JDataError();
                             }
                         }

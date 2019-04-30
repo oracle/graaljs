@@ -524,15 +524,33 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         return numberFormat.format(x);
     }
 
-    static final Map<NumberFormat.Field, String> fieldToType = new HashMap<>();
+    private static volatile Map<NumberFormat.Field, String> fieldToTypeMap;
+    private static final Object fieldToTypeMapLock = new Object();
 
-    static {
-        fieldToType.put(NumberFormat.Field.INTEGER, "integer");
-        fieldToType.put(NumberFormat.Field.DECIMAL_SEPARATOR, "decimal");
-        fieldToType.put(NumberFormat.Field.FRACTION, "fraction");
-        fieldToType.put(NumberFormat.Field.GROUPING_SEPARATOR, "group");
-        fieldToType.put(NumberFormat.Field.CURRENCY, "currency");
-        fieldToType.put(NumberFormat.Field.PERCENT, "percentSign");
+    @TruffleBoundary
+    private static void initializeFieldToTypeMap() {
+        fieldToTypeMap = new HashMap<>();
+        fieldToTypeMap.put(NumberFormat.Field.INTEGER, "integer");
+        fieldToTypeMap.put(NumberFormat.Field.DECIMAL_SEPARATOR, "decimal");
+        fieldToTypeMap.put(NumberFormat.Field.FRACTION, "fraction");
+        fieldToTypeMap.put(NumberFormat.Field.GROUPING_SEPARATOR, "group");
+        fieldToTypeMap.put(NumberFormat.Field.CURRENCY, "currency");
+        fieldToTypeMap.put(NumberFormat.Field.PERCENT, "percentSign");
+    }
+
+    private static void ensureFieldToTypeMapInitialized() {
+        if (fieldToTypeMap == null) {
+            synchronized (fieldToTypeMapLock) {
+                if (fieldToTypeMap == null) {
+                    initializeFieldToTypeMap();
+                }
+            }
+        }
+    }
+
+    private static String fieldToType(NumberFormat.Field field) {
+        ensureFieldToTypeMapInitialized();
+        return fieldToTypeMap.get(field);
     }
 
     @TruffleBoundary
@@ -571,7 +589,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                         } else if (a == NumberFormat.Field.SIGN) {
                             type = isPlusSign(value) ? "plusSign" : "minusSign";
                         } else {
-                            type = fieldToType.get(a);
+                            type = fieldToType((NumberFormat.Field) a);
                             assert type != null;
                         }
                         resultParts.add(IntlUtil.makePart(context, type, value, unit));
