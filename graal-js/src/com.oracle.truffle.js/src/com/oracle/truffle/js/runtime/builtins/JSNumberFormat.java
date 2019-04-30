@@ -525,6 +525,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     }
 
     private static volatile Map<NumberFormat.Field, String> fieldToTypeMap;
+    private static final Object fieldToTypeMapLock = new Object();
 
     @TruffleBoundary
     private static void initializeFieldToTypeMap() {
@@ -539,7 +540,7 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     private static void ensureFieldToTypeMapInitialized() {
         if (fieldToTypeMap == null) {
-            synchronized (fieldToTypeMap) {
+            synchronized (fieldToTypeMapLock) {
                 if (fieldToTypeMap == null) {
                     initializeFieldToTypeMap();
                 }

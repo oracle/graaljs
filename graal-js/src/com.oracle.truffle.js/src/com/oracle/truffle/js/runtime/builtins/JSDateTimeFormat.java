@@ -494,11 +494,12 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     }
 
     private static volatile Map<DateFormat.Field, String> fieldToTypeMap;
+    private static final Object fieldToTypeMapLock = new Object();
 
     private static void ensureFieldToTypeMapInitialized() {
 
         if (fieldToTypeMap == null) {
-            synchronized (fieldToTypeMap) {
+            synchronized (fieldToTypeMapLock) {
                 if (fieldToTypeMap == null) {
                     initializeFieldToTypeMap();
                 }

@@ -243,6 +243,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     }
 
     private static volatile Map<String, RelativeDateTimeFormatter.RelativeDateTimeUnit> timeUnitMap;
+    private static final Object timeUnitMapLock = new Object();
 
     @TruffleBoundary
     private static void initTimeUnitMap() {
@@ -267,7 +268,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     private static void ensureTimeUnitMapInitialized() {
         if (timeUnitMap == null) {
-            synchronized (timeUnitMap) {
+            synchronized (timeUnitMapLock) {
                 if (timeUnitMap == null) {
                     initTimeUnitMap();
                 }
