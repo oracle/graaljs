@@ -233,10 +233,10 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     }
 
     static final TypedArrayFactory[] FACTORIES = TypedArrayFactory.values();
-    private static TypedArrayFactory[] factoriesNoBigInt;
+    private static TypedArrayFactory[] FACTORIES_NO_BIGINT;
 
     public static TypedArrayFactory[] getNoBigIntFactories() {
-        if (factoriesNoBigInt == null) {
+        if (FACTORIES_NO_BIGINT == null) {
             TypedArrayFactory[] allFactories = TypedArrayFactory.values();
             List<TypedArrayFactory> noBigIntFactories = new ArrayList<>(allFactories.length);
             for (TypedArrayFactory fact : allFactories) {
@@ -244,9 +244,9 @@ public enum TypedArrayFactory implements PrototypeSupplier {
                     noBigIntFactories.add(fact);
                 }
             }
-            factoriesNoBigInt = noBigIntFactories.toArray(new TypedArrayFactory[0]);
+            FACTORIES_NO_BIGINT = noBigIntFactories.toArray(new TypedArrayFactory[0]);
         }
-        return factoriesNoBigInt;
+        return FACTORIES_NO_BIGINT;
     }
 
 }
