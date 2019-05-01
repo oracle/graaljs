@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.external.nashorn;
 import java.io.File;
 import java.nio.ByteOrder;
 import java.util.List;
+import java.util.Locale;
 
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -111,6 +112,11 @@ public class TestNashornRunnable extends TestRunnable {
                 testFile.setResult(TestFile.Result.failed(e));
                 suite.logFail(testFile, "Error: exception had been thrown: " + e, suite.getBackTrace(e));
                 return;
+            }
+        } finally {
+            if (tc.usedCustomLocale()) {
+                assert testFile.getRunInIsolation() : testFile.getFilePath() + " sets a custom locale but does not run in isolation!";
+                Locale.setDefault(Locale.US);
             }
         }
 
