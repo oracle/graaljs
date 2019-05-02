@@ -327,6 +327,7 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String toLowerCase(JSContext ctx, String s, String[] locales) {
+        ensureICU4JDataPathSet(ctx);
         Locale strippedLocale = selectedLocaleStripped(ctx, locales);
         StringBuilder result = new StringBuilder();
         Lower tr = CaseMap.toLower();
@@ -336,6 +337,7 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String toUpperCase(JSContext ctx, String s, String[] locales) {
+        ensureICU4JDataPathSet(ctx);
         Locale strippedLocale = selectedLocaleStripped(ctx, locales);
         StringBuilder result = new StringBuilder();
         Upper tr = CaseMap.toUpper();
