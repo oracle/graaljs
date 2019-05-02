@@ -1798,6 +1798,7 @@ public final class GraalJSAccess {
         return JSFunction.create(realm, functionData);
     }
 
+    @TruffleBoundary
     private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
         String moduleName = node.getRootNode().getSourceSection().getSource().getName();
