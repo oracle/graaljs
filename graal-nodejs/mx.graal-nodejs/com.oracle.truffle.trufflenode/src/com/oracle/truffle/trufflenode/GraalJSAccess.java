@@ -2288,6 +2288,7 @@ public final class GraalJSAccess {
         return callback.data;
     }
 
+    @TruffleBoundary
     public <T> T lookupInstrument(String instrumentId, Class<T> instrumentClass) {
         TruffleLanguage.Env env = envForInstruments;
         InstrumentInfo info = env.getInstruments().get(instrumentId);
