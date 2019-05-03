@@ -75,7 +75,7 @@ public final class ForeignConsolePrintTest {
         final Value fun = ctx.eval(JavaScriptLanguage.ID, script);
         Value res = fun.execute(new ArrayTruffleObject(new int[]{0, 1, 2, 3, 4}));
         String sRes = res.asString();
-        assertEquals("[0, 1, 2, 3, 4]", sRes);
+        assertEquals("(5)[0, 1, 2, 3, 4]", sRes);
     }
 
     @Test

@@ -808,9 +808,17 @@ public final class JSFunction extends JSBuiltinObject {
     public String safeToString(DynamicObject obj, int depth) {
         RootNode rn = ((RootCallTarget) JSFunction.getCallTarget(obj)).getRootNode();
         SourceSection ssect = rn.getSourceSection();
-        String source = (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) ? "function " + JSFunction.getName(obj) + "() { [native code] }" : ssect.getCharacters().toString();
-        if (source.length() > 200) {
-            return source.substring(0, 195) + "...<omitted>...\n}";
+        String source;
+        if (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) {
+            source = "function " + JSFunction.getName(obj) + "() { [native code] }";
+        } else if (depth <= 0) {
+            source = "function " + JSFunction.getName(obj) + "() {...}";
+        } else {
+            if (ssect.getCharacters().length() > 200) {
+                source = ssect.getCharacters().subSequence(0, 195) + "...<omitted>...\n}";
+            } else {
+                source = ssect.getCharacters().toString();
+            }
         }
         return source;
     }

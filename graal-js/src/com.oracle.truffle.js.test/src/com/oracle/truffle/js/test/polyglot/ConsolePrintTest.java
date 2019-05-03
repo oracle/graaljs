@@ -97,31 +97,31 @@ public class ConsolePrintTest extends JSTest {
     @Test
     public void testArrayObject() {
         String result = runInteractive("var obj = [1,2,3]; obj.x=1; obj;");
-        assertEquals("[1, 2, 3, x: 1]", result);
+        assertEquals("(3)[1, 2, 3, x: 1]", result);
     }
 
     @Test
     public void testArrayHoles() {
         String result = runInteractive("var a = new Array(10); a[3] = true; a[5] = false; a.x=1; a;");
-        assertEquals("[" + empty(3) + ", true, empty, false, " + empty(4) + ", x: 1]", result);
+        assertEquals("(10)[" + empty(3) + ", true, empty, false, " + empty(4) + ", x: 1]", result);
 
         result = runInteractive("new Array(3);");
-        assertEquals("[" + empty(3) + "]", result);
+        assertEquals("(3)[" + empty(3) + "]", result);
 
         result = runInteractive("var a = new Array(3); a[0] = 42; a;");
-        assertEquals("[42, " + empty(2) + "]", result);
+        assertEquals("(3)[42, " + empty(2) + "]", result);
     }
 
     @Test
     public void testMaxPrintProperties() {
         String result = runInteractive("var a = new Array(100); for (i=0;i<a.length;i+=2) { a[i] = true; } a.x=1; a;");
-        assertEquals("[true, empty, true, empty, true, empty, true, empty, true, empty, true, empty, true, empty, true, empty, true, empty, true, empty, ...]", result);
+        assertEquals("(100)[true, empty, true, empty, true, empty, true, empty, true, empty, true, empty, true, empty, true, empty, true, empty, true, empty, ...]", result);
     }
 
     @Test
     public void testForeignArrayHoles() {
         String result = runInteractive("var a = new Array(10); a[3] = true; a[5] = false; a.x=1; a;");
-        assertEquals("[" + empty(3) + ", true, empty, false, " + empty(4) + ", x: 1]", result);
+        assertEquals("(10)[" + empty(3) + ", true, empty, false, " + empty(4) + ", x: 1]", result);
     }
 
     @Test
@@ -143,13 +143,13 @@ public class ConsolePrintTest extends JSTest {
     @Test
     public void testCallableProxyObject() {
         String result = runInteractive("var f = function (a) { return a; }; var p = new Proxy(f,{}); p.x=1; p;");
-        assertEquals("Proxy[function (a) { return a; }, {}]", result);
+        assertEquals("Proxy(function (a) { return a; }, {})", result);
     }
 
     @Test
     public void testProxy() {
         String result = runInteractive("var obj = { a: \"foo\" }; var p = new Proxy(obj, {}); p.x=true; p;");
-        assertEquals("Proxy[{a: \"foo\", x: true}, {}]", result);
+        assertEquals("Proxy({a: \"foo\", x: true}, {})", result);
     }
 
     @Test
@@ -182,7 +182,7 @@ public class ConsolePrintTest extends JSTest {
     @Test
     public void testTypedArray() {
         String result = runInteractive("var buffer = new ArrayBuffer(16); var int32View = new Int32Array(buffer); buffer.x=1; int32View.y=2; int32View;");
-        assertEquals("Int32Array[0, 0, 0, 0, y: 2]", result);
+        assertEquals("Int32Array(4)[0, 0, 0, 0, y: 2]", result);
     }
 
     @Test
@@ -194,16 +194,16 @@ public class ConsolePrintTest extends JSTest {
     @Test
     public void testMap() {
         String result = runInteractive("var m = new Map(); m.set(\"foo\",42); m.x=1; m;");
-        assertEquals("Map{\"foo\" => 42}", result);
-        assertEquals("Map{undefined => undefined}", runInteractive("new Map().set(undefined, undefined)"));
-        assertEquals("Map{null => null}", runInteractive("new Map().set(null, null)"));
-        assertEquals("Map{1n => 2n}", runInteractive("new Map().set(1n, 2n)"));
+        assertEquals("Map(1){\"foo\" => 42}", result);
+        assertEquals("Map(1){undefined => undefined}", runInteractive("new Map().set(undefined, undefined)"));
+        assertEquals("Map(1){null => null}", runInteractive("new Map().set(null, null)"));
+        assertEquals("Map(1){1n => 2n}", runInteractive("new Map().set(1n, 2n)"));
     }
 
     @Test
     public void testSet() {
         String result = runInteractive("var s = new Set(); s.add(\"foo\"); s.x=1; s;");
-        assertEquals("Set{\"foo\"}", result);
+        assertEquals("Set(1){\"foo\"}", result);
     }
 
     @Test
@@ -240,7 +240,7 @@ public class ConsolePrintTest extends JSTest {
     public void testZeros() {
         assertEquals("0", runInteractive("0"));
         assertEquals("-0", runInteractive("-0"));
-        assertEquals("[0, -0]", runInteractive("[0,-0]"));
+        assertEquals("(2)[0, -0]", runInteractive("[0,-0]"));
         assertEquals("{positive: 0, negative: -0}", runInteractive("({ positive: 0, negative: -0 })"));
     }
 

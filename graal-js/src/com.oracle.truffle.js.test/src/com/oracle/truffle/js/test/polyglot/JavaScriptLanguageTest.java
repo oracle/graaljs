@@ -135,7 +135,7 @@ public class JavaScriptLanguageTest {
     public void testToStringNestedArray() {
         try (Context context = Context.create(JavaScriptLanguage.ID)) {
             Value result = context.eval(JavaScriptLanguage.ID, "[1,[2,[3,[4,[5]]]]];");
-            assertEquals("[1, [2, [3, [...]]]]", result.toString());
+            assertEquals("(2)[1, [2, [3, Array(2)]]]", result.toString());
         }
     }
 }

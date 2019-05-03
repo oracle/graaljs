@@ -566,7 +566,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         } else {
             Object target = getTarget(obj);
             Object handler = getHandler(obj);
-            return "Proxy[" + JSRuntime.safeToString(target, depth - 1) + ", " + JSRuntime.safeToString(handler, depth - 1) + "]";
+            return "Proxy(" + JSRuntime.safeToString(target, depth, obj) + ", " + JSRuntime.safeToString(handler, depth, obj) + ")";
         }
     }
 
