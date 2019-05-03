@@ -244,6 +244,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return initialShape;
     }
 
+    @Override
+    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+        return ownPropertyKeysFastArray(thisObj);
+    }
+
     public static Property makeArrayLengthProxyProperty() {
         return JSObjectUtil.makeProxyProperty(LENGTH, new ArrayLengthProxyProperty(), JSAttributes.notConfigurableNotEnumerableWritable());
     }
