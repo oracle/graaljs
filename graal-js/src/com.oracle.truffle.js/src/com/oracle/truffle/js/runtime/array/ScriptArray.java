@@ -348,11 +348,6 @@ public abstract class ScriptArray {
         }
     }
 
-    @SuppressWarnings("unused")
-    public boolean isEnumerable(DynamicObject object, long currentIndex) {
-        return true;
-    }
-
     public static boolean valueIsByte(int value) {
         return Byte.MIN_VALUE <= value && value <= Byte.MAX_VALUE;
     }

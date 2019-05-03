@@ -501,9 +501,9 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(index));
     }
 
-    private static long findNextEnumerable(DynamicObject object, ScriptArray array, long indexParam) {
+    private static long findNextIndex(DynamicObject object, ScriptArray array, long indexParam) {
         long index = indexParam;
-        while ((!array.hasElement(object, index) || !array.isEnumerable(object, index)) && index <= array.lastElementIndex(object)) {
+        while (!array.hasElement(object, index) && index <= array.lastElementIndex(object)) {
             index = array.nextElementIndex(object, index);
         }
         return index;
@@ -524,10 +524,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         }
         List<Object> list = new ArrayList<>((int) len);
 
-        long currentIndex = findNextEnumerable(thisObj, array, array.firstElementIndex(thisObj));
+        long currentIndex = findNextIndex(thisObj, array, array.firstElementIndex(thisObj));
         while (currentIndex <= array.lastElementIndex(thisObj)) {
             list.add(Boundaries.stringValueOf(currentIndex));
-            currentIndex = findNextEnumerable(thisObj, array, array.nextElementIndex(thisObj, currentIndex));
+            currentIndex = findNextIndex(thisObj, array, array.nextElementIndex(thisObj, currentIndex));
         }
 
         List<Object> keyList = thisObj.getShape().getKeyList();
