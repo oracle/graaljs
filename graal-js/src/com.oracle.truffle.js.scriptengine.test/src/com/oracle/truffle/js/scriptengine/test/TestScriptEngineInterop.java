@@ -47,6 +47,7 @@ import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -55,6 +56,16 @@ import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine;
 public class TestScriptEngineInterop {
 
     private static final String ID = "js";
+
+    @Test
+    public void testCustomBuilder() throws ScriptException {
+        Engine graalEngine = Engine.newBuilder().build();
+        GraalJSScriptEngine graalJSScriptEngine = GraalJSScriptEngine.create(graalEngine,
+                        org.graalvm.polyglot.Context.newBuilder("js").engine(graalEngine));
+        Assert.assertEquals(42, graalJSScriptEngine.eval("42"));
+
+        graalEngine.close();
+    }
 
     @Test
     public void testInterop() throws ScriptException {
