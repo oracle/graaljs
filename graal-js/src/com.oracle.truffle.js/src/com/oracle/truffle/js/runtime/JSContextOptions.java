@@ -288,7 +288,10 @@ public final class JSContextOptions {
     @CompilationFinal private boolean regexAlwaysEager;
 
     public static final String SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME = JS_OPTION_PREFIX + "script-engine-global-scope-import";
-    @Option(name = SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, category = OptionCategory.INTERNAL, help = "Enable ScriptEngine-specific global scope import function.") //
+    /*
+     * The option needs to be stable it is used in our GraalJSScriptEngine implementation.
+     */
+    @Option(name = SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME, deprecated = true, stability = OptionStability.STABLE, category = OptionCategory.INTERNAL, help = "Enable ScriptEngine-specific global scope import function.") //
     public static final OptionKey<Boolean> SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT = new OptionKey<>(false);
     @CompilationFinal private boolean scriptEngineGlobalScopeImport;
 
