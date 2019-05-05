@@ -260,13 +260,6 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
-    "filePath" : "mjsunit/apply.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15303"
-  }, {
     "filePath" : "mjsunit/array-constructor-feedback.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
@@ -391,13 +384,6 @@
     "filePath" : "mjsunit/compiler/native-context-specialization-hole-check.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/compiler/regress-3786.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15303"
   }, {
     "filePath" : "mjsunit/compiler/regress-445907.js",
     "runInIsolation" : true,
@@ -1273,13 +1259,6 @@
     "filePath" : "mjsunit/regress/regress-1170.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/regress/regress-1177809.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15303"
-  }, {
     "filePath" : "mjsunit/regress/regress-119429.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1313,25 +1292,11 @@
     "filePath" : "mjsunit/regress/regress-2989.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/regress/regress-3027.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15348"
-  }, {
     "filePath" : "mjsunit/regress/regress-3116.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-319722-ArrayBuffer.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/regress/regress-331444.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15348"
   }, {
     "filePath" : "mjsunit/regress/regress-336820.js",
     "runInIsolation" : true,
@@ -1518,18 +1483,8 @@
     "comment" : "REGEX language cannot be initialized after StackOverflow"
   }, {
     "filePath" : "mjsunit/regress/regress-707066.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "times out on SVM, maybe due to GR-15203"
-  }, {
-    "filePath" : "mjsunit/regress/regress-732836.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15348"
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-740694.js",
     "status" : "FAIL",
@@ -1594,13 +1549,6 @@
     "filePath" : "mjsunit/regress/regress-8033.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-803750.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15350"
   }, {
     "filePath" : "mjsunit/regress/regress-804801.js",
     "status" : "FAIL",
@@ -1696,20 +1644,12 @@
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-357137.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
     "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests; sometimes crashes on SVM, see GR-15341"
+    "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-385002.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
     "runInIsolation" : true,
-    "comment" : "test with (expected) stack overflows that might influence other tests; times out on SVM, maybe due to GR-15203"
+    "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-387031.js",
     "status" : "FAIL"
@@ -1732,13 +1672,6 @@
     "filePath" : "mjsunit/regress/regress-crbug-467047.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-469768.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15350"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-471659.js",
     "status" : "SKIP",
@@ -1779,13 +1712,6 @@
     "status" : "SKIP",
     "runInIsolation" : true,
     "comment" : "NOW: Timeout on infinite recursion where v8 expects the stack limit to be hit. After hitting stack limit, tries to compile a simple regexp. BEFORE: test with (expected) stack overflows that might influence other tests"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-614727.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15350"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-621611.js",
     "status" : "PASS",
@@ -1848,11 +1774,8 @@
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-762472.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15203"
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-762874-1.js",
     "status" : "SKIP",
@@ -2303,20 +2226,6 @@
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-810973.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15303"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-810973b.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15303"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-812005.js",
     "status" : "SKIP",
     "comment" : "WASM (GR-6494)"
@@ -2514,13 +2423,6 @@
     "filePath" : "mjsunit/string-pad.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/string-split.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SVM" : "SKIP"
-    },
-    "comment" : "GR-15303"
   }, {
     "filePath" : "mjsunit/test-builtins-setup.js",
     "status" : "FAIL",
