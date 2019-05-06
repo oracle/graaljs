@@ -66,6 +66,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -227,7 +228,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
             Object proto = getPrototypeNode.getValue(rhs);
             if (!(JSRuntime.isObject(proto))) {
                 invalidPrototypeBranch.enter();
-                throw typeErrorInvalidPrototype(rhs, proto);
+                throw createTypeErrorInvalidPrototype(rhs, proto);
             }
             return (DynamicObject) proto;
         }
@@ -330,14 +331,8 @@ public abstract class InstanceofNode extends JSBinaryNode {
         }
 
         @TruffleBoundary
-        private RuntimeException typeErrorInvalidPrototype(DynamicObject obj, Object proto) {
-            String name;
-            if (JSFunction.isJSFunction(obj)) {
-                name = functionToString(obj);
-            } else {
-                name = obj.toString();
-            }
-            throw Errors.createTypeError("\"prototype\" of " + name + " is not an Object, it is " + JSRuntime.safeToString(proto), this);
+        private JSException createTypeErrorInvalidPrototype(DynamicObject obj, Object proto) {
+            return Errors.createTypeError("\"prototype\" of " + JSRuntime.safeToString(obj) + " is not an Object, it is " + JSRuntime.safeToString(proto), this);
         }
     }
 
