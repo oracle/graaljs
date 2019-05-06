@@ -200,7 +200,7 @@ public class PolyglotBuiltinTest extends JSTest {
 
     @Test
     public void testKeys() {
-        assertEquals("3", test("''+Polyglot.keys([1,2,3]).length;"));
+        assertEquals("0", test("''+Polyglot.keys([1,2,3]).length;"));
         assertEquals("1", test("''+Polyglot.keys({a:1}).length;"));
         test("''+Polyglot.keys(1);", "non-interop object");
     }
