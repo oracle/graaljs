@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
+import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 public final class JSString extends JSPrimitiveObject implements JSConstructorFactory.Default.WithFunctions {
 
@@ -192,17 +193,17 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
 
     @TruffleBoundary
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
         int len = getStringLength(thisObj);
-        List<Object> list = new ArrayList<>(thisObj.getShape().getPropertyCount() + len);
-        for (int i = 0; i < len; i++) {
-            list.add(String.valueOf(i));
-        }
-
+        Iterable<Object> indices = JSAbstractArray.makeRangeIterable(0, len);
         List<Object> keyList = thisObj.getShape().getKeyList();
-        if (!keyList.isEmpty()) {
+        if (keyList.isEmpty()) {
+            return indices;
+        } else {
+            List<Object> list = new ArrayList<>(thisObj.getShape().getPropertyCount());
             keyList.forEach(k -> {
-                if (k instanceof String && JSRuntime.isArrayIndex((String) k) && JSRuntime.propertyKeyToArrayIndex(k) >= len) {
+                if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
+                    assert JSRuntime.propertyKeyToArrayIndex(k) >= len;
                     list.add(k);
                 }
             });
@@ -216,8 +217,8 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
                     list.add(k);
                 }
             });
+            return IteratorUtil.concatIterables(indices, list);
         }
-        return list;
     }
 
     @Override
