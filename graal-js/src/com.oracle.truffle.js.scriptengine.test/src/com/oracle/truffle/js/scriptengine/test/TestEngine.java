@@ -41,13 +41,19 @@
 package com.oracle.truffle.js.scriptengine.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+
+import javax.script.Bindings;
 import javax.script.Compilable;
+import javax.script.Invocable;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
+import org.graalvm.polyglot.Source;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -105,5 +111,64 @@ public class TestEngine {
                         "engine.class.static.getProperty(obj, 'prop') == 'value';"
         ));
         // @formatter:on
+    }
+
+    @Test
+    public void evalWithGlobal() throws ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        bindings.put("x", 42);
+        boolean result = (boolean) engine.eval("x === 42;");
+        assertTrue(result);
+    }
+
+    @Test
+    public void getPolyglotContextEvalWithGlobal() throws IOException, ScriptException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        bindings.put("x", 42);
+        engine.eval("true"); // calls importScriptEngineGlobalBindings
+        boolean result = ((GraalJSScriptEngine) engine).getPolyglotContext().eval(Source.newBuilder("js", "x === 42;", "src").build()).asBoolean();
+        assertTrue(result);
+    }
+
+    @Test
+    public void getPolyglotContextEvalWithGlobalFail() throws IOException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        bindings.put("x", 42);
+        boolean result = ((GraalJSScriptEngine) engine).getPolyglotContext().eval(Source.newBuilder("js", "typeof x === \"undefined\";", "src").build()).asBoolean();
+        assertTrue(result);
+    }
+
+    @Test
+    public void getPolyglotContextEvalWithGlobalManualCall() throws IOException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        bindings.put("x", 42);
+        // manually call importScriptEngineGlobalBindings
+        ((GraalJSScriptEngine) engine).getPolyglotContext().getBindings("js").getMember("importScriptEngineGlobalBindings").execute(bindings);
+        boolean result = ((GraalJSScriptEngine) engine).getPolyglotContext().eval(Source.newBuilder("js", "x === 42;", "src").build()).asBoolean();
+        assertTrue(result);
+    }
+
+    @Test
+    public void invokeFunctionWithGlobal() throws ScriptException, NoSuchMethodException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        bindings.put("x", 42);
+        engine.eval("function foo() { return x === 42; }");
+        boolean result = (boolean) ((Invocable) engine).invokeFunction("foo");
+        assertTrue(result);
+    }
+
+    @Test
+    public void invokeMethodWithGlobal() throws ScriptException, NoSuchMethodException {
+        ScriptEngine engine = getEngine();
+        Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
+        bindings.put("x", 42);
+        engine.eval("var obj = {f: () => { return x === 42; }};");
+        boolean result = (boolean) ((Invocable) engine).invokeMethod(engine.eval("obj"), "f");
+        assertTrue(result);
     }
 }
