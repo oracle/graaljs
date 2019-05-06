@@ -41,10 +41,8 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -58,7 +56,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -76,6 +73,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
+import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 public final class JSArrayBufferView extends JSBuiltinObject {
     public static final String CLASS_NAME = "ArrayBufferView";
@@ -503,14 +501,11 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     @Override
     @TruffleBoundary
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
-        final List<Object> keys = super.ownPropertyKeysList(thisObj);
-        List<Object> list = new ArrayList<>(Math.min(1000, keys.size() + typedArrayGetLength(thisObj)));
-        for (int i = 0; i < typedArrayGetLength(thisObj); i++) {
-            list.add(Boundaries.stringValueOf(i));
-        }
-        list.addAll(keys);
-        return list;
+    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+        int len = typedArrayGetLength(thisObj);
+        Iterable<Object> indices = JSAbstractArray.makeRangeIterable(0, len);
+        Iterable<Object> keys = ordinaryOwnPropertyKeys(thisObj);
+        return IteratorUtil.concatIterables(indices, keys);
     }
 
     @Override
