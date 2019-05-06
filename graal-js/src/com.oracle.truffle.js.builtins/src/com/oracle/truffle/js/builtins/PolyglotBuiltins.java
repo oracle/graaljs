@@ -96,6 +96,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
@@ -878,14 +879,10 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             super(context, builtin);
         }
 
+        @TruffleBoundary
         @Specialization
-        protected Object keys(TruffleObject obj,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) {
-            try {
-                return interop.getMembers(obj);
-            } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, "getMembers", this);
-            }
+        protected Object keys(TruffleObject obj) {
+            return JSArray.createConstantObjectArray(getContext(), JSInteropUtil.keys(obj).toArray());
         }
 
         @SuppressWarnings("unused")
