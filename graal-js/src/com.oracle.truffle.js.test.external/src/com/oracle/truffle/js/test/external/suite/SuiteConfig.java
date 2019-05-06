@@ -67,7 +67,6 @@ public class SuiteConfig {
     private final boolean htmlOutput;
     private final boolean textOutput;
     private final boolean regenerateConfig;
-    private final int compileCount;
     private final int timeoutTest; // individual timeouts not supported by all engines
     private final int timeoutOverall;
     private final String containsFilter;
@@ -81,7 +80,7 @@ public class SuiteConfig {
     SuiteConfig(String suiteName, String suiteDescription,
                     String suiteLoc, String suiteTestsLoc, String suiteHarnessLoc, String suiteConfigLoc,
                     boolean useThreads, boolean verbose, boolean verboseFail, boolean runOnGate, boolean gateResume, boolean printCommand, boolean printScript, boolean saveOutput, boolean compile,
-                    boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int compileCount, int timeoutTest, int timeoutOverall, String containsFilter, String regexFilter,
+                    boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int timeoutTest, int timeoutOverall, String containsFilter, String regexFilter,
                     String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher) {
         this.suiteName = suiteName;
         this.suiteDescription = suiteDescription;
@@ -101,7 +100,6 @@ public class SuiteConfig {
         this.htmlOutput = htmlOutput;
         this.textOutput = textOutput;
         this.regenerateConfig = regenerateConfig;
-        this.compileCount = compileCount;
         this.timeoutTest = timeoutTest;
         this.timeoutOverall = timeoutOverall;
         this.containsFilter = containsFilter;
@@ -184,10 +182,6 @@ public class SuiteConfig {
         return regenerateConfig;
     }
 
-    public int getCompileCount() {
-        return compileCount;
-    }
-
     /**
      * Define the timeout of a single test. Used only in combination with
      * executeWithSeparateThreads() == true;
@@ -265,7 +259,6 @@ public class SuiteConfig {
         private boolean htmlOutput;
         private boolean textOutput;
         private boolean regenerateConfig;
-        private int compileCount;
         private int timeoutTest; // individual timeouts not supported by all engines
         private int timeoutOverall;
         private String containsFilter;
@@ -282,7 +275,6 @@ public class SuiteConfig {
             this.suiteTestsRelLoc = suiteTestsRelLoc;
             this.suiteHarnessRelLoc = suiteHarnessRelLoc;
             this.suiteConfigLoc = defaultSuiteConfigLoc;
-            this.compileCount = 100;
             this.timeoutTest = TestSuite.INDIVIDUAL_TIMEOUT_SECONDS;
             this.timeoutOverall = TestSuite.OVERALL_TIMEOUT_SECONDS;
             this.useThreads = true;
@@ -355,10 +347,6 @@ public class SuiteConfig {
             this.regenerateConfig = regenerateConfig;
         }
 
-        public void setCompileCount(int compileCount) {
-            this.compileCount = compileCount;
-        }
-
         public void setTimeoutTest(int timeout) {
             this.timeoutTest = timeout;
         }
@@ -393,7 +381,7 @@ public class SuiteConfig {
 
         public SuiteConfig build() {
             return new SuiteConfig(suiteName, suiteDescription, suiteLoc, suiteTestsLoc, suiteHarnessLoc, suiteConfigLoc, useThreads, verbose, verboseFail, runOnGate, gateResume, printCommand,
-                            printScript, saveOutput, compile, htmlOutput, textOutput, regenerateConfig, compileCount, timeoutTest, timeoutOverall, containsFilter, regexFilter,
+                            printScript, saveOutput, compile, htmlOutput, textOutput, regenerateConfig, timeoutTest, timeoutOverall, containsFilter, regexFilter,
                             endsWithFilter, printFullOutput, outputFilter, extLauncher);
         }
     }
