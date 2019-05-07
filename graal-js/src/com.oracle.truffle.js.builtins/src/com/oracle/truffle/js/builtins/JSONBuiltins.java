@@ -186,7 +186,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                     }
                 } else {
                     for (String p : JSObject.enumerableOwnNames(object)) {
-                        Object newElement = walk(reviverFn, object, Boundaries.stringValueOf(p));
+                        Object newElement = walk(reviverFn, object, p);
                         if (newElement == Undefined.instance) {
                             JSObject.delete(object, p);
                         } else {
