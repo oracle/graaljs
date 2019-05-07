@@ -703,26 +703,24 @@ public class JSContext {
 
     @TruffleBoundary
     private void processAllPromises() {
-        boolean queueContainsJobs;
-        do {
-            queueContainsJobs = false;
-            Object thisArg = Undefined.instance;
-            while (promiseJobsQueue.size() > 0) {
+        try {
+            while (!promiseJobsQueue.isEmpty()) {
                 DynamicObject nextJob = promiseJobsQueue.pollLast();
                 if (JSFunction.isJSFunction(nextJob)) {
                     JSRealm functionRealm = JSFunction.getRealm(nextJob);
                     Object prev = functionRealm.getTruffleContext().enter();
                     try {
-                        JSFunction.call(nextJob, thisArg, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                        JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
                     } finally {
                         functionRealm.getTruffleContext().leave(prev);
                     }
-                    queueContainsJobs = true;
                 }
             }
-
-            // If a job was executed, it might have scheduled other tasks.
-        } while (queueContainsJobs);
+        } finally {
+            // Ensure that there are no leftovers when the processing
+            // is terminated by an exception (like ExitException).
+            promiseJobsQueue.clear();
+        }
     }
 
     public void interopBoundaryEnter() {
