@@ -146,10 +146,10 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         return doubleToStringNode.executeString(d);
     }
 
-    @Specialization(guards = "isJSObject(value)")
+    @Specialization(guards = "isJSObject(value)", replaces = "doUndefined")
     protected String doJSObject(DynamicObject value,
                     @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode) {
-        return getToStringNode().executeString(toPrimitiveHintStringNode.execute(value));
+        return (undefinedToEmpty && (value == Undefined.instance)) ? "" : getToStringNode().executeString(toPrimitiveHintStringNode.execute(value));
     }
 
     @TruffleBoundary
