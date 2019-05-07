@@ -641,7 +641,7 @@ public final class JSObject {
         return JSShape.getJSContext(obj.getShape());
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(transferToInterpreterOnException = false)
     public static boolean testIntegrityLevel(DynamicObject obj, boolean frozen) {
         return JSObject.getJSClass(obj).testIntegrityLevel(obj, frozen);
     }
