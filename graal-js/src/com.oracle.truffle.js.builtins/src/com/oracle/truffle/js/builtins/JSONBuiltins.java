@@ -138,8 +138,6 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             super(context, builtin);
         }
 
-        private TruffleJSONParser parser;
-
         @Specialization(guards = "isCallable(reviver)")
         protected Object parse(Object text, Object reviver) {
             Object unfiltered = parseIntl(toString(text));
@@ -156,17 +154,10 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         @TruffleBoundary(transferToInterpreterOnException = false)
         private Object parseIntl(String jsonString) {
             if (JSTruffleOptions.TruffleJSONParser) {
-                return parseJSON(jsonString);
+                return new TruffleJSONParser(getContext()).parse(jsonString);
             } else {
                 return getContext().getEvaluator().parseJSON(getContext(), jsonString);
             }
-        }
-
-        private Object parseJSON(String jsonString) {
-            if (parser == null) {
-                parser = new TruffleJSONParser(getContext());
-            }
-            return parser.parse(jsonString);
         }
 
         @TruffleBoundary
