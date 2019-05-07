@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
 
 /**
  * This node prepares the import of a value from Interop. It transforms values allowed in Truffle,
@@ -133,8 +133,8 @@ public abstract class JSForeignToJSTypeNode extends JavaScriptBaseNode {
     @Specialization
     public Object fromTruffleJavaObject(TruffleObject value,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) {
-        if (value instanceof InteropBoundFunction) {
-            return ((InteropBoundFunction) value).getFunction();
+        if (value instanceof InteropFunction) {
+            return ((InteropFunction) value).getFunction();
         } else {
             TruffleLanguage.Env env = contextRef.get().getEnv();
             if (env.isHostObject(value)) {

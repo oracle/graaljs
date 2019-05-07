@@ -404,7 +404,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return "[RegExp " + prototypeToString(obj) + "]";
         } else {

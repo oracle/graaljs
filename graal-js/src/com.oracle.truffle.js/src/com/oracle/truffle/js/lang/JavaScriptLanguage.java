@@ -52,7 +52,6 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -66,7 +65,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
@@ -120,7 +118,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSScope;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropBoundFunction;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 @ProvidedTags({StandardTags.CallTag.class,
@@ -165,8 +163,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final String IMPLEMENTATION_NAME = "GraalVM JavaScript";
     public static final String ID = "js";
 
-    private static final int MAX_TOSTRING_DEPTH = 3;
-
     private volatile JSContext languageContext;
     private volatile boolean multiContext;
 
@@ -180,7 +176,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     public boolean isObjectOfLanguage(Object o) {
-        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof BigInt || o instanceof JSLazyString || o instanceof LargeInteger || o instanceof InteropBoundFunction ||
+        return JSObject.isJSObject(o) || o instanceof Symbol || o instanceof BigInt || o instanceof JSLazyString || o instanceof LargeInteger || o instanceof InteropFunction ||
                         o instanceof JSMetaObject;
     }
 
@@ -296,14 +292,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @TruffleBoundary
     @Override
     protected String toString(JSRealm realm, Object value) {
-        return toString(realm, value, 0);
-    }
-
-    private String toString(JSRealm realm, Object value, int inDepth) {
-        int depth = inDepth + 1;
-        if (depth >= MAX_TOSTRING_DEPTH) {
-            return "..."; // bail-out from recursions or deep nesting
-        }
         if (value == null) {
             return "null";
         } else if (value instanceof JSMetaObject) {
@@ -318,58 +306,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 }
             }
             return type;
-        } else if (value instanceof InteropBoundFunction) {
-            return JSObject.safeToString(((InteropBoundFunction) value).getFunction());
-        } else if (JSRuntime.isForeignObject(value)) {
-            return toStringForeignObject(realm, value, depth);
         }
         return JSRuntime.safeToString(value);
-    }
-
-    private String toStringForeignObject(JSRealm realm, Object value, int depth) {
-        Env env = realm.getEnv();
-        try {
-            if (env.isHostObject(value)) {
-                Object hostObject = env.asHostObject(value);
-                Class<?> clazz = hostObject.getClass();
-                if (clazz == Class.class) {
-                    clazz = (Class<?>) hostObject;
-                    return "JavaClass[" + clazz.getTypeName() + "]";
-                } else {
-                    return "JavaObject[" + clazz.getTypeName() + "]";
-                }
-            } else {
-                InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
-                if (interop.isNull(value)) {
-                    return "null";
-                } else if (interop.isPointer(value)) {
-                    long pointer = interop.asPointer(value);
-                    return "Pointer[0x" + Long.toHexString(pointer) + "]";
-                } else if (interop.hasArrayElements(value)) {
-                    return "Array" + foreignArrayToString(realm, value, depth);
-                } else if (interop.isExecutable(value)) {
-                    return "Executable";
-                } else if (interop.isString(value)) {
-                    return JSRuntime.safeToString(interop.asString(value));
-                } else if (interop.isBoolean(value)) {
-                    return JSRuntime.safeToString(interop.asBoolean(value));
-                } else if (interop.isNumber(value)) {
-                    Object unboxed = "Number";
-                    if (interop.fitsInInt(value)) {
-                        unboxed = interop.asInt(value);
-                    } else if (interop.fitsInLong(value)) {
-                        unboxed = interop.asLong(value);
-                    } else if (interop.fitsInDouble(value)) {
-                        unboxed = interop.asDouble(value);
-                    }
-                    return JSRuntime.safeToString(unboxed);
-                } else {
-                    return "Object" + foreignObjectToString(realm, value, depth);
-                }
-            }
-        } catch (Exception e) {
-            return "Object";
-        }
     }
 
     @TruffleBoundary
@@ -560,8 +498,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             } else if (JSSymbol.isJSSymbol(obj)) {
                 type = "symbol";
             }
-        } else if (value instanceof InteropBoundFunction) {
-            return findMetaObject(realm, ((InteropBoundFunction) value).getFunction());
+        } else if (value instanceof InteropFunction) {
+            return findMetaObject(realm, ((InteropFunction) value).getFunction());
         } else if (JSRuntime.isForeignObject(value)) {
             assert !JSObject.isJSObject(value);
             InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
@@ -626,57 +564,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         } finally {
             context.leave();
         }
-    }
-
-    private String foreignArrayToString(JSRealm realm, Object truffleObject, int depth) throws InteropException {
-        CompilerAsserts.neverPartOfCompilation();
-        InteropLibrary interop = InteropLibrary.getFactory().getUncached(truffleObject);
-        assert interop.hasArrayElements(truffleObject);
-        long size = interop.getArraySize(truffleObject);
-        if (size == 0) {
-            return "[]";
-        }
-        StringBuilder sb = new StringBuilder();
-        sb.append('[');
-        for (long i = 0; i < size; i++) {
-            Object value = interop.readArrayElement(truffleObject, i);
-            sb.append(value == truffleObject ? "(this)" : toString(realm, value, depth));
-            if (i < size - 1) {
-                sb.append(',').append(' ');
-            }
-        }
-        sb.append(']');
-        return sb.toString();
-    }
-
-    private String foreignObjectToString(JSRealm realm, Object truffleObject, int depth) throws InteropException {
-        CompilerAsserts.neverPartOfCompilation();
-        InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(truffleObject);
-        if (!objInterop.hasMembers(truffleObject)) {
-            return "";
-        }
-        Object keys = objInterop.getMembers(truffleObject);
-        InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keys);
-        long keyCount = keysInterop.getArraySize(keys);
-        if (keyCount == 0) {
-            return "{}";
-        }
-        StringBuilder sb = new StringBuilder();
-        sb.append('{');
-        for (long i = 0; i < keyCount; i++) {
-            Object key = keysInterop.readArrayElement(keys, i);
-            assert InteropLibrary.getFactory().getUncached().isString(key);
-            String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
-            Object value = objInterop.readMember(truffleObject, stringKey);
-            sb.append(toString(realm, key, depth));
-            sb.append('=');
-            sb.append(value == truffleObject ? "(this)" : toString(realm, value, depth));
-            if (i < keyCount - 1) {
-                sb.append(',').append(' ');
-            }
-        }
-        sb.append('}');
-        return sb.toString();
     }
 
     private static void ensureErrorClassesInitialized() {

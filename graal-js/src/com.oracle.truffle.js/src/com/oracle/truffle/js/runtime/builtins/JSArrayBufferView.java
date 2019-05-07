@@ -605,11 +605,11 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     }
 
     @Override
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return defaultToString(obj);
         } else {
-            return JSRuntime.objectToConsoleString(obj, typedArrayGetName(obj));
+            return JSRuntime.objectToConsoleString(obj, typedArrayGetName(obj), depth);
         }
     }
 

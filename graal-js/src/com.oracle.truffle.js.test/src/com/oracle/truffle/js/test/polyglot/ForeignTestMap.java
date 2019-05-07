@@ -70,28 +70,16 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 public class ForeignTestMap implements TruffleObject {
 
     private final HashMap<Object, Object> container = new HashMap<>();
-    private boolean isBoxed = true;
 
     public HashMap<Object, Object> getContainer() {
         CompilerAsserts.neverPartOfCompilation();
         return container;
     }
 
-    public void setIsBoxed(boolean isBoxed) {
-        this.isBoxed = isBoxed;
-    }
-
-    public boolean isBoxed() {
-        return isBoxed && !isNull();
-    }
-
-    @TruffleBoundary
-    public Object unbox() {
-        if (getContainer().containsKey("BOX")) {
-            return getContainer().get("BOX");
-        } else {
-            return toString();
-        }
+    public static TruffleObject newNull() {
+        ForeignTestMap obj = new ForeignTestMap();
+        obj.getContainer().put("IS_NULL", true);
+        return obj;
     }
 
     @ExportMessage

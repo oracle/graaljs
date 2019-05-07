@@ -115,7 +115,7 @@ public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFac
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj) {
+    public String safeToString(DynamicObject obj, int depth) {
         if (JSTruffleOptions.NashornCompatibilityMode) {
             return "[" + getClassName() + "]";
         } else {

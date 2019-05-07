@@ -87,7 +87,7 @@ public final class Null {
         }
 
         @Override
-        public String safeToString(DynamicObject object) {
+        public String safeToString(DynamicObject object, int depth) {
             return object == Undefined.instance ? "[object Undefined]" : "[object Null]";
         }
 
