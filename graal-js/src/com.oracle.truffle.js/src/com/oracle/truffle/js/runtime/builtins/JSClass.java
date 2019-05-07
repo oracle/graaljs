@@ -81,7 +81,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.InteropList;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropArray;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -99,6 +99,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  */
 @ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
 public abstract class JSClass extends ObjectType {
+    protected static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     protected JSClass() {
     }
@@ -422,13 +423,13 @@ public abstract class JSClass extends ObjectType {
         @Specialization(guards = "isJSFastArray(target)")
         static Object fastArray(DynamicObject target, boolean internal) {
             // Do not include array indices
-            return InteropList.create(filterEnumerableNames(target, JSBuiltinObject.ordinaryOwnPropertyKeys(target), JSObject.getJSClass(target)));
+            return InteropArray.create(filterEnumerableNames(target, JSBuiltinObject.ordinaryOwnPropertyKeys(target), JSObject.getJSClass(target)));
         }
 
         @Specialization(guards = {"isJSArray(target)", "!isJSFastArray(target)"})
         static Object slowArray(DynamicObject target, boolean internal) {
             // Do not include array indices
-            return InteropList.create(filterEnumerableNames(target, JSObject.ownPropertyKeys(target), JSObject.getJSClass(target)));
+            return InteropArray.create(filterEnumerableNames(target, JSObject.ownPropertyKeys(target), JSObject.getJSClass(target)));
         }
 
         @Specialization(guards = "isJSArrayBufferView(target)")
@@ -444,17 +445,17 @@ public abstract class JSClass extends ObjectType {
         @Specialization(guards = {"cachedJSClass != null", "getJSClass(target) == cachedJSClass"})
         static Object nonArrayCached(DynamicObject target, boolean internal,
                         @Cached("getNonArrayJSClass(target)") JSClass cachedJSClass) throws UnsupportedMessageException {
-            return InteropList.create(JSObject.enumerableOwnNames(target));
+            return InteropArray.create(JSObject.enumerableOwnNames(target));
         }
 
         @Specialization(guards = {"!isJSArray(target)", "!isJSArrayBufferView(target)", "!isJSArgumentsObject(target)"}, replaces = "nonArrayCached")
         static Object nonArray(DynamicObject target, boolean internal) throws UnsupportedMessageException {
             ensureHasMembers(target);
-            return InteropList.create(JSObject.enumerableOwnNames(target));
+            return InteropArray.create(JSObject.enumerableOwnNames(target));
         }
 
         @TruffleBoundary
-        private static List<String> filterEnumerableNames(DynamicObject target, Iterable<Object> ownKeys, JSClass jsclass) {
+        private static String[] filterEnumerableNames(DynamicObject target, Iterable<Object> ownKeys, JSClass jsclass) {
             List<String> names = new ArrayList<>();
             for (Object obj : ownKeys) {
                 if (obj instanceof String && !JSRuntime.isArrayIndex((String) obj)) {
@@ -464,7 +465,7 @@ public abstract class JSClass extends ObjectType {
                     }
                 }
             }
-            return names;
+            return names.toArray(EMPTY_STRING_ARRAY);
         }
 
         static JSClass getNonArrayJSClass(DynamicObject object) {
