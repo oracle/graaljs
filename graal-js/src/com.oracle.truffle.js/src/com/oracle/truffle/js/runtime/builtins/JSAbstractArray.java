@@ -46,7 +46,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.TreeMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -78,6 +80,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
+import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 public abstract class JSAbstractArray extends JSBuiltinObject {
 
@@ -501,9 +504,9 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(index));
     }
 
-    private static long findNextEnumerable(DynamicObject object, ScriptArray array, long indexParam) {
+    private static long findNextIndex(DynamicObject object, ScriptArray array, long indexParam) {
         long index = indexParam;
-        while ((!array.hasElement(object, index) || !array.isEnumerable(object, index)) && index <= array.lastElementIndex(object)) {
+        while (!array.hasElement(object, index) && index <= array.lastElementIndex(object)) {
             index = array.nextElementIndex(object, index);
         }
         return index;
@@ -511,23 +514,89 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
-        return ownPropertyKeysImpl(thisObj);
+    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+        return ownPropertyKeysSlowArray(thisObj);
     }
 
     @TruffleBoundary
-    static List<Object> ownPropertyKeysImpl(DynamicObject thisObj) {
-        ScriptArray array = arrayGetArrayType(thisObj, false);
+    protected static Iterable<Object> ownPropertyKeysFastArray(DynamicObject thisObj) {
+        assert JSArray.isJSFastArray(thisObj) || JSArgumentsObject.isJSFastArgumentsObject(thisObj);
+        // Collect contiguous index ranges.
+        Iterable<Object> iterable = null;
+        ScriptArray array = arrayGetArrayType(thisObj);
+        long currentIndex = findNextIndex(thisObj, array, array.firstElementIndex(thisObj));
+        long start = currentIndex;
+        long end = currentIndex;
+        while (currentIndex <= array.lastElementIndex(thisObj)) {
+            if (currentIndex == end) {
+                end = currentIndex + 1;
+            } else {
+                assert end < currentIndex;
+                assert start < end;
+                Iterable<Object> range = makeRangeIterable(start, end);
+                iterable = iterable == null ? range : IteratorUtil.concatIterables(iterable, range);
+                start = currentIndex;
+                end = currentIndex + 1;
+            }
+            currentIndex = findNextIndex(thisObj, array, array.nextElementIndex(thisObj, currentIndex));
+        }
+        if (start < end) {
+            Iterable<Object> range = makeRangeIterable(start, end);
+            iterable = iterable == null ? range : IteratorUtil.concatIterables(iterable, range);
+        }
+
+        List<Object> list = new ArrayList<>(thisObj.getShape().getPropertyCount());
+        List<Object> keyList = thisObj.getShape().getKeyList();
+        if (!keyList.isEmpty()) {
+            keyList.forEach(k -> {
+                assert !(k instanceof String && JSRuntime.isArrayIndex((String) k));
+                if (k instanceof String) {
+                    list.add(k);
+                }
+            });
+            keyList.forEach(k -> {
+                if (k instanceof Symbol) {
+                    list.add(k);
+                }
+            });
+        }
+        return iterable == null ? list : IteratorUtil.concatIterables(iterable, list);
+    }
+
+    static Iterable<Object> makeRangeIterable(final long rangeStart, final long rangeEnd) {
+        Iterable<Object> range = () -> new Iterator<Object>() {
+            private long current = rangeStart;
+
+            @Override
+            public boolean hasNext() {
+                return current < rangeEnd;
+            }
+
+            @Override
+            public Object next() {
+                if (hasNext()) {
+                    return Boundaries.stringValueOf(current++);
+                } else {
+                    throw new NoSuchElementException();
+                }
+            }
+        };
+        return range;
+    }
+
+    @TruffleBoundary
+    protected static List<Object> ownPropertyKeysSlowArray(DynamicObject thisObj) {
+        ScriptArray array = arrayGetArrayType(thisObj);
         long len = thisObj.getShape().getPropertyCount() + array.length(thisObj);
         if (len > 10000) {
             len = 0; // let's rather find out during setting.
         }
         List<Object> list = new ArrayList<>((int) len);
 
-        long currentIndex = findNextEnumerable(thisObj, array, array.firstElementIndex(thisObj));
+        long currentIndex = findNextIndex(thisObj, array, array.firstElementIndex(thisObj));
         while (currentIndex <= array.lastElementIndex(thisObj)) {
             list.add(Boundaries.stringValueOf(currentIndex));
-            currentIndex = findNextEnumerable(thisObj, array, array.nextElementIndex(thisObj, currentIndex));
+            currentIndex = findNextIndex(thisObj, array, array.nextElementIndex(thisObj, currentIndex));
         }
 
         List<Object> keyList = thisObj.getShape().getKeyList();

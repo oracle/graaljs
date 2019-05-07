@@ -161,7 +161,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
         if (array.length(thisObj) == 0) {
             return super.ownPropertyKeys(thisObj);
         }
-        return JSAbstractArray.ownPropertyKeysImpl(thisObj);
+        return JSAbstractArray.ownPropertyKeysSlowArray(thisObj);
     }
 
     @Override

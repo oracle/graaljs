@@ -222,14 +222,6 @@ public final class JSGuards {
         return JSDate.isJSDate(value);
     }
 
-    public static boolean isJSAbstractArray(DynamicObject value) {
-        return isJSArray(value) || isJSArguments(value);
-    }
-
-    public static boolean isJSAbstractArray(Object value) {
-        return isJSArray(value) || isJSArguments(value);
-    }
-
     public static boolean isJSArray(DynamicObject value) {
         return JSArray.isJSArray(value);
     }
@@ -238,11 +230,11 @@ public final class JSGuards {
         return JSArray.isJSArray(value);
     }
 
-    public static boolean isJSArguments(DynamicObject value) {
+    public static boolean isJSArgumentsObject(DynamicObject value) {
         return JSArgumentsObject.isJSArgumentsObject(value);
     }
 
-    public static boolean isJSArguments(Object value) {
+    public static boolean isJSArgumentsObject(Object value) {
         return JSArgumentsObject.isJSArgumentsObject(value);
     }
 

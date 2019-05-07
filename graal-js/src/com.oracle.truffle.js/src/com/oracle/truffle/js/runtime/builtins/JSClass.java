@@ -40,11 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -56,6 +61,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -75,6 +81,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropArray;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -92,6 +99,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  */
 @ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
 public abstract class JSClass extends ObjectType {
+    protected static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     protected JSClass() {
     }
@@ -408,13 +416,64 @@ public abstract class JSClass extends ObjectType {
         }
     }
 
+    @SuppressWarnings("unused")
+    @ImportStatic({JSGuards.class, JSObject.class})
     @ExportMessage
-    @TruffleBoundary
-    static Object getMembers(DynamicObject target, @SuppressWarnings("unused") boolean internal) throws UnsupportedMessageException {
-        ensureHasMembers(target);
-        Object[] keys = JSObject.enumerableOwnNames(target).toArray();
-        JSContext context = JSObject.getJSContext(target);
-        return JSArray.createConstant(context, keys);
+    abstract static class GetMembers {
+        @Specialization(guards = "isJSFastArray(target)")
+        static Object fastArray(DynamicObject target, boolean internal) {
+            // Do not include array indices
+            return InteropArray.create(filterEnumerableNames(target, JSBuiltinObject.ordinaryOwnPropertyKeys(target), JSObject.getJSClass(target)));
+        }
+
+        @Specialization(guards = {"isJSArray(target)", "!isJSFastArray(target)"})
+        static Object slowArray(DynamicObject target, boolean internal) {
+            // Do not include array indices
+            return InteropArray.create(filterEnumerableNames(target, JSObject.ownPropertyKeys(target), JSObject.getJSClass(target)));
+        }
+
+        @Specialization(guards = "isJSArrayBufferView(target)")
+        static Object typedArray(DynamicObject target, boolean internal) {
+            return fastArray(target, internal);
+        }
+
+        @Specialization(guards = "isJSArgumentsObject(target)")
+        static Object argumentsObject(DynamicObject target, boolean internal) {
+            return slowArray(target, internal);
+        }
+
+        @Specialization(guards = {"cachedJSClass != null", "getJSClass(target) == cachedJSClass"})
+        static Object nonArrayCached(DynamicObject target, boolean internal,
+                        @Cached("getNonArrayJSClass(target)") JSClass cachedJSClass) throws UnsupportedMessageException {
+            return InteropArray.create(JSObject.enumerableOwnNames(target));
+        }
+
+        @Specialization(guards = {"!isJSArray(target)", "!isJSArrayBufferView(target)", "!isJSArgumentsObject(target)"}, replaces = "nonArrayCached")
+        static Object nonArray(DynamicObject target, boolean internal) throws UnsupportedMessageException {
+            ensureHasMembers(target);
+            return InteropArray.create(JSObject.enumerableOwnNames(target));
+        }
+
+        @TruffleBoundary
+        private static String[] filterEnumerableNames(DynamicObject target, Iterable<Object> ownKeys, JSClass jsclass) {
+            List<String> names = new ArrayList<>();
+            for (Object obj : ownKeys) {
+                if (obj instanceof String && !JSRuntime.isArrayIndex((String) obj)) {
+                    PropertyDescriptor desc = jsclass.getOwnProperty(target, obj);
+                    if (desc != null && desc.getEnumerable()) {
+                        names.add((String) obj);
+                    }
+                }
+            }
+            return names.toArray(EMPTY_STRING_ARRAY);
+        }
+
+        static JSClass getNonArrayJSClass(DynamicObject object) {
+            if (hasArrayElements(object) || isNull(object)) {
+                return null;
+            }
+            return JSObject.getJSClass(object);
+        }
     }
 
     @SuppressWarnings("unused")

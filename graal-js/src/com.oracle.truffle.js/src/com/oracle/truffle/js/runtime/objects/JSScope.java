@@ -49,7 +49,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
@@ -60,7 +59,6 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -86,6 +84,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.truffleinterop.InteropList;
 
 public abstract class JSScope {
 
@@ -519,7 +518,8 @@ public abstract class JSScope {
         @ExportMessage
         @TruffleBoundary
         Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return new VariableNamesObject(slots.keySet());
+            List<String> names = new ArrayList<>(slots.keySet());
+            return InteropList.create(names);
         }
 
         @ExportMessage
@@ -581,50 +581,6 @@ public abstract class JSScope {
         }
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    static final class VariableNamesObject implements TruffleObject {
-
-        final List<String> names;
-
-        private VariableNamesObject(Set<String> names) {
-            this.names = new ArrayList<>(names.size());
-            this.names.addAll(names);
-        }
-
-        private VariableNamesObject(List<String> names) {
-            this.names = names;
-        }
-
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof VariableNamesObject;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (!isArrayElementReadable(index)) {
-                throw InvalidArrayIndexException.create(index);
-            }
-            return names.get((int) index);
-        }
-
-        @ExportMessage
-        long getArraySize() {
-            return names.size();
-        }
-
-        @ExportMessage
-        boolean isArrayElementReadable(long index) {
-            return index >= 0L && index < names.size();
-        }
-    }
-
     /**
      * Wraps a dynamic scope object, filters out dead variables, and prevents const assignment.
      */
@@ -662,7 +618,7 @@ public abstract class JSScope {
                     }
                 }
             }
-            return new VariableNamesObject(keys);
+            return InteropList.create(keys);
         }
 
         @ExportMessage
