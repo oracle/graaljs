@@ -1,5 +1,5 @@
 # GraalVM JavaScript
-GraalVM JavaScript is a High-Performance JavaScript implementation built atop the [Truffle Language Implementation Framework](https://github.com/graalvm/truffle) and the [GraalVM compiler](https://github.com/graalvm/graal-core).
+GraalVM JavaScript is a High-Performance JavaScript implementation built atop the [Truffle Language Implementation Framework](https://github.com/oracle/graal/tree/master/truffle) and the [GraalVM compiler](https://github.com/oracle/graal).
 Truffle is a framework for implementing languages as self-optimizing interpreters written in Java.
 Graal is a dynamic compiler that is used to generate efficient machine code from partially evaluated Truffle interpreters.
 
