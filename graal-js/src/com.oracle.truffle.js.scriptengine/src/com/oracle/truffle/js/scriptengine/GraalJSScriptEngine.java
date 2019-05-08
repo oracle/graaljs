@@ -334,7 +334,6 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     private Object eval(Source source, ScriptContext scriptContext) throws ScriptException {
         GraalJSBindings engineBindings = getOrCreateGraalJSBindings(scriptContext);
-        Bindings globalBindings = scriptContext.getBindings(ScriptContext.GLOBAL_SCOPE);
         Context polyglotContext = engineBindings.getContext();
         ((DelegatingOutputStream) polyglotContext.getPolyglotBindings().getMember(OUT_SYMBOL).asProxyObject()).setWriter(scriptContext.getWriter());
         ((DelegatingOutputStream) polyglotContext.getPolyglotBindings().getMember(ERR_SYMBOL).asProxyObject()).setWriter(scriptContext.getErrorWriter());
@@ -343,14 +342,19 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             if (!evalCalled) {
                 jrunscriptInitWorkaround(source, polyglotContext);
             }
-            if (globalBindings != null && !globalBindings.isEmpty() && engineBindings != globalBindings) {
-                polyglotContext.getBindings(ID).getMember(SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME).execute(globalBindings);
-            }
+            importGlobalBindings(scriptContext, engineBindings);
             return polyglotContext.eval(source).as(Object.class);
         } catch (PolyglotException e) {
             throw new ScriptException(e);
         } finally {
             evalCalled = true;
+        }
+    }
+
+    private static void importGlobalBindings(ScriptContext scriptContext, GraalJSBindings graalJSBindings) {
+        Bindings globalBindings = scriptContext.getBindings(ScriptContext.GLOBAL_SCOPE);
+        if (globalBindings != null && !globalBindings.isEmpty() && graalJSBindings != globalBindings) {
+            graalJSBindings.getContext().getBindings(ID).getMember(SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME).execute(globalBindings);
         }
     }
 
@@ -392,18 +396,27 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         if (thiz == null) {
             throw new IllegalArgumentException("thiz is not a valid object.");
         }
-        Value value = getPolyglotContext().asValue(thiz);
+        GraalJSBindings engineBindings = getOrCreateGraalJSBindings(context);
+        importGlobalBindings(context, engineBindings);
+        Value value = engineBindings.getContext().asValue(thiz);
         Value function = value.getMember(name);
-        return invoke(name, function, args);
+        return invokeInternal(name, function, args);
     }
 
     @Override
     public Object invokeFunction(String name, Object... args) throws ScriptException, NoSuchMethodException {
-        Value value = getOrCreateGraalJSBindings(context).getContext().getBindings(ID).getMember(name);
-        return invoke(name, value, args);
+        GraalJSBindings engineBindings = getOrCreateGraalJSBindings(context);
+        importGlobalBindings(context, engineBindings);
+        Value value = engineBindings.getContext().getBindings(ID).getMember(name);
+        return invokeInternal(name, value, args);
     }
 
+    @Deprecated
     public static Object invoke(String methodName, Value function, Object... args) throws NoSuchMethodException, ScriptException {
+        return invokeInternal(methodName, function, args);
+    }
+
+    private static Object invokeInternal(String methodName, Value function, Object... args) throws NoSuchMethodException, ScriptException {
         if (function == null) {
             throw new NoSuchMethodException(methodName);
         } else if (!function.canExecute()) {
