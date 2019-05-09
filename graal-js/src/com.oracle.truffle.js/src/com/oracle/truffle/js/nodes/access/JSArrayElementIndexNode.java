@@ -85,7 +85,8 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
 
     protected final boolean isArraySuitableForEnumBasedProcessing(TruffleObject object, long length) {
         return length > JSTruffleOptions.BigArrayThreshold && !JSArrayBufferView.isJSArrayBufferView(object) && !JSProxy.isProxy(object) &&
-                        (context.getArrayPrototypeNoElementsAssumption().isValid() || !JSObject.isJSObject(object) || JSObject.getPrototype((DynamicObject) object) == Null.instance);
+                        ((JSArray.isJSArray(object) && context.getArrayPrototypeNoElementsAssumption().isValid()) || !JSObject.isJSObject(object) ||
+                                        JSObject.getPrototype((DynamicObject) object) == Null.instance);
     }
 
     /**
