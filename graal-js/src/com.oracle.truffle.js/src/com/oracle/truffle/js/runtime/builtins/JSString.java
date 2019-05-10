@@ -65,6 +65,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
+import com.oracle.truffle.js.runtime.array.dyn.LazyArrayGenerator;
 
 public final class JSString extends JSPrimitiveObject implements JSConstructorFactory.Default.WithFunctions {
 
@@ -191,33 +192,72 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
         }
     }
 
+    private static List<Object> ownPropertyKeysExceptIndices(DynamicObject thisObj) {
+        int len = getStringLength(thisObj);
+        List<Object> keyList = thisObj.getShape().getKeyList();
+        List<Object> list = new ArrayList<>(thisObj.getShape().getPropertyCount());
+        keyList.forEach(k -> {
+            if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
+                assert JSRuntime.propertyKeyToArrayIndex(k) >= len;
+                list.add(k);
+            }
+        });
+        keyList.forEach(k -> {
+            if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
+                list.add(k);
+            }
+        });
+        keyList.forEach(k -> {
+            if (k instanceof Symbol) {
+                list.add(k);
+            }
+        });
+        return list;
+    }
+
+    @TruffleBoundary
+    public static LazyArrayGenerator ownPropertyKeysGenerator(DynamicObject thisObj) {
+        assert isJSString(thisObj);
+        class JSStringProperties implements LazyArrayGenerator {
+            int indices;
+            List<Object> properties;
+
+            JSStringProperties(int indices, List<Object> properties) {
+                this.indices = indices;
+                this.properties = properties;
+            }
+
+            @Override
+            public Object getElement(int index) {
+                if (index < indices) {
+                    return Boundaries.stringValueOf(index);
+                }
+                return properties.get(index - indices);
+            }
+
+            @Override
+            public int getLength() {
+                return indices + properties.size();
+            }
+
+        }
+
+        int len = getStringLength(thisObj);
+        List<Object> keyList = ownPropertyKeysExceptIndices(thisObj);
+        return new JSStringProperties(len, keyList);
+    }
+
     @TruffleBoundary
     @Override
     public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
         int len = getStringLength(thisObj);
         Iterable<Object> indices = JSAbstractArray.makeRangeIterable(0, len);
-        List<Object> keyList = thisObj.getShape().getKeyList();
+        List<Object> keyList = ownPropertyKeysExceptIndices(thisObj);
+
         if (keyList.isEmpty()) {
             return indices;
         } else {
-            List<Object> list = new ArrayList<>(thisObj.getShape().getPropertyCount());
-            keyList.forEach(k -> {
-                if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
-                    assert JSRuntime.propertyKeyToArrayIndex(k) >= len;
-                    list.add(k);
-                }
-            });
-            keyList.forEach(k -> {
-                if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
-                    list.add(k);
-                }
-            });
-            keyList.forEach(k -> {
-                if (k instanceof Symbol) {
-                    list.add(k);
-                }
-            });
-            return IteratorUtil.concatIterables(indices, list);
+            return IteratorUtil.concatIterables(indices, keyList);
         }
     }
 

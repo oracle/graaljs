@@ -119,6 +119,8 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.Pair;
+import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.array.dyn.LazyArrayGenerator;
 
 /**
  * Contains builtins for {@linkplain DynamicObject} function (constructor).
@@ -330,6 +332,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class ObjectGetOwnPropertyNamesOrSymbolsNode extends ObjectOperation {
         protected final boolean symbols;
+        final ConditionProfile isJSString = ConditionProfile.createBinaryProfile();
 
         public ObjectGetOwnPropertyNamesOrSymbolsNode(JSContext context, JSBuiltin builtin, boolean symbols) {
             super(context, builtin);
@@ -344,6 +347,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
         protected DynamicObject getDefault(Object thisObj) {
             DynamicObject object = toOrAsObject(thisObj);
+            if (!symbols && isJSString.profile(JSString.isJSString(object))) {
+                LazyArrayGenerator gen = JSString.ownPropertyKeysGenerator(object);
+                return JSArray.createLazyArray(getContext(), gen);
+            }
             return JSRuntime.getOwnPropertyKeys(getContext(), object, symbols);
         }
 

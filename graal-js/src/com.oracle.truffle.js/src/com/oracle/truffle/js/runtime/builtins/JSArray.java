@@ -69,6 +69,8 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
+import com.oracle.truffle.js.runtime.array.dyn.LazyArray;
+import com.oracle.truffle.js.runtime.array.dyn.LazyArrayGenerator;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedJSObjectArray;
@@ -362,6 +364,10 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         DynamicObject obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, input, groups);
         assert isJSArray(obj);
         return obj;
+    }
+
+    public static DynamicObject createLazyArray(JSContext context, LazyArrayGenerator gen) {
+        return create(context, LazyArray.createLazyArray(), gen, gen.getLength());
     }
 
     @Override
