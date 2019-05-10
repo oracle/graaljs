@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version GraalVM 19.0.0
+* Various bugfixes for compilation problems.
+
 ## Version 1.0.0 RC16
 * provide `js.load-from-url` to allow loading from a URL.
 * provide `js.bigint` option to enable the BigInt proposal, available only in ECMAScript 2019 or later (enabled by default for those version, set to `false` to disable).
