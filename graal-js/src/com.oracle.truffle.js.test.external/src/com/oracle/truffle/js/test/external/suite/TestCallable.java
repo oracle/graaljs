@@ -77,6 +77,9 @@ public class TestCallable extends AbstractTestCallable {
         contextBuilder.option(JSContextOptions.CONST_AS_VAR_NAME, Boolean.toString(false));
         contextBuilder.options(suite.getCommonOptions());
         contextBuilder.options(extraOptions);
+        if (getConfig().isShareEngine()) {
+            contextBuilder.engine(suite.getSharedEngine());
+        }
     }
 
     protected Source[] getPrequelSources() {
