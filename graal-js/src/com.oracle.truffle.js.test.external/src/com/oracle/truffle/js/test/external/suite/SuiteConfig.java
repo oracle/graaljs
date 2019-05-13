@@ -67,7 +67,7 @@ public class SuiteConfig {
     private final boolean htmlOutput;
     private final boolean textOutput;
     private final boolean regenerateConfig;
-    private final int compileCount;
+    private final boolean shareEngine;
     private final int timeoutTest; // individual timeouts not supported by all engines
     private final int timeoutOverall;
     private final String containsFilter;
@@ -81,8 +81,8 @@ public class SuiteConfig {
     SuiteConfig(String suiteName, String suiteDescription,
                     String suiteLoc, String suiteTestsLoc, String suiteHarnessLoc, String suiteConfigLoc,
                     boolean useThreads, boolean verbose, boolean verboseFail, boolean runOnGate, boolean gateResume, boolean printCommand, boolean printScript, boolean saveOutput, boolean compile,
-                    boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int compileCount, int timeoutTest, int timeoutOverall, String containsFilter, String regexFilter,
-                    String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher) {
+                    boolean htmlOutput, boolean textOutput, boolean regenerateConfig, int timeoutTest, int timeoutOverall, String containsFilter, String regexFilter,
+                    String endsWithFilter, boolean printFullOutput, String outputFilter, String extLauncher, boolean shareEngine) {
         this.suiteName = suiteName;
         this.suiteDescription = suiteDescription;
         this.suiteLoc = suiteLoc;
@@ -101,7 +101,6 @@ public class SuiteConfig {
         this.htmlOutput = htmlOutput;
         this.textOutput = textOutput;
         this.regenerateConfig = regenerateConfig;
-        this.compileCount = compileCount;
         this.timeoutTest = timeoutTest;
         this.timeoutOverall = timeoutOverall;
         this.containsFilter = containsFilter;
@@ -110,6 +109,7 @@ public class SuiteConfig {
         this.printFullOutput = printFullOutput;
         this.outputFilter = outputFilter;
         this.extLauncher = extLauncher;
+        this.shareEngine = shareEngine;
     }
 
     public String getSuiteName() {
@@ -184,8 +184,8 @@ public class SuiteConfig {
         return regenerateConfig;
     }
 
-    public int getCompileCount() {
-        return compileCount;
+    public boolean isShareEngine() {
+        return shareEngine;
     }
 
     /**
@@ -265,7 +265,7 @@ public class SuiteConfig {
         private boolean htmlOutput;
         private boolean textOutput;
         private boolean regenerateConfig;
-        private int compileCount;
+        private boolean shareEngine;
         private int timeoutTest; // individual timeouts not supported by all engines
         private int timeoutOverall;
         private String containsFilter;
@@ -282,7 +282,6 @@ public class SuiteConfig {
             this.suiteTestsRelLoc = suiteTestsRelLoc;
             this.suiteHarnessRelLoc = suiteHarnessRelLoc;
             this.suiteConfigLoc = defaultSuiteConfigLoc;
-            this.compileCount = 100;
             this.timeoutTest = TestSuite.INDIVIDUAL_TIMEOUT_SECONDS;
             this.timeoutOverall = TestSuite.OVERALL_TIMEOUT_SECONDS;
             this.useThreads = true;
@@ -355,10 +354,6 @@ public class SuiteConfig {
             this.regenerateConfig = regenerateConfig;
         }
 
-        public void setCompileCount(int compileCount) {
-            this.compileCount = compileCount;
-        }
-
         public void setTimeoutTest(int timeout) {
             this.timeoutTest = timeout;
         }
@@ -391,10 +386,14 @@ public class SuiteConfig {
             this.extLauncher = extLauncher;
         }
 
+        public void setShareEngine(boolean shareEngine) {
+            this.shareEngine = shareEngine;
+        }
+
         public SuiteConfig build() {
             return new SuiteConfig(suiteName, suiteDescription, suiteLoc, suiteTestsLoc, suiteHarnessLoc, suiteConfigLoc, useThreads, verbose, verboseFail, runOnGate, gateResume, printCommand,
-                            printScript, saveOutput, compile, htmlOutput, textOutput, regenerateConfig, compileCount, timeoutTest, timeoutOverall, containsFilter, regexFilter,
-                            endsWithFilter, printFullOutput, outputFilter, extLauncher);
+                            printScript, saveOutput, compile, htmlOutput, textOutput, regenerateConfig, timeoutTest, timeoutOverall, containsFilter, regexFilter,
+                            endsWithFilter, printFullOutput, outputFilter, extLauncher, shareEngine);
         }
     }
 }

@@ -65,7 +65,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
  */
 public class DebugJSAgent extends JSAgent {
 
-    private final OptionValues optionValues;
+    private OptionValues optionValues;
 
     private final Deque<Object> reportValues;
     private final List<AgentExecutor> spawnedAgent;
@@ -74,11 +74,20 @@ public class DebugJSAgent extends JSAgent {
     private Object debugReceiveBroadcast;
 
     @TruffleBoundary
-    public DebugJSAgent(TruffleLanguage.Env env, boolean canBlock) {
+    public DebugJSAgent(boolean canBlock) {
         super(canBlock);
-        this.optionValues = env.getOptions();
         this.reportValues = new ConcurrentLinkedDeque<>();
         this.spawnedAgent = new LinkedList<>();
+    }
+
+    @Override
+    public void reset(TruffleLanguage.Env env) {
+        super.reset(env);
+        optionValues = env.getOptions();
+        reportValues.clear();
+        spawnedAgent.clear();
+        quit = false;
+        debugReceiveBroadcast = null;
     }
 
     @TruffleBoundary

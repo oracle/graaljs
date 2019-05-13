@@ -82,6 +82,8 @@ import com.oracle.truffle.js.runtime.GraalJSParserOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
+import org.graalvm.polyglot.Engine;
+
 public abstract class TestSuite {
 
     public static final int OVERALL_TIMEOUT_SECONDS = 60 * 12;
@@ -112,6 +114,7 @@ public abstract class TestSuite {
     private final List<String> htmlOutputList;
     private final List<TestRunnable> activeTests = new ArrayList<>();
     private final ExecutorService extLauncherPipePool;
+    private final Engine sharedEngine;
 
     public TestSuite(SuiteConfig config) {
         assert config != null;
@@ -122,6 +125,7 @@ public abstract class TestSuite {
         this.htmlOutputList = config.isHtmlOutput() ? new ArrayList<>() : null;
         this.textOutputList = config.isTextOutput() ? new ArrayList<>() : null;
         this.extLauncherPipePool = config.isExtLauncher() ? Executors.newCachedThreadPool() : null;
+        this.sharedEngine = config.isShareEngine() ? Engine.newBuilder().allowExperimentalOptions(true).build() : null;
     }
 
     public final SuiteConfig getConfig() {
@@ -131,6 +135,10 @@ public abstract class TestSuite {
     public ExecutorService getExtLauncherPipePool() {
         assert config.isExtLauncher() && extLauncherPipePool != null;
         return extLauncherPipePool;
+    }
+
+    public Engine getSharedEngine() {
+        return sharedEngine;
     }
 
     /**
@@ -592,6 +600,9 @@ public abstract class TestSuite {
         for (Runnable runnable : isolatedRunnables) {
             runnable.run();
         }
+        if (config.isShareEngine()) {
+            sharedEngine.close();
+        }
 
         // clear progress
         if (PRINT_PROGRESS) {
@@ -997,6 +1008,7 @@ public abstract class TestSuite {
                     System.out.println(" outputfilter=X         ignore a given string when comparing with the expected output");
                     System.out.println(" externallauncher=X     run tests by invoking a given native image of JSLauncher");
                     System.out.println(" compile                run externallauncher with TruffleCompileImmediately");
+                    System.out.println(" shareengine            use shared Engine for all tests");
                     System.exit(-2);
                     break;
                 case "nothreads":
@@ -1071,6 +1083,9 @@ public abstract class TestSuite {
                     break;
                 case "externallauncher":
                     builder.setExtLauncher(value);
+                    break;
+                case "shareengine":
+                    builder.setShareEngine(true);
                     break;
                 default:
                     System.out.println("unrecognized argument: " + key + "\nCall \"" + builder.getSuiteName() + " help\" for more information.");

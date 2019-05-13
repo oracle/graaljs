@@ -427,7 +427,7 @@ public class JSContext {
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
 
         if (contextOptions.isTest262Mode() || contextOptions.isTestV8Mode()) {
-            this.setJSAgent(new DebugJSAgent(env, contextOptions.canAgentBlock()));
+            this.setJSAgent(new DebugJSAgent(contextOptions.canAgentBlock()));
         } else {
             this.setJSAgent(new MainJSAgent());
         }
@@ -605,6 +605,7 @@ public class JSContext {
             if (contextOptions.isV8RealmBuiltin()) {
                 newRealm.addToRealmList(newRealm);
             }
+            agent.reset(env);
         }
 
         realmInit.set(REALM_INITIALIZED);

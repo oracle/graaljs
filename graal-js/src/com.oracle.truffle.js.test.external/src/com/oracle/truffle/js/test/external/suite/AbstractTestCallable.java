@@ -51,7 +51,7 @@ public abstract class AbstractTestCallable implements Callable<Object> {
         this.suite = suite;
     }
 
-    protected SuiteConfig getConfig() {
+    protected final SuiteConfig getConfig() {
         return suite.getConfig();
     }
 

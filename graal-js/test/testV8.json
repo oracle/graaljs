@@ -386,8 +386,9 @@
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/compiler/regress-445907.js",
+    "status" : "SKIP",
     "runInIsolation" : true,
-    "comment" : "memory intensive test"
+    "comment" : "Takes too long (several minutes) in shareengine mode (where arrayPrototypeNoElementsAssumption is invalid)."
   }, {
     "filePath" : "mjsunit/compiler/regress-801097.js",
     "status" : "FAIL",
