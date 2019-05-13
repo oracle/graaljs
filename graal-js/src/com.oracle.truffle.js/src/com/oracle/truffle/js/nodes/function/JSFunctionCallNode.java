@@ -734,14 +734,23 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                             materializedTags.contains(ReadElementExpressionTag.class)) {
                 materializeInstrumentableArguments();
                 InvokeNode invoke = (InvokeNode) createInvoke(null, getArgumentNodes(), isNew(flags), isNewTarget(flags));
-                JavaScriptNode target = functionTargetNode.getTarget();
+                JSTargetableNode functionTargetNodeDelegate = getFunctionTargetDelegate();
+                JavaScriptNode target = functionTargetNodeDelegate.getTarget();
                 invoke.targetNode = !target.isInstrumentable() ? JSInputGeneratingNodeWrapper.create(target) : (JavaScriptNode) target.materializeInstrumentableNodes(materializedTags);
-                invoke.functionTargetNode = JSMaterializedInvokeTargetableNode.createFor(functionTargetNode);
-                transferSourceSectionAndTags(functionTargetNode, invoke.functionTargetNode);
+                invoke.functionTargetNode = JSMaterializedInvokeTargetableNode.createFor(functionTargetNodeDelegate);
+                transferSourceSectionAndTags(functionTargetNodeDelegate, invoke.functionTargetNode);
                 transferSourceSectionAndTags(this, invoke);
                 return invoke;
             } else {
                 return this;
+            }
+        }
+
+        private JSTargetableNode getFunctionTargetDelegate() {
+            if (functionTargetNode instanceof WrapperNode) {
+                return (JSTargetableNode) ((WrapperNode) functionTargetNode).getDelegateNode();
+            } else {
+                return functionTargetNode;
             }
         }
 

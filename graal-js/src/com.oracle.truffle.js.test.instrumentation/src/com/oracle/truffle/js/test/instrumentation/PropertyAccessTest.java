@@ -45,6 +45,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
@@ -285,6 +286,59 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
 
     }
 
+    @Test
+    public void readNestedReadsInCalls() {
+        String src = "var exports = {" +
+                        "  bool: {" +
+                        "    enforcing: {" +
+                        "      trailingcomma: false" +
+                        "    }," +
+                        "    relaxing: {" +
+                        "      elision: true," +
+                        "    }" +
+                        "  }," +
+                        "  val: {" +
+                        "    esversion: 5" +
+                        "  }" +
+                        "};" +
+                        "Object.keys(exports.val)" +
+                        "  .concat(Object.keys(exports.bool.relaxing))" +
+                        "  .concat();";
+        evalWithTags(src, new Class[]{FunctionCallExpressionTag.class, ReadPropertyExpressionTag.class});
+
+        // .concat()
+        enter(FunctionCallExpressionTag.class, (e0, call0) -> {
+            // .concat(Object.keys((...))
+            enter(FunctionCallExpressionTag.class, (e1, call1) -> {
+                // Object.keys(exports.val)
+                enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                    assertPropertyRead("Object");
+                    call2.input(assertJSFunctionInput);
+                    assertPropertyRead("keys");
+                    call2.input(assertJSFunctionInput);
+                    assertNestedPropertyRead("val", "exports");
+                    call2.input(assertTruffleObject);
+                }).exit();
+                call1.input(assertTruffleObject);
+                assertPropertyRead("concat");
+                call1.input(assertJSFunctionInput);
+                // .concat(Object.keys(exports.bool.relaxing))
+                enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                    assertPropertyRead("Object");
+                    call2.input(assertJSFunctionInput);
+                    assertPropertyRead("keys");
+                    call2.input(assertJSFunctionInput);
+                    assertNestedPropertyRead("relaxing", "bool", "exports");
+                    call2.input(assertTruffleObject);
+                }).exit();
+                call1.input(assertTruffleObject);
+            }).exit();
+            call0.input(assertTruffleObject);
+            assertPropertyRead("concat");
+            call0.input(assertJSFunctionInput);
+        }).exit();
+    }
+
     private void assertPropertyRead(String key) {
         enter(ReadPropertyExpressionTag.class, (e, pr) -> {
             assertAttribute(e, KEY, key);
@@ -297,6 +351,21 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
             assertAttribute(e, KEY, key1);
             enter(ReadPropertyExpressionTag.class, (e1, pr1) -> {
                 assertAttribute(e1, KEY, key2);
+                pr1.input(assertTruffleObject);
+            }).exit();
+            pr.input(assertTruffleObject);
+        }).exit();
+    }
+
+    private void assertNestedPropertyRead(String key1, String key2, String key3) {
+        enter(ReadPropertyExpressionTag.class, (e, pr) -> {
+            assertAttribute(e, KEY, key1);
+            enter(ReadPropertyExpressionTag.class, (e1, pr1) -> {
+                assertAttribute(e1, KEY, key2);
+                enter(ReadPropertyExpressionTag.class, (e2, pr2) -> {
+                    assertAttribute(e2, KEY, key3);
+                    pr2.input(assertTruffleObject);
+                }).exit();
                 pr1.input(assertTruffleObject);
             }).exit();
             pr.input(assertTruffleObject);
