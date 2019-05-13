@@ -63,6 +63,7 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
+import com.oracle.truffle.js.nodes.control.RuntimeErrorNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -315,7 +316,7 @@ public abstract class Environment {
                 if (access == WrapAccess.Delete) {
                     scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
                 } else if (access == WrapAccess.Write) {
-                    assert delegateNode instanceof WriteNode : delegateNode;
+                    assert delegateNode instanceof WriteNode || delegateNode instanceof RuntimeErrorNode : delegateNode;
                     scopeAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
                 } else if (access == WrapAccess.Read) {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
