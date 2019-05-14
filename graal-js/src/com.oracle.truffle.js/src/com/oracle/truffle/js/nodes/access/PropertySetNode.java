@@ -83,6 +83,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -1124,6 +1125,23 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
+    public static final class ArrayBufferViewNonIntegerIndexSetNode extends LinkedPropertySetNode {
+
+        public ArrayBufferViewNonIntegerIndexSetNode(AbstractShapeCheckNode shapeCheck) {
+            super(shapeCheck);
+        }
+
+        @Override
+        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
+            if (JSArrayBufferView.hasDetachedBuffer((DynamicObject) thisObj)) {
+                throw Errors.createTypeErrorDetachedBuffer();
+            } else {
+                return false;
+            }
+        }
+
+    }
+
     public static final class ArrayLengthPropertySetNode extends LinkedPropertySetNode {
 
         @Child private ArrayLengthWriteNode arrayLengthWrite;
@@ -1280,6 +1298,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 return new TypeErrorPropertySetNode(shapeCheck);
             } else if (isStrict() && isGlobal()) {
                 return new ReferenceErrorPropertySetNode(shapeCheck);
+            } else if (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) {
+                return new ArrayBufferViewNonIntegerIndexSetNode(shapeCheck);
             } else if (JSShape.isExtensible(cacheShape)) {
                 return createDefinePropertyNode(key, shapeCheck, value, context, getAttributeFlags());
             } else {
