@@ -67,6 +67,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -79,6 +80,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 
 /**
@@ -1233,7 +1235,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                     return null;
                 }
                 break;
-            } else if (JSProxy.isProxy(store)) {
+            } else if (alwaysUseStore(store, key)) {
                 specialized = createUndefinedPropertyNode(thisObj, store, depth, value);
                 break;
             } else if (isOwnProperty()) {
@@ -1255,6 +1257,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
 
         return insertCached(specialized, currentHead, cachedCount);
+    }
+
+    private static boolean alwaysUseStore(DynamicObject store, Object key) {
+        return JSProxy.isProxy(store) || (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key));
     }
 
     protected final void deoptimize() {
@@ -1557,6 +1563,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected static boolean isLazyNamedCaptureGroupProperty(Property property) {
         return JSProperty.isProxy(property) && JSProperty.getConstantProxy(property) instanceof JSRegExp.LazyNamedCaptureGroupProperty;
+    }
+
+    protected static boolean isNonIntegerIndex(Object key) {
+        assert !(key instanceof String) || JSRuntime.INFINITY_STRING.equals(key) || (JSRuntime.canonicalNumericIndexString(key) == Undefined.instance);
+        return JSRuntime.INFINITY_STRING.equals(key);
     }
 
     private void traceRewriteInsert(Node newNode, int cacheDepth) {

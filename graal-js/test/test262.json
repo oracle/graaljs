@@ -1637,22 +1637,6 @@
     },
     "comment" : "Fails on big endian and works on little endian"
   }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Get/BigInt/infinity-detached-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Get/infinity-detached-buffer.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/HasProperty/BigInt/infinity-with-detached-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/HasProperty/infinity-with-detached-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-6710 BigInt proposal"
-  }, {
     "filePath" : "intl402/Collator/prototype/compare/non-normative-sensitivity.js",
     "status" : "PASS",
     "statusOverrides" : {
