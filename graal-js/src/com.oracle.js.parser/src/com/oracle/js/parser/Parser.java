@@ -727,13 +727,17 @@ loop:
     }
 
     private Block getStatement(boolean labelledStatement, boolean mayBeFunctionDeclaration) {
+        return getStatement(labelledStatement, mayBeFunctionDeclaration, mayBeFunctionDeclaration);
+    }
+
+    private Block getStatement(boolean labelledStatement, boolean mayBeFunctionDeclaration, boolean maybeLabeledFunctionDeclaration) {
         if (type == LBRACE) {
             return getBlock(true);
         }
         // Set up new block. Captures first token.
         final ParserContextBlockNode newBlock = newBlock();
         try {
-            statement(false, 0, true, labelledStatement, mayBeFunctionDeclaration);
+            statement(false, 0, true, labelledStatement, mayBeFunctionDeclaration, maybeLabeledFunctionDeclaration);
         } finally {
             restoreBlock(newBlock);
         }
@@ -1137,12 +1141,16 @@ loop:
         statement(false, 0, false, false, false);
     }
 
+    private void statement(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration) {
+        statement(topLevel, reparseFlags, singleStatement, labelledStatement, mayBeFunctionDeclaration, mayBeFunctionDeclaration);
+    }
+
     /**
      * @param topLevel does this statement occur at the "top level" of a script or a function?
      * @param reparseFlags reparse flags to decide whether to allow property "get" and "set" functions or ES6 methods.
      * @param singleStatement are we in a single statement context?
      */
-    private void statement(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration) {
+    private void statement(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration, final boolean maybeLabeledFunctionDeclaration) {
         switch (type) {
         case LBRACE:
             block();
@@ -1262,7 +1270,7 @@ loop:
 
         if (isBindingIdentifier()) {
             if (T(k + 1) == COLON && (type != YIELD || !inGeneratorFunction()) && (!isAwait() || !inAsyncFunction())) {
-                labelStatement(mayBeFunctionDeclaration);
+                labelStatement(maybeLabeledFunctionDeclaration);
                 return;
             }
             if (reparseFlags != 0 && reparseFunctionStatement(reparseFlags)) {
@@ -2178,12 +2186,12 @@ loop:
         expect(LPAREN);
         final Expression test = expression();
         expect(RPAREN);
-        final Block pass = getStatement(false, true);
+        final Block pass = getStatement(false, true, false);
 
         Block fail = null;
         if (type == ELSE) {
             next();
-            fail = getStatement(false, true);
+            fail = getStatement(false, true, false);
         }
 
         appendStatement(new IfNode(ifLine, ifToken, fail != null ? fail.getFinish() : pass.getFinish(), test, pass, fail));
