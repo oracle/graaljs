@@ -1323,18 +1323,24 @@ loop:
         long classToken = token;
         next();
 
-        IdentNode className = null;
-        if (!defaultExport || isBindingIdentifier()) {
-            className = bindingIdentifier(yield, await, CLASS_NAME_CONTEXT);
-        }
+        boolean oldStrictMode = isStrictMode;
+        isStrictMode = true;
+        try {
+            IdentNode className = null;
+            if (!defaultExport || isBindingIdentifier()) {
+                className = bindingIdentifier(yield, await, CLASS_NAME_CONTEXT);
+            }
 
-        Expression classExpression = classTail(classLineNumber, classToken, className, yield, await);
+            Expression classExpression = classTail(classLineNumber, classToken, className, yield, await);
 
-        if (!defaultExport) {
-            VarNode classVar = new VarNode(classLineNumber, Token.recast(classExpression.getToken(), LET), classExpression.getFinish(), className, classExpression, VarNode.IS_LET);
-            appendStatement(classVar);
+            if (!defaultExport) {
+                VarNode classVar = new VarNode(classLineNumber, Token.recast(classExpression.getToken(), LET), classExpression.getFinish(), className, classExpression, VarNode.IS_LET);
+                appendStatement(classVar);
+            }
+            return classExpression;
+        } finally {
+            isStrictMode = oldStrictMode;
         }
-        return classExpression;
     }
 
     /**
@@ -1353,12 +1359,18 @@ loop:
         long classToken = token;
         next();
 
-        IdentNode className = null;
-        if (isBindingIdentifier()) {
-            className = bindingIdentifier(yield, await, CLASS_NAME_CONTEXT);
-        }
+        boolean oldStrictMode = isStrictMode;
+        isStrictMode = true;
+        try {
+            IdentNode className = null;
+            if (isBindingIdentifier()) {
+                className = bindingIdentifier(yield, await, CLASS_NAME_CONTEXT);
+            }
 
-        return classTail(classLineNumber, classToken, className, yield, await);
+            return classTail(classLineNumber, classToken, className, yield, await);
+        } finally {
+            isStrictMode = oldStrictMode;
+        }
     }
 
     private static final class ClassElementKey {
