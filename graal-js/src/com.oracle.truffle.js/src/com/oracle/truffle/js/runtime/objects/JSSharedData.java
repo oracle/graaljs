@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.objects;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.ShapeListener;
@@ -69,35 +70,34 @@ public final class JSSharedData implements ShapeListener {
         this.prototypeProperty = prototypeProperty;
     }
 
-    Assumption getPropertyAssumption(Object propertyName) {
-        if (propertyAssumptions == null) {
-            propertyAssumptions = EconomicMap.create();
+    synchronized Assumption getPropertyAssumption(Object propertyName) {
+        CompilerAsserts.neverPartOfCompilation();
+        EconomicMap<Object, Assumption> map = propertyAssumptions;
+        if (map == null) {
+            map = EconomicMap.create();
+            propertyAssumptions = map;
         } else {
-            Assumption assumption = propertyAssumptions.get(propertyName);
+            Assumption assumption = map.get(propertyName);
             if (assumption != null) {
                 return assumption;
             }
         }
         Assumption assumption = Truffle.getRuntime().createAssumption(propertyName.toString());
-        propertyAssumptions.put(propertyName, assumption);
+        map.put(propertyName, assumption);
         propertyAssumptionsCreated.inc();
         return assumption;
     }
 
-    void invalidatePropertyAssumption(Object propertyName) {
-        if (propertyAssumptions != null) {
-            Assumption assumption = propertyAssumptions.get(propertyName);
-            if (assumption != null) {
-                invalidatePropertyAssumptionImpl(propertyName, assumption);
+    synchronized void invalidatePropertyAssumption(Object propertyName) {
+        CompilerAsserts.neverPartOfCompilation();
+        EconomicMap<Object, Assumption> map = propertyAssumptions;
+        if (map != null) {
+            Assumption assumption = map.get(propertyName);
+            if (assumption != null && assumption != NeverValidAssumption.INSTANCE) {
+                assumption.invalidate("invalidatePropertyAssumption");
+                map.put(propertyName, NeverValidAssumption.INSTANCE);
+                propertyAssumptionsRemoved.inc();
             }
-        }
-    }
-
-    private void invalidatePropertyAssumptionImpl(Object propertyName, Assumption assumption) {
-        if (assumption != NeverValidAssumption.INSTANCE) {
-            assumption.invalidate("invalidatePropertyAssumption");
-            propertyAssumptions.put(propertyName, NeverValidAssumption.INSTANCE);
-            propertyAssumptionsRemoved.inc();
         }
     }
 
@@ -109,17 +109,20 @@ public final class JSSharedData implements ShapeListener {
         return prototypeProperty;
     }
 
-    Assumption getPrototypeAssumption() {
-        if (prototypeAssumption == null) {
-            prototypeAssumption = Truffle.getRuntime().createAssumption("stable prototype");
+    synchronized Assumption getPrototypeAssumption() {
+        Assumption assumption = prototypeAssumption;
+        if (assumption == null) {
+            assumption = Truffle.getRuntime().createAssumption("stable prototype");
+            prototypeAssumption = assumption;
             prototypeAssumptionsCreated.inc();
         }
-        return prototypeAssumption;
+        return assumption;
     }
 
-    void invalidatePrototypeAssumption() {
-        if (prototypeAssumption != null) {
-            prototypeAssumption.invalidate();
+    synchronized void invalidatePrototypeAssumption() {
+        Assumption assumption = prototypeAssumption;
+        if (assumption != null) {
+            assumption.invalidate();
             prototypeAssumption = NeverValidAssumption.INSTANCE;
             prototypeAssumptionsRemoved.inc();
         }
