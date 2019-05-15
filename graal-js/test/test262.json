@@ -2534,15 +2534,6 @@
     "filePath" : "language/statements/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/if/labelled-fn-stmt-first.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/if/labelled-fn-stmt-lone.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/if/labelled-fn-stmt-second.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/statements/try/cptn-catch-empty-break.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
