@@ -551,7 +551,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     if (a instanceof DateFormat.Field) {
                         String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
                         String type = fieldToType((DateFormat.Field) a);
-                        assert type != null;
+                        assert type != null : a;
                         resultParts.add(makePart(context, type, value));
                         i = fit.getRunLimit();
                         break;
