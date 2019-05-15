@@ -305,7 +305,7 @@ public final class GraalJSAccess {
         mainJSContext = mainJSRealm.getContext();
         assert mainJSContext != null : "JSContext initialized";
         agent = new NodeJSAgent();
-        mainJSContext.setJSAgent(agent);
+        mainJSRealm.setAgent(agent);
         deallocator = new Deallocator();
         envForInstruments = mainJSRealm.getEnv();
         // Disallow importing dynamically unless ESM Loader (--experimental-modules) is enabled.
@@ -2304,7 +2304,7 @@ public final class GraalJSAccess {
         if (createChildContext) {
             realm = mainJSRealm.createChildRealm();
             context = realm.getContext();
-            context.setJSAgent(agent);
+            assert realm.getAgent() == agent;
         } else {
             realm = mainJSRealm;
             context = mainJSContext;
@@ -2398,7 +2398,7 @@ public final class GraalJSAccess {
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {
-            mainJSContext.processAllPendingPromiseJobs();
+            agent.processAllPromises();
         } catch (Exception ex) {
             ex.printStackTrace();
         }

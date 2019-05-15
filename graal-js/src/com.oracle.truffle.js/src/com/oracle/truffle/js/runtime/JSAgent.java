@@ -40,13 +40,18 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Base class for ECMA2017 8.7 Agents.
@@ -62,11 +67,24 @@ public abstract class JSAgent implements EcmaAgent {
     private boolean inAtomicSection;
     private boolean inCriticalSection;
 
+    /**
+     * ECMA 8.4 "PromiseJobs" job queue.
+     */
+    private final Deque<DynamicObject> promiseJobsQueue;
+
+    /**
+     * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
+     * when the current stack is empty. For Interop, we assume that the stack is empty when (1) we
+     * are called from another foreign language, and (2) there are no other nested JS Interop calls.
+     *
+     * This flag is used to implement this semantics.
+     */
+    private int interopCallStackDepth;
+
     public JSAgent(boolean canBlock) {
         this.signifier = signifierGenerator.incrementAndGet();
         this.canBlock = canBlock;
-        this.inCriticalSection = false;
-        this.inAtomicSection = false;
+        this.promiseJobsQueue = new ArrayDeque<>(4);
     }
 
     public abstract void wakeAgent(int w);
@@ -116,4 +134,38 @@ public abstract class JSAgent implements EcmaAgent {
     public void reset(@SuppressWarnings("unused") TruffleLanguage.Env env) {
     }
 
+    @TruffleBoundary
+    public final void enqueuePromiseJob(DynamicObject job) {
+        promiseJobsQueue.push(job);
+    }
+
+    @TruffleBoundary
+    public final void processAllPromises() {
+        try {
+            while (!promiseJobsQueue.isEmpty()) {
+                DynamicObject nextJob = promiseJobsQueue.pollLast();
+                if (JSFunction.isJSFunction(nextJob)) {
+                    JSRealm functionRealm = JSFunction.getRealm(nextJob);
+                    Object prev = functionRealm.getTruffleContext().enter();
+                    try {
+                        JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                    } finally {
+                        functionRealm.getTruffleContext().leave(prev);
+                    }
+                }
+            }
+        } finally {
+            // Ensure that there are no leftovers when the processing
+            // is terminated by an exception (like ExitException).
+            promiseJobsQueue.clear();
+        }
+    }
+
+    public final void interopBoundaryEnter() {
+        interopCallStackDepth++;
+    }
+
+    public final boolean interopBoundaryExit() {
+        return --interopCallStackDepth == 0;
+    }
 }

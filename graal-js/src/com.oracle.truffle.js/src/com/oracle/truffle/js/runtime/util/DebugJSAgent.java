@@ -74,8 +74,9 @@ public class DebugJSAgent extends JSAgent {
     private Object debugReceiveBroadcast;
 
     @TruffleBoundary
-    public DebugJSAgent(boolean canBlock) {
+    public DebugJSAgent(boolean canBlock, OptionValues optionValues) {
         super(canBlock);
+        this.optionValues = optionValues;
         this.reportValues = new ConcurrentLinkedDeque<>();
         this.spawnedAgent = new LinkedList<>();
     }

@@ -51,6 +51,7 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -99,6 +100,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSParserOptions;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
@@ -166,12 +168,18 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private volatile JSContext languageContext;
     private volatile boolean multiContext;
 
+    private final Assumption promiseJobsQueueEmptyAssumption;
+
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
         JSContextOptions.describeOptions(options);
         OPTION_DESCRIPTORS = OptionDescriptors.create(options);
         ensureErrorClassesInitialized();
+    }
+
+    public JavaScriptLanguage() {
+        this.promiseJobsQueueEmptyAssumption = Truffle.getRuntime().createAssumption("PromiseJobsQueueEmpty");
     }
 
     @Override
@@ -204,11 +212,11 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     JSRealm realm = getContextReference().get();
                     assert realm.getContext() == context : "unexpected JSContext";
                     try {
-                        context.interopBoundaryEnter();
+                        interopBoundaryEnter(realm);
                         Object result = directCallNode.call(program.argumentsToRun(realm));
                         return exportValueNode.execute(result);
                     } finally {
-                        context.interopBoundaryExit();
+                        interopBoundaryExit(realm);
                     }
                 }
 
@@ -564,6 +572,23 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         } finally {
             context.leave();
         }
+    }
+
+    public void interopBoundaryEnter(JSRealm realm) {
+        realm.getAgent().interopBoundaryEnter();
+    }
+
+    public void interopBoundaryExit(JSRealm realm) {
+        JSAgent agent = realm.getAgent();
+        if (agent.interopBoundaryExit()) {
+            if (!promiseJobsQueueEmptyAssumption.isValid()) {
+                agent.processAllPromises();
+            }
+        }
+    }
+
+    public Assumption getPromiseJobsQueueEmptyAssumption() {
+        return promiseJobsQueueEmptyAssumption;
     }
 
     private static void ensureErrorClassesInitialized() {

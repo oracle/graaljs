@@ -68,7 +68,7 @@ public abstract class JSEnqueueJobNode extends JavaScriptNode {
     @TruffleBoundary
     @Specialization(guards = {"isJSFunction(function)"})
     protected Object doOther(Object function) {
-        context.promiseEnqueueJob((DynamicObject) function);
+        context.promiseEnqueueJob(context.getRealm(), (DynamicObject) function);
         return Undefined.instance;
     }
 

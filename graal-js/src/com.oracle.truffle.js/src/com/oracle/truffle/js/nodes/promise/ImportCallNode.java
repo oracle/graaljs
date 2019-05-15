@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -115,8 +116,9 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private DynamicObject hostImportModuleDynamically(Object referencingScriptOrModule, String specifier) {
+        JSRealm realm = context.getRealm();
         if (context.hasImportModuleDynamicallyCallbackBeenSet()) {
-            DynamicObject promise = context.hostImportModuleDynamically(context.getRealm(), (ScriptOrModule) referencingScriptOrModule, specifier);
+            DynamicObject promise = context.hostImportModuleDynamically(realm, (ScriptOrModule) referencingScriptOrModule, specifier);
             if (promise == null) {
                 return newRejectedPromiseFromException(createTypeErrorCannotImport(specifier));
             }
@@ -125,7 +127,7 @@ public class ImportCallNode extends JavaScriptNode {
         } else {
             // default implementation
             PromiseCapabilityRecord promiseCapability = newPromiseCapability();
-            context.promiseEnqueueJob(createImportModuleDynamicallyJob((ScriptOrModule) referencingScriptOrModule, specifier, promiseCapability));
+            context.promiseEnqueueJob(realm, createImportModuleDynamicallyJob((ScriptOrModule) referencingScriptOrModule, specifier, promiseCapability));
             return promiseCapability.getPromise();
         }
     }

@@ -101,7 +101,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         } else if (fulfilledProf.profile(promiseState == JSPromise.FULFILLED)) {
             Object value = getPromiseResult(promise);
             DynamicObject job = getPromiseReactionJob(fulfillReaction, value);
-            context.promiseEnqueueJob(job);
+            context.promiseEnqueueJob(context.getRealm(), job);
         } else {
             assert promiseState == JSPromise.REJECTED;
             Object reason = getPromiseResult(promise);
@@ -109,7 +109,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
                 context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance);
             }
             DynamicObject job = getPromiseReactionJob(rejectReaction, reason);
-            context.promiseEnqueueJob(job);
+            context.promiseEnqueueJob(context.getRealm(), job);
         }
         setPromiseIsHandledNode.setValueBoolean(promise, true);
         if (resultCapability == null) {
