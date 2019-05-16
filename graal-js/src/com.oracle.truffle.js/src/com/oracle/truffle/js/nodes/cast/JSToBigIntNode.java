@@ -92,17 +92,17 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = "isNumber(value)")
-        protected static void doDouble(Object value) {
+        protected static BigInt doDouble(Object value) {
             throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
         }
 
         @Specialization
-        protected static void doSymbol(Symbol value) {
+        protected static BigInt doSymbol(Symbol value) {
             throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
         }
 
         @Specialization(guards = "isNullOrUndefined(value)")
-        protected static void doNullOrUndefined(Object value) {
+        protected static BigInt doNullOrUndefined(Object value) {
             throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
         }
 
