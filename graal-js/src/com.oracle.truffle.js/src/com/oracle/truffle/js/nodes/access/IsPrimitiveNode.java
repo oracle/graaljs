@@ -60,12 +60,12 @@ public abstract class IsPrimitiveNode extends JavaScriptBaseNode {
     public abstract boolean executeBoolean(Object operand);
 
     @Specialization(guards = {"isJSNull(operand)"})
-    protected static boolean doNull(@SuppressWarnings("unused") DynamicObject operand) {
+    protected static boolean doNull(@SuppressWarnings("unused") Object operand) {
         return true;
     }
 
     @Specialization(guards = {"isUndefined(operand)"})
-    protected static boolean doUndefined(@SuppressWarnings("unused") DynamicObject operand) {
+    protected static boolean doUndefined(@SuppressWarnings("unused") Object operand) {
         return true;
     }
 
@@ -75,7 +75,7 @@ public abstract class IsPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isNullOrUndefined(operand)"}, replaces = {"doNull", "doUndefined"})
-    protected static boolean doNullOrUndefined(@SuppressWarnings("unused") DynamicObject operand) {
+    protected static boolean doNullOrUndefined(@SuppressWarnings("unused") Object operand) {
         return true;
     }
 
