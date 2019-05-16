@@ -41,8 +41,8 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -54,8 +54,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  */
 public abstract class JSToIndexNode extends JavaScriptBaseNode {
 
-    final BranchProfile negativeIndexBranch = BranchProfile.create();
-
     public static JSToIndexNode create() {
         return JSToIndexNodeGen.create();
     }
@@ -63,32 +61,33 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
     public abstract long executeLong(Object value);
 
     @Specialization(guards = "isUndefined(value)")
-    protected long doUndefined(@SuppressWarnings("unused") DynamicObject value) {
+    protected long doUndefined(@SuppressWarnings("unused") Object value) {
         return 0;
     }
 
     @Specialization
-    protected long doInt(int value) {
+    protected long doInt(int value,
+                    @Cached @Shared("negativeIndexBranch") BranchProfile negativeIndexBranch) {
         if (value < 0) {
             negativeIndexBranch.enter();
-            throw Errors.createRangeError("index is negative");
+            throw Errors.createRangeError("index is negative", this);
         }
         return value;
     }
 
     @Specialization
     protected long doDouble(double value,
-                    @Cached("create()") BranchProfile tooLargeIndexBranch) {
+                    @Cached @Shared("negativeIndexBranch") BranchProfile negativeIndexBranch,
+                    @Cached BranchProfile tooLargeIndexBranch) {
         long integerIndex = (long) value;
         if (integerIndex < 0) {
             negativeIndexBranch.enter();
-            throw Errors.createRangeError("index is negative");
-        }
-        if (integerIndex <= JSRuntime.MAX_SAFE_INTEGER_LONG) {
-            return integerIndex;
-        } else {
+            throw Errors.createRangeError("index is negative", this);
+        } else if (integerIndex > JSRuntime.MAX_SAFE_INTEGER_LONG) {
             tooLargeIndexBranch.enter();
-            throw Errors.createRangeError("index is too large");
+            throw Errors.createRangeError("index is too large", this);
+        } else {
+            return integerIndex;
         }
     }
 
