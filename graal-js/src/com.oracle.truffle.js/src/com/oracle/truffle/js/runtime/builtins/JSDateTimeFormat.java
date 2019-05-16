@@ -497,7 +497,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     private static final Object fieldToTypeMapLock = new Object();
 
     private static void ensureFieldToTypeMapInitialized() {
-
         if (fieldToTypeMap == null) {
             synchronized (fieldToTypeMapLock) {
                 if (fieldToTypeMap == null) {
@@ -509,21 +508,22 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     @TruffleBoundary
     private static void initializeFieldToTypeMap() {
-        fieldToTypeMap = new HashMap<>();
-        fieldToTypeMap.put(DateFormat.Field.AM_PM, "dayPeriod");
-        fieldToTypeMap.put(DateFormat.Field.ERA, "era");
-        fieldToTypeMap.put(DateFormat.Field.YEAR, "year");
-        fieldToTypeMap.put(DateFormat.Field.MONTH, "month");
-        fieldToTypeMap.put(DateFormat.Field.DOW_LOCAL, "weekday");
-        fieldToTypeMap.put(DateFormat.Field.DAY_OF_WEEK, "weekday");
-        fieldToTypeMap.put(DateFormat.Field.DAY_OF_MONTH, "day");
-        fieldToTypeMap.put(DateFormat.Field.HOUR0, "hour");
-        fieldToTypeMap.put(DateFormat.Field.HOUR1, "hour");
-        fieldToTypeMap.put(DateFormat.Field.HOUR_OF_DAY0, "hour");
-        fieldToTypeMap.put(DateFormat.Field.HOUR_OF_DAY1, "hour");
-        fieldToTypeMap.put(DateFormat.Field.MINUTE, "minute");
-        fieldToTypeMap.put(DateFormat.Field.SECOND, "second");
-        fieldToTypeMap.put(DateFormat.Field.TIME_ZONE, "timeZoneName");
+        Map<DateFormat.Field, String> map = new HashMap<>();
+        map.put(DateFormat.Field.AM_PM, "dayPeriod");
+        map.put(DateFormat.Field.ERA, "era");
+        map.put(DateFormat.Field.YEAR, "year");
+        map.put(DateFormat.Field.MONTH, "month");
+        map.put(DateFormat.Field.DOW_LOCAL, "weekday");
+        map.put(DateFormat.Field.DAY_OF_WEEK, "weekday");
+        map.put(DateFormat.Field.DAY_OF_MONTH, "day");
+        map.put(DateFormat.Field.HOUR0, "hour");
+        map.put(DateFormat.Field.HOUR1, "hour");
+        map.put(DateFormat.Field.HOUR_OF_DAY0, "hour");
+        map.put(DateFormat.Field.HOUR_OF_DAY1, "hour");
+        map.put(DateFormat.Field.MINUTE, "minute");
+        map.put(DateFormat.Field.SECOND, "second");
+        map.put(DateFormat.Field.TIME_ZONE, "timeZoneName");
+        fieldToTypeMap = map;
     }
 
     private static String fieldToType(DateFormat.Field field) {
@@ -551,7 +551,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     if (a instanceof DateFormat.Field) {
                         String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
                         String type = fieldToType((DateFormat.Field) a);
-                        assert type != null;
+                        assert type != null : a;
                         resultParts.add(makePart(context, type, value));
                         i = fit.getRunLimit();
                         break;
