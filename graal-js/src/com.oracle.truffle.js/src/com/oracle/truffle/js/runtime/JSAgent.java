@@ -45,7 +45,6 @@ import java.util.Deque;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -129,9 +128,6 @@ public abstract class JSAgent implements EcmaAgent {
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
         inAtomicSection = false;
         waiterList.unlock();
-    }
-
-    public void reset(@SuppressWarnings("unused") TruffleLanguage.Env env) {
     }
 
     @TruffleBoundary

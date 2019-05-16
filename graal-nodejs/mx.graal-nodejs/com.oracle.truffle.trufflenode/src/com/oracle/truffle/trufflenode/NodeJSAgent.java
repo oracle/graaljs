@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.trufflenode;
 
-import com.oracle.truffle.js.runtime.EcmaAgent;
-import com.oracle.truffle.js.runtime.JSAgent;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+
+import com.oracle.truffle.js.runtime.JSAgent;
 
 public class NodeJSAgent extends JSAgent {
     // The set of active agents, i.e., agents that entered an isolate
@@ -78,11 +78,6 @@ public class NodeJSAgent extends JSAgent {
                 }
             }
         }
-    }
-
-    @Override
-    public void execute(EcmaAgent owner, Runnable task) {
-        throw new UnsupportedOperationException();
     }
 
     @Override

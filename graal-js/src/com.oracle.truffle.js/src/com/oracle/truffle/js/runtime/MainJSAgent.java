@@ -50,11 +50,6 @@ public final class MainJSAgent extends JSAgent {
     }
 
     @Override
-    public void execute(EcmaAgent owner, Runnable task) {
-        throw Errors.unsupported("Multithreading not supported");
-    }
-
-    @Override
     public boolean isTerminated() {
         return false;
     }
