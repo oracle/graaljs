@@ -2533,13 +2533,5 @@
   }, {
     "filePath" : "language/statements/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/statements/try/cptn-catch-empty-break.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "language/statements/try/cptn-catch-empty-continue.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
   } ]
 }
