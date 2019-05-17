@@ -247,23 +247,24 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     @TruffleBoundary
     private static void initTimeUnitMap() {
-        timeUnitMap = new HashMap<>();
-        timeUnitMap.put("second", RelativeDateTimeUnit.SECOND);
-        timeUnitMap.put("seconds", RelativeDateTimeUnit.SECOND);
-        timeUnitMap.put("minute", RelativeDateTimeUnit.MINUTE);
-        timeUnitMap.put("minutes", RelativeDateTimeUnit.MINUTE);
-        timeUnitMap.put("hour", RelativeDateTimeUnit.HOUR);
-        timeUnitMap.put("hours", RelativeDateTimeUnit.HOUR);
-        timeUnitMap.put("day", RelativeDateTimeUnit.DAY);
-        timeUnitMap.put("days", RelativeDateTimeUnit.DAY);
-        timeUnitMap.put("week", RelativeDateTimeUnit.WEEK);
-        timeUnitMap.put("weeks", RelativeDateTimeUnit.WEEK);
-        timeUnitMap.put("month", RelativeDateTimeUnit.MONTH);
-        timeUnitMap.put("months", RelativeDateTimeUnit.MONTH);
-        timeUnitMap.put("quarter", RelativeDateTimeUnit.QUARTER);
-        timeUnitMap.put("quarters", RelativeDateTimeUnit.QUARTER);
-        timeUnitMap.put("year", RelativeDateTimeUnit.YEAR);
-        timeUnitMap.put("years", RelativeDateTimeUnit.YEAR);
+        Map<String, RelativeDateTimeUnit> map = new HashMap<>();
+        map.put("second", RelativeDateTimeUnit.SECOND);
+        map.put("seconds", RelativeDateTimeUnit.SECOND);
+        map.put("minute", RelativeDateTimeUnit.MINUTE);
+        map.put("minutes", RelativeDateTimeUnit.MINUTE);
+        map.put("hour", RelativeDateTimeUnit.HOUR);
+        map.put("hours", RelativeDateTimeUnit.HOUR);
+        map.put("day", RelativeDateTimeUnit.DAY);
+        map.put("days", RelativeDateTimeUnit.DAY);
+        map.put("week", RelativeDateTimeUnit.WEEK);
+        map.put("weeks", RelativeDateTimeUnit.WEEK);
+        map.put("month", RelativeDateTimeUnit.MONTH);
+        map.put("months", RelativeDateTimeUnit.MONTH);
+        map.put("quarter", RelativeDateTimeUnit.QUARTER);
+        map.put("quarters", RelativeDateTimeUnit.QUARTER);
+        map.put("year", RelativeDateTimeUnit.YEAR);
+        map.put("years", RelativeDateTimeUnit.YEAR);
+        timeUnitMap = map;
     }
 
     private static void ensureTimeUnitMapInitialized() {
