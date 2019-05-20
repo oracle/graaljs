@@ -43,7 +43,7 @@
     packages+: {
       'apache/ab': '==2.3',
       binutils: '==2.23.2',
-      gcc: '==4.9.1',
+      gcc: '==4.9.2',
       git: '>=1.8.3',
       maven: '==3.3.9',
       valgrind: '>=3.9.0',
