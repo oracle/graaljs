@@ -878,6 +878,7 @@ public final class JSRuntime {
      * @param depth allowed recursion depth (0 = do not recurse)
      */
     private static String safeToStringImpl(Object value, int depth, Object parent, boolean quoteString) {
+        CompilerAsserts.neverPartOfCompilation();
         if (value == parent) {
             return "(this)";
         } else if (value == Undefined.instance) {
@@ -887,8 +888,8 @@ public final class JSRuntime {
         } else if (value instanceof Boolean) {
             return booleanToString((Boolean) value);
         } else if (isString(value)) {
-            String truncated = truncateString((CharSequence) value);
-            return quoteString ? quote(truncated) : truncated;
+            String string = value.toString();
+            return quoteString ? quote(string) : string;
         } else if (JSObject.isJSObject(value)) {
             return JSObject.safeToString((DynamicObject) value, depth);
         } else if (value instanceof Symbol) {
@@ -1161,15 +1162,6 @@ public final class JSRuntime {
         } else {
             assert isForeignObject(obj);
             return JSInteropUtil.getArraySize(obj, InteropLibrary.getFactory().getUncached(), null);
-        }
-    }
-
-    private static String truncateString(CharSequence str) {
-        int len = str.length();
-        if (len > 45) {
-            return str.subSequence(0, 20) + "..." + str.subSequence(len - 20, len);
-        } else {
-            return str.toString();
         }
     }
 
