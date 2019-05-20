@@ -57,8 +57,11 @@ import com.ibm.icu.text.SimpleDateFormat;
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -67,6 +70,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -75,6 +79,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -658,11 +663,12 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         return (InternalState) INTERNAL_STATE_PROPERTY.get(numberFormatObj, isJSDateTimeFormat(numberFormatObj));
     }
 
-    private static CallTarget createGetFormatCallTarget(JSRealm realm, JSContext context) {
+    private static CallTarget createGetFormatCallTarget(JSContext context) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
             private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
             private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
             private final BranchProfile errorBranch = BranchProfile.create();
+            @CompilationFinal private ContextReference<JSRealm> realmRef;
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -680,8 +686,12 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     }
 
                     if (state.boundFormatFunction == null) {
+                        if (realmRef == null) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            realmRef = lookupContextReference(JavaScriptLanguage.class);
+                        }
                         JSFunctionData formatFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DateTimeFormatFormat, c -> createFormatFunctionData(c));
-                        DynamicObject formatFn = JSFunction.create(realm, formatFunctionData);
+                        DynamicObject formatFn = JSFunction.create(realmRef.get(), formatFunctionData);
                         DynamicObject boundFn = JSFunction.boundFunctionCreate(context, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn), true, isAsyncProfile,
                                         setProtoProfile);
                         state.boundFormatFunction = boundFn;
@@ -708,8 +718,10 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     }
 
     private static DynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {
-        CallTarget ct = createGetFormatCallTarget(realm, context);
-        JSFunctionData fd = JSFunctionData.create(context, ct, ct, 0, "get format", false, false, false, true);
+        JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.DateTimeFormatGetFormat, (c) -> {
+            CallTarget ct = createGetFormatCallTarget(context);
+            return JSFunctionData.create(context, ct, ct, 0, "get format", false, false, false, true);
+        });
         return JSFunction.create(realm, fd);
     }
 

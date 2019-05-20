@@ -67,6 +67,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -978,17 +979,19 @@ public class JSRealm {
     }
 
     private static JSFunctionData isGraalRuntimeFunction(JSContext context) {
-        return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return isGraalRuntime();
-            }
+        return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.IsGraalRuntime, (c) -> {
+            return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return isGraalRuntime();
+                }
 
-            @TruffleBoundary
-            private boolean isGraalRuntime() {
-                return Truffle.getRuntime().getName().contains("Graal");
-            }
-        }), 0, "isGraalRuntime");
+                @TruffleBoundary
+                private boolean isGraalRuntime() {
+                    return Truffle.getRuntime().getName().contains("Graal");
+                }
+            }), 0, "isGraalRuntime");
+        });
     }
 
     public JSConstructor getSIMDTypeConstructor(SIMDTypeFactory<? extends SIMDType> factory) {

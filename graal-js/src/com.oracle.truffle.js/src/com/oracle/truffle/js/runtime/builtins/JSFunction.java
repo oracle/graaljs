@@ -76,6 +76,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -931,12 +932,14 @@ public final class JSFunction extends JSBuiltinObject {
     public static DynamicObject createAsyncIteratorPrototype(JSRealm realm) {
         JSContext context = realm.getContext();
         DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return JSFrameUtil.getThisObj(frame);
-            }
-        }), 0, Symbol.SYMBOL_ASYNC_ITERATOR.toFunctionNameString());
+        JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.FunctionAsyncIterator, (c) -> {
+            return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return JSFrameUtil.getThisObj(frame);
+                }
+            }), 0, Symbol.SYMBOL_ASYNC_ITERATOR.toFunctionNameString());
+        });
         DynamicObject asyncIterator = JSFunction.create(realm, functionData);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ASYNC_ITERATOR, asyncIterator, JSAttributes.getDefaultNotEnumerable());
         return prototype;
