@@ -529,13 +529,14 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     @TruffleBoundary
     private static void initializeFieldToTypeMap() {
-        fieldToTypeMap = new HashMap<>();
-        fieldToTypeMap.put(NumberFormat.Field.INTEGER, "integer");
-        fieldToTypeMap.put(NumberFormat.Field.DECIMAL_SEPARATOR, "decimal");
-        fieldToTypeMap.put(NumberFormat.Field.FRACTION, "fraction");
-        fieldToTypeMap.put(NumberFormat.Field.GROUPING_SEPARATOR, "group");
-        fieldToTypeMap.put(NumberFormat.Field.CURRENCY, "currency");
-        fieldToTypeMap.put(NumberFormat.Field.PERCENT, "percentSign");
+        Map<NumberFormat.Field, String> map = new HashMap<>();
+        map.put(NumberFormat.Field.INTEGER, "integer");
+        map.put(NumberFormat.Field.DECIMAL_SEPARATOR, "decimal");
+        map.put(NumberFormat.Field.FRACTION, "fraction");
+        map.put(NumberFormat.Field.GROUPING_SEPARATOR, "group");
+        map.put(NumberFormat.Field.CURRENCY, "currency");
+        map.put(NumberFormat.Field.PERCENT, "percentSign");
+        fieldToTypeMap = map;
     }
 
     private static void ensureFieldToTypeMapInitialized() {
