@@ -43,61 +43,61 @@ package com.oracle.js.parser;
 
 import static com.oracle.js.parser.TokenKind.LITERAL;
 
-// @formatter:off
 /**
- * A token is a 64 bit long value that represents a basic parse/lex unit.
- * This class provides static methods to manipulate lexer tokens.
+ * A token is a 64 bit long value that represents a basic parse/lex unit. This class provides static
+ * methods to manipulate lexer tokens.
  */
 public final class Token {
 
     /**
-     * We use 28 bits for the position and 28 bits for the length of the token.
-     * This limits the maximal length of code we can handle to 2 ^ 28 - 1 bytes.
+     * We use 28 bits for the position and 28 bits for the length of the token. This limits the
+     * maximal length of code we can handle to 2 ^ 28 - 1 bytes.
      */
     public static final int LENGTH_MASK = 0xfffffff;
 
     // The first 8 bits are used for the token type, followed by length and position
     private static final int LENGTH_SHIFT = 8;
-    private static final int POSITION_SHIFT  = 36;
+    private static final int POSITION_SHIFT = 36;
 
     private Token() {
     }
 
     /**
      * Create a compact form of token information.
-     * @param type     Type of token.
+     *
+     * @param type Type of token.
      * @param position Start position of the token in the source.
-     * @param length   Length of the token.
+     * @param length Length of the token.
      * @return Token descriptor.
      */
     public static long toDesc(final TokenType type, final int position, final int length) {
         assert length >= 0;
         assert position <= LENGTH_MASK && length <= LENGTH_MASK;
-        return (long)position << POSITION_SHIFT |
-               (long)length   << LENGTH_SHIFT  |
-               type.ordinal();
+        return (long) position << POSITION_SHIFT |
+                        (long) length << LENGTH_SHIFT |
+                        type.ordinal();
     }
 
     /**
      * Extract token position from a token descriptor.
+     *
      * @param token Token descriptor.
      * @return Start position of the token in the source.
      */
     public static int descPosition(final long token) {
-        return (int)(token >>> POSITION_SHIFT);
+        return (int) (token >>> POSITION_SHIFT);
     }
 
     /**
-     * Normally returns the token itself, except in case of string tokens
-     * which report their position past their opening delimiter and thus
-     * need to have position and length adjusted.
+     * Normally returns the token itself, except in case of string tokens which report their
+     * position past their opening delimiter and thus need to have position and length adjusted.
      *
      * @param token Token descriptor.
      * @return same or adjusted token.
      */
     public static long withDelimiter(final long token) {
         final TokenType tokenType = Token.descType(token);
-        switch(tokenType) {
+        switch (tokenType) {
             case STRING:
             case ESCSTRING:
             case EXECSTRING:
@@ -121,26 +121,28 @@ public final class Token {
 
     /**
      * Extract token length from a token descriptor.
+     *
      * @param token Token descriptor.
      * @return Length of the token.
      */
     public static int descLength(final long token) {
-        return (int)((token >>> LENGTH_SHIFT) & LENGTH_MASK);
+        return (int) ((token >>> LENGTH_SHIFT) & LENGTH_MASK);
     }
 
     /**
      * Extract token type from a token descriptor.
+     *
      * @param token Token descriptor.
      * @return Type of token.
      */
     public static TokenType descType(final long token) {
-        return TokenType.getValues()[(int)token & 0xff];
+        return TokenType.getValues()[(int) token & 0xff];
     }
 
     /**
      * Change the token to use a new type.
      *
-     * @param token   The original token.
+     * @param token The original token.
      * @param newType The new token type.
      * @return The recast token.
      */
@@ -150,8 +152,9 @@ public final class Token {
 
     /**
      * Return a string representation of a token.
-     * @param source  Token source.
-     * @param token   Token descriptor.
+     *
+     * @param source Token source.
+     * @param token Token descriptor.
      * @param verbose True to include details.
      * @return String representation.
      */
@@ -178,7 +181,7 @@ public final class Token {
      * String conversion of token
      *
      * @param source the source
-     * @param token  the token
+     * @param token the token
      *
      * @return token as string
      */
