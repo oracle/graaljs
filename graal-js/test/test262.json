@@ -61,28 +61,36 @@
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "GR-10079: Alternations in lookbehind assertion, not supported by either TRegex or Joni. However, support for these could be added to TRegex."
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/back-references-to-captures.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "GR-10079: Capture groups and backreferences in lookbehind assertions. Out of scope of TRegex due to backreferences. Not supported in Joni due to limited lookbehind support (the regular expressions use unbounded quantifiers in the lookbehind assertions)."
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/back-references.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "GR-10079: Backreferences in lookbehind assertions. Similar to back-references-to-captures. However, these tests could be handled in Joni as the backreferences point outside of the lookbehind assertion."
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/captures-negative.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "GR-10079: Alternation in negative lookbehind assertion. Negative lookaround is not supported by TRegex and alternations are not supported in Joni. Negative lookaround might be complex to handle in TRegex but alternations in lookbehind could be handled duplicating the assertion in Joni."
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/captures.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "GR-10079: Fails because Joni runs lookbehind assertions left-to-right instead of right-to-left."
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/do-not-backtrack.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "GR-10079: Neither TRegex nor Joni support unbounded quantifiers in lookbehind assertions."
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/greedy-loop.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "GR-10079: Neither TRegex nor Joni support unbounded quantifiers in lookbehind assertions."
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/misc.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "comment" : "GR-10079: Assertions and quantifiers in lookbehind assertions."
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/mutual-recursive.js",
     "status" : "FAIL"
