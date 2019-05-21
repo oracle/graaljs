@@ -114,6 +114,7 @@ public final class ExpressionStatement extends Statement {
 
     @Override
     public boolean isCompletionValueNeverEmpty() {
-        return !isTokenType(TokenType.ASSIGN_INIT);
+        TokenType type = tokenType();
+        return type != TokenType.ASSIGN_INIT && type != TokenType.CLASS;
     }
 }
