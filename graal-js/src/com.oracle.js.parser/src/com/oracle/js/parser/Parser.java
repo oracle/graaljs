@@ -72,6 +72,7 @@ import static com.oracle.js.parser.TokenType.IDENT;
 import static com.oracle.js.parser.TokenType.IF;
 import static com.oracle.js.parser.TokenType.IMPORT;
 import static com.oracle.js.parser.TokenType.INCPOSTFIX;
+import static com.oracle.js.parser.TokenType.INCPREFIX;
 import static com.oracle.js.parser.TokenType.LBRACE;
 import static com.oracle.js.parser.TokenType.LBRACKET;
 import static com.oracle.js.parser.TokenType.LET;
@@ -169,7 +170,6 @@ import com.oracle.js.parser.ir.WhileNode;
 import com.oracle.js.parser.ir.WithNode;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 
-// @formatter:off
 /**
  * Builds the IR.
  */
@@ -254,7 +254,7 @@ public class Parser extends AbstractParser {
     /** Namespace for function names where not explicitly given */
     private final Namespace namespace;
 
-    /** to receive line information from Lexer when scanning multine literals. */
+    /** to receive line information from Lexer when scanning multiline literals. */
     protected final Lexer.LineInfoReceiver lineInfoReceiver;
 
     private RecompilableScriptFunctionData reparsedFunction;
@@ -267,9 +267,9 @@ public class Parser extends AbstractParser {
     /**
      * Constructor
      *
-     * @param env     script environment
-     * @param source  source to parse
-     * @param errors  error manager
+     * @param env script environment
+     * @param source source to parse
+     * @param errors error manager
      */
     public Parser(final ScriptEnvironment env, final Source source, final ErrorManager errors) {
         this(env, source, errors, env.strict);
@@ -278,10 +278,10 @@ public class Parser extends AbstractParser {
     /**
      * Constructor
      *
-     * @param env     script environment
-     * @param source  source to parse
-     * @param errors  error manager
-     * @param strict  strict
+     * @param env script environment
+     * @param source source to parse
+     * @param errors error manager
+     * @param strict strict
      */
     public Parser(final ScriptEnvironment env, final Source source, final ErrorManager errors, final boolean strict) {
         this(env, source, errors, strict, 0);
@@ -290,10 +290,10 @@ public class Parser extends AbstractParser {
     /**
      * Construct a parser.
      *
-     * @param env     script environment
-     * @param source  source to parse
-     * @param errors  error manager
-     * @param strict  parser created with strict mode enabled.
+     * @param env script environment
+     * @param source source to parse
+     * @param errors error manager
+     * @param strict parser created with strict mode enabled.
      * @param lineOffset line offset to start counting lines from
      */
     public Parser(final ScriptEnvironment env, final Source source, final ErrorManager errors, final boolean strict, final int lineOffset) {
@@ -321,9 +321,8 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Execute parse and return the resulting function node.
-     * Errors will be thrown and the error manager will contain information
-     * if parsing should fail
+     * Execute parse and return the resulting function node. Errors will be thrown and the error
+     * manager will contain information if parsing should fail
      *
      * This is the default parse call, which will name the function node {@link #PROGRAM_NAME}.
      *
@@ -334,9 +333,11 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Sets the @link RecompilableScriptFunctionData representing the function being reparsed (when this
-     * parser instance is used to reparse a previously parsed function, as part of its on-demand compilation).
-     * This will trigger various special behaviors, such as skipping nested function bodies.
+     * Sets the @link RecompilableScriptFunctionData representing the function being reparsed (when
+     * this parser instance is used to reparse a previously parsed function, as part of its
+     * on-demand compilation). This will trigger various special behaviors, such as skipping nested
+     * function bodies.
+     *
      * @param reparsedFunction the function being reparsed.
      */
     public void setReparsedFunction(final RecompilableScriptFunctionData reparsedFunction) {
@@ -359,7 +360,7 @@ public class Parser extends AbstractParser {
      */
     private void prepareLexer(final int startPos, final int len) {
         stream = new TokenStream();
-        lexer  = new Lexer(source, startPos, len, stream, scripting, isES6(), shebang, isModule, reparsedFunction != null, allowBigInt);
+        lexer = new Lexer(source, startPos, len, stream, scripting, isES6(), shebang, isModule, reparsedFunction != null, allowBigInt);
         lexer.line = lexer.pendingLine = lineOffset + 1;
         line = lineOffset;
     }
@@ -379,9 +380,8 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Execute parse and return the resulting function node.
-     * Errors will be thrown and the error manager will contain information
-     * if parsing should fail
+     * Execute parse and return the resulting function node. Errors will be thrown and the error
+     * manager will contain information if parsing should fail
      *
      * This should be used to create one and only one function node
      *
@@ -389,8 +389,9 @@ public class Parser extends AbstractParser {
      * @param startPos start position in source
      * @param len length of parse
      * @param reparseFlags flags provided by {@link RecompilableScriptFunctionData} as context for
-     * the code being reparsed. This allows us to recognize special forms of functions such
-     * as property getters and setters or instances of ES6 method shorthand in object literals.
+     *            the code being reparsed. This allows us to recognize special forms of functions
+     *            such as property getters and setters or instances of ES6 method shorthand in
+     *            object literals.
      *
      * @return function node resulting from successful parse
      */
@@ -417,9 +418,8 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Parse and return the resulting module.
-     * Errors will be thrown and the error manager will contain information
-     * if parsing should fail
+     * Parse and return the resulting module. Errors will be thrown and the error manager will
+     * contain information if parsing should fail
      *
      * @param moduleName name for the module, given to the parsed FunctionNode
      * @param startPos start position in source
@@ -453,16 +453,15 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Parse and return the list of function parameter list. A comma
-     * separated list of function parameter identifiers is expected to be parsed.
-     * Errors will be thrown and the error manager will contain information
-     * if parsing should fail. This method is used to check if parameter Strings
-     * passed to "Function" constructor is a valid or not.
+     * Parse and return the list of function parameter list. A comma separated list of function
+     * parameter identifiers is expected to be parsed. Errors will be thrown and the error manager
+     * will contain information if parsing should fail. This method is used to check if parameter
+     * Strings passed to "Function" constructor is a valid or not.
      */
     public void parseFormalParameterList() {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting, isES6(), shebang, isModule, allowBigInt);
+            lexer = new Lexer(source, stream, scripting, isES6(), shebang, isModule, allowBigInt);
 
             scanFirstToken();
 
@@ -473,17 +472,16 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Execute parse and return the resulting function node.
-     * Errors will be thrown and the error manager will contain information
-     * if parsing should fail. This method is used to check if code String
-     * passed to "Function" constructor is a valid function body or not.
+     * Execute parse and return the resulting function node. Errors will be thrown and the error
+     * manager will contain information if parsing should fail. This method is used to check if code
+     * String passed to "Function" constructor is a valid function body or not.
      *
      * @return function node resulting from successful parse
      */
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
             stream = new TokenStream();
-            lexer  = new Lexer(source, stream, scripting, isES6(), shebang, isModule, allowBigInt);
+            lexer = new Lexer(source, stream, scripting, isES6(), shebang, isModule, allowBigInt);
             final int functionLine = line;
 
             scanFirstToken();
@@ -494,7 +492,7 @@ public class Parser extends AbstractParser {
 
             final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), PROGRAM_NAME);
             final FunctionNode.Kind functionKind = generator ? FunctionNode.Kind.GENERATOR : FunctionNode.Kind.NORMAL;
-            final ParserContextFunctionNode function = createParserContextFunctionNode(ident, functionToken, functionKind, functionLine, Collections.<IdentNode>emptyList(), 0);
+            final ParserContextFunctionNode function = createParserContextFunctionNode(ident, functionToken, functionKind, functionLine, Collections.<IdentNode> emptyList(), 0);
             function.clearFlag(FunctionNode.IS_PROGRAM);
             if (async) {
                 function.setFlag(FunctionNode.IS_ASYNC);
@@ -517,12 +515,12 @@ public class Parser extends AbstractParser {
             expect(EOF);
 
             final FunctionNode functionNode = createFunctionNode(
-                    function,
-                    functionToken,
-                    ident,
-                    FunctionNode.Kind.NORMAL,
-                    functionLine,
-                    functionBody);
+                            function,
+                            functionToken,
+                            ident,
+                            FunctionNode.Kind.NORMAL,
+                            functionLine,
+                            functionBody);
             return functionNode;
         } catch (final Exception e) {
             handleParseException(e);
@@ -531,7 +529,7 @@ public class Parser extends AbstractParser {
     }
 
     private void handleParseException(final Exception e) {
-        // Extract message from exception.  The message will be in error
+        // Extract message from exception. The message will be in error
         // message format.
         String message = e.getMessage();
 
@@ -542,7 +540,7 @@ public class Parser extends AbstractParser {
 
         // Issue message.
         if (e instanceof ParserException) {
-            errors.error((ParserException)e);
+            errors.error((ParserException) e);
         } else {
             errors.error(message);
         }
@@ -557,7 +555,7 @@ public class Parser extends AbstractParser {
      */
     private void recover(final Exception e) {
         if (e != null) {
-            // Extract message from exception.  The message will be in error
+            // Extract message from exception. The message will be in error
             // message format.
             String message = e.getMessage();
 
@@ -568,7 +566,7 @@ public class Parser extends AbstractParser {
 
             // Issue message.
             if (e instanceof ParserException) {
-                errors.error((ParserException)e);
+                errors.error((ParserException) e);
             } else {
                 errors.error(message);
             }
@@ -579,22 +577,21 @@ public class Parser extends AbstractParser {
         }
 
         // Skip to a recovery point.
-loop:
-        while (true) {
+        loop: while (true) {
             switch (type) {
-            case EOF:
-                // Can not go any further.
-                break loop;
-            case EOL:
-            case SEMICOLON:
-            case RBRACE:
-                // Good recovery points.
-                next();
-                break loop;
-            default:
-                // So we can recover after EOL.
-                nextOrEOL();
-                break;
+                case EOF:
+                    // Can not go any further.
+                    break loop;
+                case EOL:
+                case SEMICOLON:
+                case RBRACE:
+                    // Good recovery points.
+                    next();
+                    break loop;
+                default:
+                    // So we can recover after EOL.
+                    nextOrEOL();
+                    break;
             }
         }
     }
@@ -641,24 +638,23 @@ loop:
         // EOL uses length field to store the line number
         int lastTokenFinish = Token.descPosition(lastTokenWithDelimiter) + (Token.descType(lastTokenWithDelimiter) == TokenType.EOL ? 0 : Token.descLength(lastTokenWithDelimiter));
 
-        final FunctionNode functionNode =
-            new FunctionNode(
-                source,
-                functionLine,
-                body.getToken(),
-                lastTokenFinish,
-                startToken,
-                function.getLastToken(),
-                ident,
-                function.getName(),
-                function.getLength(),
-                function.getParameterCount(),
-                optimizeList(function.getParameters()),
-                kind,
-                function.getFlags(),
-                body,
-                function.getEndParserState(),
-                function.getModule());
+        final FunctionNode functionNode = new FunctionNode(
+                        source,
+                        functionLine,
+                        body.getToken(),
+                        lastTokenFinish,
+                        startToken,
+                        function.getLastToken(),
+                        ident,
+                        function.getName(),
+                        function.getLength(),
+                        function.getParameterCount(),
+                        optimizeList(function.getParameters()),
+                        kind,
+                        function.getFlags(),
+                        body,
+                        function.getEndParserState(),
+                        function.getModule());
 
         return functionNode;
     }
@@ -672,6 +668,7 @@ loop:
 
     /**
      * Get the statements in a block.
+     *
      * @return Block statements.
      */
     private Block getBlock(final boolean needsBraces) {
@@ -720,6 +717,7 @@ loop:
 
     /**
      * Get all the statements generated by a single statement.
+     *
      * @return Statements.
      */
     private Block getStatement() {
@@ -746,6 +744,7 @@ loop:
 
     /**
      * Detect use of special properties.
+     *
      * @param ident Referenced property.
      */
     private void detectSpecialProperty(final IdentNode ident) {
@@ -800,7 +799,8 @@ loop:
 
     /**
      * Verify an assignment expression.
-     * @param op  Operation token.
+     *
+     * @param op Operation token.
      * @param lhs Left hand side expression.
      * @param rhs Right hand side expression.
      * @return Verified expression.
@@ -809,40 +809,40 @@ loop:
         final TokenType opType = Token.descType(op);
 
         switch (opType) {
-        case ASSIGN:
-        case ASSIGN_INIT:
-        case ASSIGN_ADD:
-        case ASSIGN_BIT_AND:
-        case ASSIGN_BIT_OR:
-        case ASSIGN_BIT_XOR:
-        case ASSIGN_DIV:
-        case ASSIGN_MOD:
-        case ASSIGN_MUL:
-        case ASSIGN_EXP:
-        case ASSIGN_SAR:
-        case ASSIGN_SHL:
-        case ASSIGN_SHR:
-        case ASSIGN_SUB:
-            if (lhs instanceof IdentNode) {
-                IdentNode ident = (IdentNode)lhs;
-                if (!checkIdentLValue(ident)) {
-                    return referenceError(lhs, rhs, false);
+            case ASSIGN:
+            case ASSIGN_INIT:
+            case ASSIGN_ADD:
+            case ASSIGN_BIT_AND:
+            case ASSIGN_BIT_OR:
+            case ASSIGN_BIT_XOR:
+            case ASSIGN_DIV:
+            case ASSIGN_MOD:
+            case ASSIGN_MUL:
+            case ASSIGN_EXP:
+            case ASSIGN_SAR:
+            case ASSIGN_SHL:
+            case ASSIGN_SHR:
+            case ASSIGN_SUB:
+                if (lhs instanceof IdentNode) {
+                    IdentNode ident = (IdentNode) lhs;
+                    if (!checkIdentLValue(ident)) {
+                        return referenceError(lhs, rhs, false);
+                    }
+                    if (ident.isMetaProperty()) {
+                        return referenceError(lhs, rhs, true);
+                    }
+                    verifyStrictIdent(ident, ASSIGNMENT_TARGET_CONTEXT);
+                    break;
+                } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
+                    break;
+                } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs) && (inPatternPosition || !lhs.isParenthesized())) {
+                    verifyDestructuringAssignmentPattern(lhs, ASSIGNMENT_TARGET_CONTEXT);
+                    break;
+                } else {
+                    return referenceError(lhs, rhs, env.earlyLvalueError);
                 }
-                if (ident.isMetaProperty()) {
-                    return referenceError(lhs, rhs, true);
-                }
-                verifyStrictIdent(ident, ASSIGNMENT_TARGET_CONTEXT);
+            default:
                 break;
-            } else if (lhs instanceof AccessNode || lhs instanceof IndexNode) {
-                break;
-            } else if ((opType == ASSIGN || opType == ASSIGN_INIT) && isDestructuringLhs(lhs) && (inPatternPosition || !lhs.isParenthesized())) {
-                verifyDestructuringAssignmentPattern(lhs, ASSIGNMENT_TARGET_CONTEXT);
-                break;
-            } else {
-                return referenceError(lhs, rhs, env.earlyLvalueError);
-            }
-        default:
-            break;
         }
 
         assert !BinaryNode.isLogical(opType);
@@ -903,55 +903,46 @@ loop:
         return new BinaryNode(op, lhs, rhs);
     }
 
-
     /**
      * Reduce increment/decrement to simpler operations.
+     *
      * @param firstToken First token.
-     * @param tokenType  Operation token (INCPREFIX/DEC.)
+     * @param tokenType Operation token (INCPREFIX/DEC.)
      * @param expression Left hand side expression.
-     * @param isPostfix  Prefix or postfix.
-     * @return           Reduced expression.
+     * @param isPostfix Prefix or postfix.
+     * @return Reduced expression.
      */
     private static UnaryNode incDecExpression(final long firstToken, final TokenType tokenType, final Expression expression, final boolean isPostfix) {
+        assert tokenType == INCPREFIX || tokenType == DECPREFIX;
         if (isPostfix) {
-            return new UnaryNode(Token.recast(firstToken, tokenType == DECPREFIX ? DECPOSTFIX : INCPOSTFIX), expression.getStart(), Token.descPosition(firstToken) + Token.descLength(firstToken), expression);
+            long postfixToken = Token.recast(firstToken, tokenType == DECPREFIX ? DECPOSTFIX : INCPOSTFIX);
+            return new UnaryNode(postfixToken, expression.getStart(), Token.descPosition(firstToken) + Token.descLength(firstToken), expression);
         }
 
         return new UnaryNode(firstToken, expression);
     }
 
     /**
-     * -----------------------------------------------------------------------
+     * Parse the top level script.
      *
-     * Grammar based on
-     *
-     *      ECMAScript Language Specification
-     *      ECMA-262 5th Edition / December 2009
-     *
-     * -----------------------------------------------------------------------
-     */
-
-    /**
+     * <pre>
      * Program :
      *      SourceElements?
-     *
-     * See 14
-     *
-     * Parse the top level script.
+     * </pre>
      */
     private FunctionNode program(final String scriptName, final int reparseFlags) {
         // Make a pseudo-token for the script holding its start and length.
         int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
-        final int  functionLine  = line;
+        final int functionLine = line;
 
         final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), scriptName);
         final ParserContextFunctionNode script = createParserContextFunctionNode(
-                ident,
-                functionToken,
-                FunctionNode.Kind.SCRIPT,
-                functionLine,
-                Collections.<IdentNode>emptyList(), 0);
+                        ident,
+                        functionToken,
+                        FunctionNode.Kind.SCRIPT,
+                        functionLine,
+                        Collections.<IdentNode> emptyList(), 0);
         lc.push(script);
         final ParserContextBlockNode body = newBlock();
         functionDeclarations = new ArrayList<>();
@@ -980,9 +971,9 @@ loop:
      */
     private String getDirective(final Node stmt) {
         if (stmt instanceof ExpressionStatement) {
-            final Node expr = ((ExpressionStatement)stmt).getExpression();
+            final Node expr = ((ExpressionStatement) stmt).getExpression();
             if (expr instanceof LiteralNode) {
-                final LiteralNode<?> lit = (LiteralNode<?>)expr;
+                final LiteralNode<?> lit = (LiteralNode<?>) expr;
                 final long litToken = lit.getToken();
                 final TokenType tt = Token.descType(litToken);
                 // A directive is either a string or an escape string
@@ -997,20 +988,19 @@ loop:
     }
 
     /**
+     * Parse the elements of the script or function.
+     *
+     * <pre>
      * SourceElements :
      *      SourceElement
      *      SourceElements SourceElement
-     *
-     * See 14
-     *
-     * Parse the elements of the script or function.
+     * </pre>
      */
     private void sourceElements(final int reparseFlags) {
-        List<Node>    directiveStmts        = null;
-        boolean       checkDirective        = true;
-        int           functionFlags         = reparseFlags;
-        final boolean oldStrictMode         = isStrictMode;
-
+        List<Node> directiveStmts = null;
+        boolean checkDirective = true;
+        int functionFlags = reparseFlags;
+        final boolean oldStrictMode = isStrictMode;
 
         try {
             // If is a script, then process until the end of the script.
@@ -1054,9 +1044,11 @@ loop:
                                 function.setFlag(FunctionNode.IS_STRICT);
                                 isStrictMode = true;
 
-                                // We don't need to check these, if lexical environment is already strict
+                                // We don't need to check these, if lexical environment is already
+                                // strict
                                 if (!oldStrictMode && directiveStmts != null) {
-                                    // check that directives preceding this one do not violate strictness
+                                    // check that directives preceding this one do not violate
+                                    // strictness
                                     for (final Node statement : directiveStmts) {
                                         // the get value will force unescape of preceding
                                         // escaped string directives
@@ -1076,7 +1068,7 @@ loop:
                 } catch (final Exception e) {
                     final int errorLine = line;
                     final long errorToken = token;
-                    //recover parsing
+                    // recover parsing
                     recover(e);
                     final ErrorNode errorExpr = new ErrorNode(errorToken, finish);
                     final ExpressionStatement expressionStatement = new ExpressionStatement(errorLine, errorToken, finish, errorExpr);
@@ -1094,6 +1086,7 @@ loop:
     /**
      * Parse any of the basic statement types.
      *
+     * <pre>
      * Statement :
      *      BlockStatement
      *      VariableStatement
@@ -1108,6 +1101,7 @@ loop:
      *      LabelledStatement
      *      ThrowStatement
      *      TryStatement
+     *      DebuggerStatement
      *      DebuggerStatement
      *
      * BreakableStatement :
@@ -1136,6 +1130,7 @@ loop:
      * HoistableDeclaration :
      *     FunctionDeclaration
      *     GeneratorDeclaration
+     * </pre>
      */
     private void statement() {
         statement(false, 0, false, false, false);
@@ -1147,125 +1142,127 @@ loop:
 
     /**
      * @param topLevel does this statement occur at the "top level" of a script or a function?
-     * @param reparseFlags reparse flags to decide whether to allow property "get" and "set" functions or ES6 methods.
+     * @param reparseFlags reparse flags to decide whether to allow property "get" and "set"
+     *            functions or ES6 methods.
      * @param singleStatement are we in a single statement context?
      */
-    private void statement(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration, final boolean maybeLabeledFunctionDeclaration) {
+    private void statement(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration,
+                    final boolean maybeLabeledFunctionDeclaration) {
         switch (type) {
-        case LBRACE:
-            block();
-            return;
-        case VAR:
-            variableStatement(type);
-            return;
-        case SEMICOLON:
-            emptyStatement();
-            return;
-        case IF:
-            ifStatement();
-            return;
-        case FOR:
-            forStatement();
-            return;
-        case WHILE:
-            whileStatement();
-            return;
-        case DO:
-            doStatement();
-            return;
-        case CONTINUE:
-            continueStatement();
-            return;
-        case BREAK:
-            breakStatement();
-            return;
-        case RETURN:
-            returnStatement();
-            return;
-        case WITH:
-            withStatement();
-            return;
-        case SWITCH:
-            switchStatement();
-            return;
-        case THROW:
-            throwStatement();
-            return;
-        case TRY:
-            tryStatement();
-            return;
-        case DEBUGGER:
-            debuggerStatement();
-            return;
-        case RPAREN:
-        case RBRACKET:
-        case EOF:
-            expect(SEMICOLON);
-            return;
-        case FUNCTION:
-            // As per spec (ECMA section 12), function declarations as arbitrary statement
-            // is not "portable". Implementation can issue a warning or disallow the same.
-            if (singleStatement) {
-                // ES6 B.3.2 Labelled Function Declarations
-                // It is a Syntax Error if any strict mode source code matches this rule:
-                // LabelledItem : FunctionDeclaration.
-                // ES6 B.3.4 FunctionDeclarations in IfStatement Statement Clauses
-                if (isStrictMode || !mayBeFunctionDeclaration) {
-                    throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "function declaration"), token);
-                }
-            }
-            functionExpression(true, topLevel || labelledStatement, singleStatement);
-            return;
-        case LET:
-            if (useBlockScope()) {
-                TokenType lookahead = lookaheadOfLetDeclaration(false);
-                if (lookahead != null) { // lookahead is let declaration
-                    if (singleStatement) {
-                        // ExpressionStatement should not have "let [" in its lookahead.
-                        // The IDENT check is not needed here - the only purpose of this
-                        // shortcut is to produce the same error mesage as Nashorn.
-                        if (lookahead == LBRACKET || T(k + 1) == IDENT) {
-                            throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "let declaration"), token);
-                        } // else break and call expressionStatement()
-                    } else {
-                        variableStatement(type);
-                        return;
-                    }
-                }
-            }
-            break;
-        case CONST:
-            if (useBlockScope()) {
-                if (singleStatement) {
-                    throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "const declaration"), token);
-                }
+            case LBRACE:
+                block();
+                return;
+            case VAR:
                 variableStatement(type);
                 return;
-            } else if (env.constAsVar) {
-                variableStatement(TokenType.VAR);
+            case SEMICOLON:
+                emptyStatement();
                 return;
-            }
-            break;
-        case CLASS:
-            if (ES6_CLASS && isES6()) {
+            case IF:
+                ifStatement();
+                return;
+            case FOR:
+                forStatement();
+                return;
+            case WHILE:
+                whileStatement();
+                return;
+            case DO:
+                doStatement();
+                return;
+            case CONTINUE:
+                continueStatement();
+                return;
+            case BREAK:
+                breakStatement();
+                return;
+            case RETURN:
+                returnStatement();
+                return;
+            case WITH:
+                withStatement();
+                return;
+            case SWITCH:
+                switchStatement();
+                return;
+            case THROW:
+                throwStatement();
+                return;
+            case TRY:
+                tryStatement();
+                return;
+            case DEBUGGER:
+                debuggerStatement();
+                return;
+            case RPAREN:
+            case RBRACKET:
+            case EOF:
+                expect(SEMICOLON);
+                return;
+            case FUNCTION:
+                // As per spec (ECMA section 12), function declarations as arbitrary statement
+                // is not "portable". Implementation can issue a warning or disallow the same.
                 if (singleStatement) {
-                    throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "class declaration"), token);
+                    // ES6 B.3.2 Labelled Function Declarations
+                    // It is a Syntax Error if any strict mode source code matches this rule:
+                    // LabelledItem : FunctionDeclaration.
+                    // ES6 B.3.4 FunctionDeclarations in IfStatement Statement Clauses
+                    if (isStrictMode || !mayBeFunctionDeclaration) {
+                        throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "function declaration"), token);
+                    }
                 }
-                classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
+                functionExpression(true, topLevel || labelledStatement, singleStatement);
                 return;
-            }
-            break;
-        case ASYNC:
-            if (isAsync() && lookaheadIsAsyncFunction()) {
-                if (singleStatement) {
-                    throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "async function declaration"), token);
+            case LET:
+                if (useBlockScope()) {
+                    TokenType lookahead = lookaheadOfLetDeclaration(false);
+                    if (lookahead != null) { // lookahead is let declaration
+                        if (singleStatement) {
+                            // ExpressionStatement should not have "let [" in its lookahead.
+                            // The IDENT check is not needed here - the only purpose of this
+                            // shortcut is to produce the same error mesage as Nashorn.
+                            if (lookahead == LBRACKET || T(k + 1) == IDENT) {
+                                throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "let declaration"), token);
+                            } // else break and call expressionStatement()
+                        } else {
+                            variableStatement(type);
+                            return;
+                        }
+                    }
                 }
-                asyncFunctionExpression(true, topLevel || labelledStatement);
-                return;
-            }
-            break;
-        default:
-            break;
+                break;
+            case CONST:
+                if (useBlockScope()) {
+                    if (singleStatement) {
+                        throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "const declaration"), token);
+                    }
+                    variableStatement(type);
+                    return;
+                } else if (env.constAsVar) {
+                    variableStatement(TokenType.VAR);
+                    return;
+                }
+                break;
+            case CLASS:
+                if (ES6_CLASS && isES6()) {
+                    if (singleStatement) {
+                        throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "class declaration"), token);
+                    }
+                    classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
+                    return;
+                }
+                break;
+            case ASYNC:
+                if (isAsync() && lookaheadIsAsyncFunction()) {
+                    if (singleStatement) {
+                        throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "async function declaration"), token);
+                    }
+                    asyncFunctionExpression(true, topLevel || labelledStatement);
+                    return;
+                }
+                break;
+            default:
+                break;
         }
 
         if (isBindingIdentifier()) {
@@ -1297,7 +1294,7 @@ loop:
                 return true;
             }
         } else if (isES6Method) {
-            final String ident = (String)getValue();
+            final String ident = (String) getValue();
             IdentNode identNode = createIdentNode(token, finish, ident).setIsPropertyName();
             final long propertyToken = token;
             final int propertyLine = line;
@@ -1412,20 +1409,20 @@ loop:
     /**
      * Parse ClassTail and ClassBody.
      *
-     * ClassTail[Yield] :
-     *   ClassHeritage[?Yield]opt { ClassBody[?Yield]opt }
-     * ClassHeritage[Yield] :
-     *   extends LeftHandSideExpression[?Yield]
+     * <pre>
+     * ClassTail[Yield] : ClassHeritage[?Yield]opt { ClassBody[?Yield]opt } ClassHeritage[Yield] :
+     * extends LeftHandSideExpression[?Yield]
      *
      * ClassBody[Yield] :
-     *   ClassElementList[?Yield]
+     *      ClassElementList[?Yield]
      * ClassElementList[Yield] :
-     *   ClassElement[?Yield]
-     *   ClassElementList[?Yield] ClassElement[?Yield]
+     *      ClassElement[?Yield]
+     *      ClassElementList[?Yield] ClassElement[?Yield]
      * ClassElement[Yield] :
-     *   MethodDefinition[?Yield]
-     *   static MethodDefinition[?Yield]
-     *   ;
+     *      MethodDefinition[?Yield]
+     *      static MethodDefinition[?Yield]
+     *      ;
+     * </pre>
      */
     private Expression classTail(int classLineNumber, long classToken, IdentNode className, boolean yield, boolean await) {
         boolean oldStrictMode = isStrictMode;
@@ -1478,7 +1475,8 @@ loop:
                     }
                 } else {
                     // Check for duplicate method definitions and combine accessor methods.
-                    // In ES6, a duplicate is never an error regardless of strict mode (in consequence of computed property names).
+                    // In ES6, a duplicate is never an error regardless of strict mode
+                    // (in consequence of computed property names).
 
                     final ClassElementKey key = new ClassElementKey(classElement.isStatic(), classElement.getKeyName());
                     final Integer existing = keyToIndexMap.get(key);
@@ -1489,7 +1487,7 @@ loop:
                     } else {
                         final PropertyNode existingProperty = classElements.get(existing);
 
-                        final Expression   value  = classElement.getValue();
+                        final Expression value = classElement.getValue();
                         final FunctionNode getter = classElement.getGetter();
                         final FunctionNode setter = classElement.getSetter();
 
@@ -1517,12 +1515,13 @@ loop:
                 constructor = createDefaultClassConstructor(classLineNumber, classToken, lastToken, className, classHeritage != null);
             } else {
                 // constructor takes on source section of class declaration/expression
-                FunctionNode ctor = (FunctionNode)constructor.getValue();
+                FunctionNode ctor = (FunctionNode) constructor.getValue();
                 int flags = ctor.getFlags();
                 if (className == null) {
                     flags |= FunctionNode.IS_ANONYMOUS;
                 }
-                constructor = constructor.setValue(new FunctionNode(ctor.getSource(), ctor.getLineNumber(), ctor.getToken(), classFinish, classToken, lastToken, ctor.getIdent(), className == null ? null : className.getName(),
+                constructor = constructor.setValue(new FunctionNode(ctor.getSource(), ctor.getLineNumber(), ctor.getToken(), classFinish, classToken, lastToken, ctor.getIdent(),
+                                className == null ? null : className.getName(),
                                 ctor.getLength(), ctor.getNumOfParams(), ctor.getParameters(), ctor.getKind(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
             }
 
@@ -1572,14 +1571,9 @@ loop:
             function.setFlag(FunctionNode.IS_ANONYMOUS);
         }
 
-        PropertyNode constructor = new PropertyNode(classToken, ctorFinish, ctorName, createFunctionNode(
-                        function,
-                        classToken,
-                        ctorName,
-                        FunctionNode.Kind.NORMAL,
-                        classLineNumber,
-                        body
-                        ), null, null, false, false, false, false);
+        PropertyNode constructor = new PropertyNode(classToken, ctorFinish, ctorName,
+                        createFunctionNode(function, classToken, ctorName, FunctionNode.Kind.NORMAL, classLineNumber, body),
+                        null, null, false, false, false, false);
         return constructor;
     }
 
@@ -1589,7 +1583,7 @@ loop:
         Expression propertyName = propertyName(yield, await);
         int flags = FunctionNode.IS_METHOD;
         if (!computed) {
-            final String name = ((PropertyKey)propertyName).getPropertyName();
+            final String name = ((PropertyKey) propertyName).getPropertyName();
             if (!generator && startTokenType == GET && type != LPAREN) {
                 PropertyFunction methodDefinition = propertyGetterFunction(methodToken, methodLine, yield, await);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true);
@@ -1637,59 +1631,58 @@ loop:
         }
 
         switch (currentType) {
-        case IDENT:
-            return true;
-        case NON_OCTAL_DECIMAL:
-        case OCTAL_LEGACY:
-            if (isStrictMode) {
-                return false;
-            }
-        case STRING:
-        case ESCSTRING:
-        case DECIMAL:
-        case HEXADECIMAL:
-        case OCTAL:
-        case BINARY_NUMBER:
-        case FLOATING:
-            return true;
-        default:
-            return isIdentifierName(currentToken);
+            case IDENT:
+                return true;
+            case NON_OCTAL_DECIMAL:
+            case OCTAL_LEGACY:
+                if (isStrictMode) {
+                    return false;
+                }
+            case STRING:
+            case ESCSTRING:
+            case DECIMAL:
+            case HEXADECIMAL:
+            case OCTAL:
+            case BINARY_NUMBER:
+            case FLOATING:
+                return true;
+            default:
+                return isIdentifierName(currentToken);
         }
     }
 
     /**
-     * block :
-     *      { StatementList? }
-     *
-     * see 12.1
-     *
      * Parse a statement block.
+     *
+     * <pre>
+     * Block :
+     *      { StatementList? }
+     * </pre>
      */
     private void block() {
         appendStatement(new BlockStatement(line, getBlock(true)));
     }
 
     /**
+     * Parse a list of statements.
+     *
+     * <pre>
      * StatementList :
      *      Statement
      *      StatementList Statement
-     *
-     * See 12.1
-     *
-     * Parse a list of statements.
+     * </pre>
      */
     private void statementList() {
-        // Accumulate statements until end of list. */
-loop:
-        while (type != EOF) {
+        // Accumulate statements until end of the statement list.
+        loop: while (type != EOF) {
             switch (type) {
-            case EOF:
-            case CASE:
-            case DEFAULT:
-            case RBRACE:
-                break loop;
-            default:
-                break;
+                case EOF:
+                case CASE:
+                case DEFAULT:
+                case RBRACE:
+                    break loop;
+                default:
+                    break;
             }
 
             // Get next statement.
@@ -1703,7 +1696,8 @@ loop:
      * @param ident the identifier that is verified
      */
     private void verifyIdent(final IdentNode ident, final boolean yield, final boolean await) {
-        // It is a Syntax Error if StringValue of IdentifierName is the same as the StringValue of any ReservedWord except for yield or await.
+        // It is a Syntax Error if StringValue of IdentifierName is the same as the StringValue of
+        // any ReservedWord except for yield or await.
         if (isES6()) {
             if (isEscapedIdent(ident) && isReservedWordSequence(ident.getName())) {
                 throw error(AbstractParser.message(MESSAGE_ESCAPED_KEYWORD, ident.getName()), ident.getToken());
@@ -1711,7 +1705,8 @@ loop:
                 assert !isReservedWordSequence(ident.getName()) : ident.getName();
             }
         }
-        // It is a Syntax Error if this production has a [Yield] parameter and StringValue of Identifier is "yield".
+        // It is a Syntax Error if this production has a [Yield] parameter and StringValue of
+        // Identifier is "yield".
         if (yield) {
             if (ident.isTokenType(YIELD)) {
                 throw error(expectMessage(IDENT, ident.getToken()), ident.getToken());
@@ -1746,18 +1741,18 @@ loop:
     /**
      * Make sure that in strict mode, the identifier name used is allowed.
      *
-     * @param ident         Identifier that is verified
+     * @param ident Identifier that is verified
      * @param contextString String used in error message to give context to the user
      */
     private void verifyStrictIdent(final IdentNode ident, final String contextString, final boolean bindingIdentifier) {
         if (isStrictMode) {
             if (bindingIdentifier) {
                 switch (ident.getName()) {
-                case "eval":
-                case "arguments":
-                    throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
-                default:
-                    break;
+                    case "eval":
+                    case "arguments":
+                        throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
+                    default:
+                        break;
                 }
             }
 
@@ -1773,6 +1768,7 @@ loop:
 
     /**
      * Check if this IdentNode is a future strict name
+     *
      * @return true if this is a future strict name
      */
     private static boolean isFutureStrictName(final IdentNode ident) {
@@ -1786,6 +1782,9 @@ loop:
     }
 
     /**
+     * Parse a var statement.
+     *
+     * <pre>
      * VariableStatement :
      *      var VariableDeclarationList ;
      *
@@ -1798,10 +1797,7 @@ loop:
      *
      * Initializer :
      *      = AssignmentExpression
-     *
-     * See 12.2
-     *
-     * Parse a VAR statement.
+     * </pre>
      */
     private void variableStatement(final TokenType varType) {
         variableDeclarationList(varType, true, -1);
@@ -1832,7 +1828,7 @@ loop:
         void addBinding(Expression binding) {
             if (firstBinding == null) {
                 firstBinding = binding;
-            } else if (secondBinding == null)  {
+            } else if (secondBinding == null) {
                 secondBinding = binding;
             }
             // ignore the rest
@@ -1848,7 +1844,8 @@ loop:
     }
 
     /**
-     * @param isStatement {@code true} if a VariableStatement, {@code false} if a {@code for} loop VariableDeclarationList
+     * @param isStatement {@code true} if a VariableStatement, {@code false} if a {@code for} loop
+     *            VariableDeclarationList
      */
     private ForVariableDeclarationListResult variableDeclarationList(final TokenType varType, final boolean isStatement, final int sourceOrder) {
         // VAR tested in caller.
@@ -1865,7 +1862,7 @@ loop:
         ForVariableDeclarationListResult forResult = isStatement ? null : new ForVariableDeclarationListResult();
         while (true) {
             // Get starting token.
-            final int  varLine  = line;
+            final int varLine = line;
             final long varToken = Token.recast(token, varType);
 
             // Get name of var.
@@ -1878,7 +1875,8 @@ loop:
                     public void accept(IdentNode identNode) {
                         verifyStrictIdent(identNode, VARIABLE_NAME_CONTEXT);
                         if (varType != VAR && identNode.getName().equals(LET.getName())) {
-                            throw error(AbstractParser.message("let.lexical.binding")); // ES8 13.3.1.1
+                            // ES8 13.3.1.1
+                            throw error(AbstractParser.message("let.lexical.binding"));
                         }
                         final VarNode var = new VarNode(varLine, varToken, sourceOrder, identNode.getFinish(), identNode.setIsDeclaredHere(), null, finalVarFlags);
                         appendStatement(var);
@@ -1911,14 +1909,14 @@ loop:
                 if (isDestructuring) {
                     throw error(AbstractParser.message("missing.destructuring.assignment"), token);
                 } else if (varType == CONST) {
-                    throw error(AbstractParser.message("missing.const.assignment", ((IdentNode)binding).getName()));
+                    throw error(AbstractParser.message("missing.const.assignment", ((IdentNode) binding).getName()));
                 }
                 // else, if we are in a for loop, delay checking until we know the kind of loop
             }
 
             if (!isDestructuring) {
                 assert init != null || varType != CONST || !isStatement;
-                final IdentNode ident = (IdentNode)binding;
+                final IdentNode ident = (IdentNode) binding;
                 if (varType != VAR && ident.getName().equals(LET.getName())) {
                     throw error(AbstractParser.message("let.lexical.binding")); // ES8 13.3.1.1
                 }
@@ -2019,7 +2017,7 @@ loop:
                 if (literalNode.isParenthesized()) {
                     throw error(AbstractParser.message(MESSAGE_INVALID_LVALUE), literalNode.getToken());
                 }
-                if (((ArrayLiteralNode)literalNode).hasSpread() && ((ArrayLiteralNode)literalNode).hasTrailingComma()) {
+                if (((ArrayLiteralNode) literalNode).hasSpread() && ((ArrayLiteralNode) literalNode).hasTrailingComma()) {
                     throw error("Rest element must be last", literalNode.getElementExpressions().get(literalNode.getElementExpressions().size() - 1).getToken());
                 }
                 boolean restElement = false;
@@ -2092,7 +2090,8 @@ loop:
     }
 
     /**
-     * Verify destructuring variable declaration binding pattern and extract bound variable declarations.
+     * Verify destructuring variable declaration binding pattern and extract bound variable
+     * declarations.
      */
     private void verifyDestructuringBindingPattern(Expression pattern, Consumer<IdentNode> identifierCallback) {
         assert pattern instanceof ObjectNode || pattern instanceof ArrayLiteralNode;
@@ -2125,12 +2124,7 @@ loop:
     }
 
     /**
-     * EmptyStatement :
-     *      ;
-     *
-     * See 12.3
-     *
-     * Parse an empty statement.
+     * Parse an empty statement ({@code ;}).
      */
     private void emptyStatement() {
         if (env.emptyStatements) {
@@ -2142,8 +2136,7 @@ loop:
     }
 
     /**
-     * ExpressionStatement :
-     *      Expression ; // [lookahead ~( or  function )]
+     * ExpressionStatement : Expression ; // [lookahead ~( or function )]
      *
      * See 12.4
      *
@@ -2151,13 +2144,13 @@ loop:
      */
     private void expressionStatement() {
         // Lookahead checked in caller.
-        final int  expressionLine  = line;
+        final int expressionLine = line;
         final long expressionToken = token;
 
         // Get expression and add as statement.
         final Expression expression = expression();
 
-         if (expression != null) {
+        if (expression != null) {
             endOfLine();
             ExpressionStatement expressionStatement = new ExpressionStatement(expressionLine, expressionToken, finish, expression);
             appendStatement(expressionStatement);
@@ -2168,19 +2161,19 @@ loop:
     }
 
     /**
+     * Parse an if statement.
+     *
+     * <pre>
      * IfStatement :
      *      if ( Expression ) Statement else Statement
      *      if ( Expression ) Statement
-     *
-     * See 12.5
-     *
-     * Parse an IF statement.
+     * </pre>
      */
     private void ifStatement() {
         // Capture IF token.
-        final int  ifLine  = line;
+        final int ifLine = line;
         final long ifToken = token;
-         // IF tested in caller.
+        // IF tested in caller.
         next();
 
         expect(LPAREN);
@@ -2244,125 +2237,126 @@ loop:
 
             TokenType varType = null;
             switch (type) {
-            case VAR:
-                // Var declaration captured in for outer block.
-                varType = type;
-                varDeclList = variableDeclarationList(varType, false, forStart);
-                break;
-            case SEMICOLON:
-                break;
-            default:
-                if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(true) || type == CONST)) {
-                    // LET/CONST declaration captured in container block created above.
+                case VAR:
+                    // Var declaration captured in for outer block.
                     varType = type;
                     varDeclList = variableDeclarationList(varType, false, forStart);
-                    if (varType == LET) {
-                        // Per-iteration scope not needed if BindingPattern is empty
-                        if (!forNode.getStatements().isEmpty()) {
-                            flags |= ForNode.PER_ITERATION_SCOPE;
+                    break;
+                case SEMICOLON:
+                    break;
+                default:
+                    if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration(true) || type == CONST)) {
+                        // LET/CONST declaration captured in container block created above.
+                        varType = type;
+                        varDeclList = variableDeclarationList(varType, false, forStart);
+                        if (varType == LET) {
+                            // Per-iteration scope not needed if BindingPattern is empty
+                            if (!forNode.getStatements().isEmpty()) {
+                                flags |= ForNode.PER_ITERATION_SCOPE;
+                            }
                         }
+                        break;
                     }
-                    break;
-                }
-                if (env.constAsVar && type == CONST) {
-                    // Var declaration captured in for outer block.
-                    varType = TokenType.VAR;
-                    varDeclList = variableDeclarationList(varType, false, forStart);
-                    break;
-                }
+                    if (env.constAsVar && type == CONST) {
+                        // Var declaration captured in for outer block.
+                        varType = TokenType.VAR;
+                        varDeclList = variableDeclarationList(varType, false, forStart);
+                        break;
+                    }
 
-                init = expression(false, inGeneratorFunction(), inAsyncFunction(), true);
-                break;
+                    init = expression(false, inGeneratorFunction(), inAsyncFunction(), true);
+                    break;
             }
 
             switch (type) {
-            case SEMICOLON:
-                // for (init; test; modify)
-                if (varDeclList != null) {
-                    assert init == null;
-                    init = varDeclList.init;
-                    // late check for missing assignment, now we know it's a for (init; test; modify) loop
-                    if (varDeclList.missingAssignment != null) {
-                        if (varDeclList.missingAssignment instanceof IdentNode) {
-                            throw error(AbstractParser.message("missing.const.assignment", ((IdentNode)varDeclList.missingAssignment).getName()));
-                        } else {
-                            throw error(AbstractParser.message("missing.destructuring.assignment"), varDeclList.missingAssignment.getToken());
+                case SEMICOLON:
+                    // for (init; test; modify)
+                    if (varDeclList != null) {
+                        assert init == null;
+                        init = varDeclList.init;
+                        // late check for missing assignment, now we know it's a
+                        // for (init; test; modify) loop
+                        if (varDeclList.missingAssignment != null) {
+                            if (varDeclList.missingAssignment instanceof IdentNode) {
+                                throw error(AbstractParser.message("missing.const.assignment", ((IdentNode) varDeclList.missingAssignment).getName()));
+                            } else {
+                                throw error(AbstractParser.message("missing.destructuring.assignment"), varDeclList.missingAssignment.getToken());
+                            }
+                        }
+                    } else {
+                        if (hasCoverInitializedName(init)) {
+                            throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
                         }
                     }
-                } else {
-                    if (hasCoverInitializedName(init)) {
-                        throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
+
+                    // for each (init; test; modify) is invalid
+                    if ((flags & ForNode.IS_FOR_EACH) != 0) {
+                        throw error(AbstractParser.message("for.each.without.in"), token);
                     }
-                }
 
-                // for each (init; test; modify) is invalid
-                if ((flags & ForNode.IS_FOR_EACH) != 0) {
-                    throw error(AbstractParser.message("for.each.without.in"), token);
-                }
-
-                expect(SEMICOLON);
-                if (type != SEMICOLON) {
-                    test = joinPredecessorExpression();
-                }
-                expect(SEMICOLON);
-                if (type != RPAREN) {
-                    modify = joinPredecessorExpression();
-                }
-                break;
-
-            case OF:
-                if (ES8_FOR_AWAIT_OF && isForAwaitOf) {
-                    // fall through
-                } else if (ES6_FOR_OF) {
-                    isForOf = true;
-                    // fall through
-                } else {
-                    expect(SEMICOLON); // fail with expected message
+                    expect(SEMICOLON);
+                    if (type != SEMICOLON) {
+                        test = joinPredecessorExpression();
+                    }
+                    expect(SEMICOLON);
+                    if (type != RPAREN) {
+                        modify = joinPredecessorExpression();
+                    }
                     break;
-                }
-            case IN:
-                if (isForAwaitOf) {
-                    flags |= ForNode.IS_FOR_AWAIT_OF;
-                } else {
-                    flags |= isForOf ? ForNode.IS_FOR_OF : ForNode.IS_FOR_IN;
-                }
-                test = new JoinPredecessorExpression();
-                if (varDeclList != null) {
-                    // for (var|let|const ForBinding in|of expression)
-                    if (varDeclList.secondBinding != null) {
-                        // for (var i, j in obj) is invalid
-                        throw error(AbstractParser.message("many.vars.in.for.in.loop", isForOf || isForAwaitOf ? "of" : "in"), varDeclList.secondBinding.getToken());
-                    }
-                    if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != TokenType.IN || varType != VAR || varDeclList.init != null)) {
-                        // ES5 legacy: for (var i = AssignmentExpressionNoIn in Expression)
-                        // Invalid in ES6, but allow it in non-strict mode if no ES6 features used,
-                        // i.e., error if strict, for-of, let/const, or destructuring
-                        throw error(AbstractParser.message("for.in.loop.initializer", isForOf || isForAwaitOf ? "of" : "in"), varDeclList.declarationWithInitializerToken);
-                    }
-                    init = varDeclList.firstBinding;
-                    assert init instanceof IdentNode || isDestructuringLhs(init);
-                    if (varType == CONST) {
-                        flags |= ForNode.PER_ITERATION_SCOPE;
-                    }
-                } else {
-                    // for (LeftHandSideExpression in|of expression)
-                    assert init != null : "for..in/of init expression can not be null here";
 
-                    // check if initial expression is a valid L-value
-                    if (!checkValidLValue(init, isForOf || isForAwaitOf ? "for-of iterator" : "for-in iterator")) {
-                        throw error(AbstractParser.message("not.lvalue.for.in.loop", isForOf || isForAwaitOf ? "of" : "in"), init.getToken());
+                case OF:
+                    if (ES8_FOR_AWAIT_OF && isForAwaitOf) {
+                        // fall through
+                    } else if (ES6_FOR_OF) {
+                        isForOf = true;
+                        // fall through
+                    } else {
+                        expect(SEMICOLON); // fail with expected message
+                        break;
                     }
-                }
+                case IN:
+                    if (isForAwaitOf) {
+                        flags |= ForNode.IS_FOR_AWAIT_OF;
+                    } else {
+                        flags |= isForOf ? ForNode.IS_FOR_OF : ForNode.IS_FOR_IN;
+                    }
+                    test = new JoinPredecessorExpression();
+                    if (varDeclList != null) {
+                        // for (var|let|const ForBinding in|of expression)
+                        if (varDeclList.secondBinding != null) {
+                            // for (var i, j in obj) is invalid
+                            throw error(AbstractParser.message("many.vars.in.for.in.loop", isForOf || isForAwaitOf ? "of" : "in"), varDeclList.secondBinding.getToken());
+                        }
+                        if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != TokenType.IN || varType != VAR || varDeclList.init != null)) {
+                            // ES5 legacy: for (var i = AssignmentExpressionNoIn in Expression)
+                            // Invalid in ES6, but allow it in non-strict mode if no ES6 features
+                            // used, i.e., error if strict, for-of, let/const, or destructuring
+                            throw error(AbstractParser.message("for.in.loop.initializer", isForOf || isForAwaitOf ? "of" : "in"), varDeclList.declarationWithInitializerToken);
+                        }
+                        init = varDeclList.firstBinding;
+                        assert init instanceof IdentNode || isDestructuringLhs(init);
+                        if (varType == CONST) {
+                            flags |= ForNode.PER_ITERATION_SCOPE;
+                        }
+                    } else {
+                        // for (LeftHandSideExpression in|of expression)
+                        assert init != null : "for..in/of init expression can not be null here";
 
-                next();
+                        // check if initial expression is a valid L-value
+                        if (!checkValidLValue(init, isForOf || isForAwaitOf ? "for-of iterator" : "for-in iterator")) {
+                            throw error(AbstractParser.message("not.lvalue.for.in.loop", isForOf || isForAwaitOf ? "of" : "in"), init.getToken());
+                        }
+                    }
 
-                // For-of only allows AssignmentExpression.
-                modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(true)) : joinPredecessorExpression();
-                break;
+                    next();
 
-            default:
-                expect(SEMICOLON);
-                break;
+                    // For-of only allows AssignmentExpression.
+                    modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(true)) : joinPredecessorExpression();
+                    break;
+
+                default:
+                    expect(SEMICOLON);
+                    break;
             }
 
             expect(RPAREN);
@@ -2391,7 +2385,7 @@ loop:
 
     private boolean checkValidLValue(Expression init, String contextString) {
         if (init instanceof IdentNode) {
-            IdentNode ident = (IdentNode)init;
+            IdentNode ident = (IdentNode) init;
             if (!checkIdentLValue(ident)) {
                 return false;
             }
@@ -2419,24 +2413,24 @@ loop:
         for (int i = 1;; i++) {
             TokenType t = T(k + i);
             switch (t) {
-            case EOL:
-            case COMMENT:
-                continue;
-            case OF:
-                if (ofContextualKeyword && ES6_FOR_OF) {
-                    return null;
-                }
-                // fall through
-            case IDENT:
-            case LBRACKET:
-            case LBRACE:
-                return t;
-            default:
-                // accept future strict tokens in non-strict mode (including LET)
-                if (t.isContextualKeyword() || (!isStrictMode && t.isFutureStrict())) {
+                case EOL:
+                case COMMENT:
+                    continue;
+                case OF:
+                    if (ofContextualKeyword && ES6_FOR_OF) {
+                        return null;
+                    }
+                    // fall through
+                case IDENT:
+                case LBRACKET:
+                case LBRACE:
                     return t;
-                }
-                return null;
+                default:
+                    // accept future strict tokens in non-strict mode (including LET)
+                    if (t.isContextualKeyword() || (!isStrictMode && t.isFutureStrict())) {
+                        return t;
+                    }
+                    return null;
             }
         }
     }
@@ -2488,7 +2482,7 @@ loop:
         JoinPredecessorExpression test = null;
 
         try {
-           // Get DO body.
+            // Get DO body.
             body = getStatement();
 
             expect(WHILE);
@@ -2508,16 +2502,16 @@ loop:
     }
 
     /**
+     * Parse continue statement.
+     *
+     * <pre>
      * ContinueStatement :
      *      continue Identifier? ; // [no LineTerminator here]
-     *
-     * See 12.7
-     *
-     * Parse CONTINUE statement.
+     * </pre>
      */
     private void continueStatement() {
         // Capture CONTINUE token.
-        final int  continueLine  = line;
+        final int continueLine = line;
         final long continueToken = token;
         // CONTINUE tested in caller.
         nextOrEOL();
@@ -2526,21 +2520,21 @@ loop:
 
         // SEMICOLON or label.
         switch (type) {
-        case RBRACE:
-        case SEMICOLON:
-        case EOL:
-        case EOF:
-            break;
+            case RBRACE:
+            case SEMICOLON:
+            case EOL:
+            case EOF:
+                break;
 
-        default:
-            final IdentNode ident = labelIdentifier();
-            labelNode = lc.findLabel(ident.getName());
+            default:
+                final IdentNode ident = labelIdentifier();
+                labelNode = lc.findLabel(ident.getName());
 
-            if (labelNode == null) {
-                throw error(AbstractParser.message("undefined.label", ident.getName()), ident.getToken());
-            }
+                if (labelNode == null) {
+                    throw error(AbstractParser.message("undefined.label", ident.getName()), ident.getToken());
+                }
 
-            break;
+                break;
         }
 
         final String labelName = labelNode == null ? null : labelNode.getLabelName();
@@ -2557,15 +2551,16 @@ loop:
     }
 
     /**
+     * Parse break statement.
+     *
+     * <pre>
      * BreakStatement :
      *      break Identifier? ; // [no LineTerminator here]
-     *
-     * See 12.8
-     *
+     * </pre>
      */
     private void breakStatement() {
         // Capture BREAK token.
-        final int  breakLine  = line;
+        final int breakLine = line;
         final long breakToken = token;
         // BREAK tested in caller.
         nextOrEOL();
@@ -2574,25 +2569,25 @@ loop:
 
         // SEMICOLON or label.
         switch (type) {
-        case RBRACE:
-        case SEMICOLON:
-        case EOL:
-        case EOF:
-            break;
+            case RBRACE:
+            case SEMICOLON:
+            case EOL:
+            case EOF:
+                break;
 
-        default:
-            final IdentNode ident = labelIdentifier();
-            labelNode = lc.findLabel(ident.getName());
+            default:
+                final IdentNode ident = labelIdentifier();
+                labelNode = lc.findLabel(ident.getName());
 
-            if (labelNode == null) {
-                throw error(AbstractParser.message("undefined.label", ident.getName()), ident.getToken());
-            }
+                if (labelNode == null) {
+                    throw error(AbstractParser.message("undefined.label", ident.getName()), ident.getToken());
+                }
 
-            break;
+                break;
         }
 
-        //either an explicit label - then get its node or just a "break" - get first breakable
-        //targetNode is what we are breaking out from.
+        // either an explicit label - then get its node or just a "break" - get first breakable
+        // targetNode is what we are breaking out from.
         final String labelName = labelNode == null ? null : labelNode.getLabelName();
         final ParserContextBreakableNode targetNode = lc.getBreakable(labelName);
         if (targetNode == null) {
@@ -2606,12 +2601,12 @@ loop:
     }
 
     /**
+     * Parse return statement.
+     *
+     * <pre>
      * ReturnStatement :
      *      return Expression? ; // [no LineTerminator here]
-     *
-     * See 12.9
-     *
-     * Parse RETURN statement.
+     * </pre>
      */
     private void returnStatement() {
         // check for return outside function
@@ -2620,7 +2615,7 @@ loop:
         }
 
         // Capture RETURN token.
-        final int  returnLine  = line;
+        final int returnLine = line;
         final long returnToken = token;
         // RETURN tested in caller.
         nextOrEOL();
@@ -2629,15 +2624,15 @@ loop:
 
         // SEMICOLON or expression.
         switch (type) {
-        case RBRACE:
-        case SEMICOLON:
-        case EOL:
-        case EOF:
-            break;
+            case RBRACE:
+            case SEMICOLON:
+            case EOL:
+            case EOF:
+                break;
 
-        default:
-            expression = expression();
-            break;
+            default:
+                expression = expression();
+                break;
         }
 
         endOfLine();
@@ -2674,28 +2669,28 @@ loop:
         }
 
         switch (type) {
-        case RBRACE:
-        case SEMICOLON:
-        case EOL:
-        case EOF:
-        case COMMARIGHT:
-        case RPAREN:
-        case RBRACKET:
-        case COLON:
-            if (!yieldAsterisk) {
-                // treat (yield) as (yield void 0)
-                expression = newUndefinedLiteral(yieldToken, finish);
-                if (type == EOL) {
-                    next();
+            case RBRACE:
+            case SEMICOLON:
+            case EOL:
+            case EOF:
+            case COMMARIGHT:
+            case RPAREN:
+            case RBRACKET:
+            case COLON:
+                if (!yieldAsterisk) {
+                    // treat (yield) as (yield void 0)
+                    expression = newUndefinedLiteral(yieldToken, finish);
+                    if (type == EOL) {
+                        next();
+                    }
+                    break;
+                } else {
+                    // AssignmentExpression required, fall through
                 }
-                break;
-            } else {
-                // AssignmentExpression required, fall through
-            }
 
-        default:
-            expression = assignmentExpression(in, true, await);
-            break;
+            default:
+                expression = assignmentExpression(in, true, await);
+                break;
         }
 
         // Construct and add YIELD node.
@@ -2719,16 +2714,16 @@ loop:
     }
 
     /**
+     * Parse with statement.
+     *
+     * <pre>
      * WithStatement :
      *      with ( Expression ) Statement
-     *
-     * See 12.10
-     *
-     * Parse WITH statement.
+     * </pre>
      */
     private void withStatement() {
         // Capture WITH token.
-        final int  withLine  = line;
+        final int withLine = line;
         final long withToken = token;
         // WITH tested in caller.
         next();
@@ -2747,6 +2742,9 @@ loop:
     }
 
     /**
+     * Parse switch statement.
+     *
+     * <pre>
      * SwitchStatement :
      *      switch ( Expression ) CaseBlock
      *
@@ -2763,13 +2761,10 @@ loop:
      *
      * DefaultClause :
      *      default : StatementList?
-     *
-     * See 12.11
-     *
-     * Parse SWITCH statement.
+     * </pre>
      */
     private void switchStatement() {
-        final int  switchLine  = line;
+        final int switchLine = line;
         final long switchToken = token;
 
         // Block around the switch statement with a variable capturing the switch expression value.
@@ -2815,22 +2810,22 @@ loop:
                 final long caseToken = token;
 
                 switch (type) {
-                case CASE:
-                    next();
-                    caseExpression = expression();
-                    break;
+                    case CASE:
+                        next();
+                        caseExpression = expression();
+                        break;
 
-                case DEFAULT:
-                    if (defaultCaseIndex != -1) {
-                        throw error(AbstractParser.message("duplicate.default.in.switch"));
-                    }
-                    next();
-                    break;
+                    case DEFAULT:
+                        if (defaultCaseIndex != -1) {
+                            throw error(AbstractParser.message("duplicate.default.in.switch"));
+                        }
+                        next();
+                        break;
 
-                default:
-                    // Force an error.
-                    expect(CASE);
-                    break;
+                    default:
+                        // Force an error.
+                        expect(CASE);
+                        break;
                 }
 
                 expect(COLON);
@@ -2855,7 +2850,8 @@ loop:
             restoreBlock(switchBlock);
 
             if (switchStatement != null) {
-                appendStatement(new BlockStatement(switchLine, new Block(switchToken, switchStatement.getFinish(), switchBlock.getFlags() | Block.IS_SYNTHETIC | Block.IS_SWITCH_BLOCK, switchStatement)));
+                appendStatement(new BlockStatement(switchLine,
+                                new Block(switchToken, switchStatement.getFinish(), switchBlock.getFlags() | Block.IS_SYNTHETIC | Block.IS_SWITCH_BLOCK, switchStatement)));
             }
             if (outerBlock != null) {
                 restoreBlock(outerBlock);
@@ -2867,12 +2863,12 @@ loop:
     }
 
     /**
+     * Parse label statement.
+     *
+     * <pre>
      * LabelledStatement :
      *      Identifier : Statement
-     *
-     * See 12.12
-     *
-     * Parse label statement.
+     * </pre>
      */
     private void labelStatement(final boolean mayBeFunctionDeclaration) {
         // Capture label token.
@@ -2899,16 +2895,18 @@ loop:
     }
 
     /**
-     * ThrowStatement :
-     *      throw Expression ; // [no LineTerminator here]
-     *
-     * See 12.13
-     *
      * Parse throw statement.
+     *
+     * <pre>
+     * {@code
+     * ThrowStatement:
+     *      throw Expression; // [no LineTerminator here]
+     * }
+     * </pre>
      */
     private void throwStatement() {
         // Capture THROW token.
-        final int  throwLine  = line;
+        final int throwLine = line;
         final long throwToken = token;
         // THROW tested in caller.
         nextOrEOL();
@@ -2917,14 +2915,14 @@ loop:
 
         // SEMICOLON or expression.
         switch (type) {
-        case RBRACE:
-        case SEMICOLON:
-        case EOL:
-            break;
+            case RBRACE:
+            case SEMICOLON:
+            case EOL:
+                break;
 
-        default:
-            expression = expression();
-            break;
+            default:
+                expression = expression();
+                break;
         }
 
         if (expression == null) {
@@ -2937,6 +2935,9 @@ loop:
     }
 
     /**
+     * Parse try statement.
+     *
+     * <pre>
      * TryStatement :
      *      try Block Catch
      *      try Block Finally
@@ -2948,14 +2949,11 @@ loop:
      *
      * Finally :
      *      finally Block
-     *
-     * See 12.14
-     *
-     * Parse TRY statement.
+     * </pre>
      */
     private void tryStatement() {
         // Capture TRY token.
-        final int  tryLine  = line;
+        final int tryLine = line;
         final long tryToken = token;
         // TRY tested in caller.
         next();
@@ -2970,7 +2968,7 @@ loop:
             final ArrayList<Block> catchBlocks = new ArrayList<>();
 
             while (type == CATCH) {
-                final int  catchLine  = line;
+                final int catchLine = line;
                 final long catchToken = token;
                 next();
 
@@ -2985,7 +2983,7 @@ loop:
                 final IdentNode exception;
                 final Expression pattern;
                 if (catchParameter instanceof IdentNode) {
-                    exception = ((IdentNode)catchParameter).setIsCatchParameter();
+                    exception = ((IdentNode) catchParameter).setIsCatchParameter();
                     pattern = null;
                 } else {
                     exception = new IdentNode(Token.recast(catchParameter.getToken(), IDENT), catchParameter.getFinish(), ERROR_BINDING_NAME).setIsCatchParameter();
@@ -3067,16 +3065,11 @@ loop:
     }
 
     /**
-     * DebuggerStatement :
-     *      debugger ;
-     *
-     * See 12.15
-     *
      * Parse debugger statement.
      */
-    private void  debuggerStatement() {
+    private void debuggerStatement() {
         // Capture DEBUGGER token.
-        final int  debuggerLine  = line;
+        final int debuggerLine = line;
         final long debuggerToken = token;
         // DEBUGGER tested in caller.
         next();
@@ -3085,6 +3078,9 @@ loop:
     }
 
     /**
+     * Parse primary expression.
+     *
+     * <pre>
      * PrimaryExpression :
      *      this
      *      IdentifierReference
@@ -3100,79 +3096,79 @@ loop:
      *      ( )
      *      ( ... BindingIdentifier )
      *      ( Expression , ... BindingIdentifier )
+     * </pre>
      *
-     * Parse primary expression.
      * @return Expression node.
      */
     @SuppressWarnings("fallthrough")
     private Expression primaryExpression(boolean yield, boolean await) {
         // Capture first token.
-        final int  primaryLine  = line;
+        final int primaryLine = line;
         final long primaryToken = token;
 
         switch (type) {
-        case THIS:
-            final String name = type.getName();
-            next();
-            markThis(lc);
-            return new IdentNode(primaryToken, finish, name).setIsThis();
-        case IDENT:
-            final IdentNode ident = identifierReference(yield, await);
-            if (ident == null) {
-                break;
-            }
-            detectSpecialProperty(ident);
-            return ident;
-        case NON_OCTAL_DECIMAL:
-            if (isStrictMode) {
-                throw error(AbstractParser.message("strict.no.nonoctaldecimal"), token);
-            }
-        case OCTAL_LEGACY:
-            if (isStrictMode) {
-               throw error(AbstractParser.message("strict.no.octal"), token);
-            }
-        case STRING:
-        case ESCSTRING:
-        case DECIMAL:
-        case HEXADECIMAL:
-        case OCTAL:
-        case BINARY_NUMBER:
-        case BIGINT:
-        case FLOATING:
-        case REGEX:
-        case XML:
-            return getLiteral();
-        case EXECSTRING:
-            return execString(primaryLine, primaryToken);
-        case FALSE:
-            next();
-            return LiteralNode.newInstance(primaryToken, finish, false);
-        case TRUE:
-            next();
-            return LiteralNode.newInstance(primaryToken, finish, true);
-        case NULL:
-            next();
-            return LiteralNode.newInstance(primaryToken, finish);
-        case LBRACKET:
-            return arrayLiteral(yield, await);
-        case LBRACE:
-            return objectLiteral(yield, await);
-        case LPAREN:
-            return parenthesizedExpressionAndArrowParameterList(yield, await);
-        case TEMPLATE:
-        case TEMPLATE_HEAD:
-            return templateLiteral(yield, await);
-
-        default:
-            // In this context some operator tokens mark the start of a literal.
-            if (lexer.scanLiteral(primaryToken, type, lineInfoReceiver)) {
+            case THIS:
+                final String name = type.getName();
                 next();
+                markThis(lc);
+                return new IdentNode(primaryToken, finish, name).setIsThis();
+            case IDENT:
+                final IdentNode ident = identifierReference(yield, await);
+                if (ident == null) {
+                    break;
+                }
+                detectSpecialProperty(ident);
+                return ident;
+            case NON_OCTAL_DECIMAL:
+                if (isStrictMode) {
+                    throw error(AbstractParser.message("strict.no.nonoctaldecimal"), token);
+                }
+            case OCTAL_LEGACY:
+                if (isStrictMode) {
+                    throw error(AbstractParser.message("strict.no.octal"), token);
+                }
+            case STRING:
+            case ESCSTRING:
+            case DECIMAL:
+            case HEXADECIMAL:
+            case OCTAL:
+            case BINARY_NUMBER:
+            case BIGINT:
+            case FLOATING:
+            case REGEX:
+            case XML:
                 return getLiteral();
-            }
-            if (type.isContextualKeyword() || isNonStrictModeIdent()) {
-                return identifierReference(yield, await);
-            }
-            break;
+            case EXECSTRING:
+                return execString(primaryLine, primaryToken);
+            case FALSE:
+                next();
+                return LiteralNode.newInstance(primaryToken, finish, false);
+            case TRUE:
+                next();
+                return LiteralNode.newInstance(primaryToken, finish, true);
+            case NULL:
+                next();
+                return LiteralNode.newInstance(primaryToken, finish);
+            case LBRACKET:
+                return arrayLiteral(yield, await);
+            case LBRACE:
+                return objectLiteral(yield, await);
+            case LPAREN:
+                return parenthesizedExpressionAndArrowParameterList(yield, await);
+            case TEMPLATE:
+            case TEMPLATE_HEAD:
+                return templateLiteral(yield, await);
+
+            default:
+                // In this context some operator tokens mark the start of a literal.
+                if (lexer.scanLiteral(primaryToken, type, lineInfoReceiver)) {
+                    next();
+                    return getLiteral();
+                }
+                if (type.isContextualKeyword() || isNonStrictModeIdent()) {
+                    return identifierReference(yield, await);
+                }
+                break;
         }
 
         return null;
@@ -3203,6 +3199,7 @@ loop:
     /**
      * Parse ArrayLiteral.
      *
+     * <pre>
      * ArrayLiteral :
      *      [ Elision? ]
      *      [ ElementList ]
@@ -3215,6 +3212,7 @@ loop:
      * Elision :
      *      ,
      *      Elision ,
+     * </pre>
      *
      * @return Expression node.
      */
@@ -3230,54 +3228,53 @@ loop:
         boolean elision = true;
         boolean hasSpread = false;
         boolean hasCoverInitializedName = false;
-loop:
-        while (true) {
+        loop: while (true) {
             long spreadToken = 0;
             switch (type) {
-            case RBRACKET:
-                next();
-
-                break loop;
-
-            case COMMARIGHT:
-                next();
-
-                // If no prior expression
-                if (elision) {
-                    elements.add(null);
-                }
-
-                elision = true;
-
-                break;
-
-            case ELLIPSIS:
-                if (ES6_SPREAD_ARRAY) {
-                    hasSpread = true;
-                    spreadToken = token;
+                case RBRACKET:
                     next();
-                }
-                // fall through
 
-            default:
-                if (!elision) {
-                    throw error(AbstractParser.message("expected.comma", type.getNameOrType()));
-                }
+                    break loop;
 
-                // Add expression element.
-                Expression expression = assignmentExpression(true, yield, await, true);
-                if (expression != null) {
-                    if (spreadToken != 0) {
-                        expression = new UnaryNode(Token.recast(spreadToken, SPREAD_ARRAY), expression);
+                case COMMARIGHT:
+                    next();
+
+                    // If no prior expression
+                    if (elision) {
+                        elements.add(null);
                     }
-                    elements.add(expression);
-                    hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(expression);
-                } else {
-                    expect(RBRACKET);
-                }
 
-                elision = false;
-                break;
+                    elision = true;
+
+                    break;
+
+                case ELLIPSIS:
+                    if (ES6_SPREAD_ARRAY) {
+                        hasSpread = true;
+                        spreadToken = token;
+                        next();
+                    }
+                    // fall through
+
+                default:
+                    if (!elision) {
+                        throw error(AbstractParser.message("expected.comma", type.getNameOrType()));
+                    }
+
+                    // Add expression element.
+                    Expression expression = assignmentExpression(true, yield, await, true);
+                    if (expression != null) {
+                        if (spreadToken != 0) {
+                            expression = new UnaryNode(Token.recast(spreadToken, SPREAD_ARRAY), expression);
+                        }
+                        elements.add(expression);
+                        hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(expression);
+                    } else {
+                        expect(RBRACKET);
+                    }
+
+                    elision = false;
+                    break;
             }
         }
 
@@ -3285,6 +3282,9 @@ loop:
     }
 
     /**
+     * Parse an object literal.
+     *
+     * <pre>
      * ObjectLiteral :
      *      { }
      *      { PropertyNameAndValueList } { PropertyNameAndValueList , }
@@ -3292,10 +3292,8 @@ loop:
      * PropertyNameAndValueList :
      *      PropertyAssignment
      *      PropertyNameAndValueList , PropertyAssignment
+     * </pre>
      *
-     * See 11.1.5
-     *
-     * Parse an object literal.
      * @return Expression node.
      */
     private ObjectNode objectLiteral(boolean yield, boolean await) {
@@ -3312,8 +3310,7 @@ loop:
         // Create a block for the object literal.
         boolean commaSeen = true;
         boolean hasCoverInitializedName = false;
-loop:
-        while (true) {
+        loop: while (true) {
             switch (type) {
                 case RBRACE:
                     next();
@@ -3352,11 +3349,11 @@ loop:
 
                     // ECMA section 11.1.5 Object Initialiser
                     // point # 4 on property assignment production
-                    final Expression   value  = property.getValue();
+                    final Expression value = property.getValue();
                     final FunctionNode getter = property.getGetter();
                     final FunctionNode setter = property.getSetter();
 
-                    final Expression   prevValue  = existingProperty.getValue();
+                    final Expression prevValue = existingProperty.getValue();
                     final FunctionNode prevGetter = existingProperty.getGetter();
                     final FunctionNode prevSetter = existingProperty.getSetter();
 
@@ -3387,19 +3384,19 @@ loop:
     }
 
     private static boolean hasCoverInitializedName(Expression value) {
-        return (value != null && (
-                        (value instanceof ObjectNode && ((ObjectNode) value).hasCoverInitializedName()) ||
+        return (value != null && ((value instanceof ObjectNode && ((ObjectNode) value).hasCoverInitializedName()) ||
                         (value instanceof ArrayLiteralNode && ((ArrayLiteralNode) value).hasCoverInitializedName())));
     }
 
-    private void checkPropertyRedefinition(final PropertyNode property, final Expression value, final FunctionNode getter, final FunctionNode setter, final Expression prevValue, final FunctionNode prevGetter, final FunctionNode prevSetter) {
+    private void checkPropertyRedefinition(final PropertyNode property, final Expression value, final FunctionNode getter, final FunctionNode setter,
+                    final Expression prevValue, final FunctionNode prevGetter, final FunctionNode prevSetter) {
         // ECMA 11.1.5 strict mode restrictions
         if (isStrictMode && value != null && prevValue != null) {
             throw error(AbstractParser.message(MESSAGE_PROPERTY_REDEFINITON, property.getKeyName()), property.getToken());
         }
 
         final boolean isPrevAccessor = prevGetter != null || prevSetter != null;
-        final boolean isAccessor     = getter != null     || setter != null;
+        final boolean isAccessor = getter != null || setter != null;
 
         // data property redefined as accessor property
         if (prevValue != null && isAccessor) {
@@ -3412,50 +3409,53 @@ loop:
         }
 
         if (isAccessor && isPrevAccessor) {
-            if (getter != null && prevGetter != null ||
-                    setter != null && prevSetter != null) {
+            if (getter != null && prevGetter != null || setter != null && prevSetter != null) {
                 throw error(AbstractParser.message(MESSAGE_PROPERTY_REDEFINITON, property.getKeyName()), property.getToken());
             }
         }
     }
 
     /**
+     * <pre>
      * LiteralPropertyName :
      *      IdentifierName
      *      StringLiteral
      *      NumericLiteral
+     * </pre>
      *
      * @return PropertyName node
      */
     @SuppressWarnings("fallthrough")
     private PropertyKey literalPropertyName() {
         switch (type) {
-        case IDENT:
-            return getIdent().setIsPropertyName();
-        case NON_OCTAL_DECIMAL:
-            if (isStrictMode) {
-                throw error(AbstractParser.message("strict.no.nonoctaldecimal"), token);
-            }
-        case OCTAL_LEGACY:
-            if (isStrictMode) {
-                throw error(AbstractParser.message("strict.no.octal"), token);
-            }
-        case STRING:
-        case ESCSTRING:
-        case DECIMAL:
-        case HEXADECIMAL:
-        case OCTAL:
-        case BINARY_NUMBER:
-        case FLOATING:
-            return (PropertyKey) getLiteral();
-        default:
-            return getIdentifierName().setIsPropertyName();
+            case IDENT:
+                return getIdent().setIsPropertyName();
+            case NON_OCTAL_DECIMAL:
+                if (isStrictMode) {
+                    throw error(AbstractParser.message("strict.no.nonoctaldecimal"), token);
+                }
+            case OCTAL_LEGACY:
+                if (isStrictMode) {
+                    throw error(AbstractParser.message("strict.no.octal"), token);
+                }
+            case STRING:
+            case ESCSTRING:
+            case DECIMAL:
+            case HEXADECIMAL:
+            case OCTAL:
+            case BINARY_NUMBER:
+            case FLOATING:
+                return (PropertyKey) getLiteral();
+            default:
+                return getIdentifierName().setIsPropertyName();
         }
     }
 
     /**
+     * <pre>
      * ComputedPropertyName :
      *      AssignmentExpression
+     * </pre>
      *
      * @return PropertyName node
      */
@@ -3467,9 +3467,11 @@ loop:
     }
 
     /**
+     * <pre>
      * PropertyName :
      *      LiteralPropertyName
      *      ComputedPropertyName
+     * </pre>
      *
      * @return PropertyName node
      */
@@ -3477,13 +3479,14 @@ loop:
         if (ES6_COMPUTED_PROPERTY_NAME && type == LBRACKET && isES6()) {
             return computedPropertyName(yield, await);
         } else {
-            return (Expression)literalPropertyName();
+            return (Expression) literalPropertyName();
         }
     }
 
     /**
      * Parse an object literal property definition.
      *
+     * <pre>
      * PropertyDefinition :
      *      IdentifierReference
      *      CoverInitializedName
@@ -3492,13 +3495,14 @@ loop:
      *
      * CoverInitializedName :
      *      IdentifierReference = AssignmentExpression
+     * </pre>
      *
      * @return Property or reference node.
      */
     private PropertyNode propertyDefinition(boolean yield, boolean await) {
         // Capture firstToken.
         final long propertyToken = token;
-        final int  functionLine  = line;
+        final int functionLine = line;
 
         final Expression propertyName;
         final boolean isIdentifier;
@@ -3593,7 +3597,7 @@ loop:
         expect(LPAREN);
         expect(RPAREN);
 
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(getterName, getSetToken, FunctionNode.Kind.GETTER, functionLine, Collections.<IdentNode>emptyList(), 0);
+        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(getterName, getSetToken, FunctionNode.Kind.GETTER, functionLine, Collections.<IdentNode> emptyList(), 0);
         functionNode.setFlag(FunctionNode.IS_METHOD);
         if (computed) {
             functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
@@ -3602,20 +3606,19 @@ loop:
 
         Block functionBody;
 
-
         try {
             functionBody = functionBody(functionNode);
         } finally {
             lc.pop(functionNode);
         }
 
-        final FunctionNode  function = createFunctionNode(
-                functionNode,
-                getSetToken,
-                getterName,
-                FunctionNode.Kind.GETTER,
-                functionLine,
-                functionBody);
+        final FunctionNode function = createFunctionNode(
+                        functionNode,
+                        getSetToken,
+                        getterName,
+                        FunctionNode.Kind.GETTER,
+                        functionLine,
+                        functionBody);
 
         return new PropertyFunction(propertyName, function, computed);
     }
@@ -3649,14 +3652,13 @@ loop:
             lc.pop(functionNode);
         }
 
-
-        final FunctionNode  function = createFunctionNode(
-                functionNode,
-                getSetToken,
-                setterName,
-                FunctionNode.Kind.SETTER,
-                functionLine,
-                functionBody);
+        final FunctionNode function = createFunctionNode(
+                        functionNode,
+                        getSetToken,
+                        setterName,
+                        FunctionNode.Kind.SETTER,
+                        functionLine,
+                        functionBody);
 
         return new PropertyFunction(propertyName, function, computed);
     }
@@ -3687,7 +3689,7 @@ loop:
                 functionBody = wrapParameterBlock(functionNode.getParameterBlock(), functionBody);
             }
 
-            final FunctionNode  function = createFunctionNode(
+            final FunctionNode function = createFunctionNode(
                             functionNode,
                             methodToken,
                             methodNameNode,
@@ -3721,7 +3723,7 @@ loop:
         return createIdentNode(propertyKey.getToken(), propertyKey.getFinish(), methodName);
     }
 
-    private static class PropertyFunction {
+    private static final class PropertyFunction {
         final Expression key;
         final FunctionNode functionNode;
         final boolean computed;
@@ -3734,6 +3736,9 @@ loop:
     }
 
     /**
+     * Parse left hand side expression.
+     *
+     * <pre>
      * LeftHandSideExpression :
      *      NewExpression
      *      CallExpression
@@ -3747,14 +3752,12 @@ loop:
      *
      * SuperCall :
      *      super Arguments
+     * </pre>
      *
-     * See 11.2
-     *
-     * Parse left hand side expression.
      * @return Expression node.
      */
     private Expression leftHandSideExpression(boolean yield, boolean await) {
-        int  callLine  = line;
+        int callLine = line;
         long callToken = token;
 
         Expression lhs = memberExpression(yield, await);
@@ -3797,57 +3800,56 @@ loop:
             lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, eval);
         }
 
-loop:
-        while (true) {
+        loop: while (true) {
             // Capture token.
-            callLine  = line;
+            callLine = line;
             callToken = token;
 
             switch (type) {
-            case LPAREN: {
-                // Get NEW or FUNCTION arguments.
-                final List<Expression> arguments = optimizeList(argumentList(yield, await));
+                case LPAREN: {
+                    // Get NEW or FUNCTION arguments.
+                    final List<Expression> arguments = optimizeList(argumentList(yield, await));
 
-                // Create call node.
-                lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
+                    // Create call node.
+                    lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
 
-                break;
-            }
-            case LBRACKET: {
-                next();
+                    break;
+                }
+                case LBRACKET: {
+                    next();
 
-                // Get array index.
-                final Expression rhs = expression(true, yield, await);
+                    // Get array index.
+                    final Expression rhs = expression(true, yield, await);
 
-                expect(RBRACKET);
+                    expect(RBRACKET);
 
-                // Create indexing node.
-                lhs = new IndexNode(callToken, finish, lhs, rhs);
+                    // Create indexing node.
+                    lhs = new IndexNode(callToken, finish, lhs, rhs);
 
-                break;
-            }
-            case PERIOD: {
-                next();
+                    break;
+                }
+                case PERIOD: {
+                    next();
 
-                final IdentNode property = getIdentifierName();
+                    final IdentNode property = getIdentifierName();
 
-                // Create property access node.
-                lhs = new AccessNode(callToken, finish, lhs, property.getName());
+                    // Create property access node.
+                    lhs = new AccessNode(callToken, finish, lhs, property.getName());
 
-                break;
-            }
-            case TEMPLATE:
-            case TEMPLATE_HEAD: {
-                // tagged template literal
-                final List<Expression> arguments = templateLiteralArgumentList(yield, await);
+                    break;
+                }
+                case TEMPLATE:
+                case TEMPLATE_HEAD: {
+                    // tagged template literal
+                    final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                // Create call node.
-                lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
+                    // Create call node.
+                    lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
 
-                break;
-            }
-            default:
-                break loop;
+                    break;
+                }
+                default:
+                    break loop;
             }
         }
 
@@ -3855,13 +3857,14 @@ loop:
     }
 
     /**
+     * Parse new expression.
+     *
+     * <pre>
      * NewExpression :
      *      MemberExpression
      *      new NewExpression
+     * </pre>
      *
-     * See 11.2
-     *
-     * Parse new expression.
      * @return Expression node.
      */
     private Expression newExpression(boolean yield, boolean await) {
@@ -3888,7 +3891,7 @@ loop:
         }
 
         // Get function base.
-        final int  callLine    = line;
+        final int callLine = line;
         final Expression constructor = memberExpression(yield, await);
         if (constructor == null) {
             return null;
@@ -3906,9 +3909,9 @@ loop:
         // Nashorn extension: This is to support the following interface implementation
         // syntax:
         //
-        //     var r = new java.lang.Runnable() {
-        //         run: function() { println("run"); }
-        //     };
+        // var r = new java.lang.Runnable() {
+        // run: function() { println("run"); }
+        // };
         //
         // The object literal following the "new Constructor()" expression
         // is passed as an additional (last) argument to the constructor.
@@ -3922,6 +3925,9 @@ loop:
     }
 
     /**
+     * Parse member expression.
+     *
+     * <pre>
      * MemberExpression :
      *      PrimaryExpression
      *        FunctionExpression
@@ -3940,8 +3946,8 @@ loop:
      *
      * MetaProperty :
      *      NewTarget
+     * </pre>
      *
-     * Parse member expression.
      * @return Expression node.
      */
     private Expression memberExpression(boolean yield, boolean await) {
@@ -3950,131 +3956,130 @@ loop:
         boolean isSuper = false;
 
         switch (type) {
-        case NEW:
-            // Get new expression.
-            lhs = newExpression(yield, await);
-            break;
-
-        case FUNCTION:
-            // Get function expression.
-            lhs = functionExpression(false, false);
-            break;
-
-        case CLASS:
-            if (ES6_CLASS && isES6()) {
-                lhs = classExpression(yield, await);
+            case NEW:
+                // Get new expression.
+                lhs = newExpression(yield, await);
                 break;
-            }
-            // fall through
 
-        case SUPER:
-            if (ES6_CLASS && isES6()) {
-                ParserContextFunctionNode currentFunction = lc.getCurrentNonArrowFunction();
-                if (currentFunction.isMethod()) {
-                    long identToken = Token.recast(token, IDENT);
-                    next();
-                    lhs = new IdentNode(identToken, finish, SUPER.getName()).setIsSuper();
+            case FUNCTION:
+                // Get function expression.
+                lhs = functionExpression(false, false);
+                break;
 
-                    switch (type) {
-                        case LBRACKET:
-                        case PERIOD:
-                            currentFunction.setFlag(FunctionNode.USES_SUPER);
-                            isSuper = true;
-                            break;
-                        case LPAREN:
-                            if (currentFunction.isSubclassConstructor()) {
-                                lhs = ((IdentNode)lhs).setIsDirectSuper();
-                                break;
-                            } else {
-                                // fall through to throw error
-                            }
-                        default:
-                            throw error(AbstractParser.message("invalid.super"), identToken);
-                    }
+            case CLASS:
+                if (ES6_CLASS && isES6()) {
+                    lhs = classExpression(yield, await);
                     break;
                 }
-            }
-            // fall through
+                // fall through
 
-        case ASYNC:
-            if (isAsync() && lookaheadIsAsyncFunction()) {
-                lhs = asyncFunctionExpression(false, false);
+            case SUPER:
+                if (ES6_CLASS && isES6()) {
+                    ParserContextFunctionNode currentFunction = lc.getCurrentNonArrowFunction();
+                    if (currentFunction.isMethod()) {
+                        long identToken = Token.recast(token, IDENT);
+                        next();
+                        lhs = new IdentNode(identToken, finish, SUPER.getName()).setIsSuper();
+
+                        switch (type) {
+                            case LBRACKET:
+                            case PERIOD:
+                                currentFunction.setFlag(FunctionNode.USES_SUPER);
+                                isSuper = true;
+                                break;
+                            case LPAREN:
+                                if (currentFunction.isSubclassConstructor()) {
+                                    lhs = ((IdentNode) lhs).setIsDirectSuper();
+                                    break;
+                                } else {
+                                    // fall through to throw error
+                                }
+                            default:
+                                throw error(AbstractParser.message("invalid.super"), identToken);
+                        }
+                        break;
+                    }
+                }
+                // fall through
+
+            case ASYNC:
+                if (isAsync() && lookaheadIsAsyncFunction()) {
+                    lhs = asyncFunctionExpression(false, false);
+                    break;
+                }
+                // fall through
+
+            case IMPORT:
+                if (isES2020() && type == IMPORT) {
+                    lhs = importExpression(yield, await);
+                    break;
+                }
+                // fall through
+
+            default:
+                // Get primary expression.
+                lhs = primaryExpression(yield, await);
                 break;
-            }
-            // fall through
-
-        case IMPORT:
-            if (isES2020() && type == IMPORT) {
-                lhs = importExpression(yield, await);
-                break;
-            }
-            // fall through
-
-        default:
-            // Get primary expression.
-            lhs = primaryExpression(yield, await);
-            break;
         }
 
-loop:
-        while (true) {
+        loop: while (true) {
             // Capture token.
             final long callToken = token;
 
             switch (type) {
-            case LBRACKET: {
-                next();
+                case LBRACKET: {
+                    next();
 
-                // Get array index.
-                final Expression index = expression(true, yield, await);
+                    // Get array index.
+                    final Expression index = expression(true, yield, await);
 
-                expect(RBRACKET);
+                    expect(RBRACKET);
 
-                // Create indexing node.
-                lhs = new IndexNode(callToken, finish, lhs, index);
+                    // Create indexing node.
+                    lhs = new IndexNode(callToken, finish, lhs, index);
 
-                if (isSuper) {
-                    isSuper = false;
-                    lhs = ((BaseNode) lhs).setIsSuper();
+                    if (isSuper) {
+                        isSuper = false;
+                        lhs = ((BaseNode) lhs).setIsSuper();
+                    }
+
+                    break;
                 }
+                case PERIOD: {
+                    if (lhs == null) {
+                        throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
+                    }
 
-                break;
-            }
-            case PERIOD: {
-                if (lhs == null) {
-                    throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
+                    next();
+
+                    final IdentNode property = getIdentifierName();
+
+                    // Create property access node.
+                    lhs = new AccessNode(callToken, finish, lhs, property.getName());
+
+                    if (isSuper) {
+                        isSuper = false;
+                        lhs = ((BaseNode) lhs).setIsSuper();
+                    }
+
+                    break;
                 }
+                case TEMPLATE:
+                case TEMPLATE_HEAD: {
+                    // tagged template literal
+                    if (lhs == null) {
+                        throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
+                    }
 
-                next();
+                    final int callLine = line;
+                    final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                final IdentNode property = getIdentifierName();
+                    lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
 
-                // Create property access node.
-                lhs = new AccessNode(callToken, finish, lhs, property.getName());
-
-                if (isSuper) {
-                    isSuper = false;
-                    lhs = ((BaseNode) lhs).setIsSuper();
+                    break;
                 }
-
-                break;
-            }
-            case TEMPLATE:
-            case TEMPLATE_HEAD: {
-                // tagged template literal
-                if (lhs == null) {
-                    throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
-                }
-
-                final int callLine = line;
-                final List<Expression> arguments = templateLiteralArgumentList(yield, await);
-
-                lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false);
-
-                break;
-            }
-            default:
-                break loop;
+                default:
+                    break loop;
             }
         }
 
@@ -4119,6 +4124,8 @@ loop:
     /**
      * Parse function call arguments.
      *
+     * <pre>
+     * {@code
      * Arguments :
      *      ( )
      *      ( ArgumentList )
@@ -4128,6 +4135,8 @@ loop:
      *      ... AssignmentExpression
      *      ArgumentList , AssignmentExpression
      *      ArgumentList , ... AssignmentExpression
+     * }
+     * </pre>
      *
      * @return Argument list.
      */
@@ -4171,7 +4180,7 @@ loop:
     }
 
     private static <T> List<T> optimizeList(final ArrayList<T> list) {
-        switch(list.size()) {
+        switch (list.size()) {
             case 0: {
                 return Collections.emptyList();
             }
@@ -4186,7 +4195,7 @@ loop:
     }
 
     private static <T> List<T> optimizeList(final List<T> list) {
-        switch(list.size()) {
+        switch (list.size()) {
             case 0:
                 return Collections.emptyList();
             case 1:
@@ -4198,9 +4207,11 @@ loop:
     }
 
     /**
+     * <pre>
      * AsyncFunctionExpression :
      *     async [no LineTerminator here] function ( FormalParameters[Await] ) { AsyncFunctionBody }
      *     async [no LineTerminator here] function BindingIdentifier[Await] ( FormalParameters[Await] ) { AsyncFunctionBody }
+     * </pre>
      */
     private Expression asyncFunctionExpression(final boolean isStatement, final boolean topLevel) {
         assert isAsync() && lookaheadIsAsyncFunction();
@@ -4218,16 +4229,18 @@ loop:
     }
 
     /**
+     * Parse function declaration.
+     *
+     * <pre>
      * FunctionDeclaration :
      *      function Identifier ( FormalParameterList? ) { FunctionBody }
      *
      * FunctionExpression :
      *      function Identifier? ( FormalParameterList? ) { FunctionBody }
+     * </pre>
      *
-     * See 13
      *
-     * Parse function declaration.
-     * @param isStatement True if for is a statement.
+     * @param isStatement true if parsing in a statement context.
      *
      * @return Expression node.
      */
@@ -4280,8 +4293,10 @@ loop:
         lc.push(functionNode);
 
         Block functionBody = null;
-        // Hide the current default name across function boundaries. E.g. "x3 = function x1() { function() {}}"
-        // If we didn't hide the current default name, then the innermost anonymous function would receive "x3".
+        // Hide the current default name across function boundaries.
+        // E.g. "x3 = function x1() { function() {}}"
+        // If we didn't hide the current default name, then the innermost anonymous function would
+        // receive "x3".
         hideDefaultName();
 
         try {
@@ -4318,12 +4333,12 @@ loop:
         verifyParameterList(functionNode);
 
         final FunctionNode function = createFunctionNode(
-                functionNode,
-                functionToken,
-                name,
-                functionKind,
-                functionLine,
-                functionBody);
+                        functionNode,
+                        functionToken,
+                        name,
+                        functionKind,
+                        functionLine,
+                        functionBody);
 
         if (isStatement) {
             if (isAnonymous) {
@@ -4332,8 +4347,8 @@ loop:
             }
 
             // mark ES6 block functions as lexically scoped
-            final int     varFlags = ((topLevel && !isModule) || !useBlockScope()) ? 0 : VarNode.IS_LET;
-            final VarNode varNode  = new VarNode(functionLine, functionToken, finish, name, function, varFlags);
+            final int varFlags = ((topLevel && !isModule) || !useBlockScope()) ? 0 : VarNode.IS_LET;
+            final VarNode varNode = new VarNode(functionLine, functionToken, finish, name, function, varFlags);
             if (topLevel) {
                 functionDeclarations.add(varNode);
             } else if (useBlockScope()) {
@@ -4395,17 +4410,17 @@ loop:
             final Object nameExpr = defaultNames.get(defaultNames.size() - 1);
             if (nameExpr instanceof PropertyKey) {
                 markDefaultNameUsed();
-                return ((PropertyKey)nameExpr).getPropertyName();
+                return ((PropertyKey) nameExpr).getPropertyName();
             } else if (nameExpr instanceof AccessNode) {
-                AccessNode accessNode = (AccessNode)nameExpr;
+                AccessNode accessNode = (AccessNode) nameExpr;
                 markDefaultNameUsed();
                 if (accessNode.getBase() instanceof AccessNode) {
-                    AccessNode base = (AccessNode)accessNode.getBase();
+                    AccessNode base = (AccessNode) accessNode.getBase();
                     if (base.getBase() instanceof IdentNode && base.getProperty().equals(PROTOTYPE_NAME)) {
-                        return ((IdentNode)base.getBase()).getName() + "." + accessNode.getProperty();
+                        return ((IdentNode) base.getBase()).getName() + "." + accessNode.getProperty();
                     }
                 } else if (accessNode.getBase() instanceof IdentNode) {
-                    return ((IdentNode)accessNode.getBase()).getName() + "." + accessNode.getProperty();
+                    return ((IdentNode) accessNode.getBase()).getName() + "." + accessNode.getProperty();
                 }
                 return accessNode.getProperty();
             }
@@ -4419,8 +4434,8 @@ loop:
     }
 
     private void hideDefaultName() {
-        // Can be any value as long as getDefaultFunctionName doesn't recognize it as something it can extract a value
-        // from. Can't be null
+        // Can be any value as long as getDefaultFunctionName doesn't recognize it as something it
+        // can extract a value from. Can't be null.
         defaultNames.add("");
     }
 
@@ -4505,13 +4520,14 @@ loop:
     }
 
     /**
-     * Parse function parameter list.
-     * Same as the other method of the same name - except that the end
-     * token type expected is passed as argument to this method.
+     * Parse function parameter list. Same as the other method of the same name - except that the
+     * end token type expected is passed as argument to this method.
      *
+     * <pre>
      * FormalParameterList :
      *      Identifier
      *      FormalParameterList , Identifier
+     * </pre>
      */
     private void formalParameterList(final TokenType endType, final boolean yield, final boolean await) {
         // Track commas.
@@ -4587,12 +4603,13 @@ loop:
     }
 
     /**
+     * Parse function body.
+     *
+     * <pre>
      * FunctionBody :
      *      SourceElements?
+     * </pre>
      *
-     * See 13
-     *
-     * Parse function body.
      * @return function node (body.)
      */
     private Block functionBody(final ParserContextFunctionNode functionNode) {
@@ -4611,12 +4628,9 @@ loop:
             parseBody = reparsedFunction == null || functionId <= reparsedFunction.getFunctionNodeId();
             // Nashorn extension: expression closures
             if ((env.syntaxExtensions || functionNode.getKind() == FunctionNode.Kind.ARROW) && type != LBRACE) {
-                /*
-                 * Example:
-                 *
-                 * function square(x) x * x;
-                 * print(square(3));
-                 */
+                // Example:
+                // function square(x) x * x;
+                // print(square(3));
 
                 // just expression as function body
                 final Expression expr = assignmentExpression(true);
@@ -4625,11 +4639,13 @@ loop:
                 assert lc.getCurrentBlock() == lc.getFunctionBody(functionNode);
                 // EOL uses length field to store the line number
                 final int lastFinish = Token.descPosition(lastToken) + (Token.descType(lastToken) == EOL ? 0 : Token.descLength(lastToken));
-                // Only create the return node if we aren't skipping nested functions. Note that we aren't
-                // skipping parsing of these extended functions; they're considered to be small anyway. Also,
-                // they don't end with a single well known token, so it'd be very hard to get correctly (see
-                // the note below for reasoning on skipping happening before instead of after RBRACE for
-                // details).
+                /*
+                 * Only create the return node if we aren't skipping nested functions. Note that we
+                 * aren't skipping parsing of these extended functions; they're considered to be
+                 * small anyway. Also, they don't end with a single well known token, so it'd be
+                 * very hard to get correctly (see the note below for reasoning on skipping
+                 * happening before instead of after RBRACE for details).
+                 */
                 if (parseBody) {
                     final ReturnNode returnNode = new ReturnNode(functionNode.getLineNumber(), expr.getToken(), lastFinish, expr);
                     appendStatement(returnNode);
@@ -4650,6 +4666,7 @@ loop:
                     }
 
                     if (parseBody) {
+                        //@formatter:off
                         // Since the lexer can read ahead and lexify some number of tokens in advance and have
                         // them buffered in the TokenStream, we need to produce a lexer state as it was just
                         // before it lexified RBRACE, and not whatever is its current (quite possibly well read
@@ -4665,6 +4682,7 @@ loop:
                         // because lexer is doing weird off-by-one maneuvers around string literal quotes. Instead
                         // of compensating for the possibility of a string literal (or similar) after RBRACE,
                         // we'll rather just restart parsing from this well-known, friendly token instead.
+                        //@formatter:on
                     }
                 }
                 bodyFinish = Token.descPosition(token) + Token.descLength(token);
@@ -4680,26 +4698,32 @@ loop:
         if (parseBody) {
             functionNode.setEndParserState(endParserState);
         } else if (!body.getStatements().isEmpty()) {
-            // This is to ensure the body is empty when !parseBody but we couldn't skip parsing it (see
-            // skipFunctionBody() for possible reasons). While it is not strictly necessary for correctness to
-            // enforce empty bodies in nested functions that were supposed to be skipped, we do assert it as
-            // an invariant in few places in the compiler pipeline, so for consistency's sake we'll throw away
-            // nested bodies early if we were supposed to skip 'em.
-            body.setStatements(Collections.<Statement>emptyList());
+            /*
+             * This is to ensure the body is empty when !parseBody but we couldn't skip parsing it
+             * (see skipFunctionBody() for possible reasons). While it is not strictly necessary for
+             * correctness to enforce empty bodies in nested functions that were supposed to be
+             * skipped, we do assert it as an invariant in few places in the compiler pipeline, so
+             * for consistency's sake we'll throw away nested bodies early if we were supposed to
+             * skip 'em.
+             */
+            body.setStatements(Collections.<Statement> emptyList());
         }
 
         if (reparsedFunction != null) {
-            // We restore the flags stored in the function's ScriptFunctionData that we got when we first
-            // eagerly parsed the code. We're doing it because some flags would be set based on the
-            // content of the function, or even content of its nested functions, most of which are normally
-            // skipped during an on-demand compilation.
+            /*
+             * We restore the flags stored in the function's ScriptFunctionData that we got when we
+             * first eagerly parsed the code. We're doing it because some flags would be set based
+             * on the content of the function, or even content of its nested functions, most of
+             * which are normally skipped during an on-demand compilation.
+             */
             final RecompilableScriptFunctionData data = reparsedFunction.getScriptFunctionData(functionNode.getId());
             if (data != null) {
-                // Data can be null if when we originally parsed the file, we removed the function declaration
-                // as it was dead code.
+                // Data can be null if when we originally parsed the file, we removed the function
+                // declaration as it was dead code.
                 functionNode.setFlag(data.getFunctionFlags());
-                // This compensates for missing markEval() in case the function contains an inner function
-                // that contains eval(), that now we didn't discover since we skipped the inner function.
+                // This compensates for missing markEval() in case the function contains an inner
+                // function that contains eval(), that now we didn't discover since we skipped the
+                // inner function.
                 if (functionNode.hasNestedEval()) {
                     assert functionNode.hasScopeBlock();
                     body.setFlag(Block.NEEDS_SCOPE);
@@ -4718,12 +4742,15 @@ loop:
         // Skip to the RBRACE of this function, and continue parsing from there.
         final RecompilableScriptFunctionData data = reparsedFunction.getScriptFunctionData(functionNode.getId());
         if (data == null) {
-            // Nested function is not known to the reparsed function. This can happen if the FunctionNode was
-            // in dead code that was removed. Both FoldConstants and Lower prune dead code. In that case, the
-            // FunctionNode was dropped before a RecompilableScriptFunctionData could've been created for it.
+            /*
+             * Nested function is not known to the reparsed function. This can happen if the
+             * FunctionNode was in dead code that was removed. Both FoldConstants and Lower prune
+             * dead code. In that case, the FunctionNode was dropped before a
+             * RecompilableScriptFunctionData could've been created for it.
+             */
             return false;
         }
-        final ParserState parserState = (ParserState)data.getEndParserState();
+        final ParserState parserState = (ParserState) data.getEndParserState();
         assert parserState != null;
 
         if (k < stream.last() && start < parserState.position && parserState.position <= Token.descPosition(stream.get(stream.last()))) {
@@ -4753,8 +4780,8 @@ loop:
     }
 
     /**
-     * Encapsulates part of the state of the parser, enough to reconstruct the state of both parser and lexer
-     * for resuming parsing after skipping a function body.
+     * Encapsulates part of the state of the parser, enough to reconstruct the state of both parser
+     * and lexer for resuming parsing after skipping a function body.
      */
     private static class ParserState {
         private final int position;
@@ -4767,7 +4794,8 @@ loop:
             this.linePosition = linePosition;
         }
 
-        Lexer createLexer(final Source source, final Lexer lexer, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
+        Lexer createLexer(final Source source, final Lexer lexer, final TokenStream stream,
+                        final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
             final Lexer newLexer = new Lexer(source, position, lexer.limit - position, stream, scripting, es6, shebang, isModule, true, allowBigInt);
             newLexer.restoreState(new Lexer.State(position, Integer.MAX_VALUE, line, -1, linePosition, SEMICOLON));
             return newLexer;
@@ -4779,7 +4807,7 @@ loop:
         for (int i = functionDeclarations.size() - 1; i >= 0; i--) {
             Statement decl = functionDeclarations.get(i);
             if (lastDecl == null && decl instanceof VarNode) {
-                decl = lastDecl = ((VarNode)decl).setFlag(VarNode.IS_LAST_FUNCTION_DECLARATION);
+                decl = lastDecl = ((VarNode) decl).setFlag(VarNode.IS_LAST_FUNCTION_DECLARATION);
                 functionNode.setFlag(FunctionNode.HAS_FUNCTION_DECLARATIONS);
             }
             prependStatement(decl);
@@ -4802,12 +4830,13 @@ loop:
     }
 
     /**
+     * Parse unary expression.
+     *
+     * <pre>
      * PostfixExpression :
      *      LeftHandSideExpression
      *      LeftHandSideExpression ++ // [no LineTerminator here]
      *      LeftHandSideExpression -- // [no LineTerminator here]
-     *
-     * See 11.3
      *
      * UnaryExpression :
      *      PostfixExpression
@@ -4820,90 +4849,88 @@ loop:
      *      - UnaryExpression
      *      ~ UnaryExpression
      *      ! UnaryExpression
+     * </pre>
      *
-     * See 11.4
-     *
-     * Parse unary expression.
      * @return Expression node.
      */
     private Expression unaryExpression(boolean yield, boolean await) {
-        final int  unaryLine  = line;
+        final int unaryLine = line;
         final long unaryToken = token;
 
         switch (type) {
-        case DELETE: {
-            next();
-            final Expression expr = unaryExpression(yield, await);
+            case DELETE: {
+                next();
+                final Expression expr = unaryExpression(yield, await);
 
-            if (type == TokenType.EXP) {
-                throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
-            }
-
-            if (expr instanceof BaseNode || expr instanceof IdentNode) {
-                if (isStrictMode && expr instanceof IdentNode) {
-                    IdentNode ident = (IdentNode) expr;
-                    if (!ident.isThis() && !ident.isMetaProperty()) {
-                        throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
-                    }
+                if (type == TokenType.EXP) {
+                    throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
                 }
+
+                if (expr instanceof BaseNode || expr instanceof IdentNode) {
+                    if (isStrictMode && expr instanceof IdentNode) {
+                        IdentNode ident = (IdentNode) expr;
+                        if (!ident.isThis() && !ident.isMetaProperty()) {
+                            throw error(AbstractParser.message("strict.cant.delete.ident", ident.getName()), unaryToken);
+                        }
+                    }
+                    return new UnaryNode(unaryToken, expr);
+                }
+                appendStatement(new ExpressionStatement(unaryLine, unaryToken, finish, expr));
+                return LiteralNode.newInstance(unaryToken, finish, true);
+            }
+            case VOID:
+            case TYPEOF:
+            case ADD:
+            case SUB:
+            case BIT_NOT:
+            case NOT:
+                next();
+                final Expression expr = unaryExpression(yield, await);
+
+                if (type == TokenType.EXP) {
+                    throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
+                }
+
                 return new UnaryNode(unaryToken, expr);
-            }
-            appendStatement(new ExpressionStatement(unaryLine, unaryToken, finish, expr));
-            return LiteralNode.newInstance(unaryToken, finish, true);
-        }
-        case VOID:
-        case TYPEOF:
-        case ADD:
-        case SUB:
-        case BIT_NOT:
-        case NOT:
-            next();
-            final Expression expr = unaryExpression(yield, await);
 
-            if (type == TokenType.EXP) {
-                throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
-            }
+            case INCPREFIX:
+            case DECPREFIX:
+                final TokenType opType = type;
+                next();
 
-            return new UnaryNode(unaryToken, expr);
+                final Expression lhs = unaryExpression(yield, await);
+                // ++, -- without operand..
+                if (lhs == null) {
+                    throw error(AbstractParser.message("expected.lvalue", type.getNameOrType()));
+                }
 
-        case INCPREFIX:
-        case DECPREFIX:
-            final TokenType opType = type;
-            next();
+                return verifyIncDecExpression(unaryToken, opType, lhs, false);
 
-            final Expression lhs = unaryExpression(yield, await);
-            // ++, -- without operand..
-            if (lhs == null) {
-                throw error(AbstractParser.message("expected.lvalue", type.getNameOrType()));
-            }
-
-            return verifyIncDecExpression(unaryToken, opType, lhs, false);
-
-        default:
-            if (isAwait() && await) {
-                return awaitExpression(yield);
-            }
-            break;
+            default:
+                if (isAwait() && await) {
+                    return awaitExpression(yield);
+                }
+                break;
         }
 
         Expression expression = leftHandSideExpression(yield, await);
 
         if (last != EOL) {
             switch (type) {
-            case INCPREFIX:
-            case DECPREFIX:
-                final long opToken = token;
-                final TokenType opType = type;
-                final Expression lhs = expression;
-                // ++, -- without operand..
-                if (lhs == null) {
-                    throw error(AbstractParser.message("expected.lvalue", type.getNameOrType()));
-                }
-                next();
+                case INCPREFIX:
+                case DECPREFIX:
+                    final long opToken = token;
+                    final TokenType opType = type;
+                    final Expression lhs = expression;
+                    // ++, -- without operand..
+                    if (lhs == null) {
+                        throw error(AbstractParser.message("expected.lvalue", type.getNameOrType()));
+                    }
+                    next();
 
-                return verifyIncDecExpression(opToken, opType, lhs, true);
-            default:
-                break;
+                    return verifyIncDecExpression(opToken, opType, lhs, true);
+                default:
+                    break;
             }
         }
 
@@ -4918,21 +4945,21 @@ loop:
         assert lhs != null;
 
         if (!(lhs instanceof AccessNode ||
-              lhs instanceof IndexNode ||
-              lhs instanceof IdentNode)) {
+                        lhs instanceof IndexNode ||
+                        lhs instanceof IdentNode)) {
             return referenceError(lhs, null, env.earlyLvalueError);
         }
 
         if (lhs instanceof IdentNode) {
-            if (!checkIdentLValue((IdentNode)lhs)) {
+            if (!checkIdentLValue((IdentNode) lhs)) {
                 return referenceError(lhs, null, false);
             }
-            if (((IdentNode)lhs).isMetaProperty()) {
+            if (((IdentNode) lhs).isMetaProperty()) {
                 return referenceError(lhs, null, true);
             }
             assert opType == TokenType.INCPREFIX || opType == TokenType.DECPREFIX;
             String contextString = opType == TokenType.INCPREFIX ? "operand for ++ operator" : "operand for -- operator";
-            verifyStrictIdent((IdentNode)lhs, contextString);
+            verifyStrictIdent((IdentNode) lhs, contextString);
         }
 
         return incDecExpression(unaryToken, opType, lhs, isPostfix);
@@ -5093,8 +5120,10 @@ loop:
 
             boolean rhsRestParameter = false;
             if (ES6_ARROW_FUNCTION && ES6_REST_PARAMETER && isES6() && type == ELLIPSIS) {
-                // (a, b, ...rest) is not a valid expression, unless we're parsing the parameter list of an arrow function (we need to throw the right error).
-                // But since the rest parameter is always last, at least we know that the expression has to end here and be followed by RPAREN and ARROW, so peek ahead.
+                // (a, b, ...rest) is not a valid expression, unless we're parsing the parameter
+                // list of an arrow function (we need to throw the right error).
+                // But since the rest parameter is always last, at least we know that the expression
+                // has to end here and be followed by RPAREN and ARROW, so peek ahead.
                 if (isRestParameterEndOfArrowParameterList()) {
                     next();
                     rhsRestParameter = true;
@@ -5108,9 +5137,9 @@ loop:
             hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(rhs);
 
             if (rhsRestParameter) {
-                rhs = ((IdentNode)rhs).setIsRestParameter();
+                rhs = ((IdentNode) rhs).setIsRestParameter();
                 // Our only valid move is to end Expression here and continue with ArrowFunction.
-                // We've already checked that this is the parameter list of an arrow function (see above).
+                // We've already checked above that this is the parameter list of an arrow function.
                 // RPAREN is next, so we'll finish the binary expression and drop out of the loop.
                 assert type == RPAREN;
             }
@@ -5170,16 +5199,14 @@ loop:
                 next();
 
                 assert !Token.descType(op).isAssignment();
-                 // Get the next primary expression.
+                // Get the next primary expression.
                 Expression rhs = unaryExpression(yield, await);
 
                 // Get precedence of next operator.
                 int nextPrecedence = type.getPrecedence();
 
                 // Subtask greater precedence.
-                while (checkOperator(in) &&
-                       (nextPrecedence > precedence ||
-                       nextPrecedence == precedence && !type.isLeftAssociative())) {
+                while (checkOperator(in) && (nextPrecedence > precedence || (nextPrecedence == precedence && !type.isLeftAssociative()))) {
                     rhs = expression(rhs, nextPrecedence, in, yield, await);
                     nextPrecedence = type.getPrecedence();
                 }
@@ -5207,13 +5234,10 @@ loop:
     /**
      * AssignmentExpression.
      *
-     * AssignmentExpression[In, Yield] :
-     *   ConditionalExpression[?In, ?Yield]
-     *   [+Yield] YieldExpression[?In]
-     *   ArrowFunction[?In, ?Yield]
-     *   AsyncArrowFunction
-     *   LeftHandSideExpression[?Yield] = AssignmentExpression[?In, ?Yield]
-     *   LeftHandSideExpression[?Yield] AssignmentOperator AssignmentExpression[?In, ?Yield]
+     * AssignmentExpression[In, Yield] : ConditionalExpression[?In, ?Yield] [+Yield]
+     * YieldExpression[?In] ArrowFunction[?In, ?Yield] AsyncArrowFunction
+     * LeftHandSideExpression[?Yield] = AssignmentExpression[?In, ?Yield]
+     * LeftHandSideExpression[?Yield] AssignmentOperator AssignmentExpression[?In, ?Yield]
      */
     private Expression assignmentExpression(boolean in, boolean yield, boolean await, boolean inPatternPosition) {
         if (type == YIELD && yield) {
@@ -5333,8 +5357,8 @@ loop:
         ParserContextFunctionNode current = iter.next();
         ParserContextFunctionNode parent = iter.next();
         if (parent.getFlag(FunctionNode.HAS_EVAL) != 0) {
-            // we might have flagged has-eval in the parent function during parsing the parameter list,
-            // if the parameter list contains eval; must tag arrow function as has-eval.
+            // we might have flagged has-eval in the parent function during parsing the parameter
+            // list; if the parameter list contains eval; must tag arrow function as has-eval.
             for (Statement st : parameterBlock.getStatements()) {
                 st.accept(new NodeVisitor<LexicalContext>(new LexicalContext()) {
                     @Override
@@ -5398,7 +5422,7 @@ loop:
     private void convertArrowParameter(Expression param, int index, int paramLine, ParserContextFunctionNode currentFunction) {
         assert index == currentFunction.getParameterCount();
         if (param instanceof IdentNode) {
-            IdentNode ident = (IdentNode)param;
+            IdentNode ident = (IdentNode) param;
             verifyStrictIdent(ident, FUNCTION_PARAMETER_CONTEXT);
             if (ident.isParenthesized() || currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
                 throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
@@ -5495,23 +5519,23 @@ loop:
         for (int i = k - 1; i >= 0; i--) {
             TokenType t = T(i);
             switch (t) {
-            case RPAREN:
-            case IDENT:
-                return true;
-            case EOL:
-                return false;
-            case COMMENT:
-                continue;
-            default:
-                return (t.isContextualKeyword() || t.isFutureStrict());
+                case RPAREN:
+                case IDENT:
+                    return true;
+                case EOL:
+                    return false;
+                case COMMENT:
+                    continue;
+                default:
+                    return (t.isContextualKeyword() || t.isFutureStrict());
             }
         }
         return false;
     }
 
     /**
-     * Peek ahead to see if what follows after the ellipsis is a rest parameter
-     * at the end of an arrow function parameter list.
+     * Peek ahead to see if what follows after the ellipsis is a rest parameter at the end of an
+     * arrow function parameter list.
      */
     private boolean isRestParameterEndOfArrowParameterList() {
         assert type == ELLIPSIS;
@@ -5573,20 +5597,20 @@ loop:
      */
     private void endOfLine() {
         switch (type) {
-        case SEMICOLON:
-        case EOL:
-            next();
-            break;
-        case RPAREN:
-        case RBRACKET:
-        case RBRACE:
-        case EOF:
-            break;
-        default:
-            if (last != EOL) {
-                expect(SEMICOLON);
-            }
-            break;
+            case SEMICOLON:
+            case EOL:
+                next();
+                break;
+            case RPAREN:
+            case RBRACKET:
+            case RBRACE:
+            case EOF:
+                break;
+            default:
+                if (last != EOL) {
+                    expect(SEMICOLON);
+                }
+                break;
         }
     }
 
@@ -5639,6 +5663,7 @@ loop:
 
     /**
      * Parse tagged template literal as argument list.
+     *
      * @return argument list for a tag function call (template object, ...substitutions)
      */
     private List<Expression> templateLiteralArgumentList(boolean yield, boolean await) {
@@ -5692,21 +5717,22 @@ loop:
         cookedStrings.add(cookedExpression);
     }
 
-
     /**
      * Parse a module.
      *
+     * <pre>
      * Module :
      *      ModuleBody?
      *
      * ModuleBody :
      *      ModuleItemList
+     * </pre>
      */
     private FunctionNode module(final String moduleName) {
         // Make a pseudo-token for the script holding its start and length.
         int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
-        final int  functionLine  = line;
+        final int functionLine = line;
 
         final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), moduleName);
         final ParserContextFunctionNode script = createParserContextFunctionNode(
@@ -5714,7 +5740,7 @@ loop:
                         functionToken,
                         FunctionNode.Kind.MODULE,
                         functionLine,
-                        Collections.<IdentNode>emptyList(), 0);
+                        Collections.<IdentNode> emptyList(), 0);
         lc.push(script);
 
         final ParserContextModuleNode module = new ParserContextModuleNode(moduleName);
@@ -5743,6 +5769,7 @@ loop:
     /**
      * Parse module body.
      *
+     * <pre>
      * ModuleBody :
      *      ModuleItemList
      *
@@ -5754,26 +5781,27 @@ loop:
      *      ImportDeclaration
      *      ExportDeclaration
      *      StatementListItem
+     * </pre>
      */
     private void moduleBody(ParserContextModuleNode module) {
         loop: while (type != EOF) {
             switch (type) {
-            case EOF:
-                break loop;
-            case EXPORT:
-                exportDeclaration(module);
-                break;
-            case IMPORT:
-                // Ensure we are parsing an import declaration and not import.meta or import().
-                if (!isImportExpression()) {
-                    importDeclaration(module);
+                case EOF:
+                    break loop;
+                case EXPORT:
+                    exportDeclaration(module);
                     break;
-                }
-                // fall through
-            default:
-                // StatementListItem
-                statement(true, 0, false, false, false);
-                break;
+                case IMPORT:
+                    // Ensure we are parsing an import declaration and not import.meta or import().
+                    if (!isImportExpression()) {
+                        importDeclaration(module);
+                        break;
+                    }
+                    // fall through
+                default:
+                    // StatementListItem
+                    statement(true, 0, false, false, false);
+                    break;
             }
         }
     }
@@ -5790,6 +5818,7 @@ loop:
     /**
      * Parse import declaration.
      *
+     * <pre>
      * ImportDeclaration :
      *     import ImportClause FromClause ;
      *     import ModuleSpecifier ;
@@ -5805,6 +5834,7 @@ loop:
      *     StringLiteral
      * ImportedBinding :
      *     BindingIdentifier
+     * </pre>
      */
     private void importDeclaration(ParserContextModuleNode module) {
         final long importToken = token;
@@ -5826,7 +5856,7 @@ loop:
                 NameSpaceImportNode namespaceNode = nameSpaceImport();
                 importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namespaceNode);
                 importEntries = Collections.singletonList(
-                        ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getName()));
+                                ImportEntry.importStarAsNameSpaceFrom(namespaceNode.getBindingIdentifier().getName()));
             } else if (type == LBRACE) {
                 NamedImportsNode namedImportsNode = namedImports();
                 importClause = new ImportClauseNode(startToken, Token.descPosition(startToken), finish, namedImportsNode);
@@ -5874,8 +5904,10 @@ loop:
     }
 
     /**
+     * <pre>
      * NameSpaceImport :
-     *     * as ImportedBinding
+     *      * as ImportedBinding
+     * </pre>
      *
      * @return imported binding identifier
      */
@@ -5891,6 +5923,7 @@ loop:
     }
 
     /**
+     * <pre>
      * NamedImports :
      *     { }
      *     { ImportsList }
@@ -5903,6 +5936,7 @@ loop:
      *     IdentifierName as ImportedBinding
      * ImportedBinding :
      *     BindingIdentifier
+     * </pre>
      */
     private NamedImportsNode namedImports() {
         final long startToken = token;
@@ -5917,12 +5951,13 @@ loop:
                 next();
                 IdentNode localName = bindingIdentifier(false, false, IMPORTED_BINDING_CONTEXT);
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
-                //importEntries.add(ImportEntry.importSpecifier(importName.getName(), localName.getName()));
+                // importEntries.add(ImportEntry.importSpecifier(importName.getName(),
+                // localName.getName()));
             } else if (bindingIdentifier) {
                 verifyIdent(importName, false, false);
                 verifyStrictIdent(importName, IMPORTED_BINDING_CONTEXT);
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, importName, null));
-                //importEntries.add(ImportEntry.importSpecifier(importName.getName()));
+                // importEntries.add(ImportEntry.importSpecifier(importName.getName()));
             } else {
                 // expected BindingIdentifier
                 throw error(AbstractParser.message("expected.binding.identifier"), nameToken);
@@ -5938,8 +5973,10 @@ loop:
     }
 
     /**
+     * <pre>
      * FromClause :
-     *     from ModuleSpecifier
+     *      from ModuleSpecifier
+     * </pre>
      */
     private FromNode fromClause() {
         int fromStart = start;
@@ -5960,6 +5997,7 @@ loop:
     /**
      * Parse export declaration.
      *
+     * <pre>
      * ExportDeclaration :
      *     export * FromClause ;
      *     export ExportClause FromClause ;
@@ -5969,6 +6007,7 @@ loop:
      *     export default HoistableDeclaration[Default]
      *     export default ClassDeclaration[Default]
      *     export default [lookahead !in {function, class}] AssignmentExpression[In] ;
+     * </pre>
      */
     private void exportDeclaration(ParserContextModuleNode module) {
         final long exportToken = token;
@@ -6080,15 +6119,18 @@ loop:
 
     private static IdentNode getClassDeclarationName(Expression classDeclaration) {
         if (classDeclaration instanceof ClassNode) {
-            return ((ClassNode)classDeclaration).getIdent();
+            return ((ClassNode) classDeclaration).getIdent();
         } else {
-            Expression expression = ((ExpressionStatement)((BlockExpression)classDeclaration).getBlock().getLastStatement()).getExpression();
+            Expression expression = ((ExpressionStatement) ((BlockExpression) classDeclaration).getBlock().getLastStatement()).getExpression();
             assert expression instanceof IdentNode || (expression instanceof ClassNode && ((ClassNode) expression).getIdent() == null);
-            return expression instanceof IdentNode ? (IdentNode)expression : null;
+            return expression instanceof IdentNode ? (IdentNode) expression : null;
         }
     }
 
     /**
+     * Parse an export clause.
+     *
+     * <pre>
      * ExportClause :
      *     { }
      *     { ExportsList }
@@ -6099,6 +6141,7 @@ loop:
      * ExportSpecifier :
      *     IdentifierName
      *     IdentifierName as IdentifierName
+     * </pre>
      *
      * @return a list of ExportSpecifiers
      */
@@ -6123,10 +6166,11 @@ loop:
                 next();
                 IdentNode exportName = getIdentifierName();
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, exportName));
-                //exports.add(ExportEntry.exportSpecifier(exportName.getName(), localName.getName()));
+                // exports.add(ExportEntry.exportSpecifier(exportName.getName(),
+                // localName.getName()));
             } else {
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, null));
-                //exports.add(ExportEntry.exportSpecifier(localName.getName()));
+                // exports.add(ExportEntry.exportSpecifier(localName.getName()));
             }
             if (type == COMMARIGHT) {
                 next();
@@ -6170,9 +6214,11 @@ loop:
                 fn.setFlag(FunctionNode.HAS_NESTED_EVAL);
             }
             final ParserContextBlockNode body = lc.getFunctionBody(fn);
-            // NOTE: it is crucial to mark the body of the outer function as needing scope even when we skip
-            // parsing a nested function. functionBody() contains code to compensate for the lack of invoking
-            // this method when the parser skips a nested function.
+            /*
+             * NOTE: it is crucial to mark the body of the outer function as needing scope even when
+             * we skip parsing a nested function. functionBody() contains code to compensate for the
+             * lack of invoking this method when the parser skips a nested function.
+             */
             if (body != null) { // may be null while parsing the parameter list
                 body.setFlag(Block.NEEDS_SCOPE);
             }
@@ -6276,12 +6322,12 @@ loop:
             long currentToken = getToken(k + i);
             TokenType t = Token.descType(currentToken);
             switch (t) {
-            case COMMENT:
-                continue;
-            case FUNCTION:
-                return true;
-            default:
-                return false;
+                case COMMENT:
+                    continue;
+                case FUNCTION:
+                    return true;
+                default:
+                    return false;
             }
         }
     }
@@ -6302,8 +6348,8 @@ loop:
     }
 
     /**
-     * Parse and return an expression.
-     * Errors will be thrown and the error manager will contain information if parsing should fail.
+     * Parse and return an expression. Errors will be thrown and the error manager will contain
+     * information if parsing should fail.
      *
      * @return expression node resulting from successful parse
      */
