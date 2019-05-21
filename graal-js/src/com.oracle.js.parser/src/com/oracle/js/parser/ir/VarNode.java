@@ -44,7 +44,6 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * Node represents a var/let declaration.
  */
@@ -59,21 +58,21 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
     private final int flags;
 
     /**
-     * source order id to be used for this node. If this is -1, then we
-     * the default which is start position of this node. See also the
-     * method Node::getSourceOrder.
+     * source order id to be used for this node. If this is -1, then we the default which is start
+     * position of this node. See also the method Node::getSourceOrder.
      */
     private final int sourceOrder;
 
     /** Flag for ES6 LET declaration */
-    public static final int IS_LET                       = 1 << 0;
+    public static final int IS_LET = 1 << 0;
 
     /** Flag for ES6 CONST declaration */
-    public static final int IS_CONST                     = 1 << 1;
+    public static final int IS_CONST = 1 << 1;
 
-    /** Flag that determines if this is the last function declaration in a function
-     *  This is used to micro optimize the placement of return value assignments for
-     *  a program node */
+    /**
+     * Flag that determines if this is the last function declaration in a function This is used to
+     * micro optimize the placement of return value assignments for a program node
+     */
     public static final int IS_LAST_FUNCTION_DECLARATION = 1 << 2;
 
     /** Flag synthetic export var node */
@@ -86,10 +85,10 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
      * Constructor
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
-     * @param name       name of variable
-     * @param init       init node or null if just a declaration
+     * @param token token
+     * @param finish finish
+     * @param name name of variable
+     * @param init init node or null if just a declaration
      */
     public VarNode(final int lineNumber, final long token, final int finish, final IdentNode name, final Expression init) {
         this(lineNumber, token, finish, name, init, 0);
@@ -106,12 +105,12 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
     /**
      * Constructor
      *
-     * @param lineNumber  line number
-     * @param token       token
-     * @param finish      finish
-     * @param name        name of variable
-     * @param init        init node or null if just a declaration
-     * @param flags       flags
+     * @param lineNumber line number
+     * @param token token
+     * @param finish finish
+     * @param name name of variable
+     * @param init init node or null if just a declaration
+     * @param flags flags
      */
     public VarNode(final int lineNumber, final long token, final int finish, final IdentNode name, final Expression init, final int flags) {
         this(lineNumber, token, -1, finish, name, init, flags);
@@ -120,19 +119,19 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
     /**
      * Constructor
      *
-     * @param lineNumber  line number
-     * @param token       token
+     * @param lineNumber line number
+     * @param token token
      * @param sourceOrder source order
-     * @param finish      finish
-     * @param name        name of variable
-     * @param init        init node or null if just a declaration
-     * @param flags       flags
+     * @param finish finish
+     * @param name name of variable
+     * @param init init node or null if just a declaration
+     * @param flags flags
      */
     public VarNode(final int lineNumber, final long token, final int sourceOrder, final int finish, final IdentNode name, final Expression init, final int flags) {
         super(lineNumber, token, finish);
         this.sourceOrder = sourceOrder;
-        this.name  = init == null ? name : name.setIsInitializedHere();
-        this.init  = init;
+        this.name = init == null ? name : name.setIsInitializedHere();
+        this.init = init;
         this.flags = flags;
     }
 
@@ -158,6 +157,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Is this a VAR node block scoped? This returns true for ECMAScript 6 LET and CONST nodes.
+     *
      * @return true if an ES6 LET or CONST node
      */
     public boolean isBlockScoped() {
@@ -166,6 +166,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Is this an ECMAScript 6 LET node?
+     *
      * @return true if LET node
      */
     public boolean isLet() {
@@ -174,6 +175,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Is this an ECMAScript 6 CONST node?
+     *
      * @return true if CONST node
      */
     public boolean isConst() {
@@ -182,6 +184,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Return the flags to use for symbols for this declaration.
+     *
      * @return the symbol flags
      */
     public int getSymbolFlags() {
@@ -195,6 +198,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Does this variable declaration have an init value
+     *
      * @return true if an init exists, false otherwise
      */
     public boolean hasInit() {
@@ -203,15 +207,16 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Assist in IR navigation.
+     *
      * @param visitor IR navigating visitor.
      */
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterVarNode(this)) {
             // var is right associative, so visit init before name
-            final Expression newInit = init == null ? null : (Expression)init.accept(visitor);
-            final IdentNode  newName = (IdentNode)name.accept(visitor);
-            final VarNode    newThis;
+            final Expression newInit = init == null ? null : (Expression) init.accept(visitor);
+            final IdentNode newName = (IdentNode) name.accept(visitor);
+            final VarNode newThis;
             if (name != newName || init != newInit) {
                 newThis = new VarNode(this, newName, newInit, flags);
             } else {
@@ -240,6 +245,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * If this is an assignment of the form {@code var x = init;}, get the init part.
+     *
      * @return the expression to initialize the variable to, null if just a declaration
      */
     public Expression getInit() {
@@ -248,6 +254,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Get the identifier for the variable
+     *
      * @return IdentNode representing the variable being set or declared
      */
     public IdentNode getName() {
@@ -263,6 +270,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Check if a flag is set for this var node
+     *
      * @param flag flag
      * @return true if flag is set
      */
@@ -272,6 +280,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Set a flag for this var node
+     *
      * @param flag flag
      * @return new node if flags changed, same otherwise
      */
@@ -280,19 +289,22 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
     }
 
     /**
-     * Returns true if this is a HoistableDeclaration (i.e., FunctionDeclaration, GeneratorDeclaration, or AsyncFunctionDeclaration).
+     * Returns true if this is a HoistableDeclaration (i.e., FunctionDeclaration,
+     * GeneratorDeclaration, or AsyncFunctionDeclaration).
+     *
      * @return true if this is a HoistableDeclaration
      */
     public boolean isHoistableDeclaration() {
-        return init instanceof FunctionNode && ((FunctionNode)init).isDeclared();
+        return init instanceof FunctionNode && ((FunctionNode) init).isDeclared();
     }
 
     /**
      * Returns true if this is a FunctionDeclaration.
+     *
      * @return true if this is a FunctionDeclaration
      */
     public boolean isFunctionDeclaration() {
-        return init instanceof FunctionNode && ((FunctionNode)init).isFunctionDeclaration();
+        return init instanceof FunctionNode && ((FunctionNode) init).isFunctionDeclaration();
     }
 
     public boolean isExport() {

@@ -45,7 +45,6 @@ import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation of an object literal property.
  */
@@ -74,12 +73,12 @@ public final class PropertyNode extends Node {
     /**
      * Constructor
      *
-     * @param token   token
-     * @param finish  finish
-     * @param key     the key of this property
-     * @param value   the value of this property
-     * @param getter  getter function body
-     * @param setter  setter function body
+     * @param token token
+     * @param finish finish
+     * @param key the key of this property
+     * @param value the value of this property
+     * @param getter getter function body
+     * @param setter setter function body
      */
     public PropertyNode(long token, int finish, Expression key, Expression value, FunctionNode getter, FunctionNode setter,
                     boolean isStatic, boolean computed, boolean coverInitializedName, boolean proto) {
@@ -109,6 +108,7 @@ public final class PropertyNode extends Node {
 
     /**
      * Get the name of the property key
+     *
      * @return key name
      */
     public String getKeyName() {
@@ -118,11 +118,13 @@ public final class PropertyNode extends Node {
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterPropertyNode(this)) {
+            //@formatter:off
             return visitor.leavePropertyNode(
-                setKey((Expression)key.accept(visitor)).
-                setValue(value == null ? null : (Expression)value.accept(visitor)).
-                setGetter(getter == null ? null : (FunctionNode)getter.accept(visitor)).
-                setSetter(setter == null ? null : (FunctionNode)setter.accept(visitor)));
+                setKey((Expression) key.accept(visitor)).
+                setValue(value == null ? null : (Expression) value.accept(visitor)).
+                setGetter(getter == null ? null : (FunctionNode) getter.accept(visitor)).
+                setSetter(setter == null ? null : (FunctionNode) setter.accept(visitor)));
+            //@formatter:on
         }
 
         return this;
@@ -139,9 +141,9 @@ public final class PropertyNode extends Node {
             if (isStatic) {
                 sb.append("static ");
             }
-            if (value instanceof FunctionNode && ((FunctionNode)value).isMethod()) {
+            if (value instanceof FunctionNode && ((FunctionNode) value).isMethod()) {
                 toStringKey(sb, printType);
-                ((FunctionNode)value).toStringTail(sb, printType);
+                ((FunctionNode) value).toStringTail(sb, printType);
             } else {
                 toStringKey(sb, printType);
                 sb.append(": ");
@@ -180,6 +182,7 @@ public final class PropertyNode extends Node {
 
     /**
      * Get the getter for this property
+     *
      * @return getter or null if none exists
      */
     public FunctionNode getGetter() {
@@ -188,6 +191,7 @@ public final class PropertyNode extends Node {
 
     /**
      * Set the getter of this property, null if none
+     *
      * @param getter getter
      * @return same node or new node if state changed
      */
@@ -200,6 +204,7 @@ public final class PropertyNode extends Node {
 
     /**
      * Return the key for this property node
+     *
      * @return the key
      */
     public Expression getKey() {
@@ -215,6 +220,7 @@ public final class PropertyNode extends Node {
 
     /**
      * Get the setter for this property
+     *
      * @return setter or null if none exists
      */
     public FunctionNode getSetter() {
@@ -223,6 +229,7 @@ public final class PropertyNode extends Node {
 
     /**
      * Set the setter for this property, null if none
+     *
      * @param setter setter
      * @return same node or new node if state changed
      */
@@ -235,6 +242,7 @@ public final class PropertyNode extends Node {
 
     /**
      * Get the value of this property
+     *
      * @return property value
      */
     public Expression getValue() {
@@ -243,6 +251,7 @@ public final class PropertyNode extends Node {
 
     /**
      * Set the value of this property
+     *
      * @param value new value
      * @return same node or new node if state changed
      */
@@ -251,7 +260,7 @@ public final class PropertyNode extends Node {
             return this;
         }
         return new PropertyNode(this, key, value, getter, setter, isStatic, computed, coverInitializedName, proto);
-   }
+    }
 
     public boolean isStatic() {
         return isStatic;

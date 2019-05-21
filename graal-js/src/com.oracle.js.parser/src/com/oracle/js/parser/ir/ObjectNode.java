@@ -47,7 +47,6 @@ import java.util.List;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation of an object literal.
  */
@@ -61,8 +60,8 @@ public final class ObjectNode extends Expression {
     /**
      * Constructor
      *
-     * @param token    token
-     * @param finish   finish
+     * @param token token
+     * @param finish finish
      * @param elements the elements used to initialize this ObjectNode
      */
     public ObjectNode(final long token, final int finish, final List<PropertyNode> elements, final boolean hasCoverInitializedName) {
@@ -115,6 +114,7 @@ public final class ObjectNode extends Expression {
 
     /**
      * Get the elements of this literal node
+     *
      * @return a list of elements
      */
     public List<PropertyNode> getElements() {

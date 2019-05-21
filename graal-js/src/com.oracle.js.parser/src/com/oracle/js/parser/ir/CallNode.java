@@ -48,7 +48,6 @@ import com.oracle.js.parser.Token;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation for a function call.
  */
@@ -77,37 +76,37 @@ public final class CallNode extends LexicalContextExpression {
      * Constructors
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
-     * @param function   the function to call
-     * @param args       args to the call
-     * @param isNew      true if this is a constructor call with the "new" keyword
+     * @param token token
+     * @param finish finish
+     * @param function the function to call
+     * @param args args to the call
+     * @param isNew true if this is a constructor call with the "new" keyword
      */
     public CallNode(final int lineNumber, final long token, final int finish, final Expression function, final List<Expression> args, final boolean isNew) {
         super(Token.withDelimiter(token), finish);
 
-        this.function       = function;
-        this.args           = args;
-        this.flags          = isNew ? IS_NEW : 0;
-        this.lineNumber     = lineNumber;
+        this.function = function;
+        this.args = args;
+        this.flags = isNew ? IS_NEW : 0;
+        this.lineNumber = lineNumber;
     }
 
     /**
      * Constructors
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param start      start
-     * @param finish     finish
-     * @param function   the function to call
-     * @param args       args to the call
-     * @param isNew      true if this is a constructor call with the "new" keyword
+     * @param token token
+     * @param start start
+     * @param finish finish
+     * @param function the function to call
+     * @param args args to the call
+     * @param isNew true if this is a constructor call with the "new" keyword
      */
-    public CallNode(final int lineNumber, final long token, final int start,  final int finish, final Expression function, final List<Expression> args, final boolean isNew) {
+    public CallNode(final int lineNumber, final long token, final int start, final int finish, final Expression function, final List<Expression> args, final boolean isNew) {
         this(lineNumber, token, start, finish, function, args, isNew ? IS_NEW : 0);
     }
 
-    public CallNode(final int lineNumber, final long token, final int start,  final int finish, final Expression function, final List<Expression> args, final boolean isNew, final boolean isEval) {
+    public CallNode(final int lineNumber, final long token, final int start, final int finish, final Expression function, final List<Expression> args, final boolean isNew, final boolean isEval) {
         this(lineNumber, token, start, finish, function, args, (isNew ? IS_NEW : 0) | (isEval ? IS_EVAL : 0));
     }
 
@@ -115,13 +114,13 @@ public final class CallNode extends LexicalContextExpression {
         return new CallNode(lineNumber, token, start, finish, importIdent, args, IS_IMPORT);
     }
 
-    private CallNode(final int lineNumber, final long token, final int start,  final int finish, final Expression function, final List<Expression> args, final int flags) {
+    private CallNode(final int lineNumber, final long token, final int start, final int finish, final Expression function, final List<Expression> args, final int flags) {
         super(token, start, finish);
 
-        this.function       = function;
-        this.args           = args;
-        this.flags          = flags;
-        this.lineNumber     = lineNumber;
+        this.function = function;
+        this.args = args;
+        this.flags = flags;
+        this.lineNumber = lineNumber;
     }
 
     private CallNode(final CallNode callNode, final Expression function, final List<Expression> args, final int flags) {
@@ -134,6 +133,7 @@ public final class CallNode extends LexicalContextExpression {
 
     /**
      * Returns the line number.
+     *
      * @return the line number.
      */
     public int getLineNumber() {
@@ -150,14 +150,16 @@ public final class CallNode extends LexicalContextExpression {
     @Override
     public Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterCallNode(this)) {
-            final CallNode newCallNode = (CallNode)visitor.leaveCallNode(
-                    setFunction((Expression)function.accept(visitor)).
+            //@formatter:off
+            final CallNode newCallNode = (CallNode) visitor.leaveCallNode(
+                    setFunction((Expression) function.accept(visitor)).
                     setArgs(Node.accept(visitor, args)));
             // Theoretically, we'd need to instead pass lc to every setter and do a replacement on each. In practice,
             // setType from TypeOverride can't accept a lc, and we don't necessarily want to go there now.
             if (this != newCallNode) {
                 return Node.replaceInLexicalContext(lc, this, newCallNode);
             }
+            //@formatter:on
         }
 
         return this;
@@ -193,6 +195,7 @@ public final class CallNode extends LexicalContextExpression {
 
     /**
      * Get the arguments for the call
+     *
      * @return a list of arguments
      */
     public List<Expression> getArgs() {
@@ -201,6 +204,7 @@ public final class CallNode extends LexicalContextExpression {
 
     /**
      * Reset the arguments for the call
+     *
      * @param args new arguments list
      * @return new callnode, or same if unchanged
      */
@@ -213,6 +217,7 @@ public final class CallNode extends LexicalContextExpression {
 
     /**
      * Check if this call is a call to {@code eval}
+     *
      * @return true if this is a call to {@code eval}
      */
     public boolean isEval() {
@@ -221,6 +226,7 @@ public final class CallNode extends LexicalContextExpression {
 
     /**
      * Return the function expression that this call invokes
+     *
      * @return the function
      */
     public Expression getFunction() {
@@ -229,6 +235,7 @@ public final class CallNode extends LexicalContextExpression {
 
     /**
      * Reset the function expression that this call invokes
+     *
      * @param function the function
      * @return same node or new one on state change
      */
@@ -241,6 +248,7 @@ public final class CallNode extends LexicalContextExpression {
 
     /**
      * Check if this call is a new operation
+     *
      * @return true if this a new operation
      */
     public boolean isNew() {

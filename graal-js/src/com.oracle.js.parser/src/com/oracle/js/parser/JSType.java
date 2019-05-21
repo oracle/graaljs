@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser;
 
-// @formatter:off
 /**
  * Representation for ECMAScript types - this maps directly to the ECMA script standard
  */
@@ -50,8 +49,9 @@ public final class JSType {
     }
 
     /**
-     * Returns true if double number can be represented as an int. Note that it returns true for negative
-     * zero. If you need to exclude negative zero, use {@link #isStrictlyRepresentableAsInt(double)}.
+     * Returns true if double number can be represented as an int. Note that it returns true for
+     * negative zero. If you need to exclude negative zero, use
+     * {@link #isStrictlyRepresentableAsInt(double)}.
      *
      * @param number a double to inspect
      *
@@ -62,8 +62,9 @@ public final class JSType {
     }
 
     /**
-     * Returns true if double number can be represented as an int. Note that it returns false for negative
-     * zero. If you don't need to distinguish negative zero, use {@link #isRepresentableAsInt(double)}.
+     * Returns true if double number can be represented as an int. Note that it returns false for
+     * negative zero. If you don't need to distinguish negative zero, use
+     * {@link #isRepresentableAsInt(double)}.
      *
      * @param number a double to inspect
      *
@@ -74,8 +75,9 @@ public final class JSType {
     }
 
     /**
-     * Returns true if double number can be represented as a long. Note that it returns true for negative
-     * zero. If you need to exclude negative zero, use {@link #isStrictlyRepresentableAsLong(double)}.
+     * Returns true if double number can be represented as a long. Note that it returns true for
+     * negative zero. If you need to exclude negative zero, use
+     * {@link #isStrictlyRepresentableAsLong(double)}.
      *
      * @param number a double to inspect
      * @return true for long representable doubles
@@ -85,8 +87,9 @@ public final class JSType {
     }
 
     /**
-     * Returns true if double number can be represented as a long. Note that it returns false for negative
-     * zero. If you don't need to distinguish negative zero, use {@link #isRepresentableAsLong(double)}.
+     * Returns true if double number can be represented as a long. Note that it returns false for
+     * negative zero. If you don't need to distinguish negative zero, use
+     * {@link #isRepresentableAsLong(double)}.
      *
      * @param number a double to inspect
      *
@@ -98,6 +101,7 @@ public final class JSType {
 
     /**
      * Returns true if the number is not the negative zero ({@code -0.0d}).
+     *
      * @param number the number to test
      * @return true if it is not the negative zero, false otherwise.
      */

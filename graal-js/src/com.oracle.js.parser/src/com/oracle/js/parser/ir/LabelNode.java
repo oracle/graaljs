@@ -44,11 +44,10 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
- * IR representation for a labeled statement. It implements JoinPredecessor to hold conversions that need to be effected
- * when the block exits normally, but is also targeted by a break statement that might bring different local variable
- * types to the join at the break point.
+ * IR representation for a labeled statement. It implements JoinPredecessor to hold conversions that
+ * need to be effected when the block exits normally, but is also targeted by a break statement that
+ * might bring different local variable types to the join at the break point.
  */
 public final class LabelNode extends LexicalContextStatement {
     /** Label ident. */
@@ -61,16 +60,16 @@ public final class LabelNode extends LexicalContextStatement {
      * Constructor
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
-     * @param labelName  label name
-     * @param body       body of label node
+     * @param token token
+     * @param finish finish
+     * @param labelName label name
+     * @param body body of label node
      */
     public LabelNode(final int lineNumber, final long token, final int finish, final String labelName, final Block body) {
         super(lineNumber, token, finish);
 
         this.labelName = labelName;
-        this.body  = body;
+        this.body = body;
     }
 
     private LabelNode(final LabelNode labelNode, final String labelName, final Block body) {
@@ -87,7 +86,7 @@ public final class LabelNode extends LexicalContextStatement {
     @Override
     public Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterLabelNode(this)) {
-            return visitor.leaveLabelNode(setBody(lc, (Block)body.accept(visitor)));
+            return visitor.leaveLabelNode(setBody(lc, (Block) body.accept(visitor)));
         }
 
         return this;
@@ -105,6 +104,7 @@ public final class LabelNode extends LexicalContextStatement {
 
     /**
      * Get the body of the node
+     *
      * @return the body
      */
     public Block getBody() {
@@ -113,6 +113,7 @@ public final class LabelNode extends LexicalContextStatement {
 
     /**
      * Reset the body of the node
+     *
      * @param lc lexical context
      * @param body new body
      * @return new for node if changed or existing if not
@@ -126,6 +127,7 @@ public final class LabelNode extends LexicalContextStatement {
 
     /**
      * Get the label name
+     *
      * @return the label
      */
     public String getLabelName() {

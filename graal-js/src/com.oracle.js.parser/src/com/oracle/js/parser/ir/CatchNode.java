@@ -44,7 +44,6 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation of a catch clause.
  */
@@ -66,47 +65,50 @@ public final class CatchNode extends Statement {
     /**
      * Constructors
      *
-     * @param lineNumber         lineNumber
-     * @param token              token
-     * @param finish             finish
-     * @param exception          variable name of exception
-     * @param pattern            catch parameter destructuring assignment
+     * @param lineNumber lineNumber
+     * @param token token
+     * @param finish finish
+     * @param exception variable name of exception
+     * @param pattern catch parameter destructuring assignment
      * @param exceptionCondition exception condition
-     * @param body               catch body
+     * @param body catch body
      * @param isSyntheticRethrow true if this node is a synthetically generated rethrow node.
      */
     public CatchNode(final int lineNumber, final long token, final int finish, final IdentNode exception,
-            final Expression pattern, final Expression exceptionCondition, final Block body, final boolean isSyntheticRethrow) {
+                    final Expression pattern, final Expression exceptionCondition, final Block body, final boolean isSyntheticRethrow) {
         super(lineNumber, token, finish);
-        this.exception          = exception == null ? null : exception.setIsInitializedHere();
-        this.pattern            = pattern;
+        this.exception = exception == null ? null : exception.setIsInitializedHere();
+        this.pattern = pattern;
         this.exceptionCondition = exceptionCondition;
-        this.body               = body;
+        this.body = body;
         this.isSyntheticRethrow = isSyntheticRethrow;
     }
 
     private CatchNode(final CatchNode catchNode, final IdentNode exception, final Expression pattern,
-            final Expression exceptionCondition, final Block body, final boolean isSyntheticRethrow) {
+                    final Expression exceptionCondition, final Block body, final boolean isSyntheticRethrow) {
         super(catchNode);
-        this.exception          = exception;
-        this.pattern            = pattern;
+        this.exception = exception;
+        this.pattern = pattern;
         this.exceptionCondition = exceptionCondition;
-        this.body               = body;
+        this.body = body;
         this.isSyntheticRethrow = isSyntheticRethrow;
     }
 
     /**
      * Assist in IR navigation.
+     *
      * @param visitor IR navigating visitor.
      */
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterCatchNode(this)) {
+            //@formatter:off
             return visitor.leaveCatchNode(
-                setException(exception == null ? null : (IdentNode)exception.accept(visitor)).
-                setDestructuringPattern(pattern == null ? null : (Expression)pattern.accept(visitor)).
-                setExceptionCondition(exceptionCondition == null ? null : (Expression)exceptionCondition.accept(visitor)).
-                setBody((Block)body.accept(visitor)));
+                setException(exception == null ? null : (IdentNode) exception.accept(visitor)).
+                setDestructuringPattern(pattern == null ? null : (Expression) pattern.accept(visitor)).
+                setExceptionCondition(exceptionCondition == null ? null : (Expression) exceptionCondition.accept(visitor)).
+                setBody((Block) body.accept(visitor)));
+            //@formatter:on
         }
 
         return this;
@@ -141,6 +143,7 @@ public final class CatchNode extends Statement {
 
     /**
      * Get the identifier representing the exception thrown
+     *
      * @return the exception identifier
      */
     public Expression getException() {
@@ -149,6 +152,7 @@ public final class CatchNode extends Statement {
 
     /**
      * Get the exception condition for this catch block
+     *
      * @return the exception condition
      */
     public Expression getExceptionCondition() {
@@ -157,6 +161,7 @@ public final class CatchNode extends Statement {
 
     /**
      * Reset the exception condition for this catch block
+     *
      * @param exceptionCondition the new exception condition
      * @return new or same CatchNode
      */
@@ -169,6 +174,7 @@ public final class CatchNode extends Statement {
 
     /**
      * Get the body for this catch block
+     *
      * @return the catch block body
      */
     public Block getBody() {
@@ -177,6 +183,7 @@ public final class CatchNode extends Statement {
 
     /**
      * Resets the exception of a catch block
+     *
      * @param exception new exception
      * @return new catch node if changed, same otherwise
      */
@@ -189,6 +196,7 @@ public final class CatchNode extends Statement {
 
     /**
      * Get the exception destructuring pattern for this catch block
+     *
      * @return the destructuring pattern
      */
     public Expression getDestructuringPattern() {
@@ -197,6 +205,7 @@ public final class CatchNode extends Statement {
 
     /**
      * Resets the exception destructuring pattern of a catch block
+     *
      * @param pattern new pattern
      * @return new catch node if changed, same otherwise
      */
@@ -215,10 +224,10 @@ public final class CatchNode extends Statement {
     }
 
     /**
-     * Is this catch block a non-JavaScript constructor, for example created as
-     * part of the rethrow mechanism of a finally block in Lower? Then we just
-     * pass the exception on and need not unwrap whatever is in the ECMAException
-     * object catch symbol
+     * Is this catch block a non-JavaScript constructor, for example created as part of the rethrow
+     * mechanism of a finally block in Lower? Then we just pass the exception on and need not unwrap
+     * whatever is in the ECMAException object catch symbol
+     *
      * @return true if a finally synthetic rethrow
      */
     public boolean isSyntheticRethrow() {

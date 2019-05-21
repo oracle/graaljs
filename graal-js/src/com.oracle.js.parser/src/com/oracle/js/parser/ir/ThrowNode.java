@@ -44,9 +44,8 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
- * IR representation for THROW statements.
+ * IR representation for throw statements.
  */
 public final class ThrowNode extends Statement {
     /** Exception expression. */
@@ -58,8 +57,8 @@ public final class ThrowNode extends Statement {
      * Constructor
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
+     * @param token token
+     * @param finish finish
      * @param expression expression to throw
      * @param isSyntheticRethrow true if this throw node is part of a synthetic rethrow.
      */
@@ -82,12 +81,13 @@ public final class ThrowNode extends Statement {
 
     /**
      * Assist in IR navigation.
+     *
      * @param visitor IR navigating visitor.
      */
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterThrowNode(this)) {
-            return visitor.leaveThrowNode(setExpression((Expression)expression.accept(visitor)));
+            return visitor.leaveThrowNode(setExpression((Expression) expression.accept(visitor)));
         }
 
         return this;
@@ -109,6 +109,7 @@ public final class ThrowNode extends Statement {
 
     /**
      * Get the expression that is being thrown by this node
+     *
      * @return expression
      */
     public Expression getExpression() {
@@ -117,6 +118,7 @@ public final class ThrowNode extends Statement {
 
     /**
      * Reset the expression being thrown by this node
+     *
      * @param expression new expression
      * @return new or same thrownode
      */
@@ -128,9 +130,10 @@ public final class ThrowNode extends Statement {
     }
 
     /**
-     * Is this a throw a synthetic rethrow in a synthetic catch-all block
-     * created when inlining finally statements? In that case we never
-     * wrap whatever is thrown into an ECMAException, just rethrow it.
+     * Is this a throw a synthetic rethrow in a synthetic catch-all block created when inlining
+     * finally statements? In that case we never wrap whatever is thrown into an ECMAException, just
+     * rethrow it.
+     *
      * @return true if synthetic throw node
      */
     public boolean isSyntheticRethrow() {

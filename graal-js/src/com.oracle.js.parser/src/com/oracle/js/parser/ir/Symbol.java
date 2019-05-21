@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-// @formatter:off
 /**
  * Symbol is a symbolic address for a value ("variable" if you wish). Identifiers in JavaScript
  * source, as well as certain synthetic variables created by the compiler are represented by Symbol
@@ -57,7 +56,7 @@ package com.oracle.js.parser.ir;
  * to their location.
  */
 public final class Symbol implements Comparable<Symbol> {
-    /** Is this Global */
+    /** Is this a global variable */
     public static final int IS_GLOBAL = 1;
     /** Is this a variable */
     public static final int IS_VAR = 2;
@@ -85,14 +84,14 @@ public final class Symbol implements Comparable<Symbol> {
     /** Is this symbol seen a declaration? Used for block scoped LET and CONST symbols only. */
     public static final int HAS_BEEN_DECLARED = 1 << 10;
     /**
-     * Is this symbol a var declaration instantiated in this block?
-     * If not, this is a var declaration hoisted to another block.
-     * Used for duplicate checking with block scoped symbols.
+     * Is this symbol a var declaration instantiated in this block? If not, this is a var
+     * declaration hoisted to another block. Used for duplicate checking with block scoped symbols.
      */
     public static final int IS_VAR_DECLARED_HERE = 1 << 11;
     /**
-     * Is this symbol a var declaration binding that needs to be initialized with the value of the parent's scope's binding with the same name?
-     * Used for parameter bindings that are replicated in the body's VariableEnvironment.
+     * Is this symbol a var declaration binding that needs to be initialized with the value of the
+     * parent's scope's binding with the same name? Used for parameter bindings that are replicated
+     * in the body's VariableEnvironment.
      */
     public static final int IS_VAR_REDECLARED_HERE = 1 << 12;
     /** Is this symbol declared in an unprotected switch case context? */
@@ -245,6 +244,7 @@ public final class Symbol implements Comparable<Symbol> {
 
     /**
      * Is this a block scoped symbol
+     *
      * @return true if block scoped
      */
     public boolean isBlockScoped() {
@@ -253,6 +253,7 @@ public final class Symbol implements Comparable<Symbol> {
 
     /**
      * Has this symbol been declared
+     *
      * @return true if declared
      */
     public boolean hasBeenDeclared() {
@@ -305,6 +306,7 @@ public final class Symbol implements Comparable<Symbol> {
 
     /**
      * Has this symbol been declared
+     *
      * @return true if declared
      */
     public boolean isDeclaredInSwitchBlock() {

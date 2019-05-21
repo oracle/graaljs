@@ -44,7 +44,6 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * Represents a block used as a statement.
  */
@@ -85,7 +84,7 @@ public class BlockStatement extends Statement {
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterBlockStatement(this)) {
-            return visitor.leaveBlockStatement(setBlock((Block)block.accept(visitor)));
+            return visitor.leaveBlockStatement(setBlock((Block) block.accept(visitor)));
         }
 
         return this;
@@ -103,6 +102,7 @@ public class BlockStatement extends Statement {
 
     /**
      * Return the block to be executed
+     *
      * @return the block
      */
     public Block getBlock() {
@@ -111,6 +111,7 @@ public class BlockStatement extends Statement {
 
     /**
      * Reset the block to be executed
+     *
      * @param block the block
      * @return new or same execute node
      */

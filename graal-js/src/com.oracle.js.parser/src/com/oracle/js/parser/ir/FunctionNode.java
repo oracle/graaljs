@@ -50,7 +50,6 @@ import com.oracle.js.parser.Token;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation for function (or script.)
  */
@@ -78,13 +77,13 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     private final Source source;
 
     /**
-     * Opaque object representing parser state at the end of the function. Used when reparsing outer functions
-     * to skip parsing inner functions.
+     * Opaque object representing parser state at the end of the function. Used when reparsing outer
+     * functions to skip parsing inner functions.
      */
     private final Object endParserState;
 
     /** External function identifier. */
-    /*@Ignore*/ private final IdentNode ident;
+    /* @Ignore */ private final IdentNode ident;
 
     /** The body of the function node */
     private final Block body;
@@ -105,7 +104,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     private final long lastToken;
 
     /** Number of properties of "this" object assigned in this function */
-    /*@Ignore*/ private final int thisProperties;
+    /* @Ignore */ private final int thisProperties;
 
     /** Function flags. */
     private final int flags;
@@ -187,8 +186,8 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /**
      * Flag indicating whether this function uses the local variable symbol for itself. Only named
      * function expressions can have this flag set if they reference themselves (e.g.
-     * "(function f() { return f })". Declared functions will use the symbol in their parent scope
-     * instead when they reference themselves by name.
+     * <code>(function f() { return f })</code>). Declared functions will use the symbol in their
+     * parent scope instead when they reference themselves by name.
      */
     public static final int USES_SELF_SYMBOL = 1 << 14;
 
@@ -204,10 +203,15 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      */
     private static final int MAYBE_NEEDS_ARGUMENTS = USES_ARGUMENTS | HAS_EVAL;
 
-    /** Does this function need the parent scope? It needs it if either it or its descendants use variables from it, or have a deep eval, or it's the program. */
+    /**
+     * Does this function need the parent scope? It needs it if either it or its descendants use
+     * variables from it, or have a deep eval, or it's the program.
+     */
     public static final int NEEDS_PARENT_SCOPE = USES_ANCESTOR_SCOPE | HAS_DEEP_EVAL | IS_PROGRAM;
 
-    /** Does this function contain a super call? (cf. ES6 14.3.5 Static Semantics: HasDirectSuper) */
+    /**
+     * Does this function contain a super call? (cf. ES6 14.3.5 Static Semantics: HasDirectSuper)
+     */
     public static final int HAS_DIRECT_SUPER = 1 << 18;
 
     /** Does this function use the super binding? */
@@ -237,85 +241,85 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /**
      * Constructor
      *
-     * @param source     the source
+     * @param source the source
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
+     * @param token token
+     * @param finish finish
      * @param firstToken first token of the function node (including the function declaration)
-     * @param lastToken  lastToken
-     * @param ident      the identifier
-     * @param name       the name of the function
+     * @param lastToken lastToken
+     * @param ident the identifier
+     * @param name the name of the function
      * @param parameters parameter list
-     * @param kind       kind of function as in {@link FunctionNode.Kind}
-     * @param flags      initial flags
-     * @param body       body of the function
+     * @param kind kind of function as in {@link FunctionNode.Kind}
+     * @param flags initial flags
+     * @param body body of the function
      * @param endParserState The parser state at the end of the parsing.
      */
     public FunctionNode(
-        final Source source,
-        final int lineNumber,
-        final long token,
-        final int finish,
-        final long firstToken,
-        final long lastToken,
-        final IdentNode ident,
-        final String name,
-        final int length,
-        final int numOfParams,
-        final List<IdentNode> parameters,
-        final FunctionNode.Kind kind,
-        final int flags,
-        final Block body,
-        final Object endParserState,
-        final Module module) {
+                    final Source source,
+                    final int lineNumber,
+                    final long token,
+                    final int finish,
+                    final long firstToken,
+                    final long lastToken,
+                    final IdentNode ident,
+                    final String name,
+                    final int length,
+                    final int numOfParams,
+                    final List<IdentNode> parameters,
+                    final FunctionNode.Kind kind,
+                    final int flags,
+                    final Block body,
+                    final Object endParserState,
+                    final Module module) {
         super(token, Token.descPosition(firstToken), finish);
 
-        this.source           = source;
-        this.lineNumber       = lineNumber;
-        this.ident            = ident;
-        this.name             = name;
-        this.kind             = kind;
-        this.length           = length;
-        this.numOfParams      = numOfParams;
-        this.parameters       = parameters;
-        this.firstToken       = firstToken;
-        this.lastToken        = lastToken;
-        this.flags            = flags;
-        this.body             = body;
-        this.thisProperties   = 0;
-        this.endParserState   = endParserState;
-        this.module           = module;
+        this.source = source;
+        this.lineNumber = lineNumber;
+        this.ident = ident;
+        this.name = name;
+        this.kind = kind;
+        this.length = length;
+        this.numOfParams = numOfParams;
+        this.parameters = parameters;
+        this.firstToken = firstToken;
+        this.lastToken = lastToken;
+        this.flags = flags;
+        this.body = body;
+        this.thisProperties = 0;
+        this.endParserState = endParserState;
+        this.module = module;
     }
 
     private FunctionNode(
-        final FunctionNode functionNode,
-        final long lastToken,
-        final Object endParserState,
-        final int flags,
-        final String name,
-        final Block body,
-        final List<IdentNode> parameters,
-        final int thisProperties,
-        final Source source) {
+                    final FunctionNode functionNode,
+                    final long lastToken,
+                    final Object endParserState,
+                    final int flags,
+                    final String name,
+                    final Block body,
+                    final List<IdentNode> parameters,
+                    final int thisProperties,
+                    final Source source) {
         super(functionNode);
 
-        this.endParserState   = endParserState;
-        this.lineNumber       = functionNode.lineNumber;
-        this.flags            = flags;
-        this.name             = name;
-        this.lastToken        = lastToken;
-        this.body             = body;
-        this.parameters       = parameters;
-        this.thisProperties   = thisProperties;
-        this.source           = source;
+        this.endParserState = endParserState;
+        this.lineNumber = functionNode.lineNumber;
+        this.flags = flags;
+        this.name = name;
+        this.lastToken = lastToken;
+        this.body = body;
+        this.parameters = parameters;
+        this.thisProperties = thisProperties;
+        this.source = source;
 
         // the fields below never change - they are final and assigned in constructor
-        this.ident           = functionNode.ident;
-        this.kind            = functionNode.kind;
-        this.firstToken      = functionNode.firstToken;
-        this.length          = functionNode.length;
-        this.numOfParams     = functionNode.numOfParams;
-        this.module          = functionNode.module;
+        this.ident = functionNode.ident;
+        this.kind = functionNode.kind;
+        this.firstToken = functionNode.firstToken;
+        this.length = functionNode.length;
+        this.numOfParams = functionNode.numOfParams;
+        this.module = functionNode.module;
     }
 
     @Override
@@ -422,10 +426,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         if (this.flags == flags) {
             return this;
         }
-        return Node.replaceInLexicalContext(
-                lc,
-                this,
-                new FunctionNode(
+        return Node.replaceInLexicalContext(lc, this, new FunctionNode(
                         this,
                         lastToken,
                         endParserState,
@@ -444,6 +445,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Returns true if the function is the top-level program.
+     *
      * @return True if this function node represents the top-level program.
      */
     public boolean isProgram() {
@@ -451,7 +453,8 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     /**
-     * Check if this function has a call expression for the identifier "eval" (that is, {@code eval(...)}).
+     * Check if this function has a call expression for the identifier "eval" (that is,
+     * {@code eval(...)}).
      *
      * @return true if {@code eval} is called.
      */
@@ -461,6 +464,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Get the first token for this function
+     *
      * @return the first token
      */
     public long getFirstToken() {
@@ -478,6 +482,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Get the identifier for this function, this is its symbol.
+     *
      * @return the identifier as an IdentityNode
      */
     public IdentNode getIdent() {
@@ -486,6 +491,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Get the function body, i.e., the top-most block of the function.
+     *
      * @return the function body
      */
     public Block getBody() {
@@ -505,6 +511,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Reset the function body
+     *
      * @param lc lexical context
      * @param body new body
      * @return new function node if body changed, same if not
@@ -513,17 +520,11 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         if (this.body == body) {
             return this;
         }
-        return Node.replaceInLexicalContext(
-                lc,
-                this,
-                new FunctionNode(
+        return Node.replaceInLexicalContext(lc, this, new FunctionNode(
                         this,
                         lastToken,
                         endParserState,
-                        flags |
-                            (body.needsScope() ?
-                                    FunctionNode.HAS_SCOPE_BLOCK :
-                                    0),
+                        flags | (body.needsScope() ? FunctionNode.HAS_SCOPE_BLOCK : 0),
                         name,
                         body,
                         parameters,
@@ -532,34 +533,39 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     /**
-     * Check whether a function would need dynamic scope, which is does if it has
-     * evals and isn't strict.
+     * Check whether a function would need dynamic scope, which is does if it has evals and isn't
+     * strict.
+     *
      * @return true if dynamic scope is needed
      */
     public boolean needsDynamicScope() {
-        // Function has a direct eval in it (so a top-level "var ..." in the eval code can introduce a new
-        // variable into the function's scope), and it isn't strict (as evals in strict functions get an
-        // isolated scope).
+        // Function has a direct eval in it (so a top-level "var ..." in the eval code can introduce
+        // a new variable into the function's scope), and it isn't strict (as evals in strict
+        // functions get an isolated scope).
         return hasEval() && !isStrict();
     }
 
     /**
-     * Returns true if this function needs to have an Arguments object defined as a local variable named "arguments".
-     * Functions that use "arguments" as identifier and don't define it as a name of a parameter or a nested function
-     * (see ECMAScript 5.1 Chapter 10.5), as well as any function that uses eval or with, or has a nested function that
-     * does the same, will have an "arguments" object. Also, if this function is a script, it will not have an
-     * "arguments" object, because it does not have local variables; rather the Global object will have an explicit
-     * "arguments" property that provides command-line arguments for the script.
+     * Returns true if this function needs to have an Arguments object defined as a local variable
+     * named "arguments". Functions that use "arguments" as identifier and don't define it as a name
+     * of a parameter or a nested function (see ECMAScript 5.1 Chapter 10.5), as well as any
+     * function that uses eval or with, or has a nested function that does the same, will have an
+     * "arguments" object. Also, if this function is a script, it will not have an "arguments"
+     * object, because it does not have local variables; rather the Global object will have an
+     * explicit "arguments" property that provides command-line arguments for the script.
+     *
      * @return true if this function needs an arguments object.
      */
     public boolean needsArguments() {
-        // uses "arguments" or calls eval, but it does not redefine "arguments", and finally, it's not a script, since
-        // for top-level script, "arguments" is picked up from Context by Global.init() instead.
+        // uses "arguments" or calls eval, but it does not redefine "arguments", and finally, it's
+        // not a script, since for top-level scripts, "arguments" is picked up from a global
+        // property instead.
         return getFlag(MAYBE_NEEDS_ARGUMENTS) && !getFlag(DEFINES_ARGUMENTS) && !isProgram();
     }
 
     /**
      * Get the number of properties assigned to the this object in this function.
+     *
      * @return number of properties
      */
     public int getThisProperties() {
@@ -568,6 +574,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Return the kind of this function
+     *
      * @see FunctionNode.Kind
      * @return the kind
      */
@@ -577,6 +584,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Return the last token for this function's code
+     *
      * @return last token
      */
     public long getLastToken() {
@@ -585,6 +593,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Returns the end parser state for this function.
+     *
      * @return the end parser state for this function.
      */
     public Object getEndParserState() {
@@ -593,6 +602,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Get the name of this function
+     *
      * @return the name
      */
     public String getName() {
@@ -610,6 +620,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Get the parameters to this function
+     *
      * @return a list of IdentNodes which represent the function parameters, in order
      */
     public List<IdentNode> getParameters() {
@@ -618,6 +629,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Return the number of parameters to this function
+     *
      * @return the number of parameters
      */
     public int getNumOfParams() {
@@ -633,7 +645,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     /**
-     * Check if this function is created as a function declaration (as opposed to function expression)
+     * Check if this function is created as a function declaration (as opposed to function
+     * expression)
+     *
      * @return true if function is declared.
      */
     public boolean isDeclared() {
@@ -642,6 +656,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Check if this function is anonymous
+     *
      * @return true if function is anonymous
      */
     public boolean isAnonymous() {
@@ -649,8 +664,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     /**
-     * Returns true if this is a named function expression (that is, it isn't a declared function, it isn't an
-     * anonymous function expression, it isn't a method, and it isn't a program).
+     * Returns true if this is a named function expression (that is, it isn't a declared function,
+     * it isn't an anonymous function expression, it isn't a method, and it isn't a program).
+     *
      * @return true if this is a named function expression
      */
     public boolean isNamedFunctionExpression() {
@@ -659,6 +675,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /**
      * Check if the function is generated in strict mode
+     *
      * @return true if strict mode enabled for function
      */
     public boolean isStrict() {

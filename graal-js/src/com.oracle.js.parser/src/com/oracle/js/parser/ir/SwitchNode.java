@@ -47,7 +47,6 @@ import java.util.List;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation of a SWITCH statement.
  */
@@ -67,32 +66,33 @@ public final class SwitchNode extends BreakableStatement {
     /**
      * Constructor
      *
-     * @param lineNumber  lineNumber
-     * @param token       token
-     * @param finish      finish
-     * @param expression  switch expression
-     * @param cases       cases
-     * @param defaultCaseIndex the default case index; -1 if none, otherwise has to be present in cases list
+     * @param lineNumber lineNumber
+     * @param token token
+     * @param finish finish
+     * @param expression switch expression
+     * @param cases cases
+     * @param defaultCaseIndex the default case index; -1 if none, otherwise has to be present in
+     *            cases list
      */
     public SwitchNode(final int lineNumber, final long token, final int finish, final Expression expression, final List<CaseNode> cases, final int defaultCaseIndex) {
         super(lineNumber, token, finish);
-        this.expression       = expression;
-        this.cases            = cases;
+        this.expression = expression;
+        this.cases = cases;
         this.defaultCaseIndex = defaultCaseIndex;
         assert defaultCaseIndex == -1 || cases.get(defaultCaseIndex).getTest() == null;
     }
 
     private SwitchNode(final SwitchNode switchNode, final Expression expression, final List<CaseNode> cases, final int defaultCaseIndex) {
         super(switchNode);
-        this.expression       = expression;
-        this.cases            = cases;
+        this.expression = expression;
+        this.cases = cases;
         this.defaultCaseIndex = defaultCaseIndex;
-        this.tag              = switchNode.getTag(); //TODO are symbols inhereted as references?
+        this.tag = switchNode.getTag(); // TODO are symbols inherited as references?
     }
 
     @Override
     public boolean isTerminal() {
-        //there must be a default case, and that including all other cases must terminate
+        // there must be a default case, and that including all other cases must terminate
         if (!cases.isEmpty() && defaultCaseIndex != -1) {
             for (final CaseNode caseNode : cases) {
                 if (!caseNode.isTerminal()) {
@@ -108,9 +108,11 @@ public final class SwitchNode extends BreakableStatement {
     @Override
     public Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterSwitchNode(this)) {
+            //@formatter:off
             return visitor.leaveSwitchNode(
-                setExpression(lc, (Expression)expression.accept(visitor)).
+                setExpression(lc, (Expression) expression.accept(visitor)).
                 setCases(lc, Node.accept(visitor, cases), defaultCaseIndex));
+            //@formatter:on
         }
 
         return this;
@@ -130,6 +132,7 @@ public final class SwitchNode extends BreakableStatement {
 
     /**
      * Return the case node that is default case
+     *
      * @return default case or null if none
      */
     public CaseNode getDefaultCase() {
@@ -138,6 +141,7 @@ public final class SwitchNode extends BreakableStatement {
 
     /**
      * Get the cases in this switch
+     *
      * @return a list of case nodes
      */
     public List<CaseNode> getCases() {
@@ -153,6 +157,7 @@ public final class SwitchNode extends BreakableStatement {
 
     /**
      * Return the expression to switch on
+     *
      * @return switch expression
      */
     public Expression getExpression() {
@@ -161,6 +166,7 @@ public final class SwitchNode extends BreakableStatement {
 
     /**
      * Set or reset the expression to switch on
+     *
      * @param lc lexical context
      * @param expression switch expression
      * @return new switch node or same if no state was changed
@@ -173,8 +179,9 @@ public final class SwitchNode extends BreakableStatement {
     }
 
     /**
-     * Get the tag symbol for this switch. The tag symbol is where
-     * the switch expression result is stored
+     * Get the tag symbol for this switch. The tag symbol is where the switch expression result is
+     * stored
+     *
      * @return tag symbol
      */
     public Symbol getTag() {
@@ -182,8 +189,9 @@ public final class SwitchNode extends BreakableStatement {
     }
 
     /**
-     * Set the tag symbol for this switch. The tag symbol is where
-     * the switch expression result is stored
+     * Set the tag symbol for this switch. The tag symbol is where the switch expression result is
+     * stored
+     *
      * @param tag a symbol
      */
     public void setTag(final Symbol tag) {

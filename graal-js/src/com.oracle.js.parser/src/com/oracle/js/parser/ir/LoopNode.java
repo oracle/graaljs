@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-// @formatter:off
 /**
  * A loop node, for example a while node, do while node or for node
  */
@@ -58,11 +57,11 @@ public abstract class LoopNode extends BreakableStatement {
     /**
      * Constructor
      *
-     * @param lineNumber         lineNumber
-     * @param token              token
-     * @param finish             finish
-     * @param body               loop body
-     * @param test               test
+     * @param lineNumber lineNumber
+     * @param token token
+     * @param finish finish
+     * @param body loop body
+     * @param test test
      * @param controlFlowEscapes controlFlowEscapes
      */
     protected LoopNode(final int lineNumber, final long token, final int finish, final Block body, final JoinPredecessorExpression test, final boolean controlFlowEscapes) {
@@ -76,8 +75,8 @@ public abstract class LoopNode extends BreakableStatement {
      * Constructor
      *
      * @param loopNode loop node
-     * @param test     new test
-     * @param body     new body
+     * @param test new test
+     * @param body new body
      * @param controlFlowEscapes controlFlowEscapes
      */
     protected LoopNode(final LoopNode loopNode, final JoinPredecessorExpression test, final Block body, final boolean controlFlowEscapes) {
@@ -92,20 +91,21 @@ public abstract class LoopNode extends BreakableStatement {
         if (!mustEnter()) {
             return false;
         }
-        //must enter but control flow may escape - then not terminal
+        // must enter but control flow may escape - then not terminal
         if (controlFlowEscapes) {
             return false;
         }
-        //must enter, but body ends with return - then terminal
+        // must enter, but body ends with return - then terminal
         if (body.isTerminal()) {
             return true;
         }
-        //no breaks or returns, it is still terminal if we can never exit
+        // no breaks or returns, it is still terminal if we can never exit
         return test == null;
     }
 
     /**
      * Conservative check: does this loop have to be entered?
+     *
      * @return true if body will execute at least once
      */
     public abstract boolean mustEnter();
@@ -117,12 +117,13 @@ public abstract class LoopNode extends BreakableStatement {
 
     /**
      * Get the body for this for node
+     *
      * @return the body
      */
     public abstract Block getBody();
 
     /**
-     * @param lc   lexical context
+     * @param lc lexical context
      * @param body new body
      * @return new for node if changed or existing if not
      */
@@ -130,6 +131,7 @@ public abstract class LoopNode extends BreakableStatement {
 
     /**
      * Get the test for this for node
+     *
      * @return the test
      */
     public final JoinPredecessorExpression getTest() {
@@ -147,7 +149,6 @@ public abstract class LoopNode extends BreakableStatement {
 
     /**
      * Set the control flow escapes flag for this node.
-     * TODO  - integrate this with Lowering in a better way
      *
      * @param lc lexical context
      * @param controlFlowEscapes control flow escapes value
@@ -157,6 +158,7 @@ public abstract class LoopNode extends BreakableStatement {
 
     /**
      * Does this loop have a LET declaration and hence require a per-iteration scope?
+     *
      * @return true if a per-iteration scope is required.
      */
     public abstract boolean hasPerIterationScope();

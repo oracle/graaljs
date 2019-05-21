@@ -50,7 +50,6 @@ import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * UnaryNode nodes represent single operand operations.
  */
@@ -61,8 +60,8 @@ public final class UnaryNode extends Expression implements Assignment<Expression
     /**
      * Constructor
      *
-     * @param token  token
-     * @param rhs    expression
+     * @param token token
+     * @param rhs expression
      */
     public UnaryNode(final long token, final Expression rhs) {
         this(token, Math.min(rhs.getStart(), Token.descPosition(token)), Math.max(Token.descPosition(token) + Token.descLength(token), rhs.getFinish()), rhs);
@@ -71,20 +70,19 @@ public final class UnaryNode extends Expression implements Assignment<Expression
     /**
      * Constructor
      *
-     * @param token      token
-     * @param start      start
-     * @param finish     finish
+     * @param token token
+     * @param start start
+     * @param finish finish
      * @param expression expression
      */
     public UnaryNode(final long token, final int start, final int finish, final Expression expression) {
         super(token, start, finish);
-        this.expression   = expression;
+        this.expression = expression;
     }
-
 
     private UnaryNode(final UnaryNode unaryNode, final Expression expression) {
         super(unaryNode);
-        this.expression   = expression;
+        this.expression = expression;
     }
 
     /**
@@ -95,13 +93,13 @@ public final class UnaryNode extends Expression implements Assignment<Expression
     @Override
     public boolean isAssignment() {
         switch (tokenType()) {
-        case DECPOSTFIX:
-        case DECPREFIX:
-        case INCPOSTFIX:
-        case INCPREFIX:
-            return true;
-        default:
-            return false;
+            case DECPOSTFIX:
+            case DECPREFIX:
+            case INCPOSTFIX:
+            case INCPREFIX:
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -122,12 +120,13 @@ public final class UnaryNode extends Expression implements Assignment<Expression
 
     /**
      * Assist in IR navigation.
+     *
      * @param visitor IR navigating visitor.
      */
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterUnaryNode(this)) {
-            return visitor.leaveUnaryNode(setExpression((Expression)expression.accept(visitor)));
+            return visitor.leaveUnaryNode(setExpression((Expression) expression.accept(visitor)));
         }
 
         return this;
@@ -141,8 +140,8 @@ public final class UnaryNode extends Expression implements Assignment<Expression
     @Override
     public void toString(final StringBuilder sb, final boolean printType) {
         final TokenType tokenType = tokenType();
-        final String    name      = tokenType.getName();
-        final boolean   isPostfix = tokenType == DECPOSTFIX || tokenType == INCPOSTFIX;
+        final String name = tokenType.getName();
+        final boolean isPostfix = tokenType == DECPOSTFIX || tokenType == INCPOSTFIX;
 
         if (tokenType == TokenType.AWAIT) {
             // await expression
@@ -182,8 +181,8 @@ public final class UnaryNode extends Expression implements Assignment<Expression
     }
 
     /**
-     * Get the right hand side of this if it is inherited by a binary expression,
-     * or just the expression itself if still Unary
+     * Get the right hand side of this if it is inherited by a binary expression, or just the
+     * expression itself if still Unary
      *
      * @see BinaryNode
      *
@@ -194,8 +193,8 @@ public final class UnaryNode extends Expression implements Assignment<Expression
     }
 
     /**
-     * Reset the right hand side of this if it is inherited by a binary expression,
-     * or just the expression itself if still Unary
+     * Reset the right hand side of this if it is inherited by a binary expression, or just the
+     * expression itself if still Unary
      *
      * @see BinaryNode
      *

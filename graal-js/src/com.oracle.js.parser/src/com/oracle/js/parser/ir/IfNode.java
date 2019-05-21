@@ -44,7 +44,6 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation for an IF statement.
  */
@@ -62,11 +61,11 @@ public final class IfNode extends Statement {
      * Constructor
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
-     * @param test       test
-     * @param pass       block to execute when test passes
-     * @param fail       block to execute when test fails or null
+     * @param token token
+     * @param finish finish
+     * @param test test
+     * @param pass block to execute when test passes
+     * @param fail block to execute when test fails or null
      */
     public IfNode(final int lineNumber, final long token, final int finish, final Expression test, final Block pass, final Block fail) {
         super(lineNumber, token, finish);
@@ -90,10 +89,12 @@ public final class IfNode extends Statement {
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterIfNode(this)) {
+            //@formatter:off
             return visitor.leaveIfNode(
-                setTest((Expression)test.accept(visitor)).
-                setPass((Block)pass.accept(visitor)).
-                setFail(fail == null ? null : (Block)fail.accept(visitor)));
+                setTest((Expression) test.accept(visitor)).
+                setPass((Block) pass.accept(visitor)).
+                setFail(fail == null ? null : (Block) fail.accept(visitor)));
+            //@formatter:on
         }
 
         return this;
@@ -113,6 +114,7 @@ public final class IfNode extends Statement {
 
     /**
      * Get the else block of this IfNode
+     *
      * @return the else block, or null if none exists
      */
     public Block getFail() {
@@ -128,6 +130,7 @@ public final class IfNode extends Statement {
 
     /**
      * Get the then block for this IfNode
+     *
      * @return the then block
      */
     public Block getPass() {
@@ -143,6 +146,7 @@ public final class IfNode extends Statement {
 
     /**
      * Get the test expression for this IfNode
+     *
      * @return the test expression
      */
     public Expression getTest() {
@@ -151,6 +155,7 @@ public final class IfNode extends Statement {
 
     /**
      * Reset the test expression for this IfNode
+     *
      * @param test a new test expression
      * @return new or same IfNode
      */

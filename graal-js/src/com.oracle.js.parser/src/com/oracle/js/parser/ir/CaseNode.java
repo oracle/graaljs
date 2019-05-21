@@ -46,10 +46,9 @@ import java.util.List;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
- * IR representation of {@code case} clause.
- * Case nodes are not {@link BreakableNode}s, but the {@link SwitchNode} is.
+ * IR representation of {@code case} clause. Case nodes are not {@link BreakableNode}s, but the
+ * {@link SwitchNode} is.
  */
 public final class CaseNode extends Node implements Terminal {
     /** Test expression. */
@@ -63,23 +62,23 @@ public final class CaseNode extends Node implements Terminal {
     /**
      * Constructors
      *
-     * @param token    token
-     * @param finish   finish
-     * @param test     case test node, can be any node in JavaScript
+     * @param token token
+     * @param finish finish
+     * @param test case test node, can be any node in JavaScript
      * @param statements case body statements
      */
     public CaseNode(final long token, final int finish, final Expression test, List<Statement> statements) {
         super(token, finish);
 
-        this.test  = test;
-        this.statements  = statements;
+        this.test = test;
+        this.statements = statements;
         this.terminal = isTerminal(statements);
     }
 
     CaseNode(final CaseNode caseNode, final int finish, final Expression test, final List<Statement> statements) {
         super(caseNode, finish);
 
-        this.test  = test;
+        this.test = test;
         this.statements = statements;
         this.terminal = isTerminal(statements);
     }
@@ -90,12 +89,13 @@ public final class CaseNode extends Node implements Terminal {
 
     /**
      * Assist in IR navigation.
+     *
      * @param visitor IR navigating visitor.
      */
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterCaseNode(this)) {
-            final Expression newTest = test == null ? null : (Expression)test.accept(visitor);
+            final Expression newTest = test == null ? null : (Expression) test.accept(visitor);
             List<Statement> newStatements = Node.accept(visitor, statements);
             return visitor.leaveCaseNode(setTest(newTest).setStatements(newStatements));
         }
@@ -126,6 +126,7 @@ public final class CaseNode extends Node implements Terminal {
 
     /**
      * Get the body for this case node
+     *
      * @return the body
      */
     public List<Statement> getStatements() {
@@ -134,6 +135,7 @@ public final class CaseNode extends Node implements Terminal {
 
     /**
      * Get the test expression for this case node
+     *
      * @return the test
      */
     public Expression getTest() {
@@ -142,6 +144,7 @@ public final class CaseNode extends Node implements Terminal {
 
     /**
      * Reset the test expression for this case node
+     *
      * @param test new test expression
      * @return new or same CaseNode
      */

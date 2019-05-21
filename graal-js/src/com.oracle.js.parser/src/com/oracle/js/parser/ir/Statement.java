@@ -41,11 +41,10 @@
 
 package com.oracle.js.parser.ir;
 
-// @formatter:off
 /**
- * Statement is something that becomes code and can be stepped past. A block is
- * made up of statements. The only node subclass that needs to keep token and
- * location information is the Statement
+ * Statement is something that becomes code and can be stepped past. A block is made up of
+ * statements. The only node subclass that needs to keep token and location information is the
+ * Statement
  */
 public abstract class Statement extends Node implements Terminal {
 
@@ -55,8 +54,8 @@ public abstract class Statement extends Node implements Terminal {
      * Constructor
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
+     * @param token token
+     * @param finish finish
      */
     public Statement(final int lineNumber, final long token, final int finish) {
         super(token, finish);
@@ -75,6 +74,7 @@ public abstract class Statement extends Node implements Terminal {
 
     /**
      * Return the line number
+     *
      * @return line number
      */
     public int getLineNumber() {
@@ -92,8 +92,9 @@ public abstract class Statement extends Node implements Terminal {
     }
 
     /**
-     * Check if this statement repositions control flow with goto like
-     * semantics, for example {@link BreakNode} or a {@link ForNode} with no test
+     * Check if this statement repositions control flow with goto like semantics, for example
+     * {@link BreakNode} or a {@link ForNode} with no test
+     *
      * @return true if statement has goto semantics
      */
     public boolean hasGoto() {

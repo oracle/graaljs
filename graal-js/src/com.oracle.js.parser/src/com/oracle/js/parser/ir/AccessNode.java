@@ -44,7 +44,6 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation of a property access (period operator.)
  */
@@ -55,10 +54,10 @@ public final class AccessNode extends BaseNode {
     /**
      * Constructor
      *
-     * @param token     token
-     * @param finish    finish
-     * @param base      base node
-     * @param property  property
+     * @param token token
+     * @param finish finish
+     * @param base base node
+     * @param property property
      */
     public AccessNode(final long token, final int finish, final Expression base, final String property) {
         super(token, finish, base, false, false);
@@ -72,13 +71,13 @@ public final class AccessNode extends BaseNode {
 
     /**
      * Assist in IR navigation.
+     *
      * @param visitor IR navigating visitor.
      */
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterAccessNode(this)) {
-            return visitor.leaveAccessNode(
-                setBase((Expression)base.accept(visitor)));
+            return visitor.leaveAccessNode(setBase((Expression) base.accept(visitor)));
         }
         return this;
     }
