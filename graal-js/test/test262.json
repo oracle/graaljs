@@ -1,8 +1,20 @@
 {
   "testFiles" : [ {
-    "filePath" : "annexB/built-ins/Function/createdynfn-html-close-comment-params.js",
+    "filePath" : "annexB/built-ins/Function/createdynfn-no-line-terminator-html-close-comment-body.js",
     "status" : "FAIL",
-    "comment" : "Off-spec: the test-case is missing a line terminator before html close comment"
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "annexB/language/function-code/function-redeclaration-block.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "annexB/language/function-code/function-redeclaration-switch.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "annexB/language/statements/try/catch-redeclared-for-of-var.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "built-ins/Array/prototype/unshift/length-near-integer-limit.js",
     "status" : "SKIP",
@@ -11,6 +23,42 @@
     "filePath" : "built-ins/Atomics/wait/undefined-index-defaults-to-zero.js",
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
+  }, {
+    "filePath" : "built-ins/JSON/stringify/bigint-tojson-receiver.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "built-ins/Promise/all/invoke-resolve-get-error-close.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "built-ins/Promise/all/invoke-resolve-get-once-multiple-calls.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "built-ins/Promise/race/invoke-resolve-get-error-close.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "built-ins/Promise/race/invoke-resolve-get-once-multiple-calls.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "built-ins/Promise/race/invoke-resolve-get-once-no-calls.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "built-ins/Proxy/defineProperty/targetdesc-not-configurable-writable-desc-not-writable.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "built-ins/Proxy/deleteProperty/targetdesc-is-configurable-target-is-not-extensible.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "built-ins/Proxy/getOwnPropertyDescriptor/resultdesc-is-not-configurable-not-writable-targetdesc-is-writable.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "FAIL"
@@ -533,6 +581,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Elymaic.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Ethiopic.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -761,6 +813,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Nandinagari.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_New_Tai_Lue.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -776,6 +832,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Nushu.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Nyiakeng_Puachue_Hmong.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Ogham.js",
     "status" : "SKIP",
@@ -977,6 +1037,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Wancho.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Warang_Citi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1124,6 +1188,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Elbasan.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Elymaic.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Ethiopic.js",
     "status" : "SKIP",
@@ -1353,6 +1421,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Nandinagari.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_New_Tai_Lue.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1368,6 +1440,10 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Nushu.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
+  }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Nyiakeng_Puachue_Hmong.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Ogham.js",
     "status" : "SKIP",
@@ -1569,6 +1645,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Wancho.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Warang_Citi.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
@@ -1636,6 +1716,10 @@
       "BIG_ENDIAN" : "SKIP"
     },
     "comment" : "Fails on big endian and works on little endian"
+  }, {
+    "filePath" : "intl402/Collator/missing-unicode-ext-value-defaults-to-true.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "intl402/Collator/prototype/compare/non-normative-sensitivity.js",
     "status" : "PASS",
@@ -1724,6 +1808,10 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
+    "filePath" : "intl402/Intl/getCanonicalLocales/non-iana-canon.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/preferred-grandfathered.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -1755,13 +1843,25 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
+    "filePath" : "intl402/ListFormat/constructor/constructor/options-order.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "intl402/ListFormat/constructor/constructor/options-style-valid.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
     "filePath" : "intl402/ListFormat/constructor/supportedLocalesOf/locales-invalid.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl402/ListFormat/constructor/supportedLocalesOf/result-type.js",
+    "filePath" : "intl402/ListFormat/prototype/format/en-us-short.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "intl402/ListFormat/prototype/formatToParts/en-us-short.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "intl402/Number/prototype/toLocaleString/returns-same-results-as-NumberFormat.js",
     "status" : "PASS",
@@ -1781,6 +1881,10 @@
     },
     "comment" : "GR-15359"
   }, {
+    "filePath" : "intl402/NumberFormat/numbering-system-options.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
     "filePath" : "intl402/NumberFormat/prototype/format/bound-to-numberformat-instance.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1788,20 +1892,16 @@
     },
     "comment" : "GR-15359"
   }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/format-fraction-digits-precision.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-fraction-digits.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits-precision.js",
-    "status" : "PASS",
+    "status" : "FAIL",
     "statusOverrides" : {
       "SVM" : "SKIP"
     },
-    "comment" : "GR-15359"
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits.js",
     "status" : "PASS",
@@ -1829,23 +1929,15 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/result-type.js",
+    "filePath" : "intl402/RelativeTimeFormat/prototype/resolvedOptions/order.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "intl402/Segmenter/constructor/constructor/locales-invalid.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
     "filePath" : "intl402/Segmenter/constructor/constructor/options-granularity-valid.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-lineBreakStyle-invalid.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-lineBreakStyle-valid.js",
     "status" : "SKIP",
     "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
@@ -1873,10 +1965,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/result-type.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl402/Segmenter/iterator/granularity.js",
     "status" : "SKIP",
     "comment" : "line granularity support was removed from Intl.Segmenter"
@@ -1885,39 +1973,7 @@
     "status" : "SKIP",
     "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
-    "filePath" : "intl402/Segmenter/prototype/resolvedOptions/type-with-lbs.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-line-following-modes.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-line-following.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-line-iterable.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-line-next.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-line-preceding.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/segment/segment-line.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
     "filePath" : "intl402/supportedLocalesOf-consistent-with-resolvedOptions.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/supportedLocalesOf-returned-array-elements-are-frozen.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
@@ -1953,9 +2009,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/eval-code/direct/super-prop-method.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/eval-code/direct/var-env-lower-lex-catch-non-strict.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/eval-code/direct/var-env-lower-lex-non-strict.js",
@@ -2242,38 +2295,6 @@
     "filePath" : "language/expressions/object/scope-setter-body-lex-distinc.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/postfix-decrement/arguments-nostrict.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/postfix-decrement/eval-nostrict.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/postfix-increment/arguments-nostrict.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/postfix-increment/eval-nostrict.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/prefix-decrement/arguments-nostrict.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/prefix-decrement/eval-nostrict.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/prefix-increment/arguments-nostrict.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/prefix-increment/eval-nostrict.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
     "filePath" : "language/expressions/super/call-proto-not-ctor.js",
     "status" : "FAIL"
   }, {
@@ -2341,14 +2362,6 @@
   }, {
     "filePath" : "language/import/dup-bound-names.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/line-terminators/invalid-string-ls.js",
-    "status" : "SKIP",
-    "comment" : "test removed from test262 on 2019-01-22. See https://github.com/tc39/test262/pull/2044"
-  }, {
-    "filePath" : "language/line-terminators/invalid-string-ps.js",
-    "status" : "SKIP",
-    "comment" : "test removed from test262 on 2019-01-22. See https://github.com/tc39/test262/pull/2044"
   }, {
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
     "status" : "FAIL",
@@ -2498,11 +2511,13 @@
     "filePath" : "language/statements/for-of/scope-head-lex-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/for/S12.6.3_A9.1.js",
-    "status" : "FAIL"
+    "filePath" : "language/statements/for/head-init-expr-check-empty-inc-empty-completion.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
-    "filePath" : "language/statements/for/S12.6.3_A9.js",
-    "status" : "FAIL"
+    "filePath" : "language/statements/for/head-init-var-check-empty-inc-empty-completion.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "language/statements/function/scope-body-lex-distinct.js",
     "status" : "FAIL"

@@ -86,7 +86,7 @@ public class Test262Runnable extends TestRunnable {
     private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
-    private static final Pattern SPLIT_PATTERN = Pattern.compile(", ");
+    private static final Pattern SPLIT_PATTERN = Pattern.compile(", ?");
 
     private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Array.prototype.flat",
@@ -185,14 +185,18 @@ public class Test262Runnable extends TestRunnable {
                     "well-formed-json-stringify",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Intl.DateTimeFormat-datetimestyle",
+                    "Intl.DateTimeFormat-formatRange",
                     "Intl.Locale",
                     "IsHTMLDDA",
+                    "Promise.allSettled",
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
                     "class-static-fields-private",
                     "class-static-fields-public",
                     "class-static-methods-private",
+                    "hashbang",
                     "numeric-separator-literal",
                     "tail-call-optimization"
     }));
