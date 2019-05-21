@@ -3,7 +3,7 @@ suite = {
 
   "name" : "graal-js",
 
-  "version" : "1.0.0-rc18",
+  "version" : "20.0.0-beta.01",
   "release" : False,
   "groupId" : "org.graalvm.js",
   "url" : "http://www.graalvm.org/",
@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "1e38ee04e480a2f51db3b8f71f63e4130fbe6b16",
+           "version" : "445077de669592367c0519ed38e5e1e5cbd7267d",
            "urls" : [
                 {"url" : "https://github.com/graalvm/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -209,7 +209,7 @@ suite = {
       "exports" : ["com.oracle.truffle.js.runtime.java.adapter"],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
       "jacoco" : "include",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "Truffle,JavaScript",
     },
@@ -221,7 +221,7 @@ suite = {
       "exports" : [],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,JavaScript",
     },
@@ -236,7 +236,7 @@ suite = {
       "exports" : ["com.oracle.truffle.js.lang to org.graalvm.truffle"],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,JavaScript",
     },
@@ -249,7 +249,7 @@ suite = {
       ],
       "exports" : [],
       "jacoco" : "include",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "Truffle,JavaScript",
     },
@@ -263,7 +263,7 @@ suite = {
       "exports" : [],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -274,7 +274,7 @@ suite = {
       "exports" : [],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -285,7 +285,7 @@ suite = {
       "exports" : [],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -297,7 +297,7 @@ suite = {
       ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -311,7 +311,7 @@ suite = {
       ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -324,7 +324,7 @@ suite = {
       "findbugs" : "false",
 #     checkstyle and findbugs turned off to keep the source aligned
 #     with the original nashorn version as much as possible
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -339,7 +339,7 @@ suite = {
       "findbugs" : "false",
 #     checkstyle and findbugs turned off to keep the source aligned
 #     with the original nashorn version as much as possible
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
     },
 
@@ -353,7 +353,7 @@ suite = {
       ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -368,7 +368,7 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
       "testProject" : True,
     },
@@ -383,7 +383,7 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
       "testProject" : True,
     },
@@ -397,7 +397,7 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
       "testProject" : True,
     },
@@ -411,7 +411,7 @@ suite = {
       "exports" : ["com.oracle.truffle.js.scriptengine"],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -425,7 +425,7 @@ suite = {
         "GRAALJS",
       ],
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript",
       "testProject" : True,
     },
@@ -442,7 +442,7 @@ suite = {
         "NASHORN_INTERNAL_TESTS",
       ],
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript,Test",
       "testProject" : True,
     },
@@ -462,7 +462,7 @@ suite = {
         "sdk:POLYGLOT_TCK"
       ],
       "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript,Test",
       "testProject" : True,
     },
@@ -601,7 +601,7 @@ suite = {
 
     "SDK_JS_TESTS" : {
       "subDir" : "src",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "dependencies" : ["com.oracle.truffle.js.test.sdk"],
       "exclude" : [
         "mx:JUNIT",
