@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -184,9 +182,6 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    /**
-     * Generic case, for Proxies.
-     */
     private Object jsonStrPrepare(JSONData data, String key, TruffleObject holder) {
         Object value;
         if (JSObject.isJSObject(holder)) {
@@ -276,20 +271,27 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         int stepback = data.getIndent();
         int indent = data.getIndent() + 1;
         data.setIndent(indent);
-        List<? extends Object> keys;
-        if (data.getPropertyList() == null) {
-            if (JSObject.isJSObject(value)) {
-                keys = JSObject.enumerableOwnNames((DynamicObject) value);
-            } else {
-                keys = truffleKeys(value);
-            }
-        } else {
-            keys = data.getPropertyList();
-        }
-        boolean isFirst = true;
-        boolean hasContent = false;
 
         concatStart(builder, '{');
+        boolean hasContent;
+        if (data.getPropertyList() == null) {
+            if (JSObject.isJSObject(value)) {
+                hasContent = serializeJSONObjectProperties(builder, data, value, indent, JSObject.enumerableOwnNames((DynamicObject) value));
+            } else {
+                hasContent = serializeForeignObjectProperties(builder, data, value, indent);
+            }
+        } else {
+            hasContent = serializeJSONObjectProperties(builder, data, value, indent, data.getPropertyList());
+        }
+        concatEnd(builder, data, stepback, '}', hasContent);
+
+        data.popStack();
+        data.setIndent(stepback);
+    }
+
+    private boolean serializeJSONObjectProperties(DelimitedStringBuilder builder, JSONData data, TruffleObject value, int indent, List<? extends Object> keys) {
+        boolean isFirst = true;
+        boolean hasContent = false;
         for (Object key : keys) {
             String name = (String) key;
             Object strPPrepared = jsonStrPrepare(data, name, value);
@@ -301,19 +303,58 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                     appendSeparator(builder, data, indent);
                 }
                 jsonQuote(builder, name);
-                builder.append(':', sbAppendProfile);
-                if (data.getGap().length() > 0) {
-                    builder.append(' ', sbAppendProfile);
-                }
+                appendColon(builder, data);
                 jsonStrExecute(builder, data, strPPrepared);
                 hasContent = true;
             }
         }
-        concatEnd(builder, data, stepback, '}', hasContent);
+        return hasContent;
+    }
 
-        data.popStack();
-        data.setIndent(stepback);
+    private void appendColon(DelimitedStringBuilder builder, JSONData data) {
+        builder.append(':', sbAppendProfile);
+        if (data.getGap().length() > 0) {
+            builder.append(' ', sbAppendProfile);
+        }
+    }
 
+    private boolean serializeForeignObjectProperties(DelimitedStringBuilder builder, JSONData data, TruffleObject obj, int indent) {
+        try {
+            InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(obj);
+            if (!objInterop.hasMembers(obj)) {
+                return false;
+            }
+            Object keysObj = objInterop.getMembers(obj);
+            InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keysObj);
+            long size = keysInterop.getArraySize(keysObj);
+            boolean isFirst = true;
+            boolean hasContent = false;
+            for (long i = 0; i < size; i++) {
+                Object key = keysInterop.readArrayElement(keysObj, i);
+                assert InteropLibrary.getFactory().getUncached().isString(key);
+                String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
+                if (!objInterop.isMemberReadable(obj, stringKey)) {
+                    continue;
+                }
+                Object memberValue = truffleRead(obj, stringKey);
+                Object strPPrepared = jsonStrPreparePart2(data, stringKey, obj, memberValue);
+                if (isStringifyable(strPPrepared)) {
+                    if (isFirst) {
+                        concatFirstStep(builder, data);
+                        isFirst = false;
+                    } else {
+                        appendSeparator(builder, data, indent);
+                    }
+                    jsonQuote(builder, stringKey);
+                    appendColon(builder, data);
+                    jsonStrExecute(builder, data, strPPrepared);
+                    hasContent = true;
+                }
+            }
+            return hasContent;
+        } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, "SerializeJSONObject", this);
+        }
     }
 
     @TruffleBoundary
@@ -500,27 +541,6 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readArrayElement(obj, index));
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
             throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", this);
-        }
-    }
-
-    private static List<Object> truffleKeys(TruffleObject obj) {
-        try {
-            Object keysObj = InteropLibrary.getFactory().getUncached().getMembers(obj);
-            InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(keysObj);
-            long size = keysInterop.getArraySize(keysObj);
-            if (size < 0 || size >= Integer.MAX_VALUE) {
-                throw Errors.createRangeErrorInvalidArrayLength();
-            }
-            List<Object> keys = new ArrayList<>((int) size);
-            for (long i = 0; i < size; i++) {
-                Object key = keysInterop.readArrayElement(keysObj, i);
-                assert InteropLibrary.getFactory().getUncached().isString(key);
-                String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
-                keys.add(stringKey);
-            }
-            return keys;
-        } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-            return Collections.emptyList();
         }
     }
 }
