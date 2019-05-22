@@ -53,6 +53,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -68,9 +69,8 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesObjectArray;
-import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyArray;
-import com.oracle.truffle.js.runtime.array.dyn.LazyArrayGenerator;
+import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedJSObjectArray;
@@ -366,8 +366,8 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return obj;
     }
 
-    public static DynamicObject createLazyArray(JSContext context, LazyArrayGenerator gen) {
-        return create(context, LazyArray.createLazyArray(), gen, gen.getLength());
+    public static DynamicObject createLazyArray(JSContext context, List<?> list) {
+        return create(context, LazyArray.createLazyArray(), list, Boundaries.listSize(list));
     }
 
     @Override

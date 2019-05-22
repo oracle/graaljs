@@ -69,7 +69,6 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -365,8 +364,8 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         @Specialization
         protected DynamicObject reflectOwnKeys(Object target) {
             ensureObject(target);
-            List<Object> list = JSObject.ownPropertyKeysList((DynamicObject) target);
-            return JSArray.createConstant(getContext(), Boundaries.listToArray(list));
+            List<Object> list = JSObject.ownPropertyKeys((DynamicObject) target);
+            return JSArray.createLazyArray(getContext(), list);
         }
     }
 

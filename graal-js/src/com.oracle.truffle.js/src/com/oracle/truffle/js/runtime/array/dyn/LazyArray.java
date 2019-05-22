@@ -44,8 +44,10 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
 
+import java.util.List;
+
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -53,9 +55,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 
 /**
  * LazyArray is a backing class for a JSArray that allows array elements to be supplied on demand
- * (i.e., lazily) via a generator object. The generator object needs to implement the
- * {@link LazyArrayGenerator} interface, which is tied to the LazyArray during creation via
- * {@link JSArray#createLazyArray(JSContext, LazyArrayGenerator)}.
+ * (i.e., lazily) from a list generator.
  *
  * Whenever a lazy array is written to, the entire lazy array is enumerated and copied and loses its
  * lazy lookup property.
@@ -77,13 +77,13 @@ public class LazyArray extends AbstractConstantArray {
         return new LazyArray(newIntegrityLevel, cache);
     }
 
-    static LazyArrayGenerator arrayGetLazyGenerator(DynamicObject object, boolean condition) {
-        return (LazyArrayGenerator) arrayGetArray(object, condition);
+    static List<?> arrayGetLazyList(DynamicObject object, boolean condition) {
+        return (List<?>) arrayGetArray(object, condition);
     }
 
     @Override
     public Object getElementInBounds(DynamicObject object, int index, boolean condition) {
-        return arrayGetLazyGenerator(object, condition).getElement(index);
+        return Boundaries.listGet(arrayGetLazyList(object, condition), index);
     }
 
     @Override
