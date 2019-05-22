@@ -249,15 +249,15 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
 
     @TruffleBoundary
     @Override
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
         int len = getStringLength(thisObj);
-        Iterable<Object> indices = JSAbstractArray.makeRangeIterable(0, len);
+        List<Object> indices = JSAbstractArray.makeRangeList(0, len);
         List<Object> keyList = ownPropertyKeysExceptIndices(thisObj);
 
         if (keyList.isEmpty()) {
             return indices;
         } else {
-            return IteratorUtil.concatIterables(indices, keyList);
+            return IteratorUtil.concatLists(indices, keyList);
         }
     }
 

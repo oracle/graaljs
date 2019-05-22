@@ -64,6 +64,10 @@ public final class IteratorUtil {
         return new ConvertIterator<>(source, converter);
     }
 
+    public static <S, T> List<T> convertList(final List<S> source, final Function<S, T> converter) {
+        return new ConvertList<>(source, converter);
+    }
+
     private static final class ConvertIterable<S, T> implements Iterable<T> {
         private final Iterable<S> source;
         private final Function<S, T> converter;
@@ -99,6 +103,31 @@ public final class IteratorUtil {
         }
     }
 
+    private static final class ConvertList<S, T> extends AbstractList<T> {
+        private final List<S> source;
+        private final Function<S, T> converter;
+
+        ConvertList(List<S> source, Function<S, T> converter) {
+            this.source = source;
+            this.converter = converter;
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            return new ConvertIterator<>(source.iterator(), converter);
+        }
+
+        @Override
+        public T get(int index) {
+            return converter.apply(source.get(index));
+        }
+
+        @Override
+        public int size() {
+            return source.size();
+        }
+    }
+
     public static <T> Iterable<T> concatIterables(final Iterable<T> first, final Iterable<T> second) {
         return new Iterable<T>() {
             @Override
@@ -123,6 +152,27 @@ public final class IteratorUtil {
                         return firstIterator.hasNext() || secondIterator.hasNext();
                     }
                 };
+            }
+        };
+    }
+
+    public static <T> List<T> concatLists(final List<T> list0, final List<T> list1) {
+        final int size0 = list0.size();
+        final int size1 = list1.size();
+        final int size = size0 + size1;
+        return new AbstractList<T>() {
+            @Override
+            public T get(int index) {
+                if (index >= 0 && index < size0) {
+                    return list0.get(index);
+                } else {
+                    return list1.get(index - size0);
+                }
+            }
+
+            @Override
+            public int size() {
+                return size;
             }
         };
     }

@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -156,7 +158,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     }
 
     @Override
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
         ScriptArray array = JSObject.getArray(thisObj);
         if (array.length(thisObj) == 0) {
             return super.ownPropertyKeys(thisObj);

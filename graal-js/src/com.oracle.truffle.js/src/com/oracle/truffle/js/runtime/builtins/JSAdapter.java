@@ -290,7 +290,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @Override
     @TruffleBoundary
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
         DynamicObject adaptee = getAdaptee(thisObj);
         Object getIds = JSObject.get(adaptee, GET_IDS);
         List<Object> list = new ArrayList<>();

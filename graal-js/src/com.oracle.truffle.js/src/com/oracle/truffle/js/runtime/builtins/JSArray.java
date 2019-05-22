@@ -247,7 +247,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     @Override
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
         return ownPropertyKeysFastArray(thisObj);
     }
 

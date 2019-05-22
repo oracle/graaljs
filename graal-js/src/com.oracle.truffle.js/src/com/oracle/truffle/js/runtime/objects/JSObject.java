@@ -442,22 +442,16 @@ public final class JSObject {
     /**
      * [[OwnPropertyKeys]]. The returned keys are instanceof (String, Symbol).
      */
-    public static Iterable<Object> ownPropertyKeys(DynamicObject obj) {
+    public static List<Object> ownPropertyKeys(DynamicObject obj) {
         return JSObject.getJSClass(obj).ownPropertyKeys(obj);
     }
 
-    public static Iterable<Object> ownPropertyKeys(DynamicObject obj, JSClassProfile classProfile) {
+    public static List<Object> ownPropertyKeys(DynamicObject obj, JSClassProfile classProfile) {
         return classProfile.getJSClass(obj).ownPropertyKeys(obj);
     }
 
-    @TruffleBoundary
     public static List<Object> ownPropertyKeysList(DynamicObject obj) {
-        Iterable<Object> iterable = JSObject.getJSClass(obj).ownPropertyKeys(obj);
-        List<Object> list = new ArrayList<>();
-        for (Object value : iterable) {
-            list.add(value);
-        }
-        return list;
+        return JSObject.getJSClass(obj).ownPropertyKeys(obj);
     }
 
     /**

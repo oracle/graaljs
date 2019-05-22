@@ -148,14 +148,14 @@ public abstract class JSBuiltinObject extends JSClass {
     }
 
     @Override
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
         return ordinaryOwnPropertyKeys(thisObj);
     }
 
     @TruffleBoundary
-    protected static Iterable<Object> ordinaryOwnPropertyKeys(DynamicObject thisObj) {
+    protected static List<Object> ordinaryOwnPropertyKeys(DynamicObject thisObj) {
         if (JSTruffleOptions.FastOwnKeys) {
-            return IteratorUtil.convertIterable(JSShape.getProperties(thisObj.getShape()), Property::getKey);
+            return IteratorUtil.convertList(JSShape.getProperties(thisObj.getShape()), Property::getKey);
         } else {
             return ownPropertyKeysList(thisObj);
         }

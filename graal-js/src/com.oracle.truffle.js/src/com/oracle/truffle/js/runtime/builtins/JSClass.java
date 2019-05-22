@@ -215,7 +215,7 @@ public abstract class JSClass extends ObjectType {
      * @return an List<Object> of the keys of all own properties of that object
      */
     @TruffleBoundary
-    public abstract Iterable<Object> ownPropertyKeys(DynamicObject obj);
+    public abstract List<Object> ownPropertyKeys(DynamicObject obj);
 
     /**
      * If true, {@link #ownPropertyKeys} and {@link JSShape#getProperties} enumerate the same keys.
