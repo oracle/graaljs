@@ -849,10 +849,6 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
-    "filePath" : "mjsunit/harmony/hashbang-eval.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/harmony/import-from-compilation-errored.js",
     "ecmaVersion" : {
       "minVersion" : 11,

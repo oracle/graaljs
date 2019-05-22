@@ -48,10 +48,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Source;
 
@@ -185,6 +187,18 @@ public abstract class TestRunnable implements Runnable {
                 s2.write(b);
             }
         };
+    }
+
+    protected static Stream<String> getStrings(List<String> scriptCode, String prefix, Pattern findPattern, Pattern splitPattern) {
+        for (String line : scriptCode) {
+            if (line.contains(prefix)) {
+                Matcher matcher = findPattern.matcher(line);
+                if (matcher.find()) {
+                    return splitPattern.splitAsStream(matcher.group(1));
+                }
+            }
+        }
+        return Stream.empty();
     }
 
     // ~ Inner classes

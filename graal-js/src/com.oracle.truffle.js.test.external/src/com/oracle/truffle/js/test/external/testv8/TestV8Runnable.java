@@ -46,8 +46,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -61,6 +67,11 @@ import com.oracle.truffle.js.test.external.suite.TestSuite;
 public class TestV8Runnable extends TestRunnable {
     private static final int LONG_RUNNING_TEST_SECONDS = 55;
 
+    private static final String HARMONY_HASHBANG_FLAG = "--harmony-hashbang";
+    private static final String FLAGS_PREFIX = "// Flags: ";
+    private static final Pattern FLAGS_FIND_PATTERN = Pattern.compile("// Flags: (.*)");
+    private static final Pattern FLAGS_SPLIT_PATTERN = Pattern.compile("\\s+");
+
     public TestV8Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
     }
@@ -73,6 +84,13 @@ public class TestV8Runnable extends TestRunnable {
         boolean negative = isNegativeTest(code);
         boolean shouldThrow = shouldThrow(code);
         boolean module = isModule(code);
+        Set<String> flags = getFlags(code);
+
+        Map<String, String> extraOptions = new HashMap<>(2);
+        if (flags.contains(HARMONY_HASHBANG_FLAG)) {
+            extraOptions.put(JSContextOptions.SHEBANG_NAME, "true");
+        }
+
         suite.logVerbose("Starting: " + getName());
 
         if (getConfig().isPrintScript()) {
@@ -84,19 +102,19 @@ public class TestV8Runnable extends TestRunnable {
         assert ecmaVersion != null : testFile;
 
         // now run it
-        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module)));
+        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module, extraOptions)));
     }
 
-    private TestFile.Result runInternal(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module) {
+    private TestFile.Result runInternal(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions) {
         suite.logVerbose(getName() + ecmaVersionToString(ecmaVersion));
         TestFile.Result testResult;
 
         long startDate = System.currentTimeMillis();
         reportStart();
         if (suite.getConfig().isExtLauncher()) {
-            testResult = runExtLauncher(ecmaVersion, file, negative, shouldThrow, module);
+            testResult = runExtLauncher(ecmaVersion, file, negative, shouldThrow, module, extraOptions);
         } else {
-            testResult = runInJVM(ecmaVersion, file, negative, shouldThrow, module);
+            testResult = runInJVM(ecmaVersion, file, negative, shouldThrow, module, extraOptions);
         }
         if (negative) {
             if (!testResult.isFailure()) {
@@ -117,13 +135,13 @@ public class TestV8Runnable extends TestRunnable {
         return testResult;
     }
 
-    private TestFile.Result runInJVM(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module) {
+    private TestFile.Result runInJVM(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions) {
         Source[] prequelSources = loadHarnessSources(ecmaVersion);
         Source[] sources = Arrays.copyOf(prequelSources, prequelSources.length + 2);
         sources[sources.length - 1] = Source.newBuilder(JavaScriptLanguage.ID, createTestFileNamePrefix(file), "").buildLiteral();
         sources[sources.length - 2] = ((TestV8) suite).getMockupSource();
 
-        TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion);
+        TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion, extraOptions);
         if (!suite.getConfig().isPrintFullOutput()) {
             tc.setOutput(DUMMY_OUTPUT_STREAM);
         }
@@ -142,7 +160,7 @@ public class TestV8Runnable extends TestRunnable {
         }
     }
 
-    private TestFile.Result runExtLauncher(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module) {
+    private TestFile.Result runExtLauncher(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions) {
         Source[] prequelSources = loadHarnessSources(ecmaVersion);
         List<String> args = new ArrayList<>(prequelSources.length + (module ? 5 : 4));
         for (Source prequelSrc : prequelSources) {
@@ -155,7 +173,7 @@ public class TestV8Runnable extends TestRunnable {
             args.add("--module");
         }
         args.add(file.getPath());
-        TestExtProcessCallable tc = new TestExtProcessCallable(suite, ecmaVersion, args);
+        TestExtProcessCallable tc = new TestExtProcessCallable(suite, ecmaVersion, args, extraOptions);
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         tc.setOutput(byteArrayOutputStream);
         tc.setError(byteArrayOutputStream);
@@ -249,6 +267,10 @@ public class TestV8Runnable extends TestRunnable {
             }
         }
         return false;
+    }
+
+    private static Set<String> getFlags(List<String> scriptCode) {
+        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_FIND_PATTERN, FLAGS_SPLIT_PATTERN).collect(Collectors.toSet());
     }
 
     private static final OutputStream DUMMY_OUTPUT_STREAM = new OutputStream() {
