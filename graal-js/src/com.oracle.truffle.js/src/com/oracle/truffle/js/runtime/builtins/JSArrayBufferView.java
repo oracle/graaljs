@@ -515,8 +515,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     @Override
     @TruffleBoundary
     public List<Object> ownPropertyKeys(DynamicObject thisObj) {
-        int len = typedArrayGetLength(thisObj);
-        List<Object> indices = JSAbstractArray.makeRangeList(0, len);
+        List<Object> indices = typedArrayGetArrayType(thisObj).ownPropertyKeys(thisObj);
         List<Object> keys = ordinaryOwnPropertyKeys(thisObj);
         return IteratorUtil.concatLists(indices, keys);
     }

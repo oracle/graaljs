@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putHiddenProperty;
 
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -520,42 +519,14 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     @TruffleBoundary
     protected static List<Object> ownPropertyKeysFastArray(DynamicObject thisObj) {
         assert JSArray.isJSFastArray(thisObj) || JSArgumentsObject.isJSFastArgumentsObject(thisObj);
-        // Collect contiguous index ranges.
-        List<Object> indices = null;
         ScriptArray array = arrayGetArrayType(thisObj);
-        long currentIndex = findNextIndex(thisObj, array, array.firstElementIndex(thisObj));
-        long start = currentIndex;
-        long end = currentIndex;
-        long elements = 0;
-        int ranges = 0;
-        while (currentIndex <= array.lastElementIndex(thisObj)) {
-            if (currentIndex == end) {
-                end = currentIndex + 1;
-            } else {
-                assert end < currentIndex;
-                assert start < end;
-                elements += end - start;
-                if (++ranges > 20) {
-                    // too many ranges, fall back to eager list.
-                    return ownPropertyKeysSlowArray(thisObj);
-                }
-                List<Object> range = makeRangeList(start, end);
-                indices = indices == null ? range : IteratorUtil.concatLists(indices, range);
-                start = currentIndex;
-                end = currentIndex + 1;
-            }
-            currentIndex = findNextIndex(thisObj, array, array.nextElementIndex(thisObj, currentIndex));
-        }
-        if (start < end) {
-            elements += end - start;
-            List<Object> range = makeRangeList(start, end);
-            indices = indices == null ? range : IteratorUtil.concatLists(indices, range);
-        }
-        assert indices.size() == elements;
+        List<Object> indices = array.ownPropertyKeys(thisObj);
 
-        List<Object> list = new ArrayList<>(thisObj.getShape().getPropertyCount());
         List<Object> keyList = thisObj.getShape().getKeyList();
-        if (!keyList.isEmpty()) {
+        if (keyList.isEmpty()) {
+            return indices;
+        } else {
+            List<Object> list = new ArrayList<>(thisObj.getShape().getPropertyCount());
             keyList.forEach(k -> {
                 assert !(k instanceof String && JSRuntime.isArrayIndex((String) k));
                 if (k instanceof String) {
@@ -567,27 +538,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
                     list.add(k);
                 }
             });
+            return IteratorUtil.concatLists(indices, list);
         }
-        return indices == null ? list : IteratorUtil.concatLists(indices, list);
-    }
-
-    static List<Object> makeRangeList(final long rangeStart, final long rangeEnd) {
-        assert rangeEnd - rangeStart <= Integer.MAX_VALUE;
-        return new AbstractList<Object>() {
-            @Override
-            public Object get(int index) {
-                if (index >= 0 && rangeStart + index < rangeEnd) {
-                    return Boundaries.stringValueOf(rangeStart + index);
-                } else {
-                    throw new IndexOutOfBoundsException();
-                }
-            }
-
-            @Override
-            public int size() {
-                return (int) (rangeEnd - rangeStart);
-            }
-        };
     }
 
     @TruffleBoundary

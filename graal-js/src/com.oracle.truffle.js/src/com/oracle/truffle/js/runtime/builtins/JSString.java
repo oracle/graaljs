@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -195,7 +196,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     @Override
     public List<Object> ownPropertyKeys(DynamicObject thisObj) {
         int len = getStringLength(thisObj);
-        List<Object> indices = JSAbstractArray.makeRangeList(0, len);
+        List<Object> indices = ScriptArray.makeRangeList(0, len);
         List<Object> keyList = thisObj.getShape().getKeyList();
 
         if (keyList.isEmpty()) {

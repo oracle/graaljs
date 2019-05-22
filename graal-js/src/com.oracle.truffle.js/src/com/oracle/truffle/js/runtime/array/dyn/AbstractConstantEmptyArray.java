@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.array.dyn;
 
 import java.util.Arrays;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -249,6 +250,11 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     @Override
     public boolean hasHoles(DynamicObject object, boolean condition) {
         return getCapacity(object, condition) != 0;
+    }
+
+    @Override
+    public List<Object> ownPropertyKeys(DynamicObject object) {
+        return ownPropertyKeysContiguous(object);
     }
 
     private void notifyAllocationSite(DynamicObject object, ScriptArray newArray) {

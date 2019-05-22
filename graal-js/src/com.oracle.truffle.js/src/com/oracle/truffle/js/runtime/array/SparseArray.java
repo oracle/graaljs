@@ -45,9 +45,12 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLen
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetLength;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.TreeMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -256,13 +259,24 @@ public final class SparseArray extends DynamicArray {
         if (!hasElement(object, pos)) {
             pos = previousElementIndex(object, pos, arrayCondition());
         }
-        // move all element higher upwardswards
+        // move all element higher upwards
         while (pos >= offset) {
             setElement(object, pos + size, getElement(object, pos), false);
             deleteElementImpl(object, pos, false, arrayCondition());
             pos = previousElementIndex(object, pos, arrayCondition());
         }
         return this;
+    }
+
+    @TruffleBoundary
+    @Override
+    public List<Object> ownPropertyKeys(DynamicObject object) {
+        Set<Long> keySet = arrayMap(object, arrayCondition()).keySet();
+        List<Object> list = new ArrayList<>(keySet.size());
+        for (long index : keySet) {
+            list.add(Boundaries.stringValueOf(index));
+        }
+        return list;
     }
 
     @Override

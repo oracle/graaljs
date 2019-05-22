@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -58,6 +59,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -466,6 +468,99 @@ public abstract class ScriptArray {
         } else {
             throw Errors.createTypeError("Cannot add property to non-extensible array");
         }
+    }
+
+    public List<Object> ownPropertyKeys(DynamicObject object) {
+        assert !isHolesType() || !hasHoles(object);
+        return ownPropertyKeysContiguous(object);
+    }
+
+    protected final List<Object> ownPropertyKeysContiguous(DynamicObject object) {
+        return makeRangeList(firstElementIndex(object), lastElementIndex(object) + 1);
+    }
+
+    @TruffleBoundary
+    protected final List<Object> ownPropertyKeysHoles(DynamicObject object) {
+        long currentIndex = firstElementIndex(object);
+        long start = currentIndex;
+        long end = currentIndex;
+        int total = 0;
+        List<Long> rangeList = new ArrayList<>();
+        while (currentIndex <= lastElementIndex(object)) {
+            if (currentIndex == end) {
+                end = currentIndex + 1;
+            } else {
+                assert end < currentIndex;
+                assert start < end;
+                total += end - start;
+                rangeList.add(start);
+                rangeList.add(end);
+                start = currentIndex;
+                end = currentIndex + 1;
+            }
+            currentIndex = nextElementIndex(object, currentIndex);
+        }
+        if (start < end) {
+            total += end - start;
+            if (rangeList.isEmpty()) {
+                return makeRangeList(start, end);
+            }
+            rangeList.add(start);
+            rangeList.add(end);
+        }
+        return makeMultiRangeList(total, toLongArray(rangeList));
+    }
+
+    private static long[] toLongArray(List<Long> longList) {
+        long[] longArray = new long[longList.size()];
+        for (int i = 0; i < longArray.length; i++) {
+            longArray[i] = longList.get(i);
+        }
+        return longArray;
+    }
+
+    public static List<Object> makeRangeList(final long rangeStart, final long rangeEnd) {
+        assert rangeEnd - rangeStart >= 0 && rangeEnd - rangeStart <= Integer.MAX_VALUE;
+        return new AbstractList<Object>() {
+            @Override
+            public Object get(int index) {
+                if (index >= 0 && rangeStart + index < rangeEnd) {
+                    return Boundaries.stringValueOf(rangeStart + index);
+                } else {
+                    throw new IndexOutOfBoundsException();
+                }
+            }
+
+            @Override
+            public int size() {
+                return (int) (rangeEnd - rangeStart);
+            }
+        };
+    }
+
+    protected static List<Object> makeMultiRangeList(final int total, final long[] ranges) {
+        return new AbstractList<Object>() {
+            @Override
+            public Object get(int index) {
+                long relativeIndex = index;
+                for (int rangeIndex = 0; rangeIndex < ranges.length; rangeIndex += 2) {
+                    long rangeStart = ranges[rangeIndex];
+                    long rangeEnd = ranges[rangeIndex + 1];
+                    long rangeLen = rangeEnd - rangeStart;
+                    if (relativeIndex < rangeLen) {
+                        return Boundaries.stringValueOf(rangeStart + relativeIndex);
+                    } else {
+                        relativeIndex -= rangeLen;
+                    }
+                }
+                throw new IndexOutOfBoundsException();
+            }
+
+            @Override
+            public int size() {
+                return total;
+            }
+        };
     }
 
     protected static int nextPower(int length) {
