@@ -155,7 +155,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
             case ScriptEngine.LANGUAGE_VERSION:
                 return getLanguageVersion();
             default:
-                throw new IllegalArgumentException("Invalid key");
+                return null;
         }
     }
 
