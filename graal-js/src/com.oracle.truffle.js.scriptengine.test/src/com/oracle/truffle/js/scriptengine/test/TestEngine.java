@@ -50,6 +50,7 @@ import javax.script.Compilable;
 import javax.script.Invocable;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
+import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
@@ -170,5 +171,23 @@ public class TestEngine {
         engine.eval("var obj = {f: () => { return x === 42; }};");
         boolean result = (boolean) ((Invocable) engine).invokeMethod(engine.eval("obj"), "f");
         assertTrue(result);
+    }
+
+    @Test
+    public void factoryGetParameterTest() {
+        ScriptEngineFactory factory = getEngine().getFactory();
+
+        // Verify requirements from the JavaDoc of ScriptEngineFactory.getParameter()
+        assertEquals(factory.getEngineName(), factory.getParameter(ScriptEngine.ENGINE));
+        assertEquals(factory.getEngineVersion(), factory.getParameter(ScriptEngine.ENGINE_VERSION));
+        assertEquals(factory.getLanguageName(), factory.getParameter(ScriptEngine.LANGUAGE));
+        assertEquals(factory.getLanguageVersion(), factory.getParameter(ScriptEngine.LANGUAGE_VERSION));
+        assertTrue(factory.getNames().contains(factory.getParameter(ScriptEngine.NAME)));
+
+        // concurrent execution of scripts is not supported
+        assertEquals(null, factory.getParameter("THREADING"));
+
+        // null is returned for unknown parameters (i.e. no exception is thrown)
+        assertEquals(null, factory.getParameter("noValueIsAssignedToThisKey"));
     }
 }
