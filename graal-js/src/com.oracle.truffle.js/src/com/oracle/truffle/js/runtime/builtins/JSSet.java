@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -127,22 +128,24 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
     }
 
     private static DynamicObject createSizeGetterFunction(JSRealm realm) {
-        JSContext context = realm.getContext();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            private final BranchProfile errorBranch = BranchProfile.create();
+        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SetGetSize, (c) -> {
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+                private final BranchProfile errorBranch = BranchProfile.create();
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object obj = frame.getArguments()[0];
-                if (JSSet.isJSSet(obj)) {
-                    return JSSet.getSetSize((DynamicObject) obj);
-                } else {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorSetExpected();
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object obj = frame.getArguments()[0];
+                    if (JSSet.isJSSet(obj)) {
+                        return JSSet.getSetSize((DynamicObject) obj);
+                    } else {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorSetExpected();
+                    }
                 }
-            }
+            });
+            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + SIZE);
         });
-        DynamicObject sizeGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, callTarget, 0, "get " + SIZE));
+        DynamicObject sizeGetter = JSFunction.create(realm, getterData);
         JSObject.preventExtensions(sizeGetter);
         return sizeGetter;
     }

@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -334,9 +335,18 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
         DynamicObject prototype = JSObject.createInit(realm, realm.getIteratorPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, ITERATOR_PROTOTYPE_NAME);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        DynamicObject breakTypeGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createPropertyGetterCallTarget(context, BREAK_TYPE_PROPERTY), 0, "get " + IntlUtil.BREAK_TYPE));
+        JSFunctionData breakTypeFd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SegmeterBreakType, (c) -> {
+            CallTarget ct = createPropertyGetterCallTarget(context, BREAK_TYPE_PROPERTY);
+            return JSFunctionData.createCallOnly(c, ct, 0, "get " + IntlUtil.BREAK_TYPE);
+        });
+        DynamicObject breakTypeGetter = JSFunction.create(realm, breakTypeFd);
+
         JSObjectUtil.putConstantAccessorProperty(context, prototype, IntlUtil.BREAK_TYPE, breakTypeGetter, Undefined.instance);
-        DynamicObject positionGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, createPropertyGetterCallTarget(context, INDEX_PROPERTY), 0, "get " + IntlUtil.INDEX));
+        JSFunctionData positionFd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SegmeterPosition, (c) -> {
+            return JSFunctionData.createCallOnly(context, createPropertyGetterCallTarget(context, INDEX_PROPERTY), 0, "get " + IntlUtil.INDEX);
+        });
+        DynamicObject positionGetter = JSFunction.create(realm, positionFd);
+
         JSObjectUtil.putConstantAccessorProperty(context, prototype, IntlUtil.INDEX, positionGetter, Undefined.instance);
         return prototype;
     }

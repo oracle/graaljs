@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -125,24 +126,27 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     }
 
     private static DynamicObject createDescriptionGetterFunction(JSRealm realm) {
-        JSContext context = realm.getContext();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            private final ConditionProfile isSymbolProfile = ConditionProfile.createBinaryProfile();
-            private final ConditionProfile isJSSymbolProfile = ConditionProfile.createBinaryProfile();
+        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SymbolGetDescription, (c) -> {
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+                private final ConditionProfile isSymbolProfile = ConditionProfile.createBinaryProfile();
+                private final ConditionProfile isJSSymbolProfile = ConditionProfile.createBinaryProfile();
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object obj = frame.getArguments()[0];
-                if (isSymbolProfile.profile(obj instanceof Symbol)) {
-                    return ((Symbol) obj).getDescription();
-                } else if (isJSSymbolProfile.profile(isJSSymbol(obj))) {
-                    return JSSymbol.getSymbolData((DynamicObject) obj).getDescription();
-                } else {
-                    throw Errors.createTypeErrorSymbolExpected();
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object obj = frame.getArguments()[0];
+                    if (isSymbolProfile.profile(obj instanceof Symbol)) {
+                        return ((Symbol) obj).getDescription();
+                    } else if (isJSSymbolProfile.profile(isJSSymbol(obj))) {
+                        return JSSymbol.getSymbolData((DynamicObject) obj).getDescription();
+                    } else {
+                        throw Errors.createTypeErrorSymbolExpected();
+                    }
                 }
-            }
+            });
+            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + DESCRIPTION);
         });
-        return JSFunction.create(realm, JSFunctionData.createCallOnly(context, callTarget, 0, "get " + DESCRIPTION));
+
+        return JSFunction.create(realm, getterData);
     }
 
     @Override

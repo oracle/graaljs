@@ -43,17 +43,21 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.EnumSet;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -141,9 +145,9 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
     }
 
     private static void putGetters(JSRealm realm, DynamicObject prototype) {
-        putGetter(realm, prototype, BUFFER, view -> getArrayBuffer(view));
-        putGetter(realm, prototype, BYTE_LENGTH, view -> typedArrayGetLengthChecked(view));
-        putGetter(realm, prototype, BYTE_OFFSET, view -> typedArrayGetOffsetChecked(view));
+        putGetter(realm, prototype, BUFFER, BuiltinFunctionKey.DataViewBuffer, view -> getArrayBuffer(view));
+        putGetter(realm, prototype, BYTE_LENGTH, BuiltinFunctionKey.DataViewByteLength, view -> typedArrayGetLengthChecked(view));
+        putGetter(realm, prototype, BYTE_OFFSET, BuiltinFunctionKey.DataViewByteOffset, view -> typedArrayGetOffsetChecked(view));
     }
 
     public static int typedArrayGetLengthChecked(DynamicObject thisObj) {
@@ -160,24 +164,30 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
         return typedArrayGetOffset(thisObj);
     }
 
-    private static void putGetter(JSRealm realm, DynamicObject prototype, String name, Function<DynamicObject, Object> function) {
-        JSContext context = realm.getContext();
-        DynamicObject getter = JSFunction.create(realm, JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            private final BranchProfile notDataViewBranch = BranchProfile.create();
+    private static void putGetter(JSRealm realm, DynamicObject prototype, String name, BuiltinFunctionKey key, Function<DynamicObject, Object> function) {
+        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(key, (c) -> {
+            return JSFunctionData.createCallOnly(c, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+                @CompilationFinal private ContextReference<JSRealm> realmRef;
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object obj = JSArguments.getThisObject(frame.getArguments());
-                if (JSObject.isDynamicObject(obj)) {
-                    DynamicObject dataView = JSObject.castJSObject(obj);
-                    if (isJSDataView(dataView)) {
-                        return function.apply(dataView);
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object obj = JSArguments.getThisObject(frame.getArguments());
+                    if (JSObject.isDynamicObject(obj)) {
+                        DynamicObject dataView = JSObject.castJSObject(obj);
+                        if (isJSDataView(dataView)) {
+                            return function.apply(dataView);
+                        }
                     }
+                    if (realmRef == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        realmRef = lookupContextReference(JavaScriptLanguage.class);
+                    }
+                    throw Errors.createTypeErrorNotADataView().setRealm(realmRef.get());
                 }
-                notDataViewBranch.enter();
-                throw Errors.createTypeErrorNotADataView().setRealm(realm);
-            }
-        }), 0, "get " + name));
+            }), 0, "get " + name);
+        });
+        JSContext context = realm.getContext();
+        DynamicObject getter = JSFunction.create(realm, getterData);
         JSObjectUtil.putConstantAccessorProperty(context, prototype, name, getter, Undefined.instance);
     }
 

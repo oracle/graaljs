@@ -48,8 +48,11 @@ import java.util.regex.Pattern;
 import com.ibm.icu.text.Collator;
 import com.ibm.icu.text.RuleBasedCollator;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -57,10 +60,12 @@ import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -269,11 +274,12 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
         return (InternalState) INTERNAL_STATE_PROPERTY.get(collatorObj, isJSCollator(collatorObj));
     }
 
-    private static CallTarget createGetCompareCallTarget(JSRealm realm, JSContext context) {
+    private static CallTarget createGetCompareCallTarget(JSContext context) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
 
             private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
             private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
+            @CompilationFinal private ContextReference<JSRealm> realmRef;
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -292,6 +298,11 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                     if (state.boundCompareFunction == null) {
                         JSFunctionData compareFunctionData;
                         DynamicObject compareFn;
+                        if (realmRef == null) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            realmRef = lookupContextReference(JavaScriptLanguage.class);
+                        }
+                        JSRealm realm = realmRef.get();
                         if (state.sensitivity.equals(IntlUtil.CASE)) {
                             compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCaseSensitiveCompare,
                                             c -> createCaseSensitiveCompareFunctionData(c));
@@ -347,8 +358,10 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     }
 
     private static DynamicObject createCompareFunctionGetter(JSRealm realm, JSContext context) {
-        CallTarget ct = createGetCompareCallTarget(realm, context);
-        JSFunctionData fd = JSFunctionData.create(context, ct, ct, 0, "get compare", false, false, false, true);
+        JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.CollatorGetCompare, (c) -> {
+            CallTarget ct = createGetCompareCallTarget(context);
+            return JSFunctionData.create(context, ct, ct, 0, "get compare", false, false, false, true);
+        });
         return JSFunction.create(realm, fd);
     }
 
