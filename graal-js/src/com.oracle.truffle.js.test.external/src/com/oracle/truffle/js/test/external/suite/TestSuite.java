@@ -86,7 +86,7 @@ import org.graalvm.polyglot.Engine;
 
 public abstract class TestSuite {
 
-    public static final int OVERALL_TIMEOUT_SECONDS = 60 * 12;
+    public static final int OVERALL_TIMEOUT_SECONDS = 60 * 14;
     public static final int INDIVIDUAL_TIMEOUT_SECONDS = 30;
 
     private static final char LINE_SEPARATOR = '\n';
