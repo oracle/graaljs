@@ -50,7 +50,6 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation for a list of statements.
  */
@@ -71,8 +70,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     public static final int NEEDS_SCOPE = 1 << 0;
 
     /**
-     * Is this block tagged as terminal based on its contents
-     * (usually the last statement)
+     * Is this block tagged as terminal based on its contents (usually the last statement)
      */
     public static final int IS_TERMINAL = 1 << 2;
 
@@ -88,12 +86,14 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     public static final int IS_SYNTHETIC = 1 << 4;
 
     /**
-     * Is this the function body block? May not be the first, if parameter list contains expressions.
+     * Is this the function body block? May not be the first, if parameter list contains
+     * expressions.
      */
     public static final int IS_BODY = 1 << 5;
 
     /**
-     * Is this the parameter initialization block? If present, must be the first block, immediately wrapping the function body block.
+     * Is this the parameter initialization block? If present, must be the first block, immediately
+     * wrapping the function body block.
      */
     public static final int IS_PARAMETER_BLOCK = 1 << 6;
 
@@ -115,9 +115,9 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     /**
      * Constructor
      *
-     * @param token      The first token of the block
-     * @param finish     The index of the last character
-     * @param flags      The flags of the block
+     * @param token The first token of the block
+     * @param finish The index of the last character
+     * @param flags The flags of the block
      * @param statements All statements in the block
      */
     public Block(final long token, final int finish, final int flags, final Statement... statements) {
@@ -125,7 +125,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
         assert start <= finish;
 
         this.statements = statements.length == 0 ? Collections.emptyList() : Arrays.asList(statements);
-        this.symbols    = EconomicMap.create();
+        this.symbols = EconomicMap.create();
         final int len = statements.length;
         final int terminalFlags = len > 0 && statements[len - 1].hasTerminalFlags() ? IS_TERMINAL : 0;
         this.flags = terminalFlags | flags;
@@ -134,9 +134,9 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     /**
      * Constructor
      *
-     * @param token      The first token of the block
-     * @param finish     The index of the last character
-     * @param flags      The flags of the block
+     * @param token The first token of the block
+     * @param finish The index of the last character
+     * @param flags The flags of the block
      * @param statements All statements in the block
      */
     public Block(final long token, final int finish, final int flags, final List<Statement> statements) {
@@ -146,16 +146,17 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     private Block(final Block block, final int finish, final List<Statement> statements, final int flags, final EconomicMap<String, Symbol> symbols) {
         super(block, finish);
         this.statements = statements;
-        this.flags      = flags;
-        this.symbols    = EconomicMap.create(symbols);
+        this.flags = flags;
+        this.symbols = EconomicMap.create(symbols);
 
         this.declaredNames = block.declaredNames;
         this.blockScopedOrRedeclaredSymbols = block.blockScopedOrRedeclaredSymbols;
     }
 
     /**
-     * Is this block the outermost eager global scope - i.e. the primordial program?
-     * Used for global anchor point for scope depth computation for recompilation code
+     * Is this block the outermost eager global scope - i.e. the primordial program? Used for global
+     * anchor point for scope depth computation for recompilation code
+     *
      * @return true if outermost eager global scope
      */
     public boolean isGlobalScope() {
@@ -184,6 +185,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
 
     /**
      * Get all the symbols defined in this block, in definition order.
+     *
      * @return symbol iterator
      */
     public Iterable<Symbol> getSymbols() {
@@ -192,9 +194,10 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
 
     /**
      * Retrieves an existing symbol defined in the current block.
+     *
      * @param name the name of the symbol
-     * @return an existing symbol with the specified name defined in the current block, or null if this block doesn't
-     * define a symbol with this name.T
+     * @return an existing symbol with the specified name defined in the current block, or null if
+     *         this block doesn't define a symbol with this name.
      */
     public Symbol getExistingSymbol(final String name) {
         return symbols.get(name);
@@ -202,6 +205,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
 
     /**
      * Test if a symbol with this name is defined in the current block.
+     *
      * @param name the name of the symbol
      */
     public boolean hasSymbol(final String name) {
@@ -217,7 +221,6 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
 
     /**
      * Test if this block represents a <tt>catch</tt> block in a <tt>try</tt> statement.
-     * This is used by the Splitter as catch blocks are not be subject to splitting.
      *
      * @return true if this block represents a catch block in a try statement.
      */
@@ -259,6 +262,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
 
     /**
      * Returns the number of statements in the block.
+     *
      * @return the number of statements in the block.
      */
     public int getStatementCount() {
@@ -267,7 +271,9 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
 
     /**
      * Returns the line number of the first statement in the block.
-     * @return the line number of the first statement in the block, or -1 if the block has no statements.
+     *
+     * @return the line number of the first statement in the block, or -1 if the block has no
+     *         statements.
      */
     public int getFirstStatementLineNumber() {
         if (statements == null || statements.isEmpty()) {
@@ -276,9 +282,9 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
         return statements.get(0).getLineNumber();
     }
 
-
     /**
      * Returns the first statement in the block.
+     *
      * @return the first statement in the block, or null if the block has no statements.
      */
     public Statement getFirstStatement() {
@@ -287,6 +293,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
 
     /**
      * Returns the last statement in the block.
+     *
      * @return the last statement in the block, or null if the block has no statements.
      */
     public Statement getLastStatement() {
@@ -314,7 +321,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     /**
      * Add or overwrite an existing symbol in the block
      *
-     * @param lc     get lexical context
+     * @param lc get lexical context
      * @param symbol symbol
      */
     public void putSymbol(final LexicalContext lc, final Symbol symbol) {

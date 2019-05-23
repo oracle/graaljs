@@ -44,10 +44,8 @@ package com.oracle.js.parser;
 import static com.oracle.js.parser.TokenKind.SPECIAL;
 import static com.oracle.js.parser.TokenType.IDENT;
 
-// @formatter:off
 /**
  * Fast lookup of operators and keywords.
- *
  */
 public final class TokenLookup {
     /**
@@ -172,7 +170,6 @@ public final class TokenLookup {
         return IDENT;
     }
 
-
     /**
      * Lookup operator.
      *
@@ -196,32 +193,32 @@ public final class TokenLookup {
                 final String name = tokenType.getName();
 
                 switch (name.length()) {
-                case 1:
-                    // One character entry.
-                    return tokenType;
-                case 2:
-                    // Two character entry.
-                    if (name.charAt(1) == ch1) {
+                    case 1:
+                        // One character entry.
                         return tokenType;
-                    }
-                    break;
-                case 3:
-                    // Three character entry.
-                    if (name.charAt(1) == ch1 &&
-                        name.charAt(2) == ch2) {
-                        return tokenType;
-                    }
-                    break;
-                case 4:
-                    // Four character entry.
-                    if (name.charAt(1) == ch1 &&
-                        name.charAt(2) == ch2 &&
-                        name.charAt(3) == ch3) {
-                        return tokenType;
-                    }
-                    break;
-                default:
-                    break;
+                    case 2:
+                        // Two character entry.
+                        if (name.charAt(1) == ch1) {
+                            return tokenType;
+                        }
+                        break;
+                    case 3:
+                        // Three character entry.
+                        if (name.charAt(1) == ch1 &&
+                                        name.charAt(2) == ch2) {
+                            return tokenType;
+                        }
+                        break;
+                    case 4:
+                        // Four character entry.
+                        if (name.charAt(1) == ch1 &&
+                                        name.charAt(2) == ch2 &&
+                                        name.charAt(3) == ch3) {
+                            return tokenType;
+                        }
+                        break;
+                    default:
+                        break;
                 }
 
                 // Try next token.

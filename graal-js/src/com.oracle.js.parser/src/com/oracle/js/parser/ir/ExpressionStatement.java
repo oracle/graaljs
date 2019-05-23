@@ -45,11 +45,9 @@ import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
- * IR representation for executing bare expressions. Basically, an expression
- * node means "this code will be executed" and evaluating it results in
- * statements being added to the IR
+ * IR representation for executing bare expressions. Basically, an expression node means "this code
+ * will be executed" and evaluating it results in statements being added to the IR
  */
 public final class ExpressionStatement extends Statement {
     /** Expression to execute. */
@@ -59,8 +57,8 @@ public final class ExpressionStatement extends Statement {
      * Constructor
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
+     * @param token token
+     * @param finish finish
      * @param expression the expression to execute
      */
     public ExpressionStatement(final int lineNumber, final long token, final int finish, final Expression expression) {
@@ -76,7 +74,7 @@ public final class ExpressionStatement extends Statement {
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterExpressionStatement(this)) {
-            return visitor.leaveExpressionStatement(setExpression((Expression)expression.accept(visitor)));
+            return visitor.leaveExpressionStatement(setExpression((Expression) expression.accept(visitor)));
         }
 
         return this;
@@ -94,6 +92,7 @@ public final class ExpressionStatement extends Statement {
 
     /**
      * Return the expression to be executed
+     *
      * @return the expression
      */
     public Expression getExpression() {
@@ -102,6 +101,7 @@ public final class ExpressionStatement extends Statement {
 
     /**
      * Reset the expression to be executed
+     *
      * @param expression the expression
      * @return new or same execute node
      */

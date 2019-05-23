@@ -44,26 +44,30 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representing a FOR statement.
  */
 public final class ForNode extends LoopNode {
-    /** Initialize expression for an ordinary for statement, or the LHS expression receiving iterated-over values in a
-     * for-in statement. */
+    /**
+     * Initialize expression for an ordinary for statement, or the LHS expression receiving
+     * iterated-over values in a for-in statement.
+     */
     private final Expression init;
 
-    /** Modify expression for an ordinary statement, or the source of the iterator in the for-in statement. */
+    /**
+     * Modify expression for an ordinary statement, or the source of the iterator in the for-in
+     * statement.
+     */
     private final JoinPredecessorExpression modify;
 
     /** Iterator symbol. */
     private Symbol iterator;
 
     /** Is this a normal for in loop? */
-    public static final int IS_FOR_IN           = 1 << 0;
+    public static final int IS_FOR_IN = 1 << 0;
 
     /** Is this a normal for each in loop? */
-    public static final int IS_FOR_EACH         = 1 << 1;
+    public static final int IS_FOR_EACH = 1 << 1;
 
     /** Does this loop need a per-iteration scope because its init contain a LET declaration? */
     public static final int PER_ITERATION_SCOPE = 1 << 2;
@@ -80,29 +84,31 @@ public final class ForNode extends LoopNode {
      * Constructor
      *
      * @param lineNumber The line number of header
-     * @param token      The for token
-     * @param finish     The last character of the for node
-     * @param body       The body of the for node
-     * @param flags      The flags
-     * @param init       The initial expression
-     * @param test       The test expression
-     * @param modify     The modify expression
+     * @param token The for token
+     * @param finish The last character of the for node
+     * @param body The body of the for node
+     * @param flags The flags
+     * @param init The initial expression
+     * @param test The test expression
+     * @param modify The modify expression
      */
-    public ForNode(final int lineNumber, final long token, final int finish, final Block body, final int flags, final Expression init, final JoinPredecessorExpression test, final JoinPredecessorExpression modify) {
+    public ForNode(final int lineNumber, final long token, final int finish, final Block body, final int flags, final Expression init, final JoinPredecessorExpression test,
+                    final JoinPredecessorExpression modify) {
         super(lineNumber, token, finish, body, test, false);
-        this.flags  = flags;
+        this.flags = flags;
         this.init = init;
         this.modify = modify;
 
     }
 
     private ForNode(final ForNode forNode, final Expression init, final JoinPredecessorExpression test,
-            final Block body, final JoinPredecessorExpression modify, final int flags, final boolean controlFlowEscapes) {
+                    final Block body, final JoinPredecessorExpression modify, final int flags, final boolean controlFlowEscapes) {
         super(forNode, test, body, controlFlowEscapes);
-        this.init   = init;
+        this.init = init;
         this.modify = modify;
-        this.flags  = flags;
-        // Even if the for node gets cloned in try/finally, the symbol can be shared as only one branch of the finally
+        this.flags = flags;
+        // Even if the for node gets cloned in try/finally, the symbol can be shared as only one
+        // branch of the finally
         // is executed.
         this.iterator = forNode.iterator;
     }
@@ -110,11 +116,13 @@ public final class ForNode extends LoopNode {
     @Override
     public Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterForNode(this)) {
+            //@formatter:off
             return visitor.leaveForNode(
-                setInit(lc, init == null ? null : (Expression)init.accept(visitor)).
-                setTest(lc, test == null ? null : (JoinPredecessorExpression)test.accept(visitor)).
-                setModify(lc, modify == null ? null : (JoinPredecessorExpression)modify.accept(visitor)).
-                setBody(lc, (Block)body.accept(visitor)));
+                setInit(lc, init == null ? null : (Expression) init.accept(visitor)).
+                setTest(lc, test == null ? null : (JoinPredecessorExpression) test.accept(visitor)).
+                setModify(lc, modify == null ? null : (JoinPredecessorExpression) modify.accept(visitor)).
+                setBody(lc, (Block) body.accept(visitor)));
+            //@formatter:on
         }
 
         return this;
@@ -167,13 +175,14 @@ public final class ForNode extends LoopNode {
     @Override
     public boolean mustEnter() {
         if (isForInOrOf()) {
-            return false; //may be an empty set to iterate over, then we skip the loop
+            return false; // may be an empty set to iterate over, then we skip the loop
         }
         return test == null;
     }
 
     /**
      * Get the initialization expression for this for loop
+     *
      * @return the initialization expression
      */
     public Expression getInit() {
@@ -182,6 +191,7 @@ public final class ForNode extends LoopNode {
 
     /**
      * Reset the initialization expression for this for loop
+     *
      * @param lc lexical context
      * @param init new initialization expression
      * @return new for node if changed or existing if not
@@ -195,6 +205,7 @@ public final class ForNode extends LoopNode {
 
     /**
      * Is this a for in construct rather than a standard init;condition;modification one
+     *
      * @return true if this is a for in construct
      */
     public boolean isForIn() {
@@ -203,6 +214,7 @@ public final class ForNode extends LoopNode {
 
     /**
      * Is this a (non-standard) for each construct, known from e.g. Rhino.
+     *
      * @return true if this is a for each construct
      */
     public boolean isForEach() {
@@ -211,6 +223,7 @@ public final class ForNode extends LoopNode {
 
     /**
      * Is this an ECMAScript 6 for of construct.
+     *
      * @return true if this is a for of construct
      */
     public boolean isForOf() {
@@ -219,6 +232,7 @@ public final class ForNode extends LoopNode {
 
     /**
      * Is this an ECMAScript 8 for-await-of construct.
+     *
      * @return true if this is a for-await-of construct
      */
     public boolean isForAwaitOf() {
@@ -227,6 +241,7 @@ public final class ForNode extends LoopNode {
 
     /**
      * Is this a for-in or for-of statement?
+     *
      * @return true if this is a for-in or for-of loop
      */
     public boolean isForInOrOf() {
@@ -235,6 +250,7 @@ public final class ForNode extends LoopNode {
 
     /**
      * If this is a for in or for each construct, there is an iterator symbol
+     *
      * @return the symbol for the iterator to be used, or null if none exists
      */
     public Symbol getIterator() {
@@ -243,6 +259,7 @@ public final class ForNode extends LoopNode {
 
     /**
      * Assign an iterator symbol to this ForNode. Used for for in and for each constructs
+     *
      * @param iterator the iterator symbol
      */
     public void setIterator(final Symbol iterator) {
@@ -251,6 +268,7 @@ public final class ForNode extends LoopNode {
 
     /**
      * Get the modification expression for this ForNode
+     *
      * @return the modification expression
      */
     public JoinPredecessorExpression getModify() {
@@ -259,6 +277,7 @@ public final class ForNode extends LoopNode {
 
     /**
      * Reset the modification expression for this ForNode
+     *
      * @param lc lexical context
      * @param modify new modification expression
      * @return new for node if changed or existing if not

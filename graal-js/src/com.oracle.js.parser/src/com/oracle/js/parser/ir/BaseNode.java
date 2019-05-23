@@ -43,7 +43,6 @@ package com.oracle.js.parser.ir;
 
 import com.oracle.js.parser.TokenType;
 
-// @formatter:off
 /**
  * IR base for accessing/indexing nodes.
  *
@@ -63,21 +62,22 @@ public abstract class BaseNode extends Expression implements FunctionCall {
     /**
      * Constructor
      *
-     * @param token  token
+     * @param token token
      * @param finish finish
-     * @param base   base node
+     * @param base base node
      * @param isFunction is this a function
      * @param isSuper is this a super property access
      */
     public BaseNode(final long token, final int finish, final Expression base, final boolean isFunction, final boolean isSuper) {
         super(token, base.getStart(), finish);
-        this.base           = base;
-        this.isFunction     = isFunction;
-        this.isSuper        = isSuper;
+        this.base = base;
+        this.isFunction = isFunction;
+        this.isSuper = isSuper;
     }
 
     /**
      * Copy constructor for immutable nodes
+     *
      * @param baseNode node to inherit from
      * @param base base
      * @param isFunction is this a function
@@ -85,13 +85,14 @@ public abstract class BaseNode extends Expression implements FunctionCall {
      */
     protected BaseNode(final BaseNode baseNode, final Expression base, final boolean isFunction, final boolean isSuper) {
         super(baseNode);
-        this.base           = base;
-        this.isFunction     = isFunction;
-        this.isSuper        = isSuper;
+        this.base = base;
+        this.isFunction = isFunction;
+        this.isSuper = isSuper;
     }
 
     /**
      * Get the base node for this access
+     *
      * @return the base node
      */
     public Expression getBase() {
@@ -111,7 +112,9 @@ public abstract class BaseNode extends Expression implements FunctionCall {
     }
 
     /**
-     * Return true if this node represents an index operation normally represented as {@link IndexNode}.
+     * Return true if this node represents an index operation normally represented as
+     * {@link IndexNode}.
+     *
      * @return true if an index access.
      */
     public boolean isIndex() {
@@ -120,6 +123,7 @@ public abstract class BaseNode extends Expression implements FunctionCall {
 
     /**
      * Mark this node as being the callee operand of a {@link CallNode}.
+     *
      * @return a base node identical to this one in all aspects except with its function flag set.
      */
     public abstract BaseNode setIsFunction();

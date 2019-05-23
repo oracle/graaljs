@@ -48,7 +48,6 @@ import java.util.List;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation of a {@code try} statement.
  */
@@ -68,23 +67,23 @@ public final class TryNode extends Statement {
     /**
      * Constructor
      *
-     * @param lineNumber  lineNumber
-     * @param token       token
-     * @param finish      finish
-     * @param body        try node body
+     * @param lineNumber lineNumber
+     * @param token token
+     * @param finish finish
+     * @param body try node body
      * @param catchBlocks list of catch blocks in order
      * @param finallyBody body of finally block or null if none
      */
     public TryNode(final int lineNumber, final long token, final int finish, final Block body, final List<Block> catchBlocks, final Block finallyBody) {
         super(lineNumber, token, finish);
-        this.body        = body;
+        this.body = body;
         this.catchBlocks = catchBlocks;
         this.finallyBody = finallyBody;
     }
 
     private TryNode(final TryNode tryNode, final Block body, final List<Block> catchBlocks, final Block finallyBody) {
         super(tryNode);
-        this.body        = body;
+        this.body = body;
         this.catchBlocks = catchBlocks;
         this.finallyBody = finallyBody;
         this.exception = tryNode.exception;
@@ -105,18 +104,21 @@ public final class TryNode extends Statement {
 
     /**
      * Assist in IR navigation.
+     *
      * @param visitor IR navigating visitor.
      */
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterTryNode(this)) {
             // Need to do finally body first for termination analysis. TODO still necessary?
-            final Block newFinallyBody = finallyBody == null ? null : (Block)finallyBody.accept(visitor);
-            final Block newBody        = (Block)body.accept(visitor);
+            final Block newFinallyBody = finallyBody == null ? null : (Block) finallyBody.accept(visitor);
+            final Block newBody = (Block) body.accept(visitor);
+            //@formatter:off
             return visitor.leaveTryNode(
                 setBody(newBody).
                 setFinallyBody(newFinallyBody).
                 setCatchBlocks(Node.accept(visitor, catchBlocks)));
+            //@formatter:on
         }
 
         return this;
@@ -134,6 +136,7 @@ public final class TryNode extends Statement {
 
     /**
      * Get the body for this try block
+     *
      * @return body
      */
     public Block getBody() {
@@ -142,6 +145,7 @@ public final class TryNode extends Statement {
 
     /**
      * Reset the body of this try block
+     *
      * @param body new body
      * @return new TryNode or same if unchanged
      */
@@ -149,11 +153,12 @@ public final class TryNode extends Statement {
         if (this.body == body) {
             return this;
         }
-        return new TryNode(this,  body, catchBlocks, finallyBody);
+        return new TryNode(this, body, catchBlocks, finallyBody);
     }
 
     /**
      * Get the catches for this try block
+     *
      * @return a list of catch nodes
      */
     public List<CatchNode> getCatches() {
@@ -165,11 +170,12 @@ public final class TryNode extends Statement {
     }
 
     private static CatchNode getCatchNodeFromBlock(final Block catchBlock) {
-        return (CatchNode)catchBlock.getLastStatement();
+        return (CatchNode) catchBlock.getLastStatement();
     }
 
     /**
      * Get the catch blocks for this try block
+     *
      * @return a list of blocks
      */
     public List<Block> getCatchBlocks() {
@@ -178,6 +184,7 @@ public final class TryNode extends Statement {
 
     /**
      * Set the catch blocks of this try
+     *
      * @param catchBlocks list of catch blocks
      * @return new TryNode or same if unchanged
      */
@@ -190,6 +197,7 @@ public final class TryNode extends Statement {
 
     /**
      * Get the exception symbol for this try block
+     *
      * @return a symbol for the compiler to store the exception in
      */
     public Symbol getException() {
@@ -198,6 +206,7 @@ public final class TryNode extends Statement {
 
     /**
      * Get the body of the finally clause for this try
+     *
      * @return finally body, or null if no finally
      */
     public Block getFinallyBody() {
@@ -206,6 +215,7 @@ public final class TryNode extends Statement {
 
     /**
      * Set the finally body of this try
+     *
      * @param finallyBody new finally body
      * @return new TryNode or same if unchanged
      */

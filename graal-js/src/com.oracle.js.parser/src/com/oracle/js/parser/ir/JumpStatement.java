@@ -41,7 +41,6 @@
 
 package com.oracle.js.parser.ir;
 
-// @formatter:off
 /**
  * Common base class for jump statements (e.g. {@code break} and {@code continue}).
  */
@@ -53,9 +52,9 @@ public abstract class JumpStatement extends Statement {
      * Constructor
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
-     * @param labelName  label name for break or null if none
+     * @param token token
+     * @param finish finish
+     * @param labelName label name for break or null if none
      */
     JumpStatement(final int lineNumber, final long token, final int finish, final String labelName) {
         super(lineNumber, token, finish);
@@ -64,6 +63,7 @@ public abstract class JumpStatement extends Statement {
 
     /**
      * Copy constructor.
+     *
      * @param jumpStatement the original jump statement.
      */
     JumpStatement(final JumpStatement jumpStatement) {
@@ -78,6 +78,7 @@ public abstract class JumpStatement extends Statement {
 
     /**
      * Get the label name for this break node
+     *
      * @return label name, or null if none
      */
     public String getLabelName() {

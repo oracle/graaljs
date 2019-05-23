@@ -45,7 +45,6 @@ import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * BinaryNode nodes represent two operand operations.
  */
@@ -59,15 +58,15 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
     /**
      * Constructor
      *
-     * @param token  token
-     * @param lhs    left hand side
-     * @param rhs    right hand side
+     * @param token token
+     * @param lhs left hand side
+     * @param rhs right hand side
      */
     public BinaryNode(final long token, final Expression lhs, final Expression rhs) {
         super(token, Math.min(lhs.getStart(), rhs.getStart()), Math.max(rhs.getFinish(), lhs.getFinish()));
         assert !(isTokenType(TokenType.AND) || isTokenType(TokenType.OR)) || lhs instanceof JoinPredecessorExpression;
-        this.lhs   = lhs;
-        this.rhs   = rhs;
+        this.lhs = lhs;
+        this.rhs = rhs;
     }
 
     private BinaryNode(final BinaryNode binaryNode, final Expression lhs, final Expression rhs) {
@@ -77,43 +76,48 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
     }
 
     /**
-     * Returns true if the node is a comparison operation (either equality, inequality, or relational).
+     * Returns true if the node is a comparison operation (either equality, inequality, or
+     * relational).
+     *
      * @return true if the node is a comparison operation.
      */
     public boolean isComparison() {
         switch (tokenType()) {
-        case EQ:
-        case EQ_STRICT:
-        case NE:
-        case NE_STRICT:
-        case LE:
-        case LT:
-        case GE:
-        case GT:
-            return true;
-        default:
-            return false;
+            case EQ:
+            case EQ_STRICT:
+            case NE:
+            case NE_STRICT:
+            case LE:
+            case LT:
+            case GE:
+            case GT:
+                return true;
+            default:
+                return false;
         }
     }
 
     /**
-     * Returns true if the node is a relational operation (less than (or equals), greater than (or equals)).
+     * Returns true if the node is a relational operation (less than (or equals), greater than (or
+     * equals)).
+     *
      * @return true if the node is a relational operation.
      */
     public boolean isRelational() {
         switch (tokenType()) {
-        case LT:
-        case GT:
-        case LE:
-        case GE:
-            return true;
-        default:
-            return false;
+            case LT:
+            case GT:
+            case LE:
+            case GE:
+                return true;
+            default:
+                return false;
         }
     }
 
     /**
      * Returns true if the node is a logical operation.
+     *
      * @return true if the node is a logical operation.
      */
     public boolean isLogical() {
@@ -122,16 +126,17 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
 
     /**
      * Returns true if the token type represents a logical operation.
+     *
      * @param tokenType the token type
      * @return true if the token type represents a logical operation.
      */
     public static boolean isLogical(final TokenType tokenType) {
         switch (tokenType) {
-        case AND:
-        case OR:
-            return true;
-        default:
-            return false;
+            case AND:
+            case OR:
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -162,12 +167,13 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
 
     /**
      * Assist in IR navigation.
+     *
      * @param visitor IR navigating visitor.
      */
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterBinaryNode(this)) {
-            return visitor.leaveBinaryNode(setLHS((Expression)lhs.accept(visitor)).setRHS((Expression)rhs.accept(visitor)));
+            return visitor.leaveBinaryNode(setLHS((Expression) lhs.accept(visitor)).setRHS((Expression) rhs.accept(visitor)));
         }
 
         return this;
@@ -181,24 +187,24 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
     @Override
     public boolean isAlwaysFalse() {
         switch (tokenType()) {
-        case COMMALEFT:
-            return lhs.isAlwaysFalse();
-        case COMMARIGHT:
-            return rhs.isAlwaysFalse();
-        default:
-            return false;
+            case COMMALEFT:
+                return lhs.isAlwaysFalse();
+            case COMMARIGHT:
+                return rhs.isAlwaysFalse();
+            default:
+                return false;
         }
     }
 
     @Override
     public boolean isAlwaysTrue() {
         switch (tokenType()) {
-        case COMMALEFT:
-            return lhs.isAlwaysTrue();
-        case COMMARIGHT:
-            return rhs.isAlwaysTrue();
-        default:
-            return false;
+            case COMMALEFT:
+                return lhs.isAlwaysTrue();
+            case COMMARIGHT:
+                return rhs.isAlwaysTrue();
+            default:
+                return false;
         }
     }
 
@@ -222,22 +228,22 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
         sb.append(' ');
 
         switch (tokenType) {
-        case COMMALEFT:
-            sb.append(",<");
-            break;
-        case COMMARIGHT:
-            sb.append(",>");
-            break;
-        case INCPREFIX:
-        case DECPREFIX:
-            sb.append("++");
-            break;
-        case ASSIGN_INIT:
-            sb.append(":=");
-            break;
-        default:
-            sb.append(tokenType.getName());
-            break;
+            case COMMALEFT:
+                sb.append(",<");
+                break;
+            case COMMARIGHT:
+                sb.append(",>");
+                break;
+            case INCPREFIX:
+            case DECPREFIX:
+                sb.append("++");
+                break;
+            case ASSIGN_INIT:
+                sb.append(":=");
+                break;
+            default:
+                sb.append(tokenType.getName());
+                break;
         }
 
         sb.append(' ');
@@ -253,6 +259,7 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
 
     /**
      * Get the left hand side expression for this node
+     *
      * @return the left hand side expression
      */
     public Expression getLhs() {
@@ -261,6 +268,7 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
 
     /**
      * Get the right hand side expression for this node
+     *
      * @return the left hand side expression
      */
     public Expression getRhs() {
@@ -269,6 +277,7 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
 
     /**
      * Set the left hand side expression for this node
+     *
      * @param lhs new left hand side expression
      * @return a node equivalent to this one except for the requested change.
      */
@@ -281,6 +290,7 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
 
     /**
      * Set the right hand side expression for this node
+     *
      * @param rhs new left hand side expression
      * @return a node equivalent to this one except for the requested change.
      */

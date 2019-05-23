@@ -50,7 +50,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Objects;
 
-// @formatter:off
 /**
  * Source objects track the origin of JavaScript entities.
  */
@@ -58,16 +57,15 @@ public final class Source {
     private static final int BUF_SIZE = 8 * 1024;
 
     /**
-     * Descriptive name of the source as supplied by the user. Used for error
-     * reporting to the user. For example, SyntaxError will use this to print message.
-     * Used to implement __FILE__. Also used for SourceFile in .class for debugger usage.
+     * Descriptive name of the source as supplied by the user. Used for error reporting to the user.
+     * For example, SyntaxError will use this to print message. Used to implement __FILE__. Also
+     * used for SourceFile in .class for debugger usage.
      */
     private final String name;
 
     /**
-     * Base path or URL of this source. Used to implement __DIR__, which can be
-     * used to load scripts relative to the location of the current script.
-     * This will be null when it can't be computed.
+     * Base path or URL of this source. Used to implement __DIR__, which can be used to load scripts
+     * relative to the location of the current script. This will be null when it can't be computed.
      */
     private final String base;
 
@@ -133,7 +131,7 @@ public final class Source {
                 return true;
             }
             if (obj instanceof RawData) {
-                final RawData other = (RawData)obj;
+                final RawData other = (RawData) obj;
                 return source.equals(other.source) && evalCode == other.evalCode;
             }
             return false;
@@ -177,7 +175,7 @@ public final class Source {
     /**
      * Returns a Source instance
      *
-     * @param name    source name
+     * @param name source name
      * @param content contents as {@link CharSequence}
      * @param isEval does this represent code from 'eval' call?
      * @return source instance
@@ -189,7 +187,7 @@ public final class Source {
     /**
      * Returns a Source instance
      *
-     * @param name    source name
+     * @param name source name
      * @param content contents as string
      * @return source instance
      */
@@ -220,6 +218,7 @@ public final class Source {
 
     /**
      * Fetch source content.
+     *
      * @return Source content.
      */
     public String getString() {
@@ -228,6 +227,7 @@ public final class Source {
 
     /**
      * Get the user supplied name of this script.
+     *
      * @return User supplied source name.
      */
     public String getName() {
@@ -236,6 +236,7 @@ public final class Source {
 
     /**
      * Get the last modified time of this script.
+     *
      * @return Last modified time.
      */
     public long getLastModified() {
@@ -244,6 +245,7 @@ public final class Source {
 
     /**
      * Get the "directory" part of the file or "base" of the URL.
+     *
      * @return base of file or URL.
      */
     public String getBase() {
@@ -252,6 +254,7 @@ public final class Source {
 
     /**
      * Fetch a portion of source content.
+     *
      * @param start start index in source
      * @param len length of portion
      * @return Source content portion.
@@ -262,6 +265,7 @@ public final class Source {
 
     /**
      * Fetch a portion of source content associated with a token.
+     *
      * @param token Token descriptor.
      * @return Source content portion.
      */
@@ -272,8 +276,8 @@ public final class Source {
     }
 
     /**
-     * Returns the source URL of this script Source. Can be null if Source
-     * was created from a String or a char[].
+     * Returns the source URL of this script Source. Can be null if Source was created from a String
+     * or a char[].
      *
      * @return URL source or null
      */
@@ -283,6 +287,7 @@ public final class Source {
 
     /**
      * Get explicit source URL.
+     *
      * @return URL set via sourceURL directive
      */
     public String getExplicitURL() {
@@ -291,6 +296,7 @@ public final class Source {
 
     /**
      * Set explicit source URL.
+     *
      * @param explicitURL URL set via sourceURL directive
      */
     public void setExplicitURL(String explicitURL) {
@@ -308,6 +314,7 @@ public final class Source {
 
     /**
      * Find the beginning of the line containing position.
+     *
      * @param position Index to offending token.
      * @return Index of first character of line.
      */
@@ -326,6 +333,7 @@ public final class Source {
 
     /**
      * Find the end of the line containing position.
+     *
      * @param position Index to offending token.
      * @return Index of last character of line.
      */
@@ -346,8 +354,10 @@ public final class Source {
     /**
      * Return line number of character position.
      *
-     * <p>This method can be expensive for large sources as it iterates through
-     * all characters up to {@code position}.</p>
+     * <p>
+     * This method can be expensive for large sources as it iterates through all characters up to
+     * {@code position}.
+     * </p>
      *
      * @param position Position of character in source content.
      * @return Line number.
@@ -370,6 +380,7 @@ public final class Source {
 
     /**
      * Return column number of character position.
+     *
      * @param position Position of character in source content.
      * @return Column number.
      */
@@ -380,6 +391,7 @@ public final class Source {
 
     /**
      * Return line text including character position.
+     *
      * @param position Position of character in source content.
      * @return Line text.
      */
@@ -401,6 +413,7 @@ public final class Source {
 
     /**
      * Get the length in chars for this source
+     *
      * @return length
      */
     public int getLength() {
@@ -415,8 +428,8 @@ public final class Source {
      * @throws IOException if source could not be read
      */
     public static String readFully(final Reader reader) throws IOException {
-        final char[]        arr = new char[BUF_SIZE];
-        final StringBuilder sb  = new StringBuilder();
+        final char[] arr = new char[BUF_SIZE];
+        final StringBuilder sb = new StringBuilder();
 
         try {
             int numChars;
@@ -446,7 +459,7 @@ public final class Source {
             final byte[] bytes = new byte[content.length() * 2];
 
             for (int i = 0; i < content.length(); i++) {
-                bytes[i * 2]     = (byte)  (content.charAt(i) & 0x00ff);
+                bytes[i * 2] = (byte) (content.charAt(i) & 0x00ff);
                 bytes[i * 2 + 1] = (byte) ((content.charAt(i) & 0xff00) >> 8);
             }
 

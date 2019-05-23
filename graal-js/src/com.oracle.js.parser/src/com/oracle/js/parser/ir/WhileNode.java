@@ -44,10 +44,8 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
- * IR representation for a WHILE statement. This is the superclass of all
- * loop nodes
+ * IR representation for a while statement. This is the superclass of all loop nodes
  */
 public final class WhileNode extends LoopNode {
 
@@ -58,11 +56,11 @@ public final class WhileNode extends LoopNode {
      * Constructor
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
-     * @param isDoWhile  is this a do while loop?
-     * @param test       test expression
-     * @param body       body of the while loop
+     * @param token token
+     * @param finish finish
+     * @param isDoWhile is this a do while loop?
+     * @param test test expression
+     * @param body body of the while loop
      */
     public WhileNode(final int lineNumber, final long token, final int finish, final boolean isDoWhile, final JoinPredecessorExpression test, final Block body) {
         super(lineNumber, token, finish, body, test, false);
@@ -73,8 +71,8 @@ public final class WhileNode extends LoopNode {
      * Internal copy constructor
      *
      * @param whileNode while node
-     * @param test      Test expression
-     * @param body      body of the while loop
+     * @param test Test expression
+     * @param body body of the while loop
      * @param controlFlowEscapes control flow escapes?
      */
     private WhileNode(final WhileNode whileNode, final JoinPredecessorExpression test, final Block body, final boolean controlFlowEscapes) {
@@ -90,14 +88,16 @@ public final class WhileNode extends LoopNode {
     @Override
     public Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterWhileNode(this)) {
+            //@formatter:off
             if (isDoWhile()) {
                 return visitor.leaveWhileNode(
-                        setBody(lc, (Block)body.accept(visitor)).
-                        setTest(lc, (JoinPredecessorExpression)test.accept(visitor)));
+                        setBody(lc, (Block) body.accept(visitor)).
+                        setTest(lc, (JoinPredecessorExpression) test.accept(visitor)));
             }
             return visitor.leaveWhileNode(
-                    setTest(lc, (JoinPredecessorExpression)test.accept(visitor)).
-                    setBody(lc, (Block)body.accept(visitor)));
+                    setTest(lc, (JoinPredecessorExpression) test.accept(visitor)).
+                    setBody(lc, (Block) body.accept(visitor)));
+            //@formatter:on
         }
         return this;
     }
@@ -138,6 +138,7 @@ public final class WhileNode extends LoopNode {
 
     /**
      * Check if this is a do while loop or a normal while loop
+     *
      * @return true if do while
      */
     public boolean isDoWhile() {

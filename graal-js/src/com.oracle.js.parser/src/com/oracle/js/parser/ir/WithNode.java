@@ -44,12 +44,11 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation for {@code with} statements.
  */
 public final class WithNode extends LexicalContextStatement {
-   /** This expression. */
+    /** This expression. */
     private final Expression expression;
 
     /** Statements. */
@@ -59,21 +58,21 @@ public final class WithNode extends LexicalContextStatement {
      * Constructor
      *
      * @param lineNumber Line number of the header
-     * @param token      First token
-     * @param finish     Character index of the last token
+     * @param token First token
+     * @param finish Character index of the last token
      * @param expression With expression
-     * @param body       Body of with node
+     * @param body Body of with node
      */
     public WithNode(final int lineNumber, final long token, final int finish, final Expression expression, final Block body) {
         super(lineNumber, token, finish);
         this.expression = expression;
-        this.body       = body;
+        this.body = body;
     }
 
     private WithNode(final WithNode node, final Expression expression, final Block body) {
         super(node);
         this.expression = expression;
-        this.body       = body;
+        this.body = body;
     }
 
     /**
@@ -84,9 +83,11 @@ public final class WithNode extends LexicalContextStatement {
     @Override
     public Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterWithNode(this)) {
-             return visitor.leaveWithNode(
-                setExpression(lc, (Expression)expression.accept(visitor)).
-                setBody(lc, (Block)body.accept(visitor)));
+            //@formatter:off
+            return visitor.leaveWithNode(
+                setExpression(lc, (Expression) expression.accept(visitor)).
+                setBody(lc, (Block) body.accept(visitor)));
+            //@formatter:on
         }
         return this;
     }
@@ -110,6 +111,7 @@ public final class WithNode extends LexicalContextStatement {
 
     /**
      * Get the body of this WithNode
+     *
      * @return the body
      */
     public Block getBody() {
@@ -118,6 +120,7 @@ public final class WithNode extends LexicalContextStatement {
 
     /**
      * Reset the body of this with node
+     *
      * @param lc lexical context
      * @param body new body
      * @return new or same withnode
@@ -131,6 +134,7 @@ public final class WithNode extends LexicalContextStatement {
 
     /**
      * Get the expression of this WithNode
+     *
      * @return the expression
      */
     public Expression getExpression() {
@@ -139,6 +143,7 @@ public final class WithNode extends LexicalContextStatement {
 
     /**
      * Reset the expression of this with node
+     *
      * @param lc lexical context
      * @param expression new expression
      * @return new or same withnode

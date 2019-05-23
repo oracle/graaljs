@@ -41,10 +41,8 @@
 
 package com.oracle.js.parser;
 
-// @formatter:off
 /**
  * Handles streaming of tokens between lexer and parser.
- *
  */
 public class TokenStream {
     /** Initial buffer size. */
@@ -78,6 +76,7 @@ public class TokenStream {
 
     /**
      * Get the next position in the buffer.
+     *
      * @param position Current position in buffer.
      * @return Next position in buffer.
      */
@@ -94,8 +93,9 @@ public class TokenStream {
         return next;
     }
 
-     /**
+    /**
      * Get the index position in the buffer.
+     *
      * @param k Seek position.
      * @return Position in buffer.
      */
@@ -113,6 +113,7 @@ public class TokenStream {
 
     /**
      * Test to see if stream is empty.
+     *
      * @return True if stream is empty.
      */
     public boolean isEmpty() {
@@ -121,6 +122,7 @@ public class TokenStream {
 
     /**
      * Test to see if stream is full.
+     *
      * @return True if stream is full.
      */
     public boolean isFull() {
@@ -129,6 +131,7 @@ public class TokenStream {
 
     /**
      * Get the index of the last token in the stream.
+     *
      * @return Index of last buffered token in the stream.
      */
     public int last() {
@@ -137,6 +140,7 @@ public class TokenStream {
 
     /**
      * Put a token descriptor to the stream.
+     *
      * @param token Token descriptor to add.
      */
     public void put(final long token) {
@@ -151,6 +155,7 @@ public class TokenStream {
 
     /**
      * Get the kth token descriptor from the stream.
+     *
      * @param k index
      * @return Token descriptor.
      */
@@ -160,6 +165,7 @@ public class TokenStream {
 
     /**
      * Advances the base of the stream.
+     *
      * @param k Position of token to be the new base.
      */
     public void commit(final int k) {

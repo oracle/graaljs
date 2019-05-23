@@ -46,11 +46,11 @@ import java.util.Objects;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation for an identifier.
  */
 public final class IdentNode extends Expression implements PropertyKey, FunctionCall {
+    //@formatter:off
     private static final int PROPERTY_NAME     = 1 << 0;
     private static final int INITIALIZED_HERE  = 1 << 1;
     private static final int FUNCTION          = 1 << 2;
@@ -62,6 +62,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     private static final int REST_PARAMETER    = 1 << 8;
     private static final int CATCH_PARAMETER   = 1 << 9;
     private static final int IMPORT_META       = 1 << 10;
+    //@formatter:on
 
     /** Identifier. */
     private final String name;
@@ -73,9 +74,9 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     /**
      * Constructor
      *
-     * @param token   token
-     * @param finish  finish position
-     * @param name    name of identifier
+     * @param token token
+     * @param finish finish position
+     * @param name name of identifier
      */
     public IdentNode(final long token, final int finish, final String name) {
         super(token, finish);
@@ -116,7 +117,8 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     /**
      * Get the name of the identifier
-     * @return  IdentNode name
+     *
+     * @return IdentNode name
      */
     public String getName() {
         return name;
@@ -128,8 +130,8 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     /**
-     * Return the Symbol the compiler has assigned to this identifier. The symbol is a description of the storage
-     * location for the identifier.
+     * Return the Symbol the compiler has assigned to this identifier. The symbol is a description
+     * of the storage location for the identifier.
      *
      * @return the symbol
      */
@@ -139,6 +141,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     /**
      * Check if this IdentNode is a property name
+     *
      * @return true if this is a property name
      */
     public boolean isPropertyName() {
@@ -147,6 +150,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     /**
      * Flag this IdentNode as a property name
+     *
      * @return a node equivalent to this one except for the requested change.
      */
     public IdentNode setIsPropertyName() {
@@ -158,6 +162,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     /**
      * Helper function for local def analysis.
+     *
      * @return true if IdentNode is initialized on creation
      */
     public boolean isInitializedHere() {
@@ -166,6 +171,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     /**
      * Flag IdentNode to be initialized on creation
+     *
      * @return a node equivalent to this one except for the requested change.
      */
     public IdentNode setIsInitializedHere() {
@@ -202,8 +208,8 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     }
 
     /**
-     * Is this an internal symbol, i.e. one that starts with ':'. Those can
-     * never be optimistic.
+     * Is this an internal symbol, i.e. one that starts with ':'. Those can never be optimistic.
+     *
      * @return true if internal symbol
      */
     public boolean isInternal() {

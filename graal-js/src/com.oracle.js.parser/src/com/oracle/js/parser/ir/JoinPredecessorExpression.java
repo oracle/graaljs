@@ -44,7 +44,6 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * A wrapper for an expression that is in a position to be a join predecessor.
  */
@@ -53,17 +52,18 @@ public class JoinPredecessorExpression extends Expression {
     private final Expression expression;
 
     /**
-     * A no-arg constructor does not wrap any expression on its own, but can be used as a place to contain a local
-     * variable conversion in a place where an expression can otherwise stand.
+     * A no-arg constructor does not wrap any expression on its own, but can be used as a place to
+     * contain a local variable conversion in a place where an expression can otherwise stand.
      */
     public JoinPredecessorExpression() {
         this(null);
     }
 
     /**
-     * A constructor for wrapping an expression and making it a join predecessor. Typically used on true and false
-     * subexpressions of the ternary node as well as on the operands of short-circuiting logical expressions {@code &&}
-     * and {@code ||}.
+     * A constructor for wrapping an expression and making it a join predecessor. Typically used on
+     * true and false subexpressions of the ternary node as well as on the operands of
+     * short-circuiting logical expressions {@code &&} and {@code ||}.
+     *
      * @param expression the expression to wrap
      */
     public JoinPredecessorExpression(final Expression expression) {
@@ -83,6 +83,7 @@ public class JoinPredecessorExpression extends Expression {
 
     /**
      * Returns the underlying expression.
+     *
      * @return the underlying expression.
      */
     public Expression getExpression() {
@@ -91,6 +92,7 @@ public class JoinPredecessorExpression extends Expression {
 
     /**
      * Sets the underlying expression.
+     *
      * @param expression the new underlying expression
      * @return this or modified join predecessor expression object.
      */
@@ -105,7 +107,7 @@ public class JoinPredecessorExpression extends Expression {
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterJoinPredecessorExpression(this)) {
             final Expression expr = getExpression();
-            return visitor.leaveJoinPredecessorExpression(expr == null ? this : setExpression((Expression)expr.accept(visitor)));
+            return visitor.leaveJoinPredecessorExpression(expr == null ? this : setExpression((Expression) expr.accept(visitor)));
         }
         return this;
     }

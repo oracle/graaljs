@@ -46,9 +46,9 @@ import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
-// @formatter:off
 /**
- * Helper class to throw various standard "ECMA error" exceptions such as Error, ReferenceError, TypeError etc.
+ * Helper class to throw various standard "ECMA error" exceptions such as Error, ReferenceError,
+ * TypeError etc.
  */
 public final class ECMAErrors {
     private static final String MESSAGES_RESOURCE = "com.oracle.js.parser.resources.Messages";
@@ -62,12 +62,12 @@ public final class ECMAErrors {
     }
 
     /**
-     * Get the exception message by placing the args in the resource defined
-     * by the resource tag. This is visible to, e.g. the {@link com.oracle.js.parser.Parser}
-     * can use it to generate compile time messages with the correct locale
+     * Get the exception message by placing the args in the resource defined by the resource tag.
+     * This is visible to, e.g. the {@link com.oracle.js.parser.Parser} can use it to generate
+     * compile time messages with the correct locale
      *
      * @param msgId the resource tag (message id)
-     * @param args  arguments to error string
+     * @param args arguments to error string
      *
      * @return the filled out error string
      */

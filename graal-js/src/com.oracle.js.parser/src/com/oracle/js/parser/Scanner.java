@@ -41,10 +41,8 @@
 
 package com.oracle.js.parser;
 
-// @formatter:off
 /**
  * Utility for scanning thru a char array.
- *
  */
 public class Scanner {
     /** Characters to scan. */
@@ -72,15 +70,15 @@ public class Scanner {
      * Constructor
      *
      * @param content content to scan
-     * @param line    start line number
-     * @param start   position index in content where to start
-     * @param length  length of input
+     * @param line start line number
+     * @param start position index in content where to start
+     * @param length length of input
      */
     protected Scanner(final char[] content, final int line, final int start, final int length) {
-        this.content  = content;
+        this.content = content;
         this.position = start;
-        this.limit    = start + length;
-        this.line     = line;
+        this.limit = start + length;
+        this.line = line;
 
         reset(position);
     }
@@ -88,17 +86,17 @@ public class Scanner {
     /**
      * Copy constructor
      *
-     * @param scanner  scanner
-     * @param state    state, the state is a tuple {position, limit, line} only visible internally
+     * @param scanner scanner
+     * @param state state, the state is a tuple {position, limit, line} only visible internally
      */
     Scanner(final Scanner scanner, final State state) {
-        content  = scanner.content;
+        content = scanner.content;
         position = state.position;
-        limit    = state.limit;
-        line     = state.line;
+        limit = state.limit;
+        line = state.line;
 
         reset(position);
-   }
+    }
 
     /**
      * Information needed to restore previous state.
@@ -115,12 +113,13 @@ public class Scanner {
 
         State(final int position, final int limit, final int line) {
             this.position = position;
-            this.limit    = limit;
-            this.line     = line;
+            this.limit = limit;
+            this.line = line;
         }
 
         /**
          * Change the limit for a new scanner.
+         *
          * @param limit New limit.
          */
         void setLimit(final int limit) {
@@ -138,6 +137,7 @@ public class Scanner {
 
     /**
      * Save the state of the scan.
+     *
      * @return Captured state.
      */
     State saveState() {
@@ -146,17 +146,19 @@ public class Scanner {
 
     /**
      * Restore the state of the scan.
+     *
      * @param state Captured state.
      */
     void restoreState(final State state) {
         position = state.position;
-        line     = state.line;
+        line = state.line;
 
         reset(position);
     }
 
     /**
      * Returns true of scanner is at end of input
+     *
      * @return true if no more input
      */
     protected final boolean atEOF() {
@@ -165,6 +167,7 @@ public class Scanner {
 
     /**
      * Get the ith character from the content.
+     *
      * @param i Index of character.
      * @return ith character or '\0' if beyond limit.
      */
@@ -175,6 +178,7 @@ public class Scanner {
 
     /**
      * Reset to a character position.
+     *
      * @param i Position in content.
      */
     protected final void reset(final int i) {
@@ -187,6 +191,7 @@ public class Scanner {
 
     /**
      * Skip ahead a number of characters.
+     *
      * @param n Number of characters to skip.
      */
     protected final void skip(final int n) {

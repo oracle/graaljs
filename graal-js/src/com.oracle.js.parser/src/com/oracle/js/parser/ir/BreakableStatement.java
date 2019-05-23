@@ -41,15 +41,14 @@
 
 package com.oracle.js.parser.ir;
 
-// @formatter:off
 abstract class BreakableStatement extends LexicalContextStatement implements BreakableNode {
 
     /**
      * Constructor
      *
      * @param lineNumber line number
-     * @param token      token
-     * @param finish     finish
+     * @param token token
+     * @param finish finish
      */
     protected BreakableStatement(final int lineNumber, final long token, final int finish) {
         super(lineNumber, token, finish);
@@ -65,8 +64,9 @@ abstract class BreakableStatement extends LexicalContextStatement implements Bre
     }
 
     /**
-     * Check whether this can be broken out from without using a label,
-     * e.g. everything but Blocks, basically
+     * Check whether this can be broken out from without using a label, e.g. everything but Blocks,
+     * basically
+     *
      * @return true if breakable without label
      */
     @Override

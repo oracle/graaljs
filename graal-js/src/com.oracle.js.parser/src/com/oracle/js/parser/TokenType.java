@@ -54,12 +54,12 @@ import static com.oracle.js.parser.TokenKind.UNARY;
 
 import java.util.Locale;
 
-// @formatter:off
 // Checkstyle: stop
 /**
  * Description of all the JavaScript tokens.
  */
 public enum TokenType {
+    //@formatter:off
     ERROR                (SPECIAL,  null),
     EOF                  (SPECIAL,  null),
     EOL                  (SPECIAL,  null),
@@ -224,6 +224,7 @@ public enum TokenType {
     SPREAD_OBJECT  (IR,           null),
     YIELD_STAR     (IR,           null),
     ASSIGN_INIT    (IR,           null);
+    //@formatter:on
 
     /** Next token kind in token lookup table. */
     private TokenType next;
@@ -244,33 +245,32 @@ public enum TokenType {
     private static final TokenType[] tokenValues;
 
     TokenType(final TokenKind kind, final String name) {
-        next              = null;
-        this.kind         = kind;
-        this.name         = name;
-        precedence        = 0;
+        next = null;
+        this.kind = kind;
+        this.name = name;
+        precedence = 0;
         isLeftAssociative = false;
     }
 
     TokenType(final TokenKind kind, final String name, final int precedence, final boolean isLeftAssociative) {
-        next                   = null;
-        this.kind              = kind;
-        this.name              = name;
-        this.precedence        = precedence;
+        next = null;
+        this.kind = kind;
+        this.name = name;
+        this.precedence = precedence;
         this.isLeftAssociative = isLeftAssociative;
     }
 
     /**
      * Determines if the token has greater precedence than other.
      *
-     * @param other  Compare token.
+     * @param other Compare token.
      * @param isLeft Is to the left of the other.
      *
      * @return {@code true} if greater precedence.
      */
     public boolean needsParens(final TokenType other, final boolean isLeft) {
         return other.precedence != 0 &&
-               (precedence > other.precedence ||
-               precedence == other.precedence && isLeftAssociative && !isLeft);
+                        (precedence > other.precedence || (precedence == other.precedence && isLeftAssociative && !isLeft));
     }
 
     /**
@@ -322,7 +322,7 @@ public enum TokenType {
     }
 
     static TokenType[] getValues() {
-       return tokenValues;
+        return tokenValues;
     }
 
     @Override
@@ -335,23 +335,23 @@ public enum TokenType {
      */
     public boolean isAssignment() {
         switch (this) {
-        case ASSIGN:
-        case ASSIGN_INIT:
-        case ASSIGN_ADD:
-        case ASSIGN_BIT_AND:
-        case ASSIGN_BIT_OR:
-        case ASSIGN_BIT_XOR:
-        case ASSIGN_DIV:
-        case ASSIGN_MOD:
-        case ASSIGN_EXP:
-        case ASSIGN_MUL:
-        case ASSIGN_SAR:
-        case ASSIGN_SHL:
-        case ASSIGN_SHR:
-        case ASSIGN_SUB:
-           return true;
-        default:
-           return false;
+            case ASSIGN:
+            case ASSIGN_INIT:
+            case ASSIGN_ADD:
+            case ASSIGN_BIT_AND:
+            case ASSIGN_BIT_OR:
+            case ASSIGN_BIT_XOR:
+            case ASSIGN_DIV:
+            case ASSIGN_MOD:
+            case ASSIGN_EXP:
+            case ASSIGN_MUL:
+            case ASSIGN_SAR:
+            case ASSIGN_SHL:
+            case ASSIGN_SHR:
+            case ASSIGN_SUB:
+                return true;
+            default:
+                return false;
         }
     }
 

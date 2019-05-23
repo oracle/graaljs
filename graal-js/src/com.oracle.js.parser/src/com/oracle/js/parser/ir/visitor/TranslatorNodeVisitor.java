@@ -89,9 +89,9 @@ import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WhileNode;
 import com.oracle.js.parser.ir.WithNode;
 
-// @formatter:off
 /**
  * Visitor used to navigate the IR.
+ *
  * @param <T> lexical context class used by this visitor
  * @param <R> return type
  */
@@ -110,6 +110,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
 
     /**
      * Get the lexical context of this node visitor
+     *
      * @return lexical context
      */
     public final T getLexicalContext() {
@@ -117,9 +118,9 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     }
 
     /**
-     * Override this method to do a double inheritance pattern, e.g. avoid
-     * using
-     * <p>
+     * Override this method to do a double inheritance pattern, e.g. avoid using
+     *
+     * <pre>
      * if (x instanceof NodeTypeA) {
      *    ...
      * } else if (x instanceof NodeTypeB) {
@@ -127,7 +128,8 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
      * } else {
      *    ...
      * }
-     * <p>
+     * </pre>
+     *
      * Use a NodeVisitor instead, and this method contents forms the else case.
      *
      * @param node the node to visit
@@ -140,7 +142,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering an AccessNode
      *
-     * @param  accessNode the node
+     * @param accessNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterAccessNode(final AccessNode accessNode) {
@@ -150,7 +152,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a Block
      *
-     * @param  block     the node
+     * @param block the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterBlock(final Block block) {
@@ -160,8 +162,8 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a BinaryNode
      *
-     * @param  binaryNode  the node
-     * @return processed   node
+     * @param binaryNode the node
+     * @return processed node
      */
     public R enterBinaryNode(final BinaryNode binaryNode) {
         return enterDefault(binaryNode);
@@ -170,7 +172,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a BreakNode
      *
-     * @param  breakNode the node
+     * @param breakNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterBreakNode(final BreakNode breakNode) {
@@ -180,7 +182,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a CallNode
      *
-     * @param  callNode  the node
+     * @param callNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterCallNode(final CallNode callNode) {
@@ -190,7 +192,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a CaseNode
      *
-     * @param  caseNode  the node
+     * @param caseNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterCaseNode(final CaseNode caseNode) {
@@ -200,7 +202,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a CatchNode
      *
-     * @param  catchNode the node
+     * @param catchNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterCatchNode(final CatchNode catchNode) {
@@ -210,7 +212,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a ContinueNode
      *
-     * @param  continueNode the node
+     * @param continueNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterContinueNode(final ContinueNode continueNode) {
@@ -220,7 +222,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a DebuggerNode
      *
-     * @param  debuggerNode the node
+     * @param debuggerNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterDebuggerNode(final DebuggerNode debuggerNode) {
@@ -230,7 +232,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering an EmptyNode
      *
-     * @param  emptyNode   the node
+     * @param emptyNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterEmptyNode(final EmptyNode emptyNode) {
@@ -240,7 +242,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering an ErrorNode
      *
-     * @param  errorNode   the node
+     * @param errorNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterErrorNode(final ErrorNode errorNode) {
@@ -262,7 +264,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering an ExpressionStatement
      *
-     * @param  expressionStatement the node
+     * @param expressionStatement the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterExpressionStatement(final ExpressionStatement expressionStatement) {
@@ -272,7 +274,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a BlockStatement
      *
-     * @param  blockStatement the node
+     * @param blockStatement the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterBlockStatement(final BlockStatement blockStatement) {
@@ -282,7 +284,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a ForNode
      *
-     * @param  forNode   the node
+     * @param forNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterForNode(final ForNode forNode) {
@@ -296,7 +298,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a FunctionNode
      *
-     * @param  functionNode the node
+     * @param functionNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterFunctionNode(final FunctionNode functionNode) {
@@ -306,7 +308,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering an IdentNode
      *
-     * @param  identNode the node
+     * @param identNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterIdentNode(final IdentNode identNode) {
@@ -316,7 +318,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering an IfNode
      *
-     * @param  ifNode the node
+     * @param ifNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterIfNode(final IfNode ifNode) {
@@ -338,7 +340,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering an IndexNode
      *
-     * @param  indexNode  the node
+     * @param indexNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterIndexNode(final IndexNode indexNode) {
@@ -348,7 +350,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a LabelNode
      *
-     * @param  labelNode the node
+     * @param labelNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterLabelNode(final LabelNode labelNode) {
@@ -358,7 +360,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a LiteralNode
      *
-     * @param  literalNode the node
+     * @param literalNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterLiteralNode(final LiteralNode<?> literalNode) {
@@ -376,7 +378,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering an ObjectNode
      *
-     * @param  objectNode the node
+     * @param objectNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterObjectNode(final ObjectNode objectNode) {
@@ -386,7 +388,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a PropertyNode
      *
-     * @param  propertyNode the node
+     * @param propertyNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterPropertyNode(final PropertyNode propertyNode) {
@@ -396,7 +398,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a ReturnNode
      *
-     * @param  returnNode the node
+     * @param returnNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterReturnNode(final ReturnNode returnNode) {
@@ -406,7 +408,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a RuntimeNode
      *
-     * @param  runtimeNode the node
+     * @param runtimeNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterRuntimeNode(final RuntimeNode runtimeNode) {
@@ -416,7 +418,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a SwitchNode
      *
-     * @param  switchNode the node
+     * @param switchNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterSwitchNode(final SwitchNode switchNode) {
@@ -426,7 +428,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a TernaryNode
      *
-     * @param  ternaryNode the node
+     * @param ternaryNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterTernaryNode(final TernaryNode ternaryNode) {
@@ -436,7 +438,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a ThrowNode
      *
-     * @param  throwNode the node
+     * @param throwNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterThrowNode(final ThrowNode throwNode) {
@@ -446,7 +448,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a TryNode
      *
-     * @param  tryNode the node
+     * @param tryNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterTryNode(final TryNode tryNode) {
@@ -456,7 +458,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a UnaryNode
      *
-     * @param  unaryNode the node
+     * @param unaryNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterUnaryNode(final UnaryNode unaryNode) {
@@ -466,7 +468,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a {@link JoinPredecessorExpression}.
      *
-     * @param  expr the join predecessor expression
+     * @param expr the join predecessor expression
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterJoinPredecessorExpression(final JoinPredecessorExpression expr) {
@@ -476,7 +478,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a VarNode
      *
-     * @param  varNode the node
+     * @param varNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterVarNode(final VarNode varNode) {
@@ -486,7 +488,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a WhileNode
      *
-     * @param  whileNode the node
+     * @param whileNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterWhileNode(final WhileNode whileNode) {
@@ -496,7 +498,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a WithNode
      *
-     * @param  withNode the node
+     * @param withNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterWithNode(final WithNode withNode) {
@@ -506,7 +508,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a ClassNode
      *
-     * @param  classNode the node
+     * @param classNode the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterClassNode(ClassNode classNode) {
@@ -516,7 +518,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a BlockExpression
      *
-     * @param  blockExpression the node
+     * @param blockExpression the node
      * @return true if traversal should continue and node children be traversed, false otherwise
      */
     public R enterBlockExpression(BlockExpression blockExpression) {
@@ -526,7 +528,7 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
     /**
      * Callback for entering a ParameterNode
      *
-     * @param  paramNode the node
+     * @param paramNode the node
      */
     public R enterParameterNode(final ParameterNode paramNode) {
         return enterDefault(paramNode);

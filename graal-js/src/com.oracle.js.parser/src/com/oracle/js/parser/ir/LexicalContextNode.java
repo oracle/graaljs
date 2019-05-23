@@ -43,17 +43,17 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * Interface for nodes that can be part of the lexical context.
+ *
  * @see LexicalContext
  */
 public interface LexicalContextNode {
     /**
-     * Accept function for the node given a lexical context. It must be prepared
-     * to replace itself if present in the lexical context
+     * Accept function for the node given a lexical context. It must be prepared to replace itself
+     * if present in the lexical context
      *
-     * @param lc      lexical context
+     * @param lc lexical context
      * @param visitor node visitor
      *
      * @return new node or same node depending on state change
@@ -63,16 +63,16 @@ public interface LexicalContextNode {
     <R> R accept(final LexicalContext lc, final TranslatorNodeVisitor<? extends LexicalContext, R> visitor);
 
     /**
-     * Helper method for accept for items of this lexical context, delegates to the
-     * subclass accept and makes sure that the node is on the context before accepting
-     * and gets popped after accepting (and that the stack is consistent in that the
-     * node has been replaced with the possible new node resulting in visitation)
+     * Helper method for accept for items of this lexical context, delegates to the subclass accept
+     * and makes sure that the node is on the context before accepting and gets popped after
+     * accepting (and that the stack is consistent in that the node has been replaced with the
+     * possible new node resulting in visitation)
      */
     default Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         final LexicalContext lc = visitor.getLexicalContext();
         lc.push(this);
-        final LexicalContextNode newNode = (LexicalContextNode)this.accept(lc, visitor);
-        return (Node)lc.pop(newNode);
+        final LexicalContextNode newNode = (LexicalContextNode) this.accept(lc, visitor);
+        return (Node) lc.pop(newNode);
     }
 
     default <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {

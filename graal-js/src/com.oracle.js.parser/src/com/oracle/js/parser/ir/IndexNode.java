@@ -44,7 +44,6 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
-// @formatter:off
 /**
  * IR representation of an indexed access (brackets operator.)
  */
@@ -55,10 +54,10 @@ public final class IndexNode extends BaseNode {
     /**
      * Constructors
      *
-     * @param token   token
-     * @param finish  finish
-     * @param base    base node for access
-     * @param index   index for access
+     * @param token token
+     * @param finish finish
+     * @param base base node for access
+     * @param index index for access
      */
     public IndexNode(final long token, final int finish, final Expression base, final Expression index) {
         super(token, finish, base, false, false);
@@ -73,9 +72,11 @@ public final class IndexNode extends BaseNode {
     @Override
     public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterIndexNode(this)) {
+            //@formatter:off
             return visitor.leaveIndexNode(
-                setBase((Expression)base.accept(visitor)).
-                setIndex((Expression)index.accept(visitor)));
+                setBase((Expression) base.accept(visitor)).
+                setIndex((Expression) index.accept(visitor)));
+            //@formatter:on
         }
         return this;
     }
@@ -106,6 +107,7 @@ public final class IndexNode extends BaseNode {
 
     /**
      * Get the index expression for this IndexNode
+     *
      * @return the index
      */
     public Expression getIndex() {
@@ -121,6 +123,7 @@ public final class IndexNode extends BaseNode {
 
     /**
      * Set the index expression for this node
+     *
      * @param index new index expression
      * @return a node equivalent to this one except for the requested change.
      */

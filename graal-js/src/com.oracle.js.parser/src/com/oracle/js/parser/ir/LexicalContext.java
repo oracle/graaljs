@@ -45,15 +45,12 @@ import java.util.NoSuchElementException;
 
 import com.oracle.js.parser.Source;
 
-// @formatter:off
 /**
- * A class that tracks the current lexical context of node visitation as a stack
- * of {@link Block} nodes. Has special methods to retrieve useful subsets of the
- * context.
+ * A class that tracks the current lexical context of node visitation as a stack of {@link Block}
+ * nodes. Has special methods to retrieve useful subsets of the context.
  *
- * This is implemented with a primitive array and a stack pointer, because it
- * really makes a difference performance-wise. None of the collection classes
- * were optimal.
+ * This is implemented with a primitive array and a stack pointer, because it really makes a
+ * difference performance-wise. None of the collection classes were optimal.
  */
 public class LexicalContext {
     private LexicalContextNode[] stack;
@@ -74,8 +71,7 @@ public class LexicalContext {
     }
 
     /**
-     * Pushes a new block on top of the context, making it the innermost open
-     * block.
+     * Pushes a new block on top of the context, making it the innermost open block.
      *
      * @param <T> the type of the new node
      * @param node the new node
@@ -106,12 +102,11 @@ public class LexicalContext {
     }
 
     /**
-     * Pops the innermost block off the context and all nodes that has been
-     * contributed since it was put there.
+     * Pops the innermost block off the context and all nodes that has been contributed since it was
+     * put there.
      *
      * @param <T> the type of the node to be popped
-     * @param node the node expected to be popped, used to detect unbalanced
-     *        pushes/pops
+     * @param node the node expected to be popped, used to detect unbalanced pushes/pops
      *
      * @return the node that was popped
      */
@@ -162,8 +157,8 @@ public class LexicalContext {
     }
 
     /**
-     * Returns an iterator over all blocks in the context, with the top block
-     * (innermost lexical context) first.
+     * Returns an iterator over all blocks in the context, with the top block (innermost lexical
+     * context) first.
      *
      * @return an iterator over all blocks in the context.
      */
@@ -172,8 +167,8 @@ public class LexicalContext {
     }
 
     /**
-     * Returns an iterator over all functions in the context, with the top
-     * (innermost open) function first.
+     * Returns an iterator over all functions in the context, with the top (innermost open) function
+     * first.
      *
      * @return an iterator over all functions in the context.
      */
@@ -212,8 +207,8 @@ public class LexicalContext {
     }
 
     /**
-     * Checks whether the current context is inside a switch statement without
-     * explicit blocks (curly braces).
+     * Checks whether the current context is inside a switch statement without explicit blocks
+     * (curly braces).
      *
      * @return {@code true} if in unprotected switch statement.
      */
