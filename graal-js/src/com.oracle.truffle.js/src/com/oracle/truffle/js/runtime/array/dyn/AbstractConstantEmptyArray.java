@@ -100,7 +100,7 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
 
     @Override
     public long firstElementIndex(DynamicObject object, boolean condition) {
-        return length(object, condition); // there is no element in this array
+        return 0; // there is no element in this array
     }
 
     @Override
