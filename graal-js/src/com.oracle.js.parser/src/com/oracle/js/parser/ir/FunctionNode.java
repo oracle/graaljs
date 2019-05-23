@@ -103,9 +103,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Last token of function. **/
     private final long lastToken;
 
-    /** Number of properties of "this" object assigned in this function */
-    private final int thisProperties;
-
     /** Function flags. */
     private final int flags;
 
@@ -286,7 +283,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.lastToken = lastToken;
         this.flags = flags;
         this.body = body;
-        this.thisProperties = 0;
         this.endParserState = endParserState;
         this.module = module;
     }
@@ -299,7 +295,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                     final String name,
                     final Block body,
                     final List<IdentNode> parameters,
-                    final int thisProperties,
                     final Source source) {
         super(functionNode);
 
@@ -310,7 +305,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.lastToken = lastToken;
         this.body = body;
         this.parameters = parameters;
-        this.thisProperties = thisProperties;
         this.source = source;
 
         // the fields below never change - they are final and assigned in constructor
@@ -434,7 +428,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                         name,
                         body,
                         parameters,
-                        thisProperties,
                         source));
     }
 
@@ -528,7 +521,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                         name,
                         body,
                         parameters,
-                        thisProperties,
                         source));
     }
 
@@ -561,15 +553,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         // not a script, since for top-level scripts, "arguments" is picked up from a global
         // property instead.
         return getFlag(MAYBE_NEEDS_ARGUMENTS) && !getFlag(DEFINES_ARGUMENTS) && !isProgram();
-    }
-
-    /**
-     * Get the number of properties assigned to the this object in this function.
-     *
-     * @return number of properties
-     */
-    public int getThisProperties() {
-        return thisProperties;
     }
 
     /**
