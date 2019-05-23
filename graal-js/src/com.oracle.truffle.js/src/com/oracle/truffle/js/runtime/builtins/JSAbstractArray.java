@@ -502,14 +502,6 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return super.hasOwnProperty(thisObj, Boundaries.stringValueOf(index));
     }
 
-    private static long findNextIndex(DynamicObject object, ScriptArray array, long indexParam) {
-        long index = indexParam;
-        while (!array.hasElement(object, index) && index <= array.lastElementIndex(object)) {
-            index = array.nextElementIndex(object, index);
-        }
-        return index;
-    }
-
     @TruffleBoundary
     @Override
     public List<Object> ownPropertyKeys(DynamicObject thisObj) {
@@ -551,10 +543,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         }
         List<Object> list = new ArrayList<>((int) len);
 
-        long currentIndex = findNextIndex(thisObj, array, array.firstElementIndex(thisObj));
+        long currentIndex = array.firstElementIndex(thisObj);
         while (currentIndex <= array.lastElementIndex(thisObj)) {
             list.add(Boundaries.stringValueOf(currentIndex));
-            currentIndex = findNextIndex(thisObj, array, array.nextElementIndex(thisObj, currentIndex));
+            currentIndex = array.nextElementIndex(thisObj, currentIndex);
         }
 
         List<Object> keyList = thisObj.getShape().getKeyList();
