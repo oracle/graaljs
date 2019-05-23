@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -194,31 +195,34 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
 
     @TruffleBoundary
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
         int len = getStringLength(thisObj);
-        List<Object> indices = ScriptArray.makeRangeList(0, len);
+        List<Object> indices = strings ? ScriptArray.makeRangeList(0, len) : Collections.emptyList();
         List<Object> keyList = thisObj.getShape().getKeyList();
-
         if (keyList.isEmpty()) {
             return indices;
         } else {
             List<Object> list = new ArrayList<>(keyList.size());
-            keyList.forEach(k -> {
-                if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
-                    assert JSRuntime.propertyKeyToArrayIndex(k) >= len;
-                    list.add(k);
-                }
-            });
-            keyList.forEach(k -> {
-                if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
-                    list.add(k);
-                }
-            });
-            keyList.forEach(k -> {
-                if (k instanceof Symbol) {
-                    list.add(k);
-                }
-            });
+            if (strings) {
+                keyList.forEach(k -> {
+                    if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
+                        assert JSRuntime.propertyKeyToArrayIndex(k) >= len;
+                        list.add(k);
+                    }
+                });
+                keyList.forEach(k -> {
+                    if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
+                        list.add(k);
+                    }
+                });
+            }
+            if (symbols) {
+                keyList.forEach(k -> {
+                    if (k instanceof Symbol) {
+                        list.add(k);
+                    }
+                });
+            }
             return IteratorUtil.concatLists(indices, list);
         }
     }

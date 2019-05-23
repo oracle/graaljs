@@ -666,7 +666,11 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @TruffleBoundary
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+        return filterOwnPropertyKeys(ownPropertyKeysProxy(thisObj), strings, symbols);
+    }
+
+    private static List<Object> ownPropertyKeysProxy(DynamicObject thisObj) {
         DynamicObject handler = getHandlerChecked(thisObj);
         TruffleObject target = getTarget(thisObj);
         TruffleObject ownKeysFn = getTrapFromObject(handler, OWN_KEYS);

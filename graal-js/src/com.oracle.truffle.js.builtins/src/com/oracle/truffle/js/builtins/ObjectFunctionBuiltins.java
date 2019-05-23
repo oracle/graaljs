@@ -49,6 +49,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -109,7 +110,6 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -331,7 +331,6 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class ObjectGetOwnPropertyNamesOrSymbolsNode extends ObjectOperation {
         protected final boolean symbols;
-        final ConditionProfile isJSString = ConditionProfile.createBinaryProfile();
 
         public ObjectGetOwnPropertyNamesOrSymbolsNode(JSContext context, JSBuiltin builtin, boolean symbols) {
             super(context, builtin);
@@ -339,22 +338,21 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "isJSObject(thisObj)")
-        protected DynamicObject getJSObject(DynamicObject thisObj) {
-            return JSRuntime.getOwnPropertyKeys(getContext(), thisObj, symbols);
+        protected DynamicObject getJSObject(DynamicObject thisObj,
+                        @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
+            return JSArray.createLazyArray(getContext(), jsclassProfile.getJSClass(thisObj).getOwnPropertyKeys(thisObj, !symbols, symbols));
         }
 
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
-        protected DynamicObject getDefault(Object thisObj) {
+        protected DynamicObject getDefault(Object thisObj,
+                        @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
             DynamicObject object = toOrAsObject(thisObj);
-            if (!symbols && isJSString.profile(JSString.isJSString(object))) {
-                return JSArray.createLazyArray(getContext(), JSString.INSTANCE.ownPropertyKeys(object));
-            }
-            return JSRuntime.getOwnPropertyKeys(getContext(), object, symbols);
+            return getJSObject(object, jsclassProfile);
         }
 
         @Specialization(guards = {"isForeignObject(thisObj)", "symbols"})
         protected DynamicObject getForeignObjectSymbols(@SuppressWarnings("unused") TruffleObject thisObj) {
-            // TrufleObjects can never have symbols.
+            // TruffleObjects can never have symbols.
             return JSArray.createConstantEmptyArray(getContext());
         }
 

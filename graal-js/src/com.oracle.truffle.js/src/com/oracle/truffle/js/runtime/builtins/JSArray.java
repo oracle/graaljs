@@ -247,8 +247,8 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
-        return ownPropertyKeysFastArray(thisObj);
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+        return ownPropertyKeysFastArray(thisObj, strings, symbols);
     }
 
     public static Property makeArrayLengthProxyProperty() {

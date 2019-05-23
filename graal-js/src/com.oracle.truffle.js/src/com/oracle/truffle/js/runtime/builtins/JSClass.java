@@ -212,10 +212,34 @@ public abstract class JSClass extends ObjectType {
      * Provides all <em>own</em> properties of this object with a <em>String</em> or <em>Symbol</em>
      * key. Represents the [[OwnPropertyKeys]] internal method.
      *
-     * @return an List<Object> of the keys of all own properties of that object
+     * @return a List of the keys of all own properties of that object
+     */
+    public final List<Object> ownPropertyKeys(DynamicObject obj) {
+        return getOwnPropertyKeys(obj, true, true);
+    }
+
+    /**
+     * GetOwnPropertyKeys (O, type).
+     *
+     * @return a List of the keys of all own properties of that object with the specified types
      */
     @TruffleBoundary
-    public abstract List<Object> ownPropertyKeys(DynamicObject obj);
+    public abstract List<Object> getOwnPropertyKeys(DynamicObject obj, boolean strings, boolean symbols);
+
+    @TruffleBoundary
+    public static List<Object> filterOwnPropertyKeys(List<Object> ownPropertyKeys, boolean strings, boolean symbols) {
+        if (strings && symbols) {
+            return ownPropertyKeys;
+        }
+        List<Object> names = new ArrayList<>();
+        for (Object key : ownPropertyKeys) {
+            if ((!symbols && key instanceof Symbol) || (!strings && key instanceof String)) {
+                continue;
+            }
+            names.add(key);
+        }
+        return names;
+    }
 
     /**
      * If true, {@link #ownPropertyKeys} and {@link JSShape#getProperties} enumerate the same keys.

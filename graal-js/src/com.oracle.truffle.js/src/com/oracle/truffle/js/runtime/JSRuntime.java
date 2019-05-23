@@ -2310,25 +2310,6 @@ public final class JSRuntime {
     }
 
     /**
-     * ES2015 19.1.2.8.1 GetOwnPropertyKeys (O, Type).
-     *
-     */
-    public static DynamicObject getOwnPropertyKeys(JSContext context, DynamicObject object, boolean symbols) {
-        return createArrayFromList(context, ownPropertyKeysAsList(object, symbols));
-    }
-
-    @TruffleBoundary
-    public static List<Object> ownPropertyKeysAsList(DynamicObject object, boolean symbols) {
-        List<Object> names = new ArrayList<>();
-        for (Object key : JSObject.ownPropertyKeys(object)) {
-            if ((symbols && key instanceof Symbol) || (!symbols && key instanceof String)) {
-                names.add(key);
-            }
-        }
-        return names;
-    }
-
-    /**
      * ES2015 7.2.3 IsCallable(argument).
      */
     public static boolean isCallable(Object value) {

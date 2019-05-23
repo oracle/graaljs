@@ -158,12 +158,11 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     }
 
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
-        ScriptArray array = JSObject.getArray(thisObj);
-        if (array.length(thisObj) == 0) {
-            return super.ownPropertyKeys(thisObj);
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+        if (!strings || JSObject.getArray(thisObj).length(thisObj) == 0) {
+            return super.getOwnPropertyKeys(thisObj, strings, symbols);
         }
-        return JSAbstractArray.ownPropertyKeysSlowArray(thisObj);
+        return JSAbstractArray.ownPropertyKeysSlowArray(thisObj, strings, symbols);
     }
 
     @Override

@@ -134,7 +134,7 @@ public abstract class AbstractJSClass extends JSClass {
     }
 
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
         return Collections.emptyList();
     }
 

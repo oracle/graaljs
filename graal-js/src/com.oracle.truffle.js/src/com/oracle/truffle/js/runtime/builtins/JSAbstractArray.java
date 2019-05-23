@@ -504,80 +504,84 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
-        return ownPropertyKeysSlowArray(thisObj);
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+        return ownPropertyKeysSlowArray(thisObj, strings, symbols);
     }
 
     @TruffleBoundary
-    protected static List<Object> ownPropertyKeysFastArray(DynamicObject thisObj) {
+    protected static List<Object> ownPropertyKeysFastArray(DynamicObject thisObj, boolean strings, boolean symbols) {
         assert JSArray.isJSFastArray(thisObj) || JSArgumentsObject.isJSFastArgumentsObject(thisObj);
-        ScriptArray array = arrayGetArrayType(thisObj);
-        List<Object> indices = array.ownPropertyKeys(thisObj);
-
+        List<Object> indices = strings ? arrayGetArrayType(thisObj).ownPropertyKeys(thisObj) : Collections.emptyList();
         List<Object> keyList = thisObj.getShape().getKeyList();
         if (keyList.isEmpty()) {
             return indices;
         } else {
-            List<Object> list = new ArrayList<>(thisObj.getShape().getPropertyCount());
-            keyList.forEach(k -> {
-                assert !(k instanceof String && JSRuntime.isArrayIndex((String) k));
-                if (k instanceof String) {
-                    list.add(k);
-                }
-            });
-            keyList.forEach(k -> {
-                if (k instanceof Symbol) {
-                    list.add(k);
-                }
-            });
+            List<Object> list = new ArrayList<>(keyList.size());
+            if (strings) {
+                keyList.forEach(k -> {
+                    assert !(k instanceof String && JSRuntime.isArrayIndex((String) k));
+                    if (k instanceof String) {
+                        list.add(k);
+                    }
+                });
+            }
+            if (symbols) {
+                keyList.forEach(k -> {
+                    if (k instanceof Symbol) {
+                        list.add(k);
+                    }
+                });
+            }
             return IteratorUtil.concatLists(indices, list);
         }
     }
 
     @TruffleBoundary
-    protected static List<Object> ownPropertyKeysSlowArray(DynamicObject thisObj) {
-        ScriptArray array = arrayGetArrayType(thisObj);
-        long len = thisObj.getShape().getPropertyCount() + array.length(thisObj);
-        if (len > 10000) {
-            len = 0; // let's rather find out during setting.
-        }
-        List<Object> list = new ArrayList<>((int) len);
+    protected static List<Object> ownPropertyKeysSlowArray(DynamicObject thisObj, boolean strings, boolean symbols) {
+        List<Object> list = new ArrayList<>();
 
-        long currentIndex = array.firstElementIndex(thisObj);
-        while (currentIndex <= array.lastElementIndex(thisObj)) {
-            list.add(Boundaries.stringValueOf(currentIndex));
-            currentIndex = array.nextElementIndex(thisObj, currentIndex);
+        if (strings) {
+            ScriptArray array = arrayGetArrayType(thisObj);
+            long currentIndex = array.firstElementIndex(thisObj);
+            while (currentIndex <= array.lastElementIndex(thisObj)) {
+                list.add(Boundaries.stringValueOf(currentIndex));
+                currentIndex = array.nextElementIndex(thisObj, currentIndex);
+            }
         }
 
         List<Object> keyList = thisObj.getShape().getKeyList();
         if (!keyList.isEmpty()) {
-            int before = list.size();
-            keyList.forEach(k -> {
-                if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
-                    list.add(k);
+            if (strings) {
+                int before = list.size();
+                keyList.forEach(k -> {
+                    if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
+                        list.add(k);
+                    }
+                });
+                int after = list.size();
+                if (after != before) {
+                    Collections.sort(list, new Comparator<Object>() {
+                        @Override
+                        public int compare(Object o1, Object o2) {
+                            long l1 = JSRuntime.propertyKeyToArrayIndex(o1);
+                            long l2 = JSRuntime.propertyKeyToArrayIndex(o2);
+                            return l1 < l2 ? -1 : (l1 == l2 ? 0 : 1);
+                        }
+                    });
                 }
-            });
-            int after = list.size();
-            if (after != before) {
-                Collections.sort(list, new Comparator<Object>() {
-                    @Override
-                    public int compare(Object o1, Object o2) {
-                        long l1 = JSRuntime.propertyKeyToArrayIndex(o1);
-                        long l2 = JSRuntime.propertyKeyToArrayIndex(o2);
-                        return l1 < l2 ? -1 : (l1 == l2 ? 0 : 1);
+                keyList.forEach(k -> {
+                    if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
+                        list.add(k);
                     }
                 });
             }
-            keyList.forEach(k -> {
-                if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
-                    list.add(k);
-                }
-            });
-            keyList.forEach(k -> {
-                if (k instanceof Symbol) {
-                    list.add(k);
-                }
-            });
+            if (symbols) {
+                keyList.forEach(k -> {
+                    if (k instanceof Symbol) {
+                        list.add(k);
+                    }
+                });
+            }
         }
         return list;
     }
