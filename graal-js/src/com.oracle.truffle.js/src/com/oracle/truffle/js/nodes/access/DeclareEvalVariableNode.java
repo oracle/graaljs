@@ -72,8 +72,6 @@ public class DeclareEvalVariableNode extends StatementNode {
         if (dynamicScope == Undefined.instance) {
             // NB: dynamic scope object must not have a prototype (visible to user code)
             dynamicScope = JSUserObject.createWithNullPrototype(context);
-            // (GR-2060) consider eager initialization of dynamic scope object when
-            // the function/block owning it is entered instead of at use (here).
             initScopeNode.executeWrite(frame, dynamicScope);
         }
         assert isValidDynamicScopeObject(dynamicScope);

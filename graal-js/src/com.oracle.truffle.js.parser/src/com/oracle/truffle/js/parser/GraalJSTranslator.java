@@ -2960,7 +2960,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private static boolean isPotentiallySideEffecting(JavaScriptNode test) {
-        // (GR-2041) improve detection
         if (test instanceof JSReadFrameSlotNode) {
             return ((JSReadFrameSlotNode) test).hasTemporalDeadZone();
         }

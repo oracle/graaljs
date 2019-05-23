@@ -196,7 +196,7 @@ public final class SIMDTypePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Override
         @Specialization
         protected Object doToString(VirtualFrame frame, DynamicObject a) {
-            String separator = ", "; // TODO use locale
+            String separator = ", ";
             ArrayList<Object> list = new ArrayList<>();
 
             for (int i = 0; i < JSSIMD.simdTypeGetSIMDType(a).getNumberOfElements(); i++) {

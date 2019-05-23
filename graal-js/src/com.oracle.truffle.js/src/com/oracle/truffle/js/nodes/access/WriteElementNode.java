@@ -877,7 +877,6 @@ public class WriteElementNode extends JSTargetableNode {
         protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBoundsProfile.profile(writableArray.isInBoundsFast(target, index, arrayCondition))) {
-                // TODO writableArray.setInBoundsFast(intIndex);
                 arraySetArrayType(target, writableArray.setElement(target, index, value, isStrict, arrayCondition));
             } else {
                 JSObject.set(target, index, value, isStrict, classProfile);
