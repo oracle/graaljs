@@ -132,9 +132,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Does the function use the "arguments" identifier ? */
     public static final int USES_ARGUMENTS = 1 << 3;
 
-    /** Has this function been split because it was too large? */
-    public static final int IS_SPLIT = 1 << 4;
-
     /**
      * Does the function call eval? If it does, then all variables in this function might be get/set
      * by it and it can introduce new variables into this function's scope too.
@@ -590,15 +587,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      */
     public String getName() {
         return name;
-    }
-
-    /**
-     * Checks if this function is split into several smaller fragments.
-     *
-     * @return true if this function is split into several smaller fragments.
-     */
-    public boolean isSplit() {
-        return getFlag(IS_SPLIT);
     }
 
     /**
