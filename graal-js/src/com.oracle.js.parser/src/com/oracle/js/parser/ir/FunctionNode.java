@@ -83,7 +83,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     private final Object endParserState;
 
     /** External function identifier. */
-    /* @Ignore */ private final IdentNode ident;
+    private final IdentNode ident;
 
     /** The body of the function node */
     private final Block body;
@@ -104,7 +104,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     private final long lastToken;
 
     /** Number of properties of "this" object assigned in this function */
-    /* @Ignore */ private final int thisProperties;
+    private final int thisProperties;
 
     /** Function flags. */
     private final int flags;
