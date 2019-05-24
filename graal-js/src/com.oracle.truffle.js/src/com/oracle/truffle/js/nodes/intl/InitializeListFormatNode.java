@@ -95,11 +95,6 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
             String optType = getTypeOption.executeValue(options);
             String optStyle = getStyleOption.executeValue(options);
 
-            if (IntlUtil.NARROW.equals(optStyle) && !IntlUtil.UNIT.equals(optType)) {
-                throw Errors.createRangeErrorFormat(
-                                "When style is '%s', 'unit' is the only allowed value for the type option.", this, IntlUtil.NARROW);
-            }
-
             state.setInitialized(true);
 
             state.setType(optType);
