@@ -47,7 +47,6 @@ import java.io.File;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -83,10 +82,11 @@ public class Test262Runnable extends TestRunnable {
     private static final String ONLY_STRICT_FLAG = "onlyStrict";
     private static final String MODULE_FLAG = "module";
     private static final String CAN_BLOCK_IS_FALSE_FLAG = "CanBlockIsFalse";
+    private static final String HASHBANG_FEATURE = "hashbang";
     private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
-    private static final Pattern SPLIT_PATTERN = Pattern.compile(", ");
+    private static final Pattern SPLIT_PATTERN = Pattern.compile(",\\s*");
 
     private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Array.prototype.flat",
@@ -167,6 +167,7 @@ public class Test262Runnable extends TestRunnable {
                     "for-of",
                     "generators",
                     "globalThis",
+                    "hashbang",
                     "import.meta",
                     "json-superset",
                     "let",
@@ -185,8 +186,11 @@ public class Test262Runnable extends TestRunnable {
                     "well-formed-json-stringify",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Intl.DateTimeFormat-datetimestyle",
+                    "Intl.DateTimeFormat-formatRange",
                     "Intl.Locale",
                     "IsHTMLDDA",
+                    "Promise.allSettled",
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
@@ -201,14 +205,6 @@ public class Test262Runnable extends TestRunnable {
                     "import.meta"
     }));
 
-    private static final Map<String, String> EXTRA_OPTIONS_AGENT_CANNOT_BLOCK;
-
-    static {
-        Map<String, String> initExtraOptions = new HashMap<>();
-        initExtraOptions.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
-        EXTRA_OPTIONS_AGENT_CANNOT_BLOCK = Collections.unmodifiableMap(initExtraOptions);
-    }
-
     public Test262Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
     }
@@ -221,10 +217,18 @@ public class Test262Runnable extends TestRunnable {
         String negativeExpectedMessage = getNegativeMessage(scriptCodeList);
         boolean negative = negativeExpectedMessage != null;
         Set<String> flags = getFlags(scriptCodeList);
+        Set<String> features = getFeatures(scriptCodeList);
         boolean runStrict = flags.contains(ONLY_STRICT_FLAG);
         boolean asyncTest = isAsyncTest(scriptCodeList);
         boolean module = flags.contains(MODULE_FLAG);
-        boolean agentCannotBlock = flags.contains(CAN_BLOCK_IS_FALSE_FLAG);
+
+        Map<String, String> extraOptions = new HashMap<>(4);
+        if (flags.contains(CAN_BLOCK_IS_FALSE_FLAG)) {
+            extraOptions.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
+        }
+        if (features.contains(HASHBANG_FEATURE)) {
+            extraOptions.put(JSContextOptions.SHEBANG_NAME, "true");
+        }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
 
@@ -240,11 +244,9 @@ public class Test262Runnable extends TestRunnable {
 
         Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
 
-        final Map<String, String> extraOptions = agentCannotBlock ? EXTRA_OPTIONS_AGENT_CANNOT_BLOCK : Collections.emptyMap();
-
         boolean supported = true;
         boolean requiresES2020 = false;
-        for (String feature : getFeatures(scriptCodeList)) {
+        for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 if (ES2020_FEATURES.contains(feature)) {
                     requiresES2020 = true;
@@ -443,24 +445,12 @@ public class Test262Runnable extends TestRunnable {
         return null;
     }
 
-    private static Stream<String> getStrings(List<String> scriptCode, String prefix, Pattern pattern) {
-        for (String line : scriptCode) {
-            if (line.contains(prefix)) {
-                Matcher matcher = pattern.matcher(line);
-                if (matcher.find()) {
-                    return SPLIT_PATTERN.splitAsStream(matcher.group(1));
-                }
-            }
-        }
-        return Stream.empty();
-    }
-
     private static Set<String> getFlags(List<String> scriptCode) {
-        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_PATTERN).collect(Collectors.toSet());
+        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_PATTERN, SPLIT_PATTERN).collect(Collectors.toSet());
     }
 
     private static Stream<String> getIncludes(List<String> scriptCode) {
-        Stream<String> includes = getStrings(scriptCode, INCLUDES_PREFIX, INCLUDES_PATTERN);
+        Stream<String> includes = getStrings(scriptCode, INCLUDES_PREFIX, INCLUDES_PATTERN, SPLIT_PATTERN);
 
         // There are few tests whose "includes:" section has the form
         // includes:
@@ -475,7 +465,7 @@ public class Test262Runnable extends TestRunnable {
     }
 
     private static Set<String> getFeatures(List<String> scriptCode) {
-        return getStrings(scriptCode, FEATURES_PREFIX, FEATURES_PATTERN).collect(Collectors.toSet());
+        return getStrings(scriptCode, FEATURES_PREFIX, FEATURES_PATTERN, SPLIT_PATTERN).collect(Collectors.toSet());
     }
 
     private static boolean isAsyncTest(List<String> scriptCodeList) {

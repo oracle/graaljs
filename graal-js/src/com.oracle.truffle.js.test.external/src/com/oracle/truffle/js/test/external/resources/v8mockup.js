@@ -535,7 +535,7 @@ function v8ToName(a) {
     return TestV8.toName(a);
 }
 
-function v8ToString(a) {
+function v8ToStringRT(a) {
     return TestV8.toStringConv(a);
 }
 
@@ -870,6 +870,28 @@ function v8HandleDebuggerStatement() {
 
 function v8IsThreadInWasm() {
     return v8IgnoreResult;
+}
+
+// new mockups from 2019-05-12 update
+
+function v8EnsureFeedbackVectorForFunction() {
+}
+
+function v8PrepareFunctionForOptimization() {
+}
+
+function v8HasPackedElements() {
+    return v8IgnoreResult;
+}
+
+function v8GetProperty(receiver, key) {
+    return receiver[key];
+}
+
+function v8EnableCodeLoggingForTesting() {
+}
+
+function v8TurbofanStaticAssert() {
 }
 
 function setTimeout(fn) {
