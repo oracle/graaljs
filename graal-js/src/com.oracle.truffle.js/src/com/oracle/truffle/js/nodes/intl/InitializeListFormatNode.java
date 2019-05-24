@@ -91,9 +91,9 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
             DynamicObject options = createOptionsNode.execute(optionsArg);
 
+            getLocaleMatcherOption.executeValue(options);
             String optType = getTypeOption.executeValue(options);
             String optStyle = getStyleOption.executeValue(options);
-            getLocaleMatcherOption.executeValue(options);
 
             if (IntlUtil.NARROW.equals(optStyle) && !IntlUtil.UNIT.equals(optType)) {
                 throw Errors.createRangeErrorFormat(
