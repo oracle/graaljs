@@ -2028,6 +2028,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-913222.js",
+    "status" : "SKIP",
+    "comment" : "spurious failures\njava.lang.AssertionError at com.oracle.js.parser.ParserContext.pop(ParserContext.java:111), com.oracle.js.parser.Parser.restoreBlock(Parser.java:666), com.oracle.js.parser.Parser.program(Parser.java:954), com.oracle.js.parser.Parser.parse(Parser.java:405), com.oracle.js.parser.Parser.parse(Parser.java:332), com.oracle.truffle.js.parser.GraalJSParserHelper.parseSource(GraalJSParserHelper.java:108), com.oracle.truffle.js.parser.GraalJSParserHelper.parseScript(GraalJSParserHelper.java:84), com.oracle.truffle.js.parser.JavaScriptTranslator.translateScript(JavaScriptTranslator.java:98), com.oracle.truffle.js.parser.JavaScriptTranslator.translateEvalScript(JavaScriptTranslator.java:89), com.oracle.truffle.js.parser.GraalJSEvaluator.parseEval(GraalJSEvaluator.java:220)"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-915783.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
