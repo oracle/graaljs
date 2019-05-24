@@ -50,14 +50,12 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -82,12 +80,6 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     private final JSContext context;
     @Child private PropertyGetNode getToJSONProperty;
     @Child private JSFunctionCallNode callToJSONFunction;
-    @Child private Node hasSizeNode;
-    @Child private Node getSizeNode;
-    @Child private Node readNode;
-    @Child private Node keysNode;
-    @Child private Node isNullNode;
-    @Child private Node isBoxedNode;
     private final BranchProfile sbAppendProfile = BranchProfile.create();
 
     protected JSONStringifyStringNode(JSContext context) {
@@ -207,12 +199,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
     private Object jsonStrPreparePart2(JSONData data, Object key, TruffleObject holder, Object valueArg) {
         Object value = valueArg;
-        if (JSRuntime.isObject(value)) {
-            DynamicObject valueObj = (DynamicObject) value;
-            value = jsonStrPrepareObject(JSRuntime.toPropertyKey(key), value, valueObj);
-        } else if (JSRuntime.isBigInt(value)) {
-            DynamicObject valueObj = JSBigInt.create(this.context, (BigInt) value);
-            value = jsonStrPrepareObject(JSRuntime.toPropertyKey(key), value, valueObj);
+        if (JSRuntime.isObject(value) || JSRuntime.isBigInt(value)) {
+            value = jsonStrPrepareObject(JSRuntime.toPropertyKey(key), value);
         }
 
         if (data.getReplacerFnObj() != null) {
@@ -242,13 +230,13 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return valueObj;
     }
 
-    private Object jsonStrPrepareObject(Object key, Object value, DynamicObject valueObj) {
+    private Object jsonStrPrepareObject(Object key, Object value) {
         assert JSRuntime.isPropertyKey(key);
         if (getToJSONProperty == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getToJSONProperty = insert(PropertyGetNode.create("toJSON", false, context));
         }
-        Object toJSON = getToJSONProperty.getValue(valueObj);
+        Object toJSON = getToJSONProperty.getValue(value);
         if (JSRuntime.isCallable(toJSON)) {
             return jsonStrPrepareObjectFunction(key, value, (DynamicObject) toJSON);
         }
