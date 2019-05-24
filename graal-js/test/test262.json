@@ -1851,14 +1851,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl402/ListFormat/constructor/constructor/options-order.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl402/ListFormat/constructor/constructor/options-style-valid.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
     "filePath" : "intl402/ListFormat/constructor/supportedLocalesOf/locales-invalid.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
