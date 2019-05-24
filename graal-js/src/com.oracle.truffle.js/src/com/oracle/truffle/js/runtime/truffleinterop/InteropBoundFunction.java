@@ -44,6 +44,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -53,7 +54,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 
 @ExportLibrary(InteropLibrary.class)
@@ -102,16 +102,16 @@ public final class InteropBoundFunction extends InteropFunction {
 
     @ExportMessage
     Object execute(Object[] arguments,
+                    @CachedLanguage JavaScriptLanguage language,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
                     @Cached JSInteropExecuteNode callNode,
                     @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
-        JSContext context = realm.getContext();
-        context.interopBoundaryEnter();
+        language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(function, receiver, arguments);
             return exportNode.execute(result);
         } finally {
-            context.interopBoundaryExit();
+            language.interopBoundaryExit(realm);
         }
     }
 }

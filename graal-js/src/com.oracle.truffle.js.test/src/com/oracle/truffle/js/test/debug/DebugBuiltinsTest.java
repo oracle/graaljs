@@ -83,8 +83,6 @@ public class DebugBuiltinsTest {
         assertTrue(heapDump.exists());
         assertTrue(heapDump.delete());
 
-        // ctx.eval("js", "Debug.objectSize({});"); //fails on JDK11
-        // ctx.eval("js", "Debug.objectSizeHistogram({});"); //fails on JDK11
         ctx.close();
     }
 

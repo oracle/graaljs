@@ -3,7 +3,10 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
-## Version GraalVM 19.0.0
+## Version 20.0.0-beta1
+* Enabled code sharing across threads using `ContextPolicy.SHARED`.
+
+## Version 19.0.0
 * Various bugfixes for compilation problems.
 
 ## Version 1.0.0 RC16

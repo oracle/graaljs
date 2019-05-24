@@ -40,32 +40,56 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import static com.oracle.truffle.js.nodes.JSGuards.isBoolean;
-import static com.oracle.truffle.js.nodes.JSGuards.isNumber;
-import static com.oracle.truffle.js.nodes.JSGuards.isString;
-
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class IsPrimitiveNode extends JavaScriptBaseNode {
-
-    protected static final int MAX_CLASSES = 3;
 
     public abstract boolean executeBoolean(Object operand);
 
     @Specialization(guards = {"isJSNull(operand)"})
-    protected static boolean doNull(@SuppressWarnings("unused") DynamicObject operand) {
+    protected static boolean doNull(@SuppressWarnings("unused") Object operand) {
         return true;
     }
 
     @Specialization(guards = {"isUndefined(operand)"})
-    protected static boolean doUndefined(@SuppressWarnings("unused") DynamicObject operand) {
+    protected static boolean doUndefined(@SuppressWarnings("unused") Object operand) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doBoolean(@SuppressWarnings("unused") boolean operand) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doInt(@SuppressWarnings("unused") int operand) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doLong(@SuppressWarnings("unused") long operand) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doLargeInt(@SuppressWarnings("unused") LargeInteger operand) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doDouble(@SuppressWarnings("unused") double operand) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doSymbol(@SuppressWarnings("unused") Symbol operand) {
         return true;
     }
 
@@ -74,29 +98,27 @@ public abstract class IsPrimitiveNode extends JavaScriptBaseNode {
         return true;
     }
 
-    @Specialization(guards = {"isNullOrUndefined(operand)"}, replaces = {"doNull", "doUndefined"})
-    protected static boolean doNullOrUndefined(@SuppressWarnings("unused") DynamicObject operand) {
+    @Specialization
+    protected static boolean doString(@SuppressWarnings("unused") CharSequence operand) {
         return true;
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"operand != null", "cachedClass != null", "cachedClass == operand.getClass()"}, limit = "MAX_CLASSES")
-    protected static boolean doCached(Object operand,
-                    @Cached("getNonDynamicObjectClass(operand)") Class<?> cachedClass,
-                    @Cached("doGeneric(operand)") boolean cachedResult) {
-        return cachedResult;
-    }
-
     @Specialization(guards = {"isJSObject(operand)"})
-    protected static boolean doIsObject(@SuppressWarnings("unused") DynamicObject operand) {
+    protected static boolean doIsObject(DynamicObject operand) {
         return false;
     }
 
-    @Specialization(replaces = {"doNull", "doUndefined", "doNullOrUndefined", "doCached", "doIsObject"})
-    protected static boolean doGeneric(Object operand) {
-        if (isNumber(operand) || isBoolean(operand) || isString(operand) || operand instanceof Symbol) {
+    @Specialization(guards = {"isForeignObject(operand)"}, limit = "5")
+    protected static boolean doForeignObject(Object operand,
+                    @CachedLibrary("operand") InteropLibrary interop) {
+        if (interop.isNull(operand)) {
             return true;
-        } else if (JSObject.isDynamicObject(operand) && !JSGuards.isJSObject((DynamicObject) operand)) {
+        } else if (interop.isBoolean(operand)) {
+            return true;
+        } else if (interop.isString(operand)) {
+            return true;
+        } else if (interop.isNumber(operand)) {
             return true;
         }
         return false;

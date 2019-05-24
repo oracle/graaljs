@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,56 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode;
+package com.oracle.truffle.js.test.debug;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.js.runtime.JSAgent;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.junit.Test;
 
-public class NodeJSAgent extends JSAgent {
-    // The set of active agents, i.e., agents that entered an isolate
-    private static final Set<NodeJSAgent> agents = Collections.synchronizedSet(new HashSet<>());
-    private Thread thread;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 
-    NodeJSAgent() {
-        super(true);
-    }
-
-    void setThread(Thread thread) {
-        this.thread = thread;
-        if (thread == null) {
-            agents.remove(this);
-        } else {
-            agents.add(this);
-        }
-    }
-
-    Thread getThread() {
-        return thread;
-    }
-
-    @Override
-    public void wakeAgent(int w) {
-        synchronized (agents) {
-            for (NodeJSAgent agent : agents) {
-                if (agent.getSignifier() == w) {
-                    agent.thread.interrupt();
-                    break;
-                }
+public class RealmTest {
+    @Test
+    public void test262Realm() {
+        Engine engine = Engine.create();
+        Context.Builder contextBuilder = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(JSContextOptions.TEST262_MODE_NAME, "true");
+        try (Context context1 = contextBuilder.build()) {
+            assertEquals(42, context1.eval("js", "6*7").asInt());
+            try (Context context2 = contextBuilder.build()) {
+                assertEquals(42, context2.eval("js", "6*7").asInt());
             }
+            assertTrue(context1.eval("js", "Realm = $262.createRealm(); Realm.global.Symbol.for('foo') === Symbol.for('foo')").asBoolean());
         }
     }
 
-    @Override
-    public boolean isTerminated() {
-        throw new UnsupportedOperationException();
+    @Test
+    public void testV8Realm() {
+        Engine engine = Engine.create();
+        Context.Builder contextBuilder = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
+        try (Context context1 = contextBuilder.build()) {
+            assertEquals(42, context1.eval("js", "6*7").asInt());
+            try (Context context2 = contextBuilder.build()) {
+                assertEquals(42, context2.eval("js", "6*7").asInt());
+            }
+            assertTrue(context1.eval("js", "var id = Realm.create(); Realm.eval(id, \"Symbol.for('foo')\") === Symbol.for('foo')").asBoolean());
+        }
     }
-
-    @Override
-    public void terminate(int timeout) {
-        throw new UnsupportedOperationException();
-    }
-
 }

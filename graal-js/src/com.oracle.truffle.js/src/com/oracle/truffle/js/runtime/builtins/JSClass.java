@@ -48,6 +48,7 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -651,16 +652,16 @@ public abstract class JSClass extends ObjectType {
 
     @ExportMessage
     static Object execute(DynamicObject target, Object[] args,
+                    @CachedLanguage JavaScriptLanguage language,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
                     @Cached JSInteropExecuteNode callNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
-        JSContext context = realm.getContext();
-        context.interopBoundaryEnter();
+        language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(target, Undefined.instance, args);
             return exportNode.executeWithTarget(result, Undefined.instance);
         } finally {
-            context.interopBoundaryExit();
+            language.interopBoundaryExit(realm);
         }
     }
 
@@ -672,16 +673,16 @@ public abstract class JSClass extends ObjectType {
 
     @ExportMessage
     static Object instantiate(DynamicObject target, Object[] args,
+                    @CachedLanguage JavaScriptLanguage language,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
                     @Cached JSInteropInstantiateNode callNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
-        JSContext context = realm.getContext();
-        context.interopBoundaryEnter();
+        language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(target, args);
             return exportNode.executeWithTarget(result, Undefined.instance);
         } finally {
-            context.interopBoundaryExit();
+            language.interopBoundaryExit(realm);
         }
     }
 
@@ -692,17 +693,17 @@ public abstract class JSClass extends ObjectType {
 
     @ExportMessage
     static Object invokeMember(DynamicObject target, String id, Object[] args,
+                    @CachedLanguage JavaScriptLanguage language,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
                     @Cached JSInteropInvokeNode callNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException, UnknownIdentifierException {
         ensureHasMembers(target);
-        JSContext context = realm.getContext();
-        context.interopBoundaryEnter();
+        language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(target, id, args);
             return exportNode.executeWithTarget(result, target);
         } finally {
-            context.interopBoundaryExit();
+            language.interopBoundaryExit(realm);
         }
     }
 

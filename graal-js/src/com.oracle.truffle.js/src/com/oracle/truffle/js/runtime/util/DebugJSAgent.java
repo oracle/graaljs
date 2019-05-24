@@ -52,10 +52,8 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.EcmaAgent;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -74,20 +72,11 @@ public class DebugJSAgent extends JSAgent {
     private Object debugReceiveBroadcast;
 
     @TruffleBoundary
-    public DebugJSAgent(boolean canBlock) {
+    public DebugJSAgent(boolean canBlock, OptionValues optionValues) {
         super(canBlock);
+        this.optionValues = optionValues;
         this.reportValues = new ConcurrentLinkedDeque<>();
         this.spawnedAgent = new LinkedList<>();
-    }
-
-    @Override
-    public void reset(TruffleLanguage.Env env) {
-        super.reset(env);
-        optionValues = env.getOptions();
-        reportValues.clear();
-        spawnedAgent.clear();
-        quit = false;
-        debugReceiveBroadcast = null;
     }
 
     @TruffleBoundary
@@ -230,12 +219,6 @@ public class DebugJSAgent extends JSAgent {
                 JSFunction.call(cb, cb, new Object[]{incoming.pop()});
             }
         }
-    }
-
-    @TruffleBoundary
-    @Override
-    public void execute(EcmaAgent owner, Runnable task) {
-        throw new UnsupportedOperationException("Not supported in Debug agent");
     }
 
     @TruffleBoundary

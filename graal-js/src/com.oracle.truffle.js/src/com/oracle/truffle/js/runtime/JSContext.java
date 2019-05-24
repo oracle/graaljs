@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.runtime;
 
 import java.time.ZoneId;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
@@ -189,12 +187,6 @@ public class JSContext {
 
     private volatile Map<String, Symbol> symbolRegistry;
 
-    /**
-     * ECMA 8.4 "PromiseJobs" job queue.
-     */
-    private final Deque<DynamicObject> promiseJobsQueue;
-    private final Assumption promiseJobsQueueNotUsedAssumption;
-
     private final Object nodeFactory;
 
     private final TimeProfiler timeProfiler;
@@ -312,26 +304,8 @@ public class JSContext {
     private static final int REALM_INITIALIZING = 1;
     private static final int REALM_INITIALIZED = 2;
 
-    /**
-     * According to ECMA2017 8.4 the queue of pending jobs (promises reactions) must be processed
-     * when the current stack is empty. For Interop, we assume that the stack is empty when (1) we
-     * are called from another foreign language, and (2) there are no other nested JS Interop calls.
-     *
-     * This flag is used to implement this semantics.
-     */
-    private int interopCallStackDepth = 0;
-
     private final ContextReference<JSRealm> contextRef;
     @CompilationFinal private AllocationReporter allocationReporter;
-
-    /**
-     * ECMA2017 8.7 Agent object.
-     *
-     * Temporary field until JSAgents are supported in Node.js.
-     *
-     * Initialized after engine creation either by some testing harness or by node.
-     */
-    @CompilationFinal private JSAgent agent;
 
     private final JSContextOptions contextOptions;
 
@@ -448,9 +422,6 @@ public class JSContext {
 
         this.moduleNamespaceFactory = JSObjectFactory.createBound(this, Null.instance, JSModuleNamespace.makeInitialShape(this).createFactory());
 
-        this.promiseJobsQueue = new ArrayDeque<>(4);
-        this.promiseJobsQueueNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseJobsQueueNotUsedAssumption");
-
         this.promiseHookNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseHookNotUsedAssumption");
         this.promiseRejectionTrackerNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseRejectionTrackerNotUsedAssumption");
         this.importMetaInitializerNotUsedAssumption = Truffle.getRuntime().createAssumption("importMetaInitializerNotUsedAssumption");
@@ -465,12 +436,6 @@ public class JSContext {
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
         this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
-
-        if (contextOptions.isTest262Mode() || contextOptions.isTestV8Mode()) {
-            this.setJSAgent(new DebugJSAgent(contextOptions.canAgentBlock()));
-        } else {
-            this.setJSAgent(new MainJSAgent());
-        }
 
         this.throwerFunctionData = throwTypeErrorFunction();
         boolean annexB = isOptionAnnexB();
@@ -641,11 +606,15 @@ public class JSContext {
         newRealm.setupGlobals();
 
         if (isTop) {
-            newRealm.initRealmBuiltinObject();
+            if (contextOptions.isTest262Mode() || contextOptions.isTestV8Mode()) {
+                newRealm.setAgent(new DebugJSAgent(contextOptions.canAgentBlock(), env.getOptions()));
+            } else {
+                newRealm.setAgent(new MainJSAgent());
+            }
             if (contextOptions.isV8RealmBuiltin()) {
+                newRealm.initRealmBuiltinObject();
                 newRealm.addToRealmList(newRealm);
             }
-            agent.reset(env);
         }
 
         realmInit.set(REALM_INITIALIZED);
@@ -719,58 +688,22 @@ public class JSContext {
     /**
      * ECMA 8.4.1 EnqueueJob.
      */
-    public final void promiseEnqueueJob(DynamicObject job) {
+    public final void promiseEnqueueJob(JSRealm realm, DynamicObject job) {
         invalidatePromiseQueueNotUsedAssumption();
-        promiseJobQueueAdd(job);
-    }
-
-    @TruffleBoundary
-    private void promiseJobQueueAdd(DynamicObject job) {
-        promiseJobsQueue.push(job);
+        realm.getAgent().enqueuePromiseJob(job);
     }
 
     private void invalidatePromiseQueueNotUsedAssumption() {
-        if (promiseJobsQueueNotUsedAssumption.isValid()) {
+        Assumption promiseJobsQueueEmptyAssumption = language.getPromiseJobsQueueEmptyAssumption();
+        if (promiseJobsQueueEmptyAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            promiseJobsQueueNotUsedAssumption.invalidate("promise jobs queue unused assumption");
+            promiseJobsQueueEmptyAssumption.invalidate();
         }
     }
 
-    public final void processAllPendingPromiseJobs() {
-        if (!promiseJobsQueueNotUsedAssumption.isValid()) {
-            processAllPromises();
-        }
-    }
-
-    @TruffleBoundary
-    private void processAllPromises() {
-        try {
-            while (!promiseJobsQueue.isEmpty()) {
-                DynamicObject nextJob = promiseJobsQueue.pollLast();
-                if (JSFunction.isJSFunction(nextJob)) {
-                    JSRealm functionRealm = JSFunction.getRealm(nextJob);
-                    Object prev = functionRealm.getTruffleContext().enter();
-                    try {
-                        JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
-                    } finally {
-                        functionRealm.getTruffleContext().leave(prev);
-                    }
-                }
-            }
-        } finally {
-            // Ensure that there are no leftovers when the processing
-            // is terminated by an exception (like ExitException).
-            promiseJobsQueue.clear();
-        }
-    }
-
-    public void interopBoundaryEnter() {
-        interopCallStackDepth++;
-    }
-
-    public void interopBoundaryExit() {
-        if (--interopCallStackDepth == 0) {
-            processAllPendingPromiseJobs();
+    public final void processAllPendingPromiseJobs(JSRealm realm) {
+        if (!language.getPromiseJobsQueueEmptyAssumption().isValid()) {
+            realm.getAgent().processAllPromises();
         }
     }
 
@@ -1214,14 +1147,7 @@ public class JSContext {
     }
 
     public JSAgent getJSAgent() {
-        assert agent != null : "Null agent!";
-        return agent;
-    }
-
-    public void setJSAgent(JSAgent newAgent) {
-        assert newAgent != null : "Cannot set a null agent!";
-        CompilerAsserts.neverPartOfCompilation("Assigning agent to context in compiled code");
-        this.agent = newAgent;
+        return getRealm().getAgent();
     }
 
     public int getEcmaScriptVersion() {

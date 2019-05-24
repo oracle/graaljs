@@ -285,7 +285,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object runMicrotasks() {
             JSContext context = getContext();
-            context.processAllPendingPromiseJobs();
+            context.processAllPendingPromiseJobs(context.getRealm());
             return Undefined.instance;
         }
     }
@@ -299,7 +299,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object enqueueJob(Object function) {
             if (JSFunction.isJSFunction(function)) {
-                getContext().promiseEnqueueJob((DynamicObject) function);
+                getContext().promiseEnqueueJob(getContext().getRealm(), (DynamicObject) function);
             }
             return 0;
         }

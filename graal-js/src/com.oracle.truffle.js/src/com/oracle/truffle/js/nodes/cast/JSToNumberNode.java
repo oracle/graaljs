@@ -123,7 +123,7 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected final void doBigInt(@SuppressWarnings("unused") BigInt value) {
+    protected final Number doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
     }
 

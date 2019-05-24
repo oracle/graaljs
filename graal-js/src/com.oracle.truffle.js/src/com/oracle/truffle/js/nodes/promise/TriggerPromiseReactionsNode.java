@@ -68,7 +68,7 @@ public class TriggerPromiseReactionsNode extends JavaScriptBaseNode {
         for (int i = 0; i < list.size(); i++) {
             Object reaction = list.get(i);
             DynamicObject job = promiseReactionJob.execute(reaction, argument);
-            context.promiseEnqueueJob(job);
+            context.promiseEnqueueJob(context.getRealm(), job);
         }
         return Undefined.instance;
     }

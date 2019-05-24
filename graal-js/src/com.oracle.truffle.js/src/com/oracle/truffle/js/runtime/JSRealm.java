@@ -284,7 +284,12 @@ public class JSRealm {
     private JSModuleLoader moduleLoader;
 
     /**
-     * List of realms (for Realm built-in). The list is available in top-level realm only (not in
+     * ECMA2017 8.7 Agent object.
+     */
+    @CompilationFinal private JSAgent agent;
+
+    /**
+     * List of realms (for V8 Realm built-in). The list is available in top-level realm only (not in
      * child realms).
      */
     private final List<JSRealm> realmList;
@@ -1244,9 +1249,8 @@ public class JSRealm {
     }
 
     public void initRealmBuiltinObject() {
-        if (context.getContextOptions().isV8RealmBuiltin()) {
-            setRealmBuiltinObject(createRealmBuiltinObject());
-        }
+        assert context.getContextOptions().isV8RealmBuiltin();
+        setRealmBuiltinObject(createRealmBuiltinObject());
     }
 
     private DynamicObject createRealmBuiltinObject() {
@@ -1317,6 +1321,7 @@ public class JSRealm {
         Object prev = nestedContext.enter();
         try {
             JSRealm childRealm = JavaScriptLanguage.getCurrentJSRealm();
+            childRealm.agent = this.agent;
             childRealm.parentRealm = this;
 
             if (getContext().getContextOptions().isV8RealmBuiltin()) {
@@ -1567,6 +1572,17 @@ public class JSRealm {
                 }
             };
         }
+    }
+
+    public final JSAgent getAgent() {
+        assert agent != null;
+        return agent;
+    }
+
+    public void setAgent(JSAgent newAgent) {
+        assert newAgent != null : "Cannot set a null agent!";
+        CompilerAsserts.neverPartOfCompilation("Assigning agent to context in compiled code");
+        this.agent = newAgent;
     }
 
     public JSRealm getParent() {
