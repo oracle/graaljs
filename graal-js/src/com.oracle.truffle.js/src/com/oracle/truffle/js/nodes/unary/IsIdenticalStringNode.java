@@ -49,7 +49,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 public abstract class IsIdenticalStringNode extends IsIdenticalBaseNode {
 
-    private final String string;
+    protected final String string;
 
     protected IsIdenticalStringNode(String string, JavaScriptNode operand, boolean leftConstant) {
         super(operand, leftConstant);
@@ -58,7 +58,11 @@ public abstract class IsIdenticalStringNode extends IsIdenticalBaseNode {
 
     @Specialization
     protected boolean doLazyString(JSLazyString other,
-                    @Cached("createBinaryProfile()") ConditionProfile flatten) {
+                    @Cached("createBinaryProfile()") ConditionProfile flatten,
+                    @Cached("createBinaryProfile()") ConditionProfile len) {
+        if (len.profile(other.length() != string.length())) {
+            return false;
+        }
         return string.equals(other.toString(flatten));
     }
 
