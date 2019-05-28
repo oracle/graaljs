@@ -1000,14 +1000,13 @@ public abstract class TestSuite {
                     System.out.println(" verbose                print all tests");
                     System.out.println(" verbosefail            print failing tests");
                     System.out.println(" nothreads              run all tests in the main thread");
-                    System.out.println(" compile                execute the tests repeatedly so they are compiled by Graal - handle with care");
                     System.out.println(" timeoutoverall=X       overall testrun aborted after X seconds");
                     System.out.println(" timeouttest=X          test aborted after X seconds. Not available in all modes");
                     System.out.println(" location=X             the base directory of the test suite");
                     System.out.println(" config=X               the base directory of the test suite config file");
                     System.out.println(" outputfilter=X         ignore a given string when comparing with the expected output");
                     System.out.println(" externallauncher=X     run tests by invoking a given native image of JSLauncher");
-                    System.out.println(" compile                run externallauncher with TruffleCompileImmediately");
+                    System.out.println(" compile                run with TruffleCompileImmediately");
                     System.out.println(" shareengine            use shared Engine for all tests");
                     System.exit(-2);
                     break;
