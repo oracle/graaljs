@@ -49,6 +49,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class IteratorUtil {
 
@@ -165,14 +166,20 @@ public final class IteratorUtil {
             public T get(int index) {
                 if (index >= 0 && index < size0) {
                     return list0.get(index);
-                } else {
+                } else if (index >= 0 && index < size) {
                     return list1.get(index - size0);
                 }
+                throw outOfBounds(index);
             }
 
             @Override
             public int size() {
                 return size;
+            }
+
+            @TruffleBoundary
+            private IndexOutOfBoundsException outOfBounds(int index) {
+                return new IndexOutOfBoundsException("Index: " + index + " Size: " + size());
             }
         };
     }
