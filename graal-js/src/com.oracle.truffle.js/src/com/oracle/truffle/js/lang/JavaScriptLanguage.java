@@ -53,6 +53,7 @@ import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -452,6 +453,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     @Override
     protected void disposeContext(JSRealm realm) {
+        CompilerAsserts.neverPartOfCompilation();
+        realm.setGlobalObject(Undefined.instance);
     }
 
     @Override
