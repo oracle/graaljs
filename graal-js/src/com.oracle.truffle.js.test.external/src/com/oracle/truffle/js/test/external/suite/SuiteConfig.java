@@ -233,8 +233,9 @@ public class SuiteConfig {
             if (isExtLauncher()) {
                 options.put("vm.Dgraal.TruffleCompileImmediately", "true");
                 options.put("vm.Dgraal.TruffleBackgroundCompilation", "false");
-            } else {
-                System.out.println("WARNING: the \"compile\" option has no effect without \"externallauncher\". Use \"-Dgraal.TruffleCompileImmediately=true\" instead!");
+            } else if (!Boolean.getBoolean("graal.TruffleCompileImmediately")) {
+                System.out.println("WARNING: without \"externallauncher\", the \"compile\" option is used for test filtering only and does not actually enable TruffleCompileImmediately. " +
+                                "Add \"-Dgraal.TruffleCompileImmediately=true -Dgraal.TruffleBackgroundCompilation=false\" when running on JVM!");
             }
         }
     }

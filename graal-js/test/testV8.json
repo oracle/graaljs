@@ -372,6 +372,20 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
+    "filePath" : "mjsunit/big-array-literal.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Too deep inlining in CompileImmediately mode"
+  }, {
+    "filePath" : "mjsunit/big-object-literal.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Too deep inlining in CompileImmediately mode"
+  }, {
     "filePath" : "mjsunit/bugs/bug-1344252.js",
     "status" : "FAIL"
   }, {
@@ -1249,6 +1263,20 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
+    "filePath" : "mjsunit/large-object-literal-2.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "ExplodeLoop bailout in CompileImmediately mode"
+  }, {
+    "filePath" : "mjsunit/large-object-literal-slow-elements.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "ExplodeLoop bailout in CompileImmediately mode"
+  }, {
     "filePath" : "mjsunit/lookup-behind-property.js",
     "status" : "FAIL"
   }, {
@@ -1557,6 +1585,13 @@
     "filePath" : "mjsunit/regress/regress-599414-array-concat-fast-path.js",
     "status" : "SKIP",
     "comment" : "infinite loop"
+  }, {
+    "filePath" : "mjsunit/regress/regress-605470.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "ExplodeLoop bailout in CompileImmediately mode"
   }, {
     "filePath" : "mjsunit/regress/regress-6142.js",
     "status" : "FAIL",
@@ -1897,6 +1932,13 @@
     "filePath" : "mjsunit/regress/regress-crbug-669540.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-669850.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "ExplodeLoop bailout in CompileImmediately mode"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-683667.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
@@ -1923,6 +1965,13 @@
     "filePath" : "mjsunit/regress/regress-crbug-722871.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-724153.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Too deep inlining in CompileImmediately mode"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-740398.js",
     "status" : "FAIL",

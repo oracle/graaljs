@@ -349,7 +349,8 @@ public final class TestFile {
 
         BIG_ENDIAN(cfg -> ByteOrder.BIG_ENDIAN.equals(ByteOrder.nativeOrder())),
         LITTLE_ENDIAN(cfg -> ByteOrder.LITTLE_ENDIAN.equals(ByteOrder.nativeOrder())),
-        SVM(cfg -> cfg.isExtLauncher());
+        SVM(cfg -> cfg.isExtLauncher()),
+        COMPILE_IMMEDIATELY(cfg -> cfg.isCompile());
 
         private final Predicate<SuiteConfig> condition;
 
