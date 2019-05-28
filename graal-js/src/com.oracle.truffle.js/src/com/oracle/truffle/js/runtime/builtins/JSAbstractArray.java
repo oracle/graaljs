@@ -677,8 +677,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     /**
-     * Implements part "3" of 15.4.5.1 [[DefineOwnProperty]], redefining the "length" property of an
-     * Array.
+     * Implements the abstract operation ArraySetLength (A, Desc), redefining the "length" property
+     * of an Array exotic object.
      *
      * @return whether the operation was successful
      */
@@ -687,7 +687,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
             if (descriptor.hasWritable() && !descriptor.getWritable()) {
                 setLengthNotWritable(thisObj);
             }
-            return super.defineOwnProperty(thisObj, key, descriptor, doThrow);
+            return DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, key, descriptor, doThrow);
         }
 
         Number newLenNum = JSRuntime.toNumber(descriptor.getValue());
