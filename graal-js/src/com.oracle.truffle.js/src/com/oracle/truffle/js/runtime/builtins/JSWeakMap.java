@@ -49,6 +49,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -80,6 +81,10 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
     public static Map<DynamicObject, Object> getInternalWeakMap(DynamicObject obj) {
         assert isJSWeakMap(obj);
         return (Map<DynamicObject, Object>) WEAKMAP_PROPERTY.get(obj, isJSWeakMap(obj));
+    }
+
+    public static PropertyGetNode createKeyMapGetterNode(JSContext context) {
+        return PropertyGetNode.createGetHidden(JSWeakMap.WEAKMAP_ID, context);
     }
 
     @Override
