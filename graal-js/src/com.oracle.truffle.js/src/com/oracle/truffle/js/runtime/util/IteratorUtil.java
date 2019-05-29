@@ -50,6 +50,7 @@ import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.js.runtime.Errors;
 
 public final class IteratorUtil {
 
@@ -161,6 +162,15 @@ public final class IteratorUtil {
         final int size0 = list0.size();
         final int size1 = list1.size();
         final int size = size0 + size1;
+        if (size < 0) {
+            // int32 overflow
+            throw Errors.createRangeErrorInvalidArrayLength();
+        }
+        if (size0 == 0) {
+            return list1;
+        } else if (size1 == 0) {
+            return list0;
+        }
         return new AbstractList<T>() {
             @Override
             public T get(int index) {
