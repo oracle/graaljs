@@ -450,10 +450,6 @@ public final class JSObject {
         return classProfile.getJSClass(obj).ownPropertyKeys(obj);
     }
 
-    public static List<Object> ownPropertyKeysList(DynamicObject obj) {
-        return JSObject.getJSClass(obj).ownPropertyKeys(obj);
-    }
-
     /**
      * 7.3.21 EnumerableOwnNames (O).
      */
