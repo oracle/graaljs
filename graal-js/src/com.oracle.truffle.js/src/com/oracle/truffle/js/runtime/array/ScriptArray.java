@@ -542,15 +542,17 @@ public abstract class ScriptArray {
         return new AbstractList<Object>() {
             @Override
             public Object get(int index) {
-                long relativeIndex = index;
-                for (int rangeIndex = 0; rangeIndex < ranges.length; rangeIndex += 2) {
-                    long rangeStart = ranges[rangeIndex];
-                    long rangeEnd = ranges[rangeIndex + 1];
-                    long rangeLen = rangeEnd - rangeStart;
-                    if (relativeIndex < rangeLen) {
-                        return Boundaries.stringValueOf(rangeStart + relativeIndex);
-                    } else {
-                        relativeIndex -= rangeLen;
+                if (index >= 0) {
+                    long relativeIndex = index;
+                    for (int rangeIndex = 0; rangeIndex < ranges.length; rangeIndex += 2) {
+                        long rangeStart = ranges[rangeIndex];
+                        long rangeEnd = ranges[rangeIndex + 1];
+                        long rangeLen = rangeEnd - rangeStart;
+                        if (relativeIndex < rangeLen) {
+                            return Boundaries.stringValueOf(rangeStart + relativeIndex);
+                        } else {
+                            relativeIndex -= rangeLen;
+                        }
                     }
                 }
                 throw new IndexOutOfBoundsException();
