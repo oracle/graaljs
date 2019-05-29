@@ -677,8 +677,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     /**
-     * Implements part "3" of 15.4.5.1 [[DefineOwnProperty]], redefining the "length" property of an
-     * Array.
+     * Implements the abstract operation ArraySetLength (A, Desc), redefining the "length" property
+     * of an Array exotic object.
      *
      * @return whether the operation was successful
      */
@@ -687,7 +687,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
             if (descriptor.hasWritable() && !descriptor.getWritable()) {
                 setLengthNotWritable(thisObj);
             }
-            return super.defineOwnProperty(thisObj, key, descriptor, doThrow);
+            return DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, key, descriptor, doThrow);
         }
 
         Number newLenNum = JSRuntime.toNumber(descriptor.getValue());
@@ -705,13 +705,14 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         }
 
         long pos = getLength(thisObj);
-        if (!definePropertyLength(thisObj, descriptor, lenDesc, (int) newLen, doThrow)) {
+        if (!definePropertyLength(thisObj, descriptor, lenDesc, newLen, doThrow)) {
             return false;
         }
+        // If newLen < oldLen, we need to delete all the elements from oldLen-1 to newLen
         if (JSSlowArray.isJSSlowArray(thisObj)) {
-            return deleteElementsAfterShorteningWrapper(thisObj, descriptor, doThrow, newLen, lenDesc, pos);
+            return deleteElementsAfterShortening(thisObj, descriptor, doThrow, newLen, lenDesc, pos);
         } else {
-            // for a "normal" array, elements with newLen < i < oldLen are deleted by setting newLen
+            // fast array: elements with newLen <= i < oldLen are already deleted by setting newLen
             return true;
         }
     }
@@ -720,7 +721,8 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         arraySetArrayType(thisObj, arrayGetArrayType(thisObj).setLengthNotWritable());
     }
 
-    private boolean deleteElementsAfterShorteningWrapper(DynamicObject thisObj, PropertyDescriptor descriptor, boolean doThrow, long newLen, PropertyDescriptor lenDesc, long startPos) {
+    private boolean deleteElementsAfterShortening(DynamicObject thisObj, PropertyDescriptor descriptor, boolean doThrow, long newLen, PropertyDescriptor lenDesc, long startPos) {
+        assert JSRuntime.isValidArrayLength(newLen);
         long pos = startPos;
         while (pos > newLen) {
             pos--;
@@ -730,8 +732,10 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
                 if (JSProperty.isConfigurable(prop)) {
                     delete(thisObj, key, doThrow);
                 } else {
-                    descriptor.setValue((int) (pos + 1));
-                    definePropertyLength(thisObj, descriptor, lenDesc, (int) (pos + 1), doThrow);
+                    // delete did not succeed, increase the length to include the current element
+                    long len = pos + 1;
+                    descriptor.setValue(JSRuntime.longToIntOrDouble(len));
+                    definePropertyLength(thisObj, descriptor, lenDesc, len, doThrow);
                     DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, LENGTH, descriptor, false);
                     return DefinePropertyUtil.reject(doThrow, "cannot set the length to expected value");
                 }
@@ -741,6 +745,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     private boolean definePropertyLength(DynamicObject thisObj, PropertyDescriptor descriptor, PropertyDescriptor currentDesc, long len, boolean doThrow) {
+        assert JSRuntime.isValidArrayLength(len);
         boolean currentWritable = currentDesc.getWritable();
         boolean currentEnumerable = currentDesc.getEnumerable();
         boolean currentConfigurable = currentDesc.getConfigurable();
