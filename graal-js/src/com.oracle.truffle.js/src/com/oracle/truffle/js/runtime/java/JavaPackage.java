@@ -85,8 +85,8 @@ public final class JavaPackage extends JSBuiltinObject {
     private JavaPackage() {
     }
 
-    public static DynamicObject create(JSRealm realm, String packageName) {
-        DynamicObject obj = JSObject.createWithPrototype(realm.getContext(), realm.getContext().getJavaPackageFactory(), realm, realm.getObjectPrototype(), packageName);
+    public static DynamicObject create(JSContext context, JSRealm realm, String packageName) {
+        DynamicObject obj = JSObject.createWithPrototype(context, context.getJavaPackageFactory(), realm, realm.getObjectPrototype(), packageName);
         JSObjectUtil.putDataProperty(obj, Symbol.SYMBOL_TO_PRIMITIVE, realm.getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         assert isJavaPackage(obj);
         return obj;
@@ -114,9 +114,8 @@ public final class JavaPackage extends JSBuiltinObject {
     }
 
     @TruffleBoundary
-    public static <T> T getClass(DynamicObject thisObj, String className, Class<? extends T> returnType) {
-        JSContext context = JSObject.getJSContext(thisObj);
-        TruffleLanguage.Env env = context.getRealm().getEnv();
+    public static <T> T getClass(JSRealm realm, DynamicObject thisObj, String className, Class<? extends T> returnType) {
+        TruffleLanguage.Env env = realm.getEnv();
         assert env.isHostLookupAllowed();
         String qualifiedName = prependPackageName(thisObj, className);
         Object javaType;
@@ -141,17 +140,18 @@ public final class JavaPackage extends JSBuiltinObject {
         return null;
     }
 
-    public static DynamicObject subpackage(JSRealm realm, DynamicObject thisObj, String name) {
-        return create(realm, prependPackageName(thisObj, name));
+    public static DynamicObject subpackage(JSContext context, JSRealm realm, DynamicObject thisObj, String name) {
+        return create(context, realm, prependPackageName(thisObj, name));
     }
 
     public static Object getJavaClassOrConstructorOrSubPackage(JSContext context, DynamicObject thisObj, String name) {
+        JSRealm realm = context.getRealm();
         if (context.isOptionNashornCompatibilityMode() && Boundaries.stringEndsWith(name, ")")) {
             // constructor directly? e.g. java.awt["Color(int,int,int)"]
             int openParen = name.indexOf('(');
             if (openParen != -1) {
                 String className = Boundaries.substring(name, 0, openParen);
-                Object javaClass = getClass(thisObj, className, Object.class);
+                Object javaClass = getClass(realm, thisObj, className, Object.class);
                 if (javaClass != null) {
                     return javaClass;
                 } else {
@@ -159,15 +159,15 @@ public final class JavaPackage extends JSBuiltinObject {
                 }
             }
         }
-        return getJavaClassOrSubPackage(context.getRealm(), thisObj, name);
+        return getJavaClassOrSubPackage(context, realm, thisObj, name);
     }
 
-    private static Object getJavaClassOrSubPackage(JSRealm realm, DynamicObject thisObj, String name) {
-        Object javaClass = getClass(thisObj, name, Object.class);
+    private static Object getJavaClassOrSubPackage(JSContext context, JSRealm realm, DynamicObject thisObj, String name) {
+        Object javaClass = getClass(realm, thisObj, name, Object.class);
         if (javaClass != null) {
             return javaClass;
         }
-        return subpackage(realm, thisObj, name);
+        return subpackage(context, realm, thisObj, name);
     }
 
     @TruffleBoundary
@@ -219,6 +219,7 @@ public final class JavaPackage extends JSBuiltinObject {
         return JSFunctionData.createCallOnly(context, callTarget, 1, "[Symbol.toPrimitive]");
     }
 
+    @TruffleBoundary
     @Override
     public Object getHelper(DynamicObject store, Object thisObj, Object name) {
         Object propertyValue = super.getHelper(store, thisObj, name);
