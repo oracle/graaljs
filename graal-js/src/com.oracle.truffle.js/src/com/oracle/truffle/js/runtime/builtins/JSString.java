@@ -210,6 +210,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
                         list.add(k);
                     }
                 });
+                Collections.sort(list, JSRuntime::comparePropertyKeys);
                 keyList.forEach(k -> {
                     if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
                         list.add(k);
