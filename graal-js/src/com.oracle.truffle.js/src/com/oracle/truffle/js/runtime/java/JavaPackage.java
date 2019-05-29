@@ -190,8 +190,8 @@ public final class JavaPackage extends JSBuiltinObject {
         return "[" + CLASS_NAME + " " + getPackageName(obj) + "]";
     }
 
-    public static DynamicObject createToPrimitiveFunction(JSRealm realm) {
-        JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.JavaPackageToPrimitive, JavaPackage::createToPrimitiveFunctionImpl);
+    public static DynamicObject createToPrimitiveFunction(JSContext context, JSRealm realm) {
+        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.JavaPackageToPrimitive, JavaPackage::createToPrimitiveFunctionImpl);
         return JSFunction.create(realm, functionData);
     }
 

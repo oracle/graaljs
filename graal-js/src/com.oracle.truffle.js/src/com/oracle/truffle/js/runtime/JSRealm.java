@@ -236,7 +236,7 @@ public class JSRealm {
 
     private final JSConstructor promiseConstructor;
 
-    private DynamicObject javaPackageToPrimitiveFunction;
+    @CompilationFinal private DynamicObject javaPackageToPrimitiveFunction;
 
     private final DynamicObject arrayProtoValuesIterator;
     @CompilationFinal private DynamicObject typedArrayConstructor;
@@ -650,9 +650,7 @@ public class JSRealm {
     }
 
     public final DynamicObject getJavaPackageToPrimitiveFunction() {
-        if (javaPackageToPrimitiveFunction == null) {
-            javaPackageToPrimitiveFunction = JavaPackage.createToPrimitiveFunction(this);
-        }
+        assert javaPackageToPrimitiveFunction != null;
         return javaPackageToPrimitiveFunction;
     }
 
@@ -1057,6 +1055,7 @@ public class JSRealm {
 
         if (getEnv() != null && getEnv().isHostLookupAllowed()) {
             if (JSContextOptions.JAVA_PACKAGE_GLOBALS.getValue(getEnv().getOptions())) {
+                javaPackageToPrimitiveFunction = JavaPackage.createToPrimitiveFunction(context, this);
                 putGlobalProperty("Packages", JavaPackage.createInit(this, ""));
                 putGlobalProperty("java", JavaPackage.createInit(this, "java"));
                 putGlobalProperty("javafx", JavaPackage.createInit(this, "javafx"));
@@ -1064,10 +1063,11 @@ public class JSRealm {
                 putGlobalProperty("com", JavaPackage.createInit(this, "com"));
                 putGlobalProperty("org", JavaPackage.createInit(this, "org"));
                 putGlobalProperty("edu", JavaPackage.createInit(this, "edu"));
-            }
 
-            if (context.isOptionNashornCompatibilityMode()) {
-                putGlobalProperty(JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
+                // JavaImporter can only be used with Package objects.
+                if (context.isOptionNashornCompatibilityMode()) {
+                    putGlobalProperty(JavaImporter.CLASS_NAME, getJavaImporterConstructor().getFunctionObject());
+                }
             }
         }
     }
