@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -288,19 +287,18 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         throw typeError();
     }
 
-    @Override
     @TruffleBoundary
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+    @Override
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
         DynamicObject adaptee = getAdaptee(thisObj);
         Object getIds = JSObject.get(adaptee, GET_IDS);
-        List<Object> list = new ArrayList<>();
         if (JSFunction.isJSFunction(getIds)) {
             Object returnValue = JSFunction.call((DynamicObject) getIds, thisObj, JSArguments.EMPTY_ARGUMENTS_ARRAY);
             if (JSRuntime.isObject(returnValue)) {
-                return JSRuntime.createListFromArrayLikeAllowSymbolString(returnValue);
+                return filterOwnPropertyKeys(JSRuntime.createListFromArrayLikeAllowSymbolString(returnValue), strings, symbols);
             }
         }
-        return list;
+        return super.getOwnPropertyKeys(thisObj, strings, symbols);
     }
 
     @Override

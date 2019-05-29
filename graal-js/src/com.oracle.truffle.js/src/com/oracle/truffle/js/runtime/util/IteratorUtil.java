@@ -49,6 +49,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.js.runtime.Errors;
 
 public final class IteratorUtil {
 
@@ -62,6 +64,10 @@ public final class IteratorUtil {
 
     public static <S, T> Iterator<T> convertIterator(final Iterator<S> source, final Function<S, T> converter) {
         return new ConvertIterator<>(source, converter);
+    }
+
+    public static <S, T> List<T> convertList(final List<S> source, final Function<S, T> converter) {
+        return new ConvertList<>(source, converter);
     }
 
     private static final class ConvertIterable<S, T> implements Iterable<T> {
@@ -99,6 +105,31 @@ public final class IteratorUtil {
         }
     }
 
+    private static final class ConvertList<S, T> extends AbstractList<T> {
+        private final List<S> source;
+        private final Function<S, T> converter;
+
+        ConvertList(List<S> source, Function<S, T> converter) {
+            this.source = source;
+            this.converter = converter;
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            return new ConvertIterator<>(source.iterator(), converter);
+        }
+
+        @Override
+        public T get(int index) {
+            return converter.apply(source.get(index));
+        }
+
+        @Override
+        public int size() {
+            return source.size();
+        }
+    }
+
     public static <T> Iterable<T> concatIterables(final Iterable<T> first, final Iterable<T> second) {
         return new Iterable<T>() {
             @Override
@@ -123,6 +154,42 @@ public final class IteratorUtil {
                         return firstIterator.hasNext() || secondIterator.hasNext();
                     }
                 };
+            }
+        };
+    }
+
+    public static <T> List<T> concatLists(final List<T> list0, final List<T> list1) {
+        final int size0 = list0.size();
+        final int size1 = list1.size();
+        final int size = size0 + size1;
+        if (size < 0) {
+            // int32 overflow
+            throw Errors.createRangeErrorInvalidArrayLength();
+        }
+        if (size0 == 0) {
+            return list1;
+        } else if (size1 == 0) {
+            return list0;
+        }
+        return new AbstractList<T>() {
+            @Override
+            public T get(int index) {
+                if (index >= 0 && index < size0) {
+                    return list0.get(index);
+                } else if (index >= 0 && index < size) {
+                    return list1.get(index - size0);
+                }
+                throw outOfBounds(index);
+            }
+
+            @Override
+            public int size() {
+                return size;
+            }
+
+            @TruffleBoundary
+            private IndexOutOfBoundsException outOfBounds(int index) {
+                return new IndexOutOfBoundsException("Index: " + index + " Size: " + size());
             }
         };
     }

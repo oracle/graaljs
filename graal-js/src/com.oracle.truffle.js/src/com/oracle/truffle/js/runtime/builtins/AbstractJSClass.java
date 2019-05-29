@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Collections;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -133,7 +134,7 @@ public abstract class AbstractJSClass extends JSClass {
     }
 
     @Override
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
         return Collections.emptyList();
     }
 

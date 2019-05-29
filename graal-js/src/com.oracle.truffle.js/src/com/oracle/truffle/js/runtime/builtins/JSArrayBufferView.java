@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -513,11 +514,13 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     @Override
     @TruffleBoundary
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
-        int len = typedArrayGetLength(thisObj);
-        Iterable<Object> indices = JSAbstractArray.makeRangeIterable(0, len);
-        Iterable<Object> keys = ordinaryOwnPropertyKeys(thisObj);
-        return IteratorUtil.concatIterables(indices, keys);
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+        if (!strings) {
+            return super.getOwnPropertyKeys(thisObj, strings, symbols);
+        }
+        List<Object> indices = typedArrayGetArrayType(thisObj).ownPropertyKeys(thisObj);
+        List<Object> keys = ordinaryOwnPropertyKeys(thisObj, strings, symbols);
+        return IteratorUtil.concatLists(indices, keys);
     }
 
     @Override

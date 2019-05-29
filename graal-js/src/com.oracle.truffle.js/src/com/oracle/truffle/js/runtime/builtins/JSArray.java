@@ -53,6 +53,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -68,6 +69,7 @@ import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantIntArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.HolesObjectArray;
+import com.oracle.truffle.js.runtime.array.dyn.LazyArray;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedDoubleArray;
 import com.oracle.truffle.js.runtime.array.dyn.ZeroBasedIntArray;
@@ -245,8 +247,8 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     @Override
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
-        return ownPropertyKeysFastArray(thisObj);
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+        return ownPropertyKeysFastArray(thisObj, strings, symbols);
     }
 
     public static Property makeArrayLengthProxyProperty() {
@@ -362,6 +364,10 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         DynamicObject obj = JSObject.create(context, factory, array, arrayType, site, length, usedLength, indexOffset, arrayOffset, holeCount, regexResult, input, input, groups);
         assert isJSArray(obj);
         return obj;
+    }
+
+    public static DynamicObject createLazyArray(JSContext context, List<?> list) {
+        return create(context, LazyArray.createLazyArray(), list, Boundaries.listSize(list));
     }
 
     @Override

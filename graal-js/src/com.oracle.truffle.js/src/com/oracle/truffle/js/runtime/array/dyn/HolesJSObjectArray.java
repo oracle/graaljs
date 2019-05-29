@@ -43,6 +43,8 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetHoleCount;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetHoleCount;
 
+import java.util.List;
+
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -226,5 +228,10 @@ public final class HolesJSObjectArray extends AbstractContiguousJSObjectArray {
     @Override
     protected HolesJSObjectArray withIntegrityLevel(int newIntegrityLevel) {
         return new HolesJSObjectArray(newIntegrityLevel, cache);
+    }
+
+    @Override
+    public List<Object> ownPropertyKeys(DynamicObject object) {
+        return ownPropertyKeysHoles(object);
     }
 }

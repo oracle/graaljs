@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -133,12 +134,15 @@ public final class JSDictionaryObject extends JSBuiltinObject {
         }
     }
 
-    @Override
     @TruffleBoundary
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
+    @Override
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
         assert isJSDictionaryObject(thisObj);
-        List<Object> keys = super.ownPropertyKeysList(thisObj);
+        List<Object> keys = ordinaryOwnPropertyKeysSlow(thisObj, strings, symbols);
         for (Object key : getHashMap(thisObj).getKeys()) {
+            if ((!symbols && key instanceof Symbol) || (!strings && key instanceof String)) {
+                continue;
+            }
             keys.add(key);
         }
         Collections.sort(keys, JSRuntime::comparePropertyKeys);

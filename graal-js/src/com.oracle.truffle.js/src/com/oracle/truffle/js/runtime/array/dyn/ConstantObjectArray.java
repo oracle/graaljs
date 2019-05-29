@@ -44,6 +44,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
 import java.util.Arrays;
+import java.util.List;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -275,5 +276,14 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     @Override
     protected DynamicArray withIntegrityLevel(int newIntegrityLevel) {
         return new ConstantObjectArray(holes, newIntegrityLevel, cache);
+    }
+
+    @Override
+    public List<Object> ownPropertyKeys(DynamicObject object) {
+        if (holes) {
+            return ownPropertyKeysHoles(object);
+        } else {
+            return ownPropertyKeysContiguous(object);
+        }
     }
 }

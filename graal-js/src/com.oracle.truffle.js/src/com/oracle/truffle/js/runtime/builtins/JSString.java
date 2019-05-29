@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -58,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -193,31 +195,36 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
 
     @TruffleBoundary
     @Override
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
         int len = getStringLength(thisObj);
-        Iterable<Object> indices = JSAbstractArray.makeRangeIterable(0, len);
+        List<Object> indices = strings ? ScriptArray.makeRangeList(0, len) : Collections.emptyList();
         List<Object> keyList = thisObj.getShape().getKeyList();
         if (keyList.isEmpty()) {
             return indices;
         } else {
-            List<Object> list = new ArrayList<>(thisObj.getShape().getPropertyCount());
-            keyList.forEach(k -> {
-                if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
-                    assert JSRuntime.propertyKeyToArrayIndex(k) >= len;
-                    list.add(k);
-                }
-            });
-            keyList.forEach(k -> {
-                if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
-                    list.add(k);
-                }
-            });
-            keyList.forEach(k -> {
-                if (k instanceof Symbol) {
-                    list.add(k);
-                }
-            });
-            return IteratorUtil.concatIterables(indices, list);
+            List<Object> list = new ArrayList<>(keyList.size());
+            if (strings) {
+                keyList.forEach(k -> {
+                    if (k instanceof String && JSRuntime.isArrayIndex((String) k)) {
+                        assert JSRuntime.propertyKeyToArrayIndex(k) >= len;
+                        list.add(k);
+                    }
+                });
+                Collections.sort(list, JSRuntime::comparePropertyKeys);
+                keyList.forEach(k -> {
+                    if (k instanceof String && !JSRuntime.isArrayIndex((String) k)) {
+                        list.add(k);
+                    }
+                });
+            }
+            if (symbols) {
+                keyList.forEach(k -> {
+                    if (k instanceof Symbol) {
+                        list.add(k);
+                    }
+                });
+            }
+            return IteratorUtil.concatLists(indices, list);
         }
     }
 

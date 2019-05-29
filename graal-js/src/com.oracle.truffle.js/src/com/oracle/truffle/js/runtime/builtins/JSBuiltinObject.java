@@ -148,23 +148,34 @@ public abstract class JSBuiltinObject extends JSClass {
     }
 
     @Override
-    public Iterable<Object> ownPropertyKeys(DynamicObject thisObj) {
-        return ordinaryOwnPropertyKeys(thisObj);
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+        return ordinaryOwnPropertyKeys(thisObj, strings, symbols);
+    }
+
+    protected static List<Object> ordinaryOwnPropertyKeys(DynamicObject thisObj) {
+        return ordinaryOwnPropertyKeys(thisObj, true, true);
     }
 
     @TruffleBoundary
-    protected static Iterable<Object> ordinaryOwnPropertyKeys(DynamicObject thisObj) {
+    protected static List<Object> ordinaryOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
         if (JSTruffleOptions.FastOwnKeys) {
-            return IteratorUtil.convertIterable(JSShape.getProperties(thisObj.getShape()), Property::getKey);
+            List<Object> all = IteratorUtil.convertList(JSShape.getProperties(thisObj.getShape()), Property::getKey);
+            return filterOwnPropertyKeys(all, strings, symbols);
         } else {
-            return ownPropertyKeysList(thisObj);
+            return ordinaryOwnPropertyKeysSlow(thisObj, strings, symbols);
         }
     }
 
-    @TruffleBoundary
-    protected static List<Object> ownPropertyKeysList(DynamicObject thisObj) {
-        List<Object> list = new ArrayList<>(thisObj.getShape().getPropertyCount());
-        list.addAll(thisObj.getShape().getKeyList());
+    protected static List<Object> ordinaryOwnPropertyKeysSlow(DynamicObject thisObj, boolean strings, boolean symbols) {
+        CompilerAsserts.neverPartOfCompilation();
+        List<Object> keyList = thisObj.getShape().getKeyList();
+        List<Object> list = new ArrayList<>(keyList.size());
+        for (Object key : keyList) {
+            if ((!symbols && key instanceof Symbol) || (!strings && key instanceof String)) {
+                continue;
+            }
+            list.add(key);
+        }
         Collections.sort(list, JSRuntime::comparePropertyKeys);
         return list;
     }

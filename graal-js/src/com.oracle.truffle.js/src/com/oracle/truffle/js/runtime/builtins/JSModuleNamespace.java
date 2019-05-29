@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -272,13 +273,21 @@ public final class JSModuleNamespace extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public List<Object> ownPropertyKeys(DynamicObject thisObj) {
+    public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
+        List<Object> symbolKeys = symbols ? symbolKeys(thisObj) : Collections.emptyList();
+        if (!strings) {
+            return symbolKeys;
+        }
         Map<String, ExportResolution> exports = getExports(thisObj);
-        List<Object> symbolKeys = super.ownPropertyKeysList(thisObj);
         List<Object> keys = new ArrayList<>(exports.size() + symbolKeys.size());
         keys.addAll(exports.keySet());
         keys.addAll(symbolKeys);
         return keys;
+    }
+
+    private static List<Object> symbolKeys(DynamicObject thisObj) {
+        // Module Namespace objects only have symbol keys in their shapes.
+        return thisObj.getShape().getKeyList();
     }
 
     @Override
