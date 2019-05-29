@@ -163,7 +163,6 @@ public class Test262Runnable extends TestRunnable {
                     "destructuring-assignment",
                     "destructuring-binding",
                     "dynamic-import",
-                    "export-star-as-namespace-from-module",
                     "for-of",
                     "generators",
                     "globalThis",
@@ -197,6 +196,7 @@ public class Test262Runnable extends TestRunnable {
                     "class-static-fields-private",
                     "class-static-fields-public",
                     "class-static-methods-private",
+                    "export-star-as-namespace-from-module",
                     "numeric-separator-literal",
                     "tail-call-optimization"
     }));
