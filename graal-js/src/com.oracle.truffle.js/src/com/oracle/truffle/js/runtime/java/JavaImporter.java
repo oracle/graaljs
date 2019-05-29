@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.java;
 
 import java.util.EnumSet;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -110,12 +111,14 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
         return getOwnHelper(thisObj, thisObj, name) != null;
     }
 
+    @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object name) {
         if (name instanceof String) {
             DynamicObject[] packages = getPackages(store);
+            JSRealm realm = JSObject.getJSContext(store).getRealm();
             for (DynamicObject pkg : packages) {
-                Object found = JavaPackage.getClass(pkg, (String) name, Object.class);
+                Object found = JavaPackage.getClass(realm, pkg, (String) name, Object.class);
                 if (found != null) {
                     return found;
                 }
