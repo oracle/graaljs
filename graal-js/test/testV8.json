@@ -288,18 +288,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/segmenter/constructor-order.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl/segmenter/constructor.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl/segmenter/segment-iterator.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
     "filePath" : "intl/segmenter/supported-locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1413,10 +1401,6 @@
     "status" : "SKIP",
     "runInIsolation" : true,
     "comment" : "these tests expect the stack limit to be reached; spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-115452.js",
-    "status" : "SKIP",
-    "comment" : "GR-6956"
   }, {
     "filePath" : "mjsunit/regress/regress-1170.js",
     "status" : "FAIL"

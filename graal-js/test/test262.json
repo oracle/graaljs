@@ -1929,26 +1929,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-granularity-valid.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-order.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-throwing-getters.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-toobject-prototype.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/constructor/constructor/options-valid-combinations.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
     "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/locales-invalid.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
@@ -1956,14 +1936,6 @@
     "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/locales-specific.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl402/Segmenter/iterator/granularity.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
-  }, {
-    "filePath" : "intl402/Segmenter/prototype/resolvedOptions/order.js",
-    "status" : "SKIP",
-    "comment" : "line granularity support was removed from Intl.Segmenter"
   }, {
     "filePath" : "intl402/supportedLocalesOf-consistent-with-resolvedOptions.js",
     "status" : "FAIL",
@@ -2072,27 +2044,6 @@
     "filePath" : "language/expressions/async-arrow-function/early-errors-arrow-formals-lineterminator.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/expressions/async-generator/expression-await-as-yield-operand.js",
-    "status" : "SKIP"
-  }, {
-    "filePath" : "language/expressions/async-generator/expression-await-promise-as-yield-operand.js",
-    "status" : "SKIP"
-  }, {
-    "filePath" : "language/expressions/async-generator/expression-await-thenable-as-yield-operand.js",
-    "status" : "SKIP"
-  }, {
-    "filePath" : "language/expressions/async-generator/expression-yield-as-operand.js",
-    "status" : "SKIP"
-  }, {
-    "filePath" : "language/expressions/async-generator/expression-yield-as-statement.js",
-    "status" : "SKIP"
-  }, {
-    "filePath" : "language/expressions/async-generator/expression-yield-newline.js",
-    "status" : "SKIP"
-  }, {
-    "filePath" : "language/expressions/async-generator/expression-yield-star-before-newline.js",
-    "status" : "SKIP"
   }, {
     "filePath" : "language/expressions/call/eval-spread-empty-leading.js",
     "status" : "FAIL",
@@ -2318,12 +2269,10 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "language/function-code/eval-param-env-with-computed-key.js",
-    "status" : "SKIP",
-    "comment" : "ES7 tests"
+    "status" : "FAIL"
   }, {
     "filePath" : "language/function-code/eval-param-env-with-prop-initializer.js",
-    "status" : "SKIP",
-    "comment" : "ES7 tests"
+    "status" : "FAIL"
   }, {
     "filePath" : "language/global-code/new.target-arrow.js",
     "status" : "FAIL"
