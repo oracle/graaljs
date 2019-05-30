@@ -96,9 +96,11 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
             return JSShape.getEnumerablePropertyNames(thisObj.getShape());
         } else {
             boolean isProxy = JSProxy.isProxy(thisObj);
-            Iterable<Object> ownKeys = jsclass.ownPropertyKeys(thisObj);
+            List<Object> ownKeys = jsclass.ownPropertyKeys(thisObj);
             List<Object> properties = new ArrayList<>();
-            for (Object key : ownKeys) {
+            int ownKeysSize = Boundaries.listSize(ownKeys);
+            for (int i = 0; i < ownKeysSize; i++) {
+                Object key = Boundaries.listGet(ownKeys, i);
                 if (key instanceof String) {
                     PropertyDescriptor desc = getOwnProperty(thisObj, key);
                     if (desc != null && desc.getEnumerable()) {
