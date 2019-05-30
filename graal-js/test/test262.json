@@ -2269,12 +2269,10 @@
     "comment" : "new fails after update 2018-03-19"
   }, {
     "filePath" : "language/function-code/eval-param-env-with-computed-key.js",
-    "status" : "SKIP",
-    "comment" : "ES7 tests"
+    "status" : "FAIL"
   }, {
     "filePath" : "language/function-code/eval-param-env-with-prop-initializer.js",
-    "status" : "SKIP",
-    "comment" : "ES7 tests"
+    "status" : "FAIL"
   }, {
     "filePath" : "language/global-code/new.target-arrow.js",
     "status" : "FAIL"
