@@ -242,16 +242,6 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public ScriptNode loadCompile(JSContext context, Source source) {
-        try {
-            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, false);
-        } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage());
-        }
-    }
-
-    @TruffleBoundary
-    @Override
     public ScriptNode evalCompile(JSContext context, String sourceCode, String name) {
         try {
             context.checkEvalAllowed();
