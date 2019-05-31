@@ -283,10 +283,8 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             arrLength = toArrayIndexOrRangeError(value);
         }
 
-        if (arrLength >= 0) {
-            return ((JSAbstractArray) JSObject.getJSClass(store)).setLength(store, arrLength, false);
-        }
-        return true;
+        assert arrLength >= 0;
+        return !JSAbstractArray.arrayGetArrayType(store).isLengthNotWritable() && ((JSAbstractArray) JSObject.getJSClass(store)).setLength(store, arrLength, false);
     }
 
     public static DynamicObject createConstantEmptyArray(JSContext context, int capacity) {

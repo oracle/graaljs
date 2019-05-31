@@ -307,9 +307,6 @@
     "filePath" : "mjsunit/array-join.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/array-length.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/array-literal-feedback.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
