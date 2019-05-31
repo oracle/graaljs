@@ -68,7 +68,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -101,7 +100,6 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.access.RealmNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -554,10 +552,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     public abstract static class JSLoadOperation extends JSGlobalOperation {
         public JSLoadOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.realmNode = RealmNode.create(context);
         }
 
-        @Child protected RealmNode realmNode;
         @Child private JSLoadNode loadNode;
 
         protected static final String EVAL_OBJ_FILE_NAME = "name";
@@ -577,7 +573,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Object runImpl(JSRealm realm, Source source) {
             if (loadNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                loadNode = insert(JSLoadNode.create(realm.getContext()));
+                loadNode = insert(JSLoadNode.create(getContext()));
             }
             return loadNode.executeLoad(source, realm);
         }
@@ -630,7 +626,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;
-            JSContext ctx = realm.getContext();
+            JSContext ctx = getContext();
             if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL()) && path.indexOf(':') != -1) {
                 source = sourceFromURI(path);
                 if (source != null) {
@@ -1107,16 +1103,14 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      * {@link EvalNode}.
      */
     public abstract static class JSGlobalIndirectEvalNode extends JSBuiltinNode {
-        @Child private RealmNode realmNode;
 
         public JSGlobalIndirectEvalNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.realmNode = RealmNode.create(context);
         }
 
         @Specialization(guards = "isString(source)")
-        protected Object indirectEvalString(VirtualFrame frame, Object source) {
-            JSRealm realm = realmNode.execute(frame);
+        protected Object indirectEvalString(Object source) {
+            JSRealm realm = getContext().getRealm();
             return indirectEvalImpl(realm, source);
         }
 
@@ -1206,9 +1200,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
-    /**
-     * Inspired by jdk.nashorn.internal.runtime.Context.load(...).
-     */
     @ImportStatic(value = JSInteropUtil.class)
     public abstract static class JSGlobalLoadNode extends JSLoadOperation {
 
@@ -1217,22 +1208,26 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        protected Object loadString(VirtualFrame frame, String path, @SuppressWarnings("unused") Object[] args) {
-            JSRealm realm = realmNode.execute(frame);
+        protected Object loadString(String path, @SuppressWarnings("unused") Object[] args) {
+            JSRealm realm = getContext().getRealm();
+            return loadString(path, realm);
+        }
+
+        private Object loadString(String path, JSRealm realm) {
             Source source = sourceFromPath(path, realm);
             return runImpl(realm, source);
         }
 
         @Specialization(guards = "isForeignObject(scriptObj)")
-        protected Object loadTruffleObject(VirtualFrame frame, TruffleObject scriptObj, Object[] args,
+        protected Object loadTruffleObject(TruffleObject scriptObj, @SuppressWarnings("unused") Object[] args,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {
-            JSRealm realm = realmNode.execute(frame);
+            JSRealm realm = getContext().getRealm();
             TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(scriptObj)) {
                 Object hostObject = env.asHostObject(scriptObj);
                 if (hostObject instanceof File) {
                     return loadFile(realm, (File) hostObject);
-                } else if (realm.getContext().isOptionNashornCompatibilityMode() && hostObject instanceof URL) {
+                } else if (getContext().isOptionNashornCompatibilityMode() && hostObject instanceof URL) {
                     return loadURL(realm, (URL) hostObject);
                 }
             }
@@ -1241,13 +1236,13 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 throw cannotLoadScript(scriptObj);
             }
             String stringPath = toString1(unboxed);
-            return loadString(frame, stringPath, args);
+            return loadString(stringPath, realm);
         }
 
         @Specialization(guards = "isJSObject(scriptObj)")
-        protected Object loadScriptObj(VirtualFrame frame, DynamicObject scriptObj, Object[] args,
+        protected Object loadScriptObj(DynamicObject scriptObj, Object[] args,
                         @Cached("create()") JSToStringNode sourceToStringNode) {
-            JSRealm realm = realmNode.execute(frame);
+            JSRealm realm = getContext().getRealm();
             if (JSObject.hasProperty(scriptObj, EVAL_OBJ_FILE_NAME) && JSObject.hasProperty(scriptObj, EVAL_OBJ_SOURCE)) {
                 Object scriptNameObj = JSObject.get(scriptObj, EVAL_OBJ_FILE_NAME);
                 Object sourceObj = JSObject.get(scriptObj, EVAL_OBJ_SOURCE);
@@ -1258,8 +1253,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization(guards = {"!isString(fileName)", "!isForeignObject(fileName)", "!isJSObject(fileName)"})
-        protected Object loadConvertToString(VirtualFrame frame, Object fileName, Object[] args) {
-            return loadString(frame, toString1(fileName), args);
+        protected Object loadConvertToString(Object fileName, Object[] args) {
+            return loadString(toString1(fileName), args);
         }
 
         protected Object loadFile(JSRealm realm, File file) {
@@ -1267,7 +1262,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         protected Object loadURL(JSRealm realm, URL url) {
-            assert realm.getContext().isOptionNashornCompatibilityMode();
+            assert getContext().isOptionNashornCompatibilityMode();
             return runImpl(realm, sourceFromURL(url));
         }
 

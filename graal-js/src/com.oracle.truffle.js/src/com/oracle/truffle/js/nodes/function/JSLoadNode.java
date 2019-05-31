@@ -40,18 +40,20 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
-@ImportStatic(JSTruffleOptions.class)
 public abstract class JSLoadNode extends JavaScriptBaseNode {
 
     protected final JSContext context;
@@ -66,40 +68,28 @@ public abstract class JSLoadNode extends JavaScriptBaseNode {
 
     public abstract Object executeLoad(Source source, JSRealm realm);
 
-    @TruffleBoundary
-    protected final ScriptNode loadScript(Source source) {
-        long startTime = JSTruffleOptions.ProfileTime ? System.nanoTime() : 0L;
-        try {
-            return context.getEvaluator().loadCompile(context, source);
-        } finally {
-            if (JSTruffleOptions.ProfileTime) {
-                context.getTimeProfiler().printElapsed(startTime, "parsing " + source.getName());
-            }
-        }
+    protected static CallTarget loadScript(Source source, JSRealm realm) {
+        return realm.getEnv().parse(source);
     }
 
-    @TruffleBoundary
+    @TruffleBoundary(allowInlining = true)
     static boolean equals(Source source, Source cachedSource) {
         return source.equals(cachedSource);
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "equals(source, cachedSource)", limit = "MaxLoadCacheLength")
+    @Specialization(guards = "equals(source, cachedSource)", limit = "1")
     static Object cachedLoad(Source source, JSRealm realm,
+                    @Cached @Shared("importValue") JSForeignToJSTypeNode importValue,
                     @Cached("source") Source cachedSource,
-                    @Cached("loadScript(source)") ScriptNode script) {
-        return script.run(realm);
+                    @Cached("create(loadScript(source, realm))") DirectCallNode callNode) {
+        return importValue.executeWithTarget(callNode.call(JSArguments.EMPTY_ARGUMENTS_ARRAY));
     }
 
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    @Specialization(guards = "TrimLoadCache", replaces = "cachedLoad")
-    final Object uncachedLoad(Source source, JSRealm realm) {
-        return loadScript(source).run(realm);
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    @Specialization(guards = "!TrimLoadCache")
-    final Object uncachedLoadNoTrim(Source source, JSRealm realm) {
-        return loadScript(source).run(realm);
+    @Specialization(replaces = "cachedLoad")
+    static Object uncachedLoad(Source source, JSRealm realm,
+                    @Cached @Shared("importValue") JSForeignToJSTypeNode importValue,
+                    @Cached IndirectCallNode callNode) {
+        return importValue.executeWithTarget(callNode.call(loadScript(source, realm), JSArguments.EMPTY_ARGUMENTS_ARRAY));
     }
 }
