@@ -78,7 +78,7 @@ public abstract class JSLoadNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "equals(source, cachedSource)", limit = "1")
+    @Specialization(guards = {"cachedSource.isCached()", "equals(source, cachedSource)"}, limit = "1")
     static Object cachedLoad(Source source, JSRealm realm,
                     @Cached @Shared("importValue") JSForeignToJSTypeNode importValue,
                     @Cached("source") Source cachedSource,
