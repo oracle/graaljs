@@ -2379,7 +2379,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin, isTypedArrayImplementation);
         }
 
-        @Specialization(guards = "isJSFastArray(thisObj)")
+        @Specialization(guards = "isJSFastArray(thisObj)", assumptions = "getContext().getArrayPrototypeNoElementsAssumption()")
         protected DynamicObject sortArray(final DynamicObject thisObj, final Object compare,
                         @Cached("create(getContext())") JSToObjectArrayNode arrayToObjectArrayNode,
                         @Cached("createClassProfile()") ValueProfile classProfile) {
