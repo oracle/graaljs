@@ -47,6 +47,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -2517,7 +2518,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
          * garbage remaining after sorting all elements to lower indices (in case there are holes).
          */
         private void deleteGenericElements(TruffleObject obj, long fromIndex, long toIndex, Iterable<Object> keys) {
-            for (Object key : keys) {
+            for (Iterator<Object> iterator = Boundaries.iterator(keys); Boundaries.iteratorHasNext(iterator);) {
+                Object key = Boundaries.iteratorNext(iterator);
                 long index = JSRuntime.propertyKeyToArrayIndex(key);
                 if (fromIndex <= index && index < toIndex) {
                     delete(obj, key);
