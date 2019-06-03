@@ -41,9 +41,9 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
@@ -57,11 +57,10 @@ import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262AgentStartNo
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262CreateRealmNodeGen;
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262EvalScriptNodeGen;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.nodes.access.RealmNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.function.JSLoadNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -142,28 +141,25 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
      * Used by test262.
      */
     public abstract static class Test262EvalScriptNode extends JSBuiltinNode {
-        @Child private RealmNode realmNode;
 
         public Test262EvalScriptNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.realmNode = RealmNode.create(context);
         }
 
         @Specialization
-        protected Object evalScript(VirtualFrame frame, Object obj) {
+        protected Object evalScript(Object obj,
+                        @Cached("create(getContext())") JSLoadNode loadNode) {
             String sourceText = JSRuntime.toString(obj);
-            JSRealm realm = realmNode.execute(frame);
             getContext().checkEvalAllowed();
-            return evalScript(realm, sourceText);
+            Source source = createSource(sourceText);
+            JSRealm realm = getContext().getRealm();
+            return loadNode.executeLoad(source, realm);
         }
 
-        @TruffleBoundary(transferToInterpreterOnException = false)
-        private Object evalScript(JSRealm realm, String sourceText) {
-            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).build();
-            ScriptNode script = getContext().getEvaluator().loadCompile(getContext(), source);
-            return script.run(realm);
+        @TruffleBoundary
+        private static Source createSource(String sourceText) {
+            return Source.newBuilder(JavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).cached(false).build();
         }
-
     }
 
     /**

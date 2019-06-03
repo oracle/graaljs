@@ -94,11 +94,6 @@ public interface Evaluator {
     DynamicObject getModuleNamespace(JSModuleRecord moduleRecord);
 
     /**
-     * Loads a script file and compiles it. Returns an executable script object.
-     */
-    ScriptNode loadCompile(JSContext context, Source source);
-
-    /**
      * Parses a script string. Returns an executable script object.
      */
     ScriptNode evalCompile(JSContext context, String sourceCode, String name);

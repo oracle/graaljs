@@ -99,9 +99,7 @@ public final class JSTruffleOptions {
     public static final boolean RestrictForceSplittingBuiltins = booleanOption("RestrictForceSplittingBuiltins", true);
     public static final int MinLazyStringLength = integerOption("MinLazyStringLength", 20);
     public static final int ConcatToLeafLimit = integerOption("ConcatToLeafLimit", MinLazyStringLength / 2);
-    public static final int MaxLoadCacheLength = integerOption("MaxLoadCacheLength", 0);
     public static final int MaxCompiledRegexCacheLength = integerOption("MaxCompiledRegexCacheLength", 4);
-    public static final boolean TrimLoadCache = booleanOption("TrimLoadCache", false);
     public static final boolean TrimCompiledRegexCache = booleanOption("TrimCompiledRegexCache", true);
     public static final int StackTraceLimit = integerOption("StackTraceLimit", 10);
     public static final int StringLengthLimit = integerOption("StringLengthLimit", (1 << 30) - 1 - 24); // v8::String::kMaxLength

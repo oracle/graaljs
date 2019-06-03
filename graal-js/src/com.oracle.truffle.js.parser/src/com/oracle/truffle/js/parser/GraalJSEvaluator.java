@@ -242,16 +242,6 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public ScriptNode loadCompile(JSContext context, Source source) {
-        try {
-            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, false);
-        } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage());
-        }
-    }
-
-    @TruffleBoundary
-    @Override
     public ScriptNode evalCompile(JSContext context, String sourceCode, String name) {
         try {
             context.checkEvalAllowed();
@@ -275,7 +265,11 @@ public final class GraalJSEvaluator implements JSParser {
         if (MODULE_MIME_TYPE.equals(source.getMimeType()) || source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
             return fakeScriptForModule(context, source);
         }
-        return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, po.isStrict());
+        try {
+            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, po.isStrict());
+        } catch (com.oracle.js.parser.ParserException e) {
+            throw Errors.createSyntaxError(e.getMessage());
+        }
     }
 
     private ScriptNode fakeScriptForModule(JSContext context, Source source) {
@@ -299,7 +293,11 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public ScriptNode parseScriptNode(JSContext context, String sourceCode) {
-        return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "<unknown>").build(), false);
+        try {
+            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "<unknown>").build(), false);
+        } catch (com.oracle.js.parser.ParserException e) {
+            throw Errors.createSyntaxError(e.getMessage());
+        }
     }
 
     @TruffleBoundary
