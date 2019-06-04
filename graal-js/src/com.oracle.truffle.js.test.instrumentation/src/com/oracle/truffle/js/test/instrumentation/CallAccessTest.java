@@ -75,6 +75,8 @@ public class CallAccessTest extends FineGrainedAccessTest {
             enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
             call.input(42);
 
+            enterDeclareTag("a");
+
             enter(WriteVariableExpressionTag.class, (e1, call1) -> {
                 call1.input(42);
             }).exit();
@@ -100,6 +102,10 @@ public class CallAccessTest extends FineGrainedAccessTest {
             call.input(42);
             enter(LiteralExpressionTag.class).exit(assertReturnValue(24));
             call.input(24);
+
+            // locals declarations
+            enterDeclareTag("a");
+            enterDeclareTag("b");
 
             enter(WriteVariableExpressionTag.class, (e1, call1) -> {
                 call1.input(42);
@@ -143,10 +149,15 @@ public class CallAccessTest extends FineGrainedAccessTest {
             enter(ReadPropertyExpressionTag.class, assertPropertyReadName("x")).input(assertJSObjectInput).exit();
             call.input(assertJSFunctionInput);
             // arguments
+
             enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
             call.input(42);
             enter(LiteralExpressionTag.class).exit(assertReturnValue(24));
             call.input(24);
+
+            // locals declarations
+            enterDeclareTag("a");
+            enterDeclareTag("b");
 
             enter(WriteVariableExpressionTag.class, (e1, call1) -> {
                 call1.input(42);
@@ -192,6 +203,10 @@ public class CallAccessTest extends FineGrainedAccessTest {
             // arguments
             enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
             call.input(42);
+
+            // locals declarations
+            enterDeclareTag("a");
+            enterDeclareTag("b");
 
             enter(WriteVariableExpressionTag.class, (e1, call1) -> {
                 call1.input(42);

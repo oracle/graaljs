@@ -113,6 +113,11 @@ public class EvalTest extends FineGrainedAccessTest {
                 enter(LiteralExpressionTag.class).exit();
                 call.input(42);
 
+                // locals declaration
+                enterDeclareTag("a");
+                enterDeclareTag("arguments");
+                enterDeclareTag("bar");
+
                 // inside the foo function
                 // write the 42 into the argument variable
                 enter(WriteVariableExpressionTag.class, (e3, vw) -> {

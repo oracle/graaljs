@@ -64,6 +64,11 @@ public class ArgumentsAccessTest extends FineGrainedAccessTest {
             call.input(assertJSFunctionInput);
             enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
             call.input(42);
+
+            // var and args declarations
+            enterDeclareTag("a");
+            enterDeclareTag("x");
+
             // Argument 'a' is stored in the frame
             enter(WriteVariableExpressionTag.class, (e1, call1) -> {
                 assertAttribute(e1, NAME, "a");
@@ -95,6 +100,9 @@ public class ArgumentsAccessTest extends FineGrainedAccessTest {
             call.input(assertJSFunctionInput);
             enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
             call.input(42);
+
+            enterDeclareTag("id");
+
             // Argument 'id' is stored in frame even if not used
             enter(WriteVariableExpressionTag.class, (e1, call1) -> {
                 assertAttribute(e1, NAME, "id");
@@ -117,6 +125,11 @@ public class ArgumentsAccessTest extends FineGrainedAccessTest {
             call.input(assertJSFunctionInput);
             enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
             call.input(42);
+
+            // var and args declarations
+            enterDeclareTag("a");
+            enterDeclareTag("b");
+
             // Argument 'a' is stored in frame even if not used
             enter(WriteVariableExpressionTag.class, (e1, call1) -> {
                 assertAttribute(e1, NAME, "a");
