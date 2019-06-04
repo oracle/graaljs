@@ -25,8 +25,9 @@ suite = {
   "url" : "http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html",
 
   "repositories" : {
-    "graalnodejs-binary-snapshots" : {
-      "url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
+    "graalnodejs-lafo" : {
+      "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
+      "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
       "licenses" : ["UPL"]
     },
   },

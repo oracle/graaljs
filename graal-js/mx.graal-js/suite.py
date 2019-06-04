@@ -34,9 +34,10 @@ suite = {
   },
 
   "repositories" : {
-    "graaljs-binary-snapshots" : {
-      "url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["UPL", "MIT"]
+    "graaljs-lafo" : {
+      "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
+      "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
+      "licenses" : ["UPL", "MIT", "GPLv2-CPE"]
     },
   },
 

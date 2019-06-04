@@ -69,6 +69,14 @@ local common = import '../common.jsonnet';
     timelimit: '10:00',
   },
 
+  local mavenDeploy = {
+    run+: [
+      ['mx', '--dynamicimports', '/tools,/compiler', 'build'],
+      ['mx', '--dynamicimports', '/tools,/compiler', 'maven-deploy', '--all-suites', '--all-distribution-types', '--validate', 'full', '--licenses', 'UPL,MIT', 'graaljs-lafo'],
+    ],
+    timelimit: '10:00',
+  },
+
   builds: [
     // jdk 8 - linux
     graalJs + common.jdk8 + common.gate   + common.linux + gateGraalImport  + {environment+: {GATE_TAGS: 'style,fullbuild'}}    + {name: 'js-gate-style-fullbuild-graal-import-jdk8-linux-amd64'},
@@ -90,5 +98,6 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk11 + common.gate  + common.linux + gateGraalImport  + {environment+: {GATE_TAGS: 'style,fullbuild'}}    + {name: 'js-gate-style-fullbuild-graal-import-jdk11-linux-amd64'},
     graalJs + common.jdk11 + common.gate  + common.linux + gateGraalTip     + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-linux-amd64'},
     graalJs + common.jdk11 + common.gate  + common.linux                    + mavenDeployDryRun                                 + {name: 'js-gate-maven-dry-run-jdk11-linux-amd64'},
+    graalJs + common.jdk11 + common.gate  + common.linux + common.postMerge + mavenDeploy                                       + {name: 'js-deploy-maven-jdk11-linux-amd64'},
   ],
 }

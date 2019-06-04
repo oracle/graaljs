@@ -18,8 +18,8 @@ local common = import 'common.jsonnet';
       ['mx', '-p', 'graal-nodejs', 'build', '--force-javac'],
     ],
     run+: [
-      ['mx', '-p', 'graal-js', 'deploy-binary-if-master', '--skip-existing', 'graaljs-binary-snapshots'],
-      ['mx', '-p', 'graal-nodejs', 'deploy-binary-if-master', '--skip-existing', 'graalnodejs-binary-snapshots'],
+      ['mx', '-p', 'graal-js', 'deploy-binary-if-master', '--skip-existing', 'graaljs-lafo'],
+      ['mx', '-p', 'graal-nodejs', 'deploy-binary-if-master', '--skip-existing', 'graalnodejs-lafo'],
     ],
     timelimit: '15:00',
   },
