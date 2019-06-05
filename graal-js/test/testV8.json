@@ -527,12 +527,6 @@
     "filePath" : "mjsunit/es6/block-eval-var-over-let.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/block-for-sloppy.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/block-for.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/block-let-contextual-sloppy.js",
     "status" : "FAIL"
   }, {
@@ -558,9 +552,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/classes.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/completion.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/computed-property-names-classes.js",
