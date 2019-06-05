@@ -325,6 +325,10 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> VALIDATE_REGEXP_LITERALS = new OptionKey<>(true);
     @CompilationFinal private boolean validateRegExpLiterals;
 
+    public static final String LOCALE_NAME = JS_OPTION_PREFIX + "locale";
+    @Option(name = LOCALE_NAME, category = OptionCategory.EXPERT, help = "Use a specific default locale for locale-sensitive operations.") //
+    public static final OptionKey<String> LOCALE = new OptionKey<>("");
+
     public JSContextOptions(ParserOptions parserOptions) {
         this.parserOptions = parserOptions;
         cacheOptions();
@@ -650,6 +654,10 @@ public final class JSContextOptions {
 
     public boolean isValidateRegExpLiterals() {
         return validateRegExpLiterals;
+    }
+
+    public String getLocale() {
+        return LOCALE.getValue(optionValues);
     }
 
     @Override

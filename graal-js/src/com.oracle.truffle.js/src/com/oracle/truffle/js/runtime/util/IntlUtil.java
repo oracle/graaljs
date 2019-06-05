@@ -269,7 +269,7 @@ public final class IntlUtil {
         addIfMissing(result, Locale.forLanguageTag("tr"));
 
         // default locale might be missing in the available locale list
-        addIfMissing(result, Locale.getDefault());
+        addIfMissing(result, ctx.getLocale());
 
         return result;
     }
@@ -348,7 +348,7 @@ public final class IntlUtil {
     @TruffleBoundary
     public static Locale selectedLocaleStripped(JSContext ctx, String[] locales) {
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
+        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         return selectedLocale.stripExtensions();
     }
 

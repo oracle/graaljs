@@ -488,10 +488,10 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
     @TruffleBoundary
     public static void setLocaleAndNumberingSystem(JSContext ctx, BasicInternalState state, String[] locales) {
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
+        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         Locale strippedLocale = selectedLocale.stripExtensions();
         if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
-            selectedLocale = Locale.getDefault();
+            selectedLocale = ctx.getLocale();
             strippedLocale = selectedLocale.stripExtensions();
         }
         if (selectedLocale.getUnicodeLocaleKeys().contains("nu")) {

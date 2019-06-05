@@ -175,7 +175,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                     String tzNameOpt,
                     TimeZone timeZone) {
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
+        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         Locale strippedLocale = selectedLocale.stripExtensions();
         String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
 

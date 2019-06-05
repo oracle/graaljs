@@ -516,7 +516,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortTimeLocalFormat(), t, getContext());
+            return JSDate.formatLocal(JSDate.getJSShortTimeLocalFormat(getContext()), t, getContext());
         }
     }
 

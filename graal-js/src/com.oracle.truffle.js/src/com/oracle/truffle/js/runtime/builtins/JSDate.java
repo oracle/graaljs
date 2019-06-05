@@ -773,11 +773,11 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return jsShortTimeFormat;
     }
 
-    public static DateTimeFormatter getJSShortTimeLocalFormat() {
+    public static DateTimeFormatter getJSShortTimeLocalFormat(JSContext context) {
         if (jsShortTimeLocalFormat == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // no UTC
-            jsShortTimeLocalFormat = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.getDefault(Locale.Category.FORMAT));
+            jsShortTimeLocalFormat = DateTimeFormatter.ofPattern("HH:mm:ss", context.getLocale(Locale.Category.FORMAT));
         }
         return jsShortTimeLocalFormat;
     }
