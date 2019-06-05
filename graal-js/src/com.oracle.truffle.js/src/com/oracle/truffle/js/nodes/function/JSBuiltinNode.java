@@ -112,6 +112,15 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
         }
     }
 
+    /**
+     * If true, this function needs the call source location. The call node uses this hint to try
+     * and pass the call node via a thread-local field (in the case of a direct call) that the
+     * built-in can then use to avoid an expensive stack walk.
+     */
+    public boolean isCallerSensitive() {
+        return false;
+    }
+
     public static JSBuiltinNode createBuiltin(JSContext ctx, JSBuiltin builtin, boolean construct, boolean newTarget) {
         return new LazyBuiltinNode(ctx, builtin, construct, newTarget);
     }
@@ -185,6 +194,11 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
         @Override
         public Inlined tryCreateInlined() {
             return materialize().tryCreateInlined();
+        }
+
+        @Override
+        public boolean isCallerSensitive() {
+            return materialize().isCallerSensitive();
         }
     }
 

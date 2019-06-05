@@ -981,6 +981,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                         } else {
                             return new InlinedBuiltinFunctionDataCacheNode(functionData, callTarget, inlined);
                         }
+                    } else if (builtinNode.isCallerSensitive()) {
+                        if (cacheOnInstance) {
+                            return new CallerSensitiveBuiltinFunctionInstanceCacheNode(function, functionData, callTarget);
+                        } else {
+                            return new CallerSensitiveBuiltinFunctionDataCacheNode(functionData, callTarget);
+                        }
                     }
                 }
             }
@@ -1315,6 +1321,65 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         protected JSFunctionData getFunctionData() {
             return functionData;
+        }
+    }
+
+    private abstract static class CallerSensitiveBuiltinCallNode extends JSFunctionCacheNode {
+        @Child private DirectCallNode callNode;
+        protected final JSFunctionData functionData;
+
+        CallerSensitiveBuiltinCallNode(JSFunctionData functionData, CallTarget callTarget) {
+            this.functionData = functionData;
+            this.callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
+        }
+
+        @Override
+        public Object executeCall(Object[] arguments) {
+            JSRealm realm = functionData.getContext().getRealm();
+            JavaScriptNode prev = realm.getCallNode();
+            try {
+                realm.setCallNode((JavaScriptNode) getParent());
+                return callNode.call(arguments);
+            } finally {
+                realm.setCallNode(prev);
+            }
+        }
+
+        @Override
+        protected final JSFunctionData getFunctionData() {
+            return functionData;
+        }
+    }
+
+    private static final class CallerSensitiveBuiltinFunctionInstanceCacheNode extends CallerSensitiveBuiltinCallNode {
+        private final DynamicObject functionObj;
+
+        CallerSensitiveBuiltinFunctionInstanceCacheNode(DynamicObject functionObj, JSFunctionData functionData, CallTarget callTarget) {
+            super(functionData, callTarget);
+            assert JSFunction.isJSFunction(functionObj);
+            this.functionObj = functionObj;
+        }
+
+        @Override
+        protected boolean accept(Object function) {
+            return functionObj == function;
+        }
+
+        @Override
+        protected boolean isInstanceCache() {
+            return true;
+        }
+    }
+
+    private static final class CallerSensitiveBuiltinFunctionDataCacheNode extends CallerSensitiveBuiltinCallNode {
+
+        CallerSensitiveBuiltinFunctionDataCacheNode(JSFunctionData functionData, CallTarget callTarget) {
+            super(functionData, callTarget);
+        }
+
+        @Override
+        protected boolean accept(Object function) {
+            return JSFunction.isJSFunction(function) && functionData == JSFunction.getFunctionData((DynamicObject) function);
         }
     }
 
