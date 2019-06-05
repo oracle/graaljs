@@ -2399,14 +2399,6 @@
     "filePath" : "language/statements/for-of/scope-head-lex-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/statements/for/head-init-expr-check-empty-inc-empty-completion.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "language/statements/for/head-init-var-check-empty-inc-empty-completion.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
     "filePath" : "language/statements/function/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {

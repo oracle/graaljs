@@ -1726,7 +1726,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         tagStatement(test, whileNode.getTest());
         try (JumpTargetCloseable<ContinueTarget> target = currentFunction().pushContinueTarget(null)) {
             JavaScriptNode body = transform(whileNode.getBody());
-            JavaScriptNode wrappedBody = target.wrapContinueTargetNode(body);
+            JavaScriptNode wrappedBody = wrapClearCompletionValue(target.wrapContinueTargetNode(body));
             JavaScriptNode result;
             if (whileNode.isDoWhile()) {
                 result = createDoWhile(test, wrappedBody);
@@ -1760,6 +1760,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (currentFunction().returnsLastStatementResult()) {
             VarRef returnVar = environment.findTempVar(currentFunction().getReturnSlot());
             return returnVar.createWriteNode(statement);
+        }
+        return statement;
+    }
+
+    private JavaScriptNode wrapClearCompletionValue(JavaScriptNode statement) {
+        if (currentFunction().returnsLastStatementResult()) {
+            VarRef returnVar = environment.findTempVar(currentFunction().getReturnSlot());
+            return factory.createExprBlock(returnVar.createWriteNode(factory.createConstantUndefined()), statement);
         }
         return statement;
     }
@@ -1802,7 +1810,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 result = desugarForAwaitOf(forNode, modify, target);
             } else {
                 JavaScriptNode body = transform(forNode.getBody());
-                JavaScriptNode wrappedBody = target.wrapContinueTargetNode(body);
+                JavaScriptNode wrappedBody = wrapClearCompletionValue(target.wrapContinueTargetNode(body));
                 result = target.wrapBreakTargetNode(desugarFor(forNode, init, test, modify, wrappedBody));
             }
 
