@@ -102,7 +102,6 @@ public class IterationsTest extends FineGrainedAccessTest {
             assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
             for (int a = 0; a < 10; a++) {
                 enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
-                enter(ControlFlowBlockTag.class).exit();
             }
             enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
         }).exit();
