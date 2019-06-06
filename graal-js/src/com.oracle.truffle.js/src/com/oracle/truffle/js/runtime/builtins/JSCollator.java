@@ -132,7 +132,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
         state.initializedCollator = true;
         state.usage = usage;
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
-        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : Locale.getDefault();
+        Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         Locale strippedLocale = selectedLocale.stripExtensions();
         for (String ek : selectedLocale.getUnicodeLocaleKeys()) {
             if (kn == null && ek.equals("kn")) {

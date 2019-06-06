@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime;
 
 import java.time.ZoneId;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.WeakHashMap;
@@ -1569,5 +1570,25 @@ public class JSContext {
 
     public boolean isOptionLoadFromURL() {
         return contextOptions.isLoadFromURL();
+    }
+
+    @TruffleBoundary
+    public Locale getLocale() {
+        String name = getContextOptions().getLocale();
+        if (name.isEmpty()) {
+            return Locale.getDefault();
+        } else {
+            return Locale.forLanguageTag(name);
+        }
+    }
+
+    @TruffleBoundary
+    public Locale getLocale(Locale.Category category) {
+        String name = getContextOptions().getLocale();
+        if (name.isEmpty()) {
+            return Locale.getDefault(category);
+        } else {
+            return Locale.forLanguageTag(name);
+        }
     }
 }
