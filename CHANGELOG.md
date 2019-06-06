@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 20.0.0-beta2
 * Added (experimental) option `js.locale` to set the default locale for locale-sensitive operations.
+* Allow making evaluated sources internal using the `sourceURL` directive by prefixing the URL with `internal:`, e.g. `//# sourceURL=internal:myname.js`.
 
 ## Version 20.0.0-beta1
 * Enabled code sharing across threads using `ContextPolicy.SHARED`.

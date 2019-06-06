@@ -53,6 +53,7 @@ import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -103,7 +104,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
             src = Source.newBuilder(source.getLanguage(), source.getCharacters(), explicitURL).
                             cached(source.isCached()).
                             interactive(source.isInteractive()).
-                            internal(source.isInternal()).
+                            internal(source.isInternal() || explicitURL.startsWith(JavaScriptLanguage.INTERNAL_SOURCE_URL_PREFIX)).
                             mimeType(source.getMimeType()).
                             build();
             // @formatter:on
