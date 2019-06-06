@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 20.0.0-beta2
+* Added (experimental) option `js.locale` to set the default locale for locale-sensitive operations.
+
 ## Version 20.0.0-beta1
 * Enabled code sharing across threads using `ContextPolicy.SHARED`.
 
