@@ -67,6 +67,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
@@ -297,6 +298,11 @@ public class JSRealm {
      * Parent realm (for a child realm) or {@code null} for a top-level realm.
      */
     private JSRealm parentRealm;
+
+    /**
+     * Used to the pass call site source location for caller sensitive built-in functions.
+     */
+    private JavaScriptNode callNode;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -1587,6 +1593,14 @@ public class JSRealm {
 
     public JSRealm getParent() {
         return parentRealm;
+    }
+
+    public JavaScriptNode getCallNode() {
+        return callNode;
+    }
+
+    public void setCallNode(JavaScriptNode callNode) {
+        this.callNode = callNode;
     }
 
     synchronized void addToRealmList(JSRealm newRealm) {

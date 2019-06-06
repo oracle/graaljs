@@ -1354,7 +1354,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         private final boolean asyncFunction;
         @Child private JSToStringNode toStringNode;
         @Child private CreateDynamicFunctionNode functionNode;
-        private ConditionProfile argsLengthProfile = ConditionProfile.createBinaryProfile();
 
         public ConstructFunctionNode(JSContext context, JSBuiltin builtin, boolean generatorFunction, boolean asyncFunction, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -1365,14 +1364,24 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected final DynamicObject constructFunction(DynamicObject newTarget, Object[] args) {
-            String[] params = new String[Math.max(0, args.length - 1)];
-            for (int i = 0; i < args.length - 1; i++) {
-                params[i] = toStringNode.executeString(args[i]);
+        protected final DynamicObject constructFunction(DynamicObject newTarget, Object[] args,
+                        @Cached("createBinaryProfile()") ConditionProfile hasArgsProfile,
+                        @Cached("createBinaryProfile()") ConditionProfile hasParamsProfile) {
+            int argc = args.length;
+            String[] params;
+            String body;
+            if (hasArgsProfile.profile(argc > 0)) {
+                params = new String[argc - 1];
+                for (int i = 0; i < argc - 1; i++) {
+                    params[i] = toStringNode.executeString(args[i]);
+                }
+                body = toStringNode.executeString(args[argc - 1]);
+            } else {
+                params = new String[0];
+                body = "";
             }
-            String body = args.length > 0 ? toStringNode.executeString(args[args.length - 1]) : "";
-            String paramList = argsLengthProfile.profile(args.length > 1) ? join(params) : "";
-            return swapPrototype(functionNode.executeFunction(paramList, body), newTarget);
+            String paramList = hasParamsProfile.profile(argc > 1) ? join(params) : "";
+            return swapPrototype(functionNode.executeFunction(paramList, body, getSourceName()), newTarget);
         }
 
         @TruffleBoundary
@@ -1397,6 +1406,21 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
         }
 
+        private String getSourceName() {
+            String sourceName = null;
+            if (isCallerSensitive()) {
+                sourceName = EvalNode.findAndFormatEvalOrigin(getContext().getRealm().getCallNode());
+            }
+            if (sourceName == null) {
+                sourceName = Evaluator.FUNCTION_SOURCE_NAME;
+            }
+            return sourceName;
+        }
+
+        @Override
+        public boolean isCallerSensitive() {
+            return getContext().isOptionV8CompatibilityMode();
+        }
     }
 
     /**
@@ -1411,10 +1435,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.generatorFunction = generatorFunction;
             this.asyncFunction = asyncFunction;
             this.context = context;
-        }
-
-        protected final DynamicObject executeFunction(String paramList, String body) {
-            return executeFunction(paramList, body, getSourceName());
         }
 
         protected abstract DynamicObject executeFunction(String paramList, String body, String sourceName);
@@ -1451,17 +1471,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @TruffleBoundary(transferToInterpreterOnException = false)
         private DynamicObject parseAndEvalFunction(JSRealm realm, String paramList, String body, String sourceName) {
             return evalParsedFunction(realm, parseFunction(paramList, body, sourceName));
-        }
-
-        private String getSourceName() {
-            String sourceName = null;
-            if (context.isOptionV8CompatibilityMode()) {
-                sourceName = EvalNode.findAndFormatEvalOrigin(null);
-            }
-            if (sourceName == null) {
-                sourceName = Evaluator.FUNCTION_SOURCE_NAME;
-            }
-            return sourceName;
         }
     }
 
