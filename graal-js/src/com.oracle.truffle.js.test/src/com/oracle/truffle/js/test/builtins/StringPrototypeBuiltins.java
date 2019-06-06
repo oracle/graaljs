@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -62,10 +63,30 @@ public class StringPrototypeBuiltins {
         }
     }
 
+    private static Value evalWithLocale(String code, String locale) {
+        try (Context context = Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).option("js.locale", locale).build()) {
+            return context.eval(JavaScriptLanguage.ID, code);
+        }
+    }
+
     @Test
     public void testLocaleCompare() {
         assertTrue(testIntl("'abc'.localeCompare('abc') === 0;"));
         assertFalse(testIntl("'abc'.localeCompare('def') === 0;"));
+    }
+
+    @Test
+    public void testToLocaleLowerCase() {
+        String code = "'I'.toLocaleLowerCase()";
+        assertEquals("i", evalWithLocale(code, "de").asString());
+        assertEquals("\u0131", evalWithLocale(code, "tr").asString());
+    }
+
+    @Test
+    public void testToLocaleUpperCase() {
+        String code = "'i'.toLocaleUpperCase()";
+        assertEquals("I", evalWithLocale(code, "de").asString());
+        assertEquals("\u0130", evalWithLocale(code, "tr").asString());
     }
 
 }

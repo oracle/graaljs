@@ -1658,7 +1658,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private String toLowerCaseIntl(String str) {
-            return locale ? Boundaries.stringToLowerCase(str) : Boundaries.stringToLowerCase(str, Locale.US);
+            return Boundaries.stringToLowerCase(str, locale ? getContext().getLocale() : Locale.US);
         }
     }
 
@@ -1742,7 +1742,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private String toUpperCaseIntl(String str) {
-            return locale ? Boundaries.stringToUpperCase(str) : Boundaries.stringToUpperCase(str, Locale.US);
+            return Boundaries.stringToUpperCase(str, locale ? getContext().getLocale() : Locale.US);
         }
     }
 
