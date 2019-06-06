@@ -162,6 +162,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final String MODULE_MIME_TYPE = "application/javascript+module";
     public static final String SCRIPT_SOURCE_NAME_SUFFIX = ".js";
     public static final String MODULE_SOURCE_NAME_SUFFIX = ".mjs";
+    public static final String INTERNAL_SOURCE_URL_PREFIX = "internal:";
 
     public static final String NAME = "JavaScript";
     public static final String IMPLEMENTATION_NAME = "GraalVM JavaScript";
