@@ -228,18 +228,8 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
-    public static String stringToLowerCase(String s) {
-        return s.toLowerCase();
-    }
-
-    @TruffleBoundary
     public static String stringToLowerCase(String s, Locale locale) {
         return s.toLowerCase(locale);
-    }
-
-    @TruffleBoundary
-    public static String stringToUpperCase(String s) {
-        return s.toUpperCase();
     }
 
     @TruffleBoundary
