@@ -1471,9 +1471,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
      * Create (and potentially cache) dynamic function from parameter list and body strings.
      */
     abstract static class CreateDynamicFunctionNode extends JavaScriptBaseNode {
-
-        private static final int MAX_CACHE_SIZE = 32;
-
         private final boolean generatorFunction;
         private final boolean asyncFunction;
         private final JSContext context;
@@ -1490,8 +1487,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return a.equals(b);
         }
 
-        protected static LRUCache<CachedSourceKey, ScriptNode> createCache() {
-            return new LRUCache<>(MAX_CACHE_SIZE);
+        protected LRUCache<CachedSourceKey, ScriptNode> createCache() {
+            return new LRUCache<>(context.getContextOptions().getFunctionConstructorCacheSize());
         }
 
         @SuppressWarnings("unused")
