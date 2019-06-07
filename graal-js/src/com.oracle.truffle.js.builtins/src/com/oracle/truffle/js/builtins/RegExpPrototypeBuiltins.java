@@ -1550,8 +1550,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object matcher = speciesConstructNode.construct(constructor, regex, flags);
             long lastIndex = toLengthNode.executeLong(getLastIndexNode.getValue(regex));
             setLastIndexNode.setValue(matcher, JSRuntime.boxIndex(lastIndex, indexInIntRangeProf));
-            boolean global = flags.indexOf("g") != -1;
-            boolean fullUnicode = flags.indexOf("u") != -1;
+            boolean global = flags.indexOf('g') != -1;
+            boolean fullUnicode = flags.indexOf('u') != -1;
             return createRegExpStringIteratorNode.createIterator(frame, matcher, string, global, fullUnicode);
         }
 
