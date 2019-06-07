@@ -46,6 +46,7 @@ import static com.oracle.truffle.js.runtime.JSTruffleOptions.ECMAScript2018;
 import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.WeakHashMap;
 
@@ -202,6 +203,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.WeakMap;
+import com.oracle.truffle.regex.util.LRUCache;
 
 /**
  * Contains builtins for the global object.
@@ -1427,6 +1429,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
      * Create (and potentially cache) dynamic function from parameter list and body strings.
      */
     abstract static class CreateDynamicFunctionNode extends JavaScriptBaseNode {
+
+        private static final int MAX_CACHE_SIZE = 32;
+
         private final boolean generatorFunction;
         private final boolean asyncFunction;
         private final JSContext context;
@@ -1443,6 +1448,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return a.equals(b);
         }
 
+        protected static LRUCache<CachedSourceKey, ScriptNode> createCache() {
+            return new LRUCache<>(MAX_CACHE_SIZE);
+        }
+
         @SuppressWarnings("unused")
         @Specialization(guards = {"equals(cachedParamList, paramList)", "equals(cachedBody, body)", "equals(cachedSourceName, sourceName)"}, limit = "1")
         protected final DynamicObject doCached(String paramList, String body, String sourceName,
@@ -1453,11 +1462,26 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return evalParsedFunction(context.getRealm(), parsedFunction);
         }
 
-        @Specialization
-        protected final DynamicObject doUncached(String paramList, String body, String sourceName) {
-            return parseAndEvalFunction(context.getRealm(), paramList, body, sourceName);
+        @Specialization(replaces = "doCached")
+        protected final DynamicObject doUncached(String paramList, String body, String sourceName,
+                        @Cached("createCache()") LRUCache<CachedSourceKey, ScriptNode> cache,
+                        @Cached("createCountingProfile()") ConditionProfile cacheHit) {
+            ScriptNode cached = cacheLookup(cache, new CachedSourceKey(paramList, body, sourceName));
+            if (cacheHit.profile(cached == null)) {
+                return parseAndEvalFunction(cache, context.getRealm(), paramList, body, sourceName);
+            } else {
+                return evalParsedFunction(context.getRealm(), cached);
+            }
         }
 
+        @TruffleBoundary
+        protected ScriptNode cacheLookup(LRUCache<CachedSourceKey, ScriptNode> cache, CachedSourceKey sourceKey) {
+            synchronized (cache) {
+                return cache.get(sourceKey);
+            }
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
         protected final ScriptNode parseFunction(String paramList, String body, String sourceName) {
             CompilerAsserts.neverPartOfCompilation();
             return context.getEvaluator().parseFunction(context, paramList, body, generatorFunction, asyncFunction, sourceName);
@@ -1469,9 +1493,40 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private DynamicObject parseAndEvalFunction(JSRealm realm, String paramList, String body, String sourceName) {
-            return evalParsedFunction(realm, parseFunction(paramList, body, sourceName));
+        private DynamicObject parseAndEvalFunction(LRUCache<CachedSourceKey, ScriptNode> cache, JSRealm realm, String paramList, String body, String sourceName) {
+            ScriptNode parsedBody = parseFunction(paramList, body, sourceName);
+            synchronized (cache) {
+                cache.put(new CachedSourceKey(paramList, body, sourceName), parsedBody);
+            }
+            return evalParsedFunction(realm, parsedBody);
         }
+
+        protected static class CachedSourceKey {
+            private final String body;
+            private final String paramList;
+            private final String sourceName;
+
+            CachedSourceKey(String paramList, String body, String sourceName) {
+                this.body = body;
+                this.paramList = paramList;
+                this.sourceName = sourceName;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (!(o instanceof CachedSourceKey)) {
+                    return false;
+                }
+                CachedSourceKey k = (CachedSourceKey) o;
+                return k.body.equals(body) && k.paramList.equals(paramList) && k.sourceName.equals(sourceName);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(body, paramList, sourceName);
+            }
+        }
+
     }
 
     /**
