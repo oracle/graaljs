@@ -295,18 +295,30 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
         protected DynamicObject getForeignObject(TruffleObject thisObj, Object property,
-                        @CachedLibrary("thisObj") InteropLibrary interop) {
+                        @CachedLibrary("thisObj") InteropLibrary interop,
+                        @Cached("create()") JSForeignToJSTypeNode toJSType) {
             Object propertyKey = toPropertyKeyNode.execute(property);
             if (propertyKey instanceof String) {
                 try {
+                    String member = (String) propertyKey;
                     if (interop.hasMembers(thisObj)) {
-                        String member = (String) propertyKey;
                         if (interop.isMemberExisting(thisObj, member) && interop.isMemberReadable(thisObj, member)) {
                             PropertyDescriptor desc = PropertyDescriptor.createData(
-                                            interop.readMember(thisObj, member),
+                                            toJSType.executeWithTarget(interop.readMember(thisObj, member)),
                                             !interop.isMemberInternal(thisObj, member),
                                             interop.isMemberWritable(thisObj, member),
                                             interop.isMemberRemovable(thisObj, member));
+                            return JSRuntime.fromPropertyDescriptor(desc, getContext());
+                        }
+                    }
+                    long index = JSRuntime.propertyNameToArrayIndex(member);
+                    if (JSRuntime.isArrayIndex(index) && interop.hasArrayElements(thisObj)) {
+                        if (interop.isArrayElementExisting(thisObj, index) && interop.isArrayElementReadable(thisObj, index)) {
+                            PropertyDescriptor desc = PropertyDescriptor.createData(
+                                            toJSType.executeWithTarget(interop.readArrayElement(thisObj, index)),
+                                            true,
+                                            interop.isArrayElementWritable(thisObj, index),
+                                            interop.isArrayElementRemovable(thisObj, index));
                             return JSRuntime.fromPropertyDescriptor(desc, getContext());
                         }
                     }
@@ -352,7 +364,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
         protected DynamicObject getForeignObject(TruffleObject thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
-                        @CachedLibrary(limit = "3") InteropLibrary members) {
+                        @CachedLibrary(limit = "3") InteropLibrary members,
+                        @Cached("create()") JSForeignToJSTypeNode toJSType) {
             DynamicObject result = JSUserObject.create(getContext());
 
             try {
@@ -366,12 +379,29 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         String member = (String) members.readArrayElement(keysObj, i);
                         if (interop.isMemberReadable(thisObj, member)) {
                             PropertyDescriptor desc = PropertyDescriptor.createData(
-                                            interop.readMember(thisObj, member),
+                                            toJSType.executeWithTarget(interop.readMember(thisObj, member)),
                                             !interop.isMemberInternal(thisObj, member),
                                             interop.isMemberWritable(thisObj, member),
                                             interop.isMemberRemovable(thisObj, member));
                             DynamicObject propDesc = JSRuntime.fromPropertyDescriptor(desc, getContext());
                             result.define(member, propDesc, JSAttributes.configurableEnumerableWritable());
+                        }
+                    }
+                }
+                if (interop.hasArrayElements(thisObj)) {
+                    long size = interop.getArraySize(thisObj);
+                    if (size < 0 || size >= Integer.MAX_VALUE) {
+                        throw Errors.createRangeErrorInvalidArrayLength();
+                    }
+                    for (long i = 0; i < size; i++) {
+                        if (interop.isArrayElementExisting(thisObj, i) && interop.isArrayElementReadable(thisObj, i)) {
+                            PropertyDescriptor desc = PropertyDescriptor.createData(
+                                            toJSType.executeWithTarget(interop.readArrayElement(thisObj, i)),
+                                            true,
+                                            interop.isArrayElementWritable(thisObj, i),
+                                            interop.isArrayElementRemovable(thisObj, i));
+                            DynamicObject propDesc = JSRuntime.fromPropertyDescriptor(desc, getContext());
+                            result.define(Boundaries.stringValueOf(i), propDesc, JSAttributes.configurableEnumerableWritable());
                         }
                     }
                 }
