@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -285,17 +286,55 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
         @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
 
-        @Specialization
-        protected DynamicObject getOwnPropertyDescriptor(Object thisObj, Object propertyKey) {
-            TruffleObject tobject = toTruffleObject(thisObj);
-            if (JSObject.isJSObject(tobject)) {
-                DynamicObject object = (DynamicObject) tobject;
-                PropertyDescriptor desc = getOwnPropertyNode.execute(object, toPropertyKeyNode.execute(propertyKey));
-                return JSRuntime.fromPropertyDescriptor(desc, getContext());
-            } else {
-                return Undefined.instance;
-            }
+        @Specialization(guards = {"isJSObject(thisObj)"})
+        protected DynamicObject getJSObject(DynamicObject thisObj, Object property) {
+            Object propertyKey = toPropertyKeyNode.execute(property);
+            PropertyDescriptor desc = getOwnPropertyNode.execute(thisObj, propertyKey);
+            return JSRuntime.fromPropertyDescriptor(desc, getContext());
         }
+
+        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
+        protected DynamicObject getForeignObject(TruffleObject thisObj, Object property,
+                        @CachedLibrary("thisObj") InteropLibrary interop,
+                        @Cached("create()") JSForeignToJSTypeNode toJSType) {
+            Object propertyKey = toPropertyKeyNode.execute(property);
+            if (propertyKey instanceof String) {
+                try {
+                    String member = (String) propertyKey;
+                    if (interop.hasMembers(thisObj)) {
+                        if (interop.isMemberExisting(thisObj, member) && interop.isMemberReadable(thisObj, member)) {
+                            PropertyDescriptor desc = PropertyDescriptor.createData(
+                                            toJSType.executeWithTarget(interop.readMember(thisObj, member)),
+                                            !interop.isMemberInternal(thisObj, member),
+                                            interop.isMemberWritable(thisObj, member),
+                                            interop.isMemberRemovable(thisObj, member));
+                            return JSRuntime.fromPropertyDescriptor(desc, getContext());
+                        }
+                    }
+                    long index = JSRuntime.propertyNameToArrayIndex(member);
+                    if (JSRuntime.isArrayIndex(index) && interop.hasArrayElements(thisObj)) {
+                        if (interop.isArrayElementExisting(thisObj, index) && interop.isArrayElementReadable(thisObj, index)) {
+                            PropertyDescriptor desc = PropertyDescriptor.createData(
+                                            toJSType.executeWithTarget(interop.readArrayElement(thisObj, index)),
+                                            true,
+                                            interop.isArrayElementWritable(thisObj, index),
+                                            interop.isArrayElementRemovable(thisObj, index));
+                            return JSRuntime.fromPropertyDescriptor(desc, getContext());
+                        }
+                    }
+                } catch (InteropException iex) {
+                }
+            }
+            return Undefined.instance;
+        }
+
+        @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
+        protected DynamicObject getDefault(Object thisObj, Object property) {
+            TruffleObject object = toTruffleObject(thisObj);
+            assert JSObject.isJSObject(object);
+            return getJSObject((DynamicObject) object, property);
+        }
+
     }
 
     public abstract static class ObjectGetOwnPropertyDescriptorsNode extends ObjectOperation {
@@ -306,27 +345,79 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        @Specialization
-        protected DynamicObject getOwnPropertyDescriptors(Object obj) {
-            TruffleObject thisTObj = toTruffleObject(obj);
-            if (JSObject.isJSObject(thisTObj)) {
-                DynamicObject thisObj = (DynamicObject) thisTObj;
-                DynamicObject retObj = JSUserObject.create(getContext());
+        @Specialization(guards = {"isJSObject(thisObj)"})
+        protected DynamicObject getJSObject(DynamicObject thisObj) {
+            DynamicObject retObj = JSUserObject.create(getContext());
 
-                for (Iterator<Object> iterator = Boundaries.iterator(JSObject.ownPropertyKeys(thisObj, classProfile)); Boundaries.iteratorHasNext(iterator);) {
-                    Object key = Boundaries.iteratorNext(iterator);
-                    assert JSRuntime.isPropertyKey(key);
-                    PropertyDescriptor desc = getOwnPropertyNode.execute(thisObj, key);
-                    if (desc != null) {
-                        DynamicObject propDesc = JSRuntime.fromPropertyDescriptor(desc, getContext());
-                        retObj.define(key, propDesc, JSAttributes.configurableEnumerableWritable());
+            for (Iterator<Object> iterator = Boundaries.iterator(JSObject.ownPropertyKeys(thisObj, classProfile)); Boundaries.iteratorHasNext(iterator);) {
+                Object key = Boundaries.iteratorNext(iterator);
+                assert JSRuntime.isPropertyKey(key);
+                PropertyDescriptor desc = getOwnPropertyNode.execute(thisObj, key);
+                if (desc != null) {
+                    DynamicObject propDesc = JSRuntime.fromPropertyDescriptor(desc, getContext());
+                    retObj.define(key, propDesc, JSAttributes.configurableEnumerableWritable());
+                }
+            }
+            return retObj;
+        }
+
+        @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
+        protected DynamicObject getForeignObject(TruffleObject thisObj,
+                        @CachedLibrary("thisObj") InteropLibrary interop,
+                        @CachedLibrary(limit = "3") InteropLibrary members,
+                        @Cached("create()") JSForeignToJSTypeNode toJSType) {
+            DynamicObject result = JSUserObject.create(getContext());
+
+            try {
+                if (interop.hasMembers(thisObj)) {
+                    Object keysObj = interop.getMembers(thisObj);
+                    long size = members.getArraySize(keysObj);
+                    if (size < 0 || size >= Integer.MAX_VALUE) {
+                        throw Errors.createRangeErrorInvalidArrayLength();
+                    }
+                    for (int i = 0; i < size; i++) {
+                        String member = (String) members.readArrayElement(keysObj, i);
+                        if (interop.isMemberReadable(thisObj, member)) {
+                            PropertyDescriptor desc = PropertyDescriptor.createData(
+                                            toJSType.executeWithTarget(interop.readMember(thisObj, member)),
+                                            !interop.isMemberInternal(thisObj, member),
+                                            interop.isMemberWritable(thisObj, member),
+                                            interop.isMemberRemovable(thisObj, member));
+                            DynamicObject propDesc = JSRuntime.fromPropertyDescriptor(desc, getContext());
+                            result.define(member, propDesc, JSAttributes.configurableEnumerableWritable());
+                        }
                     }
                 }
-                return retObj;
-            } else {
-                return Undefined.instance;
+                if (interop.hasArrayElements(thisObj)) {
+                    long size = interop.getArraySize(thisObj);
+                    if (size < 0 || size >= Integer.MAX_VALUE) {
+                        throw Errors.createRangeErrorInvalidArrayLength();
+                    }
+                    for (long i = 0; i < size; i++) {
+                        if (interop.isArrayElementExisting(thisObj, i) && interop.isArrayElementReadable(thisObj, i)) {
+                            PropertyDescriptor desc = PropertyDescriptor.createData(
+                                            toJSType.executeWithTarget(interop.readArrayElement(thisObj, i)),
+                                            true,
+                                            interop.isArrayElementWritable(thisObj, i),
+                                            interop.isArrayElementRemovable(thisObj, i));
+                            DynamicObject propDesc = JSRuntime.fromPropertyDescriptor(desc, getContext());
+                            result.define(Boundaries.stringValueOf(i), propDesc, JSAttributes.configurableEnumerableWritable());
+                        }
+                    }
+                }
+            } catch (InteropException iex) {
             }
+
+            return result;
         }
+
+        @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
+        protected DynamicObject getDefault(Object thisObj) {
+            TruffleObject object = toTruffleObject(thisObj);
+            assert JSObject.isJSObject(object);
+            return getJSObject((DynamicObject) object);
+        }
+
     }
 
     public abstract static class ObjectGetOwnPropertyNamesOrSymbolsNode extends ObjectOperation {
