@@ -77,13 +77,13 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
 def python_cmd():
-    if _currentOs is 'windows':
+    if _currentOs == 'windows':
         return 'python.exe'
     else:
         return join(_suite.mxDir, 'python2', 'python')
 
 def _build(args, debug, shared_library, parallelism, debug_mode, output_dir):
-    if _currentOs is 'windows':
+    if _currentOs == 'windows':
         _mxrun([join('.', 'vcbuild.bat'),
                 'projgen',
                 'no-cctest',
@@ -149,7 +149,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
 
     def clean(self, forBuild=False):
         if not forBuild:
-            if _currentOs is 'windows':
+            if _currentOs == 'windows':
                 mx.run([join('.', 'vcbuild.bat'),
                         'clean',
                         'java-home', _getJdkHome()
@@ -254,11 +254,11 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
 
         macroFiles = []
         # performance counters are enabled by default only on Windows
-        if _currentOs is not 'windows':
+        if _currentOs != 'windows':
             macroFiles.append(join('src', 'noperfctr_macros.py'))
         # DTrace is disabled explicitly by the --without-dtrace option
         # ETW is enabled by default only on Windows
-        if _currentOs is not 'windows':
+        if _currentOs != 'windows':
             macroFiles.append(join('src', 'notrace_macros.py'))
 
         mx.run([python_cmd(), join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
@@ -361,7 +361,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 def makeInNodeEnvironment(args):
     argGroups = setupNodeEnvironment(args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(argGroups[1]))
-    if _currentOs is 'windows':
+    if _currentOs == 'windows':
         _mxrun([join('.', 'vcbuild.bat'),
                 'noprojgen',
                 'nobuild',
@@ -387,7 +387,7 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
     mode, vmArgs, progArgs = setupNodeEnvironment(args, add_graal_vm_args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
 
-    if _currentOs is 'windows':
+    if _currentOs == 'windows':
         return [join(_suite.dir, mode, 'node.exe')] + progArgs
     else:
         return [join(_suite.dir, 'out', mode, 'node')] + progArgs
