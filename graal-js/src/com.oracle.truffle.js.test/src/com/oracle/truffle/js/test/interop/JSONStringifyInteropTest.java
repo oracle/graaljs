@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
 import java.util.Map;
@@ -65,6 +66,24 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
 
 public class JSONStringifyInteropTest {
+
+    @Test
+    public void testForeignExecutable() {
+        try (Context context = Context.newBuilder(ID).allowAllAccess(true).build()) {
+            Value result = context.eval(ID, "JSON.stringify(java.lang.Class.forName) === undefined");
+            assertTrue(result.isBoolean());
+            assertTrue(result.asBoolean());
+
+            result = context.eval(ID, "JSON.stringify([java.lang.Class.forName])");
+            assertTrue(result.isString());
+            assertEquals("[null]", result.asString());
+
+            result = context.eval(ID, "JSON.stringify(new java.awt.Point(42, 211))");
+            assertTrue(result.isString());
+            assertEquals("{\"x\":42,\"y\":211}", result.asString());
+        }
+    }
+
     @Test
     public void testNonReadableMembers() {
         try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).build()) {
