@@ -66,7 +66,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -111,7 +110,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     private static boolean isStringifyable(Object value) {
-        return value != Undefined.instance && !JSFunction.isJSFunction(value) && !(value instanceof Symbol);
+        // values that are not stringifyable are replaced by undefined in jsonStrPrepare()
+        return value != Undefined.instance;
     }
 
     @TruffleBoundary
@@ -206,11 +206,14 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         if (data.getReplacerFnObj() != null) {
             value = JSRuntime.call(data.getReplacerFnObj(), holder, new Object[]{JSRuntime.toPropertyKey(key), value});
         }
-        if (JSObject.isJSObject(value)) {
-            return jsonStrPrepareJSObject((DynamicObject) value);
-        } else {
-            return value;
+        if (value instanceof TruffleObject) {
+            if (JSObject.isJSObject(value)) {
+                return jsonStrPrepareJSObject((DynamicObject) value);
+            } else if (value instanceof Symbol || (JSRuntime.isForeignObject(value) && InteropLibrary.getFactory().getUncached(value).isExecutable(value))) {
+                return Undefined.instance;
+            }
         }
+        return value;
     }
 
     private static Object jsonStrPrepareJSObject(DynamicObject valueObj) {
