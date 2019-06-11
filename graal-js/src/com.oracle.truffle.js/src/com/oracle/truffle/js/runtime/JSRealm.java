@@ -1228,7 +1228,7 @@ public class JSRealm {
 
             // $ENV
             DynamicObject envObj = JSUserObject.create(context, this);
-            Map<String, String> sysenv = System.getenv();
+            Map<String, String> sysenv = getEnv().getEnvironment();
             for (Map.Entry<String, String> entry : sysenv.entrySet()) {
                 JSObjectUtil.putDataProperty(context, envObj, entry.getKey(), entry.getValue(), JSAttributes.configurableEnumerableWritable());
             }

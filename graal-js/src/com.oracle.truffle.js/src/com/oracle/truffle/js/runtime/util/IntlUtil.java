@@ -364,7 +364,7 @@ public final class IntlUtil {
 
                     String dataPath = System.getProperty(ICU4J_DATA_PATH_SYS_PROPERTY);
                     if (dataPath == null || dataPath.isEmpty()) {
-                        dataPath = System.getenv("ICU4J_DATA_PATH");
+                        dataPath = ctx.getRealm().getEnv().getEnvironment().get("ICU4J_DATA_PATH");
                         if (dataPath == null || dataPath.isEmpty()) {
                             try {
                                 Path homePath = Paths.get(ctx.getLanguage().getTruffleLanguageHome());
