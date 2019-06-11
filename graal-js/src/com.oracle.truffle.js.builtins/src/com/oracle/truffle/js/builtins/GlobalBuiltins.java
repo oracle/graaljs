@@ -70,6 +70,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -97,6 +98,7 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNode
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -406,39 +408,43 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary
         private Object execIntl(String cmd, String input) {
+            JSRealm realm = getContext().getRealm();
+            TruffleLanguage.Env env = realm.getEnv();
+            DynamicObject globalObj = realm.getGlobalObject();
+            StringTokenizer tok = new StringTokenizer(cmd);
+            String[] cmds = new String[tok.countTokens()];
+            for (int i = 0; tok.hasMoreTokens(); i++) {
+                cmds[i] = tok.nextToken();
+            }
+
+            int exitCode = 0;
+            String outStr = "";
+            String errStr = "";
+            Process process = null;
+            IOException[] exception = new IOException[2];
             try {
-                DynamicObject globalObj = getContext().getRealm().getGlobalObject();
+                TruffleProcessBuilder builder = env.newProcessBuilder(cmds);
 
-                StringTokenizer tok = new StringTokenizer(cmd);
-                String[] cmds = new String[tok.countTokens()];
-                for (int i = 0; tok.hasMoreTokens(); i++) {
-                    cmds[i] = tok.nextToken();
-                }
-
-                ProcessBuilder builder = new ProcessBuilder(cmds);
-
-                Object env = JSObject.get(globalObj, "$ENV");
-                if (env instanceof DynamicObject) {
-                    DynamicObject dynEnvObj = (DynamicObject) env;
+                Object envObj = JSObject.get(globalObj, "$ENV");
+                if (JSGuards.isJSObject(envObj)) {
+                    DynamicObject dynEnvObj = (DynamicObject) envObj;
                     Object pwd = JSObject.get(dynEnvObj, "PWD");
                     if (pwd != Undefined.instance) {
-                        builder.directory(new File(JSRuntime.toString(pwd)));
+                        builder.directory(env.getTruffleFile(JSRuntime.toString(pwd)));
                     }
 
-                    Map<String, String> environment = builder.environment();
-                    environment.clear();
+                    builder.clearEnvironment(true);
                     for (String key : JSObject.enumerableOwnNames(dynEnvObj)) {
-                        environment.put(key, JSRuntime.toString(JSObject.get(dynEnvObj, key)));
+                        builder.environment(key, JSRuntime.toString(JSObject.get(dynEnvObj, key)));
                     }
                 }
 
-                Process process = builder.start();
-                IOException[] exception = new IOException[2];
+                process = builder.start();
                 StringBuilder outBuffer = new StringBuilder();
                 StringBuilder errBuffer = new StringBuilder();
 
-                Thread outThread = captureThread(exception, 0, outBuffer, process.getInputStream(), "$EXEC output");
-                Thread errThread = captureThread(exception, 1, errBuffer, process.getErrorStream(), "$EXEC error");
+                Thread outThread = captureThread(env, exception, 0, outBuffer, process.getInputStream());
+                Thread errThread = captureThread(env, exception, 1, errBuffer, process.getErrorStream());
 
                 outThread.start();
                 errThread.start();
@@ -450,36 +456,37 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 } catch (IOException ex) {
                 }
 
-                int exitCode = process.waitFor();
+                exitCode = process.waitFor();
                 outThread.join();
                 errThread.join();
 
-                String outStr = outBuffer.toString();
-
-                JSObject.set(globalObj, "$OUT", outStr);
-                JSObject.set(globalObj, "$ERR", errBuffer.toString());
-                JSObject.set(globalObj, "$EXIT", exitCode);
-
-                for (int i = 0; i < exception.length; i++) {
-                    if (exception[i] != null) {
-                        throw Errors.createTypeError(exception[i].getMessage());
-                    }
-                }
-                return outStr;
-            } catch (IOException e) {
-                throw Errors.createTypeError(e.getMessage());
+                outStr = outBuffer.toString();
+                errStr = errBuffer.toString();
             } catch (InterruptedException e) {
-                throw rethrow(e);
+                if (process.isAlive()) {
+                    process.destroy();
+                }
+                if (exitCode == 0) {
+                    exitCode = process.exitValue();
+                }
+            } catch (IOException | SecurityException e) {
+                throw Errors.createError(e.getMessage());
             }
+
+            JSObject.set(globalObj, "$OUT", outStr);
+            JSObject.set(globalObj, "$ERR", errStr);
+            JSObject.set(globalObj, "$EXIT", exitCode);
+
+            for (int i = 0; i < exception.length; i++) {
+                if (exception[i] != null) {
+                    throw Errors.createTypeError(exception[i].getMessage());
+                }
+            }
+            return outStr;
         }
 
-        @SuppressWarnings({"unchecked"})
-        static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
-            throw (E) ex;
-        }
-
-        private static Thread captureThread(IOException[] exception, int exceptionIdx, StringBuilder outBuffer, InputStream stream, String name) {
-            Thread thread = new Thread(new Runnable() {
+        private static Thread captureThread(TruffleLanguage.Env env, IOException[] exception, int exceptionIdx, StringBuilder outBuffer, InputStream stream) {
+            return env.createThread(new Runnable() {
                 @Override
                 public void run() {
                     char[] buffer = new char[1024];
@@ -491,8 +498,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                         exception[exceptionIdx] = ex;
                     }
                 }
-            }, name);
-            return thread;
+            }, env.newContextBuilder().build());
         }
     }
 
