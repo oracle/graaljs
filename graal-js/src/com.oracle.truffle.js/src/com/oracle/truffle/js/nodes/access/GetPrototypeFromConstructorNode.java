@@ -46,7 +46,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.CompilableFunction;
 
@@ -85,7 +84,7 @@ public class GetPrototypeFromConstructorNode extends JavaScriptNode {
             assert JSRuntime.isObject(proto);
             return (DynamicObject) proto;
         } else {
-            JSRealm realm = JSFunction.getRealm(constructor);
+            JSRealm realm = JSRuntime.getFunctionRealm(constructor, getPrototypeNode.getContext().getRealm());
             return intrinsicDefaultProto.apply(realm);
         }
     }
