@@ -63,7 +63,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectAssignNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectCreateNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectDefinePropertiesNodeGen;
@@ -94,6 +93,7 @@ import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
+import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -887,21 +887,24 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class ObjectAssignNode extends JSArrayOperation {
+    public abstract static class ObjectAssignNode extends ObjectOperation {
 
-        private final BranchProfile listProfile = BranchProfile.create();
-        private final BranchProfile elementProfile = BranchProfile.create();
-        private final JSClassProfile classProfile = JSClassProfile.create();
-        private final BranchProfile notAJSObjectBranch = BranchProfile.create();
-        @Child private JSGetOwnPropertyNode getOwnPropertyNode;
+        protected static final boolean STRICT = true;
 
         public ObjectAssignNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected TruffleObject assign(Object target, Object[] sources) {
-            TruffleObject to = toObject(target);
+        protected Object assign(Object target, Object[] sources,
+                        @Cached("create(getContext())") ReadElementNode read,
+                        @Cached("create(getContext(), STRICT)") WriteElementNode write,
+                        @Cached JSGetOwnPropertyNode getOwnProperty,
+                        @Cached BranchProfile listProfile,
+                        @Cached BranchProfile elementProfile,
+                        @Cached JSClassProfile classProfile,
+                        @Cached BranchProfile notAJSObjectBranch) {
+            Object to = toTruffleObject(target);
             if (sources.length == 0) {
                 return to;
             }
@@ -911,24 +914,17 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     DynamicObject from = JSRuntime.expectJSObject(toObject(o), notAJSObjectBranch);
                     for (Iterator<Object> iterator = Boundaries.iterator(JSObject.ownPropertyKeys(from, classProfile)); Boundaries.iteratorHasNext(iterator);) {
                         Object nextKey = Boundaries.iteratorNext(iterator);
-                        PropertyDescriptor desc = getOwnProperty(from, nextKey);
+                        assert JSRuntime.isPropertyKey(nextKey);
+                        PropertyDescriptor desc = getOwnProperty.execute(from, nextKey);
                         if (desc != null && desc.getEnumerable()) {
                             elementProfile.enter();
-                            Object propValue = readAny(from, nextKey);
-                            write(to, nextKey, propValue);
+                            Object propValue = read.executeWithTargetAndIndex(from, nextKey);
+                            write.executeWithTargetAndIndexAndValue(to, nextKey, propValue);
                         }
                     }
                 }
             }
             return to;
-        }
-
-        private PropertyDescriptor getOwnProperty(DynamicObject obj, Object key) {
-            if (getOwnPropertyNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getOwnPropertyNode = insert(JSGetOwnPropertyNode.create());
-            }
-            return getOwnPropertyNode.execute(obj, key);
         }
     }
 
