@@ -5389,12 +5389,30 @@ public class Parser extends AbstractParser {
         }
     }
 
+    private void verifyContainsNeitherYieldNorAwaitExpression(Expression expression) {
+        expression.accept(new NodeVisitor<LexicalContext>(new LexicalContext()) {
+            @Override
+            public boolean enterUnaryNode(UnaryNode unaryNode) {
+                switch (unaryNode.tokenType()) {
+                    case AWAIT:
+                    case YIELD:
+                    case YIELD_STAR:
+                        throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), unaryNode.getToken());
+                    default:
+                        return super.enterUnaryNode(unaryNode);
+                }
+            }
+        });
+    }
+
     private void convertArrowFunctionParameterList(Expression paramListExpr, ParserContextFunctionNode function) {
-        final int functionLine = function.getLineNumber();
         if (paramListExpr == null) {
             // empty parameter list, i.e. () =>
             return;
-        } else if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringLhs(paramListExpr) || paramListExpr.isTokenType(SPREAD_ARGUMENT)) {
+        }
+        verifyContainsNeitherYieldNorAwaitExpression(paramListExpr);
+        final int functionLine = function.getLineNumber();
+        if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringLhs(paramListExpr) || paramListExpr.isTokenType(SPREAD_ARGUMENT)) {
             convertArrowParameter(paramListExpr, 0, functionLine, function);
         } else if (paramListExpr instanceof BinaryNode && Token.descType(paramListExpr.getToken()) == COMMARIGHT) {
             ArrayList<Expression> params = new ArrayList<>();

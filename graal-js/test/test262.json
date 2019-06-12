@@ -1988,9 +1988,6 @@
     "filePath" : "language/eval-code/indirect/lex-env-heritage.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/arrow-function/param-dflt-yield-expr.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/arrow-function/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -2033,10 +2030,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/async-arrow-function/await-as-param-ident-nested-arrow-parameter-position.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/async-arrow-function/await-as-param-nested-arrow-body-position.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
