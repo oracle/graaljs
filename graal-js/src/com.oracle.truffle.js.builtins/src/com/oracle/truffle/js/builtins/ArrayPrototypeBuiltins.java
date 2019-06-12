@@ -63,6 +63,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -1132,8 +1133,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return isArray && !isArrayWithHoles((DynamicObject) thisObj, arrayTypeProfile, isArray);
         }
 
-        @Specialization(guards = "isFastPath(thisObj)")
-        protected double unshift(DynamicObject thisObj, Object[] args) {
+        private long unshiftHoleless(DynamicObject thisObj, Object[] args) {
             long len = getLength(thisObj);
             if (getContext().getEcmaScriptVersion() <= 5 || args.length > 0) {
                 for (long i = len - 1; i >= 0; i--) {
@@ -1143,8 +1143,25 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     write(thisObj, i, args[i]);
                 }
             }
-            setLength(thisObj, len + args.length);
-            return len + args.length;
+            long newLen = len + args.length;
+            setLength(thisObj, newLen);
+            return newLen;
+        }
+
+        @Specialization(guards = "isFastPath(thisObj)", rewriteOn = UnexpectedResultException.class)
+        protected int unshiftInt(DynamicObject thisObj, Object[] args) throws UnexpectedResultException {
+            long newLen = unshiftHoleless(thisObj, args);
+            if (JSRuntime.longIsRepresentableAsInt(newLen)) {
+                return (int) newLen;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new UnexpectedResultException((double) newLen);
+            }
+        }
+
+        @Specialization(guards = "isFastPath(thisObj)", replaces = "unshiftInt")
+        protected double unshift(DynamicObject thisObj, Object[] args) {
+            return unshiftHoleless(thisObj, args);
         }
 
         @Specialization(guards = "!isFastPath(thisObjParam)")
@@ -1177,8 +1194,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     write(thisObj, i, args[i]);
                 }
             }
-            setLength(thisObj, len + args.length);
-            return len + args.length;
+            long newLen = len + args.length;
+            setLength(thisObj, newLen);
+            return newLen;
         }
     }
 
