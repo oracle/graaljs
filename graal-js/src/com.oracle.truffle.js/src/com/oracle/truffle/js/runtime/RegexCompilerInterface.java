@@ -54,6 +54,9 @@ public final class RegexCompilerInterface {
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG = "Invalid regular expression flags";
     private static final String UNSUPPORTED_REG_EXP_FLAG_MSG_NASHORN = "Unsupported RegExp flag: %c";
 
+    private RegexCompilerInterface() {
+    }
+
     public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.CompileRegexNode compileRegexNode) {
         // RegexLanguage does its own validation of the flags. This call to validateFlags only
         // serves the purpose of mimicking the error messages of Nashorn and V8.
