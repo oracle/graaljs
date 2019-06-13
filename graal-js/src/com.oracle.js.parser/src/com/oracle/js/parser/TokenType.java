@@ -301,7 +301,7 @@ public enum TokenType {
         return next;
     }
 
-    public void setNext(final TokenType next) {
+    void setNext(final TokenType next) {
         this.next = next;
     }
 
