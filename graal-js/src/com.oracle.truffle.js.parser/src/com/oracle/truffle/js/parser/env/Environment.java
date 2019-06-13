@@ -63,7 +63,6 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
-import com.oracle.truffle.js.nodes.control.RuntimeErrorNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -316,7 +315,7 @@ public abstract class Environment {
                 if (access == WrapAccess.Delete) {
                     scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
                 } else if (access == WrapAccess.Write) {
-                    assert delegateNode instanceof WriteNode || delegateNode instanceof RuntimeErrorNode : delegateNode;
+                    assert delegateNode instanceof WriteNode : delegateNode;
                     scopeAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
                 } else if (access == WrapAccess.Read) {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
@@ -725,11 +724,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            if (isStrictMode()) {
-                return factory.createThrowError(JSErrorType.TypeError, "Assignment to immutable binding");
-            } else {
-                return rhs;
-            }
+            return factory.createWriteConstantVariable(rhs, isStrictMode());
         }
     }
 
@@ -906,7 +901,8 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return wrapClosure.apply(wrappee.createWriteNode(rhs), WrapAccess.Write);
+            JavaScriptNode writeNode = wrappee.isConst() ? factory.createWriteConstantVariable(rhs, true) : wrappee.createWriteNode(rhs);
+            return wrapClosure.apply(writeNode, WrapAccess.Write);
         }
 
         @Override

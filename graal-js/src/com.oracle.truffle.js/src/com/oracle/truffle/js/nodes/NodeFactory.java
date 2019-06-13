@@ -57,6 +57,7 @@ import com.oracle.truffle.js.annotations.GenerateProxy;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorNextNode;
 import com.oracle.truffle.js.nodes.access.CompoundWriteElementNode;
+import com.oracle.truffle.js.nodes.access.ConstantVariableWriteNode;
 import com.oracle.truffle.js.nodes.access.CopyDataPropertiesNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalFunctionNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
@@ -657,6 +658,10 @@ public class NodeFactory {
 
     public WritePropertyNode createWriteProperty(JavaScriptNode target, String name, JavaScriptNode rhs, boolean isGlobal, JSContext context, boolean isStrict) {
         return WritePropertyNode.create(target, name, rhs, isGlobal, context, isStrict);
+    }
+
+    public ConstantVariableWriteNode createWriteConstantVariable(JavaScriptNode rhs, boolean doThrow) {
+        return ConstantVariableWriteNode.create(rhs, doThrow);
     }
 
     public JSTargetableNode createReadGlobalProperty(JSContext context, String name) {
