@@ -61,7 +61,6 @@ import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSParserOptions;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
@@ -96,7 +95,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     private static ScriptNode translateScript(NodeFactory nodeFactory, JSContext context, Environment env, Source source, boolean isParentStrict, boolean isEval, boolean evalInGlobalScope) {
-        FunctionNode parserFunctionNode = GraalJSParserHelper.parseScript(context, source, ((GraalJSParserOptions) context.getParserOptions()).putStrict(isParentStrict), isEval, evalInGlobalScope);
+        FunctionNode parserFunctionNode = GraalJSParserHelper.parseScript(context, source, context.getParserOptions().putStrict(isParentStrict), isEval, evalInGlobalScope);
         Source src = source;
         String explicitURL = parserFunctionNode.getSource().getExplicitURL();
         if (explicitURL != null) {
@@ -121,7 +120,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     public static JSModuleRecord translateModule(NodeFactory factory, JSContext context, Source source, JSModuleLoader moduleLoader) {
-        FunctionNode parsed = GraalJSParserHelper.parseModule(context, source, ((GraalJSParserOptions) context.getParserOptions()).putStrict(true));
+        FunctionNode parsed = GraalJSParserHelper.parseModule(context, source, context.getParserOptions().putStrict(true));
         JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, null, true, parsed.getModule());
         JSModuleRecord moduleRecord = new JSModuleRecord(parsed.getModule(), context, moduleLoader, source, () -> translator.translateModule(parsed));
         translator.scriptOrModule = moduleRecord;

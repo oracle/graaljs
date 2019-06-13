@@ -129,7 +129,12 @@ public final class SymbolFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @TruffleBoundary
         private static Object getKeyFor(Map<String, Symbol> symbolRegistry, Symbol symbol) {
-            return symbolRegistry.entrySet().stream().filter(entry -> entry.getValue().equals(symbol)).findFirst().<Object> map(entry -> entry.getKey()).orElse(Undefined.instance);
+            for (Map.Entry<String, Symbol> entry : symbolRegistry.entrySet()) {
+                if (symbol.equals(entry.getValue())) {
+                    return entry.getKey();
+                }
+            }
+            return Undefined.instance;
         }
 
         @TruffleBoundary

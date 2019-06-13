@@ -44,8 +44,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Stack;
+import java.util.Deque;
+import java.util.List;
 import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -115,8 +117,8 @@ public abstract class FineGrainedAccessTest {
 
     protected Context context;
     private boolean collecting;
-    private ArrayList<Event> events;
-    private Stack<JavaScriptNode> stack;
+    private List<Event> events;
+    private Deque<JavaScriptNode> stack;
     protected Instrumenter instrumenter;
     protected TestingExecutionInstrument instrument;
     private ExecutionEventNodeFactory factory;
@@ -248,7 +250,7 @@ public abstract class FineGrainedAccessTest {
     protected ExecutionEventNodeFactory getTestFactory() {
         return new ExecutionEventNodeFactory() {
 
-            private Stack<Integer> inputEvents = new Stack<>();
+            private Deque<Integer> inputEvents = new ArrayDeque<>();
 
             @Override
             public ExecutionEventNode create(EventContext c) {
@@ -381,7 +383,7 @@ public abstract class FineGrainedAccessTest {
         instrument = context.getEngine().getInstruments().get(TestingExecutionInstrument.ID).lookup(TestingExecutionInstrument.class);
         instrumenter = instrument.getEnvironment().getInstrumenter();
         events = new ArrayList<>();
-        stack = new Stack<>();
+        stack = new ArrayDeque<>();
         factory = getTestFactory();
         context.enter();
     }

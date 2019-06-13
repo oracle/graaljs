@@ -45,6 +45,9 @@ package com.oracle.truffle.js.runtime.joni;
  */
 public final class PatternAnalyzer {
 
+    private PatternAnalyzer() {
+    }
+
     public static boolean containsGroup(String pattern) {
         boolean charClass = false;
         int i = 0;

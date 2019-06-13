@@ -62,7 +62,7 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 
 public final class JSContextOptions {
-    @CompilationFinal private ParserOptions parserOptions;
+    @CompilationFinal private JSParserOptions parserOptions;
     @CompilationFinal private OptionValues optionValues;
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
@@ -329,16 +329,21 @@ public final class JSContextOptions {
     @Option(name = LOCALE_NAME, category = OptionCategory.EXPERT, help = "Use a specific default locale for locale-sensitive operations.") //
     public static final OptionKey<String> LOCALE = new OptionKey<>("");
 
-    public JSContextOptions(ParserOptions parserOptions) {
+    JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
-        cacheOptions();
+        this.optionValues = optionValues;
+        setOptionValues(optionValues);
     }
 
-    public ParserOptions getParserOptions() {
+    public static JSContextOptions fromOptionValues(OptionValues optionValues) {
+        return new JSContextOptions(new JSParserOptions(), optionValues);
+    }
+
+    public JSParserOptions getParserOptions() {
         return parserOptions;
     }
 
-    public void setParserOptions(ParserOptions parserOptions) {
+    public void setParserOptions(JSParserOptions parserOptions) {
         CompilerAsserts.neverPartOfCompilation();
         this.parserOptions = parserOptions;
     }
@@ -351,101 +356,73 @@ public final class JSContextOptions {
     }
 
     private void cacheOptions() {
-        this.ecmascriptVersion = readIntegerOption(ECMASCRIPT_VERSION, ECMASCRIPT_VERSION_NAME);
-        this.annexB = readBooleanOption(ANNEX_B, ANNEX_B_NAME);
-        this.intl402 = readBooleanOption(INTL_402, INTL_402_NAME);
-        this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME);
+        this.ecmascriptVersion = readIntegerOption(ECMASCRIPT_VERSION);
+        this.annexB = readBooleanOption(ANNEX_B);
+        this.intl402 = readBooleanOption(INTL_402);
+        this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT);
         this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, msg -> {
             arraySortInheritedCyclicAssumption.invalidate(msg);
             arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
         });
-        this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER, SHARED_ARRAY_BUFFER_NAME);
+        this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER);
         this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, msg -> {
             v8CompatibilityModeCyclicAssumption.invalidate(msg);
             v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
         });
-        this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN, V8_REALM_BUILTIN_NAME);
-        this.v8LegacyConst = readBooleanOption(V8_LEGACY_CONST, V8_LEGACY_CONST_NAME);
-        this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE, NASHORN_COMPATIBILITY_MODE_NAME);
+        this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN);
+        this.v8LegacyConst = readBooleanOption(V8_LEGACY_CONST);
+        this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE);
         this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, msg -> {
             directByteBufferCyclicAssumption.invalidate(msg);
             directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
         });
-        this.parseOnly = readBooleanOption(PARSE_ONLY, PARSE_ONLY_NAME);
-        this.debug = readBooleanOption(DEBUG_BUILTIN, DEBUG_BUILTIN_NAME);
+        this.parseOnly = readBooleanOption(PARSE_ONLY);
+        this.debug = readBooleanOption(DEBUG_BUILTIN);
         this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, msg -> {
             timerResolutionCyclicAssumption.invalidate(msg);
             timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
         });
-        this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK, AGENT_CAN_BLOCK_NAME);
-        this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION, AWAIT_OPTIMIZATION_NAME);
-        this.disableEval = readBooleanOption(DISABLE_EVAL, DISABLE_EVAL_NAME);
-        this.disableWith = readBooleanOption(DISABLE_WITH, DISABLE_WITH_NAME);
-        this.regexDumpAutomata = readBooleanOption(REGEX_DUMP_AUTOMATA, REGEX_DUMP_AUTOMATA_NAME);
-        this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION, REGEX_STEP_EXECUTION_NAME);
-        this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER, REGEX_ALWAYS_EAGER_NAME);
-        this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT, SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_NAME);
-        this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE, FOREIGN_OBJECT_PROTOTYPE_NAME);
-        this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT, FUNCTION_ARGUMENTS_LIMIT_NAME);
-        this.test262Mode = readBooleanOption(TEST262_MODE, TEST262_MODE_NAME);
-        this.testV8Mode = readBooleanOption(TESTV8_MODE, TESTV8_MODE_NAME);
-        this.validateRegExpLiterals = readBooleanOption(VALIDATE_REGEXP_LITERALS, VALIDATE_REGEXP_LITERALS_NAME);
+        this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK);
+        this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION);
+        this.disableEval = readBooleanOption(DISABLE_EVAL);
+        this.disableWith = readBooleanOption(DISABLE_WITH);
+        this.regexDumpAutomata = readBooleanOption(REGEX_DUMP_AUTOMATA);
+        this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION);
+        this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER);
+        this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT);
+        this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE);
+        this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT);
+        this.test262Mode = readBooleanOption(TEST262_MODE);
+        this.testV8Mode = readBooleanOption(TESTV8_MODE);
+        this.validateRegExpLiterals = readBooleanOption(VALIDATE_REGEXP_LITERALS);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
-        boolean newValue = readBooleanOption(key, name);
+        boolean newValue = readBooleanOption(key);
         if (oldValue != newValue) {
             invalidate.accept(String.format("Option %s was changed from %b to %b.", name, oldValue, newValue));
         }
         return newValue;
     }
 
-    private boolean readBooleanOption(OptionKey<Boolean> key, String name) {
-        if (optionValues == null) {
-            return readBooleanFromSystemProperty(key, name);
-        } else {
-            return key.getValue(optionValues);
-        }
+    private boolean readBooleanOption(OptionKey<Boolean> key) {
+        return key.getValue(optionValues);
     }
 
-    private static boolean readBooleanFromSystemProperty(OptionKey<Boolean> key, String name) {
-        String sysProp = System.getProperty("polyglot." + name);
-        if (sysProp != null) {
-            return sysProp.equalsIgnoreCase("true");
-        }
-        return key.getDefaultValue();
-    }
-
-    private int readIntegerOption(OptionKey<Integer> key, String name) {
-        if (optionValues == null) {
-            return readIntegerFromSystemProperty(key, name);
-        } else {
-            return key.getValue(optionValues);
-        }
-    }
-
-    private static int readIntegerFromSystemProperty(OptionKey<Integer> key, String name) {
-        return Integer.getInteger("polyglot." + name, key.getDefaultValue());
+    private int readIntegerOption(OptionKey<Integer> key) {
+        return key.getValue(optionValues);
     }
 
     private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Consumer<String> invalidate) {
-        long newValue = readLongOption(key, name);
+        long newValue = readLongOption(key);
         if (oldValue != newValue) {
             invalidate.accept(String.format("Option %s was changed from %d to %d.", name, oldValue, newValue));
         }
         return newValue;
     }
 
-    private long readLongOption(OptionKey<Long> key, String name) {
-        if (optionValues == null) {
-            return readLongFromSystemProperty(key, name);
-        } else {
-            return key.getValue(optionValues);
-        }
-    }
-
-    private static long readLongFromSystemProperty(OptionKey<Long> key, String name) {
-        return Long.getLong("polyglot." + name, key.getDefaultValue());
+    private long readLongOption(OptionKey<Long> key) {
+        return key.getValue(optionValues);
     }
 
     public static String helpWithDefault(String helpMessage, OptionKey<? extends Object> key) {

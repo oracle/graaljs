@@ -117,12 +117,13 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
                 return new ExecutionEventNode() {
 
                     private void log(String s) {
-                        String p = "";
+                        StringBuilder sb = new StringBuilder();
                         int d = depth;
                         while (d-- > 0) {
-                            p += "    ";
+                            sb.append("    ");
                         }
-                        System.out.println(p + s);
+                        sb.append(s);
+                        System.out.println(sb.toString());
                     }
 
                     private String getValueDescription(Object inputValue) {

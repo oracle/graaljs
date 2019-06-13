@@ -100,7 +100,6 @@ import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
-import com.oracle.truffle.js.runtime.GraalJSParserOptions;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -366,7 +365,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private synchronized JSContext initLanguageContext(Env env) {
         JSContext curContext = languageContext;
         if (curContext != null) {
-            assert curContext.getContextOptions().equals(toContextOptions(env.getOptions()));
+            assert curContext.getContextOptions().equals(JSContextOptions.fromOptionValues(env.getOptions()));
             return curContext;
         }
         JSContext newContext = newOrParentJSContext(env);
@@ -468,12 +467,6 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @Override
     protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
         return firstOptions.equals(newOptions);
-    }
-
-    private static JSContextOptions toContextOptions(OptionValues optionValues) {
-        JSContextOptions newOptions = new JSContextOptions(new GraalJSParserOptions());
-        newOptions.setOptionValues(optionValues);
-        return newOptions;
     }
 
     @Override

@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -219,13 +220,10 @@ public class TestV8Runnable extends TestRunnable {
             }
 
             suite.getActiveTests().remove(this);
-            String activeTestNames = "";
+            StringJoiner activeTestNames = new StringJoiner(", ");
             if (suite.getConfig().isVerbose()) {
                 for (TestRunnable test : suite.getActiveTests()) {
-                    if (activeTestNames.length() > 0) {
-                        activeTestNames += ", ";
-                    }
-                    activeTestNames += test.getName();
+                    activeTestNames.add(test.getName());
                 }
                 suite.logVerbose("Finished test: " + getName() + " after " + executionTime + " ms, active: " + activeTestNames);
             }

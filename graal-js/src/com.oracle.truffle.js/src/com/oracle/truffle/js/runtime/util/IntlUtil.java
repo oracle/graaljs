@@ -386,10 +386,10 @@ public final class IntlUtil {
 
     public static DynamicObject makePart(JSContext context, String type, String value, String unit) {
         DynamicObject p = JSUserObject.create(context);
-        JSObject.set(p, "type", type);
-        JSObject.set(p, "value", value);
+        JSObject.set(p, TYPE, type);
+        JSObject.set(p, VALUE, value);
         if (unit != null) {
-            JSObject.set(p, "unit", unit);
+            JSObject.set(p, UNIT, unit);
         }
         return p;
     }

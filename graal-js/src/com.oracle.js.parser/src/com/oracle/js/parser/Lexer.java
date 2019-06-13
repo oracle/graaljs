@@ -2044,7 +2044,7 @@ public class Lexer extends Scanner {
                 return Lexer.valueOfBigInt(source.getString(start, len - 1)); // number
             case FLOATING:
                 final String str = source.getString(start, len);
-                final double value = Double.valueOf(str);
+                final double value = Double.parseDouble(str);
                 if (str.indexOf('.') != -1) {
                     return value; // number
                 }

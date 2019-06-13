@@ -1617,7 +1617,7 @@ public class Parser extends AbstractParser {
             if (!isStatic && accessor && ((PropertyKey) key).getPropertyName().equals(CONSTRUCTOR_NAME)) {
                 throw error(AbstractParser.message("accessor.constructor"), key.getToken());
             }
-            if (isStatic && ((PropertyKey) key).getPropertyName().equals("prototype")) {
+            if (isStatic && ((PropertyKey) key).getPropertyName().equals(PROTOTYPE_NAME)) {
                 throw error(AbstractParser.message("static.prototype.method"), key.getToken());
             }
         }
@@ -1748,8 +1748,8 @@ public class Parser extends AbstractParser {
         if (isStrictMode) {
             if (bindingIdentifier) {
                 switch (ident.getName()) {
-                    case "eval":
-                    case "arguments":
+                    case EVAL_NAME:
+                    case ARGUMENTS_NAME:
                         throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
                     default:
                         break;
@@ -5363,7 +5363,7 @@ public class Parser extends AbstractParser {
                 st.accept(new NodeVisitor<LexicalContext>(new LexicalContext()) {
                     @Override
                     public boolean enterCallNode(CallNode callNode) {
-                        if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).getName().equals("eval")) {
+                        if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).getName().equals(EVAL_NAME)) {
                             current.setFlag(FunctionNode.HAS_EVAL);
                         }
                         return true;
