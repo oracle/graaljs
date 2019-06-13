@@ -382,7 +382,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         DynamicObject getter = realm.lookupFunction(CLASS_NAME, getterName);
 
         // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
-        String setterName = "set" + propertyName;
+        String setterName = "set " + propertyName;
         JSFunctionData setterData = ctx.getOrCreateBuiltinFunctionData(builtinKey,
                         (c) -> {
                             return JSFunctionData.createCallOnly(c, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(ctx.getLanguage(), null, null) {
