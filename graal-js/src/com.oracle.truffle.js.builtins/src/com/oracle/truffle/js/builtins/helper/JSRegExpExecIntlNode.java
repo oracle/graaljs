@@ -214,7 +214,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             Object compiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegexUnchecked(regExp, isJSRegExpNode.executeBoolean(regExp)));
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (doStaticResultUpdate && context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
-                context.getRealm().setStaticRegexResult(compiledRegex, input, lastIndex, result);
+                context.getRealm().setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
             }
             return result;
         }
@@ -321,7 +321,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
 
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
-                context.getRealm().setStaticRegexResult(compiledRegex, input, lastIndex, result);
+                context.getRealm().setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
             }
             if (match.profile(regexResultAccessor.isMatch(result))) {
                 if (stickyProfile.profile(sticky && regexResultAccessor.captureGroupStart(result, 0) != lastIndex)) {

@@ -1413,16 +1413,13 @@ public class JSRealm {
         lazyStaticRegexResultFromIndex = fromIndex;
     }
 
-    public void setStaticRegexResult(Object compiledRegex, String input, long fromIndex, Object result) {
+    public void setStaticRegexResult(JSContext context, Object compiledRegex, String input, long fromIndex, Object result) {
+        CompilerAsserts.partialEvaluationConstant(context);
         if (context.getRegExpStaticResultUnusedAssumption().isValid()) {
             setRegexResultLazy(compiledRegex, input, fromIndex);
         } else {
             setRegexResult(compiledRegex, input, result);
         }
-    }
-
-    public void switchToEagerStaticRegExpResults() {
-        context.getRegExpStaticResultUnusedAssumption().invalidate();
     }
 
     public OptionValues getOptions() {

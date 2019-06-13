@@ -736,7 +736,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
             } while (fromIndex < size);
             if (getContext().isOptionRegexpStaticResult() && matchStart >= 0) {
-                getContext().getRealm().setStaticRegexResult(tRegexCompiledRegex, str, matchStart, lastRegexResult);
+                getContext().getRealm().setStaticRegexResult(getContext(), tRegexCompiledRegex, str, matchStart, lastRegexResult);
             }
             if (matchStart != matchEnd || prevMatchEnd < size) {
                 write(array, arrayLength, Boundaries.substring(str, prevMatchEnd, size));
@@ -1046,7 +1046,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
             }
             if (getContext().isOptionRegexpStaticResult() && matchStart >= 0) {
-                getContext().getRealm().setStaticRegexResult(tRegexCompiledRegex, s, matchStart, lastRegexResult);
+                getContext().getRealm().setStaticRegexResult(getContext(), tRegexCompiledRegex, s, matchStart, lastRegexResult);
             }
             if (global || sticky) {
                 setLastIndex(rx, sticky ? lastMatchEnd : 0);

@@ -155,7 +155,8 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             String input = realm.getLazyStaticRegexResultInputString();
             long fromIndex = realm.getLazyStaticRegexResultFromIndex();
             if (compiledRegex != null && context.getRegExpStaticResultUnusedAssumption().isValid()) {
-                realm.switchToEagerStaticRegExpResults();
+                // switch from lazy to eager static RegExp result
+                context.getRegExpStaticResultUnusedAssumption().invalidate();
                 Object result = compiledRegexAccessor.exec(compiledRegex, input, fromIndex);
                 realm.setRegexResult(compiledRegex, input, result);
             }
