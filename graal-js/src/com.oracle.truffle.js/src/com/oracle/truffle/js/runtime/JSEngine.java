@@ -79,7 +79,7 @@ public final class JSEngine {
     }
 
     public JSContext createContext(JavaScriptLanguage language, GraalJSParserOptions parserOptions, TruffleLanguage.Env env) {
-        JSContextOptions contextOptions = new JSContextOptions(parserOptions);
+        JSContextOptions contextOptions = new JSContextOptions(parserOptions, env.getOptions());
         return JSContext.createContext(parser, functionLookup, contextOptions, language, env);
     }
 

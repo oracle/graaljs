@@ -552,10 +552,6 @@ public class JSContext {
         return contextOptions.getParserOptions();
     }
 
-    public final void setParserOptions(ParserOptions parserOptions) {
-        this.contextOptions.setParserOptions(parserOptions);
-    }
-
     public final Object getEmbedderData() {
         return embedderData;
     }

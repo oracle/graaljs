@@ -471,9 +471,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     private static JSContextOptions toContextOptions(OptionValues optionValues) {
-        JSContextOptions newOptions = new JSContextOptions(new GraalJSParserOptions());
-        newOptions.setOptionValues(optionValues);
-        return newOptions;
+        return new JSContextOptions(new GraalJSParserOptions(), optionValues);
     }
 
     @Override
