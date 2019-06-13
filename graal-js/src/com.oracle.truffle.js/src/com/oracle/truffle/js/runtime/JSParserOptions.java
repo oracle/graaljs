@@ -54,7 +54,7 @@ import static com.oracle.truffle.js.runtime.JSContextOptions.BIGINT;
 import org.graalvm.options.OptionValues;
 
 @SuppressWarnings("hiding")
-public final class GraalJSParserOptions implements ParserOptions {
+public final class JSParserOptions {
 
     private final boolean strict;
     private final boolean scripting;
@@ -68,7 +68,7 @@ public final class GraalJSParserOptions implements ParserOptions {
     private final boolean annexB;
     private final boolean allowBigInt;
 
-    public GraalJSParserOptions() {
+    public JSParserOptions() {
         this.strict = false;
         this.scripting = false;
         this.shebang = false;
@@ -82,7 +82,7 @@ public final class GraalJSParserOptions implements ParserOptions {
         this.allowBigInt = false;
     }
 
-    private GraalJSParserOptions(boolean strict, boolean scripting, boolean shebang, int ecmaScriptVersion, boolean syntaxExtensions, boolean constAsVar, boolean functionStatementError,
+    private JSParserOptions(boolean strict, boolean scripting, boolean shebang, int ecmaScriptVersion, boolean syntaxExtensions, boolean constAsVar, boolean functionStatementError,
                     boolean dumpOnError, boolean emptyStatements, boolean annexB, boolean allowBigInt) {
         this.strict = strict;
         this.scripting = scripting;
@@ -101,7 +101,6 @@ public final class GraalJSParserOptions implements ParserOptions {
         return strict;
     }
 
-    @Override
     public boolean isScripting() {
         return scripting;
     }
@@ -118,7 +117,6 @@ public final class GraalJSParserOptions implements ParserOptions {
         return constAsVar;
     }
 
-    @Override
     public int getEcmaScriptVersion() {
         return ecmaScriptVersion;
     }
@@ -151,9 +149,8 @@ public final class GraalJSParserOptions implements ParserOptions {
         return allowBigInt;
     }
 
-    @Override
-    public GraalJSParserOptions putOptions(OptionValues optionValues) {
-        GraalJSParserOptions opts = this;
+    public JSParserOptions putOptions(OptionValues optionValues) {
+        JSParserOptions opts = this;
         opts = opts.putEcmaScriptVersion(ECMASCRIPT_VERSION.getValue(optionValues));
         opts = opts.putSyntaxExtensions(SYNTAX_EXTENSIONS.hasBeenSet(optionValues) ? SYNTAX_EXTENSIONS.getValue(optionValues) : NASHORN_COMPATIBILITY_MODE.getValue(optionValues));
         opts = opts.putScripting(SCRIPTING.getValue(optionValues));
@@ -166,70 +163,70 @@ public final class GraalJSParserOptions implements ParserOptions {
         return opts;
     }
 
-    public static GraalJSParserOptions fromOptions(OptionValues optionValues) {
-        return new GraalJSParserOptions().putOptions(optionValues);
+    public static JSParserOptions fromOptions(OptionValues optionValues) {
+        return new JSParserOptions().putOptions(optionValues);
     }
 
-    public GraalJSParserOptions putStrict(boolean strict) {
+    public JSParserOptions putStrict(boolean strict) {
         if (strict != this.strict) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
-    public GraalJSParserOptions putScripting(boolean scripting) {
+    public JSParserOptions putScripting(boolean scripting) {
         if (scripting != this.scripting) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
-    public GraalJSParserOptions putShebang(boolean shebang) {
+    public JSParserOptions putShebang(boolean shebang) {
         if (shebang != this.shebang) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
-    public GraalJSParserOptions putEcmaScriptVersion(int ecmaScriptVersion) {
+    public JSParserOptions putEcmaScriptVersion(int ecmaScriptVersion) {
         if (ecmaScriptVersion != this.ecmaScriptVersion) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
-    public GraalJSParserOptions putSyntaxExtensions(boolean syntaxExtensions) {
+    public JSParserOptions putSyntaxExtensions(boolean syntaxExtensions) {
         if (syntaxExtensions != this.syntaxExtensions) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
-    public GraalJSParserOptions putConstAsVar(boolean constAsVar) {
+    public JSParserOptions putConstAsVar(boolean constAsVar) {
         if (constAsVar != this.constAsVar) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
-    public GraalJSParserOptions putFunctionStatementError(boolean functionStatementError) {
+    public JSParserOptions putFunctionStatementError(boolean functionStatementError) {
         if (functionStatementError != this.functionStatementError) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements,
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements,
                             annexB, allowBigInt);
         }
         return this;
     }
 
-    public GraalJSParserOptions putAnnexB(boolean annexB) {
+    public JSParserOptions putAnnexB(boolean annexB) {
         if (annexB != this.annexB) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
 
-    public GraalJSParserOptions putAllowBigInt(boolean allowBigInt) {
+    public JSParserOptions putAllowBigInt(boolean allowBigInt) {
         if (allowBigInt != this.allowBigInt) {
-            return new GraalJSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
+            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt);
         }
         return this;
     }
@@ -257,10 +254,10 @@ public final class GraalJSParserOptions implements ParserOptions {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof GraalJSParserOptions)) {
+        if (!(obj instanceof JSParserOptions)) {
             return false;
         }
-        GraalJSParserOptions other = (GraalJSParserOptions) obj;
+        JSParserOptions other = (JSParserOptions) obj;
         if (annexB != other.annexB) {
             return false;
         } else if (constAsVar != other.constAsVar) {

@@ -159,7 +159,7 @@ import com.oracle.truffle.js.parser.env.GlobalEnvironment;
 import com.oracle.truffle.js.parser.env.WithEnvironment;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSParserOptions;
+import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -295,7 +295,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         assert !isDerivedConstructor || isConstructor;
         boolean strictFunctionProperties = isStrict || isArrowFunction || isMethod || isGeneratorFunction;
         boolean isBuiltin = false;
-        GraalJSParserOptions parserOptions = (GraalJSParserOptions) context.getParserOptions();
+        JSParserOptions parserOptions = context.getParserOptions();
 
         boolean isGlobal;
         boolean isEval = false;
@@ -833,7 +833,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return Collections.emptyList();
     }
 
-    static void functionVarDeclarationPass(FunctionNode rootFunctionNode, GraalJSParserOptions options) {
+    static void functionVarDeclarationPass(FunctionNode rootFunctionNode, JSParserOptions options) {
         com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext> visitor = new com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext>(new LexicalContext()) {
             @Override
             public boolean enterVarNode(VarNode varNode) {
@@ -1086,7 +1086,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    static void earlyVariableDeclarationPass(FunctionNode functionNode, GraalJSParserOptions options, boolean eval, boolean evalInGlobalScope) {
+    static void earlyVariableDeclarationPass(FunctionNode functionNode, JSParserOptions options, boolean eval, boolean evalInGlobalScope) {
         assert !functionNode.isAnalyzed();
         if (functionNode.isModule()) {
             // we must resolve module imports first to know all imported bindings
@@ -1104,7 +1104,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         assert functionNode.isAnalyzed();
     }
 
-    private static void globalVarPrePass(FunctionNode functionNode, GraalJSParserOptions options) {
+    private static void globalVarPrePass(FunctionNode functionNode, JSParserOptions options) {
         assert !functionNode.isAnalyzed();
         functionNode.accept(new com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext>(new LexicalContext()) {
             @Override
@@ -1184,7 +1184,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return nodes;
     }
 
-    static void detectVarNameConflict(LexicalContext lexcon, VarNode varNode, GraalJSParserOptions options) {
+    static void detectVarNameConflict(LexicalContext lexcon, VarNode varNode, JSParserOptions options) {
         assert lexcon.getCurrentFunction() != null;
         boolean alreadyDeclared = false;
         String varName = varNode.getName().getName();
@@ -1208,7 +1208,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private static boolean isVarAlreadyDeclaredLexically(LexicalContext lexcon, String varName, GraalJSParserOptions options, boolean skipCurrentBlock) {
+    private static boolean isVarAlreadyDeclaredLexically(LexicalContext lexcon, String varName, JSParserOptions options, boolean skipCurrentBlock) {
         Iterator<Block> iterator = lexcon.getBlocks();
         if (skipCurrentBlock) {
             iterator.next();
@@ -1679,7 +1679,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (!fn.isStrict() && !varName.equals(Environment.ARGUMENTS_NAME)) {
                 Symbol symbol = fn.getBody().getExistingSymbol(varName);
                 if (symbol != null && (symbol.isVar() || symbol.isGlobal())) {
-                    if (!isVarAlreadyDeclaredLexically(lc, varName, (GraalJSParserOptions) context.getParserOptions(), true)) {
+                    if (!isVarAlreadyDeclaredLexically(lc, varName, context.getParserOptions(), true)) {
                         assignment = environment.findVar(varName, true, false, true, false).withRequired(false).createWriteNode(assignment);
                         tagExpression(assignment, varNode);
                     }

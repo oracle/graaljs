@@ -92,7 +92,7 @@ import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
-import com.oracle.truffle.js.runtime.GraalJSParserOptions;
+import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -136,7 +136,7 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName) {
         try {
-            GraalJSParserHelper.checkFunctionSyntax(context, (GraalJSParserOptions) context.getParserOptions(), parameterList, body, generatorFunction, asyncFunction);
+            GraalJSParserHelper.checkFunctionSyntax(context, context.getParserOptions(), parameterList, body, generatorFunction, asyncFunction);
         } catch (com.oracle.js.parser.ParserException e) {
             throw parserToJSError(null, e);
         }
@@ -261,12 +261,11 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public ScriptNode parseScriptNode(JSContext context, Source source) {
-        GraalJSParserOptions po = ((GraalJSParserOptions) context.getParserOptions());
         if (MODULE_MIME_TYPE.equals(source.getMimeType()) || source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX)) {
             return fakeScriptForModule(context, source);
         }
         try {
-            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, po.isStrict());
+            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, context.getParserOptions().isStrict());
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage());
         }
@@ -309,7 +308,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public String parseToJSON(JSContext context, String code, String name, boolean includeLoc) {
-        return GraalJSParserHelper.parseToJSON(code, name, includeLoc, (GraalJSParserOptions) context.getParserOptions());
+        return GraalJSParserHelper.parseToJSON(code, name, includeLoc, context.getParserOptions());
     }
 
     @Override
@@ -321,7 +320,7 @@ public final class GraalJSEvaluator implements JSParser {
      * Parses source to intermediate AST and returns a closure for the translation to Truffle AST.
      */
     public static Supplier<ScriptNode> internalParseForTiming(JSContext context, Source source) {
-        com.oracle.js.parser.ir.FunctionNode ast = GraalJSParserHelper.parseScript(context, source, new GraalJSParserOptions());
+        com.oracle.js.parser.ir.FunctionNode ast = GraalJSParserHelper.parseScript(context, source, new JSParserOptions());
         return () -> JavaScriptTranslator.translateFunction(NodeFactory.getInstance(context), context, null, source, false, ast);
     }
 

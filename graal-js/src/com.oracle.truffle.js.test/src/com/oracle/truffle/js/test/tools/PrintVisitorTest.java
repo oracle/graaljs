@@ -49,7 +49,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.parser.GraalJSParserHelper;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
-import com.oracle.truffle.js.runtime.GraalJSParserOptions;
+import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.test.JSTest;
 
 public class PrintVisitorTest extends JSTest {
@@ -60,7 +60,7 @@ public class PrintVisitorTest extends JSTest {
                         "try { var o= {a:'foo'}; (o?o:o); o.a+o['a']; with(o) {a;} } catch (error) { throw false; }; " +
                         "switch(true) { case false: break; default: break; }; return -a+(++b); }";
         Source source = Source.newBuilder(JavaScriptLanguage.ID, code, "test").build();
-        FunctionNode node = GraalJSParserHelper.parseScript(testHelper.getJSContext(), source, new GraalJSParserOptions());
+        FunctionNode node = GraalJSParserHelper.parseScript(testHelper.getJSContext(), source, new JSParserOptions());
 
         PrintVisitor pv = new PrintVisitor(node);
         String result = pv.toString();

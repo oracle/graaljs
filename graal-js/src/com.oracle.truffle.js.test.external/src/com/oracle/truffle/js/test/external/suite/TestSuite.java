@@ -78,7 +78,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.GraalJSParserOptions;
+import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -960,8 +960,8 @@ public abstract class TestSuite {
         return text.toString();
     }
 
-    protected GraalJSParserOptions getParserOptions() {
-        return new GraalJSParserOptions();
+    protected JSParserOptions getParserOptions() {
+        return new JSParserOptions();
     }
 
     public String getBackTrace(Throwable cause) {

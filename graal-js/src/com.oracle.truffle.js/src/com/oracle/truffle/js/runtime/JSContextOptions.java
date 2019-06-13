@@ -62,7 +62,7 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 
 public final class JSContextOptions {
-    @CompilationFinal private ParserOptions parserOptions;
+    @CompilationFinal private JSParserOptions parserOptions;
     @CompilationFinal private OptionValues optionValues;
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
@@ -329,17 +329,21 @@ public final class JSContextOptions {
     @Option(name = LOCALE_NAME, category = OptionCategory.EXPERT, help = "Use a specific default locale for locale-sensitive operations.") //
     public static final OptionKey<String> LOCALE = new OptionKey<>("");
 
-    public JSContextOptions(ParserOptions parserOptions, OptionValues optionValues) {
+    JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
         setOptionValues(optionValues);
     }
 
-    public ParserOptions getParserOptions() {
+    public static JSContextOptions fromOptionValues(OptionValues optionValues) {
+        return new JSContextOptions(new JSParserOptions(), optionValues);
+    }
+
+    public JSParserOptions getParserOptions() {
         return parserOptions;
     }
 
-    public void setParserOptions(ParserOptions parserOptions) {
+    public void setParserOptions(JSParserOptions parserOptions) {
         CompilerAsserts.neverPartOfCompilation();
         this.parserOptions = parserOptions;
     }

@@ -548,7 +548,7 @@ public class JSContext {
         return nodeFactory;
     }
 
-    public final ParserOptions getParserOptions() {
+    public final JSParserOptions getParserOptions() {
         return contextOptions.getParserOptions();
     }
 

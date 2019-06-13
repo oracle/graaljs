@@ -137,7 +137,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
-import com.oracle.truffle.js.runtime.GraalJSParserOptions;
+import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.ImportMetaInitializer;
 import com.oracle.truffle.js.runtime.ImportModuleDynamicallyCallback;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
@@ -1718,7 +1718,7 @@ public final class GraalJSAccess {
         String parameterList = params.toString();
 
         try {
-            GraalJSParserHelper.checkFunctionSyntax(jsContext, (GraalJSParserOptions) jsContext.getParserOptions(), parameterList, body, false, false);
+            GraalJSParserHelper.checkFunctionSyntax(jsContext, jsContext.getParserOptions(), parameterList, body, false, false);
         } catch (com.oracle.js.parser.ParserException ex) {
             // throw the correct JS error
             nodeEvaluator.parseFunction(jsContext, parameterList, body, false, false, sourceName);
@@ -1837,7 +1837,7 @@ public final class GraalJSAccess {
         String content = source.getCharacters().toString();
         FunctionNode parseResult = contextData.getFunctionNodeCache().get(content);
         if (parseResult == null) {
-            parseResult = GraalJSParserHelper.parseScript(context, source, (GraalJSParserOptions) context.getParserOptions());
+            parseResult = GraalJSParserHelper.parseScript(context, source, context.getParserOptions());
             contextData.getFunctionNodeCache().put(content, parseResult);
         }
         return parseResult;
@@ -1882,7 +1882,7 @@ public final class GraalJSAccess {
             ContextData contextData = (ContextData) jsContext.getEmbedderData();
             scriptNode = contextData.getScriptNodeCache().get(source);
             if (scriptNode == null) {
-                GraalJSParserOptions options = ((GraalJSParserOptions) jsContext.getParserOptions());
+                JSParserOptions options = jsContext.getParserOptions();
                 NodeFactory factory = NodeFactory.getInstance(jsContext);
                 Object prev = jsRealm.getTruffleContext().enter();
                 try {
