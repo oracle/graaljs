@@ -126,7 +126,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
                 JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(block, frameDescriptor, parentSlot, getSourceSection());
-                materialized.setSourceSection(this.getSourceSection());
+                transferSourceSectionAndTags(this, materialized);
                 return materialized;
             } else {
                 return this;
