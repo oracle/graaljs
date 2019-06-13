@@ -1588,10 +1588,6 @@
     "status" : "SKIP",
     "comment" : "'Wrong' test - checking error message (which is not always complete and contains a typo) instead of error type\nsee https://github.com/v8/v8/commit/ea6b9609a67b78f5f8d327c578e931d4db2a5268"
   }, {
-    "filePath" : "mjsunit/regress/regress-6677.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
     "filePath" : "mjsunit/regress/regress-6711.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
