@@ -68,11 +68,11 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
         return JSArrayNextElementIndexNodeGen.create(context);
     }
 
-    public final long executeLong(TruffleObject object, long currentIndex, long length) {
+    public final long executeLong(Object object, long currentIndex, long length) {
         return executeLong(object, currentIndex, length, isArray(object));
     }
 
-    public abstract long executeLong(TruffleObject object, long currentIndex, long length, boolean isArray);
+    public abstract long executeLong(Object object, long currentIndex, long length, boolean isArray);
 
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType",
                     "!cachedArrayType.hasHoles(object, isArray)"}, limit = "MAX_CACHED_ARRAY_TYPES")

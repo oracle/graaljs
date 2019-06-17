@@ -96,7 +96,7 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
         return !context.getArrayPrototypeNoElementsAssumption().isValid();
     }
 
-    protected final boolean isArray(TruffleObject obj) {
+    protected final boolean isArray(Object obj) {
         if (isArrayNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             isArrayNode = insert(IsArrayNode.createIsFastOrTypedArray());

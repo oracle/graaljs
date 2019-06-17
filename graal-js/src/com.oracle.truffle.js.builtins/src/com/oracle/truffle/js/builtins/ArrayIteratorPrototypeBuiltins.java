@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -142,7 +141,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 }
                 length = JSArrayBufferView.typedArrayGetLength(typedArray);
             } else {
-                length = getLength().executeLong((TruffleObject) array);
+                length = getLength().executeLong(array);
             }
 
             if (index >= length) {

@@ -100,9 +100,9 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         return JSHasPropertyNodeGen.create(hasOwnProperty);
     }
 
-    public abstract boolean executeBoolean(TruffleObject object, Object propertyName);
+    public abstract boolean executeBoolean(Object object, Object propertyName);
 
-    public abstract boolean executeBoolean(TruffleObject object, long index);
+    public abstract boolean executeBoolean(Object object, long index);
 
     @Specialization(guards = {"isJSFastArray(object)", "isArrayIndex(index)", "cachedArrayType.isInstance(getArrayType(object))"}, limit = "MAX_ARRAY_TYPES")
     public boolean arrayLongCached(DynamicObject object, long index,

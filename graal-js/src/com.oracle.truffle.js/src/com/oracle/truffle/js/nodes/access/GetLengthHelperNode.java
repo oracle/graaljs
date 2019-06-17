@@ -79,9 +79,9 @@ abstract class GetLengthHelperNode extends JavaScriptBaseNode {
         return GetLengthHelperNodeGen.create(context);
     }
 
-    public abstract Object execute(TruffleObject value, boolean isArray);
+    public abstract Object execute(Object value, boolean isArray);
 
-    public final long executeLong(TruffleObject value, boolean isArray) {
+    public final long executeLong(Object value, boolean isArray) {
         return toLengthLong(execute(value, isArray));
     }
 

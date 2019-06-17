@@ -700,7 +700,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             if (JSRuntime.isObject(thisObj) && !JSAdapter.isJSAdapter(thisObj) && !JSProxy.isProxy(thisObj)) {
-                if (!context.getNoSuchMethodUnusedAssumption().isValid() && root.isMethod() && getHasProperty().executeBoolean((DynamicObject) thisObj, JSObject.NO_SUCH_METHOD_NAME)) {
+                if (!context.getNoSuchMethodUnusedAssumption().isValid() && root.isMethod() && getHasProperty().executeBoolean(thisObj, JSObject.NO_SUCH_METHOD_NAME)) {
                     Object function = getNoSuchMethod().getValue(thisObj);
                     if (function != Undefined.instance) {
                         if (JSFunction.isJSFunction(function)) {
