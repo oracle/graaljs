@@ -360,6 +360,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return Errors.createTypeErrorFormat("%s has no such function \"%s\"", defaultToString(thisObj), key);
     }
 
+    @TruffleBoundary
     @Override
     public DynamicObject getPrototypeOf(DynamicObject thisObj) {
         return (DynamicObject) JSShape.getPrototypeProperty(thisObj.getShape()).get(thisObj, false);

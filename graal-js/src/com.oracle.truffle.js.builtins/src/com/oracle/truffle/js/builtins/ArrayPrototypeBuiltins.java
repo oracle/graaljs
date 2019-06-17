@@ -111,6 +111,7 @@ import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
+import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode.IsArrayWrappedNode;
 import com.oracle.truffle.js.nodes.access.JSArrayFirstElementIndexNode;
@@ -172,7 +173,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -1698,6 +1698,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArraySpliceNode extends JSArrayOperationWithToInt {
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
+        @Child private GetPrototypeNode getPrototypeNode;
         private final BranchProfile branchA = BranchProfile.create();
         private final BranchProfile branchB = BranchProfile.create();
         private final BranchProfile branchDelete = BranchProfile.create();
@@ -1709,11 +1710,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile needLoopDeleteBranch = BranchProfile.create();
         private final BranchProfile needFillBranch = BranchProfile.create();
         private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
-        private final JSClassProfile classProfile = JSClassProfile.create();
 
         public JSArraySpliceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.deletePropertyNode = DeletePropertyNode.create(THROW_ERROR, context);
+            this.getPrototypeNode = GetPrototypeNode.create();
         }
 
         @Specialization
@@ -1775,7 +1776,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private boolean mustUseElementwise(DynamicObject obj, ScriptArray array) {
-            return array instanceof SparseArray || array.isLengthNotWritable() || JSObject.getPrototype(obj, classProfile) != getContext().getRealm().getArrayConstructor().getPrototype() ||
+            return array instanceof SparseArray || array.isLengthNotWritable() || getPrototypeNode.executeJSObject(obj) != getContext().getRealm().getArrayConstructor().getPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() || (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
         }
 
