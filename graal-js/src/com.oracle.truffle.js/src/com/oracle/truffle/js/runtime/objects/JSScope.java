@@ -413,21 +413,39 @@ public abstract class JSScope {
             }
             FrameSlot thisSlot = mFrame.getFrameDescriptor().findFrameSlot(THIS_SLOT_ID);
             if (thisSlot == null) {
-                Object[] args = mFrame.getArguments();
-                Object thisObject = JSArguments.getThisObject(args);
-                Object function = JSArguments.getFunctionObject(args);
-                if (JSFunction.isJSFunction(function) && !JSFunction.isStrict((DynamicObject) function)) {
-                    JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
-                    if (thisObject == Undefined.instance || thisObject == Null.instance) {
-                        thisObject = realm.getGlobalObject();
-                    } else {
-                        thisObject = JSRuntime.toObject(realm.getContext(), thisObject);
+                return thisFromArguments(mFrame.getArguments());
+            } else {
+                Object thiz = mFrame.getValue(thisSlot);
+                if (thiz == Undefined.instance) {
+                    // this can be either undefined or not populated yet
+                    // => try to avoid returning undefined in the latter case
+                    Object[] args = mFrame.getArguments();
+                    Object function = JSArguments.getFunctionObject(args);
+                    if (JSFunction.isJSFunction(function)) {
+                        DynamicObject jsFunction = (DynamicObject) function;
+                        thiz = isArrowFunctionWithThisCaptured(jsFunction) ? JSFunction.getLexicalThis(jsFunction) : thisFromArguments(args);
                     }
                 }
-                return thisObject;
-            } else {
-                return mFrame.getValue(thisSlot);
+                return thiz;
             }
+        }
+
+        private static Object thisFromArguments(Object[] args) {
+            Object thisObject = JSArguments.getThisObject(args);
+            Object function = JSArguments.getFunctionObject(args);
+            if (JSFunction.isJSFunction(function) && !JSFunction.isStrict((DynamicObject) function)) {
+                JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+                if (thisObject == Undefined.instance || thisObject == Null.instance) {
+                    thisObject = realm.getGlobalObject();
+                } else {
+                    thisObject = JSRuntime.toObject(realm.getContext(), thisObject);
+                }
+            }
+            return thisObject;
+        }
+
+        private static boolean isArrowFunctionWithThisCaptured(DynamicObject function) {
+            return !JSFunction.isConstructor(function) && JSFunction.isClassPrototypeInitialized(function);
         }
 
         private static Map<String, ? extends Variable> collectArgs(Node block) {
