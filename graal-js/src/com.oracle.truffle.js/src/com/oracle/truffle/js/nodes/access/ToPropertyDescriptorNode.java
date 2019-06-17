@@ -91,7 +91,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     }
 
     private void initialize() {
-        if (toBooleanNode == null) {
+        if (toBooleanNode == null || hasEnumerableNode == null || hasConfigurableNode == null || hasWritableNode == null || hasValueNode == null || hasGetNode == null || hasSetNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toBooleanNode = insert(JSToBooleanNode.create());
             hasEnumerableNode = insert(HasPropertyCacheNode.create(JSAttributes.ENUMERABLE, context));
