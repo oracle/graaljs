@@ -53,15 +53,18 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.ArrayLengthNodeFactory.ArrayLengthReadNodeGen;
 import com.oracle.truffle.js.nodes.access.ArrayLengthNodeFactory.SetArrayLengthNodeGen;
 import com.oracle.truffle.js.nodes.access.ArrayLengthNodeFactory.SetArrayLengthOrDeleteNodeGen;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
+import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 @ImportStatic(ScriptArray.class)
 @ReportPolymorphism
 public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
-    protected static final int MAX_TYPE_COUNT = 3;
+    protected static final int MAX_TYPE_COUNT = 4;
 
     protected ArrayLengthNode() {
     }
@@ -89,15 +92,23 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"arrayType.isInstance(getArrayType(target, condition))", "arrayType.isStatelessType()", "isLengthAlwaysInt(arrayType)"}, limit = "MAX_TYPE_COUNT")
-        protected static int doIntLength(DynamicObject target, boolean condition, //
+        protected static int doIntLength(DynamicObject target, boolean condition,
                         @Cached("getArrayType(target, condition)") ScriptArray arrayType) {
             return arrayType.lengthInt(target, condition);
         }
 
         @Specialization(guards = {"arrayType.isInstance(getArrayType(target, condition))", "arrayType.isStatelessType()"}, replaces = "doIntLength", limit = "MAX_TYPE_COUNT")
-        protected static double doLongLength(DynamicObject target, boolean condition, //
+        protected static double doLongLength(DynamicObject target, boolean condition,
                         @Cached("getArrayType(target, condition)") ScriptArray arrayType) {
             return arrayType.length(target, condition);
+        }
+
+        @Specialization(guards = {"isWritableArrayType(getArrayType(target, condition))"}, replaces = "doLongLength")
+        protected static int doWritableArray(DynamicObject target, boolean condition) {
+            long uint32Len = JSAbstractArray.arrayGetLength(target, condition);
+            assert uint32Len == getArrayType(target, condition).length(target, condition);
+            assert JSRuntime.longIsRepresentableAsInt(uint32Len);
+            return (int) uint32Len;
         }
 
         @Specialization(replaces = "doLongLength")
@@ -107,6 +118,10 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
         protected static boolean isLengthAlwaysInt(ScriptArray arrayType) {
             return !(arrayType instanceof SparseArray);
+        }
+
+        protected static boolean isWritableArrayType(ScriptArray arrayType) {
+            return arrayType instanceof AbstractWritableArray;
         }
     }
 
