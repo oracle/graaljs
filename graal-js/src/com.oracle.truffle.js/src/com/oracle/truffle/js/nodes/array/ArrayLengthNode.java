@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.nodes.array;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
@@ -50,9 +50,9 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.ArrayLengthNodeFactory.ArrayLengthReadNodeGen;
-import com.oracle.truffle.js.nodes.access.ArrayLengthNodeFactory.SetArrayLengthNodeGen;
-import com.oracle.truffle.js.nodes.access.ArrayLengthNodeFactory.SetArrayLengthOrDeleteNodeGen;
+import com.oracle.truffle.js.nodes.array.ArrayLengthNodeFactory.ArrayLengthReadNodeGen;
+import com.oracle.truffle.js.nodes.array.ArrayLengthNodeFactory.SetArrayLengthNodeGen;
+import com.oracle.truffle.js.nodes.array.ArrayLengthNodeFactory.SetArrayLengthOrDeleteNodeGen;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
@@ -73,7 +73,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         return JSObject.getArray(target, condition);
     }
 
-    protected abstract static class ArrayLengthReadNode extends ArrayLengthNode {
+    public abstract static class ArrayLengthReadNode extends ArrayLengthNode {
 
         public static ArrayLengthReadNode create() {
             return ArrayLengthReadNodeGen.create();

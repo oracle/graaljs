@@ -86,7 +86,7 @@ import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArray
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
-import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
