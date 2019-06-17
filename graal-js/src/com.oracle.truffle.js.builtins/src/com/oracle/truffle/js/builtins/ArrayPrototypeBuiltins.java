@@ -56,6 +56,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -97,8 +98,6 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySplic
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltins.DebugIsHolesArrayNode;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugIsHolesArrayNodeGen;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -127,6 +126,7 @@ import com.oracle.truffle.js.nodes.array.JSArrayNextElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayPreviousElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.array.JSSetLengthNode;
+import com.oracle.truffle.js.nodes.array.TestArrayNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
@@ -739,10 +739,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return previousElementIndexNode.executeLong(target, currentIndex);
         }
 
-        protected boolean isArrayWithHoles(DynamicObject thisObj, ValueProfile arrayTypeProfile, boolean isArray) {
-            return arrayTypeProfile.profile(arrayGetArrayType(thisObj, isArray)).hasHoles(thisObj, isArray);
-        }
-
         protected static final void throwLengthError() {
             throw Errors.createTypeError("length too big");
         }
@@ -1014,21 +1010,27 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayShiftNode extends JSArrayOperation {
+
         public JSArrayShiftNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
-
-        private final ConditionProfile lengthIsZero = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile lengthLargerOne = ConditionProfile.createBinaryProfile();
-        protected final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
-        @Child IsArrayNode isArrayNode = IsArrayNode.createIsArray();
 
         protected static boolean isSparseArray(DynamicObject thisObj, boolean isArray) {
             return arrayGetArrayType(thisObj, isArray) instanceof SparseArray;
         }
 
-        @Specialization(guards = {"isArrayNode.execute(thisObj)", "!isArrayWithHoles(thisObj, arrayTypeProfile, isArrayNode.execute(thisObj))"})
-        protected Object shift(DynamicObject thisObj) {
+        protected static boolean isArrayWithoutHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
+            boolean isArray = isArrayNode.execute(thisObj);
+            return isArray && !hasHolesNode.executeBoolean(thisObj, isArray);
+        }
+
+        @Specialization(guards = {"isArrayWithoutHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
+        protected Object shiftWithoutHoles(DynamicObject thisObj,
+                        @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
+                        @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
+                        @Cached("createClassProfile()") ValueProfile arrayTypeProfile,
+                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero,
+                        @Cached("createBinaryProfile()") ConditionProfile lengthLargerOne) {
             long len = getLength(thisObj);
 
             if (lengthIsZero.profile(len == 0)) {
@@ -1044,9 +1046,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isArrayWithHoles(thisObj, arrayTypeProfile, isArrayNode.execute(thisObj))", "!isSparseArray(thisObj, isArrayNode.execute(thisObj))"})
+        protected static boolean isArrayWithHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
+            boolean isArray = isArrayNode.execute(thisObj);
+            return isArray && hasHolesNode.executeBoolean(thisObj, isArray) && !isSparseArray(thisObj, isArray);
+        }
+
+        @Specialization(guards = {"isArrayWithHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
         protected Object shiftWithHoles(DynamicObject thisObj,
-                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode) {
+                        @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
+                        @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
+                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
             long len = getLength(thisObj);
             if (lengthIsZero.profile(len > 0)) {
                 Object firstElement = read(thisObj, 0);
@@ -1065,9 +1075,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj, isArrayNode.execute(thisObj))"})
+        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj, isArrayNode.execute(thisObj))"}, limit = "1")
         protected Object shiftSparse(DynamicObject thisObj,
-                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
+                        @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
+                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero,
                         @Cached("create(getContext())") JSArrayFirstElementIndexNode firstElementIndexNode,
                         @Cached("create(getContext())") JSArrayLastElementIndexNode lastElementIndexNode) {
             long len = getLength(thisObj);
@@ -1089,8 +1101,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "!isJSArray(thisObj)")
-        protected Object shift(Object thisObj,
-                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deleteNode) {
+        protected Object shiftGeneric(Object thisObj,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deleteNode,
+                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
             TruffleObject thisJSObj = toObject(thisObj);
             long len = getLength(thisJSObj);
 
@@ -1118,12 +1131,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
         @Child protected IsArrayNode isArrayNode = IsArrayNode.createIsArray();
+        @Child protected TestArrayNode hasHolesNode = TestArrayNode.createHasHoles();
 
         protected boolean isFastPath(Object thisObj) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && !isArrayWithHoles((DynamicObject) thisObj, arrayTypeProfile, isArray);
+            return isArray && !hasHolesNode.executeBoolean((DynamicObject) thisObj, isArray);
         }
 
         private long unshiftHoleless(DynamicObject thisObj, Object[] args) {
@@ -2876,16 +2889,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayReverseNode extends JSArrayOperation {
-        @Child private DebugIsHolesArrayNode isHolesArrayNode;
+        @Child private TestArrayNode hasHolesNode;
+        @Child private IsArrayNode isArrayNode;
         @Child private DeletePropertyNode deletePropertyNode;
-        private final ConditionProfile hasHolesProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile bothExistProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile onlyUpperExistsProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile onlyLowerExistsProfile = ConditionProfile.createBinaryProfile();
 
         public JSArrayReverseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isHolesArrayNode = DebugIsHolesArrayNodeGen.create(context, null, null);
+            this.hasHolesNode = TestArrayNode.createHasHoles();
+            this.isArrayNode = IsArrayNode.createIsArray();
         }
 
         private boolean deleteProperty(TruffleObject array, long index) {
@@ -2902,7 +2916,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             final long length = getLength(array);
             long lower = 0;
             long upper = length - 1;
-            boolean hasHoles = isHolesArrayNode.executeBoolean(array);
+            boolean isArray = isArrayNode.execute(array);
+            boolean hasHoles = isArray && hasHolesNode.executeBoolean((DynamicObject) array, isArray);
 
             while (lower <= upper) {
                 boolean lowerExists;
@@ -2939,7 +2954,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     assert !lowerExists && !upperExists; // No action required.
                 }
 
-                if (hasHolesProfile.profile(hasHoles)) {
+                if (hasHoles) {
                     long nextLower = nextElementIndex(array, lower, length);
                     long nextUpper = previousElementIndex(array, upper);
                     if ((length - nextLower - 1) >= nextUpper) {
