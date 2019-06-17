@@ -45,6 +45,7 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.FormatCacheNodeGen;
+import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.GetBuiltinToStringTagNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeDefineGetterOrSetterNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeHasOwnPropertyNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeIsPrototypeOfNodeGen;
@@ -81,6 +83,7 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -88,7 +91,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
  * Contains builtins for Object.prototype.
@@ -265,13 +267,13 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class ObjectPrototypeToStringNode extends ObjectOperation {
-        public ObjectPrototypeToStringNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-            getStringTagNode = PropertyGetNode.create(Symbol.SYMBOL_TO_STRING_TAG, false, context);
-        }
-
         @Child private PropertyGetNode getStringTagNode;
         @Child private FormatCacheNode formatCacheNode;
+
+        public ObjectPrototypeToStringNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.getStringTagNode = PropertyGetNode.create(Symbol.SYMBOL_TO_STRING_TAG, false, context);
+        }
 
         private String formatString(String name) {
             if (formatCacheNode == null) {
@@ -291,39 +293,27 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return null;
         }
 
-        private String getDefaultToString(DynamicObject thisObj, JSClassProfile jsclassProfile) {
-            if (getContext().getEcmaScriptVersion() >= 6) {
-                return jsclassProfile.getJSClass(thisObj).getBuiltinToStringTag(thisObj);
-            } else {
-                return jsclassProfile.getJSClass(thisObj).getClassName(thisObj);
-            }
-        }
-
         @Specialization(guards = {"isJSObject(thisObj)", "!isJSProxy(thisObj)"})
         protected String doJSObject(DynamicObject thisObj,
-                        @Cached("create()") JSClassProfile jsclassProfile,
-                        @Cached("create()") BranchProfile noStringTagProfile) {
+                        @Shared("builtinTag") @Cached GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
             String toString = getToStringTag(thisObj);
             if (toString == null) {
-                noStringTagProfile.enter();
-                toString = getDefaultToString(thisObj, jsclassProfile);
+                if (getContext().getEcmaScriptVersion() >= 6) {
+                    toString = getBuiltinToStringTagNode.execute(thisObj);
+                } else {
+                    toString = JSObject.getClassName(thisObj);
+                }
             }
             return formatString(toString);
         }
 
         @Specialization(guards = "isJSProxy(thisObj)")
         protected String doJSProxy(DynamicObject thisObj,
-                        @Cached("create()") JSClassProfile jsclassProfile,
-                        @Cached("create()") BranchProfile noStringTagProfile) {
+                        @Shared("builtinTag") @Cached("create()") GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
             TruffleObject target = JSProxy.getTargetNonProxy(thisObj);
             String toString = getToStringTag(thisObj);
             if (toString == null) {
-                noStringTagProfile.enter();
-                if (JSObject.isJSObject(target)) {
-                    toString = jsclassProfile.getJSClass((DynamicObject) target).getBuiltinToStringTag((DynamicObject) target);
-                } else {
-                    toString = "Foreign";
-                }
+                toString = getBuiltinToStringTagNode.execute(target);
             }
             return formatString(toString);
         }
@@ -369,6 +359,33 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected String doObject(Object thisObj) {
             assert thisObj != null;
             return JSObject.defaultToString(toObject(thisObj));
+        }
+    }
+
+    public abstract static class GetBuiltinToStringTagNode extends JavaScriptBaseNode {
+
+        public abstract String execute(Object object);
+
+        public static GetBuiltinToStringTagNode create() {
+            return GetBuiltinToStringTagNodeGen.create();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "5")
+        protected static String cached(DynamicObject object,
+                        @Cached("getJSClassChecked(object)") JSClass cachedClass) {
+            return cachedClass.getBuiltinToStringTag(object);
+        }
+
+        @TruffleBoundary
+        @Specialization(guards = "isJSType(object)", replaces = "cached")
+        protected static String uncached(DynamicObject object) {
+            return JSObject.getJSClass(object).getBuiltinToStringTag(object);
+        }
+
+        @Specialization(guards = "!isJSType(object)")
+        protected static String foreign(@SuppressWarnings("unused") DynamicObject object) {
+            return "Foreign";
         }
     }
 
