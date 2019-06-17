@@ -520,6 +520,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             }
         }
 
+        @TruffleBoundary
         public String getFunctionName() {
             if (JSFunction.isJSFunction(functionObj)) {
                 String dynamicName = findFunctionName((DynamicObject) functionObj);

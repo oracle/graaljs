@@ -303,6 +303,7 @@ public abstract class JSClass extends ObjectType {
      * @return "Object" by default
      * @see #defaultToString(DynamicObject)
      */
+    @TruffleBoundary
     public String getBuiltinToStringTag(DynamicObject object) {
         return getClassName(object);
     }
