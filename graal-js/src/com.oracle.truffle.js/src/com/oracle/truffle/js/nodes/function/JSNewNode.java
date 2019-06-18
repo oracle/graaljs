@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.function;
 import java.lang.reflect.Modifier;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -62,16 +61,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.access.JSTargetableNode;
-import com.oracle.truffle.js.nodes.access.JSTargetableWrapperNode;
-import com.oracle.truffle.js.nodes.access.PropertyNode;
-import com.oracle.truffle.js.nodes.function.JSNewNodeGen.SpecializedNewObjectNodeGen;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
@@ -81,19 +72,15 @@ import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
-import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.java.JavaAccess;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
@@ -304,103 +291,5 @@ public abstract class JSNewNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized() {
         return JSNewNodeGen.create(context, cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.cloneUninitialized(arguments));
-    }
-
-    @ImportStatic(JSTruffleOptions.class)
-    @ReportPolymorphism
-    public abstract static class SpecializedNewObjectNode extends JSTargetableNode {
-        protected final JSContext context;
-        protected final boolean isBuiltin;
-        protected final boolean isConstructor;
-        protected final boolean isGenerator;
-        protected final boolean isAsyncGenerator;
-
-        @Child @Executed protected JavaScriptNode targetNode;
-        @Child @Executed(with = "targetNode") protected JSTargetableNode getPrototypeNode;
-
-        public SpecializedNewObjectNode(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator, JavaScriptNode targetNode) {
-            this.context = context;
-            this.isBuiltin = isBuiltin;
-            this.isConstructor = isConstructor;
-            this.isGenerator = isGenerator;
-            this.isAsyncGenerator = isAsyncGenerator;
-            this.targetNode = targetNode;
-            this.getPrototypeNode = (!isBuiltin && isConstructor)
-                            ? PropertyNode.createProperty(context, null, JSObject.PROTOTYPE)
-                            : JSTargetableWrapperNode.create(JSConstantNode.createUndefined(), null);
-        }
-
-        public static JSTargetableNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator, JavaScriptNode target) {
-            return SpecializedNewObjectNodeGen.create(context, isBuiltin, isConstructor, isGenerator, isAsyncGenerator, target);
-        }
-
-        public static JSTargetableNode create(JSFunctionData functionData, JavaScriptNode target) {
-            return create(functionData.getContext(), functionData.isBuiltin(), functionData.isConstructor(), functionData.isGenerator(), functionData.isAsyncGenerator(), target);
-        }
-
-        @Override
-        public JavaScriptNode getTarget() {
-            return targetNode;
-        }
-
-        @Override
-        public final Object evaluateTarget(VirtualFrame frame) {
-            return getTarget().execute(frame);
-        }
-
-        protected Shape getProtoChildShape(Object prototype) {
-            CompilerAsserts.neverPartOfCompilation();
-            if (JSGuards.isJSObject(prototype)) {
-                return JSObjectUtil.getProtoChildShape((DynamicObject) prototype, JSUserObject.INSTANCE, context);
-            }
-            return null;
-        }
-
-        @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(cachedPrototype)", "prototype == cachedPrototype"}, limit = "PropertyCacheLimit")
-        public DynamicObject doCachedProto(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") DynamicObject prototype,
-                        @Cached("prototype") @SuppressWarnings("unused") DynamicObject cachedPrototype,
-                        @Cached("getProtoChildShape(prototype)") Shape shape) {
-            return JSObject.create(context, shape);
-        }
-
-        /** Many different prototypes. */
-        @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(prototype)"}, replaces = "doCachedProto")
-        public DynamicObject doUncachedProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
-                        @Cached("create()") BranchProfile slowBranch) {
-            return JSObject.create(context, JSObjectUtil.getProtoChildShape(prototype, JSUserObject.INSTANCE, context, slowBranch));
-        }
-
-        @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "isJSObject(prototype)"})
-        public DynamicObject createWithProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype) {
-            return JSUserObject.createWithPrototypeInObject(prototype, context);
-        }
-
-        @Specialization(guards = {"!isBuiltin", "isConstructor", "!isJSObject(prototype)"})
-        public DynamicObject createDefaultProto(DynamicObject target, @SuppressWarnings("unused") Object prototype) {
-            // user-provided prototype is not an object
-            JSRealm realm = JSRuntime.getFunctionRealm(target, context.getRealm());
-            if (isAsyncGenerator) {
-                return JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
-            } else if (isGenerator) {
-                return JSObject.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
-            }
-            return JSUserObject.create(context, realm);
-        }
-
-        @Specialization(guards = {"isBuiltin", "isConstructor"})
-        static Object builtinConstructor(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") Object proto) {
-            return JSFunction.CONSTRUCT;
-        }
-
-        @TruffleBoundary
-        @Specialization(guards = {"!isConstructor"})
-        public Object throwNotConstructorFunctionTypeError(DynamicObject target, @SuppressWarnings("unused") Object proto) {
-            throw Errors.createTypeErrorNotConstructible(target);
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return create(context, isBuiltin, isConstructor, isGenerator, isAsyncGenerator, cloneUninitialized(targetNode));
-        }
     }
 }

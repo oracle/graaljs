@@ -47,10 +47,9 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
-import com.oracle.truffle.js.nodes.access.JSTargetableNode;
-import com.oracle.truffle.js.nodes.function.JSNewNode.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -64,7 +63,7 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
     private final CallTarget callTarget;
 
     @Child private DirectCallNode callNode;
-    @Child private JSTargetableNode newObjectNode;
+    @Child private SpecializedNewObjectNode newObjectNode;
     @Child private IsPrimitiveNode isPrimitiveNode;
     private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isNotUndefined = ConditionProfile.createBinaryProfile();
@@ -83,7 +82,7 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
 
     private Object allocateThisObject(VirtualFrame frame, Object[] arguments) {
         Object functionObject = newTarget ? arguments[2] : arguments[1];
-        Object thisObject = newObjectNode.executeWithTarget(frame, functionObject);
+        Object thisObject = newObjectNode.execute(frame, (DynamicObject) functionObject);
         arguments[0] = thisObject;
         return thisObject;
     }
@@ -117,7 +116,7 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
 
     private void initialize() {
         this.callNode = insert(Truffle.getRuntime().createDirectCallNode(callTarget));
-        this.newObjectNode = insert(SpecializedNewObjectNode.create(functionData, null));
+        this.newObjectNode = insert(SpecializedNewObjectNode.create(functionData));
         this.isPrimitiveNode = insert(IsPrimitiveNode.create());
     }
 
