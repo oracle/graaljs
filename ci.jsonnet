@@ -6,7 +6,7 @@ local common = import 'common.jsonnet';
   // Used to run fewer jobs
   local debug = false,
 
-  local overlay = '7bb61bc15e99918cf7bf9a10c555931f8ce362ed',
+  local overlay = '19f2dff2ee0c3de9a6c16428453727b2a9bc0f6f',
 
   local no_overlay = 'cb733e564850cd37b685fcef6f3c16b59802b22c',
 
