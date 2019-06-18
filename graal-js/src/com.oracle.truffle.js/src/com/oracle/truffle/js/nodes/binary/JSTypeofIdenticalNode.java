@@ -66,7 +66,6 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
-import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -80,7 +79,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 @ImportStatic({JSTypeofIdenticalNode.Type.class})
 public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
-    protected static final int MAX_CLASSES = 3;
 
     public enum Type {
         Number,
@@ -91,6 +89,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         Undefined,
         Function,
         Symbol,
+        /** Unknown type string. Always false. */
         False
     }
 
@@ -145,10 +144,29 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     @Override
     public abstract boolean executeBoolean(VirtualFrame frame);
 
-    @Specialization(guards = {"value.getClass() == cachedClass", "!isTruffleObject(value)"}, limit = "MAX_CLASSES")
-    protected final boolean doCached(Object value,
-                    @Cached("value.getClass()") Class<?> cachedClass) {
-        return doUncached(cachedClass.cast(value));
+    @Specialization
+    protected final boolean doBoolean(@SuppressWarnings("unused") boolean value) {
+        return (type == Type.Boolean);
+    }
+
+    @Specialization
+    protected final boolean doNumber(@SuppressWarnings("unused") int value) {
+        return (type == Type.Number);
+    }
+
+    @Specialization
+    protected final boolean doNumber(@SuppressWarnings("unused") LargeInteger value) {
+        return (type == Type.Number);
+    }
+
+    @Specialization
+    protected final boolean doNumber(@SuppressWarnings("unused") long value) {
+        return (type == Type.Number);
+    }
+
+    @Specialization
+    protected final boolean doNumber(@SuppressWarnings("unused") double value) {
+        return (type == Type.Number);
     }
 
     @Specialization
@@ -157,17 +175,12 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     @Specialization
-    protected final boolean doLargeInteger(@SuppressWarnings("unused") LargeInteger value) {
-        return (type == Type.Number);
-    }
-
-    @Specialization
     protected final boolean doBigInt(@SuppressWarnings("unused") BigInt value) {
         return (type == Type.BigInt);
     }
 
     @Specialization
-    protected final boolean doLazyString(@SuppressWarnings("unused") JSLazyString value) {
+    protected final boolean doString(@SuppressWarnings("unused") CharSequence value) {
         return (type == Type.String);
     }
 
@@ -218,30 +231,6 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
                 return false;
             }
         }
-    }
-
-    @Specialization(guards = {"!isTruffleObject(value)"}, replaces = "doCached")
-    protected boolean doUncached(Object value) {
-        if (type == Type.Number) {
-            return value instanceof Number;
-        } else if (type == Type.BigInt) {
-            return JSRuntime.isBigInt(value);
-        } else if (type == Type.String) {
-            return JSRuntime.isString(value);
-        } else if (type == Type.Boolean) {
-            return value instanceof Boolean;
-        } else if (type == Type.Object) {
-            return false;
-        } else if (type == Type.Undefined) {
-            return false;
-        } else if (type == Type.Symbol) {
-            return false;
-        } else if (type == Type.Function) {
-            return false;
-        } else if (type == Type.False) {
-            return false;
-        }
-        throw Errors.shouldNotReachHere();
     }
 
     private static boolean checkProxy(DynamicObject value, boolean isFunction) {
