@@ -66,11 +66,9 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
-import com.oracle.truffle.js.nodes.function.JSNewNodeGen.CachedPrototypeShapeNodeGen;
 import com.oracle.truffle.js.nodes.function.JSNewNodeGen.SpecializedNewObjectNodeGen;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -306,15 +304,17 @@ public abstract class JSNewNode extends JavaScriptNode {
         return JSNewNodeGen.create(context, cloneUninitialized(getTarget()), AbstractFunctionArgumentsNode.cloneUninitialized(arguments));
     }
 
+    @ImportStatic(JSTruffleOptions.class)
+    @ReportPolymorphism
     public abstract static class SpecializedNewObjectNode extends JSTargetableNode {
-        private final JSContext context;
+        protected final JSContext context;
         protected final boolean isBuiltin;
         protected final boolean isConstructor;
         protected final boolean isGenerator;
         protected final boolean isAsyncGenerator;
 
         @Child @Executed protected JavaScriptNode targetNode;
-        @Child @Executed(with = "targetNode") protected CachedPrototypeShapeNode cachedShapeNode;
+        @Child @Executed(with = "targetNode") protected JSTargetableNode getPrototypeNode;
 
         public SpecializedNewObjectNode(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator, JavaScriptNode targetNode) {
             this.context = context;
@@ -323,14 +323,14 @@ public abstract class JSNewNode extends JavaScriptNode {
             this.isGenerator = isGenerator;
             this.isAsyncGenerator = isAsyncGenerator;
             this.targetNode = targetNode;
-            this.cachedShapeNode = CachedPrototypeShapeNode.create(context);
+            this.getPrototypeNode = PropertyNode.createProperty(context, null, JSObject.PROTOTYPE);
         }
 
-        public static SpecializedNewObjectNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator, JavaScriptNode target) {
+        public static JSTargetableNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator, JavaScriptNode target) {
             return SpecializedNewObjectNodeGen.create(context, isBuiltin, isConstructor, isGenerator, isAsyncGenerator, target);
         }
 
-        public static SpecializedNewObjectNode create(JSFunctionData functionData, JavaScriptNode target) {
+        public static JSTargetableNode create(JSFunctionData functionData, JavaScriptNode target) {
             return create(functionData.getContext(), functionData.isBuiltin(), functionData.isConstructor(), functionData.isGenerator(), functionData.isAsyncGenerator(), target);
         }
 
@@ -344,19 +344,35 @@ public abstract class JSNewNode extends JavaScriptNode {
             return getTarget().execute(frame);
         }
 
-        @Specialization(guards = {"!isBuiltin", "isConstructor"})
-        public DynamicObject createUserObject(@SuppressWarnings("unused") DynamicObject target, Shape shape) {
+        protected Shape getProtoChildShape(Object prototype) {
+            CompilerAsserts.neverPartOfCompilation();
+            if (JSGuards.isJSObject(prototype)) {
+                return JSObjectUtil.getProtoChildShape((DynamicObject) prototype, JSUserObject.INSTANCE, context);
+            }
+            return null;
+        }
+
+        @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(cachedPrototype)", "prototype == cachedPrototype"}, limit = "PropertyCacheLimit")
+        public DynamicObject doCachedProto(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") DynamicObject prototype,
+                        @Cached("prototype") @SuppressWarnings("unused") DynamicObject cachedPrototype,
+                        @Cached("getProtoChildShape(prototype)") Shape shape) {
             return JSObject.create(context, shape);
         }
 
-        @Specialization(guards = {"!isBuiltin", "isConstructor", "isJSObject(proto)"})
-        public DynamicObject createUserObject(@SuppressWarnings("unused") DynamicObject target, DynamicObject proto) {
-            return JSUserObject.createWithPrototypeInObject(proto, context);
+        /** Many different prototypes. */
+        @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(prototype)"}, replaces = "doCachedProto")
+        public DynamicObject doUncachedProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
+                        @Cached("create()") BranchProfile slowBranch) {
+            return JSObject.create(context, JSObjectUtil.getProtoChildShape(prototype, JSUserObject.INSTANCE, context, slowBranch));
         }
 
-        @Specialization(guards = {"!isBuiltin", "isConstructor", "isUndefined(proto)"})
-        public DynamicObject createUserObjectAsObject(DynamicObject target, Object proto) {
-            assert proto == Undefined.instance;
+        @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "isJSObject(prototype)"})
+        public DynamicObject createWithProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype) {
+            return JSUserObject.createWithPrototypeInObject(prototype, context);
+        }
+
+        @Specialization(guards = {"!isBuiltin", "isConstructor", "!isJSObject(prototype)"})
+        public DynamicObject createDefaultProto(DynamicObject target, @SuppressWarnings("unused") Object prototype) {
             // user-provided prototype is not an object
             JSRealm realm = JSRuntime.getFunctionRealm(target, context.getRealm());
             if (isAsyncGenerator) {
@@ -368,80 +384,19 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
 
         @Specialization(guards = {"isBuiltin", "isConstructor"})
-        static Object builtinConstructor(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") Object shape) {
+        static Object builtinConstructor(@SuppressWarnings("unused") DynamicObject target, @SuppressWarnings("unused") Object proto) {
             return JSFunction.CONSTRUCT;
         }
 
         @TruffleBoundary
         @Specialization(guards = {"!isConstructor"})
-        public Object throwNotConstructorFunctionTypeError(DynamicObject target, @SuppressWarnings("unused") Object shape) {
+        public Object throwNotConstructorFunctionTypeError(DynamicObject target, @SuppressWarnings("unused") Object proto) {
             throw Errors.createTypeErrorNotConstructible(target);
         }
 
         @Override
         protected JavaScriptNode copyUninitialized() {
             return create(context, isBuiltin, isConstructor, isGenerator, isAsyncGenerator, cloneUninitialized(targetNode));
-        }
-    }
-
-    @ImportStatic(JSTruffleOptions.class)
-    @ReportPolymorphism
-    protected abstract static class CachedPrototypeShapeNode extends JavaScriptBaseNode {
-        protected final JSContext context;
-        @Child private JSTargetableNode getPrototype;
-
-        protected CachedPrototypeShapeNode(JSContext context) {
-            this.context = context;
-            this.getPrototype = PropertyNode.createProperty(context, null, JSObject.PROTOTYPE);
-        }
-
-        public static CachedPrototypeShapeNode create(JSContext context) {
-            return CachedPrototypeShapeNodeGen.create(context);
-        }
-
-        public final Object executeWithTarget(VirtualFrame frame, Object target) {
-            Object result = getPrototype.executeWithTarget(frame, target);
-            return executeWithPrototype(frame, result);
-        }
-
-        public abstract Object executeWithPrototype(VirtualFrame frame, Object prototype);
-
-        protected Object getProtoChildShape(Object prototype) {
-            CompilerAsserts.neverPartOfCompilation();
-            if (JSGuards.isJSObject(prototype)) {
-                return JSObjectUtil.getProtoChildShape((DynamicObject) prototype, JSUserObject.INSTANCE, context);
-            }
-            return Undefined.instance;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!context.isMultiContext()", "prototype == cachedPrototype"}, limit = "PropertyCacheLimit")
-        protected static Object doCached(Object prototype,
-                        @Cached("prototype") Object cachedPrototype,
-                        @Cached("getProtoChildShape(prototype)") Object cachedShape) {
-            return cachedShape;
-        }
-
-        /** Many different prototypes. */
-        @Specialization(guards = {"!context.isMultiContext()"}, replaces = "doCached")
-        protected final Object doUncached(Object prototype,
-                        @Cached("create()") BranchProfile notAnObjectBranch,
-                        @Cached("create()") BranchProfile slowBranch) {
-            if (JSGuards.isJSObject(prototype)) {
-                return JSObjectUtil.getProtoChildShape(((DynamicObject) prototype), JSUserObject.INSTANCE, context, slowBranch);
-            }
-            notAnObjectBranch.enter();
-            return Undefined.instance;
-        }
-
-        @Specialization(guards = {"context.isMultiContext()", "isJSObject(prototype)"})
-        protected static Object doUncachedMulti(Object prototype) {
-            return prototype;
-        }
-
-        @Specialization(guards = {"context.isMultiContext()", "!isJSObject(prototype)"})
-        protected static Object doNotObject(@SuppressWarnings("unused") Object prototype) {
-            return Undefined.instance;
         }
     }
 }
