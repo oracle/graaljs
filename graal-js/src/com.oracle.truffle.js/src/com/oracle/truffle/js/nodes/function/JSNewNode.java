@@ -67,7 +67,9 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
+import com.oracle.truffle.js.nodes.access.JSTargetableWrapperNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.function.JSNewNodeGen.SpecializedNewObjectNodeGen;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
@@ -323,7 +325,9 @@ public abstract class JSNewNode extends JavaScriptNode {
             this.isGenerator = isGenerator;
             this.isAsyncGenerator = isAsyncGenerator;
             this.targetNode = targetNode;
-            this.getPrototypeNode = PropertyNode.createProperty(context, null, JSObject.PROTOTYPE);
+            this.getPrototypeNode = (!isBuiltin && isConstructor)
+                            ? PropertyNode.createProperty(context, null, JSObject.PROTOTYPE)
+                            : JSTargetableWrapperNode.create(JSConstantNode.createUndefined(), null);
         }
 
         public static JSTargetableNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator, JavaScriptNode target) {
