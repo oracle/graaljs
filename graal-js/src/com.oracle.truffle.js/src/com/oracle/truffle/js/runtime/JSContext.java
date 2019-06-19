@@ -593,12 +593,15 @@ public class JSContext {
     }
 
     public JSRealm createRealm(TruffleLanguage.Env env) {
-        boolean isTop = env == null || env.getContext().getParent() == null;
+        boolean isTop = JSRealm.CREATING_CHILD_REALM.get() != Boolean.TRUE;
         if (realmInit.get() != REALM_UNINITIALIZED || !realmInit.compareAndSet(REALM_UNINITIALIZED, REALM_INITIALIZING)) {
             singleRealmAssumption.invalidate("single realm assumption");
         }
 
         truffleLanguageEnv = env;
+        if (!isTop) {
+            noChildRealmsAssumption.invalidate();
+        }
         JSRealm newRealm = new JSRealm(this, env);
         newRealm.setupGlobals();
 
@@ -610,6 +613,7 @@ public class JSContext {
             }
             if (contextOptions.isV8RealmBuiltin()) {
                 newRealm.initRealmBuiltinObject();
+                newRealm.initRealmList();
                 newRealm.addToRealmList(newRealm);
             }
         }

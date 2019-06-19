@@ -293,11 +293,13 @@ public class JSRealm {
      * List of realms (for V8 Realm built-in). The list is available in top-level realm only (not in
      * child realms).
      */
-    private final List<JSRealm> realmList;
+    private List<JSRealm> realmList;
     /**
      * Parent realm (for a child realm) or {@code null} for a top-level realm.
      */
     private JSRealm parentRealm;
+
+    static final ThreadLocal<Boolean> CREATING_CHILD_REALM = new ThreadLocal<>();
 
     /**
      * Used to the pass call site source location for caller sensitive built-in functions.
@@ -307,10 +309,6 @@ public class JSRealm {
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
-
-        if (env != null && isChildRealm()) {
-            context.noChildRealmsAssumption.invalidate("no child realms");
-        }
 
         // need to build Function and Function.proto in a weird order to avoid circular dependencies
         this.objectPrototype = JSObjectPrototype.create(context);
@@ -430,8 +428,6 @@ public class JSRealm {
         this.errorStream = System.err;
         this.outputWriter = new PrintWriterWrapper(outputStream, true);
         this.errorWriter = new PrintWriterWrapper(errorStream, true);
-
-        this.realmList = (context.getContextOptions().isV8RealmBuiltin() && (env == null || !isChildRealm())) ? new ArrayList<>() : null;
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1323,6 +1319,8 @@ public class JSRealm {
 
     @TruffleBoundary
     public JSRealm createChildRealm() {
+        assert CREATING_CHILD_REALM.get() != Boolean.TRUE;
+        CREATING_CHILD_REALM.set(Boolean.TRUE);
         TruffleContext nestedContext = getEnv().newContextBuilder().build();
         Object prev = nestedContext.enter();
         try {
@@ -1344,6 +1342,7 @@ public class JSRealm {
             return childRealm;
         } finally {
             nestedContext.leave(prev);
+            CREATING_CHILD_REALM.set(Boolean.FALSE);
         }
     }
 
@@ -1357,10 +1356,6 @@ public class JSRealm {
 
     public final TruffleContext getTruffleContext() {
         return getEnv().getContext();
-    }
-
-    public final boolean isChildRealm() {
-        return getTruffleContext().getParent() != null;
     }
 
     public final Object getEmbedderData() {
@@ -1598,6 +1593,11 @@ public class JSRealm {
 
     public void setCallNode(JavaScriptNode callNode) {
         this.callNode = callNode;
+    }
+
+    void initRealmList() {
+        CompilerAsserts.neverPartOfCompilation();
+        realmList = new ArrayList<>();
     }
 
     synchronized void addToRealmList(JSRealm newRealm) {

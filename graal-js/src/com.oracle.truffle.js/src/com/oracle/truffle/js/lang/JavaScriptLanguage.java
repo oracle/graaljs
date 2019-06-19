@@ -57,7 +57,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.debug.DebuggerTags;
@@ -368,23 +367,13 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             assert curContext.getContextOptions().equals(JSContextOptions.fromOptionValues(env.getOptions()));
             return curContext;
         }
-        JSContext newContext = newOrParentJSContext(env);
+        JSContext newContext = newJSContext(env);
         languageContext = newContext;
         return newContext;
     }
 
-    private JSContext newOrParentJSContext(Env env) {
-        TruffleContext parent = env.getContext().getParent();
-        if (parent == null) {
-            return JSEngine.createJSContext(this, env);
-        } else {
-            Object prev = parent.enter();
-            try {
-                return getCurrentContext(JavaScriptLanguage.class).getContext();
-            } finally {
-                parent.leave(prev);
-            }
-        }
+    private JSContext newJSContext(Env env) {
+        return JSEngine.createJSContext(this, env);
     }
 
     @Override
