@@ -343,21 +343,25 @@ public final class JSObjectUtil {
         object.setShapeAndResize(oldShape, newRootShape);
 
         Shape newShape = newRootShape;
+        boolean sameLocations = true;
         for (Property p : oldShape.getPropertyListInternal(true)) {
             Object key = p.getKey();
             if (!newRootShape.hasProperty(key)) {
-                if (p.isHidden() || p.getLocation().isValue()) {
+                if (p.getLocation().isValue()) {
                     newShape = newShape.addProperty(p);
+                    object.setShapeAndGrow(newShape.getParent(), newShape);
+                } else if (p.isHidden() && sameLocations) {
+                    newShape = newShape.addProperty(p);
+                    newShape.getLastProperty().setSafe(object, archive.get(key), newShape.getParent(), newShape);
                 } else {
+                    sameLocations = false;
+
                     // we're allocating new property locations, so previous assumptions are invalid
                     JSShape.invalidatePropertyAssumption(oldShape, key);
 
-                    newShape = newShape.defineProperty(key, archive.get(key), p.getFlags());
-                }
-                if (!p.getLocation().isValue()) {
-                    newShape.getLastProperty().setSafe(object, archive.get(key), newShape.getParent(), newShape);
-                } else {
-                    object.setShapeAndGrow(newShape.getParent(), newShape);
+                    Object value = archive.get(key);
+                    newShape = newShape.defineProperty(key, value, p.getFlags());
+                    newShape.getLastProperty().setSafe(object, value, newShape.getParent(), newShape);
                 }
             }
         }
