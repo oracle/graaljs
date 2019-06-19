@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.array;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -56,7 +57,6 @@ import com.oracle.truffle.js.nodes.array.ArrayLengthNodeFactory.SetArrayLengthOr
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
-import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -103,25 +103,27 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             return arrayType.length(target, condition);
         }
 
-        @Specialization(guards = {"isWritableArrayType(getArrayType(target, condition))"}, replaces = "doLongLength")
-        protected static int doWritableArray(DynamicObject target, boolean condition) {
+        @Specialization(replaces = {"doIntLength", "doLongLength"}, rewriteOn = UnexpectedResultException.class)
+        protected static int doUncachedIntLength(DynamicObject target, boolean condition) throws UnexpectedResultException {
             long uint32Len = JSAbstractArray.arrayGetLength(target, condition);
             assert uint32Len == getArrayType(target, condition).length(target, condition);
-            assert JSRuntime.longIsRepresentableAsInt(uint32Len);
-            return (int) uint32Len;
+            if (JSRuntime.longIsRepresentableAsInt(uint32Len)) {
+                return (int) uint32Len;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new UnexpectedResultException((double) uint32Len);
+            }
         }
 
-        @Specialization(replaces = "doLongLength")
-        protected static double doGeneric(DynamicObject target, boolean condition) {
-            return getArrayType(target, condition).length(target, condition);
+        @Specialization(replaces = {"doUncachedIntLength"})
+        protected static double doUncachedLongLength(DynamicObject target, boolean condition) {
+            long uint32Len = JSAbstractArray.arrayGetLength(target, condition);
+            assert uint32Len == getArrayType(target, condition).length(target, condition);
+            return uint32Len;
         }
 
         protected static boolean isLengthAlwaysInt(ScriptArray arrayType) {
             return !(arrayType instanceof SparseArray);
-        }
-
-        protected static boolean isWritableArrayType(ScriptArray arrayType) {
-            return arrayType instanceof AbstractWritableArray;
         }
     }
 
