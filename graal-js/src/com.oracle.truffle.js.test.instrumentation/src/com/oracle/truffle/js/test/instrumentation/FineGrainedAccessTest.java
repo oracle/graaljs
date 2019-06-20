@@ -173,7 +173,12 @@ public abstract class FineGrainedAccessTest {
             Event event = test.getNextEvent();
             assertTag(tag, event);
             assertEquals(Event.Kind.INPUT, event.kind);
-            assertEquals(value, event.val);
+            if (value instanceof Number) {
+                assertTrue(event.val instanceof Number);
+                assertEquals(((Number) value).doubleValue(), ((Number) event.val).doubleValue(), 0);
+            } else {
+                assertEquals(value, event.val);
+            }
             return this;
         }
 
