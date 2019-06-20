@@ -2547,7 +2547,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode elem = transform(indexNode.getIndex());
 
         if (binaryOp == null) {
-            assignedNode = factory.createWriteElementNode(target, elem, assignedValue, context, environment.isStrictMode());
+            assignedNode = factory.createWriteElementNode(target, factory.createToArrayIndex(elem), assignedValue, context, environment.isStrictMode());
         } else {
             // Evaluation order:
             // 1. target = GetValue(baseReference)
