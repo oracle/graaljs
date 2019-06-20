@@ -2003,14 +2003,6 @@
     "filePath" : "language/expressions/arrow-function/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/assignment/destructuring/iterator-destructuring-property-reference-target-evaluation-order.js",
-    "status" : "FAIL",
-    "comment" : "tests updated to add the latest version of intl402 tests"
-  }, {
-    "filePath" : "language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order.js",
-    "status" : "FAIL",
-    "comment" : "tests updated to add the latest version of intl402 tests"
-  }, {
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
   }, {
@@ -2024,9 +2016,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/assignment/S11.13.1_A7_T2.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/assignment/S11.13.1_A7_T3.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/async-arrow-function/await-as-param-ident-nested-arrow-parameter-position.js",
