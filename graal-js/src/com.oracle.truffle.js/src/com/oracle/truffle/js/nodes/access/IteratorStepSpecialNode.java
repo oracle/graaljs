@@ -101,9 +101,8 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
             throw ex;
         }
 
-        Object value = getValueNode.getValue(result);
         Object done = toBooleanNode.executeBoolean(getDoneNode.getValue(result));
-        return done == Boolean.FALSE ? value : doneNode.execute(frame);
+        return done == Boolean.FALSE ? getValueNode.getValue(result) : doneNode.execute(frame);
     }
 
     public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);

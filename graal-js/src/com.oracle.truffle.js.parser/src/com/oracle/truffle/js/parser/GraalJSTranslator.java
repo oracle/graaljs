@@ -2547,7 +2547,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode elem = transform(indexNode.getIndex());
 
         if (binaryOp == null) {
-            assignedNode = factory.createWriteElementNode(target, elem, assignedValue, context, environment.isStrictMode());
+            assignedNode = factory.createWriteElementNode(target, factory.createToArrayIndex(elem), assignedValue, context, environment.isStrictMode());
         } else {
             // Evaluation order:
             // 1. target = GetValue(baseReference)
@@ -2669,6 +2669,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 lhsExpr = property.getValue();
             }
             JavaScriptNode rhsNode;
+            JavaScriptNode toPropertyKey = null;
             if (property.isRest()) {
                 JavaScriptNode restObj = factory.createObjectLiteral(context, new ArrayList<>());
                 JavaScriptNode excludedItemsArray = excludedKeys.length == 0 ? null : factory.createArrayLiteral(context, excludedKeys);
@@ -2681,17 +2682,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 rhsNode = factory.createReadProperty(context, valueTempVar.createReadNode(), keyName);
             } else {
                 JavaScriptNode key = transform(property.getKey());
+                VarRef keyTempVar = environment.createTempVar();
                 if (hasRest) {
-                    VarRef keyTempVar = environment.createTempVar();
                     excludedKeys[i] = keyTempVar.createReadNode();
-                    key = keyTempVar.createWriteNode(factory.createToPropertyKey(key));
                 }
-                rhsNode = factory.createReadElementNode(context, valueTempVar.createReadNode(), key);
+                toPropertyKey = keyTempVar.createWriteNode(factory.createToPropertyKey(key));
+                rhsNode = factory.createReadElementNode(context, valueTempVar.createReadNode(), keyTempVar.createReadNode());
             }
             if (init != null) {
                 rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
             }
-            initElements[i] = transformAssignment(lhsExpr, lhsExpr, rhsNode, initializationAssignment);
+            JavaScriptNode initElement = transformAssignment(lhsExpr, lhsExpr, rhsNode, initializationAssignment);
+            initElements[i] = (toPropertyKey == null) ? initElement : factory.createDual(context, toPropertyKey, initElement);
         }
         return factory.createExprBlock(initValueTempVar, createBlock(initElements), valueTempVar.createReadNode());
     }
