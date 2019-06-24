@@ -314,4 +314,13 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
     public boolean isDestructuring() {
         return getFlag(IS_DESTRUCTURING);
     }
+
+    /**
+     * Returns true if this is a Class declaration.
+     *
+     * @return true if this is a Class declaration.
+     */
+    public boolean isClassDeclaration() {
+        return init instanceof ClassNode;
+    }
 }

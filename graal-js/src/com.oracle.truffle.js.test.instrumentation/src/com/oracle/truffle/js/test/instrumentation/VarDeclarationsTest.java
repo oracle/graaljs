@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 
 public class VarDeclarationsTest extends FineGrainedAccessTest {
 
@@ -100,4 +101,26 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void classDeclareVar() {
+        evalWithTags("class Foo{}", new Class<?>[]{DeclareTag.class, WriteVariableExpressionTag.class});
+        enter(WriteVariableExpressionTag.class, (e1, w1) -> {
+            enter(DeclareTag.class, (e2) -> {
+                assertAttribute(e2, NAME, "Foo");
+                assertAttribute(e2, TYPE, "const");
+            }).exit();
+            w1.input(assertJSFunctionInput);
+        }).exit(assertJSFunctionReturn);
+
+    }
+
+    @Test
+    public void classDeclare() {
+        evalWithTags("class Foo{}", new Class<?>[]{DeclareTag.class});
+
+        enter(DeclareTag.class, (e2) -> {
+            assertAttribute(e2, NAME, "Foo");
+            assertAttribute(e2, TYPE, "const");
+        }).exit();
+    }
 }

@@ -65,6 +65,8 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == WriteVariableExpressionTag.class) {
             return !JSFrameUtil.isInternal(frameSlot);
+        } else if (tag == JSTags.InputNodeTag.class) {
+            return !JSFrameUtil.isInternal(frameSlot);
         } else {
             return super.hasTag(tag);
         }

@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -66,6 +67,8 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
         if (tag == ReadVariableExpressionTag.class && isScopeAccess()) {
             return true;
         } else if (tag == ReadPropertyExpressionTag.class && !isScopeAccess()) {
+            return true;
+        } else if (tag == InputNodeTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
