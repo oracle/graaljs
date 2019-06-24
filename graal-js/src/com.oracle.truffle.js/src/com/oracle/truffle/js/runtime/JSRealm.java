@@ -1321,27 +1321,30 @@ public class JSRealm {
     public JSRealm createChildRealm() {
         assert CREATING_CHILD_REALM.get() != Boolean.TRUE;
         CREATING_CHILD_REALM.set(Boolean.TRUE);
-        TruffleContext nestedContext = getEnv().newContextBuilder().build();
-        Object prev = nestedContext.enter();
         try {
-            JSRealm childRealm = JavaScriptLanguage.getCurrentJSRealm();
-            childRealm.agent = this.agent;
-            childRealm.parentRealm = this;
+            TruffleContext nestedContext = getEnv().newContextBuilder().build();
+            Object prev = nestedContext.enter();
+            try {
+                JSRealm childRealm = JavaScriptLanguage.getCurrentJSRealm();
+                childRealm.agent = this.agent;
+                childRealm.parentRealm = this;
 
-            if (getContext().getContextOptions().isV8RealmBuiltin()) {
-                // "Realm" object is shared by all realms (V8 compatibility mode)
-                childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
+                if (getContext().getContextOptions().isV8RealmBuiltin()) {
+                    // "Realm" object is shared by all realms (V8 compatibility mode)
+                    childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
 
-                JSRealm topLevelRealm = this;
-                while (topLevelRealm.parentRealm != null) {
-                    topLevelRealm = topLevelRealm.parentRealm;
+                    JSRealm topLevelRealm = this;
+                    while (topLevelRealm.parentRealm != null) {
+                        topLevelRealm = topLevelRealm.parentRealm;
+                    }
+                    topLevelRealm.addToRealmList(childRealm);
                 }
-                topLevelRealm.addToRealmList(childRealm);
-            }
 
-            return childRealm;
+                return childRealm;
+            } finally {
+                nestedContext.leave(prev);
+            }
         } finally {
-            nestedContext.leave(prev);
             CREATING_CHILD_REALM.set(Boolean.FALSE);
         }
     }
