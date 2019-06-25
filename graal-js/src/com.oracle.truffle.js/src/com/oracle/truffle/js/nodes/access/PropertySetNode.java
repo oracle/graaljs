@@ -72,7 +72,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthWriteNode;
+import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;

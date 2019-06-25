@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,40 +38,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.interop;
+package com.oracle.truffle.js.nodes.array;
 
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.nodes.access.IsArrayNode;
+import com.oracle.truffle.js.runtime.JSContext;
 
-/**
- * Node that returns a suitable prototype for a foreign object.
- */
-public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
+public final class JSGetLengthNode extends JavaScriptBaseNode {
+    @Child private GetLengthHelperNode getLengthHelperNode;
+    @Child private IsArrayNode isArrayNode;
 
-    public abstract DynamicObject executeDynamicObject(Object truffleObject);
-
-    @Specialization(limit = "3")
-    public DynamicObject doTruffleObject(Object truffleObject,
-                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
-                    @CachedLibrary("truffleObject") InteropLibrary interop) {
-        assert realm.getContext().getContextOptions().hasForeignObjectPrototype();
-        if (interop.hasArrayElements(truffleObject)) {
-            return realm.getArrayConstructor().getPrototype();
-        } else if (interop.isExecutable(truffleObject)) {
-            return realm.getFunctionPrototype();
-        } else {
-            return realm.getObjectPrototype();
-        }
+    private JSGetLengthNode(JSContext context) {
+        this.getLengthHelperNode = GetLengthHelperNode.create(context);
+        this.isArrayNode = IsArrayNode.createIsArray();
     }
 
-    public static ForeignObjectPrototypeNode create() {
-        return ForeignObjectPrototypeNodeGen.create();
+    public static JSGetLengthNode create(JSContext context) {
+        return new JSGetLengthNode(context);
     }
 
+    public Object execute(Object value) {
+        return getLengthHelperNode.execute(value, isArrayNode.execute(value));
+    }
+
+    public long executeLong(Object value) {
+        return getLengthHelperNode.executeLong(value, isArrayNode.execute(value));
+    }
 }

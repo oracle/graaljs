@@ -59,7 +59,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -1398,8 +1397,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return JSGuards.isForeignObject(functionClassProfile.profile(function));
         }
 
-        protected final TruffleObject getForeignFunction(Object[] arguments) {
-            return (TruffleObject) functionClassProfile.profile(JSArguments.getFunctionObject(arguments));
+        protected final Object getForeignFunction(Object[] arguments) {
+            return functionClassProfile.profile(JSArguments.getFunctionObject(arguments));
         }
 
         protected final Object[] exportArguments(Object[] arguments) {
@@ -1421,7 +1420,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         public Object executeCall(Object[] arguments) {
-            TruffleObject function = getForeignFunction(arguments);
+            Object function = getForeignFunction(arguments);
             Object[] callArguments = exportArguments(arguments);
             try {
                 return convertForeignReturn(interop.execute(function, callArguments));
@@ -1456,10 +1455,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
              * but returns the receiver, in which case we send an INVOKE message here instead.
              */
             if (JSGuards.isForeignObject(receiver)) {
-                assert getForeignFunction(arguments) == receiver;
-                TruffleObject truffleReceiver = (TruffleObject) receiver;
+                assert JSArguments.getFunctionObject(arguments) == receiver;
                 try {
-                    callReturn = interop.invokeMember(truffleReceiver, functionName, callArguments);
+                    callReturn = interop.invokeMember(receiver, functionName, callArguments);
                 } catch (UnknownIdentifierException | UnsupportedMessageException uiex) {
                     JSRealm realm = contextRef.get();
                     if (realm.getContext().getContextOptions().hasForeignObjectPrototype()) {
@@ -1469,17 +1467,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                             getFunctionNode = insert(PropertyGetNode.create(functionName, contextRef.get().getContext()));
                             callOnPrototypeNode = insert(JSFunctionCallNode.createCall());
                         }
-                        DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(truffleReceiver);
+                        DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(receiver);
                         Object function = getFunctionNode.getValue(prototype);
                         callReturn = callOnPrototypeNode.executeCall(JSArguments.create(receiver, function, JSArguments.extractUserArguments(arguments)));
                     } else {
-                        throw Errors.createTypeErrorInteropException(truffleReceiver, uiex, "invokeMember", this);
+                        throw Errors.createTypeErrorInteropException(receiver, uiex, "invokeMember", this);
                     }
                 } catch (UnsupportedTypeException | ArityException e) {
-                    throw Errors.createTypeErrorInteropException(truffleReceiver, e, "invokeMember", this);
+                    throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", this);
                 }
             } else {
-                TruffleObject function = getForeignFunction(arguments);
+                Object function = getForeignFunction(arguments);
                 try {
                     callReturn = interop.execute(function, callArguments);
                 } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {

@@ -76,8 +76,8 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthReadNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNodeFactory.GetPropertyFromJSObjectNodeGen;
+import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -700,7 +700,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             if (JSRuntime.isObject(thisObj) && !JSAdapter.isJSAdapter(thisObj) && !JSProxy.isProxy(thisObj)) {
-                if (!context.getNoSuchMethodUnusedAssumption().isValid() && root.isMethod() && getHasProperty().executeBoolean((DynamicObject) thisObj, JSObject.NO_SUCH_METHOD_NAME)) {
+                if (!context.getNoSuchMethodUnusedAssumption().isValid() && root.isMethod() && getHasProperty().executeBoolean(thisObj, JSObject.NO_SUCH_METHOD_NAME)) {
                     Object function = getNoSuchMethod().getValue(thisObj);
                     if (function != Undefined.instance) {
                         if (JSFunction.isJSFunction(function)) {

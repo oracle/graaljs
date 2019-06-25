@@ -59,9 +59,14 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 abstract class FlattenNode extends JavaScriptBaseNode {
     protected abstract Object execute(Object value);
 
-    @Specialization()
+    @Specialization
     protected static String doLazyString(JSLazyString value) {
         return value.toString();
+    }
+
+    @Specialization
+    protected static String doString(String value) {
+        return value;
     }
 
     @Specialization
@@ -75,7 +80,27 @@ abstract class FlattenNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static Object doLargeInteger(LargeInteger value) {
+    protected static boolean doBoolean(boolean value) {
+        return value;
+    }
+
+    @Specialization
+    protected static int doInt(int value) {
+        return value;
+    }
+
+    @Specialization
+    protected static LargeInteger doLargeInteger(LargeInteger value) {
+        return value;
+    }
+
+    @Specialization
+    protected static long doLong(long value) {
+        return value;
+    }
+
+    @Specialization
+    protected static double doDouble(double value) {
         return value;
     }
 

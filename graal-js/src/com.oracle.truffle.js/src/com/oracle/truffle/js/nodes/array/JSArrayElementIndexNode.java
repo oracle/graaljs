@@ -38,13 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -96,7 +97,7 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
         return !context.getArrayPrototypeNoElementsAssumption().isValid();
     }
 
-    protected final boolean isArray(TruffleObject obj) {
+    protected final boolean isArray(Object obj) {
         if (isArrayNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             isArrayNode = insert(IsArrayNode.createIsFastOrTypedArray());

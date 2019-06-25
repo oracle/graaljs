@@ -51,7 +51,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -59,9 +58,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
-import com.oracle.truffle.js.nodes.function.JSNewNode.SpecializedNewObjectNode;
-import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -158,7 +155,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         }
     }
 
-    @Child private JavaScriptNode createAsyncGeneratorObject;
+    @Child private SpecializedNewObjectNode createAsyncGeneratorObject;
     @Child private PropertySetNode setGeneratorState;
     @Child private PropertySetNode setGeneratorContext;
     @Child private PropertySetNode setGeneratorTarget;
@@ -174,8 +171,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
     public AsyncGeneratorBodyNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, JSWriteFrameSlotNode writeAsyncContext) {
         this.writeAsyncContext = writeAsyncContext;
-        JavaScriptNode functionObject = AccessFunctionNode.create();
-        this.createAsyncGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, true, functionObject);
+        this.createAsyncGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, true);
 
         this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
         this.setGeneratorContext = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_CONTEXT_ID, context);
@@ -227,12 +223,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         ensureCallTargetInitialized();
 
-        DynamicObject generatorObject;
-        try {
-            generatorObject = createAsyncGeneratorObject.executeDynamicObject(frame);
-        } catch (UnexpectedResultException e) {
-            throw Errors.shouldNotReachHere();
-        }
+        DynamicObject generatorObject = createAsyncGeneratorObject.execute(frame, JSFrameUtil.getFunctionObject(frame));
 
         asyncGeneratorStart(frame, generatorObject);
 

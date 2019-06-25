@@ -38,30 +38,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.nodes.array;
 
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
-public final class JSGetLengthNode extends JavaScriptBaseNode {
-    @Child private GetLengthHelperNode getLengthHelperNode;
-    @Child private IsArrayNode isArrayNode;
+@ReportPolymorphism
+public abstract class TestArrayNode extends JavaScriptBaseNode {
 
-    private JSGetLengthNode(JSContext context) {
-        this.getLengthHelperNode = GetLengthHelperNode.create(context);
-        this.isArrayNode = IsArrayNode.createIsArray();
+    protected enum Test {
+        HasHoles,
     }
 
-    public static JSGetLengthNode create(JSContext context) {
-        return new JSGetLengthNode(context);
+    protected static final int MAX_TYPE_COUNT = 4;
+
+    protected final Test test;
+
+    protected TestArrayNode(Test test) {
+        this.test = test;
     }
 
-    public Object execute(TruffleObject value) {
-        return getLengthHelperNode.execute(value, isArrayNode.execute(value));
+    protected static ScriptArray getArrayType(DynamicObject target, boolean condition) {
+        return JSObject.getArray(target, condition);
     }
 
-    public long executeLong(TruffleObject value) {
-        return getLengthHelperNode.executeLong(value, isArrayNode.execute(value));
+    protected static TestArrayNode create(Test test) {
+        return TestArrayNodeGen.create(test);
+    }
+
+    public static TestArrayNode createHasHoles() {
+        return create(Test.HasHoles);
+    }
+
+    public abstract boolean executeBoolean(DynamicObject target, boolean condition);
+
+    @Specialization(guards = {"arrayType.isInstance(getArrayType(target, condition))", "arrayType.isStatelessType()"}, limit = "MAX_TYPE_COUNT")
+    protected final boolean doCached(DynamicObject target, boolean condition,
+                    @Cached("getArrayType(target, condition)") ScriptArray arrayType) {
+        if (test == Test.HasHoles) {
+            return arrayType.hasHoles(target, condition);
+        } else {
+            throw Errors.shouldNotReachHere();
+        }
+    }
+
+    @Specialization(replaces = "doCached")
+    protected final boolean doUncached(DynamicObject target, boolean condition) {
+        ScriptArray arrayType = getArrayType(target, condition);
+        return doCached(target, condition, arrayType);
     }
 }

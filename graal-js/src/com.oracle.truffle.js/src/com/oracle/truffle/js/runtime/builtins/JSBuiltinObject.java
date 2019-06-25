@@ -461,6 +461,7 @@ public abstract class JSBuiltinObject extends JSClass {
         }
     }
 
+    @TruffleBoundary
     @Override
     public final DynamicObject getPrototypeOf(DynamicObject thisObj) {
         return (DynamicObject) JSShape.getPrototypeProperty(thisObj.getShape()).get(thisObj, false);

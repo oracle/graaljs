@@ -56,6 +56,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -97,35 +98,35 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySplic
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToStringNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshiftNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltins.DebugIsHolesArrayNode;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugIsHolesArrayNodeGen;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.nodes.access.ArrayCreateNode;
-import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
+import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode.IsArrayWrappedNode;
-import com.oracle.truffle.js.nodes.access.JSArrayFirstElementIndexNode;
-import com.oracle.truffle.js.nodes.access.JSArrayLastElementIndexNode;
-import com.oracle.truffle.js.nodes.access.JSArrayNextElementIndexNode;
-import com.oracle.truffle.js.nodes.access.JSArrayPreviousElementIndexNode;
-import com.oracle.truffle.js.nodes.access.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
-import com.oracle.truffle.js.nodes.access.JSSetLengthNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
+import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
+import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
+import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
+import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
+import com.oracle.truffle.js.nodes.array.JSArrayNextElementIndexNode;
+import com.oracle.truffle.js.nodes.array.JSArrayPreviousElementIndexNode;
+import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.array.JSSetLengthNode;
+import com.oracle.truffle.js.nodes.array.TestArrayNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
@@ -172,7 +173,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -345,7 +345,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return toObjectNode.executeTruffleObject(target);
         }
 
-        protected long getLength(TruffleObject thisObject) {
+        protected long getLength(Object thisObject) {
             if (isTypedArrayImplementation) {
                 // %TypedArray%.prototype.* don't access the "length" property
                 if (!JSArrayBufferView.isJSArrayBufferView(thisObject)) {
@@ -376,12 +376,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return isCallableNode.executeBoolean(callback);
         }
 
-        protected final TruffleObject checkCallbackIsFunction(Object callback) {
+        protected final Object checkCallbackIsFunction(Object callback) {
             if (!isCallable(callback)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAFunction(callback, this);
             }
-            return (TruffleObject) callback;
+            return callback;
         }
 
         protected final ArraySpeciesConstructorNode getArraySpeciesConstructorNode() {
@@ -715,15 +715,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return hasPropertyNode;
         }
 
-        protected boolean hasProperty(TruffleObject target, long propertyIdx) {
+        protected boolean hasProperty(Object target, long propertyIdx) {
             return getOrCreateHasPropertyNode().executeBoolean(target, propertyIdx);
         }
 
-        protected boolean hasProperty(TruffleObject target, Object propertyName) {
+        protected boolean hasProperty(Object target, Object propertyName) {
             return getOrCreateHasPropertyNode().executeBoolean(target, propertyName);
         }
 
-        protected long nextElementIndex(TruffleObject target, long currentIndex, long length) {
+        protected long nextElementIndex(Object target, long currentIndex, long length) {
             if (nextElementIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 nextElementIndexNode = insert(JSArrayNextElementIndexNode.create(getContext()));
@@ -731,16 +731,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return nextElementIndexNode.executeLong(target, currentIndex, length);
         }
 
-        protected long previousElementIndex(TruffleObject target, long currentIndex) {
+        protected long previousElementIndex(Object target, long currentIndex) {
             if (previousElementIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 previousElementIndexNode = insert(JSArrayPreviousElementIndexNode.create(getContext()));
             }
             return previousElementIndexNode.executeLong(target, currentIndex);
-        }
-
-        protected boolean isArrayWithHoles(DynamicObject thisObj, ValueProfile arrayTypeProfile, boolean isArray) {
-            return arrayTypeProfile.profile(arrayGetArrayType(thisObj, isArray)).hasHoles(thisObj, isArray);
         }
 
         protected static final void throwLengthError() {
@@ -1014,21 +1010,27 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayShiftNode extends JSArrayOperation {
+
         public JSArrayShiftNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
-
-        private final ConditionProfile lengthIsZero = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile lengthLargerOne = ConditionProfile.createBinaryProfile();
-        protected final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
-        @Child IsArrayNode isArrayNode = IsArrayNode.createIsArray();
 
         protected static boolean isSparseArray(DynamicObject thisObj, boolean isArray) {
             return arrayGetArrayType(thisObj, isArray) instanceof SparseArray;
         }
 
-        @Specialization(guards = {"isArrayNode.execute(thisObj)", "!isArrayWithHoles(thisObj, arrayTypeProfile, isArrayNode.execute(thisObj))"})
-        protected Object shift(DynamicObject thisObj) {
+        protected static boolean isArrayWithoutHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
+            boolean isArray = isArrayNode.execute(thisObj);
+            return isArray && !hasHolesNode.executeBoolean(thisObj, isArray);
+        }
+
+        @Specialization(guards = {"isArrayWithoutHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
+        protected Object shiftWithoutHoles(DynamicObject thisObj,
+                        @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
+                        @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
+                        @Cached("createClassProfile()") ValueProfile arrayTypeProfile,
+                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero,
+                        @Cached("createBinaryProfile()") ConditionProfile lengthLargerOne) {
             long len = getLength(thisObj);
 
             if (lengthIsZero.profile(len == 0)) {
@@ -1044,9 +1046,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isArrayWithHoles(thisObj, arrayTypeProfile, isArrayNode.execute(thisObj))", "!isSparseArray(thisObj, isArrayNode.execute(thisObj))"})
+        protected static boolean isArrayWithHoles(DynamicObject thisObj, IsArrayNode isArrayNode, TestArrayNode hasHolesNode) {
+            boolean isArray = isArrayNode.execute(thisObj);
+            return isArray && hasHolesNode.executeBoolean(thisObj, isArray) && !isSparseArray(thisObj, isArray);
+        }
+
+        @Specialization(guards = {"isArrayWithHoles(thisObj, isArrayNode, hasHolesNode)"}, limit = "1")
         protected Object shiftWithHoles(DynamicObject thisObj,
-                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode) {
+                        @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
+                        @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
+                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
             long len = getLength(thisObj);
             if (lengthIsZero.profile(len > 0)) {
                 Object firstElement = read(thisObj, 0);
@@ -1065,9 +1075,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj, isArrayNode.execute(thisObj))"})
+        @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj, isArrayNode.execute(thisObj))"}, limit = "1")
         protected Object shiftSparse(DynamicObject thisObj,
-                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
+                        @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
+                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero,
                         @Cached("create(getContext())") JSArrayFirstElementIndexNode firstElementIndexNode,
                         @Cached("create(getContext())") JSArrayLastElementIndexNode lastElementIndexNode) {
             long len = getLength(thisObj);
@@ -1089,8 +1101,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = "!isJSArray(thisObj)")
-        protected Object shift(Object thisObj,
-                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deleteNode) {
+        protected Object shiftGeneric(Object thisObj,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deleteNode,
+                        @Shared("lengthIsZero") @Cached("createBinaryProfile()") ConditionProfile lengthIsZero) {
             TruffleObject thisJSObj = toObject(thisObj);
             long len = getLength(thisJSObj);
 
@@ -1118,19 +1131,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
         @Child protected IsArrayNode isArrayNode = IsArrayNode.createIsArray();
+        @Child protected TestArrayNode hasHolesNode = TestArrayNode.createHasHoles();
 
         protected boolean isFastPath(Object thisObj) {
-            if (thisObj instanceof TruffleObject) {
-                return isFastPath((TruffleObject) thisObj);
-            }
-            return false;
-        }
-
-        protected boolean isFastPath(TruffleObject thisObj) {
             boolean isArray = isArrayNode.execute(thisObj);
-            return isArray && !isArrayWithHoles((DynamicObject) thisObj, arrayTypeProfile, isArray);
+            return isArray && !hasHolesNode.executeBoolean((DynamicObject) thisObj, isArray);
         }
 
         private long unshiftHoleless(DynamicObject thisObj, Object[] args) {
@@ -1310,10 +1316,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private long concatElementIntl(DynamicObject retObj, Object el, final long n, final ConditionProfile isSpreadable, final ConditionProfile hasElements,
                         final ConditionProfile hasOneElement) {
             if (isSpreadable.profile(isConcatSpreadable(el))) {
-                TruffleObject elObj = (TruffleObject) el;
-                long len2 = getLength(elObj);
+                long len2 = getLength(el);
                 if (hasElements.profile(len2 > 0)) {
-                    return concatSpreadable(retObj, n, elObj, len2, hasOneElement);
+                    return concatSpreadable(retObj, n, el, len2, hasOneElement);
                 }
             } else {
                 if (lengthErrorProfile.profile(n > JSRuntime.MAX_SAFE_INTEGER)) {
@@ -1326,7 +1331,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return n;
         }
 
-        private long concatSpreadable(DynamicObject retObj, long n, TruffleObject elObj, long len2, final ConditionProfile hasOneElement) {
+        private long concatSpreadable(DynamicObject retObj, long n, Object elObj, long len2, final ConditionProfile hasOneElement) {
             if (lengthErrorProfile.profile((n + len2) > JSRuntime.MAX_SAFE_INTEGER)) {
                 errorBranch.enter();
                 throwLengthError();
@@ -1698,6 +1703,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArraySpliceNode extends JSArrayOperationWithToInt {
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
+        @Child private GetPrototypeNode getPrototypeNode;
         private final BranchProfile branchA = BranchProfile.create();
         private final BranchProfile branchB = BranchProfile.create();
         private final BranchProfile branchDelete = BranchProfile.create();
@@ -1709,11 +1715,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile needLoopDeleteBranch = BranchProfile.create();
         private final BranchProfile needFillBranch = BranchProfile.create();
         private final ValueProfile arrayTypeProfile = ValueProfile.createClassProfile();
-        private final JSClassProfile classProfile = JSClassProfile.create();
 
         public JSArraySpliceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.deletePropertyNode = DeletePropertyNode.create(THROW_ERROR, context);
+            this.getPrototypeNode = GetPrototypeNode.create();
         }
 
         @Specialization
@@ -1775,7 +1781,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private boolean mustUseElementwise(DynamicObject obj, ScriptArray array) {
-            return array instanceof SparseArray || array.isLengthNotWritable() || JSObject.getPrototype(obj, classProfile) != getContext().getRealm().getArrayConstructor().getPrototype() ||
+            return array instanceof SparseArray || array.isLengthNotWritable() || getPrototypeNode.executeJSObject(obj) != getContext().getRealm().getArrayConstructor().getPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() || (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
         }
 
@@ -1914,14 +1920,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             protected final ConditionProfile indexInIntRangeCondition = ConditionProfile.createBinaryProfile();
 
             @Override
-            public Object apply(long index, Object value, TruffleObject target, TruffleObject callback, Object callbackThisArg, Object currentResult) {
+            public Object apply(long index, Object value, TruffleObject target, Object callback, Object callbackThisArg, Object currentResult) {
                 return callNode.executeCall(JSArguments.create(callbackThisArg, callback, value, JSRuntime.boxIndex(index, indexInIntRangeCondition), target));
             }
         }
 
         @Child private ForEachIndexCallNode forEachIndexNode;
 
-        protected final Object forEachIndexCall(TruffleObject arrayObj, TruffleObject callbackObj, Object thisArg, long fromIndex, long length, Object initialResult) {
+        protected final Object forEachIndexCall(TruffleObject arrayObj, Object callbackObj, Object thisArg, long fromIndex, long length, Object initialResult) {
             if (forEachIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 forEachIndexNode = insert(makeForEachIndexCallNode());
@@ -1956,7 +1962,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 validateTypedArray(thisJSObj);
             }
             long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            Object callbackFn = checkCallbackIsFunction(callback);
             return (boolean) forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, true);
         }
 
@@ -1985,7 +1991,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected DynamicObject filter(Object thisObj, Object callback, Object thisArg) {
             TruffleObject thisJSObj = toObject(thisObj);
             long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            Object callbackFn = checkCallbackIsFunction(callback);
 
             DynamicObject resultArray;
             if (isTypedArrayImplementation) {
@@ -2059,7 +2065,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 validateTypedArray(thisJSObj);
             }
             long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            Object callbackFn = checkCallbackIsFunction(callback);
             return forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, Undefined.instance);
         }
 
@@ -2086,7 +2092,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 validateTypedArray(thisJSObj);
             }
             long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            Object callbackFn = checkCallbackIsFunction(callback);
             return (boolean) forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, false);
         }
 
@@ -2115,7 +2121,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 validateTypedArray(thisJSObj);
             }
             long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            Object callbackFn = checkCallbackIsFunction(callback);
 
             Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, length);
             return (TruffleObject) forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, resultArray);
@@ -2174,10 +2180,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return FlattenIntoArrayNodeGen.create(context, withCallback);
         }
 
-        protected abstract long executeLong(DynamicObject target, Object source, long sourceLen, long start, long depth, TruffleObject callback, Object thisArg);
+        protected abstract long executeLong(DynamicObject target, Object source, long sourceLen, long start, long depth, Object callback, Object thisArg);
 
         @Specialization
-        protected long flatten(DynamicObject target, Object source, long sourceLen, long start, long depth, TruffleObject callback, Object thisArg) {
+        protected long flatten(DynamicObject target, Object source, long sourceLen, long start, long depth, Object callback, Object thisArg) {
 
             boolean callbackUndefined = callback == null;
 
@@ -2188,7 +2194,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return flattenState.targetIndex;
         }
 
-        protected final Object forEachIndexCall(TruffleObject arrayObj, TruffleObject callbackObj, Object thisArg, long fromIndex, long length, Object initialResult) {
+        protected final Object forEachIndexCall(TruffleObject arrayObj, Object callbackObj, Object thisArg, long fromIndex, long length, Object initialResult) {
             if (forEachIndexNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 forEachIndexNode = insert(makeForEachIndexCallNode());
@@ -2291,7 +2297,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             TruffleObject thisJSObj = toObject(thisObj);
             long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            Object callbackFn = checkCallbackIsFunction(callback);
 
             Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisJSObj, 0);
             flattenIntoArrayNode.flatten((DynamicObject) resultArray, thisJSObj, length, 0, 1, callbackFn, thisArg);
@@ -2343,7 +2349,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin, isTypedArrayImplementation);
         }
 
-        private Object callPredicate(TruffleObject function, Object target, Object value, double index, Object thisObj) {
+        private Object callPredicate(Object function, Object target, Object value, double index, Object thisObj) {
             return callNode.executeCall(JSArguments.create(target, function, value, index, thisObj));
         }
 
@@ -2351,7 +2357,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object find(Object thisObj, Object callback, Object thisArg) {
             TruffleObject thisJSObj = toObject(thisObj);
             long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            Object callbackFn = checkCallbackIsFunction(callback);
 
             long k;
             for (k = 0; k < length; k++) {
@@ -2374,7 +2380,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin, isTypedArrayImplementation);
         }
 
-        private Object callPredicate(TruffleObject function, Object target, Object value, double index, Object thisObj) {
+        private Object callPredicate(Object function, Object target, Object value, double index, Object thisObj) {
             return callNode.executeCall(JSArguments.create(target, function, value, index, thisObj));
         }
 
@@ -2382,7 +2388,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object findIndex(Object thisObj, Object callback, Object thisArg) {
             TruffleObject thisJSObj = toObject(thisObj);
             long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            Object callbackFn = checkCallbackIsFunction(callback);
 
             long k;
             for (k = 0; k < length; k++) {
@@ -2696,7 +2702,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 validateTypedArray(thisJSObj);
             }
             long length = getLength(thisJSObj);
-            TruffleObject callbackFn = checkCallbackIsFunction(callback);
+            Object callbackFn = checkCallbackIsFunction(callback);
 
             Object currentValue = initialValueOpt.length > 0 ? initialValueOpt[0] : null;
             long currentIndex = isForward() ? 0 : length - 1;
@@ -2744,7 +2750,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected CallbackNode makeCallbackNode() {
             return new DefaultCallbackNode() {
                 @Override
-                public Object apply(long index, Object value, TruffleObject target, TruffleObject callback, Object callbackThisArg, Object currentResult) {
+                public Object apply(long index, Object value, TruffleObject target, Object callback, Object callbackThisArg, Object currentResult) {
                     return callNode.executeCall(JSArguments.create(callbackThisArg, callback, currentResult, value, JSRuntime.boxIndex(index, indexInIntRangeCondition), target));
                 }
             };
@@ -2883,16 +2889,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayReverseNode extends JSArrayOperation {
-        @Child private DebugIsHolesArrayNode isHolesArrayNode;
+        @Child private TestArrayNode hasHolesNode;
+        @Child private IsArrayNode isArrayNode;
         @Child private DeletePropertyNode deletePropertyNode;
-        private final ConditionProfile hasHolesProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile bothExistProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile onlyUpperExistsProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile onlyLowerExistsProfile = ConditionProfile.createBinaryProfile();
 
         public JSArrayReverseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isHolesArrayNode = DebugIsHolesArrayNodeGen.create(context, null, null);
+            this.hasHolesNode = TestArrayNode.createHasHoles();
+            this.isArrayNode = IsArrayNode.createIsArray();
         }
 
         private boolean deleteProperty(TruffleObject array, long index) {
@@ -2909,7 +2916,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             final long length = getLength(array);
             long lower = 0;
             long upper = length - 1;
-            boolean hasHoles = isHolesArrayNode.executeBoolean(array);
+            boolean isArray = isArrayNode.execute(array);
+            boolean hasHoles = isArray && hasHolesNode.executeBoolean((DynamicObject) array, isArray);
 
             while (lower <= upper) {
                 boolean lowerExists;
@@ -2946,7 +2954,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     assert !lowerExists && !upperExists; // No action required.
                 }
 
-                if (hasHolesProfile.profile(hasHoles)) {
+                if (hasHoles) {
                     long nextLower = nextElementIndex(array, lower, length);
                     long nextUpper = previousElementIndex(array, upper);
                     if ((length - nextLower - 1) >= nextUpper) {

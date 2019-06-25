@@ -48,7 +48,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -58,8 +57,7 @@ import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.arguments.AccessFunctionNode;
-import com.oracle.truffle.js.nodes.function.JSNewNode.SpecializedNewObjectNode;
+import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -161,7 +159,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         }
     }
 
-    @Child private JavaScriptNode createGeneratorObject;
+    @Child private SpecializedNewObjectNode createGeneratorObject;
     @Child private PropertySetNode setGeneratorState;
     @Child private PropertySetNode setGeneratorContext;
     @Child private PropertySetNode setGeneratorTarget;
@@ -174,8 +172,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
 
     private GeneratorBodyNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode) {
         this.context = context;
-        JavaScriptNode functionObject = AccessFunctionNode.create();
-        this.createGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, false, functionObject);
+        this.createGeneratorObject = SpecializedNewObjectNode.create(context, false, true, true, false);
         this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
         this.setGeneratorContext = PropertySetNode.createSetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
         this.setGeneratorTarget = PropertySetNode.createSetHidden(JSFunction.GENERATOR_TARGET_ID, context);
@@ -216,12 +213,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         // 14.4.11 Runtime Semantics: GeneratorBody : EvaluateBody
         // Let G be OrdinaryCreateFromConstructor(functionObject, "%GeneratorPrototype%",
         // <<[[GeneratorState]], [[GeneratorContext]]>>).
-        DynamicObject generatorObject;
-        try {
-            generatorObject = createGeneratorObject.executeDynamicObject(frame);
-        } catch (UnexpectedResultException e) {
-            throw new AssertionError();
-        }
+        DynamicObject generatorObject = createGeneratorObject.execute(frame, JSFrameUtil.getFunctionObject(frame));
 
         generatorStart(frame, generatorObject);
 

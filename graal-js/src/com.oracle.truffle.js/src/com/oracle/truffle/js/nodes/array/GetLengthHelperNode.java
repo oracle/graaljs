@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -51,7 +51,8 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.nodes.access.ArrayLengthNode.ArrayLengthReadNode;
+import com.oracle.truffle.js.nodes.access.PropertyNode;
+import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -79,9 +80,9 @@ abstract class GetLengthHelperNode extends JavaScriptBaseNode {
         return GetLengthHelperNodeGen.create(context);
     }
 
-    public abstract Object execute(TruffleObject value, boolean isArray);
+    public abstract Object execute(Object value, boolean isArray);
 
-    public final long executeLong(TruffleObject value, boolean isArray) {
+    public final long executeLong(Object value, boolean isArray) {
         return toLengthLong(execute(value, isArray));
     }
 

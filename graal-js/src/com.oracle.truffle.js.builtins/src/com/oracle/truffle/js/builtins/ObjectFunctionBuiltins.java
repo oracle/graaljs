@@ -85,6 +85,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
@@ -273,8 +274,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSObject(object)")
         protected DynamicObject getPrototypeOf(DynamicObject object,
-                        @Cached("create()") JSClassProfile classProfile) {
-            return JSObject.getPrototype(object, classProfile);
+                        @Cached("create()") GetPrototypeNode getPrototypeNode) {
+            return getPrototypeNode.executeJSObject(object);
         }
     }
 

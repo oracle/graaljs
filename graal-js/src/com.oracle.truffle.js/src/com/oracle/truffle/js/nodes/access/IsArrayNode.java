@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -79,7 +78,7 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
         this.fastAndTypedArray = fastAndTypedArray;
     }
 
-    public abstract boolean execute(TruffleObject operand);
+    public abstract boolean execute(Object operand);
 
     @Specialization(guards = "cachedShape.check(object)", limit = "MAX_SHAPE_COUNT")
     protected static boolean doIsArrayShape(DynamicObject object, //
@@ -112,7 +111,7 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isDynamicObject(object)")
-    protected static boolean isNotDynamicObject(@SuppressWarnings("unused") TruffleObject object) {
+    protected static boolean isNotDynamicObject(@SuppressWarnings("unused") Object object) {
         return false;
     }
 
@@ -147,11 +146,7 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
 
         @Specialization
         protected boolean doObject(Object operand) {
-            if (JSObject.isDynamicObject(operand)) {
-                return isArrayNode.execute((DynamicObject) operand);
-            } else {
-                return false;
-            }
+            return isArrayNode.execute(operand);
         }
 
         public static JavaScriptNode createIsArray(JavaScriptNode operand) {

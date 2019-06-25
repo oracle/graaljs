@@ -48,6 +48,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
+import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
+import com.oracle.truffle.js.nodes.array.JSArrayNextElementIndexNode;
+import com.oracle.truffle.js.nodes.array.JSArrayPreviousElementIndexNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -61,7 +65,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
     public abstract static class CallbackNode extends JavaScriptBaseNode {
-        public abstract Object apply(long index, Object value, TruffleObject target, TruffleObject callback, Object callbackThisArg, Object currentResult);
+        public abstract Object apply(long index, Object value, TruffleObject target, Object callback, Object callbackThisArg, Object currentResult);
     }
 
     @ValueType
@@ -124,7 +128,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
     }
 
-    public final Object executeForEachIndex(TruffleObject target, TruffleObject callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
+    public final Object executeForEachIndex(TruffleObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
         boolean isArray = isArrayNode.execute(target);
         if (isArray && context.getArrayPrototypeNoElementsAssumption().isValid()) {
             return executeForEachIndexFast((DynamicObject) target, callback, callbackThisArg, fromIndex, length, isArray, initialResult);
@@ -133,9 +137,9 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
     }
 
-    protected abstract Object executeForEachIndexFast(DynamicObject target, TruffleObject callback, Object callbackThisArg, long fromIndex, long length, boolean arrayCondition, Object initialResult);
+    protected abstract Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, boolean arrayCondition, Object initialResult);
 
-    protected abstract Object executeForEachIndexSlow(TruffleObject target, TruffleObject callback, Object callbackThisArg, long fromIndex, long length, Object initialResult);
+    protected abstract Object executeForEachIndexSlow(TruffleObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult);
 
     protected final long firstElementIndex(DynamicObject target, long length) {
         if (firstElementIndexNode == null) {
@@ -175,7 +179,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
     }
 
-    protected final Object callback(long index, Object value, TruffleObject target, TruffleObject callback, Object callbackThisArg, Object currentResult) {
+    protected final Object callback(long index, Object value, TruffleObject target, Object callback, Object callbackThisArg, Object currentResult) {
         if (callbackNode == null) {
             return callbackThisArg;
         } else {
@@ -205,7 +209,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object executeForEachIndexFast(DynamicObject target, TruffleObject callback, Object callbackThisArg, long fromIndex, long length, boolean arrayCondition, Object initialResult) {
+        protected Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, boolean arrayCondition, Object initialResult) {
             long index = fromIndexZero.profile(fromIndex == 0) ? firstElementIndex(target, length) : nextElementIndex(target, fromIndex - 1, length);
             Object currentResult = initialResult;
             if (index < length) {
@@ -226,7 +230,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object executeForEachIndexSlow(TruffleObject target, TruffleObject callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
+        protected Object executeForEachIndexSlow(TruffleObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             Object currentResult = initialResult;
             boolean isForeign = JSRuntime.isForeignObject(target);
             if (isForeign) {
@@ -267,7 +271,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object executeForEachIndexFast(DynamicObject target, TruffleObject callback, Object callbackThisArg, long fromIndex, long length, boolean arrayCondition, Object initialResult) {
+        protected Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, boolean arrayCondition, Object initialResult) {
             assert fromIndex < length;
             long index = previousElementIndex(target, fromIndex + 1);
             // NB: cannot rely on lastElementIndex here: can be > length (e.g. arguments object)
@@ -290,7 +294,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object executeForEachIndexSlow(TruffleObject target, TruffleObject callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
+        protected Object executeForEachIndexSlow(TruffleObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             Object currentResult = initialResult;
             boolean isForeign = JSRuntime.isForeignObject(target);
             if (isForeign) {
