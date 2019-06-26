@@ -381,7 +381,14 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Number toNumber(Object value) {
-        Object primitive = isObject(value) ? JSObject.toPrimitive((DynamicObject) value, HINT_NUMBER) : value;
+        Object primitive;
+        if (isObject(value)) {
+            primitive = JSObject.toPrimitive((DynamicObject) value, HINT_NUMBER);
+        } else if (isForeignObject(value)) {
+            primitive = toPrimitiveFromForeign((TruffleObject) value, TO_STRING_MAX_DEPTH);
+        } else {
+            primitive = value;
+        }
         return toNumberFromPrimitive(primitive);
     }
 
