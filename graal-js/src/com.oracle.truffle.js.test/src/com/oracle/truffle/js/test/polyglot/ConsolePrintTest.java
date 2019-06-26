@@ -42,8 +42,15 @@ package com.oracle.truffle.js.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Collections;
+import java.util.Map;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -55,7 +62,11 @@ import com.oracle.truffle.js.test.JSTest;
 public class ConsolePrintTest extends JSTest {
 
     private String runInteractive(String sourceCode) {
-        return testHelper.runToString(sourceCode, true).trim();
+        return runInteractive(sourceCode, Collections.emptyMap());
+    }
+
+    private String runInteractive(String sourceCode, Map<String, Object> bindings) {
+        return testHelper.runToString(sourceCode, true, bindings).trim();
     }
 
     private static String empty(int count) {
@@ -249,6 +260,139 @@ public class ConsolePrintTest extends JSTest {
         assertEquals("1n", runInteractive("1n"));
         assertEquals("[1n]", runInteractive("[1n]"));
         assertEquals("{bigOne: 1n}", runInteractive("({ bigOne: 1n })"));
+    }
+
+    @Test
+    public void testRLikeNumber() {
+        assertEquals("[42]", runInteractive("rLikeNumber", Collections.singletonMap("rLikeNumber", new RLikeNumber(42))));
+    }
+
+    /**
+     * Resembles the behavior of numbers in R (they are numbers, pointers and arrays).
+     */
+    @ExportLibrary(InteropLibrary.class)
+    static final class RLikeNumber implements TruffleObject {
+        private final double value;
+
+        RLikeNumber(double value) {
+            this.value = value;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        long getArraySize() {
+            return 1;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws UnsupportedMessageException {
+            if (index == 0) {
+                return value;
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index == 0;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isPointer() {
+            return true;
+        }
+
+        @ExportMessage
+        long asPointer() {
+            return Double.doubleToLongBits(value);
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isNumber() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean fitsInByte() {
+            return false;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean fitsInShort() {
+            return false;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean fitsInInt() {
+            return false;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean fitsInLong() {
+            return false;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean fitsInFloat() {
+            return false;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean fitsInDouble() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        byte asByte() throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        short asShort() throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        int asInt() throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        long asLong() throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        float asFloat() throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        double asDouble() {
+            return value;
+        }
+
     }
 
 }

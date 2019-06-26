@@ -51,6 +51,8 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -180,8 +182,12 @@ public class TestHelper implements AutoCloseable {
         return value;
     }
 
-    public Value runRedirectOutput(String sourceCode, PrintStream writer, PrintStream errorWriter, boolean isInteractive) {
+    public Value runRedirectOutput(String sourceCode, PrintStream writer, PrintStream errorWriter, boolean isInteractive, Map<String, Object> bindings) {
         Context specialCtx = Context.newBuilder(JavaScriptLanguage.ID).out(writer).err(errorWriter).build();
+        Value jsBindings = specialCtx.getBindings(JavaScriptLanguage.ID);
+        for (Map.Entry<String, Object> entry : bindings.entrySet()) {
+            jsBindings.putMember(entry.getKey(), entry.getValue());
+        }
         Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "TestCase").interactive(isInteractive).buildLiteral();
         return specialCtx.eval(source);
     }
@@ -191,10 +197,14 @@ public class TestHelper implements AutoCloseable {
     }
 
     public String runToString(String source, boolean isInteractive) {
+        return runToString(source, isInteractive, Collections.emptyMap());
+    }
+
+    public String runToString(String source, boolean isInteractive, Map<String, Object> bindings) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             try (PrintStream stream = new PrintStream(baos, false, "UTF-8")) {
-                runRedirectOutput(source, stream, stream, isInteractive);
+                runRedirectOutput(source, stream, stream, isInteractive, bindings);
             }
             return baos.toString(StandardCharsets.UTF_8.displayName()).replaceAll("\r\n", "\n");
         } catch (UnsupportedEncodingException e) {
@@ -211,7 +221,7 @@ public class TestHelper implements AutoCloseable {
             }
         };
         PrintStream stream = new PrintStream(out);
-        return toHostValue(runRedirectOutput(sourceCode, stream, stream, false));
+        return toHostValue(runRedirectOutput(sourceCode, stream, stream, false, Collections.emptyMap()));
     }
 
     public DynamicObject runJSArray(String source) {
