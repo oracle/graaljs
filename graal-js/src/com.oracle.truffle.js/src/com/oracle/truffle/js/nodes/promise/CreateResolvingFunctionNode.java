@@ -50,7 +50,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
@@ -114,7 +114,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
             @Child private PropertyGetNode getAlreadyResolvedNode = PropertyGetNode.createGetHidden(ALREADY_RESOLVED_KEY, context);
             @Child private PropertyGetNode getThenNode;
             @Child private IsCallableNode isCallableNode = IsCallableNode.create();
-            @Child private IsJSObjectNode isObjectNode = IsJSObjectNode.create();
+            @Child private IsObjectNode isObjectNode = IsObjectNode.create();
             @Child private FulfillPromiseNode fulfillPromiseNode;
             @Child private RejectPromiseNode rejectPromiseNode;
             @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
