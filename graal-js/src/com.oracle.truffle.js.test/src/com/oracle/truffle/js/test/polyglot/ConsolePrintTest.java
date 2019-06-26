@@ -267,6 +267,11 @@ public class ConsolePrintTest extends JSTest {
         assertEquals("[42]", runInteractive("rLikeNumber", Collections.singletonMap("rLikeNumber", new RLikeNumber(42))));
     }
 
+    @Test
+    public void testPointer() {
+        assertEquals("Pointer[0xcafebabe]", runInteractive("pointer", Collections.singletonMap("pointer", new Pointer(0xcafebabeL))));
+    }
+
     /**
      * Resembles the behavior of numbers in R (they are numbers, pointers and arrays).
      */
@@ -391,6 +396,27 @@ public class ConsolePrintTest extends JSTest {
         @ExportMessage
         double asDouble() {
             return value;
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class Pointer implements TruffleObject {
+        private final long address;
+
+        Pointer(long address) {
+            this.address = address;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isPointer() {
+            return true;
+        }
+
+        @ExportMessage
+        long asPointer() {
+            return address;
         }
 
     }
