@@ -57,6 +57,7 @@ import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
@@ -321,9 +322,21 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object toPrimitiveFromForeign(TruffleObject tObj, int depth) {
+        TruffleLanguage.Env env;
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
         if (interop.isNull(tObj)) {
             return Null.instance;
+        } else if ((env = JavaScriptLanguage.getCurrentEnv()).isHostObject(tObj)) {
+            Object javaObject = env.asHostObject(tObj);
+            if (javaObject == null) {
+                return Null.instance;
+            } else if (JSGuards.isJavaPrimitiveNumber(javaObject)) {
+                return JSRuntime.importValue(javaObject);
+            } else if (JavaScriptLanguage.getCurrentJSRealm().getContext().isOptionNashornCompatibilityMode() && javaObject instanceof Number) {
+                return ((Number) javaObject).doubleValue();
+            } else {
+                return JSRuntime.toJSNull(javaObject.toString());
+            }
         } else if (interop.isBoolean(tObj) || interop.isString(tObj) || interop.isNumber(tObj)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
         } else {
