@@ -48,9 +48,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNodeGen.IsObjectWrappedNodeGen;
-import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -107,34 +104,6 @@ public abstract class IsObjectNode extends JavaScriptBaseNode {
             return JSObject.isJSObject(obj);
         } else {
             return JSGuards.isJSObject(obj);
-        }
-    }
-
-    /**
-     * Wrapper of @link{IsObjectNode} when you really need a JavaScriptNode. IsObjectNode is a
-     * JavaScriptBaseNode for footprint reasons.
-     */
-    public abstract static class IsObjectWrappedNode extends JSUnaryNode {
-
-        @Child private IsObjectNode isObjectNode;
-
-        protected IsObjectWrappedNode(JavaScriptNode operand) {
-            super(operand);
-            this.isObjectNode = IsObjectNode.create();
-        }
-
-        @Specialization
-        protected boolean doObject(Object operand) {
-            return isObjectNode.executeBoolean(operand);
-        }
-
-        public static JavaScriptNode create(JavaScriptNode operand) {
-            return IsObjectWrappedNodeGen.create(operand);
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return IsObjectWrappedNodeGen.create(cloneUninitialized(getOperand()));
         }
     }
 }
