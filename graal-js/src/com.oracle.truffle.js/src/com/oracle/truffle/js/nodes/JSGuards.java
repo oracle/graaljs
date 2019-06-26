@@ -550,6 +550,14 @@ public final class JSGuards {
         }
     }
 
+    public static JSClass getJSClassIfObject(DynamicObject object) {
+        if (isJSObject(object)) {
+            return JSObject.getJSClass(object);
+        } else {
+            return null;
+        }
+    }
+
     public static boolean isReferenceEquals(Object a, Object b) {
         return a == b;
     }
@@ -568,6 +576,10 @@ public final class JSGuards {
 
     public static boolean isNullOrUndefined(DynamicObject value) {
         return value.getShape().getObjectType() == Null.NULL_CLASS;
+    }
+
+    public static boolean isJSObjectShape(Shape shape) {
+        return shape.getObjectType() instanceof JSClass;
     }
 
     public static boolean isTruffleJavaObject(TruffleObject object) {

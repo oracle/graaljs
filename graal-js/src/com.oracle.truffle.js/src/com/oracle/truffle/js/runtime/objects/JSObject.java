@@ -226,10 +226,6 @@ public final class JSObject {
         return isDynamicObject(object) && ((DynamicObject) object).getShape().getObjectType() instanceof JSClass;
     }
 
-    public static boolean isJSObjectShape(Shape shape) {
-        return shape.getObjectType() instanceof JSClass;
-    }
-
     /**
      * Returns whether object is a DynamicObject. This includes objects from other language
      * implementations as well.

@@ -41,25 +41,21 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Implementation of ECMAScript 5.1, 10.4.3 Entering Function Code, for non-strict callees.
@@ -67,9 +63,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  * Converts the caller provided thisArg to the ThisBinding of the callee's execution context,
  * replacing null or undefined with the global object and performing ToObject on primitives.
  */
-@ImportStatic(JSObject.class)
 public abstract class JSPrepareThisNode extends JSUnaryNode {
-    protected static final int MAX_CLASSES = 3;
 
     final JSContext context;
 
@@ -82,15 +76,21 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
         return JSPrepareThisNodeGen.create(context, child);
     }
 
-    @Specialization
-    protected DynamicObject doJSObject(DynamicObject object,
-                    @Cached("create()") IsJSObjectNode isObjectNode,
-                    @Cached("createBinaryProfile()") ConditionProfile objectOrGlobalProfile) {
-        if (objectOrGlobalProfile.profile(isObjectNode.executeBoolean(object))) {
-            return object;
-        } else {
-            return GlobalObjectNode.getGlobalObject(context);
-        }
+    @Specialization(guards = "isNullOrUndefined(object)")
+    protected DynamicObject doJSObject(@SuppressWarnings("unused") Object object) {
+        return GlobalObjectNode.getGlobalObject(context);
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
+    protected DynamicObject doJSObjectCached(DynamicObject object,
+                    @Cached("getJSClassIfObject(object)") JSClass cachedClass) {
+        return object;
+    }
+
+    @Specialization(guards = "isJSObject(object)", replaces = "doJSObjectCached")
+    protected DynamicObject doJSObject(DynamicObject object) {
+        return object;
     }
 
     @Specialization
@@ -133,14 +133,8 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
         return JSSymbol.create(context, value);
     }
 
-    @Specialization(guards = {"object != null", "cachedClass != null", "object.getClass() == cachedClass"}, limit = "MAX_CLASSES")
-    protected Object doJavaObject(Object object, @Cached("getNonJSObjectClass(object)") Class<?> cachedClass) {
-        return doJavaGeneric(cachedClass.cast(object));
-    }
-
-    @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isBigInt(object)", "!isJSObject(object)"}, replaces = "doJavaObject")
-    protected Object doJavaGeneric(Object object) {
-        assert JSRuntime.isForeignObject(object);
+    @Specialization(guards = "isForeignObject(object)")
+    protected Object doForeignObject(Object object) {
         return object;
     }
 
