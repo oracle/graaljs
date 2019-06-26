@@ -1050,9 +1050,6 @@ public final class JSRuntime {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
             if (interop.isNull(value)) {
                 return "null";
-            } else if (interop.isPointer(value)) {
-                long pointer = interop.asPointer(value);
-                return "Pointer[0x" + Long.toHexString(pointer) + "]";
             } else if (interop.hasArrayElements(value)) {
                 return foreignArrayToString(value, depth);
             } else if (interop.isString(value)) {
@@ -1082,6 +1079,9 @@ public final class JSRuntime {
                 return "Executable";
             } else if (interop.hasMembers(value)) {
                 return foreignObjectToString(value, depth);
+            } else if (interop.isPointer(value)) {
+                long pointer = interop.asPointer(value);
+                return "Pointer[0x" + Long.toHexString(pointer) + "]";
             } else {
                 return "{}";
             }
