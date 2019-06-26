@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * Checks whether the argument is an object.
+ * Checks whether the argument is a JS object (optionally including null and undefined).
  */
 @ImportStatic(JSObject.class)
 public abstract class IsJSObjectNode extends JavaScriptBaseNode {
