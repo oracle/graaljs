@@ -55,12 +55,12 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     private final JSContext context;
     protected final Object key;
-    @Child protected IsObjectNode isObject;
+    @Child protected IsJSObjectNode isObject;
 
     protected CreateDataPropertyNode(JSContext context, Object key) {
         this.context = context;
         this.key = key;
-        this.isObject = IsObjectNode.create();
+        this.isObject = IsJSObjectNode.create();
     }
 
     public static CreateDataPropertyNode create(JSContext context, Object key) {

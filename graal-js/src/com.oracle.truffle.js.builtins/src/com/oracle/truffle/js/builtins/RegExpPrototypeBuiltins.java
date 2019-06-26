@@ -76,7 +76,7 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsJSClassNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -363,7 +363,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isObjectNode.executeBoolean(thisObj)", limit = "1")
         protected Object test(DynamicObject thisObj, Object input,
-                        @Cached("create()") @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                        @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create(getContext())") JSRegExpExecIntlNode regExpNode) {
             String inputStr = toStringNode.executeString(input);
@@ -404,7 +404,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isObjectNode.executeBoolean(thisObj)", limit = "1")
         protected String toString(DynamicObject thisObj,
-                        @Cached("create()") @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                        @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached("create()") JSToStringNode toString1Node,
                         @Cached("create()") JSToStringNode toString2Node) {
             String source = toString1Node.executeString(getSourceNode.getValue(thisObj));
@@ -535,7 +535,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     @ImportStatic(JSGuards.class)
     public abstract static class JSRegExpSplitNode extends RegExpPrototypeSymbolOperation {
-        @Child private IsObjectNode isObjectNode;
+        @Child private IsJSObjectNode isObjectNode;
         @Child private JSToStringNode toString1Node;
         @Child private JSToStringNode toString2Node;
         @Child private PropertyGetNode getFlagsNode;
@@ -799,7 +799,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private boolean isJSObject(DynamicObject rx) {
             if (isObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                isObjectNode = insert(IsObjectNode.create());
+                isObjectNode = insert(IsJSObjectNode.create());
             }
             return isObjectNode.executeBoolean(rx);
         }
@@ -894,7 +894,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSToStringNode toString3Node;
         @Child private JSToStringNode toString4Node;
         @Child private JSFunctionCallNode functionCallNode;
-        @Child private IsObjectNode isObjectNode;
+        @Child private IsJSObjectNode isObjectNode;
         @Child private IsCallableNode isCallableNode;
         @Child private ReadElementNode readNamedCaptureGroupNode;
         @Child private JSToObjectNode toObjectNode;
@@ -926,7 +926,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.getGlobalNode = PropertyGetNode.create(JSRegExp.GLOBAL, false, context);
             this.getIndexNode = PropertyGetNode.create(JSRegExp.INDEX, false, context);
             this.toIntegerNode = JSToIntegerNode.create();
-            this.isObjectNode = IsObjectNode.create();
+            this.isObjectNode = IsJSObjectNode.create();
             this.isCallableNode = IsCallableNode.create();
             this.hasLazyRegexResultNode = HasHiddenKeyCacheNode.create(JSArray.LAZY_REGEX_RESULT_ID);
         }
@@ -1442,7 +1442,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isObjectNode.executeBoolean(rx)", limit = "1")
         protected Object match(DynamicObject rx, Object param,
-                        @Cached("create()") @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                        @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached("create()") JSToStringNode toString1Node,
                         @Cached("create()") JSToStringNode toString2Node) {
             String s = toString1Node.executeString(param);
@@ -1500,7 +1500,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isObjectNode.executeBoolean(rx)", limit = "1")
         protected Object search(DynamicObject rx, Object param,
-                        @Cached("create()") @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                        @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached("create()") JSToStringNode toString1Node) {
             String s = toString1Node.executeString(param);
             Object previousLastIndex = getLastIndex(rx);
@@ -1541,7 +1541,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create()") JSToLengthNode toLengthNode,
                         @Cached("create(LAST_INDEX, FALSE, getContext(), TRUE)") PropertySetNode setLastIndexNode,
                         @Cached("createCreateRegExpStringIteratorNode()") StringPrototypeBuiltins.CreateRegExpStringIteratorNode createRegExpStringIteratorNode,
-                        @Cached("create()") @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                        @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached("createBinaryProfile()") ConditionProfile indexInIntRangeProf) {
             String string = toStringNodeForInput.executeString(stringObj);
             DynamicObject regExpConstructor = getContext().getRealm().getRegExpConstructor().getFunctionObject();
@@ -1656,7 +1656,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isObjectNode.executeBoolean(rx)", limit = "1")
         protected String doObject(DynamicObject rx,
-                        @Cached("create()") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+                        @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode) {
             char[] flags = new char[6];
             int len = 0;
             if (getFlag(rx, getGlobal)) {

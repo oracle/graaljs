@@ -95,16 +95,16 @@ public abstract class GetIteratorNode extends JavaScriptNode {
     @Specialization(guards = {"!isForeignObject(iteratedObject)"})
     protected IteratorRecord doGetIterator(Object iteratedObject,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
-                    @Cached("create()") IsObjectNode isObjectNode) {
+                    @Cached("create()") IsJSObjectNode isObjectNode) {
         Object method = getIteratorMethodNode().executeWithTarget(iteratedObject);
         return getIterator(iteratedObject, method, methodCallNode, isObjectNode);
     }
 
-    protected final IteratorRecord getIterator(Object iteratedObject, Object method, JSFunctionCallNode methodCallNode, IsObjectNode isObjectNode) {
+    protected final IteratorRecord getIterator(Object iteratedObject, Object method, JSFunctionCallNode methodCallNode, IsJSObjectNode isObjectNode) {
         return getIterator(iteratedObject, method, methodCallNode, isObjectNode, getNextMethodNode, this);
     }
 
-    public static IteratorRecord getIterator(Object iteratedObject, Object method, JSFunctionCallNode methodCallNode, IsObjectNode isObjectNode, PropertyGetNode getNextMethodNode,
+    public static IteratorRecord getIterator(Object iteratedObject, Object method, JSFunctionCallNode methodCallNode, IsJSObjectNode isObjectNode, PropertyGetNode getNextMethodNode,
                     JavaScriptBaseNode origin) {
         Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
         if (isObjectNode.executeBoolean(iterator)) {

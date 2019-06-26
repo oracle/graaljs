@@ -52,7 +52,7 @@ import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeGen.BuildGroups
 import com.oracle.truffle.js.builtins.helper.JSRegExpExecIntlNodeGen.JSRegExpExecBuiltinNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsJSClassNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
@@ -79,7 +79,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
     @Child private JSRegExpExecBuiltinNode regExpBuiltinNode;
     @Child private PropertyGetNode getExecNode;
     @Child private IsJSClassNode isJSRegExpNode;
-    @Child private IsObjectNode isJSObjectNode;
+    @Child private IsJSObjectNode isJSObjectNode;
     @Child private IsPristineObjectNode isPristineObjectNode;
     @Child private IsCallableNode isCallableNode = IsCallableNode.create();
     @Child private JSFunctionCallNode specialCallNode;
@@ -167,7 +167,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
     private boolean isJSObject(Object obj) {
         if (isJSObjectNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            isJSObjectNode = insert(IsObjectNode.create());
+            isJSObjectNode = insert(IsJSObjectNode.create());
         }
         return isJSObjectNode.executeBoolean(obj);
     }

@@ -53,12 +53,12 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
  */
 public class IteratorNextNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode methodCallNode;
-    @Child private IsObjectNode isObjectNode;
+    @Child private IsJSObjectNode isObjectNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected IteratorNextNode() {
         this.methodCallNode = JSFunctionCallNode.createCall();
-        this.isObjectNode = IsObjectNode.create();
+        this.isObjectNode = IsJSObjectNode.create();
     }
 
     public static IteratorNextNode create() {

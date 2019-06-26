@@ -47,7 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -84,7 +84,7 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
 
     @Specialization
     protected DynamicObject doJSObject(DynamicObject object,
-                    @Cached("create()") IsObjectNode isObjectNode,
+                    @Cached("create()") IsJSObjectNode isObjectNode,
                     @Cached("createBinaryProfile()") ConditionProfile objectOrGlobalProfile) {
         if (objectOrGlobalProfile.profile(isObjectNode.executeBoolean(object))) {
             return object;

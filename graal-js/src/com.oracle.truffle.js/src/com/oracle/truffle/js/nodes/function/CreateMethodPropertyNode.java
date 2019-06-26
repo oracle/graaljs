@@ -45,7 +45,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -58,12 +58,12 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 public abstract class CreateMethodPropertyNode extends JavaScriptBaseNode {
     private final JSContext context;
     protected final Object key;
-    @Child protected IsObjectNode isObject;
+    @Child protected IsJSObjectNode isObject;
 
     protected CreateMethodPropertyNode(JSContext context, Object key) {
         this.context = context;
         this.key = key;
-        this.isObject = IsObjectNode.create();
+        this.isObject = IsJSObjectNode.create();
     }
 
     public static CreateMethodPropertyNode create(JSContext context, Object key) {

@@ -485,7 +485,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private ArrayReadElementCacheNode arrayReadElementNode;
         @Child private JSObjectReadElementNonArrayTypeCacheNode nonArrayCaseNode;
-        @Child private IsObjectNode isObjectNode;
+        @Child private IsJSObjectNode isObjectNode;
         private final ConditionProfile arrayProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile arrayIndexProfile = ConditionProfile.createBinaryProfile();
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
@@ -493,7 +493,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         JSObjectReadElementTypeCacheNode(JSContext context) {
             super(context);
             this.isArrayNode = IsArrayNode.createIsAnyArray();
-            this.isObjectNode = IsObjectNode.createIncludeNullUndefined();
+            this.isObjectNode = IsJSObjectNode.createIncludeNullUndefined();
         }
 
         @Override

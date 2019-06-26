@@ -54,7 +54,7 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -201,7 +201,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
         @Child private GetMethodNode getIteratorMethodNode;
-        @Child private IsObjectNode isObjectNode;
+        @Child private IsJSObjectNode isObjectNode;
         @Child private PropertyGetNode getNextMethodNode;
         @Child private JSGetLengthNode getSourceLengthNode;
         @Child private IsArrayNode isFastArrayNode;
@@ -229,7 +229,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
             if (isObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                isObjectNode = insert(IsObjectNode.create());
+                isObjectNode = insert(IsJSObjectNode.create());
             }
             if (getNextMethodNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

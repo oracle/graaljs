@@ -56,13 +56,13 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  * Checks whether the argument is an object.
  */
 @ImportStatic(JSObject.class)
-public abstract class IsObjectNode extends JavaScriptBaseNode {
+public abstract class IsJSObjectNode extends JavaScriptBaseNode {
 
     protected static final int MAX_SHAPE_COUNT = 1;
     protected static final int MAX_JSCLASS_COUNT = 1;
     private final boolean includeNullUndefined;
 
-    protected IsObjectNode(boolean includeNullUndefined) {
+    protected IsJSObjectNode(boolean includeNullUndefined) {
         this.includeNullUndefined = includeNullUndefined;
     }
 
@@ -90,12 +90,12 @@ public abstract class IsObjectNode extends JavaScriptBaseNode {
         return resultProfile.profile(JSRuntime.isObject(object));
     }
 
-    public static IsObjectNode create() {
-        return IsObjectNodeGen.create(false);
+    public static IsJSObjectNode create() {
+        return IsJSObjectNodeGen.create(false);
     }
 
-    public static IsObjectNode createIncludeNullUndefined() {
-        return IsObjectNodeGen.create(true);
+    public static IsJSObjectNode createIncludeNullUndefined() {
+        return IsJSObjectNodeGen.create(true);
     }
 
     // name-clash with JSObject.isJSObject. Different behavior around null/undefined.

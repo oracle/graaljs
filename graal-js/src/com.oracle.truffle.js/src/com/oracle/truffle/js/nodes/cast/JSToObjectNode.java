@@ -49,7 +49,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNodeGen.JSToObjectWrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -196,7 +196,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isJSObject(object)", "isCheckForNullOrUndefined()"}, replaces = "doJSObjectCheckShape")
     protected DynamicObject doJSObjectCheck(DynamicObject object,
-                    @Cached("create()") IsObjectNode isObjectNode) {
+                    @Cached("create()") IsJSObjectNode isObjectNode) {
         if (!isObjectNode.executeBoolean(object)) {
             throw createTypeError(object);
         }

@@ -57,13 +57,13 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public class IteratorCloseNode extends JavaScriptBaseNode {
     @Child private GetMethodNode getReturnNode;
     @Child private JSFunctionCallNode methodCallNode;
-    @Child private IsObjectNode isObjectNode;
+    @Child private IsJSObjectNode isObjectNode;
     @Child private JavaScriptNode iteratorNode;
 
     protected IteratorCloseNode(JSContext context, JavaScriptNode iteratorNode) {
         this.getReturnNode = GetMethodNode.create(context, null, "return");
         this.methodCallNode = JSFunctionCallNode.createCall();
-        this.isObjectNode = IsObjectNode.create();
+        this.isObjectNode = IsJSObjectNode.create();
         this.iteratorNode = iteratorNode;
     }
 

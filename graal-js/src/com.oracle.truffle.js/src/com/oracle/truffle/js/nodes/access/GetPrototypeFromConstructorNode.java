@@ -53,13 +53,13 @@ public class GetPrototypeFromConstructorNode extends JavaScriptNode {
     private final CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto;
     @Child private JavaScriptNode constructorNode;
     @Child private PropertyGetNode getPrototypeNode;
-    @Child private IsObjectNode isObjectNode;
+    @Child private IsJSObjectNode isObjectNode;
 
     protected GetPrototypeFromConstructorNode(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto) {
         this.constructorNode = constructorNode;
         this.intrinsicDefaultProto = intrinsicDefaultProto;
         this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
-        this.isObjectNode = IsObjectNode.create();
+        this.isObjectNode = IsJSObjectNode.create();
     }
 
     public static GetPrototypeFromConstructorNode create(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto) {
