@@ -74,6 +74,7 @@ import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode.ToArrayIndexWrapperNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -174,13 +175,23 @@ public class WriteElementNode extends JSTargetableNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded() && materializedTags.contains(WriteElementExpressionTag.class)) {
             JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
-            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
+            JavaScriptNode clonedIndex = wrapArrayIndex();
             JavaScriptNode clonedValue = valueNode == null || valueNode.hasSourceSection() ? valueNode : JSTaggedExecutionNode.createForInput(valueNode, this);
             WriteElementNode cloned = createMaterialized(clonedTarget, clonedIndex, clonedValue);
             transferSourceSectionAndTags(this, cloned);
             return cloned;
         }
         return this;
+    }
+
+    private JavaScriptNode wrapArrayIndex() {
+        JavaScriptNode clonedIndex;
+        if (indexNode instanceof ToArrayIndexWrapperNode) {
+            clonedIndex = ToArrayIndexWrapperNode.create(JSTaggedExecutionNode.createForInput(((ToArrayIndexWrapperNode) indexNode).getOperand(), this));
+        } else {
+            clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
+        }
+        return clonedIndex;
     }
 
     private boolean materializationNeeded() {
