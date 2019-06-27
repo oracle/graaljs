@@ -85,7 +85,7 @@ public final class JSInteropUtil {
         } catch (UnknownIdentifierException e) {
             return defaultValue;
         } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readMember", null);
+            throw Errors.createTypeErrorInteropException(obj, e, "readMember", member, null);
         }
     }
 
@@ -98,7 +98,7 @@ public final class JSInteropUtil {
         } catch (UnknownIdentifierException e) {
             return defaultValue;
         } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readMember", originatingNode);
+            throw Errors.createTypeErrorInteropException(obj, e, "readMember", member, originatingNode);
         }
     }
 
@@ -108,7 +108,7 @@ public final class JSInteropUtil {
         } catch (InvalidArrayIndexException e) {
             return defaultValue;
         } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", originatingNode);
+            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", index, originatingNode);
         }
     }
 
@@ -118,7 +118,7 @@ public final class JSInteropUtil {
         } catch (InvalidArrayIndexException e) {
             return defaultValue;
         } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", null);
+            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", index, null);
         }
     }
 
@@ -129,7 +129,7 @@ public final class JSInteropUtil {
         try {
             InteropLibrary.getFactory().getUncached().writeMember(obj, (String) member, JSRuntime.exportValue(value));
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "writeMember", null);
+            throw Errors.createTypeErrorInteropException(obj, e, "writeMember", member, null);
         }
     }
 
@@ -140,7 +140,7 @@ public final class JSInteropUtil {
         try {
             interop.writeMember(obj, (String) member, exportValue.execute(value));
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "writeMember", originatingNode);
+            throw Errors.createTypeErrorInteropException(obj, e, "writeMember", member, originatingNode);
         }
     }
 
@@ -204,7 +204,7 @@ public final class JSInteropUtil {
             try {
                 InteropLibrary.getFactory().getUncached().removeMember(obj, (String) key);
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, "removeMember", null);
+                throw Errors.createTypeErrorInteropException(obj, e, "removeMember", key, null);
             }
             return true;
         } else {

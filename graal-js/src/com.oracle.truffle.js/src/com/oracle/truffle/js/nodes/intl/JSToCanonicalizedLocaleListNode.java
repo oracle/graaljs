@@ -149,7 +149,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 try {
                     kValue = interop.readArrayElement(object, k);
                 } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                    throw Errors.createTypeErrorInteropException(object, e, "readArrayElement", this);
+                    throw Errors.createTypeErrorInteropException(object, e, "readArrayElement", k, this);
                 }
                 String typeOfKValue = typeOfNode.executeString(kValue);
                 if (!typeOfKValue.equals("string") && !typeOfKValue.equals("object")) {

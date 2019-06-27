@@ -1471,10 +1471,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                         Object function = getFunctionNode.getValue(prototype);
                         callReturn = callOnPrototypeNode.executeCall(JSArguments.create(receiver, function, JSArguments.extractUserArguments(arguments)));
                     } else {
-                        throw Errors.createTypeErrorInteropException(receiver, uiex, "invokeMember", this);
+                        throw Errors.createTypeErrorInteropException(receiver, uiex, "invokeMember", functionName, this);
                     }
                 } catch (UnsupportedTypeException | ArityException e) {
-                    throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", this);
+                    throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", functionName, this);
                 }
             } else {
                 Object function = getForeignFunction(arguments);

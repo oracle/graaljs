@@ -523,7 +523,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         try {
             return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readMember(obj, key));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readMember", this);
+            throw Errors.createTypeErrorInteropException(obj, e, "readMember", key, this);
         }
     }
 
@@ -531,7 +531,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         try {
             return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readArrayElement(obj, index));
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", this);
+            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", index, this);
         }
     }
 }

@@ -292,7 +292,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             } catch (UnknownIdentifierException e) {
                 throw Errors.createReferenceErrorNotDefined(identifier, this);
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(polyglotBindings, e, "readMember", this);
+                throw Errors.createTypeErrorInteropException(polyglotBindings, e, "readMember", identifier, this);
             }
         }
 
@@ -484,7 +484,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             } catch (UnknownIdentifierException e) {
                 return Null.instance;
             } catch (UnsupportedMessageException | UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, "writeMember", this);
+                throw Errors.createTypeErrorInteropException(obj, e, "writeMember", name, this);
             }
         }
 
@@ -499,7 +499,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             } catch (InvalidArrayIndexException e) {
                 return Null.instance;
             } catch (UnsupportedMessageException | UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, "writeArrayElement", this);
+                throw Errors.createTypeErrorInteropException(obj, e, "writeArrayElement", index, this);
             }
         }
 
@@ -514,7 +514,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             } catch (InvalidArrayIndexException e) {
                 return Null.instance;
             } catch (UnsupportedMessageException | UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, "writeArrayElement", this);
+                throw Errors.createTypeErrorInteropException(obj, e, "writeArrayElement", index, this);
             }
         }
 
@@ -558,7 +558,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             } catch (UnknownIdentifierException e) {
                 return false;
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, "removeMember", this);
+                throw Errors.createTypeErrorInteropException(obj, e, "removeMember", name, this);
             }
         }
 
@@ -571,7 +571,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             } catch (InvalidArrayIndexException e) {
                 return false;
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, "removeArrayElement", this);
+                throw Errors.createTypeErrorInteropException(obj, e, "removeArrayElement", index, this);
             }
         }
 
@@ -584,7 +584,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             } catch (InvalidArrayIndexException e) {
                 return false;
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, "removeArrayElement", this);
+                throw Errors.createTypeErrorInteropException(obj, e, "removeArrayElement", index, this);
             }
         }
 
