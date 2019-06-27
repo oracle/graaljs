@@ -600,7 +600,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                 public void accept(SnippetRun snippetRun) throws PolyglotException {
                     boolean allNumeric = true;
                     if (snippetRun.getException() == null) {
-                        TypeDescriptor numericTypes = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN);
+                        TypeDescriptor numericTypes = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN, TypeDescriptor.NULL);
                         for (Value actualParameter : snippetRun.getParameters()) {
                             allNumeric &= numericTypes.isAssignable(TypeDescriptor.forValue(actualParameter));
                         }
