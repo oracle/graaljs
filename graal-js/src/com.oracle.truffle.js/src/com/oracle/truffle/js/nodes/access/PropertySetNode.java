@@ -1073,14 +1073,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 } catch (UnknownIdentifierException e) {
                     unknownIdentifier(truffleObject, value, root);
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
                 }
             } else {
                 if (interop.isMemberWritable(truffleObject, stringKey)) {
                     try {
                         interop.writeMember(truffleObject, stringKey, value);
                     } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
                     }
                 } else if (context.isOptionNashornCompatibilityMode()) {
                     tryInvokeSetter(truffleObject, value, root);

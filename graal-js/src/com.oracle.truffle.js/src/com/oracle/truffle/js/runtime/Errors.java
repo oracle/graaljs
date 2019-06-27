@@ -592,8 +592,12 @@ public final class Errors {
                         "' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value (expected '" + expected + "' but got '" + actual + "')");
     }
 
-    @TruffleBoundary
     public static JSException createTypeErrorInteropException(Object receiver, InteropException cause, String message, Node originatingNode) {
+        return createTypeErrorInteropException(receiver, cause, message, null, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorInteropException(Object receiver, InteropException cause, String message, Object messageDetails, Node originatingNode) {
         String reason = cause.getMessage();
         if (reason == null) {
             reason = cause.getClass().getSimpleName();
@@ -607,7 +611,8 @@ public final class Errors {
                 // ignore
             }
         }
-        return JSException.create(JSErrorType.TypeError, message + " on " + receiverStr + " failed due to: " + reason, cause, originatingNode);
+        String messageTxt = (messageDetails == null) ? message : String.format("%s (%s)", message, messageDetails);
+        return JSException.create(JSErrorType.TypeError, messageTxt + " on " + receiverStr + " failed due to: " + reason, cause, originatingNode);
     }
 
     @TruffleBoundary
