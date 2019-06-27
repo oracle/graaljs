@@ -58,7 +58,7 @@ import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -347,7 +347,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("createBinaryProfile()") ConditionProfile isIterableProfile,
                     @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
                     @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
-                    @Cached("create()") IsObjectNode isObjectNode,
+                    @Cached("create()") IsJSObjectNode isObjectNode,
                     @Cached("create(getContext())") IteratorStepNode iteratorStepNode,
                     @Cached("create(getContext())") IteratorValueNode getIteratorValueNode,
                     @Cached("createGetLength()") JSGetLengthNode getLengthNode,
@@ -386,7 +386,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return obj;
     }
 
-    private static SimpleArrayList<Object> iterableToList(DynamicObject object, Object usingIterator, JSFunctionCallNode iteratorCallNode, IsObjectNode isObjectNode,
+    private static SimpleArrayList<Object> iterableToList(DynamicObject object, Object usingIterator, JSFunctionCallNode iteratorCallNode, IsJSObjectNode isObjectNode,
                     IteratorStepNode iteratorStepNode, IteratorValueNode getIteratorValueNode, PropertyGetNode getNextMethodNode, JavaScriptBaseNode origin, BranchProfile growProfile) {
         SimpleArrayList<Object> values = new SimpleArrayList<>();
         IteratorRecord iterator = GetIteratorNode.getIterator(object, usingIterator, iteratorCallNode, isObjectNode, getNextMethodNode, origin);

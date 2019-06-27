@@ -64,7 +64,7 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
     @Child private PropertyGetNode getValueNode;
     @Child private PropertyGetNode getDoneNode;
     @Child private JSFunctionCallNode methodCallNode;
-    @Child private IsObjectNode isObjectNode;
+    @Child private IsJSObjectNode isObjectNode;
     @Child private JavaScriptNode doneNode;
     @Child private JSToBooleanNode toBooleanNode;
     private final boolean setDoneOnError;
@@ -74,7 +74,7 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
         this.getValueNode = PropertyGetNode.create(JSRuntime.VALUE, false, context);
         this.getDoneNode = PropertyGetNode.create(JSRuntime.DONE, false, context);
         this.methodCallNode = JSFunctionCallNode.createCall();
-        this.isObjectNode = IsObjectNode.create();
+        this.isObjectNode = IsJSObjectNode.create();
         this.toBooleanNode = JSToBooleanNode.create();
         this.doneNode = doneNode;
         this.setDoneOnError = setDoneOnError;

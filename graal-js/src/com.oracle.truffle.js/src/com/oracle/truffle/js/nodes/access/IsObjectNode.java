@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,101 +40,94 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNodeGen.IsObjectWrappedNodeGen;
-import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * Checks whether the argument is an object.
+ * Checks whether the argument is of type Object (JS or foreign), i.e., not a primitive value.
  */
-@ImportStatic(JSObject.class)
 public abstract class IsObjectNode extends JavaScriptBaseNode {
 
-    protected static final int MAX_SHAPE_COUNT = 1;
-    protected static final int MAX_JSCLASS_COUNT = 1;
-    private final boolean includeNullUndefined;
+    public abstract boolean executeBoolean(Object operand);
 
-    protected IsObjectNode(boolean includeNullUndefined) {
-        this.includeNullUndefined = includeNullUndefined;
+    @Specialization(guards = {"isJSNull(operand)"})
+    protected static boolean doNull(@SuppressWarnings("unused") Object operand) {
+        return false;
     }
 
-    public abstract boolean executeBoolean(Object obj);
+    @Specialization(guards = {"isUndefined(operand)"})
+    protected static boolean doUndefined(@SuppressWarnings("unused") Object operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doBoolean(@SuppressWarnings("unused") boolean operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doInt(@SuppressWarnings("unused") int operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doLong(@SuppressWarnings("unused") long operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doLargeInt(@SuppressWarnings("unused") LargeInteger operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doDouble(@SuppressWarnings("unused") double operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doSymbol(@SuppressWarnings("unused") Symbol operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doBigInt(@SuppressWarnings("unused") BigInt operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doString(@SuppressWarnings("unused") CharSequence operand) {
+        return false;
+    }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "cachedShape.check(object)", limit = "MAX_SHAPE_COUNT")
-    protected static boolean isObjectShape(DynamicObject object,
-                    @Cached("object.getShape()") Shape cachedShape,
-                    @Cached("guardIsJSObject(object)") boolean cachedResult) {
-        return cachedResult;
+    @Specialization(guards = {"isJSObject(operand)"})
+    protected static boolean doIsObject(DynamicObject operand) {
+        return true;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, replaces = "isObjectShape", limit = "MAX_JSCLASS_COUNT")
-    protected static boolean isObjectJSClass(DynamicObject object,
-                    @Cached("getJSClassChecked(object)") JSClass cachedClass,
-                    @Cached("guardIsJSObject(object)") boolean cachedResult) {
-        return cachedResult;
-    }
-
-    @Specialization(replaces = {"isObjectShape", "isObjectJSClass"})
-    protected static boolean isObject(Object object,
-                    @Cached("createBinaryProfile()") ConditionProfile resultProfile) {
-        return resultProfile.profile(JSRuntime.isObject(object));
+    @Specialization(guards = {"isForeignObject(operand)"}, limit = "5")
+    protected static boolean doForeignObject(Object operand,
+                    @CachedLibrary("operand") InteropLibrary interop) {
+        if (interop.isNull(operand)) {
+            return false;
+        } else if (interop.isBoolean(operand)) {
+            return false;
+        } else if (interop.isString(operand)) {
+            return false;
+        } else if (interop.isNumber(operand)) {
+            return false;
+        }
+        return true;
     }
 
     public static IsObjectNode create() {
-        return IsObjectNodeGen.create(false);
-    }
-
-    public static IsObjectNode createIncludeNullUndefined() {
-        return IsObjectNodeGen.create(true);
-    }
-
-    // name-clash with JSObject.isJSObject. Different behavior around null/undefined.
-    protected boolean guardIsJSObject(DynamicObject obj) {
-        if (includeNullUndefined) {
-            return JSObject.isJSObject(obj);
-        } else {
-            return JSGuards.isJSObject(obj);
-        }
-    }
-
-    /**
-     * Wrapper of @link{IsObjectNode} when you really need a JavaScriptNode. IsObjectNode is a
-     * JavaScriptBaseNode for footprint reasons.
-     */
-    public abstract static class IsObjectWrappedNode extends JSUnaryNode {
-
-        @Child private IsObjectNode isObjectNode;
-
-        protected IsObjectWrappedNode(JavaScriptNode operand) {
-            super(operand);
-            this.isObjectNode = IsObjectNode.create();
-        }
-
-        @Specialization
-        protected boolean doObject(Object operand) {
-            return isObjectNode.executeBoolean(operand);
-        }
-
-        public static JavaScriptNode create(JavaScriptNode operand) {
-            return IsObjectWrappedNodeGen.create(operand);
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return IsObjectWrappedNodeGen.create(cloneUninitialized(getOperand()));
-        }
+        return IsObjectNodeGen.create();
     }
 }

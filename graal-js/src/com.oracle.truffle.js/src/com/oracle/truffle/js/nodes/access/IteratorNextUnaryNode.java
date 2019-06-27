@@ -55,14 +55,14 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
  */
 public class IteratorNextUnaryNode extends JavaScriptNode {
     @Child private JSFunctionCallNode methodCallNode;
-    @Child private IsObjectNode isObjectNode;
+    @Child private IsJSObjectNode isObjectNode;
     @Child private JavaScriptNode iteratorNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected IteratorNextUnaryNode(JavaScriptNode iteratorNode) {
         this.iteratorNode = iteratorNode;
         this.methodCallNode = JSFunctionCallNode.createCall();
-        this.isObjectNode = IsObjectNode.create();
+        this.isObjectNode = IsJSObjectNode.create();
     }
 
     public static JavaScriptNode create(JavaScriptNode iteratorNode) {

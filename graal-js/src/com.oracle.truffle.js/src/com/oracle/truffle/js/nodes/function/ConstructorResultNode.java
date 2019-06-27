@@ -40,11 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -56,7 +55,7 @@ public final class ConstructorResultNode extends JavaScriptNode {
     @Child private JavaScriptNode thisNode;
     private final boolean derived;
 
-    @Child private IsPrimitiveNode isPrimitiveNode;
+    @Child private IsObjectNode isObjectNode;
     private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isNotUndefined = ConditionProfile.createBinaryProfile();
 
@@ -64,6 +63,7 @@ public final class ConstructorResultNode extends JavaScriptNode {
         this.bodyNode = bodyNode;
         this.derived = derived;
         this.thisNode = thisNode;
+        this.isObjectNode = IsObjectNode.create();
     }
 
     public static JavaScriptNode createBase(JavaScriptNode bodyNode, JavaScriptNode thisNode) {
@@ -78,9 +78,7 @@ public final class ConstructorResultNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         Object result = bodyNode.execute(frame);
 
-        // IsObject is replaced with a !IsPrimitive check for JavaInterop,
-        // so that non-primitive Java types can be returned from the constructor, too.
-        if (isObject.profile(!isPrimitive(result))) {
+        if (isObject.profile(isObjectNode.executeBoolean(result))) {
             return result;
         }
 
@@ -94,14 +92,6 @@ public final class ConstructorResultNode extends JavaScriptNode {
         assert thisObject != JSFunction.CONSTRUCT;
         assert !derived || JSRuntime.isObject(thisObject) || thisObject instanceof Symbol;
         return thisObject;
-    }
-
-    private boolean isPrimitive(Object result) {
-        if (isPrimitiveNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            isPrimitiveNode = insert(IsPrimitiveNode.create());
-        }
-        return isPrimitiveNode.executeBoolean(result);
     }
 
     @Override

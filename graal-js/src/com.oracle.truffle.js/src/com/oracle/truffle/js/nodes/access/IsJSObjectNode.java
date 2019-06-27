@@ -41,57 +41,69 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSRegExp;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * ES2015: 7.2.8 IsRegExp().
+ * Checks whether the argument is a JS object (optionally including null and undefined).
  */
-public abstract class IsRegExpNode extends JavaScriptBaseNode {
+@ImportStatic(JSObject.class)
+public abstract class IsJSObjectNode extends JavaScriptBaseNode {
 
-    @Child private PropertyGetNode getSymbolMatchNode;
+    protected static final int MAX_SHAPE_COUNT = 1;
+    protected static final int MAX_JSCLASS_COUNT = 1;
+    private final boolean includeNullUndefined;
 
-    IsRegExpNode(JSContext context) {
-        this.getSymbolMatchNode = insert(PropertyGetNode.create(Symbol.SYMBOL_MATCH, false, context));
+    protected IsJSObjectNode(boolean includeNullUndefined) {
+        this.includeNullUndefined = includeNullUndefined;
     }
 
     public abstract boolean executeBoolean(Object obj);
 
-    @Specialization
-    boolean doIsObject(DynamicObject obj,
-                    @Cached("create()") IsJSObjectNode isObjectNode,
-                    @Cached("create()") JSToBooleanNode toBooleanNode,
-                    @Cached("createIsJSRegExpNode()") IsJSClassNode isJSRegExpNode,
-                    @Cached("createBinaryProfile()") ConditionProfile hasMatchSymbol) {
-        if (!isObjectNode.executeBoolean(obj)) {
-            return false;
-        }
-        Object isRegExp = getSymbolMatchNode.getValue(obj);
-        if (hasMatchSymbol.profile(isRegExp != Undefined.instance)) {
-            return toBooleanNode.executeBoolean(isRegExp);
+    @SuppressWarnings("unused")
+    @Specialization(guards = "cachedShape.check(object)", limit = "MAX_SHAPE_COUNT")
+    protected static boolean isObjectShape(DynamicObject object,
+                    @Cached("object.getShape()") Shape cachedShape,
+                    @Cached("guardIsJSObject(object)") boolean cachedResult) {
+        return cachedResult;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, replaces = "isObjectShape", limit = "MAX_JSCLASS_COUNT")
+    protected static boolean isObjectJSClass(DynamicObject object,
+                    @Cached("getJSClassChecked(object)") JSClass cachedClass,
+                    @Cached("guardIsJSObject(object)") boolean cachedResult) {
+        return cachedResult;
+    }
+
+    @Specialization(replaces = {"isObjectShape", "isObjectJSClass"})
+    protected static boolean isObject(Object object,
+                    @Cached("createBinaryProfile()") ConditionProfile resultProfile) {
+        return resultProfile.profile(JSRuntime.isObject(object));
+    }
+
+    public static IsJSObjectNode create() {
+        return IsJSObjectNodeGen.create(false);
+    }
+
+    public static IsJSObjectNode createIncludeNullUndefined() {
+        return IsJSObjectNodeGen.create(true);
+    }
+
+    // name-clash with JSObject.isJSObject. Different behavior around null/undefined.
+    protected boolean guardIsJSObject(DynamicObject obj) {
+        if (includeNullUndefined) {
+            return JSObject.isJSObject(obj);
         } else {
-            return isJSRegExpNode.executeBoolean(obj);
+            return JSGuards.isJSObject(obj);
         }
-    }
-
-    @Fallback
-    boolean doNonObject(@SuppressWarnings("unused") Object obj) {
-        return false;
-    }
-
-    static IsJSClassNode createIsJSRegExpNode() {
-        return IsJSClassNode.create(JSRegExp.INSTANCE);
-    }
-
-    public static IsRegExpNode create(JSContext context) {
-        return IsRegExpNodeGen.create(context);
     }
 }

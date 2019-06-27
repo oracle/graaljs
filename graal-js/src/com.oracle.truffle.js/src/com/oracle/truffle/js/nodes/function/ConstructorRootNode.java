@@ -49,7 +49,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -64,7 +64,7 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
 
     @Child private DirectCallNode callNode;
     @Child private SpecializedNewObjectNode newObjectNode;
-    @Child private IsPrimitiveNode isPrimitiveNode;
+    @Child private IsObjectNode isObjectNode;
     private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isNotUndefined = ConditionProfile.createBinaryProfile();
     private final boolean newTarget;
@@ -88,9 +88,7 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
     }
 
     private Object filterConstructorResult(Object thisObject, Object result) {
-        // IsObject is replaced with a !IsPrimitive check for JavaInterop,
-        // so that non-primitive Java types can be returned from the constructor, too.
-        if (isObject.profile(!isPrimitiveNode.executeBoolean(result))) {
+        if (isObject.profile(isObjectNode.executeBoolean(result))) {
             return result;
         }
         // If [[ConstructorKind]] == "base" or result is undefined return this, otherwise throw
@@ -104,7 +102,7 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        if (callNode == null || newObjectNode == null || isPrimitiveNode == null) {
+        if (callNode == null || newObjectNode == null || isObjectNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initialize();
         }
@@ -117,7 +115,7 @@ public final class ConstructorRootNode extends JavaScriptRootNode {
     private void initialize() {
         this.callNode = insert(Truffle.getRuntime().createDirectCallNode(callTarget));
         this.newObjectNode = insert(SpecializedNewObjectNode.create(functionData));
-        this.isPrimitiveNode = insert(IsPrimitiveNode.create());
+        this.isObjectNode = insert(IsObjectNode.create());
     }
 
     private JSFunctionData getFunctionData() {

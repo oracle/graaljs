@@ -57,7 +57,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.IsBoundFunctionCacheNodeGen;
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.OrdinaryHasInstanceNodeGen;
@@ -109,7 +109,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
     @Specialization
     protected boolean doGeneric(Object obj, DynamicObject target,
-                    @Cached("create()") IsObjectNode isObjectNode,
+                    @Cached("create()") IsJSObjectNode isObjectNode,
                     @Cached("createGetMethodHasInstance()") GetMethodNode getMethodHasInstanceNode,
                     @Cached("create()") JSToBooleanNode toBooleanNode,
                     @Cached("createCall()") JSFunctionCallNode callHasInstanceNode,
@@ -198,7 +198,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         @CompilationFinal private boolean lessThan4 = true;
         @Child private PropertyGetNode getPrototypeNode;
         @Child private IsBoundFunctionCacheNode boundFuncCacheNode;
-        @Child private IsObjectNode isObjectNode;
+        @Child private IsJSObjectNode isObjectNode;
 
         public abstract boolean executeBoolean(Object left, Object right);
 
@@ -215,7 +215,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         boolean isObjectLocal(DynamicObject lhs) {
             if (isObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                isObjectNode = insert(IsObjectNode.create());
+                isObjectNode = insert(IsJSObjectNode.create());
             }
             return isObjectNode.executeBoolean(lhs);
         }

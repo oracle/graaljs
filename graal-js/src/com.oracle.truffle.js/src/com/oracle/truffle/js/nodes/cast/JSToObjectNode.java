@@ -42,14 +42,13 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNodeGen.JSToObjectWrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -61,11 +60,11 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
@@ -73,7 +72,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
  *
  * thing a generic value to be converted to a DynamicObject or TruffleObject
  */
-@ImportStatic(JSObject.class)
 public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     protected static final int MAX_SHAPE_COUNT = 1;
@@ -179,7 +177,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return object;
     }
 
-    @Specialization(guards = {"isJSObject(object)", "!isCheckForNullOrUndefined()"}, replaces = "doJSObjectNoCheckShape")
+    @Specialization(guards = {"isJSType(object)", "!isCheckForNullOrUndefined()"}, replaces = "doJSObjectNoCheckShape")
     protected DynamicObject doJSObjectNoCheck(DynamicObject object) {
         return object;
     }
@@ -194,13 +192,21 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return shape.getObjectType() != Null.NULL_CLASS;
     }
 
-    @Specialization(guards = {"isJSObject(object)", "isCheckForNullOrUndefined()"}, replaces = "doJSObjectCheckShape")
-    protected DynamicObject doJSObjectCheck(DynamicObject object,
-                    @Cached("create()") IsObjectNode isObjectNode) {
-        if (!isObjectNode.executeBoolean(object)) {
-            throw createTypeError(object);
-        }
+    @Specialization(guards = {"isCheckForNullOrUndefined()", "cachedClass != null", "cachedClass.isInstance(object)"}, replaces = "doJSObjectCheckShape", limit = "1")
+    protected DynamicObject doJSObjectCheckJSClass(DynamicObject object,
+                    @Cached("getJSClassIfObject(object)") @SuppressWarnings("unused") JSClass cachedClass) {
+        assert JSGuards.isJSObject(object);
         return object;
+    }
+
+    @Specialization(guards = {"isJSObject(object)", "isCheckForNullOrUndefined()"}, replaces = "doJSObjectCheckJSClass")
+    protected DynamicObject doJSObjectCheck(DynamicObject object) {
+        return object;
+    }
+
+    @Specialization(guards = {"isNullOrUndefined(object)", "isCheckForNullOrUndefined()"})
+    protected DynamicObject doNullOrUndefined(DynamicObject object) {
+        throw createTypeError(object);
     }
 
     @Specialization(guards = {"isForeignObject(obj)"})
