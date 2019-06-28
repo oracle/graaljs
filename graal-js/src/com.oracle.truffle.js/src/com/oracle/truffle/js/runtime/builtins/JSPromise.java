@@ -50,6 +50,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JSPromise extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
@@ -89,6 +90,14 @@ public final class JSPromise extends JSBuiltinObject implements JSConstructorFac
 
     public static DynamicObject create(JSContext context) {
         return JSObject.create(context, context.getPromiseFactory());
+    }
+
+    public static DynamicObject createWithPrototypeInObject(DynamicObject prototype, JSContext context) {
+        assert prototype == Null.instance || JSRuntime.isObject(prototype);
+        Shape shape = context.getPromiseShapePrototypeInObject();
+        DynamicObject obj = JSObject.create(context, shape);
+        JSObject.PROTO_PROPERTY.setSafe(obj, prototype, shape);
+        return obj;
     }
 
     @Override

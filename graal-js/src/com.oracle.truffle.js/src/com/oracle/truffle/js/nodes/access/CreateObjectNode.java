@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.access.CreateObjectNodeFactory.CreateObjectWi
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -152,11 +153,16 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Specialization(guards = {"isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
-        final DynamicObject doInstancePrototype(DynamicObject prototype) {
+        final DynamicObject doOrdinaryInstancePrototype(DynamicObject prototype) {
             return JSUserObject.createWithPrototypeInObject(prototype, context);
         }
 
-        @Specialization(guards = {"!isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
+        @Specialization(guards = {"isPromiseObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
+        final DynamicObject doPromiseInstancePrototype(DynamicObject prototype) {
+            return JSPromise.createWithPrototypeInObject(prototype, context);
+        }
+
+        @Specialization(guards = {"!isOrdinaryObject()", "!isPromiseObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
         final DynamicObject doUncachedPrototype(DynamicObject prototype) {
             return JSObject.create(context, prototype, jsclass);
         }
@@ -172,6 +178,10 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         final boolean isOrdinaryObject() {
             return jsclass == JSUserObject.INSTANCE;
+        }
+
+        final boolean isPromiseObject() {
+            return jsclass == JSPromise.INSTANCE;
         }
 
         @Override
