@@ -596,7 +596,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return swapPrototype(JSArray.createConstantEmptyArray(getContext(), arrayAllocationSite, length), newTarget);
         }
 
-        @Specialization(guards = "isOneNumberArg(args)")
+        @Specialization(guards = "isOneNumberArg(args)", replaces = "constructArrayWithIntLength")
         protected DynamicObject constructWithLength(DynamicObject newTarget, Object[] args,
                         @Cached("create()") JSToUInt32Node toUInt32Node,
                         @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
