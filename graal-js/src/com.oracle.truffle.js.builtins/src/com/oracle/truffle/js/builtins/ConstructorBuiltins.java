@@ -61,7 +61,10 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -567,6 +570,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return args.length == 1 && JSRuntime.isNumber(args[0]);
         }
 
+        protected static boolean isOneForeignArg(Object[] args) {
+            return args.length == 1 && JSRuntime.isForeignObject(args[0]);
+        }
+
         protected static boolean isOneIntegerArg(Object[] args) {
             return args.length == 1 && args[0] instanceof Integer && (int) args[0] >= 0;
         }
@@ -603,7 +610,38 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return swapPrototype(array, newTarget);
         }
 
-        @Specialization(guards = "!isOneNumberArg(args)")
+        static Object firstArgument(Object[] arguments) {
+            return arguments[0];
+        }
+
+        @Specialization(guards = "isOneForeignArg(args)", limit = "3")
+        protected DynamicObject constructWithForeignArg(DynamicObject newTarget, Object[] args,
+                        @CachedLibrary("firstArgument(args)") InteropLibrary interop,
+                        @Cached("create(getContext())") ArrayCreateNode arrayCreateNode,
+                        @Cached("createBinaryProfile()") ConditionProfile isNumber,
+                        @Cached("create()") BranchProfile rangeErrorProfile) {
+            Object len = args[0];
+            if (isNumber.profile(interop.isNumber(len))) {
+                if (interop.fitsInLong(len)) {
+                    try {
+                        long length = interop.asLong(len);
+                        if (JSRuntime.isArrayIndex(length)) {
+                            DynamicObject array = arrayCreateNode.execute(length);
+                            return swapPrototype(array, newTarget);
+                        }
+                    } catch (UnsupportedMessageException umex) {
+                        rangeErrorProfile.enter();
+                        throw Errors.createTypeErrorInteropException(len, umex, "asLong", this);
+                    }
+                }
+                rangeErrorProfile.enter();
+                throw Errors.createRangeErrorInvalidArrayLength();
+            } else {
+                return swapPrototype(JSArray.create(getContext(), ConstantObjectArray.createConstantObjectArray(), args, 1), newTarget);
+            }
+        }
+
+        @Specialization(guards = {"!isOneNumberArg(args)", "!isOneForeignArg(args)"})
         protected DynamicObject constructArrayVarargs(DynamicObject newTarget, Object[] args,
                         @Cached("create()") BranchProfile isIntegerCase,
                         @Cached("create()") BranchProfile isDoubleCase,
