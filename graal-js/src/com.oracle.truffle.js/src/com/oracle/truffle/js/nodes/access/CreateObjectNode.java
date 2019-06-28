@@ -40,23 +40,24 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.CreateObjectNodeFactory.CreateObjectWithCachedPrototypeNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionaryObject;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class CreateObjectNode extends JavaScriptBaseNode {
     protected final JSContext context;
@@ -69,11 +70,11 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         return new CreateOrdinaryObjectNode(context);
     }
 
-    public static CreateObjectWithPrototypeNode createWithPrototype(JSContext context, JavaScriptNode prototypeExpression) {
-        return createWithPrototype(context, prototypeExpression, JSUserObject.INSTANCE);
+    public static CreateObjectWithPrototypeNode createWithUncachedPrototype(JSContext context, JavaScriptNode prototypeExpression) {
+        return createWithUncachedPrototype(context, prototypeExpression, JSUserObject.INSTANCE);
     }
 
-    public static CreateObjectWithPrototypeNode createWithPrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
+    public static CreateObjectWithPrototypeNode createWithUncachedPrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
         return new CreateObjectWithUncachedPrototypeNode(context, prototypeExpression, jsclass);
     }
 
@@ -82,18 +83,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
     }
 
     public static CreateObjectWithPrototypeNode createWithCachedPrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
-        if (context.isMultiContext()) {
-            return createWithInstancePrototype(context, prototypeExpression, jsclass);
-        }
-        return new CreateObjectWithCachedPrototypeNode(context, prototypeExpression, jsclass);
-    }
-
-    static CreateObjectWithPrototypeNode createWithInstancePrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
-        if (jsclass == JSUserObject.INSTANCE) {
-            return new CreateOrdinaryObjectWithPrototypeInObjectNode(context, prototypeExpression);
-        } else {
-            return new CreateObjectWithUncachedPrototypeNode(context, prototypeExpression, jsclass);
-        }
+        return CreateObjectWithCachedPrototypeNode.create(context, prototypeExpression, jsclass);
     }
 
     static CreateObjectNode createDictionary(JSContext context) {
@@ -129,85 +119,69 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
     }
 
     public abstract static class CreateObjectWithPrototypeNode extends CreateObjectNode {
-        @Child protected JavaScriptNode prototypeExpression;
-        private final ConditionProfile isNormalPrototype = ConditionProfile.createBinaryProfile();
+        @Child @Executed protected JavaScriptNode prototypeExpression;
 
         protected CreateObjectWithPrototypeNode(JSContext context, JavaScriptNode prototypeExpression) {
             super(context);
             this.prototypeExpression = prototypeExpression;
         }
 
-        @Override
-        public final DynamicObject executeDynamicObject(VirtualFrame frame) {
-            Object prototype = prototypeExpression.execute(frame);
-            if (isNormalPrototype.profile(JSObject.isDynamicObject(prototype) && prototype != Undefined.instance)) {
-                return executeDynamicObject(frame, (DynamicObject) prototype);
-            } else {
-                return JSUserObject.create(context);
-            }
-        }
-
         public abstract DynamicObject executeDynamicObject(VirtualFrame frame, DynamicObject prototype);
 
-        abstract JSClass getJSClass();
-
         @Override
-        protected CreateObjectWithPrototypeNode copyUninitialized() {
-            return createWithCachedPrototype(context, JavaScriptNode.cloneUninitialized(prototypeExpression), getJSClass());
-        }
+        protected abstract CreateObjectWithPrototypeNode copyUninitialized();
     }
 
-    private static class CreateObjectWithCachedPrototypeNode extends CreateObjectWithPrototypeNode {
-        @CompilationFinal private DynamicObject cachedPrototype;
-        @CompilationFinal private Shape protoChildShape;
-        private final JSClass jsclass;
+    protected abstract static class CreateObjectWithCachedPrototypeNode extends CreateObjectWithPrototypeNode {
+        protected final JSClass jsclass;
 
         protected CreateObjectWithCachedPrototypeNode(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
             super(context, prototypeExpression);
             this.jsclass = jsclass;
         }
 
-        @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame, DynamicObject prototype) {
-            assert prototype == Null.instance || JSRuntime.isObject(prototype);
-            if (cachedPrototype == null || protoChildShape == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                cachedPrototype = prototype;
-                protoChildShape = prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
-            }
-            if (cachedPrototype == prototype) {
-                return JSObject.create(context, protoChildShape);
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                CreateObjectWithPrototypeNode uncached = createWithInstancePrototype(context, prototypeExpression, jsclass);
-                this.replace(uncached);
-                return uncached.executeDynamicObject(frame, prototype);
-            }
+        protected static CreateObjectWithPrototypeNode create(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
+            return CreateObjectWithCachedPrototypeNodeGen.create(context, prototypeExpression, jsclass);
         }
 
-        @Override
-        JSClass getJSClass() {
-            return jsclass;
-        }
-    }
-
-    private static class CreateOrdinaryObjectWithPrototypeInObjectNode extends CreateObjectWithPrototypeNode {
-        protected CreateOrdinaryObjectWithPrototypeInObjectNode(JSContext context, JavaScriptNode prototypeExpression) {
-            super(context, prototypeExpression);
+        @Specialization(guards = {"!context.isMultiContext()", "isValidPrototype(cachedPrototype)", "prototype == cachedPrototype"}, limit = "1")
+        final DynamicObject doCachedPrototype(@SuppressWarnings("unused") DynamicObject prototype,
+                        @Cached("prototype") @SuppressWarnings("unused") DynamicObject cachedPrototype,
+                        @Cached("getProtoChildShape(cachedPrototype)") Shape protoChildShape) {
+            return JSObject.create(context, protoChildShape);
         }
 
-        @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame, DynamicObject prototype) {
+        @Specialization(guards = {"isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
+        final DynamicObject doInstancePrototype(DynamicObject prototype) {
             return JSUserObject.createWithPrototypeInObject(prototype, context);
         }
 
+        @Specialization(guards = {"!isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
+        final DynamicObject doUncachedPrototype(DynamicObject prototype) {
+            return JSObject.create(context, prototype, jsclass);
+        }
+
+        @Specialization(guards = {"!isValidPrototype(prototype)"})
+        final DynamicObject doNotJSObjectOrNull(@SuppressWarnings("unused") Object prototype) {
+            return JSUserObject.create(context);
+        }
+
+        final Shape getProtoChildShape(DynamicObject prototype) {
+            return prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
+        }
+
+        final boolean isOrdinaryObject() {
+            return jsclass == JSUserObject.INSTANCE;
+        }
+
         @Override
-        JSClass getJSClass() {
-            return JSUserObject.INSTANCE;
+        protected CreateObjectWithPrototypeNode copyUninitialized() {
+            return create(context, JavaScriptNode.cloneUninitialized(prototypeExpression), jsclass);
         }
     }
 
     private static class CreateObjectWithUncachedPrototypeNode extends CreateObjectWithPrototypeNode {
+        private final ConditionProfile isNormalPrototype = ConditionProfile.createBinaryProfile();
         private final JSClass jsclass;
 
         protected CreateObjectWithUncachedPrototypeNode(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
@@ -216,13 +190,23 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         }
 
         @Override
+        public final DynamicObject executeDynamicObject(VirtualFrame frame) {
+            Object prototype = prototypeExpression.execute(frame);
+            if (isNormalPrototype.profile(JSGuards.isValidPrototype(prototype))) {
+                return executeDynamicObject(frame, (DynamicObject) prototype);
+            } else {
+                return JSUserObject.create(context);
+            }
+        }
+
+        @Override
         public DynamicObject executeDynamicObject(VirtualFrame frame, DynamicObject prototype) {
             return JSObject.create(context, prototype, jsclass);
         }
 
         @Override
-        JSClass getJSClass() {
-            return jsclass;
+        protected CreateObjectWithPrototypeNode copyUninitialized() {
+            return new CreateObjectWithUncachedPrototypeNode(context, JavaScriptNode.cloneUninitialized(prototypeExpression), jsclass);
         }
     }
 

@@ -446,6 +446,10 @@ public final class JSGuards {
         return JSAdapter.isJSAdapter(object);
     }
 
+    public static boolean isValidPrototype(Object prototype) {
+        return isJSObject(prototype) || isJSNull(prototype);
+    }
+
     public static boolean isByteBuffer(Object buffer) {
         return buffer instanceof ByteBuffer;
     }
