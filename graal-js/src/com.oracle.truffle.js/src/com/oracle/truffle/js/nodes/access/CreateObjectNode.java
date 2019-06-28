@@ -46,8 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNodeFactory.CreateObjectWithCachedPrototypeNodeGen;
@@ -71,19 +69,11 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         return new CreateOrdinaryObjectNode(context);
     }
 
-    public static CreateObjectWithPrototypeNode createWithUncachedPrototype(JSContext context, JavaScriptNode prototypeExpression) {
-        return createWithUncachedPrototype(context, prototypeExpression, JSUserObject.INSTANCE);
+    public static CreateObjectWithPrototypeNode createWithPrototype(JSContext context, JavaScriptNode prototypeExpression) {
+        return createWithPrototype(context, prototypeExpression, JSUserObject.INSTANCE);
     }
 
-    public static CreateObjectWithPrototypeNode createWithUncachedPrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
-        return new CreateObjectWithUncachedPrototypeNode(context, prototypeExpression, jsclass);
-    }
-
-    public static CreateObjectWithPrototypeNode createWithCachedPrototype(JSContext context, JavaScriptNode prototypeExpression) {
-        return createWithCachedPrototype(context, prototypeExpression, JSUserObject.INSTANCE);
-    }
-
-    public static CreateObjectWithPrototypeNode createWithCachedPrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
+    public static CreateObjectWithPrototypeNode createWithPrototype(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
         return CreateObjectWithCachedPrototypeNode.create(context, prototypeExpression, jsclass);
     }
 
@@ -187,36 +177,6 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         @Override
         protected CreateObjectWithPrototypeNode copyUninitialized() {
             return create(context, JavaScriptNode.cloneUninitialized(prototypeExpression), jsclass);
-        }
-    }
-
-    private static class CreateObjectWithUncachedPrototypeNode extends CreateObjectWithPrototypeNode {
-        private final ConditionProfile isNormalPrototype = ConditionProfile.createBinaryProfile();
-        private final JSClass jsclass;
-
-        protected CreateObjectWithUncachedPrototypeNode(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
-            super(context, prototypeExpression);
-            this.jsclass = jsclass;
-        }
-
-        @Override
-        public final DynamicObject executeDynamicObject(VirtualFrame frame) {
-            Object prototype = prototypeExpression.execute(frame);
-            if (isNormalPrototype.profile(JSGuards.isValidPrototype(prototype))) {
-                return executeDynamicObject(frame, (DynamicObject) prototype);
-            } else {
-                return JSUserObject.create(context);
-            }
-        }
-
-        @Override
-        public DynamicObject executeDynamicObject(VirtualFrame frame, DynamicObject prototype) {
-            return JSObject.create(context, prototype, jsclass);
-        }
-
-        @Override
-        protected CreateObjectWithPrototypeNode copyUninitialized() {
-            return new CreateObjectWithUncachedPrototypeNode(context, JavaScriptNode.cloneUninitialized(prototypeExpression), jsclass);
         }
     }
 

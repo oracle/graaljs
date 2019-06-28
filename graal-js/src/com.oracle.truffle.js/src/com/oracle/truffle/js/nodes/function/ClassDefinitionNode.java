@@ -81,7 +81,7 @@ public class ClassDefinitionNode extends JavaScriptNode implements FunctionNameH
 
         this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
         this.setConstructorNode = CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR);
-        this.createObjectNode = CreateObjectNode.createWithUncachedPrototype(context, null);
+        this.createObjectNode = CreateObjectNode.createWithPrototype(context, null);
         this.defineConstructorMethodNode = DefineMethodNode.create(context, constructorFunctionNode);
     }
 
