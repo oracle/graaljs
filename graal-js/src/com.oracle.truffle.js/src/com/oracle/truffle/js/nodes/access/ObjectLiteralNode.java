@@ -693,7 +693,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
     public static ObjectLiteralNode create(JSContext context, ObjectLiteralMemberNode[] members) {
         if (members.length > 0 && members[0] instanceof ObjectLiteralProtoMemberNode) {
             return new ObjectLiteralNode(Arrays.copyOfRange(members, 1, members.length),
-                            CreateObjectNode.createWithCachedPrototype(context, ((ObjectLiteralProtoMemberNode) members[0]).valueNode));
+                            CreateObjectNode.createWithPrototype(context, ((ObjectLiteralProtoMemberNode) members[0]).valueNode));
         } else if (JSTruffleOptions.DictionaryObject && members.length > JSTruffleOptions.DictionaryObjectThreshold && onlyDataMembers(members)) {
             return createDictionaryObject(context, members);
         } else {

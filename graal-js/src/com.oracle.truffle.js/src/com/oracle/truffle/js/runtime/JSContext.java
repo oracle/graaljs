@@ -148,6 +148,7 @@ public class JSContext {
 
     private final Shape emptyShape;
     private final Shape emptyShapePrototypeInObject;
+    private final Shape promiseShapePrototypeInObject;
     private final Shape globalScopeShape;
 
     /**
@@ -408,6 +409,7 @@ public class JSContext {
 
         this.emptyShape = createEmptyShape();
         this.emptyShapePrototypeInObject = createEmptyShapePrototypeInObject();
+        this.promiseShapePrototypeInObject = createPromiseShapePrototypeInObject();
         this.globalScopeShape = createGlobalScopeShape();
 
         this.noSuchPropertyUnusedAssumption = Truffle.getRuntime().createAssumption("noSuchPropertyUnusedAssumption");
@@ -630,6 +632,10 @@ public class JSContext {
         return makeEmptyShapeWithPrototypeInObject(JSUserObject.INSTANCE, JSObject.PROTO_PROPERTY);
     }
 
+    private Shape createPromiseShapePrototypeInObject() {
+        return makeEmptyShapeWithPrototypeInObject(JSPromise.INSTANCE, JSObject.PROTO_PROPERTY);
+    }
+
     public final Shape makeEmptyShapeWithNullPrototype(JSClass jsclass) {
         Shape protoChildTree = nullPrototypeData.getProtoChildTree(jsclass);
         if (protoChildTree != null) {
@@ -728,6 +734,10 @@ public class JSContext {
 
     public final Shape getEmptyShapePrototypeInObject() {
         return emptyShapePrototypeInObject;
+    }
+
+    public final Shape getPromiseShapePrototypeInObject() {
+        return promiseShapePrototypeInObject;
     }
 
     public final Shape getGlobalScopeShape() {

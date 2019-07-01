@@ -54,7 +54,7 @@ public class OrdinaryCreateFromConstructorNode extends JavaScriptNode {
 
     protected OrdinaryCreateFromConstructorNode(JSContext context, JavaScriptNode constructorNode, CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto, JSClass jsclass) {
         this.getPrototypeFromConstructorNode = GetPrototypeFromConstructorNode.create(context, constructorNode, intrinsicDefaultProto);
-        this.createObjectNode = CreateObjectNode.createWithCachedPrototype(context, null, jsclass);
+        this.createObjectNode = CreateObjectNode.createWithPrototype(context, null, jsclass);
     }
 
     private OrdinaryCreateFromConstructorNode(GetPrototypeFromConstructorNode getPrototypeFromConstructorNode, CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode) {

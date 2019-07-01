@@ -563,7 +563,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private DynamicObject createObjectWithPrototype(VirtualFrame frame, DynamicObject prototype) {
             if (objectCreateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                objectCreateNode = insert(CreateObjectNode.createWithCachedPrototype(getContext(), null));
+                objectCreateNode = insert(CreateObjectNode.createWithPrototype(getContext(), null));
             }
             return objectCreateNode.executeDynamicObject(frame, prototype);
         }
