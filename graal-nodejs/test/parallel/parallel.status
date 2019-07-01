@@ -107,12 +107,6 @@ test-async-wrap-pop-id-during-load                                 : SKIP
 # Uses v8 extension (--expose_externalize_string flag that exposes two additional functions)
 test-fs-write                                                      : FAIL
 
-# different error message from proxy invariant check
-test-assert-deep                                                   : FAIL
-
-# different error message (Cannot set property origin of [object URL] which has only a getter x Cannot redefine property origin which has only a getter)
-test-whatwg-url-custom-properties                                  : FAIL
-
 # different error message (Unexpected token } x Expected eof but found })
 # missing support for lineOffset and columnOffset in ScriptOrigin
 test-vm-basic                                                      : FAIL

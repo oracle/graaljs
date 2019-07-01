@@ -382,11 +382,8 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorCannotSetAccessorProperty(Object key, DynamicObject store) {
         assert JSRuntime.isPropertyKey(key);
-        if (JSTruffleOptions.NashornCompatibilityMode) {
-            return Errors.createTypeErrorFormat("Cannot set property \"%s\" of %s that has only a getter", key, JSObject.defaultToString(store));
-        } else {
-            return Errors.createTypeErrorFormat("Cannot redefine property %s which has only a getter", key);
-        }
+        String message = JSTruffleOptions.NashornCompatibilityMode ? "Cannot set property \"%s\" of %s that has only a getter" : "Cannot set property %s of %s which has only a getter";
+        return Errors.createTypeErrorFormat(message, key, JSObject.defaultToString(store));
     }
 
     @TruffleBoundary

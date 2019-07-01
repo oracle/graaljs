@@ -713,7 +713,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         assert trapResult.size() == uncheckedResultKeys.size();
         for (Object key : targetNonconfigurableKeys) {
             if (!uncheckedResultKeys.contains(key)) {
-                throw Errors.createTypeError("Proxy.ownPropertyKeys, 21.a");
+                throw Errors.createTypeErrorFormat("\'ownKeys\' on proxy: trap result did not include \'%s\'", key);
             }
             while (uncheckedResultKeys.remove(key)) {
                 // harmony/proxies-ownkeys.js
