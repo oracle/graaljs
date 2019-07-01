@@ -306,6 +306,21 @@ public final class JSFunction extends JSBuiltinObject {
         return (JSRealm) REALM_PROPERTY.get(obj, floatingCondition);
     }
 
+    /**
+     * Version optimized for a single Realm.
+     */
+    public static JSRealm getRealm(DynamicObject functionObj, JSContext context) {
+        assert isJSFunction(functionObj);
+        JSRealm realm;
+        if (context.isSingleRealm()) {
+            realm = context.getRealm();
+            assert realm == getRealm(functionObj);
+        } else {
+            realm = getRealm(functionObj);
+        }
+        return realm;
+    }
+
     public static DynamicObject create(JSRealm realm, JSFunctionData functionData) {
         return create(realm, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME);
     }
@@ -409,13 +424,7 @@ public final class JSFunction extends JSBuiltinObject {
             int length = Math.max(0, JSFunction.getLength(boundTargetFunction) - boundArguments.length);
             functionData = makeBoundFunctionData(context, length, constructor, isAsync);
         }
-        JSRealm realm;
-        if (context.isSingleRealm()) {
-            realm = context.getRealm();
-            assert realm == JSFunction.getRealm(boundTargetFunction);
-        } else {
-            realm = JSFunction.getRealm(boundTargetFunction);
-        }
+        JSRealm realm = getRealm(boundTargetFunction, context);
         DynamicObject boundFunction = JSFunction.createBound(context, realm, functionData, boundTargetFunction, boundThis, boundArguments, isAnonymous);
         boolean needSetProto = proto != realm.getFunctionPrototype();
         if ((setProtoProfile == null ? needSetProto : setProtoProfile.profile(needSetProto))) {

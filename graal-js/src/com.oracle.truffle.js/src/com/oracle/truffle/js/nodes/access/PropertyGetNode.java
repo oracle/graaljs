@@ -1352,7 +1352,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     kind = CONSTRUCTOR;
                 }
             }
-            JSRealm realm = JSFunction.getRealm(functionObj);
+            JSRealm realm = JSFunction.getRealm(functionObj, context);
             // Function kind guaranteed by shape check, see JSFunction
             DynamicObject prototype;
             if (kind == CONSTRUCTOR) {
