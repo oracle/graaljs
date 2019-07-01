@@ -129,7 +129,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!isJSObject(prototype)"})
     public DynamicObject createDefaultProto(DynamicObject target, @SuppressWarnings("unused") Object prototype) {
         // user-provided prototype is not an object
-        JSRealm realm = JSRuntime.getFunctionRealm(target, context.getRealm());
+        JSRealm realm = JSRuntime.getFunctionRealm(target, context);
         if (isAsyncGenerator) {
             return JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
         } else if (isGenerator) {

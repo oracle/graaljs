@@ -2677,6 +2677,15 @@ public final class JSRuntime {
         return value >= JSRuntime.MIN_SAFE_INTEGER_LONG && value <= JSRuntime.MAX_SAFE_INTEGER_LONG;
     }
 
+    public static JSRealm getFunctionRealm(Object obj, JSContext context) {
+        JSRealm currentRealm = context.getRealm();
+        if (context.isSingleRealm()) {
+            assert currentRealm == getFunctionRealm(obj, currentRealm);
+            return currentRealm;
+        }
+        return getFunctionRealm(obj, currentRealm);
+    }
+
     @TruffleBoundary
     public static JSRealm getFunctionRealm(Object obj, JSRealm currentRealm) {
         if (JSObject.isDynamicObject(obj)) {

@@ -532,11 +532,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         protected JSRealm getRealmFromNewTarget(Object newTarget) {
-            JSRealm currentRealm = getContext().getRealm();
             if (isNewTargetCase) {
-                return JSRuntime.getFunctionRealm(newTarget, currentRealm);
+                return JSRuntime.getFunctionRealm(newTarget, getContext());
             }
-            return currentRealm;
+            return getContext().getRealm();
         }
 
         protected abstract DynamicObject getIntrinsicDefaultProto(JSRealm realm);

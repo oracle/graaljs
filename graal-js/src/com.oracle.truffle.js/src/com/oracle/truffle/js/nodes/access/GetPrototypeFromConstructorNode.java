@@ -84,7 +84,7 @@ public class GetPrototypeFromConstructorNode extends JavaScriptNode {
             assert JSRuntime.isObject(proto);
             return (DynamicObject) proto;
         } else {
-            JSRealm realm = JSRuntime.getFunctionRealm(constructor, getPrototypeNode.getContext().getRealm());
+            JSRealm realm = JSRuntime.getFunctionRealm(constructor, getPrototypeNode.getContext());
             return intrinsicDefaultProto.apply(realm);
         }
     }
