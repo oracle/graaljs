@@ -52,6 +52,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -86,6 +87,8 @@ public class WritePropertyNode extends JSTargetableWriteNode {
         if (tag == WriteVariableExpressionTag.class && isScopeAccess()) {
             return true;
         } else if (tag == WritePropertyExpressionTag.class && !isScopeAccess()) {
+            return true;
+        } else if (tag == InputNodeTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

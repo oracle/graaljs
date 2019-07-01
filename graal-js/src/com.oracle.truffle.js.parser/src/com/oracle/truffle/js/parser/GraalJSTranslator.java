@@ -1672,7 +1672,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         String functionName = (varNode.isExport() && Module.DEFAULT_EXPORT_BINDING_NAME.equals(varName)) ? Module.DEFAULT_NAME : varName;
         setAnonymousFunctionName(rhs, functionName);
         JavaScriptNode assignment = findScopeVar(varName, false).createWriteNode(rhs);
-        tagExpression(assignment, varNode);
         if (varNode.isBlockScoped() && varNode.isFunctionDeclaration() && context.isOptionAnnexB()) {
             // B.3.3 Block-Level Function Declarations Web Legacy Compatibility Semantics
             FunctionNode fn = lc.getCurrentFunction();
@@ -1687,11 +1686,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
         }
 
+        // class declarations are not statements nor expressions
+        if (varNode.isClassDeclaration()) {
+            return discardResult(assignment);
+        }
         // do not halt on function declarations
         if (!varNode.isHoistableDeclaration()) {
             tagStatement(assignment, varNode);
         }
-
+        ensureHasSourceSection(assignment, varNode);
         return discardResult(assignment);
     }
 
