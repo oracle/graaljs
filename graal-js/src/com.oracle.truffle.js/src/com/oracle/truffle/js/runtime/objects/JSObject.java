@@ -127,6 +127,23 @@ public final class JSObject {
         return object;
     }
 
+    public static DynamicObject createBoundary(JSContext context, Shape shape) {
+        AllocationReporter reporter = context.getAllocationReporter();
+        if (reporter != null) {
+            reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        DynamicObject object = newInstanceBoundary(shape);
+        if (reporter != null) {
+            reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        return object;
+    }
+
+    @TruffleBoundary
+    private static DynamicObject newInstanceBoundary(Shape shape) {
+        return shape.newInstance();
+    }
+
     public static DynamicObject create(JSContext context, JSObjectFactory factory, Object... initialValues) {
         return createWithRealm(context, factory, context.getRealm(), initialValues);
     }

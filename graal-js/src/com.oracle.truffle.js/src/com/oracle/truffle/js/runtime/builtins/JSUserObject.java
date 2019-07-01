@@ -41,9 +41,11 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -72,7 +74,11 @@ public final class JSUserObject extends JSBuiltinObject implements PrototypeSupp
         if (context.isMultiContext()) {
             return createWithPrototypeInObject(realm.getObjectPrototype(), context);
         }
-        return JSObject.create(context, realm.getInitialUserObjectShape());
+        if (CompilerDirectives.isPartialEvaluationConstant(realm)) {
+            return JSObject.create(context, realm.getInitialUserObjectShape());
+        } else {
+            return JSObject.createWithRealm(context, context.getOrdinaryObjectFactory(), realm, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+        }
     }
 
     @TruffleBoundary
