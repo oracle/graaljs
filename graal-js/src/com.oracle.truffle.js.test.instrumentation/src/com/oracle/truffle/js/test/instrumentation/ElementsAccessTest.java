@@ -51,6 +51,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class ElementsAccessTest extends FineGrainedAccessTest {
 
@@ -224,5 +225,50 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
                 elem.input(2);
             }).exit(assertJSFunctionReturn);
         }
+    }
+
+    @Test
+    public void elementWriteIndexConvert() {
+        evalWithTag("var a = []; a[true] = 0; a[undefined] = 0; a[{}] = 0;", WriteElementExpressionTag.class);
+
+        enter(WriteElementExpressionTag.class, (e, b) -> {
+            b.input(assertJSArrayInput);
+            b.input(true);
+            b.input(0);
+        }).exit();
+
+        enter(WriteElementExpressionTag.class, (e, b) -> {
+            b.input(assertJSArrayInput);
+            b.input(Undefined.instance);
+            b.input(0);
+        }).exit();
+
+        enter(WriteElementExpressionTag.class, (e, b) -> {
+            b.input(assertJSArrayInput);
+            b.input(assertJSObjectInput);
+            b.input(0);
+        }).exit();
+
+    }
+
+    @Test
+    public void elementReadIndexConvert() {
+        evalWithTag("var a = []; a[true]; a[undefined]; a[{}];", ReadElementExpressionTag.class);
+
+        enter(ReadElementExpressionTag.class, (e, b) -> {
+            b.input(assertJSArrayInput);
+            b.input(true);
+        }).exit();
+
+        enter(ReadElementExpressionTag.class, (e, b) -> {
+            b.input(assertJSArrayInput);
+            b.input(Undefined.instance);
+        }).exit();
+
+        enter(ReadElementExpressionTag.class, (e, b) -> {
+            b.input(assertJSArrayInput);
+            b.input(assertJSObjectInput);
+        }).exit();
+
     }
 }
