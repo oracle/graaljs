@@ -160,6 +160,10 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.OBJECT,
                         TypeDescriptor.ARRAY,
                         TypeDescriptor.EXECUTABLE_ANY,
+                        TypeDescriptor.TIME,
+                        TypeDescriptor.DATE,
+                        TypeDescriptor.DURATION,
+                        TypeDescriptor.TIME_ZONE,
                         noType);
         // +
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull));
