@@ -99,9 +99,11 @@ public class DateTest {
                     assertTrue(date.isInstant());
                     assertTrue(date.isDate());
                     assertTrue(date.isTime());
+                    assertTrue(date.isTimeZone());
                     assertEquals(expected.toInstant(), date.asInstant());
                     assertEquals(expected.toLocalDate(), date.asDate());
                     assertEquals(expected.toLocalTime(), date.asTime());
+                    assertEquals(timeZone, date.asTimeZone());
                 }
             }
         }
@@ -118,11 +120,13 @@ public class DateTest {
                 context.eval(ID, "consumer.acceptLocalDate(date);");
                 context.eval(ID, "consumer.acceptLocalTime(date);");
                 context.eval(ID, "consumer.acceptLocalDateTime(date);");
+                context.eval(ID, "consumer.acceptZoneId(date);");
                 ZonedDateTime expected = ZonedDateTime.of(LocalDateTime.of(2019, Month.JULY, 2, 13, 37), timeZone);
                 assertEquals(expected.toInstant(), consumer.instant);
                 assertEquals(expected.toLocalDate(), consumer.localDate);
                 assertEquals(expected.toLocalTime(), consumer.localTime);
                 assertEquals(expected.toLocalDateTime(), consumer.localDateTime);
+                assertEquals(timeZone, consumer.zoneId);
             }
         }
     }
@@ -132,6 +136,7 @@ public class DateTest {
         LocalDate localDate;
         LocalTime localTime;
         LocalDateTime localDateTime;
+        ZoneId zoneId;
 
         public void acceptInstant(Instant date) {
             instant = date;
@@ -147,6 +152,10 @@ public class DateTest {
 
         public void acceptLocalDateTime(LocalDateTime date) {
             localDateTime = date;
+        }
+
+        public void acceptZoneId(ZoneId date) {
+            zoneId = date;
         }
     }
 }
