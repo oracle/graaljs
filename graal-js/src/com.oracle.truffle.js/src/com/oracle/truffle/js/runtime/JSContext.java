@@ -342,6 +342,7 @@ public class JSContext {
     static final CompilableFunction<JSRealm, DynamicObject> generatorFunctionPrototypeSupplier = r -> r.getGeneratorFunctionConstructor().getPrototype();
     static final CompilableFunction<JSRealm, DynamicObject> asyncGeneratorFunctionPrototypeSupplier = r -> r.getAsyncGeneratorFunctionConstructor().getPrototype();
 
+    private final JSObjectFactory ordinaryObjectFactory;
     private final JSObjectFactory arrayFactory;
     private final JSObjectFactory lazyRegexArrayFactory;
     private final JSObjectFactory booleanFactory;
@@ -471,6 +472,7 @@ public class JSContext {
         this.boundFunctionFactoryNamed = builder.function(functionPrototypeSupplier, true, false, false, false, true, false);
         this.boundFunctionFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, false, false, true, false);
 
+        this.ordinaryObjectFactory = builder.create(JSUserObject.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);
         this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE, JSRegExp::makeLazyRegexArrayShape);
         this.booleanFactory = builder.create(JSBoolean.INSTANCE);
@@ -742,6 +744,10 @@ public class JSContext {
 
     public final Shape getGlobalScopeShape() {
         return globalScopeShape;
+    }
+
+    public final JSObjectFactory getOrdinaryObjectFactory() {
+        return ordinaryObjectFactory;
     }
 
     public final JSObjectFactory getArrayFactory() {

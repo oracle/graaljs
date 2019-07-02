@@ -118,7 +118,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!context.isMultiContext()", "isJSObject(prototype)"}, replaces = "doCachedProto")
     public DynamicObject doUncachedProto(@SuppressWarnings("unused") DynamicObject target, DynamicObject prototype,
                     @Cached("create()") BranchProfile slowBranch) {
-        return JSObject.create(context, JSObjectUtil.getProtoChildShape(prototype, JSUserObject.INSTANCE, context, slowBranch));
+        return JSObject.createBoundary(context, JSObjectUtil.getProtoChildShape(prototype, JSUserObject.INSTANCE, context, slowBranch));
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "isJSObject(prototype)"})
@@ -129,7 +129,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isBuiltin", "isConstructor", "!isJSObject(prototype)"})
     public DynamicObject createDefaultProto(DynamicObject target, @SuppressWarnings("unused") Object prototype) {
         // user-provided prototype is not an object
-        JSRealm realm = JSRuntime.getFunctionRealm(target, context.getRealm());
+        JSRealm realm = JSRuntime.getFunctionRealm(target, context);
         if (isAsyncGenerator) {
             return JSObject.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
         } else if (isGenerator) {
