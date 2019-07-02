@@ -812,11 +812,11 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return jsShortTimeFormat;
     }
 
-    public static DateTimeFormatter getJSShortTimeLocalFormat(JSContext context) {
+    public static DateTimeFormatter getJSShortTimeLocalFormat() {
         if (jsShortTimeLocalFormat == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // no UTC
-            jsShortTimeLocalFormat = DateTimeFormatter.ofPattern("HH:mm:ss", context.getLocale(Locale.Category.FORMAT));
+            jsShortTimeLocalFormat = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US);
         }
         return jsShortTimeLocalFormat;
     }

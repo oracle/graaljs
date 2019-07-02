@@ -1557,14 +1557,4 @@ public class JSContext {
             return Locale.forLanguageTag(name);
         }
     }
-
-    @TruffleBoundary
-    public Locale getLocale(Locale.Category category) {
-        String name = getContextOptions().getLocale();
-        if (name.isEmpty()) {
-            return Locale.getDefault(category);
-        } else {
-            return Locale.forLanguageTag(name);
-        }
-    }
 }
