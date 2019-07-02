@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Instant;
@@ -51,6 +52,7 @@ import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Date;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -73,6 +75,34 @@ public class DateTest {
                 assertEquals(expected.toLocalDate(), date.asDate());
                 assertEquals(expected.toLocalTime(), date.asTime());
                 assertEquals(timeZone, date.asTimeZone());
+            }
+        }
+    }
+
+    @Test
+    public void testImportDate() {
+        for (ZoneId timeZone : new ZoneId[]{ZoneId.systemDefault(), ZoneId.of("UTC+9")}) {
+            try (Context context = Context.newBuilder(ID).timeZone(timeZone).build()) {
+                Value toJSDate = context.eval(ID, "(date) => new Date(date);");
+                ZonedDateTime expected = ZonedDateTime.of(LocalDateTime.of(2019, Month.JULY, 2, 13, 37), timeZone);
+                for (int i = 0; i < 3; i++) {
+                    Object foreignDate;
+                    if (i == 0) {
+                        foreignDate = expected.toInstant();
+                    } else if (i == 1) {
+                        foreignDate = Date.from(expected.toInstant());
+                    } else {
+                        foreignDate = expected;
+                    }
+                    Value date = toJSDate.execute(foreignDate);
+                    assertFalse(date.isHostObject());
+                    assertTrue(date.isInstant());
+                    assertTrue(date.isDate());
+                    assertTrue(date.isTime());
+                    assertEquals(expected.toInstant(), date.asInstant());
+                    assertEquals(expected.toLocalDate(), date.asDate());
+                    assertEquals(expected.toLocalTime(), date.asTime());
+                }
             }
         }
     }
