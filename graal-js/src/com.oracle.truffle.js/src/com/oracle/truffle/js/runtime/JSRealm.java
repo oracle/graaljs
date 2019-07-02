@@ -44,12 +44,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.TimeZone;
 import java.util.WeakHashMap;
 
 import org.graalvm.options.OptionValues;
@@ -124,6 +126,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.LocalTimeZoneHolder;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
@@ -269,6 +272,11 @@ public class JSRealm {
     private Object lazyStaticRegexResultCompiledRegex;
     private String lazyStaticRegexResultInputString = "";
     private long lazyStaticRegexResultFromIndex;
+
+    /**
+     * Local time zone information. Initialized lazily.
+     */
+    @CompilationFinal private LocalTimeZoneHolder localTimeZoneHolder;
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     private final SplittableRandom random = new SplittableRandom();
@@ -1206,7 +1214,7 @@ public class JSRealm {
 
         if (getContext().getParserOptions().isScripting()) {
             // $OPTIONS
-            String timezone = context.getLocalTimeZoneId().getId();
+            String timezone = getLocalTimeZoneId().getId();
             DynamicObject timezoneObj = JSUserObject.create(context, this);
             JSObjectUtil.putDataProperty(context, timezoneObj, "ID", timezone, JSAttributes.configurableEnumerableWritable());
 
@@ -1305,7 +1313,9 @@ public class JSRealm {
         addOptionalGlobals();
 
         // Reflect any changes to the timezone option.
-        context.setLocalTimeZoneFromOptions(newEnv.getOptions());
+        if (localTimeZoneHolder != null) {
+            localTimeZoneHolder = getTimeZoneFromEnv();
+        }
 
         // Perform the deferred part of setting up properties in the function prototype.
         // Taken from JSFunction#fillFunctionPrototype, which is called from the JSRealm
@@ -1315,6 +1325,12 @@ public class JSRealm {
         }
 
         return true;
+    }
+
+    public void initialize() {
+        CompilerAsserts.neverPartOfCompilation();
+        setArguments(getEnv().getApplicationArguments());
+        addOptionalGlobals();
     }
 
     @TruffleBoundary
@@ -1584,6 +1600,35 @@ public class JSRealm {
         assert newAgent != null : "Cannot set a null agent!";
         CompilerAsserts.neverPartOfCompilation("Assigning agent to context in compiled code");
         this.agent = newAgent;
+    }
+
+    private LocalTimeZoneHolder getLocalTimeZoneHolder() {
+        LocalTimeZoneHolder holder = localTimeZoneHolder;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, holder == null)) {
+            if (CompilerDirectives.isPartialEvaluationConstant(holder)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            holder = getTimeZoneFromEnv();
+            localTimeZoneHolder = holder;
+        }
+        return holder;
+    }
+
+    @TruffleBoundary
+    private LocalTimeZoneHolder getTimeZoneFromEnv() {
+        OptionValues options = getEnv().getOptions();
+        if (JSContextOptions.TIME_ZONE.hasBeenSet(options)) {
+            return new LocalTimeZoneHolder(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(options)).toZoneId());
+        }
+        return new LocalTimeZoneHolder(getEnv().getTimeZone());
+    }
+
+    public final ZoneId getLocalTimeZoneId() {
+        return getLocalTimeZoneHolder().localTimeZoneId;
+    }
+
+    public final long getLocalTZA() {
+        return getLocalTimeZoneHolder().localTZA;
     }
 
     public JSRealm getParent() {

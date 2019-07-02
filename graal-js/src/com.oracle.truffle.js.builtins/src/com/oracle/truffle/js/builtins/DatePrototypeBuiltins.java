@@ -94,6 +94,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -387,7 +388,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 }
                 return JSDate.formatUTC(JSDate.getJSDateUTCFormat(), t);
             } else {
-                return JSDate.toString(t, getContext());
+                return JSDate.toString(t, getContext().getRealm());
             }
         }
 
@@ -448,7 +449,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortDateFormat(), t, getContext());
+            return JSDate.formatLocal(JSDate.getJSShortDateFormat(), t, getContext().getRealm());
         }
     }
 
@@ -464,7 +465,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortTimeFormat(), t, getContext());
+            return JSDate.formatLocal(JSDate.getJSShortTimeFormat(), t, getContext().getRealm());
         }
     }
 
@@ -480,7 +481,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortDateLocalFormat(), t, getContext());
+            return JSDate.formatLocal(JSDate.getJSShortDateLocalFormat(), t, getContext().getRealm());
         }
     }
 
@@ -516,7 +517,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortTimeLocalFormat(getContext()), t, getContext());
+            return JSDate.formatLocal(JSDate.getJSShortTimeLocalFormat(getContext()), t, getContext().getRealm());
         }
     }
 
@@ -995,7 +996,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         public int execute(long t) {
-            long localNoDST = t + context.getLocalTZA();
+            JSRealm realm = context.getRealm();
+            long localNoDST = t + realm.getLocalTZA();
             long day = Math.floorDiv(localNoDST, JSDate.MS_PER_DAY);
             assert JSRuntime.longIsRepresentableAsInt(day);
             int iday = (int) day;
@@ -1005,7 +1007,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return iday;
             } else {
                 dstNeededProfile.enter();
-                timeInDay += JSDate.daylightSavingTA(context.getLocalTimeZoneId(), t);
+                timeInDay += JSDate.daylightSavingTA(realm.getLocalTimeZoneId(), t);
                 return (timeInDay < JSDate.MS_PER_DAY) ? iday : (iday + 1);
             }
         }

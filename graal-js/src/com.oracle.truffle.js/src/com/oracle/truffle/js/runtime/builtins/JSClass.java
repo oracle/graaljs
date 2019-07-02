@@ -924,7 +924,7 @@ public abstract class JSClass extends ObjectType {
     static LocalDate asDate(DynamicObject target,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
         if (isDate(target)) {
-            return JSDate.asLocalDate(target, contextRef.get().getContext());
+            return JSDate.asLocalDate(target, contextRef.get());
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -934,7 +934,7 @@ public abstract class JSClass extends ObjectType {
     static LocalTime asTime(DynamicObject target,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
         if (isDate(target)) {
-            return JSDate.asLocalTime(target, contextRef.get().getContext());
+            return JSDate.asLocalTime(target, contextRef.get());
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -944,7 +944,7 @@ public abstract class JSClass extends ObjectType {
     static ZoneId asTimeZone(DynamicObject target,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
         if (isDate(target)) {
-            return contextRef.get().getContext().getLocalTimeZoneId();
+            return contextRef.get().getLocalTimeZoneId();
         } else {
             throw UnsupportedMessageException.create();
         }

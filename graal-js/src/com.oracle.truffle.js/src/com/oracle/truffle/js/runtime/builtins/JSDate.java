@@ -443,15 +443,16 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     // 15.9.1.9
-    @TruffleBoundary
     public static double localTime(double t, JSContext context) {
-        long localTZA = context.getLocalTZA();
-        return t + localTZA + daylightSavingTA(context.getLocalTimeZoneId(), t);
+        JSRealm realm = context.getRealm();
+        long localTZA = realm.getLocalTZA();
+        return t + localTZA + daylightSavingTA(realm.getLocalTimeZoneId(), t);
     }
 
     private static double utc(double t, JSContext context) {
-        long localTZA = context.getLocalTZA();
-        return t - localTZA - daylightSavingTA(context.getLocalTimeZoneId(), t - localTZA);
+        JSRealm realm = context.getRealm();
+        long localTZA = realm.getLocalTZA();
+        return t - localTZA - daylightSavingTA(realm.getLocalTimeZoneId(), t - localTZA);
     }
 
     // 15.9.1.10
@@ -681,8 +682,8 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     @TruffleBoundary
-    public static String formatLocal(DateTimeFormatter format, double time, JSContext context) {
-        return Instant.ofEpochMilli((long) time).atZone(context.getLocalTimeZoneId()).format(format);
+    public static String formatLocal(DateTimeFormatter format, double time, JSRealm realm) {
+        return Instant.ofEpochMilli((long) time).atZone(realm.getLocalTimeZoneId()).format(format);
     }
 
     @TruffleBoundary
@@ -691,11 +692,11 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     @TruffleBoundary
-    public static String toString(double time, JSContext context) {
+    public static String toString(double time, JSRealm realm) {
         if (Double.isNaN(time)) {
             return INVALID_DATE_STRING;
         }
-        return formatLocal(getDateToStringFormat(), time, context);
+        return formatLocal(getDateToStringFormat(), time, realm);
     }
 
     @TruffleBoundary
@@ -726,13 +727,13 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     @TruffleBoundary
-    public static LocalDate asLocalDate(DynamicObject date, JSContext context) {
-        return LocalDate.from(asInstant(date).atZone(context.getLocalTimeZoneId()));
+    public static LocalDate asLocalDate(DynamicObject date, JSRealm realm) {
+        return LocalDate.from(asInstant(date).atZone(realm.getLocalTimeZoneId()));
     }
 
     @TruffleBoundary
-    public static LocalTime asLocalTime(DynamicObject date, JSContext context) {
-        return LocalTime.from(asInstant(date).atZone(context.getLocalTimeZoneId()));
+    public static LocalTime asLocalTime(DynamicObject date, JSRealm realm) {
+        return LocalTime.from(asInstant(date).atZone(realm.getLocalTimeZoneId()));
     }
 
     public static DateTimeFormatter getJSDateFormat(double time) {

@@ -100,7 +100,7 @@ public class JSRuntimeTest extends JSTest {
     public void testEqual() {
         JSContext context = testHelper.getJSContext();
         DynamicObject date = JSDate.create(context, 42);
-        assertTrue(JSRuntime.equal(date, JSDate.toString(42, context)));
+        assertTrue(JSRuntime.equal(date, JSDate.toString(42, testHelper.getRealm())));
         assertFalse(JSRuntime.equal(Null.instance, false));
         assertFalse(JSRuntime.equal(0, Null.instance));
         assertFalse(JSRuntime.equal(true, Undefined.instance));
