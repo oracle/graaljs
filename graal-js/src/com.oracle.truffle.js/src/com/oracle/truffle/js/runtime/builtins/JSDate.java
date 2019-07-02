@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.Year;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -712,6 +713,26 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
 
     private static double utc(double time, boolean isUTC, JSContext context) {
         return isUTC ? time : utc(time, context);
+    }
+
+    public static boolean isValidDate(DynamicObject date) {
+        return isJSDate(date) && !Double.isNaN(getTimeMillisField(date));
+    }
+
+    @TruffleBoundary
+    public static Instant asInstant(DynamicObject date) {
+        assert isValidDate(date);
+        return Instant.ofEpochMilli((long) getTimeMillisField(date));
+    }
+
+    @TruffleBoundary
+    public static LocalDate asLocalDate(DynamicObject date, JSContext context) {
+        return LocalDate.from(asInstant(date).atZone(context.getLocalTimeZoneId()));
+    }
+
+    @TruffleBoundary
+    public static LocalTime asLocalTime(DynamicObject date, JSContext context) {
+        return LocalTime.from(asInstant(date).atZone(context.getLocalTimeZoneId()));
     }
 
     public static DateTimeFormatter getJSDateFormat(double time) {

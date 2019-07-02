@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -895,6 +899,52 @@ public abstract class JSClass extends ObjectType {
                     @Shared("numberLib") @CachedLibrary(limit = "1") InteropLibrary numberLib) throws UnsupportedMessageException {
         if (fitsInDouble(target, numberLib)) {
             return numberLib.asDouble(JSNumber.valueOf(target));
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage(name = "isDate")
+    @ExportMessage(name = "isTime")
+    @ExportMessage(name = "isTimeZone")
+    static boolean isDate(DynamicObject target) {
+        return JSDate.isValidDate(target);
+    }
+
+    @ExportMessage
+    static Instant asInstant(DynamicObject target) throws UnsupportedMessageException {
+        if (isDate(target)) {
+            return JSDate.asInstant(target);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    static LocalDate asDate(DynamicObject target,
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
+        if (isDate(target)) {
+            return JSDate.asLocalDate(target, contextRef.get().getContext());
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    static LocalTime asTime(DynamicObject target,
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
+        if (isDate(target)) {
+            return JSDate.asLocalTime(target, contextRef.get().getContext());
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    static ZoneId asTimeZone(DynamicObject target,
+                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
+        if (isDate(target)) {
+            return contextRef.get().getContext().getLocalTimeZoneId();
         } else {
             throw UnsupportedMessageException.create();
         }
