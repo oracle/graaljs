@@ -44,12 +44,16 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
@@ -73,4 +77,46 @@ public class DateTest {
         }
     }
 
+    @Test
+    public void testJavaInterop() {
+        for (ZoneId timeZone : new ZoneId[]{ZoneId.systemDefault(), ZoneId.of("UTC+9")}) {
+            try (Context context = Context.newBuilder(ID).timeZone(timeZone).allowHostAccess(HostAccess.ALL).build()) {
+                DateConsumer consumer = new DateConsumer();
+                context.getBindings(ID).putMember("consumer", consumer);
+                context.eval(ID, "var date = new Date('2019-07-02 13:37');");
+                context.eval(ID, "consumer.acceptInstant(date);");
+                context.eval(ID, "consumer.acceptLocalDate(date);");
+                context.eval(ID, "consumer.acceptLocalTime(date);");
+                context.eval(ID, "consumer.acceptLocalDateTime(date);");
+                ZonedDateTime expected = ZonedDateTime.of(LocalDateTime.of(2019, Month.JULY, 2, 13, 37), timeZone);
+                assertEquals(expected.toInstant(), consumer.instant);
+                assertEquals(expected.toLocalDate(), consumer.localDate);
+                assertEquals(expected.toLocalTime(), consumer.localTime);
+                assertEquals(expected.toLocalDateTime(), consumer.localDateTime);
+            }
+        }
+    }
+
+    public static class DateConsumer {
+        Instant instant;
+        LocalDate localDate;
+        LocalTime localTime;
+        LocalDateTime localDateTime;
+
+        public void acceptInstant(Instant date) {
+            instant = date;
+        }
+
+        public void acceptLocalDate(LocalDate date) {
+            localDate = date;
+        }
+
+        public void acceptLocalTime(LocalTime date) {
+            localTime = date;
+        }
+
+        public void acceptLocalDateTime(LocalDateTime date) {
+            localDateTime = date;
+        }
+    }
 }
