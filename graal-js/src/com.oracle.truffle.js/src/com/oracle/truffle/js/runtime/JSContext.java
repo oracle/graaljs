@@ -384,6 +384,8 @@ public class JSContext {
 
     private final int factoryCount;
 
+    @CompilationFinal private Locale locale;
+
     protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
         this.contextOptions = contextOptions;
@@ -1536,8 +1538,18 @@ public class JSContext {
         return contextOptions.isLoadFromURL();
     }
 
-    @TruffleBoundary
     public Locale getLocale() {
+        Locale loc = locale;
+        if (loc == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            loc = getLocaleImpl();
+            locale = loc;
+        }
+        return loc;
+    }
+
+    @TruffleBoundary
+    private Locale getLocaleImpl() {
         String name = getContextOptions().getLocale();
         if (name.isEmpty()) {
             return Locale.getDefault();
