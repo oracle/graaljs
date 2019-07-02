@@ -115,7 +115,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
-import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
@@ -128,6 +127,7 @@ import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
@@ -792,8 +792,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length == 1"})
         protected DynamicObject constructDateOne(DynamicObject newTarget, Object[] args,
-                        @Cached("createBinaryProfile()") ConditionProfile isSpecialCase) {
-            double dateValue = getDateValue(args[0]);
+                        @Cached("createBinaryProfile()") ConditionProfile isSpecialCase,
+                        @CachedLibrary(limit = "3") InteropLibrary interop) {
+            double dateValue = getDateValue(args[0], interop);
             return swapPrototype(JSDate.create(getContext(), timeClip(dateValue, isSpecialCase)), newTarget);
         }
 
@@ -808,7 +809,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (isSpecialCase.profile(Double.isInfinite(dateValue) || Double.isNaN(dateValue) || Math.abs(dateValue) > JSDate.MAX_DATE)) {
                 return Double.NaN;
             }
-            return ((Double) dateValue).longValue();
+            return (long) dateValue;
         }
 
         @TruffleBoundary
@@ -825,20 +826,23 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return Double.NaN;
         }
 
-        private double getDateValue(Object arg0) {
-            if (getContext().getEcmaScriptVersion() >= 6 && isDateProfile.profile(JSDate.isJSDate(arg0))) {
-                return JSDate.getTimeMillisField((DynamicObject) arg0);
+        private double getDateValue(Object arg0, InteropLibrary interop) {
+            if (getContext().getEcmaScriptVersion() >= 6) {
+                if (isDateProfile.profile(JSDate.isJSDate(arg0))) {
+                    return JSDate.getTimeMillisField((DynamicObject) arg0);
+                } else if (interop.isInstant(arg0)) {
+                    return JSDate.getDateValueFromInstant(arg0, interop);
+                }
+            }
+            Object value = toPrimitive(arg0);
+            if (stringOrNumberProfile.profile(JSRuntime.isString(value))) {
+                return parseDate(JSRuntime.toStringIsString(value));
             } else {
-                Object value = toPrimitive(arg0);
-                if (stringOrNumberProfile.profile(JSRuntime.isString(value))) {
-                    return parseDate(JSRuntime.toStringIsString(value));
+                double dval = toDouble(value);
+                if (Double.isInfinite(dval) || Double.isNaN(dval)) {
+                    return Double.NaN;
                 } else {
-                    double dval = toDouble(value);
-                    if (Double.isInfinite(dval) || Double.isNaN(dval)) {
-                        return Double.NaN;
-                    } else {
-                        return dval;
-                    }
+                    return dval;
                 }
             }
         }
