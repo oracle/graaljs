@@ -3,6 +3,10 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 19.2.0
+* Added support for date and time interop.
+* Added support for setting the time zone via `Context.Builder.timeZone`.
+
 ## Version 19.1.0
 * Added (experimental) option `js.locale` to set the default locale for locale-sensitive operations.
 * Allow making evaluated sources internal using the `sourceURL` directive by prefixing the URL with `internal:`, e.g. `//# sourceURL=internal:myname.js`.
