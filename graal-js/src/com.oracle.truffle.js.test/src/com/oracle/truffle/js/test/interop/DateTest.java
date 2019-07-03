@@ -41,8 +41,10 @@
 package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Instant;
@@ -52,6 +54,7 @@ import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
 import java.util.Date;
 
 import org.graalvm.polyglot.Context;
@@ -158,4 +161,42 @@ public class DateTest {
             zoneId = date;
         }
     }
+
+    @Test
+    public void testDatePrototypeBuiltins() {
+        ZoneId utcTZ = ZoneId.of("UTC");
+        ZoneId localTZ = ZoneId.of("UTC+2");
+        try (Context context = Context.newBuilder(ID).timeZone(localTZ).build()) {
+            ZonedDateTime expected = ZonedDateTime.of(LocalDateTime.of(2019, Month.JULY, 2, 13, 37, 42, 211_000_000), localTZ);
+            Instant instant = expected.toInstant();
+            context.getBindings(ID).putMember("date", instant);
+
+            assertEquals(instant.toEpochMilli(), context.eval(ID, "Date.prototype.getTime.call(date);").asLong());
+            assertEquals(instant.toEpochMilli(), context.eval(ID, "Date.prototype.valueOf.call(date);").asLong());
+
+            for (boolean utc : new boolean[]{false, true}) {
+                if (utc) {
+                    expected = expected.withZoneSameInstant(utcTZ);
+                }
+                String u = utc ? "UTC" : "";
+                assertEquals(expected.getYear(), context.eval(ID, "Date.prototype.get" + u + "FullYear.call(date);").asInt());
+                assertEquals(expected.getMonth().ordinal(), context.eval(ID, "Date.prototype.get" + u + "Month.call(date);").asInt());
+                assertEquals(expected.getDayOfMonth(), context.eval(ID, "Date.prototype.get" + u + "Date.call(date);").asInt());
+                assertEquals(expected.getDayOfWeek().ordinal() + 1, context.eval(ID, "Date.prototype.get" + u + "Day.call(date);").asInt());
+                assertEquals(expected.getHour(), context.eval(ID, "Date.prototype.get" + u + "Hours.call(date);").asInt());
+                assertEquals(expected.getMinute(), context.eval(ID, "Date.prototype.get" + u + "Minutes.call(date);").asInt());
+                assertEquals(expected.getSecond(), context.eval(ID, "Date.prototype.get" + u + "Seconds.call(date);").asInt());
+                assertEquals(expected.get(ChronoField.MILLI_OF_SECOND), context.eval(ID, "Date.prototype.get" + u + "Milliseconds.call(date);").asInt());
+            }
+
+            assertThat(context.eval(ID, "Date.prototype.toString.call(date);").asString(), startsWith("Tue Jul 02 2019 13:37:42 GMT+0200"));
+            assertThat(context.eval(ID, "Date.prototype.toTimeString.call(date);").asString(), startsWith("13:37:42 GMT+0200"));
+            assertEquals("Tue Jul 02 2019", context.eval(ID, "Date.prototype.toDateString.call(date);").asString());
+            assertEquals("Tue, 02 Jul 2019 11:37:42 GMT", context.eval(ID, "Date.prototype.toUTCString.call(date);").asString());
+            assertEquals("2019-07-02T11:37:42.211Z", context.eval(ID, "Date.prototype.toISOString.call(date);").asString());
+
+            assertEquals(-localTZ.getRules().getOffset(instant).getTotalSeconds() / 60, context.eval(ID, "Date.prototype.getTimezoneOffset.call(date);").asLong());
+        }
+    }
+
 }
