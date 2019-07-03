@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.Year;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -51,10 +52,13 @@ import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -442,15 +446,16 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     // 15.9.1.9
-    @TruffleBoundary
     public static double localTime(double t, JSContext context) {
-        long localTZA = context.getLocalTZA();
-        return t + localTZA + daylightSavingTA(context.getLocalTimeZoneId(), t);
+        JSRealm realm = context.getRealm();
+        long localTZA = realm.getLocalTZA();
+        return t + localTZA + daylightSavingTA(realm.getLocalTimeZoneId(), t);
     }
 
     private static double utc(double t, JSContext context) {
-        long localTZA = context.getLocalTZA();
-        return t - localTZA - daylightSavingTA(context.getLocalTimeZoneId(), t - localTZA);
+        JSRealm realm = context.getRealm();
+        long localTZA = realm.getLocalTZA();
+        return t - localTZA - daylightSavingTA(realm.getLocalTimeZoneId(), t - localTZA);
     }
 
     // 15.9.1.10
@@ -680,8 +685,8 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     @TruffleBoundary
-    public static String formatLocal(DateTimeFormatter format, double time, JSContext context) {
-        return Instant.ofEpochMilli((long) time).atZone(context.getLocalTimeZoneId()).format(format);
+    public static String formatLocal(DateTimeFormatter format, double time, JSRealm realm) {
+        return Instant.ofEpochMilli((long) time).atZone(realm.getLocalTimeZoneId()).format(format);
     }
 
     @TruffleBoundary
@@ -690,11 +695,11 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     @TruffleBoundary
-    public static String toString(double time, JSContext context) {
+    public static String toString(double time, JSRealm realm) {
         if (Double.isNaN(time)) {
             return INVALID_DATE_STRING;
         }
-        return formatLocal(getDateToStringFormat(), time, context);
+        return formatLocal(getDateToStringFormat(), time, realm);
     }
 
     @TruffleBoundary
@@ -712,6 +717,40 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
 
     private static double utc(double time, boolean isUTC, JSContext context) {
         return isUTC ? time : utc(time, context);
+    }
+
+    public static boolean isValidDate(DynamicObject date) {
+        return isJSDate(date) && !Double.isNaN(getTimeMillisField(date));
+    }
+
+    @TruffleBoundary
+    public static Instant asInstant(DynamicObject date) {
+        assert isValidDate(date);
+        return Instant.ofEpochMilli((long) getTimeMillisField(date));
+    }
+
+    @TruffleBoundary
+    public static LocalDate asLocalDate(DynamicObject date, JSRealm realm) {
+        return LocalDate.from(asInstant(date).atZone(realm.getLocalTimeZoneId()));
+    }
+
+    @TruffleBoundary
+    public static LocalTime asLocalTime(DynamicObject date, JSRealm realm) {
+        return LocalTime.from(asInstant(date).atZone(realm.getLocalTimeZoneId()));
+    }
+
+    public static double getDateValueFromInstant(Object receiver, InteropLibrary interop) {
+        Instant instant;
+        try {
+            instant = interop.asInstant(receiver);
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(receiver, e, "asInstant", null);
+        }
+        try {
+            return instant.toEpochMilli();
+        } catch (ArithmeticException e) {
+            return Double.NaN;
+        }
     }
 
     public static DateTimeFormatter getJSDateFormat(double time) {
@@ -773,11 +812,11 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
         return jsShortTimeFormat;
     }
 
-    public static DateTimeFormatter getJSShortTimeLocalFormat(JSContext context) {
+    public static DateTimeFormatter getJSShortTimeLocalFormat() {
         if (jsShortTimeLocalFormat == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // no UTC
-            jsShortTimeLocalFormat = DateTimeFormatter.ofPattern("HH:mm:ss", context.getLocale(Locale.Category.FORMAT));
+            jsShortTimeLocalFormat = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US);
         }
         return jsShortTimeLocalFormat;
     }

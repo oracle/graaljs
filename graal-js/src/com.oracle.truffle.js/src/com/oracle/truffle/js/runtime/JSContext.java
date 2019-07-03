@@ -40,17 +40,13 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -181,11 +177,6 @@ public class JSContext {
      * objects to be virtualized in RegExp#exec().
      */
     private final Assumption regExpStaticResultUnusedAssumption;
-
-    /**
-     * Local time zone information. Initialized lazily.
-     */
-    private LocalTimeZoneHolder localTimeZoneHolder;
 
     private volatile Map<String, Symbol> symbolRegistry;
 
@@ -394,6 +385,8 @@ public class JSContext {
 
     private final int factoryCount;
 
+    @CompilationFinal private Locale locale;
+
     protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.functionLookup = lookup;
         this.contextOptions = contextOptions;
@@ -401,7 +394,6 @@ public class JSContext {
         if (env != null) { // env could still be null
             setAllocationReporter(env);
             this.contextOptions.setOptionValues(env.getOptions());
-            this.setLocalTimeZoneFromOptions(env.getOptions());
         }
 
         this.language = lang;
@@ -656,28 +648,6 @@ public class JSContext {
 
     private Shape createGlobalScopeShape() {
         return JSShape.makeEmptyRoot(JSObject.LAYOUT, JSGlobalObject.INSTANCE, this);
-    }
-
-    public void setLocalTimeZoneFromOptions(OptionValues options) {
-        if (JSContextOptions.TIME_ZONE.hasBeenSet(options)) {
-            localTimeZoneHolder = new LocalTimeZoneHolder(TimeZone.getTimeZone(JSContextOptions.TIME_ZONE.getValue(options)).toZoneId());
-        }
-    }
-
-    private LocalTimeZoneHolder getLocalTimeZoneHolder() {
-        if (localTimeZoneHolder == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            localTimeZoneHolder = new LocalTimeZoneHolder();
-        }
-        return localTimeZoneHolder;
-    }
-
-    public final ZoneId getLocalTimeZoneId() {
-        return getLocalTimeZoneHolder().localTimeZoneId;
-    }
-
-    public final long getLocalTZA() {
-        return getLocalTimeZoneHolder().localTZA;
     }
 
     public final Map<String, Symbol> getSymbolRegistry() {
@@ -986,20 +956,6 @@ public class JSContext {
             return InteropLibrary.getFactory().getUncached().execute(regexEngineBuilder, regexOptions, fallbackCompiler);
         } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
             throw Errors.shouldNotReachHere(e);
-        }
-    }
-
-    private static class LocalTimeZoneHolder {
-        final ZoneId localTimeZoneId;
-        final long localTZA;
-
-        LocalTimeZoneHolder(ZoneId zoneId) {
-            this.localTimeZoneId = zoneId;
-            this.localTZA = JSDate.getLocalTZA(zoneId);
-        }
-
-        LocalTimeZoneHolder() {
-            this(ZoneId.systemDefault());
         }
     }
 
@@ -1588,21 +1544,21 @@ public class JSContext {
         return contextOptions.isLoadFromURL();
     }
 
-    @TruffleBoundary
     public Locale getLocale() {
-        String name = getContextOptions().getLocale();
-        if (name.isEmpty()) {
-            return Locale.getDefault();
-        } else {
-            return Locale.forLanguageTag(name);
+        Locale loc = locale;
+        if (loc == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            loc = getLocaleImpl();
+            locale = loc;
         }
+        return loc;
     }
 
     @TruffleBoundary
-    public Locale getLocale(Locale.Category category) {
+    private Locale getLocaleImpl() {
         String name = getContextOptions().getLocale();
         if (name.isEmpty()) {
-            return Locale.getDefault(category);
+            return Locale.getDefault();
         } else {
             return Locale.forLanguageTag(name);
         }

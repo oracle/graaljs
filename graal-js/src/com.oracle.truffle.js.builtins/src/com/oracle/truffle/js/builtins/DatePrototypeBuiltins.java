@@ -44,7 +44,7 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -56,7 +56,6 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetMill
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetMinutesNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetMonthNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetSecondsNodeGen;
-import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetTimeNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetTimezoneOffsetNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetYearNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateSetDateNodeGen;
@@ -94,6 +93,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -202,6 +202,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, DatePrototype builtinEnum) {
         switch (builtinEnum) {
             case valueOf:
+            case getTime:
                 return JSDateValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toString:
                 return JSDateToStringNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
@@ -231,8 +232,6 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return JSDateToStringNodeGen.create(context, builtin, UTC, args().withThis().createArgumentNodes(context));
             case toISOString:
                 return JSDateToISOStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case getTime:
-                return JSDateGetTimeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case getFullYear:
                 return JSDateGetFullYearNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
             case getYear:
@@ -319,6 +318,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         private final ConditionProfile isDate = ConditionProfile.createBinaryProfile();
         protected final ConditionProfile isNaN = ConditionProfile.createBinaryProfile();
+        @Child private InteropLibrary interopLibrary;
 
         /**
          * Coerce to Date or throw TypeError. Must be the first statement (evaluation order!).
@@ -327,12 +327,25 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isDate.profile(JSDate.isJSDate(object))) {
                 return (DynamicObject) object;
             } else {
-                throw Errors.createTypeError("not a Date object");
+                throw Errors.createTypeErrorNotADate();
             }
         }
 
         protected final double asDateMillis(Object thisDate) {
-            return JSDate.getTimeMillisField(asDate(thisDate));
+            if (isDate.profile(JSDate.isJSDate(thisDate))) {
+                return JSDate.getTimeMillisField(asDate(thisDate));
+            }
+            InteropLibrary interop = interopLibrary;
+            if (interop == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interop = insert(InteropLibrary.getFactory().createDispatched(3));
+                interopLibrary = interop;
+            }
+            if (interop.isInstant(thisDate)) {
+                return JSDate.getDateValueFromInstant(thisDate, interop);
+            } else {
+                throw Errors.createTypeErrorNotADate();
+            }
         }
 
         protected static void checkTimeValid(double time) {
@@ -368,7 +381,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double doOperation(Object thisDate) {
-            return JSDate.getTimeMillisField(asDate(thisDate));
+            return asDateMillis(thisDate);
         }
     }
 
@@ -378,8 +391,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             super(context, builtin, isUTC);
         }
 
-        @Specialization(guards = "isJSObject(thisDate)")
-        protected String doOperationWithDate(DynamicObject thisDate) {
+        @Specialization
+        protected String doOperation(Object thisDate) {
             double t = asDateMillis(thisDate);
             if (isUTC) {
                 if (isNaN.profile(Double.isNaN(t))) {
@@ -387,19 +400,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 }
                 return JSDate.formatUTC(JSDate.getJSDateUTCFormat(), t);
             } else {
-                return JSDate.toString(t, getContext());
+                return JSDate.toString(t, getContext().getRealm());
             }
-        }
-
-        @Specialization(guards = {"!isForeignObject(thisDate)", "!isJSObject(thisDate)"})
-        protected String doOperationDefault(Object thisDate) {
-            asDateMillis(thisDate); // throws
-            return JSDate.INVALID_DATE_STRING;
-        }
-
-        @Specialization(guards = "isForeignObject(thisDate)")
-        protected String doOperationForeign(@SuppressWarnings("unused") TruffleObject thisDate) {
-            return JSDate.INVALID_DATE_STRING;
         }
     }
 
@@ -412,27 +414,14 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, "any", "all");
         }
 
-        @Specialization(guards = "isJSObject(thisDate)")
-        protected String doOperationWithDate(DynamicObject thisDate, Object locales, Object options) {
+        @Specialization
+        protected String doOperation(Object thisDate, Object locales, Object options) {
             double t = asDateMillis(thisDate);
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
             DynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
             return JSDateTimeFormat.format(getContext(), formatter, t);
-        }
-
-        @Specialization(guards = {"!isForeignObject(thisDate)", "!isJSObject(thisDate)"})
-        @SuppressWarnings("unused")
-        protected String doOperationDefault(Object thisDate, Object locales, Object options) {
-            asDateMillis(thisDate); // throws
-            return JSDate.INVALID_DATE_STRING;
-        }
-
-        @Specialization(guards = "isForeignObject(thisDate)")
-        @SuppressWarnings("unused")
-        protected String doOperationForeign(TruffleObject thisDate, Object locales, Object options) {
-            return JSDate.INVALID_DATE_STRING;
         }
     }
 
@@ -448,7 +437,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortDateFormat(), t, getContext());
+            return JSDate.formatLocal(JSDate.getJSShortDateFormat(), t, getContext().getRealm());
         }
     }
 
@@ -464,7 +453,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortTimeFormat(), t, getContext());
+            return JSDate.formatLocal(JSDate.getJSShortTimeFormat(), t, getContext().getRealm());
         }
     }
 
@@ -480,7 +469,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortDateLocalFormat(), t, getContext());
+            return JSDate.formatLocal(JSDate.getJSShortDateLocalFormat(), t, getContext().getRealm());
         }
     }
 
@@ -516,7 +505,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortTimeLocalFormat(getContext()), t, getContext());
+            return JSDate.formatLocal(JSDate.getJSShortTimeLocalFormat(), t, getContext().getRealm());
         }
     }
 
@@ -551,18 +540,6 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             double t = asDateMillis(thisDate);
             checkTimeValid(t);
             return JSDate.toISOStringIntl(t);
-        }
-    }
-
-    public abstract static class JSDateGetTimeNode extends JSDateOperation {
-
-        public JSDateGetTimeNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin, false);
-        }
-
-        @Specialization
-        protected double doOperation(Object thisDate) {
-            return JSDate.getTimeMillisField(asDate(thisDate));
         }
     }
 
@@ -995,7 +972,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         public int execute(long t) {
-            long localNoDST = t + context.getLocalTZA();
+            JSRealm realm = context.getRealm();
+            long localNoDST = t + realm.getLocalTZA();
             long day = Math.floorDiv(localNoDST, JSDate.MS_PER_DAY);
             assert JSRuntime.longIsRepresentableAsInt(day);
             int iday = (int) day;
@@ -1005,7 +983,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return iday;
             } else {
                 dstNeededProfile.enter();
-                timeInDay += JSDate.daylightSavingTA(context.getLocalTimeZoneId(), t);
+                timeInDay += JSDate.daylightSavingTA(realm.getLocalTimeZoneId(), t);
                 return (timeInDay < JSDate.MS_PER_DAY) ? iday : (iday + 1);
             }
         }
