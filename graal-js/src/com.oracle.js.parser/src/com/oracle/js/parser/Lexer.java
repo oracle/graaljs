@@ -168,7 +168,7 @@ public class Lexer extends Scanner {
      * @param source the source
      * @param stream the token stream to lex
      * @param scripting are we in scripting mode
-     * @param es6 are we in ECMAScript 6 mode
+     * @param ecmaScriptVersion ECMAScript language version
      * @param shebang do we support shebang
      * @param isModule are we in module
      */
@@ -184,7 +184,7 @@ public class Lexer extends Scanner {
      * @param len length of source segment to lex
      * @param stream token stream to lex
      * @param scripting are we in scripting mode
-     * @param es6 are we in ECMAScript 6 mode
+     * @param ecmaScriptVersion ECMAScript language version
      * @param shebang do we support shebang
      * @param isModule are we in module
      * @param pauseOnFunctionBody if true, lexer will return from {@link #lexify()} when it
@@ -1323,7 +1323,7 @@ public class Lexer extends Scanner {
     /**
      * Convert string to number.
      *
-     * @param valueString String to convert.
+     * @param string String to convert.
      * @param radix Numeric base.
      * @return Converted number.
      */
