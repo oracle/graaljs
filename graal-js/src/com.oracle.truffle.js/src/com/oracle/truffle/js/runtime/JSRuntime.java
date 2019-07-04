@@ -2679,10 +2679,6 @@ public final class JSRuntime {
 
     public static JSRealm getFunctionRealm(Object obj, JSContext context) {
         JSRealm currentRealm = context.getRealm();
-        if (context.isSingleRealm()) {
-            assert currentRealm == getFunctionRealm(obj, currentRealm);
-            return currentRealm;
-        }
         return getFunctionRealm(obj, currentRealm);
     }
 
