@@ -586,8 +586,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Elymaic.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Ethiopic.js",
     "status" : "SKIP",
@@ -818,8 +818,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Nandinagari.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_New_Tai_Lue.js",
     "status" : "SKIP",
@@ -838,8 +838,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Nyiakeng_Puachue_Hmong.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Ogham.js",
     "status" : "SKIP",
@@ -1042,8 +1042,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Wancho.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_-_Warang_Citi.js",
     "status" : "SKIP",
@@ -1194,8 +1194,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Elymaic.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Ethiopic.js",
     "status" : "SKIP",
@@ -1426,8 +1426,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Nandinagari.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_New_Tai_Lue.js",
     "status" : "SKIP",
@@ -1446,8 +1446,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Nyiakeng_Puachue_Hmong.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Ogham.js",
     "status" : "SKIP",
@@ -1650,8 +1650,8 @@
     "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Wancho.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "status" : "SKIP",
+    "comment" : "Long-running generated Unicode tests."
   }, {
     "filePath" : "built-ins/RegExp/property-escapes/generated/Script_Extensions_-_Warang_Citi.js",
     "status" : "SKIP",
