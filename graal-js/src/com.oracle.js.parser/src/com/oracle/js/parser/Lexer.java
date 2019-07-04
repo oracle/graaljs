@@ -93,8 +93,8 @@ public class Lexer extends Scanner {
     /** True if shebang is supported. */
     private final boolean shebang;
 
-    /** True if parsing in ECMAScript 6 mode. */
-    private final boolean es6;
+    /** ECMAScript language version. */
+    private final int ecmaScriptVersion;
 
     /** True if a nested scan. (scan to completion, no EOF.) */
     private final boolean nested;
@@ -104,9 +104,6 @@ public class Lexer extends Scanner {
 
     /** True if BigInts are supported. */
     private final boolean allowBigInt;
-
-    /** True if separators in numeric literals are supported. */
-    private final boolean numericSeparators;
 
     /** Pending new line number and position. */
     int pendingLine;
@@ -175,8 +172,8 @@ public class Lexer extends Scanner {
      * @param shebang do we support shebang
      * @param isModule are we in module
      */
-    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
-        this(source, 0, source.getLength(), stream, scripting, es6, shebang, isModule, false, allowBigInt);
+    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final int ecmaScriptVersion, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
+        this(source, 0, source.getLength(), stream, scripting, ecmaScriptVersion, shebang, isModule, false, allowBigInt);
     }
 
     /**
@@ -195,18 +192,17 @@ public class Lexer extends Scanner {
      *            skipping nested function bodies to avoid reading ahead unnecessarily when we skip
      *            the function bodies.
      */
-    public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule,
+    public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final int ecmaScriptVersion, final boolean shebang, final boolean isModule,
                     final boolean pauseOnFunctionBody, final boolean allowBigInt) {
         super(source.getContent().toString().toCharArray(), 1, start, len);
         this.source = source;
         this.stream = stream;
         this.scripting = scripting;
-        this.es6 = es6;
+        this.ecmaScriptVersion = ecmaScriptVersion;
         this.shebang = shebang;
         this.nested = false;
         this.isModule = isModule;
         this.allowBigInt = allowBigInt;
-        this.numericSeparators = true;
         this.pendingLine = 1;
         this.last = EOL;
 
@@ -220,12 +216,11 @@ public class Lexer extends Scanner {
         source = lexer.source;
         stream = lexer.stream;
         scripting = lexer.scripting;
-        es6 = lexer.es6;
+        ecmaScriptVersion = lexer.ecmaScriptVersion;
         shebang = lexer.shebang;
         nested = true;
         isModule = lexer.isModule;
         allowBigInt = lexer.allowBigInt;
-        numericSeparators = lexer.numericSeparators;
 
         pendingLine = state.pendingLine;
         linePosition = state.linePosition;
@@ -280,6 +275,20 @@ public class Lexer extends Scanner {
         pendingLine = lexerState.pendingLine;
         linePosition = lexerState.linePosition;
         last = lexerState.last;
+    }
+
+    /**
+     * ES6 (a.k.a. ES2015) or newer.
+     */
+    private boolean isES6() {
+        return ecmaScriptVersion >= 6;
+    }
+
+    /**
+     * ES2020 or newer.
+     */
+    private boolean isES2020() {
+        return ecmaScriptVersion >= 11;
     }
 
     /**
@@ -882,7 +891,7 @@ public class Lexer extends Scanner {
      * @return Value of sequence or < 0 if no digits.
      */
     private int unicodeEscapeSequence(final TokenType type) {
-        if (ch0 == '{' && es6) {
+        if (ch0 == '{' && isES6()) {
             return varlenHexSequence(type);
         } else {
             return hexSequence(4, type);
@@ -1384,19 +1393,20 @@ public class Lexer extends Scanner {
         int digit = convertDigit(ch0, 10);
 
         // If number begins with 0x.
+        boolean numericSeparators = isES2020();
         if (digit == 0 && (ch1 == 'x' || ch1 == 'X') && convertDigit(ch2, 16) != -1) {
             // Skip over 0xN.
             skip(3);
             // Skip over remaining digits.
             type = HEXADECIMAL;
             consumeDigits(type, 16, numericSeparators, numericSeparators);
-        } else if (digit == 0 && es6 && (ch1 == 'o' || ch1 == 'O') && convertDigit(ch2, 8) != -1) {
+        } else if (digit == 0 && isES6() && (ch1 == 'o' || ch1 == 'O') && convertDigit(ch2, 8) != -1) {
             // Skip over 0oN.
             skip(3);
             // Skip over remaining digits.
             type = OCTAL;
             consumeDigits(type, 8, numericSeparators, numericSeparators);
-        } else if (digit == 0 && es6 && (ch1 == 'b' || ch1 == 'B') && convertDigit(ch2, 2) != -1) {
+        } else if (digit == 0 && isES6() && (ch1 == 'b' || ch1 == 'B') && convertDigit(ch2, 2) != -1) {
             // Skip over 0bN.
             skip(3);
             type = BINARY_NUMBER;
@@ -2026,7 +2036,7 @@ public class Lexer extends Scanner {
             } else if (Character.isDigit(ch0)) {
                 // Scan and add a number.
                 scanNumber();
-            } else if (isTemplateDelimiter(ch0) && es6) {
+            } else if (isTemplateDelimiter(ch0) && isES6()) {
                 // Scan and add template in ES6 mode.
                 scanTemplate();
                 // Let the parser continue from here.

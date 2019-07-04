@@ -202,7 +202,8 @@ public class Test262Runnable extends TestRunnable {
     }));
     private static final Set<String> ES2020_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "dynamic-import",
-                    "import.meta"
+                    "import.meta",
+                    "numeric-separator-literal"
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
