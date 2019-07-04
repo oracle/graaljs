@@ -37,9 +37,7 @@ mx --jdk jvmci --dynamicimports /compiler js [OPTION]... [FILE]... -- [ARG]...
 The `graal` and `graaljs` directories should be sibling directories.
 
 ### With Internationalization API (ECMA-402) support
-1. Use the following option with `mx js` to turn on the ECMA-402 features: `-Dpolyglot.js.intl-402=true`
-2. To run with SVM image: extract localization data files first with `mx unpackIcuData`
-3. The above command will return a directory name, that you need to pass to the binary using `-Dcom.ibm.icu.impl.ICUBinary.dataPath=...` (you still need to use the option from point 2: `-Dpolyglot.js.intl-402=true`)
+Use the following option with `mx js` to turn on the ECMA-402 features: `-Dpolyglot.js.intl-402=true`
 
 ## Testing
 ```
