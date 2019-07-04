@@ -101,8 +101,6 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     public DynamicObject initializePluralRules(DynamicObject pluralRulesObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(context);
-
         try {
             JSPluralRules.InternalState state = JSPluralRules.getInternalState(pluralRulesObj);
 

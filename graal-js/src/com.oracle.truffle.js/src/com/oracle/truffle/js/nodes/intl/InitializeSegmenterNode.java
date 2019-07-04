@@ -79,8 +79,6 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
     public DynamicObject initializeSegmenter(DynamicObject segmenterObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(context);
-
         try {
 
             JSSegmenter.InternalState state = JSSegmenter.getInternalState(segmenterObj);

@@ -108,8 +108,6 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
     public DynamicObject initializeNumberFormat(DynamicObject numberFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(context);
-
         try {
             JSNumberFormat.InternalState state = JSNumberFormat.getInternalState(numberFormatObj);
 

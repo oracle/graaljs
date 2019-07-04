@@ -119,8 +119,6 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     public DynamicObject initializeDateTimeFormat(DynamicObject dateTimeFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(context);
-
         try {
             JSDateTimeFormat.InternalState state = JSDateTimeFormat.getInternalState(dateTimeFormatObj);
 
