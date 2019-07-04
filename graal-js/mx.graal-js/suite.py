@@ -448,13 +448,6 @@ suite = {
       "testProject" : True,
     },
 
-    "icu4j-data": {
-        "native": True,
-        "class": "Icu4jDataProject",
-        "outputDir": "lib/icu4j",
-        "prefix": "icu4j"
-    },
-
     "com.oracle.truffle.js.test.sdk" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -588,16 +581,6 @@ suite = {
       "maven" : False,
       "description" : "Graal JavaScript Tests",
       "allowsJavadocWarnings": True,
-    },
-
-    "ICU4J-DIST" : {
-      "native" : True,
-      "relpath" : True,
-      "platformDependent" : False,
-      "dependencies" : [
-        "icu4j-data",
-      ],
-      "description" : "ICU4J localization library and data files",
     },
 
     "SDK_JS_TESTS" : {

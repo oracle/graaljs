@@ -26,8 +26,8 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import os, zipfile, re, shutil, tarfile
-from os.path import join, exists, isdir, getmtime
+import os, shutil, tarfile
+from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
 import mx, mx_sdk
@@ -94,59 +94,6 @@ class ArchiveProject(mx.ArchivableProject):
 
     def getResults(self):
         return mx.ArchivableProject.walk(self.output_dir())
-
-class Icu4jDataProject(ArchiveProject):
-    def getBuildTask(self, args):
-        return Icu4jBuildTask(self, args, 1)
-
-    def getResults(self):
-        return ArchiveProject.getResults(self)
-
-class Icu4jBuildTask(mx.ArchivableBuildTask):
-    def __init__(self, *args):
-        mx.ArchivableBuildTask.__init__(self, *args)
-        self.icuDir = join(_suite.dir, 'lib', 'icu4j')
-
-    def needsBuild(self, newestInput):
-        if not exists(self.icuDir):
-            return (True, self.icuDir + " not found")
-        icu4jDep = mx.dependency('ICU4J')
-        icu4jPath = icu4jDep.get_path(resolve=True)
-        if getmtime(icu4jPath) > getmtime(self.icuDir):
-            return (True, self.icuDir + " is older than " + icu4jPath)
-        return (False, None)
-
-    def build(self):
-        unpackIcuData([])
-
-    def clean(self, forBuild=False):
-        if exists(self.icuDir):
-            mx.rmtree(self.icuDir)
-
-def unpackIcuData(args):
-    """populate ICU4J localization data from jar file dependency"""
-
-    icu4jDataDir = join(_suite.dir, 'lib', 'icu4j')
-    # clean up first
-    if isdir(icu4jDataDir):
-        shutil.rmtree(icu4jDataDir)
-    icu4jPackageDir = 'com/ibm/icu/impl/data'
-    # unpack the files
-    icu4jDep = mx.dependency('ICU4J')
-    icu4jPath = icu4jDep.get_path(resolve=True)
-    mx.log("ICU4J dependency found in %s" % (icu4jPath))
-    with zipfile.ZipFile(icu4jPath, 'r') as zf:
-        toExtract = [e for e in zf.namelist() if e.startswith(icu4jPackageDir) and not e.endswith(".class") and not e.endswith(".html")]
-        zf.extractall(icu4jDataDir, toExtract)
-        mx.log("%d files extracted to %s" % (len(toExtract), icu4jDataDir))
-    # move the stuff such that the path is stable
-    for f in os.listdir(join(icu4jDataDir, icu4jPackageDir)):
-        if re.match('icudt.*', f):
-            icu4jUnzippedDataPath = join(icu4jDataDir, icu4jPackageDir, f)
-            icu4jDataPath = join(icu4jDataDir, "icudt")
-            shutil.move(icu4jUnzippedDataPath, icu4jDataPath)
-            shutil.rmtree(join(icu4jDataDir, "com"))
-            mx.log('Use the following parameters when invoking svm version of js to make ICU4J localization data available for the runtime:\n-Dpolyglot.js.intl-402=true -Dcom.ibm.icu.impl.ICUBinary.dataPath=%s' % icu4jDataPath)
 
 def parse_js_args(args, default_cp=None, useDoubleDash=False):
     vm_args, remainder, cp = [], [], []
@@ -347,7 +294,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
     support_distributions=[
         'graal-js:GRAALJS_GRAALVM_SUPPORT',
-        'graal-js:ICU4J-DIST'
     ],
     launcher_configs=[
         mx_sdk.LanguageLauncherConfig(
@@ -368,6 +314,5 @@ mx.update_commands(_suite, {
     'test262': [test262, ''],
     'testnashorn': [testnashorn, ''],
     'testv8': [testv8, ''],
-    'unpackIcuData': [unpackIcuData, ''],
 })
 
