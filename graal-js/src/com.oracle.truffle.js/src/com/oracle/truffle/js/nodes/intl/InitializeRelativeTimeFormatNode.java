@@ -103,7 +103,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
             JSRelativeTimeFormat.setupInternalRelativeTimeFormatter(state);
 
         } catch (MissingResourceException e) {
-            throw Errors.createICU4JDataError();
+            throw Errors.createICU4JDataError(e);
         }
 
         return relativeTimeFormatObj;

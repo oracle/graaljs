@@ -249,7 +249,7 @@ public final class IntlUtil {
                 }
                 result.addAll(Arrays.asList(javaLocalesAvailable));
             } catch (MissingResourceException e) {
-                throw Errors.createICU4JDataError();
+                throw Errors.createICU4JDataError(e);
             }
         } else {
             result.addAll(Arrays.asList(Locale.getAvailableLocales()));

@@ -103,7 +103,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
             JSCollator.initializeCollator(context, state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
 
         } catch (MissingResourceException e) {
-            throw Errors.createICU4JDataError();
+            throw Errors.createICU4JDataError(e);
         }
 
         return collatorObj;

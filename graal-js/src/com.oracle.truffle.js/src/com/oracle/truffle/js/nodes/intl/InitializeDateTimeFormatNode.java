@@ -150,7 +150,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
                             timeZone);
 
         } catch (MissingResourceException e) {
-            throw Errors.createICU4JDataError();
+            throw Errors.createICU4JDataError(e);
         }
 
         return dateTimeFormatObj;

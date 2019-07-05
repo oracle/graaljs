@@ -122,7 +122,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
             setPluralRulesDigitOptions(state, options, mnfdDefault, mxfdDefault);
 
         } catch (MissingResourceException e) {
-            throw Errors.createICU4JDataError();
+            throw Errors.createICU4JDataError(e);
         }
         return pluralRulesObj;
     }

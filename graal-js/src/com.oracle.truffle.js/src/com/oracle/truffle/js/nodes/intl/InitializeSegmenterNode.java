@@ -95,7 +95,7 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
             JSSegmenter.setupInternalBreakIterator(state, optGranularity);
 
         } catch (MissingResourceException e) {
-            throw Errors.createICU4JDataError();
+            throw Errors.createICU4JDataError(e);
         }
 
         return segmenterObj;
