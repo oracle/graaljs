@@ -1,0 +1,14 @@
+[
+{
+  "name":"com.ibm.icu.text.NumberFormatServiceShim",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.ibm.icu.text.CollatorServiceShim",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.ibm.icu.text.BreakIteratorFactory",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+}
+]
