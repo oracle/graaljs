@@ -171,6 +171,7 @@ public class Test262Runnable extends TestRunnable {
                     "json-superset",
                     "let",
                     "new.target",
+                    "numeric-separator-literal",
                     "object-rest",
                     "object-spread",
                     "optional-catch-binding",
@@ -197,12 +198,12 @@ public class Test262Runnable extends TestRunnable {
                     "class-static-fields-public",
                     "class-static-methods-private",
                     "export-star-as-namespace-from-module",
-                    "numeric-separator-literal",
                     "tail-call-optimization"
     }));
     private static final Set<String> ES2020_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "dynamic-import",
-                    "import.meta"
+                    "import.meta",
+                    "numeric-separator-literal"
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

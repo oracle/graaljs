@@ -93,8 +93,8 @@ public class Lexer extends Scanner {
     /** True if shebang is supported. */
     private final boolean shebang;
 
-    /** True if parsing in ECMAScript 6 mode. */
-    private final boolean es6;
+    /** ECMAScript language version. */
+    private final int ecmaScriptVersion;
 
     /** True if a nested scan. (scan to completion, no EOF.) */
     private final boolean nested;
@@ -168,12 +168,12 @@ public class Lexer extends Scanner {
      * @param source the source
      * @param stream the token stream to lex
      * @param scripting are we in scripting mode
-     * @param es6 are we in ECMAScript 6 mode
+     * @param ecmaScriptVersion ECMAScript language version
      * @param shebang do we support shebang
      * @param isModule are we in module
      */
-    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
-        this(source, 0, source.getLength(), stream, scripting, es6, shebang, isModule, false, allowBigInt);
+    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final int ecmaScriptVersion, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
+        this(source, 0, source.getLength(), stream, scripting, ecmaScriptVersion, shebang, isModule, false, allowBigInt);
     }
 
     /**
@@ -184,7 +184,7 @@ public class Lexer extends Scanner {
      * @param len length of source segment to lex
      * @param stream token stream to lex
      * @param scripting are we in scripting mode
-     * @param es6 are we in ECMAScript 6 mode
+     * @param ecmaScriptVersion ECMAScript language version
      * @param shebang do we support shebang
      * @param isModule are we in module
      * @param pauseOnFunctionBody if true, lexer will return from {@link #lexify()} when it
@@ -192,13 +192,13 @@ public class Lexer extends Scanner {
      *            skipping nested function bodies to avoid reading ahead unnecessarily when we skip
      *            the function bodies.
      */
-    public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final boolean es6, final boolean shebang, final boolean isModule,
+    public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final int ecmaScriptVersion, final boolean shebang, final boolean isModule,
                     final boolean pauseOnFunctionBody, final boolean allowBigInt) {
         super(source.getContent().toString().toCharArray(), 1, start, len);
         this.source = source;
         this.stream = stream;
         this.scripting = scripting;
-        this.es6 = es6;
+        this.ecmaScriptVersion = ecmaScriptVersion;
         this.shebang = shebang;
         this.nested = false;
         this.isModule = isModule;
@@ -216,7 +216,7 @@ public class Lexer extends Scanner {
         source = lexer.source;
         stream = lexer.stream;
         scripting = lexer.scripting;
-        es6 = lexer.es6;
+        ecmaScriptVersion = lexer.ecmaScriptVersion;
         shebang = lexer.shebang;
         nested = true;
         isModule = lexer.isModule;
@@ -275,6 +275,20 @@ public class Lexer extends Scanner {
         pendingLine = lexerState.pendingLine;
         linePosition = lexerState.linePosition;
         last = lexerState.last;
+    }
+
+    /**
+     * ES6 (a.k.a. ES2015) or newer.
+     */
+    private boolean isES6() {
+        return ecmaScriptVersion >= 6;
+    }
+
+    /**
+     * ES2020 or newer.
+     */
+    private boolean isES2020() {
+        return ecmaScriptVersion >= 11;
     }
 
     /**
@@ -745,6 +759,37 @@ public class Lexer extends Scanner {
         return false;
     }
 
+    private int consumeDigits(TokenType type, int base, boolean allowInitialSeparator, boolean allowSeparators) {
+        int maxDigit = 0;
+        boolean seenSeparator = false;
+        boolean allowSeparator = allowInitialSeparator;
+        while (true) {
+            if (allowSeparator && ch0 == '_') {
+                if (seenSeparator) {
+                    error(Lexer.message("numeric.literal.multiple.separators"), type, position, limit - position);
+                } else {
+                    seenSeparator = true;
+                    skip(1);
+                }
+            } else {
+                int digit = convertDigit(ch0, base);
+                if (digit == -1) {
+                    if (seenSeparator) {
+                        error(Lexer.message("numeric.literal.trailing.separator"), type, position, limit - position);
+                    } else {
+                        break; // end of numeric literal
+                    }
+                } else { // seen valid digit
+                    seenSeparator = false;
+                    maxDigit = Math.max(maxDigit, digit);
+                    skip(1);
+                }
+            }
+            allowSeparator = allowSeparators;
+        }
+        return maxDigit;
+    }
+
     /**
      * Convert a digit to a integer. Can't use Character.digit since we are restricted to ASCII by
      * the spec.
@@ -846,7 +891,7 @@ public class Lexer extends Scanner {
      * @return Value of sequence or < 0 if no digits.
      */
     private int unicodeEscapeSequence(final TokenType type) {
-        if (ch0 == '{' && es6) {
+        if (ch0 == '{' && isES6()) {
             return varlenHexSequence(type);
         } else {
             return hexSequence(4, type);
@@ -1260,14 +1305,30 @@ public class Lexer extends Scanner {
         return true;
     }
 
+    private static String removeUnderscores(String string) {
+        if (string.indexOf('_') == -1) {
+            return string;
+        } else {
+            StringBuilder sb = new StringBuilder(string.length());
+            for (int i = 0; i < string.length(); i++) {
+                char c = string.charAt(i);
+                if (c != '_') {
+                    sb.append(c);
+                }
+            }
+            return sb.toString();
+        }
+    }
+
     /**
      * Convert string to number.
      *
-     * @param valueString String to convert.
+     * @param string String to convert.
      * @param radix Numeric base.
      * @return Converted number.
      */
-    private static Number valueOf(final String valueString, final int radix) throws NumberFormatException {
+    private static Number valueOf(final String string, final int radix) throws NumberFormatException {
+        String valueString = removeUnderscores(string);
         try {
             final long value = Long.parseLong(valueString, radix);
             if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
@@ -1298,7 +1359,8 @@ public class Lexer extends Scanner {
         }
     }
 
-    private static BigInteger valueOfBigInt(final String valueString) {
+    private static BigInteger valueOfBigInt(final String string) {
+        String valueString = removeUnderscores(string);
         if (valueString.length() > 2 && valueString.charAt(0) == '0') {
             switch (valueString.charAt(1)) {
                 case 'x':
@@ -1331,33 +1393,24 @@ public class Lexer extends Scanner {
         int digit = convertDigit(ch0, 10);
 
         // If number begins with 0x.
+        boolean numericSeparators = isES2020();
         if (digit == 0 && (ch1 == 'x' || ch1 == 'X') && convertDigit(ch2, 16) != -1) {
             // Skip over 0xN.
             skip(3);
             // Skip over remaining digits.
-            while (convertDigit(ch0, 16) != -1) {
-                skip(1);
-            }
-
             type = HEXADECIMAL;
-        } else if (digit == 0 && es6 && (ch1 == 'o' || ch1 == 'O') && convertDigit(ch2, 8) != -1) {
+            consumeDigits(type, 16, numericSeparators, numericSeparators);
+        } else if (digit == 0 && isES6() && (ch1 == 'o' || ch1 == 'O') && convertDigit(ch2, 8) != -1) {
             // Skip over 0oN.
             skip(3);
             // Skip over remaining digits.
-            while (convertDigit(ch0, 8) != -1) {
-                skip(1);
-            }
-
             type = OCTAL;
-        } else if (digit == 0 && es6 && (ch1 == 'b' || ch1 == 'B') && convertDigit(ch2, 2) != -1) {
+            consumeDigits(type, 8, numericSeparators, numericSeparators);
+        } else if (digit == 0 && isES6() && (ch1 == 'b' || ch1 == 'B') && convertDigit(ch2, 2) != -1) {
             // Skip over 0bN.
             skip(3);
-            // Skip over remaining digits.
-            while (convertDigit(ch0, 2) != -1) {
-                skip(1);
-            }
-
             type = BINARY_NUMBER;
+            consumeDigits(type, 2, numericSeparators, numericSeparators);
         } else {
             // Check for possible octal constant.
             boolean octal = digit == 0;
@@ -1367,27 +1420,23 @@ public class Lexer extends Scanner {
             }
 
             // Skip remaining digits.
-            while ((digit = convertDigit(ch0, 10)) != -1) {
-                // Check octal only digits.
-                if (octal && digit >= 8) {
-                    octal = false;
-                    type = NON_OCTAL_DECIMAL;
-                }
-                // Skip digit.
-                skip(1);
+            boolean allowSeparators = numericSeparators && !octal;
+            int maxDigit = consumeDigits(type, 10, allowSeparators, allowSeparators);
+            if (octal && maxDigit >= 8) {
+                octal = false;
+                type = NON_OCTAL_DECIMAL;
             }
 
             if (octal && position - start > 1) {
                 type = OCTAL_LEGACY;
             } else if (ch0 == '.' || ch0 == 'E' || ch0 == 'e') {
                 // Must be a double.
+                type = FLOATING;
                 if (ch0 == '.') {
                     // Skip period.
                     skip(1);
                     // Skip mantissa.
-                    while (convertDigit(ch0, 10) != -1) {
-                        skip(1);
-                    }
+                    consumeDigits(type, 10, false, numericSeparators);
                 }
 
                 // Detect exponent.
@@ -1399,12 +1448,8 @@ public class Lexer extends Scanner {
                         skip(1);
                     }
                     // Skip exponent.
-                    while (convertDigit(ch0, 10) != -1) {
-                        skip(1);
-                    }
+                    consumeDigits(type, 10, false, numericSeparators);
                 }
-
-                type = FLOATING;
             }
         }
 
@@ -1991,7 +2036,7 @@ public class Lexer extends Scanner {
             } else if (Character.isDigit(ch0)) {
                 // Scan and add a number.
                 scanNumber();
-            } else if (isTemplateDelimiter(ch0) && es6) {
+            } else if (isTemplateDelimiter(ch0) && isES6()) {
                 // Scan and add template in ES6 mode.
                 scanTemplate();
                 // Let the parser continue from here.
@@ -2043,7 +2088,7 @@ public class Lexer extends Scanner {
             case BIGINT:
                 return Lexer.valueOfBigInt(source.getString(start, len - 1)); // number
             case FLOATING:
-                final String str = source.getString(start, len);
+                final String str = removeUnderscores(source.getString(start, len));
                 final double value = Double.parseDouble(str);
                 if (str.indexOf('.') != -1) {
                     return value; // number
