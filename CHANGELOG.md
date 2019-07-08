@@ -7,6 +7,7 @@ The main focus is on user-observable behavior of the engine.
 * Added support for date and time interop.
 * Added support for setting the time zone via `Context.Builder.timeZone`.
 * Implemented [Numeric separators](https://github.com/tc39/proposal-numeric-separator) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
+* Moved ICU data previously distributed as separate files into the native image.
 
 ## Version 19.1.0
 * Added (experimental) option `js.locale` to set the default locale for locale-sensitive operations.
