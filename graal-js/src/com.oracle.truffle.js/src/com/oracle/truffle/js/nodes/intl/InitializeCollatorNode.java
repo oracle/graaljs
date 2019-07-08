@@ -89,8 +89,6 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
     public DynamicObject initializeCollator(DynamicObject collatorObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(context);
-
         try {
             JSCollator.InternalState state = JSCollator.getInternalState(collatorObj);
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
@@ -105,7 +103,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
             JSCollator.initializeCollator(context, state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
 
         } catch (MissingResourceException e) {
-            throw Errors.createICU4JDataError();
+            throw Errors.createICU4JDataError(e);
         }
 
         return collatorObj;

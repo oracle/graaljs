@@ -40,6 +40,14 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.IllformedLocaleException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.MissingResourceException;
+
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
 import com.ibm.icu.text.CaseMap.Upper;
@@ -53,16 +61,6 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.IllformedLocaleException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
-import java.util.MissingResourceException;
-
 /**
  *
  * ECMA 402 Utilities.
@@ -72,8 +70,6 @@ public final class IntlUtil {
     private IntlUtil() {
         // should not be constructed
     }
-
-    private static final String ICU4J_DATA_PATH_SYS_PROPERTY = "com.ibm.icu.impl.ICUBinary.dataPath";
 
     // based on http://unicode.org/repos/cldr/trunk/common/bcp47/number.xml
     private static final List<String> BCP47_NU_KEYS = Arrays.asList(new String[]{"adlm", "ahom", "arab", "arabext", "armn", "armnlow", "bali", "beng", "bhks", "brah", "cakm", "cham", "cyrl", "deva",
@@ -176,9 +172,6 @@ public final class IntlUtil {
         return matchedLocale != null ? matchedLocale.toLanguageTag() : null;
     }
 
-    private static volatile boolean icu4jPathInitialized = false;
-    private static final Object icu4jPathLock = new Object();
-
     @TruffleBoundary
     private static Locale lookupMatcher(JSContext ctx, String[] languageTags) {
         for (String lt : languageTags) {
@@ -246,7 +239,6 @@ public final class IntlUtil {
         List<Locale> result = new ArrayList<>();
 
         if (JSTruffleOptions.SubstrateVM) {
-            ensureICU4JDataPathSet(ctx);
             try {
                 // GR-6347 (Locale.getAvailableLocales() support is missing in SVM)
                 ULocale[] localesAvailable = ULocale.getAvailableLocales();
@@ -257,7 +249,7 @@ public final class IntlUtil {
                 }
                 result.addAll(Arrays.asList(javaLocalesAvailable));
             } catch (MissingResourceException e) {
-                throw Errors.createICU4JDataError();
+                throw Errors.createICU4JDataError(e);
             }
         } else {
             result.addAll(Arrays.asList(Locale.getAvailableLocales()));
@@ -327,7 +319,6 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String toLowerCase(JSContext ctx, String s, String[] locales) {
-        ensureICU4JDataPathSet(ctx);
         Locale strippedLocale = selectedLocaleStripped(ctx, locales);
         StringBuilder result = new StringBuilder();
         Lower tr = CaseMap.toLower();
@@ -337,7 +328,6 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static String toUpperCase(JSContext ctx, String s, String[] locales) {
-        ensureICU4JDataPathSet(ctx);
         Locale strippedLocale = selectedLocaleStripped(ctx, locales);
         StringBuilder result = new StringBuilder();
         Upper tr = CaseMap.toUpper();
@@ -350,34 +340,6 @@ public final class IntlUtil {
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         return selectedLocale.stripExtensions();
-    }
-
-    @TruffleBoundary
-    public static void ensureICU4JDataPathSet(JSContext ctx) {
-
-        if (JSTruffleOptions.SubstrateVM && !icu4jPathInitialized) {
-
-            synchronized (icu4jPathLock) {
-                if (!icu4jPathInitialized) {
-
-                    icu4jPathInitialized = true;
-
-                    String dataPath = System.getProperty(ICU4J_DATA_PATH_SYS_PROPERTY);
-                    if (dataPath == null || dataPath.isEmpty()) {
-                        dataPath = ctx.getRealm().getEnv().getEnvironment().get("ICU4J_DATA_PATH");
-                        if (dataPath == null || dataPath.isEmpty()) {
-                            try {
-                                Path homePath = Paths.get(ctx.getLanguage().getTruffleLanguageHome());
-                                String newDataPath = homePath.resolve("icu4j").resolve("icudt").toString();
-                                System.setProperty(ICU4J_DATA_PATH_SYS_PROPERTY, newDataPath);
-                            } catch (Exception e) {
-                                throw Errors.createICU4JDataError();
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     public static DynamicObject makePart(JSContext context, String type, String value) {

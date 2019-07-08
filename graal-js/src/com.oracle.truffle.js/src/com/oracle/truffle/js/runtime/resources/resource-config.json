@@ -1,0 +1,5 @@
+{
+  "resources":[
+    {"pattern":"com/ibm/icu/impl/data/icudt.*"}
+  ]
+}

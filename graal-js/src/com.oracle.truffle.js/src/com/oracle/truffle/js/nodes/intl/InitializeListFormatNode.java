@@ -82,8 +82,6 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
     public DynamicObject initializeListFormat(DynamicObject listFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(context);
-
         try {
 
             JSListFormat.InternalState state = JSListFormat.getInternalState(listFormatObj);
@@ -104,7 +102,7 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
             JSListFormat.setupInternalListFormatter(state);
 
         } catch (MissingResourceException e) {
-            throw Errors.createICU4JDataError();
+            throw Errors.createICU4JDataError(e);
         }
 
         return listFormatObj;

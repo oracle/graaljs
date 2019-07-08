@@ -83,8 +83,6 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
     public DynamicObject initializeRelativeTimeFormat(DynamicObject relativeTimeFormatObj, Object localesArg, Object optionsArg) {
 
         // must be invoked before any code that tries to access ICU library data
-        IntlUtil.ensureICU4JDataPathSet(context);
-
         try {
 
             JSRelativeTimeFormat.InternalState state = JSRelativeTimeFormat.getInternalState(relativeTimeFormatObj);
@@ -105,7 +103,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
             JSRelativeTimeFormat.setupInternalRelativeTimeFormatter(state);
 
         } catch (MissingResourceException e) {
-            throw Errors.createICU4JDataError();
+            throw Errors.createICU4JDataError(e);
         }
 
         return relativeTimeFormatObj;
