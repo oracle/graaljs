@@ -207,7 +207,6 @@ suite = {
         "ASM_UTIL-6.2.1",
         "ICU4J",
       ],
-      "exports" : ["com.oracle.truffle.js.runtime.java.adapter"],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
       "jacoco" : "include",
       "javaCompliance" : "8+",
@@ -219,7 +218,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["com.oracle.truffle.js"],
-      "exports" : [],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "8+",
@@ -234,7 +232,6 @@ suite = {
         "com.oracle.truffle.js.builtins",
         "com.oracle.js.parser",
       ],
-      "exports" : ["com.oracle.truffle.js.lang to org.graalvm.truffle"],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "8+",
@@ -248,7 +245,6 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK"
       ],
-      "exports" : [],
       "jacoco" : "include",
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
@@ -261,7 +257,6 @@ suite = {
       "dependencies" : [
         "sdk:LAUNCHER_COMMON",
       ],
-      "exports" : [],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "8+",
@@ -272,7 +267,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
-      "exports" : [],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "8+",
@@ -283,7 +277,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
-      "exports" : [],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "8+",
@@ -320,7 +313,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
-      "exports" : [],
       "jacoco" : "include",
       "findbugs" : "false",
 #     checkstyle and findbugs turned off to keep the source aligned
@@ -335,7 +327,6 @@ suite = {
       "dependencies" : [
         "regex:TREGEX",
       ],
-      "exports" : [],
       "jacoco" : "include",
       "findbugs" : "false",
 #     checkstyle and findbugs turned off to keep the source aligned
@@ -361,7 +352,6 @@ suite = {
     "com.oracle.truffle.js.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "exports" : ["com.oracle.truffle.js.test"],
       "dependencies" : [
         "sdk:GRAAL_SDK",
         "mx:JUNIT",
@@ -409,7 +399,6 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
       ],
-      "exports" : ["com.oracle.truffle.js.scriptengine"],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "8+",
@@ -465,7 +454,13 @@ suite = {
 
   "distributions" : {
     "GRAALJS" : {
-      "moduleName" : "org.graalvm.js",
+      "moduleInfo" : {
+        "name" : "org.graalvm.js",
+        "exports" : [
+          "com.oracle.truffle.js.lang to org.graalvm.truffle",
+          "com.oracle.truffle.js.runtime.java.adapter",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.parser"],
       "distDependencies" : [
@@ -493,7 +488,10 @@ suite = {
     },
 
     "GRAALJS_LAUNCHER" : {
-      "moduleName" : "org.graalvm.js.launcher",
+      "moduleInfo" : {
+        "name" : "org.graalvm.js.launcher",
+        "exports" : [],
+      },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.shell"],
       "mainClass" : "com.oracle.truffle.js.shell.JSLauncher",
@@ -506,7 +504,12 @@ suite = {
     },
 
     "GRAALJS_SCRIPTENGINE" : {
-      "moduleName" : "org.graalvm.js.scriptengine",
+      "moduleInfo" : {
+        "name" : "org.graalvm.js.scriptengine",
+        "exports" : [
+          "com.oracle.truffle.js.scriptengine",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.scriptengine"],
       "distDependencies" : [
