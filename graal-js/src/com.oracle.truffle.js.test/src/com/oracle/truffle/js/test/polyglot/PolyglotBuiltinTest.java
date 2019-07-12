@@ -256,4 +256,17 @@ public class PolyglotBuiltinTest extends JSTest {
             }
         }
     }
+
+    @Test
+    public void testEvalInternalLanguage() {
+        try (Context context = Context.newBuilder().allowExperimentalOptions(true).allowPolyglotAccess(PolyglotAccess.ALL).option(JSContextOptions.POLYGLOT_BUILTIN_NAME, "true").build()) {
+            try {
+                context.eval(Source.create(JavaScriptLanguage.ID, "Polyglot.eval('regex', 'sth');"));
+                fail("should have thrown");
+            } catch (PolyglotException ex) {
+                assertTrue(ex.isGuestException());
+                assertFalse(ex.isInternalError());
+            }
+        }
+    }
 }

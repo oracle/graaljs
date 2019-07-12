@@ -740,12 +740,6 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             super(context, builtin);
         }
 
-        protected boolean isPublicLanguage(String language) {
-            CompilerAsserts.neverPartOfCompilation();
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
-            return env.getPublicLanguages().containsKey(getLanguageIdAndMimeType(language).getFirst());
-        }
-
         protected Pair<String, String> getLanguageIdAndMimeType(String languageIdOrMimeType) {
             String languageId = languageIdOrMimeType;
             String mimeType = null;
@@ -767,12 +761,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"language.equals(cachedLanguage)", "isPublicLanguage"}, limit = "1")
+        @Specialization(guards = {"language.equals(cachedLanguage)"}, limit = "1")
         @TruffleBoundary
         protected Object evalCachedLanguage(String language, String source,
                         @Cached("language") String cachedLanguage,
-                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair,
-                        @Cached("isPublicLanguage(language)") boolean isPublicLanguage) {
+                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair) {
             return evalStringIntl(source, languagePair.getFirst(), languagePair.getSecond());
         }
 
@@ -780,11 +773,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @TruffleBoundary
         protected Object evalString(String language, String source) {
             Pair<String, String> pair = getLanguageIdAndMimeType(language);
-            if (isValid.profile(isPublicLanguage(pair.getFirst()))) {
-                return evalStringIntl(source, pair.getFirst(), pair.getSecond());
-            } else {
-                throw Errors.createTypeError("Cannot eval internal languages");
-            }
+            return evalStringIntl(source, pair.getFirst(), pair.getSecond());
         }
 
         private Object evalStringIntl(String sourceText, String languageId, String mimeType) {
@@ -816,12 +805,11 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"language.equals(cachedLanguage)", "isPublicLanguage"}, limit = "1")
+        @Specialization(guards = {"language.equals(cachedLanguage)"}, limit = "1")
         @TruffleBoundary
         protected Object evalFileCachedLanguage(String language, String file,
                         @Cached("language") String cachedLanguage,
-                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair,
-                        @Cached("isPublicLanguage(language)") boolean isPublicLanguage) {
+                        @Cached("getLanguageIdAndMimeType(language)") Pair<String, String> languagePair) {
             return evalFileIntl(file, languagePair.getFirst(), languagePair.getSecond());
         }
 
@@ -829,11 +817,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @TruffleBoundary
         protected Object evalFileString(String language, String file) {
             Pair<String, String> pair = getLanguageIdAndMimeType(language);
-            if (isValid.profile(isPublicLanguage(pair.getFirst()))) {
-                return evalFileIntl(file, pair.getFirst(), pair.getSecond());
-            } else {
-                throw Errors.createTypeError("Cannot evalFile internal languages");
-            }
+            return evalFileIntl(file, pair.getFirst(), pair.getSecond());
         }
 
         private Object evalFileIntl(String fileName, String languageId, String mimeType) {
@@ -854,7 +838,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             try {
                 callTarget = env.parsePublic(source);
             } catch (Exception e) {
-                throw Errors.createError(e.getMessage());
+                throw Errors.createError(e.getMessage(), e);
             }
 
             return callTarget.call();
