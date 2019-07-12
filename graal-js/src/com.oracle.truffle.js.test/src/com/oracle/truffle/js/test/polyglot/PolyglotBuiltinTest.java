@@ -41,9 +41,13 @@
 package com.oracle.truffle.js.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
@@ -229,5 +233,27 @@ public class PolyglotBuiltinTest extends JSTest {
     public void testToPolyglotValue() {
         assertEquals("true", test("''+Polyglot.toPolyglotValue(true);"));
         assertEquals("1", test("''+Polyglot.toPolyglotValue(1);"));
+    }
+
+    @Test
+    public void testDeniedExportImport() {
+        try (Context context = Context.newBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowExperimentalOptions(true).allowPolyglotAccess(
+                        PolyglotAccess.newBuilder().allowEval(JavaScriptLanguage.ID, TestLanguage.ID).build()).option(JSContextOptions.POLYGLOT_BUILTIN_NAME, "true").build()) {
+            context.getPolyglotBindings().putMember("fortyTwo", 42);
+            try {
+                context.eval(Source.create(JavaScriptLanguage.ID, "Polyglot.import('fortyTwo');"));
+                fail("should have thrown");
+            } catch (PolyglotException ex) {
+                assertTrue(ex.isGuestException());
+                assertFalse(ex.isInternalError());
+            }
+            try {
+                context.eval(Source.create(JavaScriptLanguage.ID, "Polyglot.export('myName',{a:'foo'});"));
+                fail("should have thrown");
+            } catch (PolyglotException ex) {
+                assertTrue(ex.isGuestException());
+                assertFalse(ex.isInternalError());
+            }
+        }
     }
 }

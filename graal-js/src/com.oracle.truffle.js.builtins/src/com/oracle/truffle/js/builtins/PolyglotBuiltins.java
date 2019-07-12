@@ -250,7 +250,12 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @Specialization
         protected Object doString(String identifier, Object value,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
-            Object polyglotBindings = getContext().getRealm().getEnv().getPolyglotBindings();
+            Object polyglotBindings;
+            try {
+                polyglotBindings = getContext().getRealm().getEnv().getPolyglotBindings();
+            } catch (SecurityException e) {
+                throw Errors.createError(e.getMessage(), e);
+            }
             JSInteropUtil.writeMember(polyglotBindings, identifier, value, interop, exportValue, this);
             return value;
         }
@@ -286,7 +291,12 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object doString(String identifier,
                         @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
                         @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) {
-            Object polyglotBindings = getContext().getRealm().getEnv().getPolyglotBindings();
+            Object polyglotBindings;
+            try {
+                polyglotBindings = getContext().getRealm().getEnv().getPolyglotBindings();
+            } catch (SecurityException e) {
+                throw Errors.createError(e.getMessage(), e);
+            }
             try {
                 return importValueNode.executeWithTarget(interop.readMember(polyglotBindings, identifier));
             } catch (UnknownIdentifierException e) {
