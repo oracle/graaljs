@@ -69,7 +69,7 @@ public abstract class JSLoadNode extends JavaScriptBaseNode {
     public abstract Object executeLoad(Source source, JSRealm realm);
 
     protected static CallTarget loadScript(Source source, JSRealm realm) {
-        return realm.getEnv().parse(source);
+        return realm.getEnv().parsePublic(source);
     }
 
     @TruffleBoundary(allowInlining = true)

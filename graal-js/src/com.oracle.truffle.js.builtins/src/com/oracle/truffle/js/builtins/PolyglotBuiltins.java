@@ -47,6 +47,7 @@ import java.nio.file.AccessDeniedException;
 import java.nio.file.NoSuchFileException;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -60,7 +61,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
@@ -731,9 +731,9 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         protected boolean isPublicLanguage(String language) {
+            CompilerAsserts.neverPartOfCompilation();
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
-            LanguageInfo info = env.getLanguages().get(getLanguageIdAndMimeType(language).getFirst());
-            return info == null || !info.isInternal(); // Truffle throws on unknown language
+            return env.getPublicLanguages().containsKey(getLanguageIdAndMimeType(language).getFirst());
         }
 
         protected Pair<String, String> getLanguageIdAndMimeType(String languageIdOrMimeType) {
@@ -778,12 +778,13 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         private Object evalStringIntl(String sourceText, String languageId, String mimeType) {
+            CompilerAsserts.neverPartOfCompilation();
             getContext().checkEvalAllowed();
-            Source sourceObject = Source.newBuilder(languageId, sourceText, Evaluator.EVAL_SOURCE_NAME).mimeType(mimeType).build();
+            Source source = Source.newBuilder(languageId, sourceText, Evaluator.EVAL_SOURCE_NAME).mimeType(mimeType).build();
 
             CallTarget callTarget;
             try {
-                callTarget = getContext().getRealm().getEnv().parse(sourceObject);
+                callTarget = getContext().getRealm().getEnv().parsePublic(source);
             } catch (Exception e) {
                 throw Errors.createError(e.getMessage());
             }
@@ -826,6 +827,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         }
 
         private Object evalFileIntl(String fileName, String languageId, String mimeType) {
+            CompilerAsserts.neverPartOfCompilation();
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
             Source source;
             try {
@@ -840,7 +842,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
             CallTarget callTarget;
             try {
-                callTarget = env.parse(source);
+                callTarget = env.parsePublic(source);
             } catch (Exception e) {
                 throw Errors.createError(e.getMessage());
             }
