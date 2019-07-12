@@ -1442,7 +1442,8 @@ public class JSContext {
         boolean isConstructor = functionData.isConstructor();
         boolean isGenerator = functionData.isGenerator();
         boolean isAsync = functionData.isAsync();
-        boolean isAnonymous = functionData.getName().isEmpty();
+        // V8 always provides a name property.
+        boolean isAnonymous = functionData.getName().isEmpty() && !functionData.getContext().isOptionV8CompatibilityMode();
         assert !isBuiltin || (!isGenerator && !isAsync) : "built-in functions are never generator or async functions!";
         if (isAsync) {
             if (isGenerator) {

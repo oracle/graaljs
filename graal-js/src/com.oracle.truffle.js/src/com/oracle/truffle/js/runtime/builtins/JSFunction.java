@@ -744,8 +744,8 @@ public final class JSFunction extends JSBuiltinObject {
         return initialShape.addProperty(context.getEcmaScriptVersion() < 6 ? LENGTH_PROPERTY_NOT_CONFIGURABLE : LENGTH_PROPERTY);
     }
 
-    private static Shape addNameProxyProperty(Shape initialShape, JSContext context, boolean isAnonymous) {
-        return isAnonymous && !context.isOptionV8CompatibilityMode() ? initialShape : initialShape.addProperty(NAME_PROPERTY);
+    private static Shape addNameProxyProperty(Shape initialShape, boolean isAnonymous) {
+        return isAnonymous ? initialShape : initialShape.addProperty(NAME_PROPERTY);
     }
 
     public static Shape makeInitialFunctionShape(JSContext context, DynamicObject prototype, boolean isStrict, boolean isAnonymous) {
@@ -758,7 +758,7 @@ public final class JSFunction extends JSBuiltinObject {
         if (hasPrototype) {
             initialShape = addPrototypeProxyProperty(initialShape, prototypeNotWritable);
         }
-        initialShape = addNameProxyProperty(initialShape, context, isAnonymous);
+        initialShape = addNameProxyProperty(initialShape, isAnonymous);
         return initialShape;
     }
 
@@ -918,7 +918,7 @@ public final class JSFunction extends JSBuiltinObject {
         initialShape = initialShape.addProperty(isAsync ? ASYNC_GENERATOR_FUNCTION_MARKER_PROPERTY : GENERATOR_FUNCTION_MARKER_PROPERTY);
         initialShape = addLengthProxyProperty(initialShape, context);
         initialShape = addPrototypeProxyProperty(initialShape, false);
-        initialShape = addNameProxyProperty(initialShape, context, isAnonymous);
+        initialShape = addNameProxyProperty(initialShape, isAnonymous);
         return initialShape;
     }
 
@@ -1022,7 +1022,7 @@ public final class JSFunction extends JSBuiltinObject {
         initialShape = initialShape.addProperty(BOUND_THIS_PROPERTY);
         initialShape = initialShape.addProperty(BOUND_ARGUMENTS_PROPERTY);
         initialShape = addLengthProxyProperty(initialShape, context);
-        initialShape = addNameProxyProperty(initialShape, context, isAnonymous);
+        initialShape = addNameProxyProperty(initialShape, isAnonymous);
         return initialShape;
     }
 
