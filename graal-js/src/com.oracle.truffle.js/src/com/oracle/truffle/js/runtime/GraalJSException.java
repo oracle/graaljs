@@ -283,9 +283,11 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                         if (JSFunction.isJSFunction(functionObj)) {
                             DynamicObject function = (DynamicObject) functionObj;
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
-                            if (functionData.isStrict()) {
-                                inStrictMode = true;
-                            } else if (functionData.isBuiltin() && JSFunction.isStrictBuiltin(function)) {
+                            if (functionData.isBuiltin()) {
+                                if (JSFunction.isStrictBuiltin(function)) {
+                                    inStrictMode = true;
+                                }
+                            } else if (functionData.isStrict()) {
                                 inStrictMode = true;
                             }
                             if (skippingFrames && function == skipFramesUpTo) {

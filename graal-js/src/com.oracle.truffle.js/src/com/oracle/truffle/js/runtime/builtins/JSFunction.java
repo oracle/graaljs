@@ -800,9 +800,9 @@ public final class JSFunction extends JSBuiltinObject {
         assert context.getEcmaScriptVersion() < 6;
         Shape strictShape = nonStrictShape;
         strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(ARGUMENTS,
-                        nonStrictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
+                        strictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
         strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(CALLER,
-                        nonStrictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
+                        strictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
         return strictShape;
     }
 
@@ -1137,9 +1137,6 @@ public final class JSFunction extends JSBuiltinObject {
                                 return null; // skip eval()
                             }
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
-                            if (functionData.isStrict()) {
-                                return Null.instance;
-                            }
                             if (JSFunction.isBuiltinSourceSection(ss)) {
                                 JSRealm realm = functionData.getContext().getRealm();
                                 if (isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
@@ -1151,6 +1148,8 @@ public final class JSFunction extends JSBuiltinObject {
                                 if (isStrictBuiltin(function)) {
                                     return Null.instance; // do not go beyond a strict builtin
                                 }
+                            } else if (functionData.isStrict()) {
+                                return Null.instance;
                             }
                             if (!PROGRAM_FUNCTION_NAME.equals(rootNode.getName())) {
                                 return function;

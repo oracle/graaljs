@@ -1489,7 +1489,7 @@ public class JSContext {
                 throw Errors.createTypeError("[[ThrowTypeError]] defined by ECMAScript");
             }
         });
-        return JSFunctionData.create(this, throwTypeErrorCallTarget, throwTypeErrorCallTarget, 0, "", false, false, false, false);
+        return JSFunctionData.create(this, throwTypeErrorCallTarget, throwTypeErrorCallTarget, 0, "", false, false, false, true);
     }
 
     private JSFunctionData protoSetterFunction() {
