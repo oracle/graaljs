@@ -132,12 +132,14 @@ public abstract class JSFunctionFactory {
     private DynamicObject createBoundES5(DynamicObjectFactory factory, JSFunctionData functionData, Object classPrototype, JSRealm realm, DynamicObject prototype,
                     DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         if (isInObjectProto()) {
-            return JSObjectFactory.newInstance(factory, prototype, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, classPrototype, realm, realm.getThrowerAccessor(), realm.getThrowerAccessor(),
-                            boundTargetFunction, boundThis, boundArguments);
+            return JSObjectFactory.newInstance(factory, prototype, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, classPrototype, realm,
+                            boundTargetFunction, boundThis, boundArguments,
+                            realm.getThrowerAccessor(), realm.getThrowerAccessor());
         } else {
             assert JSObjectFactory.verifyPrototype(factory, prototype);
-            return JSObjectFactory.newInstance(factory, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, classPrototype, realm, realm.getThrowerAccessor(), realm.getThrowerAccessor(),
-                            boundTargetFunction, boundThis, boundArguments);
+            return JSObjectFactory.newInstance(factory, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, classPrototype, realm,
+                            boundTargetFunction, boundThis, boundArguments,
+                            realm.getThrowerAccessor(), realm.getThrowerAccessor());
         }
     }
 
