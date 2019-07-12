@@ -757,10 +757,14 @@ public final class JSFunction extends JSBuiltinObject {
     public static Shape makeInitialFunctionShape(JSContext context, DynamicObject prototype, boolean isStrict, boolean isAnonymous, boolean hasPrototype, boolean prototypeNotWritable) {
         Shape initialShape = makeBaseFunctionShape(context, prototype);
         initialShape = addLengthProxyProperty(initialShape, context);
-        if (hasPrototype) {
+        if (hasPrototype && prototypeNotWritable) {
             initialShape = addPrototypeProxyProperty(initialShape, prototypeNotWritable);
         }
         initialShape = addNameProxyProperty(initialShape, isAnonymous);
+        if (hasPrototype && !prototypeNotWritable) {
+            // off-spec: add prototype property after name for compatibility with V8
+            initialShape = addPrototypeProxyProperty(initialShape, prototypeNotWritable);
+        }
         initialShape = addCallerAndArgumentsProperties(initialShape, context, isStrict);
         return initialShape;
     }
