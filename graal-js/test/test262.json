@@ -1708,12 +1708,6 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "built-ins/ThrowTypeError/forbidden-arguments.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "built-ins/ThrowTypeError/forbidden-caller.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {

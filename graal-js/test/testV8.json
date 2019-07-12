@@ -632,10 +632,6 @@
     "filePath" : "mjsunit/es6/proxies-set.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/proxies.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
     "status" : "FAIL"
   }, {
@@ -1400,9 +1396,6 @@
     "status" : "SKIP",
     "comment" : "NOW: Fails consistently with NoClassDefFoundError. Uses infinite recursion, expects to run out of stack and catch the exception. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
   }, {
-    "filePath" : "mjsunit/regress/regress-1548.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-233.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1651,10 +1644,6 @@
     "filePath" : "mjsunit/regress/regress-7652.js",
     "status" : "SKIP",
     "comment" : "Long-running test: we iterate to ~2^53."
-  }, {
-    "filePath" : "mjsunit/regress/regress-7773.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "mjsunit/regress/regress-779407.js",
     "runInIsolation" : true,
