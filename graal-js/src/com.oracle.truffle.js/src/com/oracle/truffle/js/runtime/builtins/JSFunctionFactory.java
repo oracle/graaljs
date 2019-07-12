@@ -74,7 +74,7 @@ public abstract class JSFunctionFactory {
         } else if (isGenerator) {
             initialShape = JSFunction.makeInitialGeneratorFunctionShape(context, prototype, isAsync, isAnonymous);
         } else if (isConstructor) {
-            initialShape = JSFunction.makeConstructorShape(JSFunction.makeInitialFunctionShape(context, prototype, isStrict, isAnonymous));
+            initialShape = JSFunction.makeInitialFunctionShape(context, prototype, isStrict, isAnonymous, true, false);
         } else {
             initialShape = JSFunction.makeInitialFunctionShape(context, prototype, isStrict, isAnonymous);
         }
