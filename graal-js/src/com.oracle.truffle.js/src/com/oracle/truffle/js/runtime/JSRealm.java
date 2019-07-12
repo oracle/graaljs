@@ -847,7 +847,7 @@ public class JSRealm {
         if (context.getContextOptions().isPrint()) {
             initGlobalPrintExtensions();
         }
-        if (context.getContextOptions().isPolyglotBuiltin() && getEnv().isPolyglotAccessAllowed()) {
+        if (context.getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
             setupPolyglot();
         }
         if (context.isOptionDebugBuiltin()) {
