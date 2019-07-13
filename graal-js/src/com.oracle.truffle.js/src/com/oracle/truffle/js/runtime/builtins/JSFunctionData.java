@@ -132,22 +132,29 @@ public final class JSFunctionData {
     public static JSFunctionData create(JSContext context, CallTarget callTarget, CallTarget constructTarget, int length, String name, boolean isConstructor, boolean isDerived, boolean strictMode,
                     boolean isBuiltin) {
         assert callTarget != null && constructTarget != null;
-        return create(context, callTarget, constructTarget, constructTarget, length, name, isConstructor, isDerived, strictMode, isBuiltin, false, false, false, false, strictMode, false, false);
+        return create(context, callTarget, constructTarget, constructTarget, length, name, isConstructor, isDerived, strictMode, isBuiltin, false, false, false, false,
+                        hasStrictProperties(context, strictMode, isBuiltin), false, false);
     }
 
     public static JSFunctionData createCallOnly(JSContext context, CallTarget callTarget, int length, String name) {
         assert callTarget != null;
         CallTarget constructTarget = context.getNotConstructibleCallTarget();
-        return create(context, callTarget, constructTarget, constructTarget, length, name, false, false, false, true, false, false, false, false, false, false, false);
+        return create(context, callTarget, constructTarget, length, name, false, false, false, true);
     }
 
     public static JSFunctionData create(JSContext context, int length, String name, boolean isConstructor, boolean isDerived, boolean strictMode, boolean isBuiltin) {
-        return create(context, null, null, null, length, name, isConstructor, isDerived, strictMode, isBuiltin, false, false, false, false, strictMode, false, false);
+        return create(context, null, null, null, length, name, isConstructor, isDerived, strictMode, isBuiltin, false, false, false, false,
+                        hasStrictProperties(context, strictMode, isBuiltin), false, false);
     }
 
     public static JSFunctionData create(JSContext context, CallTarget callTarget, int length, String name) {
         assert callTarget != null;
         return create(context, callTarget, callTarget, callTarget, length, name, true, false, false, false, false, false, false, false, false, false, false);
+    }
+
+    private static boolean hasStrictProperties(JSContext context, boolean strictMode, boolean isBuiltin) {
+        // Built-in functions must not have "caller" and "arguments" properties.
+        return isBuiltin ? context.getEcmaScriptVersion() >= 6 : strictMode;
     }
 
     public CallTarget getCallTarget() {

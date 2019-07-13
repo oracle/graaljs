@@ -43,7 +43,6 @@ package com.oracle.truffle.js.test;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -61,7 +60,6 @@ import org.junit.Assume;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -70,8 +68,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.parser.JSParser;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.JSErrorType;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -81,7 +77,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
 
 public class TestHelper implements AutoCloseable {
 
-    private static final boolean PRINT_SCRIPT = false;
     private static final double DELTA = 1e-15;
 
     private final Context.Builder contextBuilder;
@@ -264,26 +259,6 @@ public class TestHelper implements AutoCloseable {
         return null;
     }
 
-    public static void printTree(Node node) {
-        if (PRINT_SCRIPT) {
-            NodeUtil.printTree(System.out, node);
-        }
-    }
-
-    public void printTree(String source) {
-        if (PRINT_SCRIPT) {
-            NodeUtil.printTree(System.out, parse(source).getRootNode());
-        }
-    }
-
-    public static RuntimeException toRuntimeException(Exception e) {
-        if (e.getCause() instanceof RuntimeException) {
-            return (RuntimeException) e.getCause();
-        } else {
-            return new RuntimeException(e);
-        }
-    }
-
     /**
      * Like assertEquals, but does not care what the actual type of the returned value is, as long
      * as it can be cast to a double.
@@ -299,15 +274,6 @@ public class TestHelper implements AutoCloseable {
 
     public ScriptNode parse(String script) {
         return getParser().parseScriptNode(getJSContext(), script);
-    }
-
-    public static void assertThrows(JSErrorType errorType, Runnable test) {
-        try {
-            test.run();
-            fail(errorType + " expected, but did not throw");
-        } catch (JSException e) {
-            assertEquals(errorType, e.getErrorType());
-        }
     }
 
     public static Object toHostValue(final Value value) {

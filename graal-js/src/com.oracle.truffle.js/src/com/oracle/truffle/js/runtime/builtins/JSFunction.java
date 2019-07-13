@@ -71,12 +71,12 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -719,35 +719,53 @@ public final class JSFunction extends JSBuiltinObject {
         }
     }
 
-    private static Shape makeBaseFunctionShape(JSContext context, DynamicObject prototype, boolean isStrict) {
+    private static Shape makeBaseFunctionShape(JSContext context, DynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         initialShape = initialShape.reservePrimitiveExtensionArray();
         initialShape = initialShape.addProperty(FUNCTION_DATA_PROPERTY);
         initialShape = initialShape.addProperty(ENCLOSING_FRAME_PROPERTY);
         initialShape = initialShape.addProperty(CLASS_PROTOTYPE_PROPERTY);
         initialShape = initialShape.addProperty(REALM_PROPERTY);
-
-        if (context.getEcmaScriptVersion() >= 6) {
-            if (!isStrict) {
-                initialShape = makeNonStrictFunctionShape(initialShape, context);
-            }
-        } else {
-            if (isStrict) {
-                initialShape = makeStrictFunctionShape(context, initialShape);
-            }
-        }
-
         return initialShape;
     }
 
-    private static Shape addLengthAndNameProxyProperties(Shape initialShape, JSContext context, boolean isAnonymous) {
-        Shape shape = initialShape.addProperty(context.getEcmaScriptVersion() < 6 ? LENGTH_PROPERTY_NOT_CONFIGURABLE : LENGTH_PROPERTY);
-        return isAnonymous && !context.isOptionV8CompatibilityMode() ? shape : shape.addProperty(NAME_PROPERTY);
+    private static Shape addCallerAndArgumentsProperties(Shape initialShape, JSContext context, boolean isStrict) {
+        if (context.getEcmaScriptVersion() >= 6) {
+            if (!isStrict) {
+                return makeNonStrictFunctionShape(initialShape, context);
+            }
+        } else {
+            if (isStrict) {
+                return makeES5StrictFunctionShape(initialShape, context);
+            }
+        }
+        return initialShape;
+    }
+
+    private static Shape addLengthProxyProperty(Shape initialShape, JSContext context) {
+        return initialShape.addProperty(context.getEcmaScriptVersion() < 6 ? LENGTH_PROPERTY_NOT_CONFIGURABLE : LENGTH_PROPERTY);
+    }
+
+    private static Shape addNameProxyProperty(Shape initialShape, boolean isAnonymous) {
+        return isAnonymous ? initialShape : initialShape.addProperty(NAME_PROPERTY);
     }
 
     public static Shape makeInitialFunctionShape(JSContext context, DynamicObject prototype, boolean isStrict, boolean isAnonymous) {
-        Shape initialShape = makeBaseFunctionShape(context, prototype, isStrict);
-        initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
+        return makeInitialFunctionShape(context, prototype, isStrict, isAnonymous, false, false);
+    }
+
+    public static Shape makeInitialFunctionShape(JSContext context, DynamicObject prototype, boolean isStrict, boolean isAnonymous, boolean hasPrototype, boolean prototypeNotWritable) {
+        Shape initialShape = makeBaseFunctionShape(context, prototype);
+        initialShape = addLengthProxyProperty(initialShape, context);
+        if (hasPrototype && prototypeNotWritable) {
+            initialShape = addPrototypeProxyProperty(initialShape, prototypeNotWritable);
+        }
+        initialShape = addNameProxyProperty(initialShape, isAnonymous);
+        if (hasPrototype && !prototypeNotWritable) {
+            // off-spec: add prototype property after name for compatibility with V8
+            initialShape = addPrototypeProxyProperty(initialShape, prototypeNotWritable);
+        }
+        initialShape = addCallerAndArgumentsProperties(initialShape, context, isStrict);
         return initialShape;
     }
 
@@ -757,17 +775,13 @@ public final class JSFunction extends JSBuiltinObject {
      * @param functionShape an initial function shape without a prototype property.
      * @param notWritable prototype property is non-writable; {@code true} for class constructors.
      */
-    public static Shape makeConstructorShape(Shape functionShape, boolean notWritable) {
+    private static Shape addPrototypeProxyProperty(Shape functionShape, boolean notWritable) {
         assert JSShape.getJSClassNoCast(functionShape) == INSTANCE;
         if (notWritable) {
             return functionShape.addProperty(PROTOTYPE_PROPERTY_NOT_WRITABLE);
         } else {
             return functionShape.addProperty(PROTOTYPE_PROPERTY_WRITABLE);
         }
-    }
-
-    public static Shape makeConstructorShape(Shape functionShape) {
-        return makeConstructorShape(functionShape, false);
     }
 
     /**
@@ -786,13 +800,13 @@ public final class JSFunction extends JSBuiltinObject {
     /**
      * Set arguments and caller properties of strict function objects. ES5 Legacy.
      */
-    private static Shape makeStrictFunctionShape(JSContext context, Shape nonStrictShape) {
+    private static Shape makeES5StrictFunctionShape(Shape nonStrictShape, JSContext context) {
         assert context.getEcmaScriptVersion() < 6;
         Shape strictShape = nonStrictShape;
         strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(ARGUMENTS,
-                        nonStrictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
+                        strictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
         strictShape = strictShape.addProperty(JSObjectUtil.makeAccessorProperty(CALLER,
-                        nonStrictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
+                        strictShape.allocator().locationForType(Accessor.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)), JSAttributes.notConfigurableNotEnumerable()));
         return strictShape;
     }
 
@@ -907,10 +921,11 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     static Shape makeInitialGeneratorFunctionShape(JSContext context, DynamicObject prototype, boolean isAsync, boolean isAnonymous) {
-        Shape initialShape = makeBaseFunctionShape(context, prototype, true);
+        Shape initialShape = makeBaseFunctionShape(context, prototype);
         initialShape = initialShape.addProperty(isAsync ? ASYNC_GENERATOR_FUNCTION_MARKER_PROPERTY : GENERATOR_FUNCTION_MARKER_PROPERTY);
-        initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
-        initialShape = makeConstructorShape(initialShape);
+        initialShape = addLengthProxyProperty(initialShape, context);
+        initialShape = addPrototypeProxyProperty(initialShape, false);
+        initialShape = addNameProxyProperty(initialShape, isAnonymous);
         return initialShape;
     }
 
@@ -1009,11 +1024,13 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     public static Shape makeInitialBoundFunctionShape(JSContext context, DynamicObject prototype, boolean isAnonymous) {
-        Shape initialShape = makeBaseFunctionShape(context, prototype, true);
+        Shape initialShape = makeBaseFunctionShape(context, prototype);
         initialShape = initialShape.addProperty(BOUND_TARGET_FUNCTION_PROPERTY);
         initialShape = initialShape.addProperty(BOUND_THIS_PROPERTY);
         initialShape = initialShape.addProperty(BOUND_ARGUMENTS_PROPERTY);
-        initialShape = addLengthAndNameProxyProperties(initialShape, context, isAnonymous);
+        initialShape = addLengthProxyProperty(initialShape, context);
+        initialShape = addNameProxyProperty(initialShape, isAnonymous);
+        initialShape = addCallerAndArgumentsProperties(initialShape, context, true);
         return initialShape;
     }
 
@@ -1124,9 +1141,6 @@ public final class JSFunction extends JSBuiltinObject {
                                 return null; // skip eval()
                             }
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
-                            if (functionData.isStrict()) {
-                                return Null.instance;
-                            }
                             if (JSFunction.isBuiltinSourceSection(ss)) {
                                 JSRealm realm = functionData.getContext().getRealm();
                                 if (isBuiltinThatShouldNotAppearInStackTrace(realm, function)) {
@@ -1138,6 +1152,8 @@ public final class JSFunction extends JSBuiltinObject {
                                 if (isStrictBuiltin(function)) {
                                     return Null.instance; // do not go beyond a strict builtin
                                 }
+                            } else if (functionData.isStrict()) {
+                                return Null.instance;
                             }
                             if (!PROGRAM_FUNCTION_NAME.equals(rootNode.getName())) {
                                 return function;
