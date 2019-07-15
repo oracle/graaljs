@@ -676,7 +676,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getArrayConstructor().getPrototype();
+            return realm.getArrayPrototype();
         }
 
         private static final class ConstructArrayAllocationSite implements ArrayAllocationSite {
@@ -738,7 +738,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getBooleanConstructor().getPrototype();
+            return realm.getBooleanPrototype();
         }
     }
 
@@ -864,7 +864,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getDateConstructor().getPrototype();
+            return realm.getDatePrototype();
         }
 
     }
@@ -901,7 +901,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (callIsRegExpProfile.profile(hasMatchSymbol && flags == Undefined.instance && JSObject.isJSObject(pattern))) {
                     DynamicObject patternObj = (DynamicObject) pattern;
                     Object patternConstructor = getConstructor(patternObj);
-                    if (constructorEquivalentProfile.profile(patternConstructor == getContext().getRealm().getRegExpConstructor().getFunctionObject())) {
+                    if (constructorEquivalentProfile.profile(patternConstructor == getContext().getRealm().getRegExpConstructor())) {
                         return patternObj;
                     }
                 }
@@ -1018,7 +1018,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getRegExpConstructor().getPrototype();
+            return realm.getRegExpPrototype();
         }
 
     }
@@ -1059,7 +1059,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getStringConstructor().getPrototype();
+            return realm.getStringPrototype();
         }
 
     }
@@ -1097,7 +1097,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getCollatorConstructor().getPrototype();
+            return realm.getCollatorPrototype();
         }
 
     }
@@ -1119,7 +1119,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getListFormatConstructor().getPrototype();
+            return realm.getListFormatPrototype();
         }
     }
 
@@ -1140,7 +1140,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getRelativeTimeFormatConstructor().getPrototype();
+            return realm.getRelativeTimeFormatPrototype();
         }
     }
 
@@ -1161,7 +1161,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getSegmenterConstructor().getPrototype();
+            return realm.getSegmenterPrototype();
         }
     }
 
@@ -1198,7 +1198,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getNumberFormatConstructor().getPrototype();
+            return realm.getNumberFormatPrototype();
         }
 
     }
@@ -1220,7 +1220,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getPluralRulesConstructor().getPrototype();
+            return realm.getPluralRulesPrototype();
         }
     }
 
@@ -1257,7 +1257,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getDateTimeFormatConstructor().getPrototype();
+            return realm.getDateTimeFormatPrototype();
         }
 
     }
@@ -1341,7 +1341,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getNumberConstructor().getPrototype();
+            return realm.getNumberPrototype();
         }
 
     }
@@ -1440,11 +1440,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             if (generatorFunction && asyncFunction) {
-                return realm.getAsyncGeneratorFunctionConstructor().getPrototype();
+                return realm.getAsyncGeneratorFunctionPrototype();
             } else if (generatorFunction) {
-                return realm.getGeneratorFunctionConstructor().getPrototype();
+                return realm.getGeneratorFunctionPrototype();
             } else if (asyncFunction) {
-                return realm.getAsyncFunctionConstructor().getPrototype();
+                return realm.getAsyncFunctionPrototype();
             } else {
                 return realm.getFunctionPrototype();
             }
@@ -1638,7 +1638,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return (useShared ? realm.getSharedArrayBufferConstructor() : realm.getArrayBufferConstructor()).getPrototype();
+            return useShared ? realm.getSharedArrayBufferPrototype() : realm.getArrayBufferPrototype();
         }
 
     }
@@ -1678,14 +1678,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             swapPrototype(errorObj, newTarget);
 
             int stackTraceLimit = stackTraceLimitNode.executeInt(frame);
-            DynamicObject errorFunction = realm.getErrorConstructor(errorType).getFunctionObject();
+            DynamicObject errorFunction = realm.getErrorConstructor(errorType);
             GraalJSException exception = JSException.createCapture(errorType, message, errorObj, stackTraceLimit, errorFunction);
             return initErrorObjectNode.execute(errorObj, exception);
         }
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getErrorConstructor(errorType).getPrototype();
+            return realm.getErrorPrototype(errorType);
         }
 
     }
@@ -1752,7 +1752,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getDataViewConstructor().getPrototype();
+            return realm.getDataViewPrototype();
         }
 
     }
@@ -1840,7 +1840,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getProxyConstructor().getPrototype();
+            return realm.getProxyPrototype();
         }
 
         public abstract DynamicObject execute(DynamicObject newTarget, Object target, Object handler);
@@ -1986,7 +1986,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getMapConstructor().getPrototype();
+            return realm.getMapPrototype();
         }
 
     }
@@ -2034,7 +2034,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getSetConstructor().getPrototype();
+            return realm.getSetPrototype();
         }
 
     }
@@ -2060,7 +2060,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getWeakSetConstructor().getPrototype();
+            return realm.getWeakSetPrototype();
         }
 
     }
@@ -2086,7 +2086,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getWeakMapConstructor().getPrototype();
+            return realm.getWeakMapPrototype();
         }
 
     }

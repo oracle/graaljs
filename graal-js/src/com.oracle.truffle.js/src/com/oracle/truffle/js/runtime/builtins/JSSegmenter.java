@@ -296,7 +296,7 @@ public final class JSSegmenter extends JSBuiltinObject implements JSConstructorF
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getSegmenterConstructor().getPrototype();
+        return realm.getSegmenterPrototype();
     }
 
     // Iterator

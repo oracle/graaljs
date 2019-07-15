@@ -169,6 +169,6 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getNumberConstructor().getPrototype();
+        return realm.getNumberPrototype();
     }
 }

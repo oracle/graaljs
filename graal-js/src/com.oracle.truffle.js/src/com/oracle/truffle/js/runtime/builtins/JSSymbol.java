@@ -175,6 +175,6 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getSymbolConstructor().getPrototype();
+        return realm.getSymbolPrototype();
     }
 }

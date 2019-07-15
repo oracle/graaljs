@@ -268,6 +268,6 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getListFormatConstructor().getPrototype();
+        return realm.getListFormatPrototype();
     }
 }

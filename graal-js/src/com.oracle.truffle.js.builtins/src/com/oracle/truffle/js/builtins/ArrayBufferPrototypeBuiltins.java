@@ -183,7 +183,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lamb
         }
 
         private DynamicObject constructNewArrayBuffer(DynamicObject thisObj, int newLen) {
-            DynamicObject defaultConstructor = getContext().getRealm().getArrayBufferConstructor().getFunctionObject();
+            DynamicObject defaultConstructor = getContext().getRealm().getArrayBufferConstructor();
             DynamicObject constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
             return (DynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
         }

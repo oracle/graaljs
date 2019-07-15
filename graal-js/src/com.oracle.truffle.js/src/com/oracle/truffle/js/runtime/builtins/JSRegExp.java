@@ -422,7 +422,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getRegExpConstructor().getPrototype();
+        return realm.getRegExpPrototype();
     }
 
     @TruffleBoundary

@@ -291,7 +291,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         private DynamicObject createErrorFromJSException(JSException exception, JSRealm realm) {
             JSErrorType errorType = exception.getErrorType();
             String message = Objects.requireNonNull(exception.getRawMessage());
-            return JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, realm.getErrorConstructor(errorType).getPrototype(), message);
+            return JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, realm.getErrorPrototype(errorType), message);
         }
     }
 }

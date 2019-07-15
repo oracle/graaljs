@@ -367,6 +367,6 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getCollatorConstructor().getPrototype();
+        return realm.getCollatorPrototype();
     }
 }

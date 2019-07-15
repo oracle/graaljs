@@ -168,7 +168,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         protected boolean isTypedArrayConstructor(Object thisObj) {
-            return JSFunction.isConstructor(thisObj) && thisObj != getContext().getRealm().getArrayConstructor().getFunctionObject();
+            return JSFunction.isConstructor(thisObj) && thisObj != getContext().getRealm().getArrayConstructor();
         }
     }
 

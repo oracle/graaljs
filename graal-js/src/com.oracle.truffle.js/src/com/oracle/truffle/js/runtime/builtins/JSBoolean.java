@@ -150,6 +150,6 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getBooleanConstructor().getPrototype();
+        return realm.getBooleanPrototype();
     }
 }

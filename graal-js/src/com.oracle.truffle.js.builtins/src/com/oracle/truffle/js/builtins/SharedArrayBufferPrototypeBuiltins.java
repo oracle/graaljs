@@ -71,7 +71,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
         }
 
         private DynamicObject constructNewSharedArrayBuffer(DynamicObject thisObj, int newLen) {
-            DynamicObject defaultConstructor = getContext().getRealm().getSharedArrayBufferConstructor().getFunctionObject();
+            DynamicObject defaultConstructor = getContext().getRealm().getSharedArrayBufferConstructor();
             DynamicObject constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
             return (DynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
         }

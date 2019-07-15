@@ -225,6 +225,6 @@ public final class JSDataView extends JSBuiltinObject implements JSConstructorFa
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getDataViewConstructor().getPrototype();
+        return realm.getDataViewPrototype();
     }
 }

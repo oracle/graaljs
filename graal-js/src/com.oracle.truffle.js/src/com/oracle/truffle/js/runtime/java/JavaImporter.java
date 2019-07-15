@@ -163,6 +163,6 @@ public final class JavaImporter extends JSBuiltinObject implements JSConstructor
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getJavaImporterConstructor().getPrototype();
+        return realm.getJavaImporterPrototype();
     }
 }

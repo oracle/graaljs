@@ -133,6 +133,6 @@ public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFac
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getWeakSetConstructor().getPrototype();
+        return realm.getWeakSetPrototype();
     }
 }

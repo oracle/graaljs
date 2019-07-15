@@ -598,7 +598,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSArray.createEmptyZeroLength(getContext());
             }
             DynamicObject constructor = getSpeciesConstructor(rx);
-            if (constructor == getContext().getRealm().getRegExpConstructor().getFunctionObject() && isPristine(rx)) {
+            if (constructor == getContext().getRealm().getRegExpConstructor() && isPristine(rx)) {
                 return splitInternal(rx, str, limit);
             }
             return splitAccordingToSpec(rx, str, limit, constructor);
@@ -611,7 +611,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private DynamicObject getSpeciesConstructor(DynamicObject rx) {
-            DynamicObject regexpConstructor = getContext().getRealm().getRegExpConstructor().getFunctionObject();
+            DynamicObject regexpConstructor = getContext().getRealm().getRegExpConstructor();
             return getArraySpeciesConstructorNode().speciesConstructor(rx, regexpConstructor);
         }
 
@@ -682,7 +682,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             boolean unicodeMatching = flagsAccessor.unicode(tRegexFlags);
             DynamicObject splitter;
             if (stickyFlagSet.profile(flagsAccessor.sticky(tRegexFlags))) {
-                DynamicObject regexpConstructor = getContext().getRealm().getRegExpConstructor().getFunctionObject();
+                DynamicObject regexpConstructor = getContext().getRealm().getRegExpConstructor();
                 splitter = (DynamicObject) getArraySpeciesConstructorNode().construct(regexpConstructor, rx, removeStickyFlag(tRegexFlags));
             } else {
                 splitter = rx;
@@ -1544,7 +1544,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached("createBinaryProfile()") ConditionProfile indexInIntRangeProf) {
             String string = toStringNodeForInput.executeString(stringObj);
-            DynamicObject regExpConstructor = getContext().getRealm().getRegExpConstructor().getFunctionObject();
+            DynamicObject regExpConstructor = getContext().getRealm().getRegExpConstructor();
             DynamicObject constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
             String flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(regex));
             Object matcher = speciesConstructNode.construct(constructor, regex, flags);
@@ -1736,7 +1736,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         boolean isRegExpPrototype(DynamicObject obj) {
-            return obj == getContext().getRealm().getRegExpConstructor().getPrototype();
+            return obj == getContext().getRealm().getRegExpPrototype();
         }
 
         public static CompiledRegexFlagPropertyAccessor create(JSContext context, JSBuiltin builtin, String flagName, JavaScriptNode[] args) {
@@ -1771,7 +1771,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         boolean isRegExpPrototype(DynamicObject obj) {
-            return obj == getContext().getRealm().getRegExpConstructor().getPrototype();
+            return obj == getContext().getRealm().getRegExpPrototype();
         }
 
         static CompiledRegexPatternAccessor create(JSContext context, JSBuiltin builtin, JavaScriptNode[] args) {

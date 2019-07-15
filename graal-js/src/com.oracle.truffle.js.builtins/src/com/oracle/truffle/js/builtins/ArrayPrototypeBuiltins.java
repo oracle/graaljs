@@ -163,7 +163,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
-import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -492,7 +491,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         JSRealm ctorRealm = JSFunction.getRealm(ctorObj);
                         if (thisRealm != ctorRealm) {
                             differentRealm.enter();
-                            if (ctorRealm.getArrayConstructor().getFunctionObject() == ctor) {
+                            if (ctorRealm.getArrayConstructor() == ctor) {
                                 /*
                                  * If originalArray was created using the standard built-in Array
                                  * constructor for a realm that is not the realm of the running
@@ -541,8 +540,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final DynamicObject getDefaultConstructor(DynamicObject thisObj) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             TypedArray arrayType = JSArrayBufferView.typedArrayGetArrayType(thisObj);
-            JSConstructor constr = context.getRealm().getArrayBufferViewConstructor(arrayType.getFactory());
-            return constr.getFunctionObject();
+            return context.getRealm().getArrayBufferViewConstructor(arrayType.getFactory());
         }
 
         /**
@@ -1781,7 +1779,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private boolean mustUseElementwise(DynamicObject obj, ScriptArray array) {
-            return array instanceof SparseArray || array.isLengthNotWritable() || getPrototypeNode.executeJSObject(obj) != getContext().getRealm().getArrayConstructor().getPrototype() ||
+            return array instanceof SparseArray || array.isLengthNotWritable() || getPrototypeNode.executeJSObject(obj) != getContext().getRealm().getArrayPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() || (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
         }
 

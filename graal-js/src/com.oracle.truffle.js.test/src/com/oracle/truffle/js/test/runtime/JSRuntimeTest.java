@@ -307,7 +307,7 @@ public class JSRuntimeTest extends JSTest {
     @Test
     public void testConstruct() {
         JSContext ctx = testHelper.getJSContext();
-        DynamicObject arrayCtrFn = ctx.getRealm().getArrayConstructor().getFunctionObject();
+        DynamicObject arrayCtrFn = ctx.getRealm().getArrayConstructor();
         Object result = JSRuntime.construct(arrayCtrFn, new Object[]{10});
         assertTrue(JSArray.isJSArray(result));
         assertEquals(10, JSArray.arrayGetLength((DynamicObject) result));

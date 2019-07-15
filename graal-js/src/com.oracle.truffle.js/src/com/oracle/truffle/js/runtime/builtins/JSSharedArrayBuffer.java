@@ -178,6 +178,6 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getSharedArrayBufferConstructor().getPrototype();
+        return realm.getSharedArrayBufferPrototype();
     }
 }

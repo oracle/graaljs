@@ -1172,7 +1172,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static boolean isStrictBuiltin(DynamicObject function) {
         JSFunctionData functionData = JSFunction.getFunctionData(function);
         JSRealm realm = functionData.getContext().getRealm();
-        PropertyDescriptor desc = JSObject.getOwnProperty(realm.getArrayConstructor().getPrototype(), functionData.getName());
+        PropertyDescriptor desc = JSObject.getOwnProperty(realm.getArrayPrototype(), functionData.getName());
         return desc != null && desc.isDataDescriptor() && desc.getValue() == function;
     }
 }

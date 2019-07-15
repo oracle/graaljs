@@ -370,6 +370,6 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getArrayConstructor().getPrototype();
+        return realm.getArrayPrototype();
     }
 }
