@@ -492,10 +492,9 @@ public class JSContext {
             typedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p, false));
         }
 
-        JSErrorType[] errorTypes = JSErrorType.values();
-        this.errorObjectFactories = new JSObjectFactory[errorTypes.length];
-        this.errorWithMessageObjectFactories = new JSObjectFactory[errorTypes.length];
-        for (JSErrorType type : errorTypes) {
+        this.errorObjectFactories = new JSObjectFactory[JSErrorType.errorTypes().length];
+        this.errorWithMessageObjectFactories = new JSObjectFactory[JSErrorType.errorTypes().length];
+        for (JSErrorType type : JSErrorType.errorTypes()) {
             errorObjectFactories[type.ordinal()] = builder.create(type, JSError.INSTANCE::makeInitialShape);
             errorWithMessageObjectFactories[type.ordinal()] = builder.create(type, (c, p) -> JSError.addMessagePropertyToShape(JSError.INSTANCE.makeInitialShape(c, p)));
         }

@@ -433,7 +433,7 @@ public class JSRealm {
             this.promisePrototype = null;
         }
 
-        this.errorConstructorsAndPrototypes = new DynamicObject[JSErrorType.values().length * 2];
+        this.errorConstructorsAndPrototypes = new DynamicObject[JSErrorType.errorTypes().length * 2];
         initializeErrorConstructors();
         ctor = JSError.createCallSiteConstructor(this);
         this.callSiteConstructor = ctor.getFunctionObject();
@@ -583,7 +583,7 @@ public class JSRealm {
     }
 
     private void initializeErrorConstructors() {
-        for (JSErrorType type : JSErrorType.values()) {
+        for (JSErrorType type : JSErrorType.errorTypes()) {
             JSConstructor errorConstructor = JSError.createErrorConstructor(this, type);
             errorConstructorsAndPrototypes[type.ordinal() * 2] = errorConstructor.getFunctionObject();
             errorConstructorsAndPrototypes[type.ordinal() * 2 + 1] = errorConstructor.getPrototype();
@@ -1055,7 +1055,7 @@ public class JSRealm {
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
         this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
 
-        for (JSErrorType type : JSErrorType.values()) {
+        for (JSErrorType type : JSErrorType.errorTypes()) {
             putGlobalProperty(type.name(), getErrorConstructor(type));
         }
 
