@@ -129,6 +129,11 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
         protected final boolean isSegmentIterator(Object thisObj) {
             return isSegmentIteratorNode.executeHasHiddenKey(thisObj);
         }
+
+        @TruffleBoundary
+        protected static int getRuleStatus(BreakIterator icuIterator) {
+            return icuIterator.getRuleStatus();
+        }
     }
 
     public abstract static class SegmentIteratorNextNode extends SegmentIteratorOpNode {
@@ -169,7 +174,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             }
 
             String segment = s.substring(startIndex, endIndex);
-            String breakType = segmenterGranularity.getBreakType(icuIterator.getRuleStatus());
+            String breakType = segmenterGranularity.getBreakType(getRuleStatus(icuIterator));
 
             DynamicObject result = makeIterationResultValue(endIndex, segment, breakType);
 
@@ -215,7 +220,7 @@ public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.
             BreakIterator icuIterator = (BreakIterator) getSegmenterNode.getValue(iterator);
             JSSegmenter.Granularity segmenterGranularity = (JSSegmenter.Granularity) getSegmentIteratorGranularityNode.getValue(iterator);
             int newIndex = doAdvanceOp(icuIterator, offset);
-            String breakType = segmenterGranularity.getBreakType(icuIterator.getRuleStatus());
+            String breakType = segmenterGranularity.getBreakType(getRuleStatus(icuIterator));
             setBreakTypeNode.setValue(iterator, breakType);
             setIndexNode.setValue(iterator, newIndex);
             return newIndex == BreakIterator.DONE;
