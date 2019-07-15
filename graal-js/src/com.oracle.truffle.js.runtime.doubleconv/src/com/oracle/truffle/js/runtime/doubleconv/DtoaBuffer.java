@@ -75,6 +75,8 @@ package com.oracle.truffle.js.runtime.doubleconv;
  */
 public class DtoaBuffer {
 
+    private static final char EXPONENT_CHARACTER = 'e';
+
     // The character buffer
     final char[] chars;
 
@@ -216,16 +218,18 @@ public class DtoaBuffer {
         }
     }
 
-    private void toExponentialFormat(final StringBuilder buffer) {
+    void toExponentialFormat(final StringBuilder buffer) {
+        assert length != 0;
         buffer.append(chars[0]);
         if (length > 1) {
             // insert decimal decimalPoint if more than one digit was produced
             buffer.append('.');
             buffer.append(chars, 1, length - 1);
         }
-        buffer.append('e');
+        buffer.append(EXPONENT_CHARACTER);
         final int exponent = decimalPoint - 1;
-        if (exponent > 0) {
+        assert Math.abs(exponent) < 10000;
+        if (exponent >= 0) {
             buffer.append('+');
         }
         buffer.append(exponent);

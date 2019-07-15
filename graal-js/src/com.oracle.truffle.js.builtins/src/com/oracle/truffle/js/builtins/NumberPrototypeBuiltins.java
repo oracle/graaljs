@@ -42,6 +42,8 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -390,7 +392,6 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class JSNumberToExponentialNode extends JSNumberOperation {
-        private final BranchProfile digitsErrorBranch = BranchProfile.create();
 
         public JSNumberToExponentialNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -399,25 +400,31 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSNumber(thisNumber)", "isUndefined(fractionDigits)"})
         protected String toExponentialUndefined(DynamicObject thisNumber, Object fractionDigits) {
-            return JSRuntime.formatDtoAExponential(getDoubleValue(thisNumber));
+            double doubleValue = getDoubleValue(thisNumber);
+            return toExponentialStandard(doubleValue);
         }
 
         @Specialization(guards = {"isJSNumber(thisNumber)", "!isUndefined(fractionDigits)"})
-        protected String toExponential(DynamicObject thisNumber, Object fractionDigits) {
+        protected String toExponential(DynamicObject thisNumber, Object fractionDigits,
+                        @Cached @Shared("digitsError") BranchProfile digitsErrorBranch) {
+            double doubleValue = getDoubleValue(thisNumber);
             int digits = toInteger(fractionDigits);
-            return toExponentialIntl(digits, getDoubleValue(thisNumber));
+            return toExponential(doubleValue, digits, digitsErrorBranch);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJavaNumber(thisNumber)", "isUndefined(fractionDigits)"})
-        protected String toExponentialPrimtiveUndefined(Object thisNumber, Object fractionDigits) {
-            return JSRuntime.formatDtoAExponential(JSRuntime.doubleValue((Number) thisNumber));
+        protected String toExponentialPrimitiveUndefined(Object thisNumber, Object fractionDigits) {
+            double doubleValue = JSRuntime.doubleValue((Number) thisNumber);
+            return toExponentialStandard(doubleValue);
         }
 
         @Specialization(guards = {"isJavaNumber(thisNumber)", "!isUndefined(fractionDigits)"})
-        protected String toExponentialPrimitive(Object thisNumber, Object fractionDigits) {
+        protected String toExponentialPrimitive(Object thisNumber, Object fractionDigits,
+                        @Cached @Shared("digitsError") BranchProfile digitsErrorBranch) {
+            double doubleValue = JSRuntime.doubleValue((Number) thisNumber);
             int digits = toInteger(fractionDigits);
-            return toExponentialIntl(digits, JSRuntime.doubleValue((Number) thisNumber));
+            return toExponential(doubleValue, digits, digitsErrorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -426,17 +433,26 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorNotANumber(thisNumber);
         }
 
-        public String toExponentialIntl(int digits, double value) {
+        private static String toExponentialStandard(double value) {
             if (Double.isNaN(value)) {
                 return JSRuntime.NAN_STRING;
             } else if (Double.isInfinite(value)) {
                 return (value < 0) ? JSRuntime.NEGATIVE_INFINITY_STRING : JSRuntime.INFINITY_STRING;
             }
-            checkDigits(digits);
-            return JSRuntime.formatDtoAExponential(value, digits + 1);
+            return JSRuntime.formatDtoAExponential(value);
         }
 
-        private void checkDigits(int digits) {
+        private String toExponential(double value, int digits, BranchProfile digitsErrorBranch) {
+            if (Double.isNaN(value)) {
+                return JSRuntime.NAN_STRING;
+            } else if (Double.isInfinite(value)) {
+                return (value < 0) ? JSRuntime.NEGATIVE_INFINITY_STRING : JSRuntime.INFINITY_STRING;
+            }
+            checkDigits(digits, digitsErrorBranch);
+            return JSRuntime.formatDtoAExponential(value, digits);
+        }
+
+        private void checkDigits(int digits, BranchProfile digitsErrorBranch) {
             if (0 > digits || digits > ((getContext().getEcmaScriptVersion() >= 9) ? 100 : 20)) {
                 digitsErrorBranch.enter();
                 throw Errors.createRangeError("toExponential() fraction digits need to be in range 0-100");

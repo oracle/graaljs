@@ -1359,7 +1359,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static String formatDtoA(double value) {
-        return DoubleConversion.toShortestString(value);
+        return DoubleConversion.toShortest(value);
     }
 
     @TruffleBoundary
@@ -1369,16 +1369,12 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static String formatDtoAExponential(double d, int digits) {
-        StringBuilder buffer = new StringBuilder();
-        DToA.jsDtostr(buffer, DToA.DTOSTR_EXPONENTIAL, digits, d);
-        return buffer.toString();
+        return DoubleConversion.toExponential(d, digits);
     }
 
     @TruffleBoundary
     public static String formatDtoAExponential(double d) {
-        StringBuilder buffer = new StringBuilder();
-        DToA.jsDtostr(buffer, DToA.DTOSTR_STANDARD_EXPONENTIAL, 0, d);
-        return buffer.toString();
+        return DoubleConversion.toExponential(d, -1);
     }
 
     @TruffleBoundary

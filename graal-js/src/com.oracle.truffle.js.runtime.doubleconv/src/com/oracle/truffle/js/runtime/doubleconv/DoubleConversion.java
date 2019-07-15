@@ -72,8 +72,6 @@
 
 package com.oracle.truffle.js.runtime.doubleconv;
 
-// @formatter:off
-
 /**
  * This class provides the public API for the double conversion package.
  *
@@ -85,7 +83,10 @@ public final class DoubleConversion {
         // should not be constructed
     }
 
-    private final static int BUFFER_LENGTH = 101;
+    private static final int kMaxFixedDigitsBeforePoint = 60;
+    private static final int kMaxFixedDigitsAfterPoint = 60;
+    private static final int kMaxExponentialDigits = 120;
+    private static final int kBase10MaximalLength = 17;
 
     /**
      * Converts a double number to its shortest string representation.
@@ -93,32 +94,43 @@ public final class DoubleConversion {
      * @param value number to convert
      * @return formatted number
      */
-    public static String toShortestString(final double value) {
+    public static String toShortest(final double value) {
+        assert Double.isFinite(value) : value;
+
         final DtoaBuffer buffer = new DtoaBuffer(FastDtoa.kFastDtoaMaximalLength);
+        dtoaShortest(value, buffer);
+
+        return buffer.format(DtoaMode.SHORTEST, 0);
+    }
+
+    private static void dtoaShortest(final double value, final DtoaBuffer buffer) {
         final double absValue = Math.abs(value);
 
         if (value < 0) {
             buffer.isNegative = true;
         }
 
-        if (!fastDtoaShortest(absValue, buffer)) {
+        if (value == 0) {
+            buffer.append('0');
+            buffer.decimalPoint = 1;
+        } else if (!fastDtoaShortest(absValue, buffer)) {
             buffer.reset();
             bignumDtoa(absValue, DtoaMode.SHORTEST, 0, buffer);
         }
-
-        return buffer.format(DtoaMode.SHORTEST, 0);
     }
 
     /**
-     * Converts a double number to a string representation with a fixed number of digits
-     * after the decimal point.
+     * Converts a double number to a string representation with a fixed number of digits after the
+     * decimal point.
      *
      * @param value number to convert.
      * @param requestedDigits number of digits after decimal point
      * @return formatted number
      */
     public static String toFixed(final double value, final int requestedDigits) {
-        final DtoaBuffer buffer = new DtoaBuffer(BUFFER_LENGTH);
+        assert Double.isFinite(value) : value;
+
+        final DtoaBuffer buffer = new DtoaBuffer(kMaxFixedDigitsBeforePoint + kMaxFixedDigitsAfterPoint);
         final double absValue = Math.abs(value);
 
         if (value < 0) {
@@ -144,7 +156,15 @@ public final class DoubleConversion {
      * @return formatted number
      */
     public static String toPrecision(final double value, final int precision) {
+        assert Double.isFinite(value) : value;
+
         final DtoaBuffer buffer = new DtoaBuffer(precision);
+        dtoaPrecision(value, precision, buffer);
+
+        return buffer.format(DtoaMode.PRECISION, 0);
+    }
+
+    private static void dtoaPrecision(final double value, final int precision, final DtoaBuffer buffer) {
         final double absValue = Math.abs(value);
 
         if (value < 0) {
@@ -161,14 +181,11 @@ public final class DoubleConversion {
             buffer.reset();
             bignumDtoa(absValue, DtoaMode.PRECISION, precision, buffer);
         }
-
-        return buffer.format(DtoaMode.PRECISION, 0);
     }
 
     /**
-     * Converts a double number to a string representation using the
-     * {@code BignumDtoa} algorithm and the specified conversion mode
-     * and number of digits.
+     * Converts a double number to a string representation using the {@code BignumDtoa} algorithm
+     * and the specified conversion mode and number of digits.
      *
      * @param v number to convert
      * @param mode conversion mode
@@ -176,32 +193,28 @@ public final class DoubleConversion {
      * @param buffer buffer to use
      */
     public static void bignumDtoa(final double v, final DtoaMode mode, final int digits, final DtoaBuffer buffer) {
-        assert(v > 0);
-        assert(!Double.isNaN(v));
-        assert(!Double.isInfinite(v));
+        assert v > 0 && !Double.isNaN(v) && !Double.isInfinite(v) : v;
 
         BignumDtoa.bignumDtoa(v, mode, digits, buffer);
     }
 
     /**
-     * Converts a double number to its shortest string representation
-     * using the {@code FastDtoa} algorithm.
+     * Converts a double number to its shortest string representation using the {@code FastDtoa}
+     * algorithm.
      *
      * @param v number to convert
      * @param buffer buffer to use
      * @return true if conversion succeeded
      */
     public static boolean fastDtoaShortest(final double v, final DtoaBuffer buffer) {
-        assert(v > 0);
-        assert(!Double.isNaN(v));
-        assert(!Double.isInfinite(v));
+        assert v > 0 && !Double.isNaN(v) && !Double.isInfinite(v) : v;
 
         return FastDtoa.grisu3(v, buffer);
     }
 
     /**
-     * Converts a double number to a string representation with the
-     * given number of digits using the {@code FastDtoa} algorithm.
+     * Converts a double number to a string representation with the given number of digits using the
+     * {@code FastDtoa} algorithm.
      *
      * @param v number to convert
      * @param precision number of digits to generate
@@ -209,17 +222,14 @@ public final class DoubleConversion {
      * @return true if conversion succeeded
      */
     public static boolean fastDtoaCounted(final double v, final int precision, final DtoaBuffer buffer) {
-        assert(v > 0);
-        assert(!Double.isNaN(v));
-        assert(!Double.isInfinite(v));
+        assert v > 0 && !Double.isNaN(v) && !Double.isInfinite(v) : v;
 
         return FastDtoa.grisu3Counted(v, precision, buffer);
     }
 
     /**
-     * Converts a double number to a string representation with a
-     * fixed number of digits after the decimal point using the
-     * {@code FixedDtoa} algorithm.
+     * Converts a double number to a string representation with a fixed number of digits after the
+     * decimal point using the {@code FixedDtoa} algorithm.
      *
      * @param v number to convert.
      * @param digits number of digits after the decimal point
@@ -227,11 +237,64 @@ public final class DoubleConversion {
      * @return true if conversion succeeded
      */
     public static boolean fixedDtoa(final double v, final int digits, final DtoaBuffer buffer) {
-        assert(v > 0);
-        assert(!Double.isNaN(v));
-        assert(!Double.isInfinite(v));
+        assert v > 0 && !Double.isNaN(v) && !Double.isInfinite(v) : v;
 
         return FixedDtoa.fastFixedDtoa(v, digits, buffer);
     }
 
+    /**
+     * Computes a representation in exponential format with requestedDigits after the decimal point.
+     * The last emitted digit is rounded. If requestedDigits equals -1, then the shortest
+     * exponential representation is computed.
+     *
+     * @param value number to convert
+     * @param requestedDigits number of digits after the decimal point
+     * @return true if conversion succeeded
+     */
+    public static String toExponential(double value, int requestedDigits) {
+        return toExponential(value, requestedDigits, true);
+    }
+
+    /**
+     * Computes a representation in exponential format with requestedDigits after the decimal point.
+     * The last emitted digit is rounded. If requestedDigits equals -1, then the shortest
+     * exponential representation is computed.
+     *
+     * @param value number to convert
+     * @param requestedDigits number of digits after the decimal point
+     * @param uniqueZero "-0.0" is converted to "0.0".
+     * @return true if conversion succeeded
+     */
+    public static String toExponential(double value, int requestedDigits, boolean uniqueZero) {
+        assert Double.isFinite(value) : value;
+        assert !(requestedDigits < -1 || requestedDigits > kMaxExponentialDigits) : requestedDigits;
+
+        boolean sign = value < 0.0;
+        double absValue = Math.abs(value);
+
+        // Add space for digit before the decimal point.
+        int kDecimalRepCapacity = kMaxExponentialDigits + 1;
+        assert kDecimalRepCapacity > kBase10MaximalLength;
+        final DtoaBuffer buffer = new DtoaBuffer(kDecimalRepCapacity);
+
+        if (requestedDigits == -1) {
+            dtoaShortest(absValue, buffer);
+        } else {
+            dtoaPrecision(absValue, requestedDigits + 1, buffer);
+            assert buffer.getLength() <= requestedDigits + 1;
+
+            for (int i = buffer.getLength(); i < requestedDigits + 1; ++i) {
+                buffer.append('0');
+            }
+            assert buffer.getLength() == requestedDigits + 1;
+        }
+
+        StringBuilder resultBuilder = new StringBuilder();
+        if (sign && (value != 0.0 || !uniqueZero)) {
+            resultBuilder.append('-');
+        }
+
+        buffer.toExponentialFormat(resultBuilder);
+        return resultBuilder.toString();
+    }
 }
