@@ -51,7 +51,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -72,14 +71,14 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
+import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 
 public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
     private final JSContext context;
     @Child private PropertyGetNode getToJSONProperty;
     @Child private JSFunctionCallNode callToJSONFunction;
-    private final BranchProfile sbAppendProfile = BranchProfile.create();
+    private final StringBuilderProfile stringBuilderProfile = StringBuilderProfile.create();
 
     protected JSONStringifyStringNode(JSContext context) {
         this.context = context;
@@ -100,9 +99,9 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             if (!isStringifyable(value)) {
                 return Undefined.instance;
             }
-            DelimitedStringBuilder builder = new DelimitedStringBuilder();
+            StringBuilder builder = new StringBuilder();
             jsonStrExecute(builder, data, value);
-            return builder.toString();
+            return stringBuilderProfile.toString(builder);
         } catch (StackOverflowError ex) {
             throwStackError();
             return null;
@@ -115,12 +114,12 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private void jsonStrExecute(DelimitedStringBuilder builder, JSONData data, Object value) {
+    private void jsonStrExecute(StringBuilder builder, JSONData data, Object value) {
         assert isStringifyable(value);
         if (value == Null.instance) {
-            builder.append(Null.NAME, sbAppendProfile);
+            stringBuilderProfile.append(builder, Null.NAME);
         } else if (value instanceof Boolean) {
-            builder.append((boolean) value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME, sbAppendProfile);
+            stringBuilderProfile.append(builder, (boolean) value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME);
         } else if (JSRuntime.isString(value)) {
             jsonQuote(builder, value.toString());
         } else if (JSRuntime.isNumber(value)) {
@@ -145,10 +144,10 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private void jsonForeignObject(DelimitedStringBuilder builder, JSONData data, TruffleObject obj) {
+    private void jsonForeignObject(StringBuilder builder, JSONData data, TruffleObject obj) {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
         if (interop.isNull(obj)) {
-            builder.append(Null.NAME, sbAppendProfile);
+            stringBuilderProfile.append(builder, Null.NAME);
         } else if (interop.isBoolean(obj) || interop.isString(obj) || interop.isNumber(obj)) {
             Object unboxed = JSInteropUtil.toPrimitiveOrDefault(obj, Null.instance, interop, this);
             assert !JSGuards.isForeignObject(unboxed);
@@ -160,16 +159,16 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private void appendNumber(DelimitedStringBuilder builder, Number n) {
+    private void appendNumber(StringBuilder builder, Number n) {
         double d = JSRuntime.doubleValue(n);
         if (Double.isNaN(d) || Double.isInfinite(d)) {
-            builder.append(Null.NAME, sbAppendProfile);
+            stringBuilderProfile.append(builder, Null.NAME);
         } else if (n instanceof Integer) {
-            builder.append(((Integer) n).intValue(), sbAppendProfile);
+            stringBuilderProfile.append(builder, ((Integer) n).intValue());
         } else if (n instanceof Long) {
-            builder.append(((Long) n).longValue(), sbAppendProfile);
+            stringBuilderProfile.append(builder, ((Long) n).longValue());
         } else {
-            builder.append(JSRuntime.doubleToString(d), sbAppendProfile);
+            stringBuilderProfile.append(builder, JSRuntime.doubleToString(d));
         }
     }
 
@@ -255,7 +254,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private void jsonJO(DelimitedStringBuilder builder, JSONData data, TruffleObject value) {
+    private void jsonJO(StringBuilder builder, JSONData data, TruffleObject value) {
         checkCycle(data, value);
         data.pushStack(value);
         checkStackDepth(data);
@@ -280,7 +279,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         data.setIndent(stepback);
     }
 
-    private boolean serializeJSONObjectProperties(DelimitedStringBuilder builder, JSONData data, TruffleObject value, int indent, List<? extends Object> keys) {
+    private boolean serializeJSONObjectProperties(StringBuilder builder, JSONData data, TruffleObject value, int indent, List<? extends Object> keys) {
         boolean isFirst = true;
         boolean hasContent = false;
         for (Object key : keys) {
@@ -302,14 +301,14 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return hasContent;
     }
 
-    private void appendColon(DelimitedStringBuilder builder, JSONData data) {
-        builder.append(':', sbAppendProfile);
+    private void appendColon(StringBuilder builder, JSONData data) {
+        stringBuilderProfile.append(builder, ':');
         if (data.getGap().length() > 0) {
-            builder.append(' ', sbAppendProfile);
+            stringBuilderProfile.append(builder, ' ');
         }
     }
 
-    private boolean serializeForeignObjectProperties(DelimitedStringBuilder builder, JSONData data, TruffleObject obj, int indent) {
+    private boolean serializeForeignObjectProperties(StringBuilder builder, JSONData data, TruffleObject obj, int indent) {
         try {
             InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(obj);
             if (!objInterop.hasMembers(obj)) {
@@ -349,7 +348,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private void jsonJA(DelimitedStringBuilder builder, JSONData data, TruffleObject value) {
+    private void jsonJA(StringBuilder builder, JSONData data, TruffleObject value) {
         checkCycle(data, value);
         assert JSRuntime.isArray(value) || InteropLibrary.getFactory().getUncached().hasArrayElements(value);
         data.pushStack(value);
@@ -393,7 +392,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             if (isStringifyable(strPPrepared)) {
                 jsonStrExecute(builder, data, strPPrepared);
             } else {
-                builder.append(Null.NAME, sbAppendProfile);
+                stringBuilderProfile.append(builder, Null.NAME);
             }
         }
 
@@ -413,37 +412,37 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         throw Errors.createRangeError("cannot stringify objects nested that deep");
     }
 
-    private void concatStart(DelimitedStringBuilder builder, char c) {
-        builder.append(c, sbAppendProfile);
+    private void concatStart(StringBuilder builder, char c) {
+        stringBuilderProfile.append(builder, c);
     }
 
-    private void concatFirstStep(DelimitedStringBuilder builder, JSONData data) {
+    private void concatFirstStep(StringBuilder builder, JSONData data) {
         if (data.getGap().length() > 0) {
-            builder.append('\n', sbAppendProfile);
+            stringBuilderProfile.append(builder, '\n');
             for (int i = 0; i < data.getIndent(); i++) {
-                builder.append(data.getGap(), sbAppendProfile);
+                stringBuilderProfile.append(builder, data.getGap());
             }
         }
     }
 
-    private void concatEnd(DelimitedStringBuilder builder, JSONData data, int stepback, char close, boolean hasContent) {
+    private void concatEnd(StringBuilder builder, JSONData data, int stepback, char close, boolean hasContent) {
         if (data.getGap().length() > 0 && hasContent) {
-            builder.append('\n', sbAppendProfile);
+            stringBuilderProfile.append(builder, '\n');
             for (int i = 0; i < stepback; i++) {
-                builder.append(data.getGap(), sbAppendProfile);
+                stringBuilderProfile.append(builder, data.getGap());
             }
         }
-        builder.append(close, sbAppendProfile);
+        stringBuilderProfile.append(builder, close);
     }
 
     @TruffleBoundary
-    private void appendSeparator(DelimitedStringBuilder builder, JSONData data, int indent) {
+    private void appendSeparator(StringBuilder builder, JSONData data, int indent) {
         if (data.getGap().length() <= 0) {
-            builder.append(',', sbAppendProfile);
+            stringBuilderProfile.append(builder, ',');
         } else {
-            builder.append(",\n", sbAppendProfile);
+            stringBuilderProfile.append(builder, ",\n");
             for (int i = 0; i < indent; i++) {
-                builder.append(data.getGap(), sbAppendProfile);
+                stringBuilderProfile.append(builder, data.getGap());
             }
         }
     }
@@ -454,36 +453,36 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private void jsonQuote(DelimitedStringBuilder builder, String value) {
-        builder.append('"', sbAppendProfile);
+    private void jsonQuote(StringBuilder builder, String value) {
+        stringBuilderProfile.append(builder, '"');
         for (int i = 0; i < value.length();) {
             char ch = value.charAt(i);
             if (ch < ' ') {
                 if (ch == '\b') {
-                    builder.append("\\b", sbAppendProfile);
+                    stringBuilderProfile.append(builder, "\\b");
                 } else if (ch == '\f') {
-                    builder.append("\\f", sbAppendProfile);
+                    stringBuilderProfile.append(builder, "\\f");
                 } else if (ch == '\n') {
-                    builder.append("\\n", sbAppendProfile);
+                    stringBuilderProfile.append(builder, "\\n");
                 } else if (ch == '\r') {
-                    builder.append("\\r", sbAppendProfile);
+                    stringBuilderProfile.append(builder, "\\r");
                 } else if (ch == '\t') {
-                    builder.append("\\t", sbAppendProfile);
+                    stringBuilderProfile.append(builder, "\\t");
                 } else {
                     jsonQuoteUnicode(builder, ch);
                 }
             } else {
                 if (ch == '\\') {
-                    builder.append("\\\\", sbAppendProfile);
+                    stringBuilderProfile.append(builder, "\\\\");
                 } else if (ch == '"') {
-                    builder.append("\\\"", sbAppendProfile);
+                    stringBuilderProfile.append(builder, "\\\"");
                 } else if (Character.isSurrogate(ch)) {
                     if (Character.isHighSurrogate(ch)) {
                         char nextCh;
                         if (i + 1 < value.length() && (Character.isLowSurrogate(nextCh = value.charAt(i + 1)))) {
                             // paired surrogates
-                            builder.append(ch, sbAppendProfile);
-                            builder.append(nextCh, sbAppendProfile);
+                            stringBuilderProfile.append(builder, ch);
+                            stringBuilderProfile.append(builder, nextCh);
                             i++;
                         } else {
                             // unpaired high surrogate
@@ -494,25 +493,25 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                         jsonQuoteSurrogate(builder, ch);
                     }
                 } else {
-                    builder.append(ch, sbAppendProfile);
+                    stringBuilderProfile.append(builder, ch);
                 }
             }
             i++;
         }
-        builder.append('"', sbAppendProfile);
+        stringBuilderProfile.append(builder, '"');
     }
 
-    private void jsonQuoteUnicode(DelimitedStringBuilder builder, char c) {
-        builder.append("\\u00", sbAppendProfile);
-        builder.append(Character.forDigit((c >> 4) & 0xF, 16), sbAppendProfile);
-        builder.append(Character.forDigit(c & 0xF, 16), sbAppendProfile);
+    private void jsonQuoteUnicode(StringBuilder builder, char c) {
+        stringBuilderProfile.append(builder, "\\u00");
+        stringBuilderProfile.append(builder, Character.forDigit((c >> 4) & 0xF, 16));
+        stringBuilderProfile.append(builder, Character.forDigit(c & 0xF, 16));
     }
 
-    private void jsonQuoteSurrogate(DelimitedStringBuilder builder, char c) {
-        builder.append("\\ud", sbAppendProfile);
-        builder.append(Character.forDigit((c >> 8) & 0xF, 16), sbAppendProfile);
-        builder.append(Character.forDigit((c >> 4) & 0xF, 16), sbAppendProfile);
-        builder.append(Character.forDigit(c & 0xF, 16), sbAppendProfile);
+    private void jsonQuoteSurrogate(StringBuilder builder, char c) {
+        stringBuilderProfile.append(builder, "\\ud");
+        stringBuilderProfile.append(builder, Character.forDigit((c >> 8) & 0xF, 16));
+        stringBuilderProfile.append(builder, Character.forDigit((c >> 4) & 0xF, 16));
+        stringBuilderProfile.append(builder, Character.forDigit(c & 0xF, 16));
     }
 
     private Object truffleGetSize(TruffleObject obj) {

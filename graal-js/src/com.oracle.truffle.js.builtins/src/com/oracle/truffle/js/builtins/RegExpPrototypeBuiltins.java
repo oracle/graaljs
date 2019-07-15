@@ -105,8 +105,8 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
 
@@ -916,7 +916,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile validPositionProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasNamedCaptureGroupsProfile = ConditionProfile.createBinaryProfile();
         private final BranchProfile dollarProfile = BranchProfile.create();
-        final BranchProfile sbAppendProfile = BranchProfile.create();
+        final StringBuilderProfile stringBuilderProfile = StringBuilderProfile.create();
         final BranchProfile invalidGroupNumberProfile = BranchProfile.create();
         private final ValueProfile compiledRegexProfile = ValueProfile.createIdentityProfile();
         private final BranchProfile growProfile = BranchProfile.create();
@@ -1003,7 +1003,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             boolean unicode = unicodeProfile.profile(flagsAccessor.unicode(tRegexFlags));
             boolean sticky = stickyProfile.profile(flagsAccessor.sticky(tRegexFlags));
             int length = s.length();
-            DelimitedStringBuilder accumulatedResult = new DelimitedStringBuilder(length + 16);
+            StringBuilder accumulatedResult = stringBuilderProfile.newStringBuilder(length + 16);
             int lastMatchEnd = 0;
             int matchStart = -1;
             int lastIndex = sticky ? (int) toLength(getLastIndex(rx)) : 0;
@@ -1025,7 +1025,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 matchStart = resultAccessor.captureGroupStart(tRegexResult, 0);
                 int matchEnd = resultAccessor.captureGroupEnd(tRegexResult, 0);
                 assert matchStart >= 0 && matchStart <= length && matchStart >= lastMatchEnd;
-                accumulatedResult.append(s, lastMatchEnd, matchStart, sbAppendProfile);
+                stringBuilderProfile.append(accumulatedResult, s, lastMatchEnd, matchStart);
                 boolean namedCG = hasNamedCaptureGroupsProfile.profile(!getNamedCaptureGroupsAccessor().isNull(compiledRegexAccessor.namedCaptureGroups(tRegexCompiledRegex)));
                 if (parsedWithNamedCG == null) {
                     ReplaceStringParser.process(replaceString, compiledRegexAccessor.groupCount(tRegexCompiledRegex), namedCG, dollarProfile,
@@ -1052,14 +1052,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 setLastIndex(rx, sticky ? lastMatchEnd : 0);
             }
             if (lastMatchEnd < length) {
-                accumulatedResult.append(s, lastMatchEnd, length, sbAppendProfile);
+                stringBuilderProfile.append(accumulatedResult, s, lastMatchEnd, length);
             }
-            return accumulatedResult.toString();
+            return stringBuilderProfile.toString(accumulatedResult);
         }
 
         private static final class ReplaceStringConsumerTRegex implements ReplaceStringParser.Consumer<JSRegExpReplaceNode> {
 
-            private final DelimitedStringBuilder sb;
+            private final StringBuilder sb;
             private final String input;
             private final String replaceStr;
             private final int startPos;
@@ -1067,7 +1067,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             private final Object tRegexResult;
             private final Object tRegexCompiledRegex;
 
-            private ReplaceStringConsumerTRegex(DelimitedStringBuilder sb, String input, String replaceStr, int startPos, int endPos, Object tRegexResult, Object tRegexCompiledRegex) {
+            private ReplaceStringConsumerTRegex(StringBuilder sb, String input, String replaceStr, int startPos, int endPos, Object tRegexResult, Object tRegexCompiledRegex) {
                 this.sb = sb;
                 this.input = input;
                 this.replaceStr = replaceStr;
@@ -1079,43 +1079,43 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             @Override
             public void literal(JSRegExpReplaceNode node, int start, int end) {
-                sb.append(replaceStr, start, end, node.sbAppendProfile);
+                node.stringBuilderProfile.append(sb, replaceStr, start, end);
             }
 
             @Override
             public void match(JSRegExpReplaceNode node) {
-                sb.append(input, startPos, endPos, node.sbAppendProfile);
+                node.stringBuilderProfile.append(sb, input, startPos, endPos);
             }
 
             @Override
             public void matchHead(JSRegExpReplaceNode node) {
-                sb.append(input, 0, startPos, node.sbAppendProfile);
+                node.stringBuilderProfile.append(sb, input, 0, startPos);
             }
 
             @Override
             public void matchTail(JSRegExpReplaceNode node) {
-                sb.append(input, endPos, input.length(), node.sbAppendProfile);
+                node.stringBuilderProfile.append(sb, input, endPos, input.length());
             }
 
             @Override
             public void captureGroup(JSRegExpReplaceNode node, int groupNumber, int literalStart, int literalEnd) {
                 TRegexResultAccessor resultAccessor = node.resultAccessor;
-                BranchProfile sbAppendProfile = node.sbAppendProfile;
+                StringBuilderProfile stringBuilderProfile = node.stringBuilderProfile;
                 int groupCount = node.compiledRegexAccessor.groupCount(tRegexCompiledRegex);
                 if (groupNumber < groupCount) {
                     int start = resultAccessor.captureGroupStart(tRegexResult, groupNumber);
                     if (start >= 0) {
-                        sb.append(input, start, resultAccessor.captureGroupEnd(tRegexResult, groupNumber), sbAppendProfile);
+                        stringBuilderProfile.append(sb, input, start, resultAccessor.captureGroupEnd(tRegexResult, groupNumber));
                     }
                 } else if (groupNumber > 9 && groupNumber / 10 < groupCount) {
                     int start = resultAccessor.captureGroupStart(tRegexResult, groupNumber / 10);
                     if (start >= 0) {
-                        sb.append(input, start, resultAccessor.captureGroupEnd(tRegexResult, groupNumber / 10), sbAppendProfile);
+                        stringBuilderProfile.append(sb, input, start, resultAccessor.captureGroupEnd(tRegexResult, groupNumber / 10));
                     }
-                    sb.append(replaceStr, literalStart + 2, literalEnd, sbAppendProfile);
+                    stringBuilderProfile.append(sb, replaceStr, literalStart + 2, literalEnd);
                 } else {
                     node.invalidGroupNumberProfile.enter();
-                    sb.append(replaceStr, literalStart, literalEnd, sbAppendProfile);
+                    stringBuilderProfile.append(sb, replaceStr, literalStart, literalEnd);
                 }
             }
 
@@ -1126,7 +1126,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     int groupNumber = node.getNamedCaptureGroupsAccessor().getGroupNumber(map, groupName);
                     int start = node.resultAccessor.captureGroupStart(tRegexResult, groupNumber);
                     if (start >= 0) {
-                        sb.append(input, start, node.resultAccessor.captureGroupEnd(tRegexResult, groupNumber), node.sbAppendProfile);
+                        node.stringBuilderProfile.append(sb, input, start, node.resultAccessor.captureGroupEnd(tRegexResult, groupNumber));
                     }
                 }
             }
@@ -1151,7 +1151,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 results = new SimpleArrayList<>();
             }
             int length = s.length();
-            DelimitedStringBuilder accumulatedResult = new DelimitedStringBuilder(length + 16);
+            StringBuilder accumulatedResult = stringBuilderProfile.newStringBuilder(length + 16);
             int nextSourcePosition = 0;
             int matchLength = -1;
             while (true) {
@@ -1187,9 +1187,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
             }
             if (nextSourcePosition < length) {
-                accumulatedResult.append(s, nextSourcePosition, length, sbAppendProfile);
+                stringBuilderProfile.append(accumulatedResult, s, nextSourcePosition, length);
             }
-            return accumulatedResult.toString();
+            return stringBuilderProfile.toString(accumulatedResult);
         }
 
         private int processNonLazy(DynamicObject result) {
@@ -1209,10 +1209,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return hasLazyRegexResultNode.executeHasHiddenKey(result);
         }
 
-        private int processResult(DelimitedStringBuilder accumulatedResult, DynamicObject result, String s, String replaceString, int nextSourcePosition, int matchLength) {
+        private int processResult(StringBuilder accumulatedResult, DynamicObject result, String s, String replaceString, int nextSourcePosition, int matchLength) {
             int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), s.length()), 0);
             if (validPositionProfile.profile(position >= nextSourcePosition)) {
-                accumulatedResult.append(s, nextSourcePosition, position, sbAppendProfile);
+                stringBuilderProfile.append(accumulatedResult, s, nextSourcePosition, position);
                 Object namedCaptures = getGroups(result);
                 if (namedCaptures != Undefined.instance) {
                     namedCaptures = toObject(namedCaptures);
@@ -1224,7 +1224,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return nextSourcePosition;
         }
 
-        private int processResultFunctional(DelimitedStringBuilder accumulatedResult, DynamicObject result, String s, DynamicObject replaceFunction, int nextSourcePosition) {
+        private int processResultFunctional(StringBuilder accumulatedResult, DynamicObject result, String s, DynamicObject replaceFunction, int nextSourcePosition) {
             int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), s.length()), 0);
             int resultsLength = (int) toLength(getLength(result));
             Object namedCaptures = getGroups(result);
@@ -1242,8 +1242,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object callResult = callFunction(arguments);
             String replacement = toString2(callResult);
             if (validPositionProfile.profile(position >= nextSourcePosition)) {
-                accumulatedResult.append(s, nextSourcePosition, position, sbAppendProfile);
-                accumulatedResult.append(replacement, sbAppendProfile);
+                stringBuilderProfile.append(accumulatedResult, s, nextSourcePosition, position);
+                stringBuilderProfile.append(accumulatedResult, replacement);
                 if (lazyResultArrayProfile.profile(isLazyResultArray(result))) {
                     return position + getLazyLength(result);
                 } else {
@@ -1255,7 +1255,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private static final class ReplaceStringConsumer implements ReplaceStringParser.Consumer<JSRegExpReplaceNode> {
 
-            private final DelimitedStringBuilder sb;
+            private final StringBuilder sb;
             private final String input;
             private final String replaceStr;
             private final int startPos;
@@ -1263,7 +1263,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             private final DynamicObject result;
             private final DynamicObject namedCaptures;
 
-            private ReplaceStringConsumer(DelimitedStringBuilder sb, String input, String replaceStr, int startPos, int endPos, DynamicObject result, DynamicObject namedCaptures) {
+            private ReplaceStringConsumer(StringBuilder sb, String input, String replaceStr, int startPos, int endPos, DynamicObject result, DynamicObject namedCaptures) {
                 this.sb = sb;
                 this.input = input;
                 this.replaceStr = replaceStr;
@@ -1275,29 +1275,29 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             @Override
             public void literal(JSRegExpReplaceNode node, int start, int end) {
-                sb.append(replaceStr, start, end, node.sbAppendProfile);
+                node.stringBuilderProfile.append(sb, replaceStr, start, end);
             }
 
             @Override
             public void match(JSRegExpReplaceNode node) {
-                sb.append((String) node.read(result, 0), node.sbAppendProfile);
+                node.stringBuilderProfile.append(sb, (String) node.read(result, 0));
             }
 
             @Override
             public void matchHead(JSRegExpReplaceNode node) {
-                sb.append(input, 0, startPos, node.sbAppendProfile);
+                node.stringBuilderProfile.append(sb, input, 0, startPos);
             }
 
             @Override
             public void matchTail(JSRegExpReplaceNode node) {
-                sb.append(input, endPos, input.length(), node.sbAppendProfile);
+                node.stringBuilderProfile.append(sb, input, endPos, input.length());
             }
 
             @Override
             public void captureGroup(JSRegExpReplaceNode node, int groupNumber, int literalStart, int literalEnd) {
                 Object capture = node.read(result, groupNumber);
                 if (capture != Undefined.instance) {
-                    sb.append((String) capture, node.sbAppendProfile);
+                    node.stringBuilderProfile.append(sb, (String) capture);
                 }
             }
 
@@ -1305,7 +1305,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             public void namedCaptureGroup(JSRegExpReplaceNode node, String groupName) {
                 Object namedCapture = node.readNamedCaptureGroup(namedCaptures, groupName);
                 if (namedCapture != Undefined.instance) {
-                    sb.append(node.toString4(namedCapture), node.sbAppendProfile);
+                    node.stringBuilderProfile.append(sb, node.toString4(namedCapture));
                 }
             }
         }

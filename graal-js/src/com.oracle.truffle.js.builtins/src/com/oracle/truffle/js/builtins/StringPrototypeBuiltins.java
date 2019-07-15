@@ -133,9 +133,9 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 /**
@@ -1088,7 +1088,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringConcatNode extends JSStringOperation {
 
-        private final BranchProfile sbAppendProfile = BranchProfile.create();
+        private final StringBuilderProfile stringBuilderProfile = StringBuilderProfile.create();
 
         public JSStringConcatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1098,12 +1098,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected String concat(Object thisObj, Object[] args,
                         @Cached("create()") JSToStringNode toString2Node) {
             requireObjectCoercible(thisObj);
-            DelimitedStringBuilder builder = new DelimitedStringBuilder();
-            builder.append(toString(thisObj), sbAppendProfile);
+            StringBuilder builder = stringBuilderProfile.newStringBuilder();
+            stringBuilderProfile.append(builder, toString(thisObj));
             for (Object o : args) {
-                builder.append(toString2Node.executeString(o), sbAppendProfile);
+                stringBuilderProfile.append(builder, toString2Node.executeString(o));
             }
-            return builder.toString();
+            return stringBuilderProfile.toString(builder);
         }
     }
 
