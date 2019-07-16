@@ -197,7 +197,8 @@ public class JSRealm {
     private final DynamicObject segmenterPrototype;
     private final DynamicObject dateConstructor;
     private final DynamicObject datePrototype;
-    @CompilationFinal(dimensions = 1) private final DynamicObject[] errorConstructorsAndPrototypes;
+    @CompilationFinal(dimensions = 1) private final DynamicObject[] errorConstructors;
+    @CompilationFinal(dimensions = 1) private final DynamicObject[] errorPrototypes;
     private final DynamicObject callSiteConstructor;
     private final DynamicObject callSitePrototype;
 
@@ -230,7 +231,8 @@ public class JSRealm {
     private final DynamicObject sharedArrayBufferConstructor;
     private final DynamicObject sharedArrayBufferPrototype;
 
-    @CompilationFinal(dimensions = 1) private final DynamicObject[] typedArrayConstructorsAndPrototypes;
+    @CompilationFinal(dimensions = 1) private final DynamicObject[] typedArrayConstructors;
+    @CompilationFinal(dimensions = 1) private final DynamicObject[] typedArrayPrototypes;
     private final DynamicObject dataViewConstructor;
     private final DynamicObject dataViewPrototype;
     private final DynamicObject jsAdapterConstructor;
@@ -433,7 +435,8 @@ public class JSRealm {
             this.promisePrototype = null;
         }
 
-        this.errorConstructorsAndPrototypes = new DynamicObject[JSErrorType.errorTypes().length * 2];
+        this.errorConstructors = new DynamicObject[JSErrorType.errorTypes().length];
+        this.errorPrototypes = new DynamicObject[JSErrorType.errorTypes().length];
         initializeErrorConstructors();
         ctor = JSError.createCallSiteConstructor(this);
         this.callSiteConstructor = ctor.getFunctionObject();
@@ -442,7 +445,8 @@ public class JSRealm {
         ctor = JSArrayBuffer.createConstructor(this);
         this.arrayBufferConstructor = ctor.getFunctionObject();
         this.arrayBufferPrototype = ctor.getPrototype();
-        this.typedArrayConstructorsAndPrototypes = new DynamicObject[TypedArray.factories(context).length * 2];
+        this.typedArrayConstructors = new DynamicObject[TypedArray.factories(context).length];
+        this.typedArrayPrototypes = new DynamicObject[TypedArray.factories(context).length];
         initializeTypedArrayConstructors();
         ctor = JSDataView.createConstructor(this);
         this.dataViewConstructor = ctor.getFunctionObject();
@@ -565,8 +569,8 @@ public class JSRealm {
 
         for (TypedArrayFactory factory : TypedArray.factories(context)) {
             JSConstructor constructor = JSArrayBufferView.createConstructor(this, factory, taConst);
-            typedArrayConstructorsAndPrototypes[factory.getFactoryIndex() * 2] = constructor.getFunctionObject();
-            typedArrayConstructorsAndPrototypes[factory.getFactoryIndex() * 2 + 1] = constructor.getPrototype();
+            typedArrayConstructors[factory.getFactoryIndex()] = constructor.getFunctionObject();
+            typedArrayPrototypes[factory.getFactoryIndex()] = constructor.getPrototype();
         }
     }
 
@@ -585,8 +589,8 @@ public class JSRealm {
     private void initializeErrorConstructors() {
         for (JSErrorType type : JSErrorType.errorTypes()) {
             JSConstructor errorConstructor = JSError.createErrorConstructor(this, type);
-            errorConstructorsAndPrototypes[type.ordinal() * 2] = errorConstructor.getFunctionObject();
-            errorConstructorsAndPrototypes[type.ordinal() * 2 + 1] = errorConstructor.getPrototype();
+            errorConstructors[type.ordinal()] = errorConstructor.getFunctionObject();
+            errorPrototypes[type.ordinal()] = errorConstructor.getPrototype();
         }
     }
 
@@ -609,11 +613,11 @@ public class JSRealm {
     }
 
     public final DynamicObject getErrorConstructor(JSErrorType type) {
-        return errorConstructorsAndPrototypes[type.ordinal() * 2];
+        return errorConstructors[type.ordinal()];
     }
 
     public final DynamicObject getErrorPrototype(JSErrorType type) {
-        return errorConstructorsAndPrototypes[type.ordinal() * 2 + 1];
+        return errorPrototypes[type.ordinal()];
     }
 
     public final DynamicObject getGlobalObject() {
@@ -819,11 +823,11 @@ public class JSRealm {
     }
 
     public final DynamicObject getArrayBufferViewConstructor(TypedArrayFactory factory) {
-        return typedArrayConstructorsAndPrototypes[factory.getFactoryIndex() * 2];
+        return typedArrayConstructors[factory.getFactoryIndex()];
     }
 
     public final DynamicObject getArrayBufferViewPrototype(TypedArrayFactory factory) {
-        return typedArrayConstructorsAndPrototypes[factory.getFactoryIndex() * 2 + 1];
+        return typedArrayPrototypes[factory.getFactoryIndex()];
     }
 
     public final DynamicObject getDataViewConstructor() {
