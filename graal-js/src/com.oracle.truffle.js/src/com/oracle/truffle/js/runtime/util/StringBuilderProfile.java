@@ -40,75 +40,89 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import com.oracle.truffle.api.nodes.NodeCloneable;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
- * A special implementation (wrapper) of a StringBuilder. Provides some additional support required
- * for Truffle/JS, e.g. checking the string length (and throwing a RangeError), and TruffleBoundary
- * annotations.
+ * A wrapper around StringBuilder methods that takes care of profiling and checking that the string
+ * length does not exceed the allowed limit.
  */
-public final class DelimitedStringBuilder {
+public final class StringBuilderProfile extends NodeCloneable {
+    private static final int MAX_INT_STRING_LENGTH = 11;
+    private static final int MAX_LONG_STRING_LENGTH = 20;
 
-    private final StringBuilder builder;
+    private final int stringLengthLimit;
+    private final BranchProfile errorBranch;
 
-    public DelimitedStringBuilder() {
-        this.builder = new StringBuilder();
+    private StringBuilderProfile() {
+        this.stringLengthLimit = JSTruffleOptions.StringLengthLimit;
+        this.errorBranch = BranchProfile.create();
     }
 
-    public DelimitedStringBuilder(int capacity) {
-        this.builder = new StringBuilder(Math.max(16, Math.min(capacity, JSTruffleOptions.StringLengthLimit)));
+    public static StringBuilderProfile create() {
+        return new StringBuilderProfile();
     }
 
-    @Override
-    public String toString() {
+    @SuppressWarnings("static-method")
+    public StringBuilder newStringBuilder() {
+        return new StringBuilder();
+    }
+
+    public StringBuilder newStringBuilder(int capacity) {
+        return new StringBuilder(Math.max(16, Math.min(capacity, stringLengthLimit)));
+    }
+
+    @SuppressWarnings("static-method")
+    public String toString(StringBuilder builder) {
         return Boundaries.builderToString(builder);
     }
 
-    public void append(String str, BranchProfile profile) {
-        if ((builder.length() + str.length()) > JSTruffleOptions.StringLengthLimit) {
-            profile.enter();
+    public void append(StringBuilder builder, String str) {
+        if ((builder.length() + str.length()) > stringLengthLimit) {
+            errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
         Boundaries.builderAppend(builder, str);
     }
 
-    public void append(char c, BranchProfile profile) {
-        if (builder.length() > JSTruffleOptions.StringLengthLimit) {
-            profile.enter();
+    public void append(StringBuilder builder, char c) {
+        if (builder.length() + 1 > stringLengthLimit) {
+            errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
         Boundaries.builderAppend(builder, c);
     }
 
-    public void append(int intValue, BranchProfile profile) {
-        if (builder.length() > JSTruffleOptions.StringLengthLimit) {
-            profile.enter();
+    public void append(StringBuilder builder, int intValue) {
+        if (builder.length() + MAX_INT_STRING_LENGTH > stringLengthLimit) {
+            errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
         Boundaries.builderAppend(builder, intValue);
     }
 
-    public void append(long longValue, BranchProfile profile) {
-        if (builder.length() > JSTruffleOptions.StringLengthLimit) {
-            profile.enter();
+    public void append(StringBuilder builder, long longValue) {
+        if (builder.length() + MAX_LONG_STRING_LENGTH > stringLengthLimit) {
+            errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
         Boundaries.builderAppend(builder, longValue);
     }
 
-    public void append(String charSequence, int start, int end, BranchProfile profile) {
+    public void append(StringBuilder builder, String charSequence, int start, int end) {
         assert start <= end;
-        if (builder.length() + (end - start) > JSTruffleOptions.StringLengthLimit) {
-            profile.enter();
+        if (builder.length() + (end - start) > stringLengthLimit) {
+            errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
         Boundaries.builderAppend(builder, charSequence, start, end);
     }
 
-    public int length() {
-        return builder.length();
+    @Override
+    protected Object clone() {
+        return new StringBuilderProfile();
     }
 }

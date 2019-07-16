@@ -384,6 +384,6 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getJSAdapterConstructor().getPrototype();
+        return realm.getJSAdapterPrototype();
     }
 }

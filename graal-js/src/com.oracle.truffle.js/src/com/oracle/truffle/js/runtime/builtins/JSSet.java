@@ -209,6 +209,6 @@ public final class JSSet extends JSBuiltinObject implements JSConstructorFactory
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getSetConstructor().getPrototype();
+        return realm.getSetPrototype();
     }
 }

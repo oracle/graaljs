@@ -727,6 +727,6 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getDateTimeFormatConstructor().getPrototype();
+        return realm.getDateTimeFormatPrototype();
     }
 }

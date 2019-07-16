@@ -240,7 +240,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getRelativeTimeFormatConstructor().getPrototype();
+        return realm.getRelativeTimeFormatPrototype();
     }
 
     private static volatile Map<String, RelativeDateTimeFormatter.RelativeDateTimeUnit> timeUnitMap;

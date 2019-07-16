@@ -81,6 +81,12 @@ public enum JSErrorType implements PrototypeSupplier {
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getErrorConstructor(this).getPrototype();
+        return realm.getErrorPrototype(this);
     }
+
+    public static JSErrorType[] errorTypes() {
+        return VALUES;
+    }
+
+    private static final JSErrorType[] VALUES = JSErrorType.values();
 }

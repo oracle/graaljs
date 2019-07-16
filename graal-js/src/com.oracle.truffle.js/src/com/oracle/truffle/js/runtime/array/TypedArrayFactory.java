@@ -229,7 +229,7 @@ public enum TypedArrayFactory implements PrototypeSupplier {
 
     @Override
     public final DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getArrayBufferViewConstructor(this).getPrototype();
+        return realm.getArrayBufferViewPrototype(this);
     }
 
     static final TypedArrayFactory[] FACTORIES = TypedArrayFactory.values();

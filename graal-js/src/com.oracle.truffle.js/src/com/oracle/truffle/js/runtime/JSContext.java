@@ -329,9 +329,9 @@ public class JSContext {
     private final JSFunctionFactory boundFunctionFactoryAnonymous;
 
     static final CompilableFunction<JSRealm, DynamicObject> functionPrototypeSupplier = JSRealm::getFunctionPrototype;
-    static final CompilableFunction<JSRealm, DynamicObject> asyncFunctionPrototypeSupplier = r -> r.getAsyncFunctionConstructor().getPrototype();
-    static final CompilableFunction<JSRealm, DynamicObject> generatorFunctionPrototypeSupplier = r -> r.getGeneratorFunctionConstructor().getPrototype();
-    static final CompilableFunction<JSRealm, DynamicObject> asyncGeneratorFunctionPrototypeSupplier = r -> r.getAsyncGeneratorFunctionConstructor().getPrototype();
+    static final CompilableFunction<JSRealm, DynamicObject> asyncFunctionPrototypeSupplier = JSRealm::getAsyncFunctionPrototype;
+    static final CompilableFunction<JSRealm, DynamicObject> generatorFunctionPrototypeSupplier = JSRealm::getGeneratorFunctionPrototype;
+    static final CompilableFunction<JSRealm, DynamicObject> asyncGeneratorFunctionPrototypeSupplier = JSRealm::getAsyncGeneratorFunctionPrototype;
 
     private final JSObjectFactory ordinaryObjectFactory;
     private final JSObjectFactory arrayFactory;
@@ -492,14 +492,13 @@ public class JSContext {
             typedArrayFactories[factory.getFactoryIndex()] = builder.create(factory, (c, p) -> JSArrayBufferView.makeInitialArrayBufferViewShape(c, p, false));
         }
 
-        JSErrorType[] errorTypes = JSErrorType.values();
-        this.errorObjectFactories = new JSObjectFactory[errorTypes.length];
-        this.errorWithMessageObjectFactories = new JSObjectFactory[errorTypes.length];
-        for (JSErrorType type : errorTypes) {
+        this.errorObjectFactories = new JSObjectFactory[JSErrorType.errorTypes().length];
+        this.errorWithMessageObjectFactories = new JSObjectFactory[JSErrorType.errorTypes().length];
+        for (JSErrorType type : JSErrorType.errorTypes()) {
             errorObjectFactories[type.ordinal()] = builder.create(type, JSError.INSTANCE::makeInitialShape);
             errorWithMessageObjectFactories[type.ordinal()] = builder.create(type, (c, p) -> JSError.addMessagePropertyToShape(JSError.INSTANCE.makeInitialShape(c, p)));
         }
-        this.callSiteFactory = builder.create(r -> r.getCallSiteConstructor().getPrototype(), JSError::makeInitialCallSiteShape);
+        this.callSiteFactory = builder.create(JSRealm::getCallSitePrototype, JSError::makeInitialCallSiteShape);
         this.nonStrictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialNonStrictArgumentsShape);
         this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialStrictArgumentsShape);
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);

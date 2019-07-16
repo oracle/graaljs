@@ -852,6 +852,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getProxyConstructor().getPrototype();
+        return realm.getProxyPrototype();
     }
 }

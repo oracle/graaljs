@@ -163,7 +163,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
-import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -172,9 +171,9 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.util.DelimitedStringBuilder;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 
 /**
  * Contains builtins for {@linkplain JSArray}.prototype.
@@ -492,7 +491,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         JSRealm ctorRealm = JSFunction.getRealm(ctorObj);
                         if (thisRealm != ctorRealm) {
                             differentRealm.enter();
-                            if (ctorRealm.getArrayConstructor().getFunctionObject() == ctor) {
+                            if (ctorRealm.getArrayConstructor() == ctor) {
                                 /*
                                  * If originalArray was created using the standard built-in Array
                                  * constructor for a realm that is not the realm of the running
@@ -541,8 +540,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final DynamicObject getDefaultConstructor(DynamicObject thisObj) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             TypedArray arrayType = JSArrayBufferView.typedArrayGetArrayType(thisObj);
-            JSConstructor constr = context.getRealm().getArrayBufferViewConstructor(arrayType.getFactory());
-            return constr.getFunctionObject();
+            return context.getRealm().getArrayBufferViewConstructor(arrayType.getFactory());
         }
 
         /**
@@ -1511,7 +1509,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final ConditionProfile isTwo = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isSparse = ConditionProfile.createBinaryProfile();
         private final BranchProfile growProfile = BranchProfile.create();
-        private final BranchProfile sbAppendProfile = BranchProfile.create();
+        private final StringBuilderProfile stringBuilderProfile = StringBuilderProfile.create();
 
         public JSArrayJoinNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
@@ -1573,14 +1571,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private String joinLoop(final TruffleObject thisJSObject, final long length, final String joinSeparator, final boolean appendSep) {
-            final DelimitedStringBuilder res = new DelimitedStringBuilder();
+            final StringBuilder res = stringBuilderProfile.newStringBuilder();
             long i = 0;
             while (i < length) {
                 if (appendSep && i != 0) {
-                    res.append(joinSeparator, sbAppendProfile);
+                    stringBuilderProfile.append(res, joinSeparator);
                 }
                 Object value = read(thisJSObject, i);
-                res.append(toStringOrEmpty(thisJSObject, value), sbAppendProfile);
+                String str = toStringOrEmpty(thisJSObject, value);
+                stringBuilderProfile.append(res, str);
 
                 if (appendSep) {
                     i++;
@@ -1588,7 +1587,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     i = nextElementIndex(thisJSObject, i, length);
                 }
             }
-            return res.toString();
+            return stringBuilderProfile.toString(res);
         }
 
         private String toStringOrEmpty(final TruffleObject thisObject, Object value) {
@@ -1629,32 +1628,32 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             assert calculatedLength <= Integer.MAX_VALUE;
-            final DelimitedStringBuilder res = new DelimitedStringBuilder((int) calculatedLength);
+            final StringBuilder res = stringBuilderProfile.newStringBuilder((int) calculatedLength);
             long lastIndex = 0;
             for (int j = 0; j < converted.size(); j += 2) {
                 long index = (long) converted.get(j);
                 String value = (String) converted.get(j + 1);
                 if (appendSep) {
                     for (long k = lastIndex; k < index; k++) {
-                        res.append(joinSeparator, sbAppendProfile);
+                        stringBuilderProfile.append(res, joinSeparator);
                     }
                 }
-                res.append(value, sbAppendProfile);
+                stringBuilderProfile.append(res, value);
                 lastIndex = index;
             }
             if (appendSep) {
                 for (long k = lastIndex; k < length - 1; k++) {
-                    res.append(joinSeparator, sbAppendProfile);
+                    stringBuilderProfile.append(res, joinSeparator);
                 }
             }
             assert res.length() == calculatedLength;
-            return res.toString();
+            return stringBuilderProfile.toString(res);
         }
     }
 
     public abstract static class JSArrayToLocaleStringNode extends JSArrayOperation {
 
-        private final BranchProfile sbAppendProfile = BranchProfile.create();
+        private final StringBuilderProfile stringBuilderProfile = StringBuilderProfile.create();
         @Child private PropertyGetNode getToLocaleStringNode;
         @Child private JSFunctionCallNode callToLocaleStringNode;
 
@@ -1672,20 +1671,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
             long k = 0;
-            DelimitedStringBuilder r = new DelimitedStringBuilder();
+            StringBuilder r = stringBuilderProfile.newStringBuilder();
             while (k < len) {
                 if (k > 0) {
-                    r.append(',', sbAppendProfile);
+                    stringBuilderProfile.append(r, ',');
                 }
                 Object nextElement = read(arrayObj, k);
                 if (nextElement != Null.instance && nextElement != Undefined.instance) {
                     Object result = callToLocaleString(nextElement, userArguments);
-                    String executeString = toStringNode.executeString(result);
-                    r.append(executeString, sbAppendProfile);
+                    String resultString = toStringNode.executeString(result);
+                    stringBuilderProfile.append(r, resultString);
                 }
                 k++;
             }
-            return r.toString();
+            return stringBuilderProfile.toString(r);
         }
 
         private Object callToLocaleString(Object nextElement, Object[] userArguments) {
@@ -1781,7 +1780,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private boolean mustUseElementwise(DynamicObject obj, ScriptArray array) {
-            return array instanceof SparseArray || array.isLengthNotWritable() || getPrototypeNode.executeJSObject(obj) != getContext().getRealm().getArrayConstructor().getPrototype() ||
+            return array instanceof SparseArray || array.isLengthNotWritable() || getPrototypeNode.executeJSObject(obj) != getContext().getRealm().getArrayPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() || (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
         }
 

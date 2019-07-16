@@ -188,6 +188,6 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getPluralRulesConstructor().getPrototype();
+        return realm.getPluralRulesPrototype();
     }
 }

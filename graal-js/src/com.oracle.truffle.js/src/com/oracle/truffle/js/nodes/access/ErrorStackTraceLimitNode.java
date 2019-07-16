@@ -68,7 +68,7 @@ public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
     @Specialization
     public int doInt(VirtualFrame frame) {
         JSRealm realm = realmNode.execute(frame);
-        DynamicObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error).getFunctionObject();
+        DynamicObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
         return Math.max(0, toInteger.executeInt(getStackTraceLimit.getValue(errorConstructor)));
     }
 

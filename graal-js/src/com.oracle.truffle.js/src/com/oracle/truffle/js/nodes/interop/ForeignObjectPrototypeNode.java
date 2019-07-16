@@ -62,7 +62,7 @@ public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
                     @CachedLibrary("truffleObject") InteropLibrary interop) {
         assert realm.getContext().getContextOptions().hasForeignObjectPrototype();
         if (interop.hasArrayElements(truffleObject)) {
-            return realm.getArrayConstructor().getPrototype();
+            return realm.getArrayPrototype();
         } else if (interop.isExecutable(truffleObject)) {
             return realm.getFunctionPrototype();
         } else {

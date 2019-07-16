@@ -897,6 +897,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getNumberFormatConstructor().getPrototype();
+        return realm.getNumberFormatPrototype();
     }
 }

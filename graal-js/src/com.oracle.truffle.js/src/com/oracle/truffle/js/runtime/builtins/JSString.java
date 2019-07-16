@@ -372,6 +372,6 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getStringConstructor().getPrototype();
+        return realm.getStringPrototype();
     }
 }

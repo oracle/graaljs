@@ -146,6 +146,6 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getBigIntConstructor().getPrototype();
+        return realm.getBigIntPrototype();
     }
 }

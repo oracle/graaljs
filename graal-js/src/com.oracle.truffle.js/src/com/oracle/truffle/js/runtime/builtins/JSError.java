@@ -150,7 +150,7 @@ public final class JSError extends JSBuiltinObject {
         DynamicObject obj;
         String msg;
         JSContext context = realm.getContext();
-        DynamicObject prototype = realm.getErrorConstructor(errorType).getPrototype();
+        DynamicObject prototype = realm.getErrorPrototype(errorType);
         if (message == Undefined.instance) {
             obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, false), realm, prototype);
             msg = null;
@@ -165,7 +165,7 @@ public final class JSError extends JSBuiltinObject {
     public static DynamicObject createFromJSException(JSException exception, JSRealm realm, String message) {
         JSErrorType errorType = exception.getErrorType();
         JSContext context = realm.getContext();
-        DynamicObject prototype = realm.getErrorConstructor(errorType).getPrototype();
+        DynamicObject prototype = realm.getErrorPrototype(errorType);
         DynamicObject obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, prototype, Objects.requireNonNull(message));
         setException(realm, obj, exception, JSTruffleOptions.NashornCompatibilityMode);
         return obj;
@@ -173,7 +173,7 @@ public final class JSError extends JSBuiltinObject {
 
     private static DynamicObject createErrorPrototype(JSRealm realm, JSErrorType errorType) {
         JSContext ctx = realm.getContext();
-        DynamicObject proto = errorType == JSErrorType.Error ? realm.getObjectPrototype() : realm.getErrorConstructor(JSErrorType.Error).getPrototype();
+        DynamicObject proto = errorType == JSErrorType.Error ? realm.getObjectPrototype() : realm.getErrorPrototype(JSErrorType.Error);
 
         DynamicObject errorPrototype = JSObject.createInit(realm, proto, ctx.getEcmaScriptVersion() < 6 ? INSTANCE : JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(ctx, errorPrototype, MESSAGE, "", JSAttributes.getDefaultNotEnumerable());
@@ -193,7 +193,7 @@ public final class JSError extends JSBuiltinObject {
         DynamicObject errorConstructor = realm.lookupFunction(JSConstructor.BUILTINS, name); // (Type)Error
         DynamicObject classPrototype = JSError.createErrorPrototype(realm, errorType); // (Type)Error.prototype
         if (errorType != JSErrorType.Error) {
-            JSObject.setPrototype(errorConstructor, realm.getErrorConstructor(JSErrorType.Error).getFunctionObject());
+            JSObject.setPrototype(errorConstructor, realm.getErrorConstructor(JSErrorType.Error));
         }
         JSObjectUtil.putConstructorProperty(context, classPrototype, errorConstructor);
         JSObjectUtil.putDataProperty(context, classPrototype, NAME, name, JSAttributes.getDefaultNotEnumerable());
@@ -282,7 +282,7 @@ public final class JSError extends JSBuiltinObject {
      */
     @TruffleBoundary
     public static Object prepareStack(JSRealm realm, DynamicObject errorObj, GraalJSException exception) {
-        DynamicObject error = realm.getErrorConstructor(JSErrorType.Error).getFunctionObject();
+        DynamicObject error = realm.getErrorConstructor(JSErrorType.Error);
         Object prepareStackTrace = JSObject.get(error, PREPARE_STACK_TRACE_NAME);
         JSStackTraceElement[] jsStackTrace = exception.getJSStackTrace();
         if (JSFunction.isJSFunction(prepareStackTrace)) {
@@ -328,7 +328,7 @@ public final class JSError extends JSBuiltinObject {
     }
 
     private static boolean isInstanceOfJSError(DynamicObject errorObj, JSRealm realm) {
-        DynamicObject errorPrototype = realm.getErrorConstructor(JSErrorType.Error).getPrototype();
+        DynamicObject errorPrototype = realm.getErrorPrototype(JSErrorType.Error);
         return JSRuntime.isPrototypeOf(errorObj, errorPrototype);
     }
 

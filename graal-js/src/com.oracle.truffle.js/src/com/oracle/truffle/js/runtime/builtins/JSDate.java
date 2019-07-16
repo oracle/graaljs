@@ -857,6 +857,6 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getDateConstructor().getPrototype();
+        return realm.getDatePrototype();
     }
 }

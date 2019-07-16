@@ -250,6 +250,6 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getArrayBufferConstructor().getPrototype();
+        return realm.getArrayBufferPrototype();
     }
 }

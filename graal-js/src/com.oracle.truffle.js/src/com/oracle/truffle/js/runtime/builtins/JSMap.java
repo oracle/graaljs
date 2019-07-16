@@ -188,6 +188,6 @@ public final class JSMap extends JSBuiltinObject implements JSConstructorFactory
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getMapConstructor().getPrototype();
+        return realm.getMapPrototype();
     }
 }

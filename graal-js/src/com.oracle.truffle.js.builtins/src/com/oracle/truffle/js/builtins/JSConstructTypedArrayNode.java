@@ -71,6 +71,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -128,7 +129,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     private DynamicObject getPrototypeFromConstructorView(DynamicObject newTarget) {
         if (getPrototypeFromConstructorViewNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getPrototypeFromConstructorViewNode = insert(GetPrototypeFromConstructorNode.create(getContext(), null, realm -> realm.getArrayBufferViewConstructor(factory).getPrototype()));
+            getPrototypeFromConstructorViewNode = insert(GetPrototypeFromConstructorNode.create(getContext(), null, realm -> realm.getArrayBufferViewPrototype(factory)));
         }
         return getPrototypeFromConstructorViewNode.executeWithConstructor(newTarget);
     }
@@ -136,7 +137,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     private DynamicObject getPrototypeFromConstructorBuffer(DynamicObject newTarget) {
         if (getPrototypeFromConstructorBufferNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getPrototypeFromConstructorBufferNode = insert(GetPrototypeFromConstructorNode.create(getContext(), null, realm -> realm.getArrayBufferConstructor().getPrototype()));
+            getPrototypeFromConstructorBufferNode = insert(GetPrototypeFromConstructorNode.create(getContext(), null, JSRealm::getArrayBufferPrototype));
         }
         return getPrototypeFromConstructorBufferNode.executeWithConstructor(newTarget);
     }
@@ -253,7 +254,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         long length = sourceType.length(arrayBufferView);
 
         DynamicObject srcData = JSArrayBufferView.getArrayBuffer(arrayBufferView);
-        DynamicObject defaultBufferConstructor = getContext().getRealm().getArrayBufferConstructor().getFunctionObject();
+        DynamicObject defaultBufferConstructor = getContext().getRealm().getArrayBufferConstructor();
         DynamicObject bufferConstructor;
         if (JSSharedArrayBuffer.isJSSharedArrayBuffer(srcData)) {
             bufferConstructor = defaultBufferConstructor;
@@ -530,7 +531,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         }
 
         boolean isDefaultPrototype(DynamicObject proto) {
-            return proto == context.getRealm().getArrayBufferViewConstructor(factory).getPrototype();
+            return proto == context.getRealm().getArrayBufferViewPrototype(factory);
         }
 
         @TruffleBoundary

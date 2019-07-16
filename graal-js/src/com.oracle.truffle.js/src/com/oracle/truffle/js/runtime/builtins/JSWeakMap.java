@@ -138,6 +138,6 @@ public final class JSWeakMap extends JSBuiltinObject implements JSConstructorFac
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getWeakMapConstructor().getPrototype();
+        return realm.getWeakMapPrototype();
     }
 }
