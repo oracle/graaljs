@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import java.util.Arrays;
+import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -232,7 +233,22 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         protected final void insertIntoCache(Shape oldShape, Shape newShape, Property property, Assumption newShapeNotObsoleteAssumption) {
             CompilerAsserts.neverPartOfCompilation();
-            this.cache = new CacheEntry(oldShape, newShape, property, newShapeNotObsoleteAssumption, filterValid(cache));
+            Lock lock = getLock();
+            lock.lock();
+            try {
+                CacheEntry curr = cache;
+                if (curr == GENERIC) {
+                    return;
+                }
+                curr = filterValid(curr);
+                if (CacheEntry.getDepth(curr) >= JSTruffleOptions.PropertyCacheLimit) {
+                    setGeneric();
+                    return;
+                }
+                this.cache = new CacheEntry(oldShape, newShape, property, newShapeNotObsoleteAssumption, curr);
+            } finally {
+                lock.unlock();
+            }
         }
 
         private static CacheEntry filterValid(CacheEntry cache) {
@@ -254,10 +270,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
         protected final void setGeneric() {
             CompilerAsserts.neverPartOfCompilation();
             this.cache = GENERIC;
-        }
-
-        protected final int getCacheDepth() {
-            return CacheEntry.getDepth(cache);
         }
     }
 
@@ -306,11 +318,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         private void rewrite(DynamicObject obj, Object value, JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
-            if (getCacheDepth() >= JSTruffleOptions.PropertyCacheLimit) {
-                setGeneric();
-                executeGeneric(obj, value);
-                return;
-            }
             Shape oldShape = obj.getShape();
             Property property = oldShape.getProperty(name);
             Shape newShape;
@@ -401,11 +408,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         private void rewrite(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
             CompilerAsserts.neverPartOfCompilation();
-            if (getCacheDepth() >= JSTruffleOptions.PropertyCacheLimit) {
-                setGeneric();
-                executeGeneric(obj, getterV, setterV);
-                return;
-            }
             Shape oldShape = obj.getShape();
             Property property = oldShape.getProperty(name);
             Accessor value = new Accessor((DynamicObject) getterV, (DynamicObject) setterV);
