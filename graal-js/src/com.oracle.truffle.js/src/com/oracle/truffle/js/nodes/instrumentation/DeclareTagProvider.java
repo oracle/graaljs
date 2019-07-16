@@ -47,6 +47,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode.FrameBlockScopeNode;
@@ -100,9 +101,10 @@ public final class DeclareTagProvider {
             this.declarations = initDeclarations(frameDescriptor, sourceSection);
         }
 
+        @ExplodeLoop
         private void executeDeclarations(VirtualFrame frame) {
-            for (int i = 0; i < declarations.length; i++) {
-                declarations[i].execute(frame);
+            for (JavaScriptNode declaration : declarations) {
+                declaration.execute(frame);
             }
         }
 
@@ -136,10 +138,11 @@ public final class DeclareTagProvider {
             this.declarations = initDeclarations(frameDescriptor, sourceSection);
         }
 
+        @ExplodeLoop
         @Override
         public Object execute(VirtualFrame frame) {
-            for (int i = 0; i < declarations.length; i++) {
-                declarations[i].execute(frame);
+            for (JavaScriptNode declaration : declarations) {
+                declaration.execute(frame);
             }
             return super.execute(frame);
         }
