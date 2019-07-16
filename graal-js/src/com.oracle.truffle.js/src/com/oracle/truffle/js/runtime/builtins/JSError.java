@@ -62,7 +62,6 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -87,8 +86,6 @@ public final class JSError extends JSBuiltinObject {
     public static final String COLUMN_NUMBER_PROPERTY_NAME = "columnNumber";
     public static final int DEFAULT_COLUMN_NUMBER = -1;
     public static final String STACK_TRACE_LIMIT_PROPERTY_NAME = "stackTraceLimit";
-
-    public static final String ANONYMOUS_FUNCTION_NAME_STACK_TRACE = JSTruffleOptions.NashornCompatibilityMode ? "<program>" : "<anonymous>";
 
     public static final JSError INSTANCE = new JSError();
     private static final Property MESSAGE_PROPERTY;
@@ -171,7 +168,7 @@ public final class JSError extends JSBuiltinObject {
         JSContext context = realm.getContext();
         DynamicObject prototype = realm.getErrorPrototype(errorType);
         DynamicObject obj = JSObject.createWithPrototype(context, context.getErrorFactory(errorType, true), realm, prototype, Objects.requireNonNull(message));
-        setException(realm, obj, exception, JSTruffleOptions.NashornCompatibilityMode);
+        setException(realm, obj, exception, context.isOptionNashornCompatibilityMode());
         return obj;
     }
 
@@ -256,8 +253,8 @@ public final class JSError extends JSBuiltinObject {
     private static DynamicObject setException(JSRealm realm, DynamicObject errorObj, GraalJSException exception, boolean defaultColumnNumber) {
         assert isJSError(errorObj);
         defineStackProperty(realm, errorObj, exception);
-        if (JSTruffleOptions.NashornCompatibilityMode && exception.getJSStackTrace().length > 0) {
-            JSContext context = realm.getContext();
+        JSContext context = realm.getContext();
+        if (context.isOptionNashornCompatibilityMode() && exception.getJSStackTrace().length > 0) {
             JSStackTraceElement topStackTraceElement = exception.getJSStackTrace()[0];
             setLineNumber(context, errorObj, topStackTraceElement.getLineNumber());
             setColumnNumber(context, errorObj, defaultColumnNumber ? DEFAULT_COLUMN_NUMBER : topStackTraceElement.getColumnNumber());
@@ -362,7 +359,7 @@ public final class JSError extends JSBuiltinObject {
     @TruffleBoundary
     private static String formatStackTrace(JSStackTraceElement[] stackTrace, DynamicObject errObj, JSRealm realm) {
         StringBuilder builder = new StringBuilder();
-        if (!JSTruffleOptions.NashornCompatibilityMode || isInstanceOfJSError(errObj, realm)) {
+        if (!realm.getContext().isOptionNashornCompatibilityMode() || isInstanceOfJSError(errObj, realm)) {
             String name = getName(errObj);
             String message = getMessage(errObj);
             if (name != null) {
@@ -386,13 +383,13 @@ public final class JSError extends JSBuiltinObject {
     private static void formatStackTraceIntl(JSStackTraceElement[] stackTrace, StringBuilder builder, JSContext context) {
         for (JSStackTraceElement elem : stackTrace) {
             builder.append(JSRuntime.LINE_SEPARATOR);
-            builder.append(JSTruffleOptions.NashornCompatibilityMode ? "\tat " : "    at ");
+            builder.append(context.isOptionNashornCompatibilityMode() ? "\tat " : "    at ");
             if (context.isOptionV8CompatibilityMode()) {
                 builder.append(elem.toString());
             } else {
-                String className = JSTruffleOptions.NashornCompatibilityMode ? null : elem.getClassName();
-                String methodName = correctMethodName(elem.getFunctionName());
-                boolean includeMethodName = JSTruffleOptions.NashornCompatibilityMode || (className != null) || !ANONYMOUS_FUNCTION_NAME_STACK_TRACE.equals(methodName);
+                String className = context.isOptionNashornCompatibilityMode() ? null : elem.getClassName();
+                String methodName = correctMethodName(elem.getFunctionName(), context);
+                boolean includeMethodName = context.isOptionNashornCompatibilityMode() || (className != null) || !getAnonymousFunctionNameStackTrace(context).equals(methodName);
                 if (includeMethodName) {
                     if (className != null) {
                         builder.append(className).append('.');
@@ -407,7 +404,7 @@ public final class JSError extends JSBuiltinObject {
                     builder.append(fileName);
                     builder.append(":");
                     builder.append(elem.getLineNumber());
-                    if (!JSTruffleOptions.NashornCompatibilityMode) {
+                    if (!context.isOptionNashornCompatibilityMode()) {
                         builder.append(":");
                         builder.append(elem.getColumnNumber());
                     }
@@ -419,12 +416,12 @@ public final class JSError extends JSBuiltinObject {
         }
     }
 
-    public static String correctMethodName(String methodName) {
+    public static String correctMethodName(String methodName, JSContext context) {
         if (methodName == null) {
             return "";
         }
         if (methodName.isEmpty()) {
-            return ANONYMOUS_FUNCTION_NAME_STACK_TRACE;
+            return getAnonymousFunctionNameStackTrace(context);
         }
         if (Boundaries.stringEndsWith(methodName, "]")) {
             int idx = Boundaries.stringLastIndexOf(methodName, '[');
@@ -459,9 +456,9 @@ public final class JSError extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public String safeToString(DynamicObject obj, int depth) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
-            return super.safeToString(obj, depth);
+    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+        if (context.isOptionNashornCompatibilityMode()) {
+            return super.safeToString(obj, depth, context);
         } else {
             Object name = getPropertyWithoutSideEffect(obj, NAME);
             Object message = getPropertyWithoutSideEffect(obj, MESSAGE);
@@ -499,6 +496,10 @@ public final class JSError extends JSBuiltinObject {
     @Override
     public boolean hasOnlyShapeProperties(DynamicObject obj) {
         return true;
+    }
+
+    public static String getAnonymousFunctionNameStackTrace(JSContext context) {
+        return context.isOptionNashornCompatibilityMode() ? "<program>" : "<anonymous>";
     }
 
 }

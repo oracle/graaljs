@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -523,7 +524,7 @@ public final class JSObject {
 
     @TruffleBoundary
     public static String safeToString(DynamicObject obj, int depth) {
-        return JSObject.getJSClass(obj).safeToString(obj, depth);
+        return JSObject.getJSClass(obj).safeToString(obj, depth, JavaScriptLanguage.getCurrentJSRealm().getContext());
     }
 
     /**

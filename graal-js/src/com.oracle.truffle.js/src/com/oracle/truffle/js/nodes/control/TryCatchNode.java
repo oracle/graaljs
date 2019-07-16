@@ -71,7 +71,6 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -241,7 +240,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
 
         private GetErrorObjectNode(JSContext context) {
             this.context = context;
-            this.initErrorObjectNode = InitErrorObjectNode.create(context, JSTruffleOptions.NashornCompatibilityMode);
+            this.initErrorObjectNode = InitErrorObjectNode.create(context, context.isOptionNashornCompatibilityMode());
         }
 
         public static GetErrorObjectNode create(JSContext context) {

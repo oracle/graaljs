@@ -207,7 +207,6 @@ def testnashorn(args, nonZeroIsFatal=True):
     """run the testNashorn conformance suite"""
     _location = join(_suite.dir, 'lib', 'testnashorn')
     _default_vm_args = [
-        '-Dtruffle.js.NashornCompatibilityMode=true',
         '-Dtruffle.js.U180EWhitespace=true',
     ]
     _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'

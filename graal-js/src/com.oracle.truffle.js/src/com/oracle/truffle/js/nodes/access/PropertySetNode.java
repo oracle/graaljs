@@ -910,7 +910,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             assert thisObj == Undefined.instance || thisObj == Null.instance;
-            throw Errors.createTypeErrorCannotSetProperty(root.getKey(), thisObj, this);
+            throw Errors.createTypeErrorCannotSetProperty(root.getKey(), thisObj, this, root.getContext());
         }
     }
 
@@ -1047,7 +1047,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         private Object nullCheck(Object truffleObject, Object key) {
             if (interop.isNull(truffleObject)) {
-                throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this);
+                throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this, context);
             }
             return truffleObject;
         }
@@ -1383,8 +1383,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @TruffleBoundary
     protected void globalPropertySetInStrictMode(Object thisObj) {
-        assert JSObject.isDynamicObject(thisObj) && JSObject.getJSContext((DynamicObject) thisObj).getRealm().getGlobalObject() == thisObj;
-        throw Errors.createReferenceErrorNotDefined(getKey(), this);
+        assert JSObject.isDynamicObject(thisObj) && context.getRealm().getGlobalObject() == thisObj;
+        throw Errors.createReferenceErrorNotDefined(context, getKey(), this);
     }
 
     @Override

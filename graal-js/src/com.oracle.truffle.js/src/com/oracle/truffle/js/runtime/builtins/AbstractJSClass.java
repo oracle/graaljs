@@ -45,6 +45,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -54,13 +55,13 @@ public abstract class AbstractJSClass extends JSClass {
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object name) {
-        throw Errors.createTypeErrorCannotGetProperty(name, thisObj, false, null);
+        throw Errors.createTypeErrorCannotGetProperty(JavaScriptLanguage.getCurrentJSRealm().getContext(), name, thisObj, false, null);
     }
 
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, long index) {
-        throw Errors.createTypeErrorCannotGetProperty(String.valueOf(index), thisObj, false, null);
+        throw Errors.createTypeErrorCannotGetProperty(JavaScriptLanguage.getCurrentJSRealm().getContext(), String.valueOf(index), thisObj, false, null);
     }
 
     @Override

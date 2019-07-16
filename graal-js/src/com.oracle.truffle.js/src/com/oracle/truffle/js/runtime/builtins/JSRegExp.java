@@ -55,7 +55,6 @@ import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.joni.JoniRegexEngine;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -338,7 +337,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         final JSContext context = realm.getContext();
         putConstructorSpeciesGetter(realm, constructor);
         if (context.isOptionRegexpStaticResult()) {
-            if (JSTruffleOptions.NashornCompatibilityMode) {
+            if (context.isOptionNashornCompatibilityMode()) {
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpInput, "input");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpMultiLine, "multiline");
                 putRegExpStaticPropertyAccessor(realm, constructor, BuiltinFunctionKey.RegExpLastMatch, "lastMatch");
@@ -383,12 +382,12 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         JSFunctionData setterData = ctx.getOrCreateBuiltinFunctionData(builtinKey,
                         (c) -> JSFunctionData.createCallOnly(c, ctx.getEmptyFunctionCallTarget(), 0, setterName));
         DynamicObject setter = JSFunction.create(realm, setterData);
-        JSObjectUtil.putConstantAccessorProperty(ctx, constructor, propertyName, getter, setter, getRegExpStaticResultPropertyAccessorJSAttributes());
+        JSObjectUtil.putConstantAccessorProperty(ctx, constructor, propertyName, getter, setter, getRegExpStaticResultPropertyAccessorJSAttributes(ctx));
     }
 
     // https://github.com/tc39/proposal-regexp-legacy-features#additional-properties-of-the-regexp-constructor
-    private static int getRegExpStaticResultPropertyAccessorJSAttributes() {
-        return JSTruffleOptions.NashornCompatibilityMode ? JSAttributes.notConfigurableEnumerableWritable() : JSAttributes.configurableNotEnumerableWritable();
+    private static int getRegExpStaticResultPropertyAccessorJSAttributes(JSContext context) {
+        return context.isOptionNashornCompatibilityMode() ? JSAttributes.notConfigurableEnumerableWritable() : JSAttributes.configurableNotEnumerableWritable();
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
@@ -412,8 +411,8 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     @Override
     @TruffleBoundary
-    public String safeToString(DynamicObject obj, int depth) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+    public String safeToString(DynamicObject obj, int depth, JSContext context) {
+        if (context.isOptionNashornCompatibilityMode()) {
             return "[RegExp " + prototypeToString(obj) + "]";
         } else {
             return prototypeToString(obj);

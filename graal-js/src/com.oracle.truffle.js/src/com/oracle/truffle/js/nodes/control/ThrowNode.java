@@ -57,7 +57,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -70,14 +69,17 @@ public class ThrowNode extends StatementNode {
     @Child private JavaScriptNode exceptionNode;
     @Child private PropertyGetNode getErrorNode;
     @Child private InteropLibrary interopNode;
+    private final JSContext context;
+
     private final ConditionProfile isError = ConditionProfile.createBinaryProfile();
 
-    protected ThrowNode(JavaScriptNode exceptionNode) {
+    protected ThrowNode(JavaScriptNode exceptionNode, JSContext context) {
         this.exceptionNode = exceptionNode;
+        this.context = context;
     }
 
-    public static ThrowNode create(JavaScriptNode exceptionNode) {
-        return new ThrowNode(exceptionNode);
+    public static ThrowNode create(JavaScriptNode exceptionNode, JSContext context) {
+        return new ThrowNode(exceptionNode, context);
     }
 
     @Override
@@ -98,7 +100,7 @@ public class ThrowNode extends StatementNode {
         Object exceptionObject = exceptionNode.execute(frame);
         if (isError.profile(JSError.isJSError(exceptionObject))) {
             DynamicObject jsobject = (DynamicObject) exceptionObject;
-            if (JSTruffleOptions.NashornCompatibilityMode) {
+            if (context.isOptionNashornCompatibilityMode()) {
                 setLineAndColumnNumber(jsobject);
             }
             throw getException(jsobject);
@@ -137,7 +139,6 @@ public class ThrowNode extends StatementNode {
     private void setLineAndColumnNumber(DynamicObject jsobject) {
         if (hasSourceSection()) {
             SourceSection sourceSection = getSourceSection();
-            JSContext context = JSObject.getJSContext(jsobject);
             JSError.setLineNumber(context, jsobject, sourceSection.getStartLine());
             JSError.setColumnNumber(context, jsobject, sourceSection.getStartColumn());
         }
@@ -145,7 +146,7 @@ public class ThrowNode extends StatementNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(exceptionNode));
+        return create(cloneUninitialized(exceptionNode), context);
     }
 
     @Override

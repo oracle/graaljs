@@ -209,13 +209,14 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNotObjectCoercible(Object value) {
-        return createTypeErrorNotObjectCoercible(value, null);
+    public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode) {
+        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+        return createTypeErrorNotObjectCoercible(value, originatingNode, realm.getContext());
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+    public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode, JSContext context) {
+        if (context.isOptionNashornCompatibilityMode()) {
             return Errors.createTypeErrorNotAnObject(value, originatingNode);
         }
         return Errors.createTypeError("Cannot convert undefined or null to object: " + JSRuntime.safeToString(value), originatingNode);
@@ -352,11 +353,17 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createReferenceErrorNotDefined(Object key, Node originatingNode) {
-        return Errors.createReferenceError(quoteKey(key) + " is not defined", originatingNode);
+        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm(); // slow
+        return createReferenceErrorNotDefined(realm.getContext(), key, originatingNode);
     }
 
-    private static String quoteKey(Object key) {
-        return JSTruffleOptions.NashornCompatibilityMode ? "\"" + key + "\"" : key.toString();
+    @TruffleBoundary
+    public static JSException createReferenceErrorNotDefined(JSContext context, Object key, Node originatingNode) {
+        return Errors.createReferenceError(quoteKey(context, key) + " is not defined", originatingNode);
+    }
+
+    private static String quoteKey(JSContext context, Object key) {
+        return context.isOptionNashornCompatibilityMode() ? "\"" + key + "\"" : key.toString();
     }
 
     @TruffleBoundary
@@ -374,9 +381,15 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotSetProperty(Object key, Object object, Node originatingNode) {
+        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm(); // slow
+        return createTypeErrorCannotSetProperty(key, object, originatingNode, realm.getContext());
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorCannotSetProperty(Object key, Object object, Node originatingNode, JSContext context) {
         assert JSRuntime.isPropertyKey(key);
         String errorMessage;
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+        if (context.isOptionNashornCompatibilityMode()) {
             errorMessage = "Cannot set property \"" + key + "\" of " + JSRuntime.safeToString(object);
         } else {
             errorMessage = "Cannot set property '" + key + "' of " + JSRuntime.safeToString(object);
@@ -387,15 +400,16 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorCannotSetAccessorProperty(Object key, DynamicObject store) {
         assert JSRuntime.isPropertyKey(key);
-        String message = JSTruffleOptions.NashornCompatibilityMode ? "Cannot set property \"%s\" of %s that has only a getter" : "Cannot set property %s of %s which has only a getter";
+        String message = JavaScriptLanguage.getCurrentJSRealm().getContext().isOptionNashornCompatibilityMode() ? "Cannot set property \"%s\" of %s that has only a getter"
+                        : "Cannot set property %s of %s which has only a getter";
         return Errors.createTypeErrorFormat(message, key, JSObject.defaultToString(store));
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotGetProperty(Object key, Object object, boolean isGetMethod, Node originatingNode) {
+    public static JSException createTypeErrorCannotGetProperty(JSContext context, Object key, Object object, boolean isGetMethod, Node originatingNode) {
         assert JSRuntime.isPropertyKey(key);
         String errorMessage;
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+        if (context.isOptionNashornCompatibilityMode()) {
             if (isGetMethod) {
                 errorMessage = JSRuntime.safeToString(object) + " has no such function \"" + key + "\"";
             } else {

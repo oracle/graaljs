@@ -1399,7 +1399,7 @@ public final class JSRuntime {
      * @return an Object
      */
     public static TruffleObject toObject(JSContext ctx, Object value) {
-        requireObjectCoercible(value);
+        requireObjectCoercible(value, ctx);
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSObject.isDynamicObject(value))) {
             return (DynamicObject) value;
         }
@@ -1598,9 +1598,9 @@ public final class JSRuntime {
     /**
      * Implementation of the abstract operation RequireObjectCoercible.
      */
-    public static <T> T requireObjectCoercible(T argument) {
+    public static <T> T requireObjectCoercible(T argument, JSContext context) {
         if (argument == Undefined.instance || argument == Null.instance) {
-            throw Errors.createTypeErrorNotObjectCoercible(argument);
+            throw Errors.createTypeErrorNotObjectCoercible(argument, null, context);
         }
         return argument;
     }
