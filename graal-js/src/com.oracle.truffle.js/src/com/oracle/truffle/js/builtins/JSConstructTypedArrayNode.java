@@ -500,7 +500,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
     @TruffleBoundary
     private RuntimeException throwInappropriateLengthError(long length) {
-        if (JSTruffleOptions.NashornCompatibilityMode) {
+        if (getContext().isOptionNashornCompatibilityMode()) {
             throw Errors.createRangeError("inappropriate array buffer length: " + length);
         } else if (getContext().isOptionV8CompatibilityMode()) {
             throw Errors.createRangeError("Invalid array buffer length");

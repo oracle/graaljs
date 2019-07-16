@@ -556,8 +556,8 @@ public class NodeFactory {
         return new GlobalScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
     }
 
-    public JavaScriptNode createThrow(JavaScriptNode expression) {
-        return ThrowNode.create(expression);
+    public JavaScriptNode createThrow(JSContext context, JavaScriptNode expression) {
+        return ThrowNode.create(expression, context);
     }
 
     public JavaScriptNode createTryCatch(JSContext context, JavaScriptNode tryNode, JavaScriptNode catchBlock, JavaScriptNode writeErrorVar, BlockScopeNode blockScope,

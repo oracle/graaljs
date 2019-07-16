@@ -56,6 +56,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -179,13 +180,14 @@ public abstract class GraalJSException extends RuntimeException implements Truff
     @TruffleBoundary
     private JSStackTraceElement[] getJSStackTrace(DynamicObject skipUpTo) {
         assert stackTraceLimit > 0;
+        boolean nashornMode = JavaScriptLanguage.getCurrentJSRealm().getContext().isOptionNashornCompatibilityMode();
         // Nashorn does not support skipping of frames
-        DynamicObject skipFramesUpTo = JSTruffleOptions.NashornCompatibilityMode ? Undefined.instance : skipUpTo;
+        DynamicObject skipFramesUpTo = nashornMode ? Undefined.instance : skipUpTo;
         List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(this);
         if (stackTrace == null) {
             return EMPTY_STACK_TRACE;
         }
-        FrameVisitorImpl visitor = new FrameVisitorImpl(getLocation(), stackTraceLimit, skipFramesUpTo);
+        FrameVisitorImpl visitor = new FrameVisitorImpl(getLocation(), stackTraceLimit, skipFramesUpTo, nashornMode);
         for (TruffleStackTraceElement element : stackTrace) {
             if (!visitor.visitFrame(element)) {
                 break;
@@ -212,19 +214,21 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         private final Node originatingNode;
         private final int stackTraceLimit;
         private final DynamicObject skipFramesUpTo;
+        private final boolean inNashornMode;
 
         private boolean inStrictMode;
         private boolean skippingFrames;
         private boolean first = true;
 
-        FrameVisitorImpl(Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo) {
+        FrameVisitorImpl(Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean nashornMode) {
             this.originatingNode = originatingNode;
             this.stackTraceLimit = stackTraceLimit;
             this.skipFramesUpTo = skipFramesUpTo;
             this.skippingFrames = (skipFramesUpTo != Undefined.instance);
+            this.inNashornMode = nashornMode;
         }
 
-        private static int stackFrameType(Node callNode) {
+        private int stackFrameType(Node callNode) {
             if (callNode == null) {
                 return STACK_FRAME_SKIP;
             }
@@ -233,7 +237,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 return STACK_FRAME_SKIP;
             }
             if (JSFunction.isBuiltinSourceSection(sourceSection)) {
-                return JSTruffleOptions.NashornCompatibilityMode ? STACK_FRAME_SKIP : STACK_FRAME_JS;
+                return inNashornMode ? STACK_FRAME_SKIP : STACK_FRAME_JS;
             }
             if (sourceSection.getSource().isInternal() || !sourceSection.isAvailable()) {
                 return STACK_FRAME_SKIP;
@@ -303,14 +307,14 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                                     // async function calls produce two frames, skip one
                                     return true;
                                 }
-                                stackTrace.add(processJSFrame(rootNode, callNode, thisObj, function, inStrictMode));
+                                stackTrace.add(processJSFrame(rootNode, callNode, thisObj, function, inStrictMode, inNashornMode));
                             }
                         }
                         break;
                     }
                     case STACK_FRAME_FOREIGN:
                         if (!skippingFrames) {
-                            JSStackTraceElement elem = processForeignFrame(callNode, inStrictMode);
+                            JSStackTraceElement elem = processForeignFrame(callNode, inStrictMode, inNashornMode);
                             if (elem != null) {
                                 stackTrace.add(elem);
                             }
@@ -327,7 +331,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
     }
 
-    private static JSStackTraceElement processJSFrame(RootNode rootNode, Node node, Object thisObj, DynamicObject functionObj, boolean inStrictMode) {
+    private static JSStackTraceElement processJSFrame(RootNode rootNode, Node node, Object thisObj, DynamicObject functionObj, boolean inStrictMode, boolean inNashornMode) {
         Node callNode = node;
         while (callNode.getSourceSection() == null) {
             callNode = callNode.getParent();
@@ -350,7 +354,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             functionName = "";
         }
         SourceSection targetSourceSection = null;
-        if (!JSTruffleOptions.NashornCompatibilityMode) { // for V8
+        if (!inNashornMode) { // for V8
             if (callNode instanceof JavaScriptFunctionCallNode) {
                 Node target = ((JavaScriptFunctionCallNode) callNode).getTarget();
                 targetSourceSection = target == null ? null : target.getSourceSection();
@@ -358,7 +362,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         }
         boolean global = isGlobalObject(thisObj, JSFunction.getRealm(functionObj));
 
-        return new JSStackTraceElement(fileName, functionName, callNodeSourceSection, thisObj, functionObj, targetSourceSection, inStrictMode, eval, global);
+        return new JSStackTraceElement(fileName, functionName, callNodeSourceSection, thisObj, functionObj, targetSourceSection, inStrictMode, eval, global, inNashornMode);
     }
 
     private static boolean isEvalSource(Source source) {
@@ -373,7 +377,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         return JSObject.isJSObject(object) && (realm != null) && (realm.getGlobalObject() == object);
     }
 
-    private static JSStackTraceElement processForeignFrame(Node node, boolean strict) {
+    private static JSStackTraceElement processForeignFrame(Node node, boolean strict, boolean inNashornMode) {
         RootNode rootNode = node.getRootNode();
         SourceSection sourceSection = rootNode.getSourceSection();
         if (sourceSection == null) {
@@ -385,7 +389,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         Object thisObj = null;
         Object functionObj = null;
 
-        return new JSStackTraceElement(fileName, functionName, sourceSection, thisObj, functionObj, null, strict, false, false);
+        return new JSStackTraceElement(fileName, functionName, sourceSection, thisObj, functionObj, null, strict, false, false, inNashornMode);
     }
 
     private static String getPrimitiveConstructorName(Object thisObj) {
@@ -467,9 +471,10 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         private final boolean strict;
         private final boolean eval;
         private final boolean global;
+        private final boolean inNashornMode;
 
         private JSStackTraceElement(String fileName, String functionName, SourceSection sourceSection, Object thisObj, Object functionObj, SourceSection targetSourceSection, boolean strict,
-                        boolean eval, boolean global) {
+                        boolean eval, boolean global, boolean inNashornMode) {
             CompilerAsserts.neverPartOfCompilation();
             this.fileName = fileName;
             this.functionName = functionName;
@@ -480,6 +485,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
             this.strict = strict;
             this.eval = eval;
             this.global = global;
+            this.inNashornMode = inNashornMode;
         }
 
         // This method is called from nashorn tests via java interop
@@ -502,7 +508,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
 
         @TruffleBoundary
         public String getTypeName(boolean checkGlobal) {
-            if (JSTruffleOptions.NashornCompatibilityMode) {
+            if (inNashornMode) {
                 return "<" + fileName + ">";
             } else {
                 if (checkGlobal && global) {
@@ -553,8 +559,13 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public String getMethodName() {
-            if (JSTruffleOptions.NashornCompatibilityMode) {
-                return JSError.correctMethodName(functionName);
+            return getMethodName(JavaScriptLanguage.getCurrentJSRealm().getContext());
+        }
+
+        @TruffleBoundary
+        public String getMethodName(JSContext context) {
+            if (context.isOptionNashornCompatibilityMode()) {
+                return JSError.correctMethodName(functionName, context);
             }
             if (JSRuntime.isNullOrUndefined(thisObj) || !JSObject.isJSObject(thisObj)) {
                 return null;
@@ -620,7 +631,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 return -1;
             }
             int lineNumber = sourceSection.getStartLine();
-            if (!JSTruffleOptions.NashornCompatibilityMode && targetSourceSection != null) {
+            if (!inNashornMode && targetSourceSection != null) {
                 // for V8
                 int offset = sourceSectionOffset(sourceSection, targetSourceSection);
                 CharSequence chars = sourceSection.getCharacters();
@@ -648,7 +659,7 @@ public abstract class GraalJSException extends RuntimeException implements Truff
                 return -1;
             }
             int columnNumber = sourceSection.getStartColumn();
-            if (!JSTruffleOptions.NashornCompatibilityMode && targetSourceSection != null) {
+            if (!inNashornMode && targetSourceSection != null) {
                 // for V8
                 int offset = sourceSectionOffset(sourceSection, targetSourceSection);
                 CharSequence chars = sourceSection.getCharacters();
@@ -713,18 +724,20 @@ public abstract class GraalJSException extends RuntimeException implements Truff
         @Override
         @TruffleBoundary
         public String toString() {
+            JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
+
             StringBuilder builder = new StringBuilder();
             String className = getClassName();
-            String methodName = JSError.correctMethodName(getFunctionName());
+            String methodName = JSError.correctMethodName(getFunctionName(), context);
             if (methodName == null || methodName.isEmpty()) {
-                String name = getMethodName();
+                String name = getMethodName(context);
                 if (name == null) {
-                    methodName = JSError.ANONYMOUS_FUNCTION_NAME_STACK_TRACE;
+                    methodName = JSError.getAnonymousFunctionNameStackTrace(context);
                 } else {
                     methodName = name;
                 }
             }
-            boolean includeMethodName = className != null || !JSError.ANONYMOUS_FUNCTION_NAME_STACK_TRACE.equals(methodName);
+            boolean includeMethodName = className != null || !JSError.getAnonymousFunctionNameStackTrace(context).equals(methodName);
             if (includeMethodName) {
                 if (className != null) {
                     if (className.equals(methodName)) {

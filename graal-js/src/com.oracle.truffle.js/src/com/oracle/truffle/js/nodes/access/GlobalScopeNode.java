@@ -102,7 +102,7 @@ abstract class GlobalScopeTDZCheckNode extends GlobalScopeNode {
                     @Cached("isDead(cachedShape)") boolean dead) {
         assert dead == (scope.get(varName) == Dead.instance());
         if (dead) {
-            throw Errors.createReferenceErrorNotDefined(varName, this);
+            throw Errors.createReferenceErrorNotDefined(context, varName, this);
         }
         return scope;
     }
@@ -113,7 +113,7 @@ abstract class GlobalScopeTDZCheckNode extends GlobalScopeNode {
                     @Cached("create()") BranchProfile deadBranch) {
         if (getNode.getValue(scope) == Dead.instance()) {
             deadBranch.enter();
-            throw Errors.createReferenceErrorNotDefined(varName, this);
+            throw Errors.createReferenceErrorNotDefined(context, varName, this);
         }
         return scope;
     }

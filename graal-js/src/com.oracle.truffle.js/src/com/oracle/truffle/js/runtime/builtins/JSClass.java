@@ -324,9 +324,10 @@ public abstract class JSClass extends ObjectType {
      * A more informative but side-effect-free toString variant, mainly used for error messages.
      *
      * @param depth allowed nesting depth
+     * @param context the current language context
      */
     @TruffleBoundary
-    public abstract String safeToString(DynamicObject object, int depth);
+    public abstract String safeToString(DynamicObject object, int depth, JSContext context);
 
     public final boolean isInstance(DynamicObject object) {
         return isInstance(object, this);

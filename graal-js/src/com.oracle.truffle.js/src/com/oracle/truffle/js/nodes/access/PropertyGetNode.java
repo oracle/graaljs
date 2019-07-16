@@ -659,7 +659,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            throw Errors.createReferenceErrorNotDefined(root.getKey(), this);
+            throw Errors.createReferenceErrorNotDefined(root.getContext(), root.getKey(), this);
         }
     }
 
@@ -732,7 +732,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         private Object getFallback(PropertyGetNode root) {
             if (root.isGlobal()) {
-                throw Errors.createReferenceErrorNotDefined(root.getKey(), this);
+                throw Errors.createReferenceErrorNotDefined(root.getContext(), root.getKey(), this);
             } else {
                 return Undefined.instance;
             }
@@ -782,7 +782,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             assert (thisObj == Undefined.instance || thisObj == Null.instance || thisObj == null) : thisObj;
-            throw Errors.createTypeErrorCannotGetProperty(root.getKey(), thisObj, root.isMethod(), this);
+            throw Errors.createTypeErrorCannotGetProperty(root.getContext(), root.getKey(), thisObj, root.isMethod(), this);
         }
     }
 
@@ -859,7 +859,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (proxyHas.executeWithTargetAndKeyBoolean(proxy, key)) {
                 return proxyGet.executeWithReceiver(proxy, receiver, key);
             } else {
-                throw Errors.createReferenceErrorNotDefined(key, this);
+                throw Errors.createReferenceErrorNotDefined(root.getContext(), key, this);
             }
         }
 
@@ -918,7 +918,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         private Object foreignGet(Object thisObj, PropertyGetNode root) {
             Object key = root.getKey();
             if (interop.isNull(thisObj)) {
-                throw Errors.createTypeErrorCannotGetProperty(key, thisObj, isMethod, this);
+                throw Errors.createTypeErrorCannotGetProperty(context, key, thisObj, isMethod, this);
             }
             if (!(key instanceof String)) {
                 return Undefined.instance;
@@ -1083,7 +1083,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else {
                 if (getFromJSObjectNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getFromJSObjectNode = insert(GetPropertyFromJSObjectNode.create(root.getKey(), root.isRequired()));
+                    getFromJSObjectNode = insert(GetPropertyFromJSObjectNode.create(root));
                 }
                 return getFromJSObjectNode.executeWithJSObject(thisObj, receiver, defaultValue, root);
             }
@@ -1091,7 +1091,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         protected Object getFallback(@SuppressWarnings("unused") DynamicObject thisObj, PropertyGetNode root) {
             if (root.isRequired()) {
-                throw Errors.createReferenceErrorNotDefined(root.getKey(), this);
+                throw Errors.createReferenceErrorNotDefined(root.getContext(), root.getKey(), this);
             }
             return Undefined.instance;
         }
@@ -1100,18 +1100,20 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     abstract static class GetPropertyFromJSObjectNode extends JavaScriptBaseNode {
         private final Object key;
         private final boolean isRequired;
+        private final JSContext context;
         private final BranchProfile nullOrUndefinedBranch = BranchProfile.create();
         private final BranchProfile fallbackBranch = BranchProfile.create();
 
-        GetPropertyFromJSObjectNode(Object key, boolean isRequired) {
-            this.key = key;
-            this.isRequired = isRequired;
+        GetPropertyFromJSObjectNode(PropertyGetNode root) {
+            this.key = root.getKey();
+            this.isRequired = root.isRequired();
+            this.context = root.getContext();
         }
 
         public abstract Object executeWithJSObject(DynamicObject thisObj, Object receiver, Object defaultValue, PropertyGetNode root);
 
-        public static GetPropertyFromJSObjectNode create(Object key, boolean isRequired) {
-            return GetPropertyFromJSObjectNodeGen.create(key, isRequired);
+        public static GetPropertyFromJSObjectNode create(PropertyGetNode root) {
+            return GetPropertyFromJSObjectNodeGen.create(root);
         }
 
         @Specialization(limit = "2", guards = {"cachedClass == getJSClass(object)"})
@@ -1135,7 +1137,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             // 0. check for null or undefined
             if (jsclass == Null.NULL_CLASS) {
                 nullOrUndefinedBranch.enter();
-                throw Errors.createTypeErrorCannotGetProperty(key, object, isMethod, this);
+                throw Errors.createTypeErrorCannotGetProperty(root.getContext(), key, object, isMethod, this);
             }
 
             // 1. try to get a JS property
@@ -1195,7 +1197,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         protected Object getFallback(Object defaultValue) {
             if (isRequired) {
-                throw Errors.createReferenceErrorNotDefined(key, this);
+                throw Errors.createReferenceErrorNotDefined(context, key, this);
             }
             return defaultValue;
         }

@@ -299,7 +299,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public String safeToString(DynamicObject object, int depth) {
+    public String safeToString(DynamicObject object, int depth, JSContext context) {
         return defaultToString(object);
     }
 
@@ -307,7 +307,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     public DynamicObject createPrototype(final JSRealm realm, DynamicObject ctor) {
         DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), new JSBuiltinObject() {
             @Override
-            public String safeToString(DynamicObject object, int depth) {
+            public String safeToString(DynamicObject object, int depth, JSContext context) {
                 return CLASS_NAME;
             }
 

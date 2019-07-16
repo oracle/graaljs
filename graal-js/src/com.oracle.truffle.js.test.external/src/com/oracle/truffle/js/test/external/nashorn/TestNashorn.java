@@ -51,7 +51,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.test.external.suite.SuiteConfig;
 import com.oracle.truffle.js.test.external.suite.TestFile;
 import com.oracle.truffle.js.test.external.suite.TestRunnable;
@@ -228,11 +227,6 @@ public class TestNashorn extends TestSuite {
     }
 
     public static void main(String[] args) throws Exception {
-        if (!JSTruffleOptions.NashornCompatibilityMode) {
-            System.err.println("Nashorn testsuite requires NashornCompatibilityMode.");
-            exit(-2);
-        }
-
         SuiteConfig.Builder configBuilder = new SuiteConfig.Builder(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
 
         Locale.setDefault(Locale.US);

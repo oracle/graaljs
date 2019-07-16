@@ -141,9 +141,6 @@ public final class JSTruffleOptions {
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = booleanOption("AnnexB", true);
 
-    // Nashorn extensions
-    public static final boolean NashornCompatibilityMode = booleanOption("NashornCompatibilityMode", false);
-
     public static final boolean U180EWhitespace = booleanOption("U180EWhitespace", MaxECMAScriptVersion <= 6);
 
     // JSON options
