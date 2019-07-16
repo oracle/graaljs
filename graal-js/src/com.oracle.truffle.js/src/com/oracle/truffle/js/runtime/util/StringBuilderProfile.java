@@ -51,6 +51,8 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
  * length does not exceed the allowed limit.
  */
 public final class StringBuilderProfile extends NodeCloneable {
+    private static final int MAX_INT_STRING_LENGTH = 11;
+    private static final int MAX_LONG_STRING_LENGTH = 20;
 
     private final int stringLengthLimit;
     private final BranchProfile errorBranch;
@@ -87,7 +89,7 @@ public final class StringBuilderProfile extends NodeCloneable {
     }
 
     public void append(StringBuilder builder, char c) {
-        if (builder.length() > stringLengthLimit) {
+        if (builder.length() + 1 > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
@@ -95,7 +97,7 @@ public final class StringBuilderProfile extends NodeCloneable {
     }
 
     public void append(StringBuilder builder, int intValue) {
-        if (builder.length() > stringLengthLimit) {
+        if (builder.length() + MAX_INT_STRING_LENGTH > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
@@ -103,7 +105,7 @@ public final class StringBuilderProfile extends NodeCloneable {
     }
 
     public void append(StringBuilder builder, long longValue) {
-        if (builder.length() > stringLengthLimit) {
+        if (builder.length() + MAX_LONG_STRING_LENGTH > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
