@@ -65,6 +65,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeNumberFormatNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -453,10 +454,16 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private void checkDigits(int digits, BranchProfile digitsErrorBranch) {
-            if (0 > digits || digits > ((getContext().getEcmaScriptVersion() >= 9) ? 100 : 20)) {
+            final int maxDigits = getContext().getEcmaScriptVersion() >= 9 ? 100 : 20;
+            if (0 > digits || digits > maxDigits) {
                 digitsErrorBranch.enter();
-                throw Errors.createRangeError("toExponential() fraction digits need to be in range 0-100");
+                throw digitsRangeError(maxDigits);
             }
+        }
+
+        @TruffleBoundary
+        private static JSException digitsRangeError(int maxDigits) {
+            return Errors.createRangeError("toExponential() fraction digits need to be in range 0-" + maxDigits);
         }
     }
 
