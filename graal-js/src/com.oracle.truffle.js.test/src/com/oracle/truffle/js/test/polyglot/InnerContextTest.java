@@ -74,7 +74,7 @@ public class InnerContextTest {
                         Object prev = innerContext.enter();
                         try {
                             TruffleLanguage.Env innerEnv = contextReference.get().getEnv();
-                            CallTarget answer = innerEnv.parse(com.oracle.truffle.api.source.Source.newBuilder(JavaScriptLanguage.ID, "42", "test.js").build());
+                            CallTarget answer = innerEnv.parsePublic(com.oracle.truffle.api.source.Source.newBuilder(JavaScriptLanguage.ID, "42", "test.js").build());
                             return answer.call();
                         } finally {
                             innerContext.leave(prev);

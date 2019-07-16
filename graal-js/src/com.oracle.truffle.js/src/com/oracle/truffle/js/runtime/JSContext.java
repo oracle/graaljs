@@ -949,7 +949,8 @@ public class JSContext {
 
     @TruffleBoundary
     private Object createTRegexEngine() {
-        TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parse(Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").build()).call();
+        Source engineBuilderRequest = Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").internal(true).build();
+        TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parseInternal(engineBuilderRequest).call();
         String regexOptions = createRegexEngineOptions();
         JoniRegexEngine fallbackCompiler = new JoniRegexEngine(null);
         try {
