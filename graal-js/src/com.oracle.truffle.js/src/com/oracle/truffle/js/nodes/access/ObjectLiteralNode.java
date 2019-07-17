@@ -215,10 +215,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 return newShapeNotObsoleteAssumption.isValid();
             }
 
-            protected static int getDepth(CacheEntry head) {
-                return head == null ? 0 : 1 + getDepth(head.next);
-            }
-
             @Override
             public String toString() {
                 CompilerAsserts.neverPartOfCompilation();
@@ -241,9 +237,18 @@ public class ObjectLiteralNode extends JavaScriptNode {
                     return;
                 }
                 curr = filterValid(curr);
-                if (CacheEntry.getDepth(curr) >= JSTruffleOptions.PropertyCacheLimit) {
-                    setGeneric();
-                    return;
+                int count = 0;
+                for (CacheEntry c = curr; c != null; c = c.next) {
+                    ++count;
+                    if (c == GENERIC) {
+                        return;
+                    } else if (c.oldShape.equals(oldShape) && c.newShape.equals(newShape) && c.property.equals(property)) {
+                        // already in the cache
+                        return;
+                    } else if (count >= JSTruffleOptions.PropertyCacheLimit) {
+                        setGeneric();
+                        return;
+                    }
                 }
                 this.cache = new CacheEntry(oldShape, newShape, property, newShapeNotObsoleteAssumption, curr);
             } finally {
