@@ -85,7 +85,6 @@ public class FunctionBodyNode extends AbstractBodyNode {
             FrameDescriptor frameDescriptor = ((FunctionRootNode) getParent()).getFrameDescriptor();
             JavaScriptNode materialized = DeclareTagProvider.createMaterializedFunctionBodyNode(body, getSourceSection(), frameDescriptor);
             materialized.setSourceSection(getSourceSection());
-            materialized.addRootTag();
             return materialized;
         } else {
             return this;

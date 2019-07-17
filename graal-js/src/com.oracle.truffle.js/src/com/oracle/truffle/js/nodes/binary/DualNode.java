@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -70,11 +71,24 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
             // nested dual nodes. In this way, they can be detected as expressions by instruments.
             return new DualNode(left, right);
         } else if (left instanceof DualNode || left instanceof AbstractBlockNode || right instanceof DualNode || right instanceof AbstractBlockNode) {
-            final int len = getLen(left) + getLen(right);
-            JavaScriptNode[] arr = new JavaScriptNode[len];
-            int pos = flatten(arr, 0, left);
-            flatten(arr, pos, right);
-            return right instanceof BlockNode ? BlockNode.createVoidBlock(arr) : ExprBlockNode.createExprBlock(arr);
+            int leftLen = getLen(left);
+            int rightLen = getLen(right);
+            final int len = leftLen + rightLen;
+            if (len > 2) {
+                JavaScriptNode[] arr = new JavaScriptNode[len];
+                int pos = 0;
+                if (leftLen == 1) {
+                    arr[pos++] = left;
+                } else {
+                    pos = flatten(arr, 0, left);
+                }
+                if (rightLen == 1) {
+                    arr[pos] = right;
+                } else {
+                    flatten(arr, pos, right);
+                }
+                return right instanceof BlockNode ? BlockNode.createVoidBlock(arr) : ExprBlockNode.createExprBlock(arr);
+            }
         }
         return new DualNode(left, right);
     }
@@ -97,6 +111,9 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     }
 
     private static int getLen(JavaScriptNode node) {
+        if (node.hasTag(RootBodyTag.class)) {
+            return 1;
+        }
         return node instanceof DualNode ? 2 : node instanceof AbstractBlockNode ? ((AbstractBlockNode) node).getStatements().length : 1;
     }
 

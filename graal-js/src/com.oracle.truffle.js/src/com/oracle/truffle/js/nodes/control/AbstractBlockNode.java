@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -85,7 +86,8 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
         boolean returnExprBlock = exprBlock;
         for (int i = 0; i < originalStatements.length; i++) {
             JavaScriptNode statement = originalStatements[i];
-            if (statement instanceof EmptyNode || statement instanceof AbstractBlockNode || statement instanceof VoidNode || statement instanceof JSConstantUndefinedNode) {
+            if ((statement instanceof EmptyNode || statement instanceof AbstractBlockNode || statement instanceof VoidNode || statement instanceof JSConstantUndefinedNode) &&
+                            !statement.hasTag(RootBodyTag.class)) {
                 if (filteredStatements == null) {
                     filteredStatements = newListFromRange(originalStatements, 0, i);
                 }

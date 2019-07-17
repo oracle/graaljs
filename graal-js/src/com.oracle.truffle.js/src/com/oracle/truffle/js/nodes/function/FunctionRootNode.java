@@ -71,7 +71,6 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
     protected FunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, String internalFunctionName) {
         super(functionData.getContext().getLanguage(), sourceSection, frameDescriptor);
         this.body = body;
-        this.body.addRootTag();
         if (!this.body.hasSourceSection()) {
             this.body.setSourceSection(sourceSection);
         }

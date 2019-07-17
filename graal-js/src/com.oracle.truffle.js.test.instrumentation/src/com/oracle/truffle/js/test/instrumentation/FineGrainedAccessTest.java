@@ -104,6 +104,9 @@ public abstract class FineGrainedAccessTest {
         if (node.hasTag(StandardTags.RootTag.class)) {
             tags.add("ROOT");
         }
+        if (node.hasTag(StandardTags.RootBodyTag.class)) {
+            tags.add("BODY");
+        }
         if (node.hasTag(StandardTags.ExpressionTag.class)) {
             tags.add("EXPR");
         }

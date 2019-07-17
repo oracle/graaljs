@@ -159,10 +159,10 @@ import com.oracle.truffle.js.parser.env.GlobalEnvironment;
 import com.oracle.truffle.js.parser.env.WithEnvironment;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -233,6 +233,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private static JavaScriptNode tagCall(JavaScriptNode resultNode) {
         resultNode.addCallTag();
+        return resultNode;
+    }
+
+    private JavaScriptNode tagBody(JavaScriptNode resultNode, com.oracle.js.parser.ir.Node parseNode) {
+        if (!resultNode.hasSourceSection()) {
+            assignSourceSection(resultNode, parseNode);
+        }
+        assert resultNode.getSourceSection() != null;
+        if (resultNode instanceof GlobalScopeVarWrapperNode) {
+            tagBody(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), parseNode);
+        } else {
+            resultNode.addRootBodyTag();
+        }
         return resultNode;
     }
 
@@ -1323,8 +1336,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             result = blockEnv.wrapBlockScope(blockNode);
         }
         // Parameter initialization must precede (i.e. wrap) the (async) generator function body
-        if (block.isFunctionBody() && currentFunction().isGeneratorFunction()) {
-            result = finishGeneratorBody(result);
+        if (block.isFunctionBody()) {
+            if (currentFunction().isGeneratorFunction()) {
+                result = finishGeneratorBody(result);
+            }
+            tagBody(result, block);
         }
         ensureHasSourceSection(result, block);
         return result;

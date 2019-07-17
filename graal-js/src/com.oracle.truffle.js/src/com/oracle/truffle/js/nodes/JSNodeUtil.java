@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
@@ -80,6 +81,9 @@ public final class JSNodeUtil {
         }
         if (node.hasTag(StandardTags.RootTag.class)) {
             sb.append('R');
+        }
+        if (node.hasTag(StandardTags.RootBodyTag.class)) {
+            sb.append('B');
         }
         if (node.hasTag(StandardTags.ExpressionTag.class)) {
             sb.append('E');
