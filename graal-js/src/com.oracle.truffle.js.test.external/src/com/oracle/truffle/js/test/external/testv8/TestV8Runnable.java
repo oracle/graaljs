@@ -59,6 +59,7 @@ import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.ExitException;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.test.external.suite.TestCallable;
 import com.oracle.truffle.js.test.external.suite.TestExtProcessCallable;
 import com.oracle.truffle.js.test.external.suite.TestFile;
@@ -69,6 +70,10 @@ public class TestV8Runnable extends TestRunnable {
     private static final int LONG_RUNNING_TEST_SECONDS = 55;
 
     private static final String HARMONY_HASHBANG_FLAG = "--harmony-hashbang";
+    private static final String HARMONY_IMPORT_META = "--harmony-import-meta";
+    private static final String HARMONY_DYNAMIC_IMPORT = "--harmony-dynamic-import";
+    private static final String HARMONY_NUMERIC_SEPARATOR = "--harmony-numeric-separator";
+
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final Pattern FLAGS_FIND_PATTERN = Pattern.compile("// Flags: (.*)");
     private static final Pattern FLAGS_SPLIT_PATTERN = Pattern.compile("\\s+");
@@ -100,7 +105,10 @@ public class TestV8Runnable extends TestRunnable {
 
         // ecma versions
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
-        assert ecmaVersion != null : testFile;
+        if (ecmaVersion == null) {
+            boolean requiresES2020 = flags.contains(HARMONY_IMPORT_META) || flags.contains(HARMONY_DYNAMIC_IMPORT) || flags.contains(HARMONY_NUMERIC_SEPARATOR);
+            ecmaVersion = TestFile.EcmaVersion.forVersions(requiresES2020 ? JSTruffleOptions.ECMAScript2020 : JSTruffleOptions.LatestECMAScriptVersion);
+        }
 
         // now run it
         testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module, extraOptions)));

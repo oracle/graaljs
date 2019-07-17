@@ -815,81 +815,9 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
-    "filePath" : "mjsunit/harmony/import-from-compilation-errored.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/import-from-evaluation-errored.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
     "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/harmony/import-from-instantiation-errored.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-1.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-10.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-11.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-12.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-13.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-14.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15.js",
     "status" : "FAIL",
@@ -902,70 +830,6 @@
     "filePath" : "mjsunit/harmony/modules-import-17.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-2.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-3.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-4.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-5.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-6.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-7.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-8.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-9.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-meta.js",
     "status" : "FAIL",
@@ -1616,22 +1480,6 @@
     "filePath" : "mjsunit/regress/regress-740694.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-744292.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
-  }, {
-    "filePath" : "mjsunit/regress/regress-746909.js",
-    "ecmaVersion" : {
-      "minVersion" : 11,
-      "maxVersion" : 11
-    },
-    "status" : "PASS",
-    "comment" : "ECMAScript 2020 feature"
   }, {
     "filePath" : "mjsunit/regress/regress-752764.js",
     "status" : "SKIP",

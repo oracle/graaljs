@@ -125,7 +125,6 @@ public class TestV8 extends TestSuite {
 
     @Override
     protected void setupTestFile(TestFile testFile) {
-        testFile.setEcmaVersion(TestFile.EcmaVersion.forVersions(TestFile.EcmaVersion.MAX_VERSION));
     }
 
     @Override
