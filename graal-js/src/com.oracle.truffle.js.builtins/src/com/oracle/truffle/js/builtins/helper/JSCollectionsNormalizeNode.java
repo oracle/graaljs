@@ -42,6 +42,9 @@ package com.oracle.truffle.js.builtins.helper;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -49,6 +52,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 /**
  * This implements behavior for Collections of ES6. Instead of adhering to the SameValueNull
@@ -57,6 +61,10 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object operand);
+
+    public static JSCollectionsNormalizeNode create() {
+        return JSCollectionsNormalizeNodeGen.create();
+    }
 
     @Specialization
     public int doInt(int value) {
@@ -84,7 +92,7 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization
+    @Specialization(guards = "isJSType(object)")
     public Object doDynamicObject(DynamicObject object) {
         return object;
     }
@@ -98,4 +106,14 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
     public BigInt doBigInt(BigInt bigInt) {
         return bigInt;
     }
+
+    @Specialization(guards = "isForeignObject(object)", limit = "3")
+    public Object doForeignObject(TruffleObject object,
+                    @CachedLibrary("object") InteropLibrary interop,
+                    @Cached("createBinaryProfile()") ConditionProfile primitiveProfile,
+                    @Cached("create()") JSCollectionsNormalizeNode nestedNormalizeNode) {
+        Object primitive = JSInteropUtil.toPrimitiveOrDefault(object, null, interop, this);
+        return primitiveProfile.profile(primitive == null) ? object : nestedNormalizeNode.execute(primitive);
+    }
+
 }
