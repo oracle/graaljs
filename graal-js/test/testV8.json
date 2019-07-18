@@ -831,10 +831,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/harmony/modules-import-meta.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "mjsunit/harmony/numeric-separator.js",
     "status" : "FAIL",
     "comment" : "Expects 09_1_3 to parse as 913 (but is SyntaxError according to the spec)."

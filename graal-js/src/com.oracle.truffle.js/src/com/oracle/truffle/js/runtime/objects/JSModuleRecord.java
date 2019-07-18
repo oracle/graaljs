@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
@@ -204,8 +205,15 @@ public final class JSModuleRecord extends ScriptOrModule {
         DynamicObject metaObj = JSUserObject.createWithNullPrototype(context);
         if (context.hasImportMetaInitializerBeenSet()) {
             context.notifyImportMetaInitializer(metaObj, this);
+        } else {
+            initializeMetaObject(metaObj);
         }
         return metaObj;
+    }
+
+    @TruffleBoundary
+    private void initializeMetaObject(DynamicObject metaObj) {
+        JSObject.set(metaObj, "url", getSource().getURI().toString());
     }
 
     public void setUninstantiated() {
