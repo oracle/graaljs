@@ -74,13 +74,18 @@ public class JSLauncher extends AbstractLanguageLauncher {
     }
 
     boolean printResult = false;
+    boolean fuzzilliREPRL = false;
     String[] programArgs;
     final List<UnparsedSource> unparsedSources = new LinkedList<>();
     private VersionAction versionAction = VersionAction.None;
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
-        System.exit(executeScripts(contextBuilder));
+        if (fuzzilliREPRL) {
+            System.exit(JSFuzzilliRunner.runFuzzilliREPRL(contextBuilder));
+        } else {
+            System.exit(executeScripts(contextBuilder));
+        }
     }
 
     @Override
@@ -170,6 +175,9 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 return Consumed;
             case "version":
                 versionAction = VersionAction.PrintAndExit;
+                return Consumed;
+            case "fuzzilli-reprl":
+                fuzzilliREPRL = true;
                 return Consumed;
         }
         return Unhandled;
