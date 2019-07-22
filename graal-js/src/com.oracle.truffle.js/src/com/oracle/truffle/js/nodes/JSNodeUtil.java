@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.source.SourceSection;
@@ -162,5 +163,10 @@ public final class JSNodeUtil {
             }
             return true;
         });
+    }
+
+    public static boolean hasExactlyOneRootBodyTag(JavaScriptNode body) {
+        CompilerAsserts.neverPartOfCompilation();
+        return NodeUtil.countNodes(body, node -> node instanceof JavaScriptNode && ((JavaScriptNode) node).hasTag(RootBodyTag.class)) == 1;
     }
 }

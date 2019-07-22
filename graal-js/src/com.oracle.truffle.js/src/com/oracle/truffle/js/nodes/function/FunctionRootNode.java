@@ -51,6 +51,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.FrameDescriptorProvider;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -81,6 +82,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
     public static FunctionRootNode create(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, String internalFunctionName) {
         FunctionRootNode rootNode = new FunctionRootNode(body, frameDescriptor, functionData, sourceSection, internalFunctionName);
         if (JSTruffleOptions.TestCloneUninitialized) {
+            assert JSNodeUtil.hasExactlyOneRootBodyTag(body) : "Function does not have exactly one RootBodyTag";
             return (FunctionRootNode) rootNode.cloneUninitialized();
         } else {
             return rootNode;
@@ -115,7 +117,6 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
             return false;
         }
         return functionData.isBuiltin();
-
     }
 
     @Override
