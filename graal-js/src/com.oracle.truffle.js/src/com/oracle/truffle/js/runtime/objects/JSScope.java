@@ -74,7 +74,9 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
+import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
+import com.oracle.truffle.js.nodes.control.DiscardResultNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode.FrameBlockScopeNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
@@ -469,8 +471,8 @@ public abstract class JSScope {
                             args.put(name, new ArgumentVariable(argIndex));
                         }
                         return true;
-                    } else if (!(node instanceof JavaScriptBaseNode) || (node instanceof AbstractBlockNode) || (node instanceof FunctionBodyNode) ||
-                                    (node instanceof WrapperNode)) {
+                    } else if (!(node instanceof JavaScriptBaseNode) || (node instanceof WrapperNode) || (node instanceof AbstractBlockNode) || (node instanceof FunctionBodyNode) ||
+                                    (node instanceof DualNode) || (node instanceof DiscardResultNode)) {
                         // Visit children of blocks or unknown nodes
                         return NodeUtil.forEachChild(node, this);
                     } else {
