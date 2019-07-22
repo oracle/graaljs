@@ -127,6 +127,7 @@ import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
+import com.oracle.truffle.js.nodes.control.DiscardResultNode;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
@@ -624,7 +625,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private static boolean isSideEffectFreeUnaryOpNode(Node node) {
         // (conservative) non-exhaustive list
-        return node instanceof VoidNode || node instanceof TypeOfNode || node instanceof JSTypeofIdenticalNode;
+        return node instanceof DiscardResultNode || node instanceof VoidNode || node instanceof TypeOfNode || node instanceof JSTypeofIdenticalNode;
     }
 
     private static boolean isSupportedDispersibleExpression(Node node) {

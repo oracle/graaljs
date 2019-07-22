@@ -44,9 +44,8 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -68,14 +67,11 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
 
             enterDeclareTag("a");
 
-            enter(UnaryExpressionTag.class, (e2, unary) -> {
-                enter(WriteVariableExpressionTag.class, (e3, var) -> {
-                    enter(LiteralExpressionTag.class).exit();
-                    var.input(42);
-                }).exit();
-                unary.input(42);
+            enter(WriteVariableExpressionTag.class, (e3, var) -> {
+                enter(LiteralExpressionTag.class).exit();
+                var.input(42);
             }).exit();
-        }).exit();
+        }).exit(assertReturnValue(Undefined.instance));
     }
 
     @Test
@@ -93,38 +89,29 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
             enterDeclareTag("level");
 
             // second call
-            enter(UnaryExpressionTag.class, (e6, unary) -> {
-                enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+                call2.input(assertUndefinedInput);
+                enter(LiteralExpressionTag.class).exit((e3) -> {
+                    assertAttribute(e3, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+                });
+                call2.input(assertJSFunctionInput);
+                // third call
+                enter(FunctionCallExpressionTag.class, (e3, call3) -> {
                     enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
-                    call2.input(assertUndefinedInput);
-                    enter(LiteralExpressionTag.class).exit((e3) -> {
-                        assertAttribute(e3, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+                    call3.input(assertUndefinedInput);
+                    enter(LiteralExpressionTag.class).exit((e4) -> {
+                        assertAttribute(e4, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
                     });
-                    call2.input(assertJSFunctionInput);
-                    // third call
-                    enter(UnaryExpressionTag.class, (e7, unary2) -> {
-                        enter(FunctionCallExpressionTag.class, (e3, call3) -> {
-                            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
-                            call3.input(assertUndefinedInput);
-                            enter(LiteralExpressionTag.class).exit((e4) -> {
-                                assertAttribute(e4, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
-                            });
-                            call3.input(assertJSFunctionInput);
-                            // TODO missing input event for arguments to FunctionCallTag
-                            enter(UnaryExpressionTag.class, (e8, unary3) -> {
-                                enter(WriteVariableExpressionTag.class, (e4, var) -> {
-                                    enter(LiteralExpressionTag.class).exit();
-                                    var.input(42);
-                                }).exit();
-                                unary3.input();
-                            }).exit();
-                        }).exit();
-                        unary2.input();
+                    call3.input(assertJSFunctionInput);
+                    // TODO missing input event for arguments to FunctionCallTag
+                    enter(WriteVariableExpressionTag.class, (e4, var) -> {
+                        enter(LiteralExpressionTag.class).exit();
+                        var.input(42);
                     }).exit();
-                }).exit();
-                unary.input();
-            }).exit();
-        }).exit();
+                }).exit(assertReturnValue(Undefined.instance));
+            }).exit(assertReturnValue(Undefined.instance));
+        }).exit(assertReturnValue(Undefined.instance));
     }
 
     @Test
@@ -176,7 +163,7 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
             }).exit();
             // return statement
             enter(ReadVariableExpressionTag.class).exit();
-        }).exit();
+        }).exit(assertReturnValue(42));
     }
 
     @Test

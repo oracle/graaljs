@@ -87,9 +87,7 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
                 call.input(assertUndefinedInput);
                 enter(LiteralExpressionTag.class).exit();
                 call.input(assertJSFunctionInput);
-                // lastly, read undefined to return it
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
-            }).exit();
+            }).exit(assertReturnValue(Undefined.instance));
             unary.input(Undefined.instance);
         }).exit();
     }
