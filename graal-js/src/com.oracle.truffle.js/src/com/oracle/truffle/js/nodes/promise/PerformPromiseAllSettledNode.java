@@ -53,12 +53,10 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -74,52 +72,15 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
     }
 
     @Override
-    public DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability) {
-        assert JSRuntime.isConstructor(constructor);
-        SimpleArrayList<Object> values = new SimpleArrayList<>(10);
-        BoxedInt remainingElementsCount = new BoxedInt(1);
-        Object promiseResolve = getPromiseResolve(constructor);
-        for (int index = 0;; index++) {
-            Object next;
-            try {
-                next = iteratorStep.execute(iteratorRecord);
-            } catch (Throwable error) {
-                iteratorRecord.setDone(true);
-                throw error;
-            }
-            if (next == Boolean.FALSE) {
-                iteratorRecord.setDone(true);
-                remainingElementsCount.value--;
-                if (remainingElementsCount.value == 0) {
-                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, values.toArray());
-                    callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, resultCapability.getResolve(), valuesArray));
-                }
-                return resultCapability.getPromise();
-            }
-            Object nextValue;
-            try {
-                nextValue = iteratorValue.execute((DynamicObject) next);
-            } catch (Throwable error) {
-                iteratorRecord.setDone(true);
-                throw error;
-            }
-            values.add(Undefined.instance, growProfile);
-            Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
-            DynamicObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
-            DynamicObject rejectElement = createRejectElementFunction(index, values, resultCapability, remainingElementsCount);
-            remainingElementsCount.value++;
-            callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, rejectElement));
-        }
-    }
-
-    private DynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
+    protected DynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllSettledResolveElement, (c) -> createResolveElementFunctionImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
         return function;
     }
 
-    private DynamicObject createRejectElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
+    @Override
+    protected Object createRejectElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllSettledRejectElement, (c) -> createRejectElementFunctionImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));

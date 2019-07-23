@@ -153,16 +153,22 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
             values.add(Undefined.instance, growProfile);
             Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
             DynamicObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
+            Object rejectElement = createRejectElementFunction(index, values, resultCapability, remainingElementsCount);
             remainingElementsCount.value++;
-            callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, resultCapability.getReject()));
+            callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, rejectElement));
         }
     }
 
-    private DynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
+    protected DynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllResolveElement, (c) -> createResolveElementFunctionImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
         return function;
+    }
+
+    @SuppressWarnings("unused")
+    protected Object createRejectElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
+        return resultCapability.getReject();
     }
 
     private static JSFunctionData createResolveElementFunctionImpl(JSContext context) {
