@@ -47,8 +47,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.IteratorStepNode;
-import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
@@ -96,20 +94,16 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
         }
     }
 
-    static final HiddenKey RESOLVE_ELEMENT_ARGS_KEY = new HiddenKey("ResolveElementArgs");
+    protected static final HiddenKey RESOLVE_ELEMENT_ARGS_KEY = new HiddenKey("ResolveElementArgs");
 
-    @Child protected IteratorStepNode iteratorStep;
-    @Child protected IteratorValueNode iteratorValue;
     @Child protected JSFunctionCallNode callResolve;
     @Child protected PropertyGetNode getThen;
     @Child protected JSFunctionCallNode callThen;
     @Child protected PropertySetNode setArgs;
-    protected final BranchProfile growProfile = BranchProfile.create();
+    private final BranchProfile growProfile = BranchProfile.create();
 
     protected PerformPromiseAllNode(JSContext context) {
         super(context);
-        this.iteratorStep = IteratorStepNode.create(context);
-        this.iteratorValue = IteratorValueNode.create(context);
         this.callResolve = JSFunctionCallNode.createCall();
         this.getThen = PropertyGetNode.create(JSPromise.THEN, false, context);
         this.callThen = JSFunctionCallNode.createCall();
@@ -127,13 +121,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
         BoxedInt remainingElementsCount = new BoxedInt(1);
         Object promiseResolve = getPromiseResolve(constructor);
         for (int index = 0;; index++) {
-            Object next;
-            try {
-                next = iteratorStep.execute(iteratorRecord);
-            } catch (Throwable error) {
-                iteratorRecord.setDone(true);
-                throw error;
-            }
+            Object next = iteratorStepOrSetDone(iteratorRecord);
             if (next == Boolean.FALSE) {
                 iteratorRecord.setDone(true);
                 remainingElementsCount.value--;
@@ -143,13 +131,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 }
                 return resultCapability.getPromise();
             }
-            Object nextValue;
-            try {
-                nextValue = iteratorValue.execute((DynamicObject) next);
-            } catch (Throwable error) {
-                iteratorRecord.setDone(true);
-                throw error;
-            }
+            Object nextValue = iteratorValueOrSetDone(iteratorRecord, next);
             values.add(Undefined.instance, growProfile);
             Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
             DynamicObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);

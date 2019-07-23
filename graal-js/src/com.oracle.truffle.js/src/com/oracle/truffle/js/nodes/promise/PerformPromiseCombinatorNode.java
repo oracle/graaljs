@@ -42,6 +42,8 @@ package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.IteratorStepNode;
+import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -54,12 +56,18 @@ public abstract class PerformPromiseCombinatorNode extends JavaScriptBaseNode {
     protected final JSContext context;
     @Child private PropertyGetNode getResolve;
     @Child private IsCallableNode isCallable;
+    @Child private IteratorStepNode iteratorStep;
+    @Child private IteratorValueNode iteratorValue;
 
     protected PerformPromiseCombinatorNode(JSContext context) {
         this.context = context;
         this.getResolve = PropertyGetNode.create(JSPromise.RESOLVE, false, context);
         this.isCallable = IsCallableNode.create();
+        this.iteratorStep = IteratorStepNode.create(context);
+        this.iteratorValue = IteratorValueNode.create(context);
     }
+
+    public abstract DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability);
 
     protected final Object getPromiseResolve(DynamicObject constructor) {
         Object promiseResolve = getResolve.getValue(constructor);
@@ -69,5 +77,33 @@ public abstract class PerformPromiseCombinatorNode extends JavaScriptBaseNode {
         return promiseResolve;
     }
 
-    public abstract DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability);
+    /**
+     * Let next be IteratorStep(iteratorRecord). If next is an abrupt completion, set
+     * iteratorRecord.[[Done]] to true.
+     */
+    protected final Object iteratorStepOrSetDone(IteratorRecord iteratorRecord) {
+        Object next;
+        try {
+            next = iteratorStep.execute(iteratorRecord);
+        } catch (Throwable error) {
+            iteratorRecord.setDone(true);
+            throw error;
+        }
+        return next;
+    }
+
+    /**
+     * Let nextValue be IteratorValue(next). If nextValue is an abrupt completion, set
+     * iteratorRecord.[[Done]] to true.
+     */
+    protected final Object iteratorValueOrSetDone(IteratorRecord iteratorRecord, Object next) {
+        Object nextValue;
+        try {
+            nextValue = iteratorValue.execute((DynamicObject) next);
+        } catch (Throwable error) {
+            iteratorRecord.setDone(true);
+            throw error;
+        }
+        return nextValue;
+    }
 }
