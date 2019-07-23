@@ -100,7 +100,6 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
 
     @Child protected IteratorStepNode iteratorStep;
     @Child protected IteratorValueNode iteratorValue;
-    @Child protected PropertyGetNode getResolve;
     @Child protected JSFunctionCallNode callResolve;
     @Child protected PropertyGetNode getThen;
     @Child protected JSFunctionCallNode callThen;
@@ -111,7 +110,6 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
         super(context);
         this.iteratorStep = IteratorStepNode.create(context);
         this.iteratorValue = IteratorValueNode.create(context);
-        this.getResolve = PropertyGetNode.create(JSPromise.RESOLVE, false, context);
         this.callResolve = JSFunctionCallNode.createCall();
         this.getThen = PropertyGetNode.create(JSPromise.THEN, false, context);
         this.callThen = JSFunctionCallNode.createCall();
@@ -127,6 +125,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
         assert JSRuntime.isConstructor(constructor);
         SimpleArrayList<Object> values = new SimpleArrayList<>(10);
         BoxedInt remainingElementsCount = new BoxedInt(1);
+        Object promiseResolve = getPromiseResolve(constructor);
         for (int index = 0;; index++) {
             Object next;
             try {
@@ -152,7 +151,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 throw error;
             }
             values.add(Undefined.instance, growProfile);
-            Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, getResolve.getValue(constructor), nextValue));
+            Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
             DynamicObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
             remainingElementsCount.value++;
             callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, resultCapability.getReject()));

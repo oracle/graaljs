@@ -56,7 +56,6 @@ public class PerformPromiseRaceNode extends PerformPromiseCombinatorNode {
 
     @Child private IteratorStepNode iteratorStep;
     @Child private IteratorValueNode iteratorValue;
-    @Child private PropertyGetNode getResolve;
     @Child private JSFunctionCallNode callResolve;
     @Child private PropertyGetNode getThen;
     @Child private JSFunctionCallNode callThen;
@@ -65,7 +64,6 @@ public class PerformPromiseRaceNode extends PerformPromiseCombinatorNode {
         super(context);
         this.iteratorStep = IteratorStepNode.create(context);
         this.iteratorValue = IteratorValueNode.create(context);
-        this.getResolve = PropertyGetNode.create(JSPromise.RESOLVE, false, context);
         this.callResolve = JSFunctionCallNode.createCall();
         this.getThen = PropertyGetNode.create(JSPromise.THEN, false, context);
         this.callThen = JSFunctionCallNode.createCall();
@@ -78,6 +76,7 @@ public class PerformPromiseRaceNode extends PerformPromiseCombinatorNode {
     @Override
     public DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability) {
         assert JSRuntime.isConstructor(constructor);
+        Object promiseResolve = getPromiseResolve(constructor);
         for (;;) {
             Object next;
             try {
@@ -97,7 +96,7 @@ public class PerformPromiseRaceNode extends PerformPromiseCombinatorNode {
                 iteratorRecord.setDone(true);
                 throw error;
             }
-            Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, getResolve.getValue(constructor), nextValue));
+            Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
             callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resultCapability.getResolve(), resultCapability.getReject()));
         }
     }

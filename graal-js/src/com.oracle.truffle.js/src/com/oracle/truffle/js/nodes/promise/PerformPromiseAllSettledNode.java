@@ -78,6 +78,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
         assert JSRuntime.isConstructor(constructor);
         SimpleArrayList<Object> values = new SimpleArrayList<>(10);
         BoxedInt remainingElementsCount = new BoxedInt(1);
+        Object promiseResolve = getPromiseResolve(constructor);
         for (int index = 0;; index++) {
             Object next;
             try {
@@ -103,7 +104,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 throw error;
             }
             values.add(Undefined.instance, growProfile);
-            Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, getResolve.getValue(constructor), nextValue));
+            Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
             DynamicObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
             DynamicObject rejectElement = createRejectElementFunction(index, values, resultCapability, remainingElementsCount);
             remainingElementsCount.value++;
