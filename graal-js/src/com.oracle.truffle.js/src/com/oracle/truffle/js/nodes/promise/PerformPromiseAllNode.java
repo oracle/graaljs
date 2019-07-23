@@ -151,7 +151,7 @@ public class PerformPromiseAllNode extends PerformPromiseAllOrRaceNode {
                 iteratorRecord.setDone(true);
                 throw error;
             }
-            values.add(nextValue, growProfile);
+            values.add(Undefined.instance, growProfile);
             Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, getResolve.getValue(constructor), nextValue));
             DynamicObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
             remainingElementsCount.value++;
