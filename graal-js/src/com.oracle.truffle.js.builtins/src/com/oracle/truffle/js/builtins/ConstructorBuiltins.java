@@ -1896,7 +1896,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Object getIteratorValue(DynamicObject iteratorResult) {
             if (getIteratorValueNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorValueNode = insert(IteratorValueNode.create(getContext(), null));
+                getIteratorValueNode = insert(IteratorValueNode.create(getContext()));
             }
             return getIteratorValueNode.execute(iteratorResult);
         }
@@ -1904,7 +1904,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Object iteratorStep(IteratorRecord iterator) {
             if (iteratorStepNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorStepNode = insert(IteratorStepNode.create(getContext(), null));
+                iteratorStepNode = insert(IteratorStepNode.create(getContext()));
             }
             return iteratorStepNode.execute(iterator);
         }
