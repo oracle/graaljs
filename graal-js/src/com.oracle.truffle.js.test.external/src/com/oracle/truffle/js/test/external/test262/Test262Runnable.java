@@ -115,6 +115,7 @@ public class Test262Runnable extends TestRunnable {
                     "Map",
                     "Object.fromEntries",
                     "Object.is",
+                    "Promise.allSettled",
                     "Promise.prototype.finally",
                     "Proxy",
                     "Reflect",
@@ -190,7 +191,6 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DateTimeFormat-formatRange",
                     "Intl.Locale",
                     "IsHTMLDDA",
-                    "Promise.allSettled",
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
@@ -201,9 +201,10 @@ public class Test262Runnable extends TestRunnable {
                     "tail-call-optimization"
     }));
     private static final Set<String> ES2020_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Promise.allSettled",
                     "dynamic-import",
                     "import.meta",
-                    "numeric-separator-literal"
+                    "numeric-separator-literal",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

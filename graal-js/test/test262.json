@@ -26,23 +26,15 @@
   }, {
     "filePath" : "built-ins/Promise/all/invoke-resolve-get-error-close.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "comment" : "https://github.com/tc39/test262/issues/2206"
   }, {
-    "filePath" : "built-ins/Promise/all/invoke-resolve-get-once-multiple-calls.js",
+    "filePath" : "built-ins/Promise/allSettled/invoke-resolve-get-error-close.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "comment" : "https://github.com/tc39/test262/issues/2206"
   }, {
     "filePath" : "built-ins/Promise/race/invoke-resolve-get-error-close.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "built-ins/Promise/race/invoke-resolve-get-once-multiple-calls.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "built-ins/Promise/race/invoke-resolve-get-once-no-calls.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+    "comment" : "https://github.com/tc39/test262/issues/2206"
   }, {
     "filePath" : "built-ins/Proxy/defineProperty/targetdesc-not-configurable-writable-desc-not-writable.js",
     "status" : "FAIL",
