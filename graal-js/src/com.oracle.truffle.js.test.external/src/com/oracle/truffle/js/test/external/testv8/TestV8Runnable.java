@@ -73,6 +73,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_IMPORT_META = "--harmony-import-meta";
     private static final String HARMONY_DYNAMIC_IMPORT = "--harmony-dynamic-import";
     private static final String HARMONY_NUMERIC_SEPARATOR = "--harmony-numeric-separator";
+    private static final String HARMONY_PROMISE_ALL_SETTLED = "--harmony-promise-all-settled";
 
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final Pattern FLAGS_FIND_PATTERN = Pattern.compile("// Flags: (.*)");
@@ -106,7 +107,8 @@ public class TestV8Runnable extends TestRunnable {
         // ecma versions
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
-            boolean requiresES2020 = flags.contains(HARMONY_IMPORT_META) || flags.contains(HARMONY_DYNAMIC_IMPORT) || flags.contains(HARMONY_NUMERIC_SEPARATOR);
+            boolean requiresES2020 = flags.contains(HARMONY_IMPORT_META) || flags.contains(HARMONY_DYNAMIC_IMPORT) || flags.contains(HARMONY_NUMERIC_SEPARATOR) ||
+                            flags.contains(HARMONY_PROMISE_ALL_SETTLED);
             ecmaVersion = TestFile.EcmaVersion.forVersions(requiresES2020 ? JSTruffleOptions.ECMAScript2020 : JSTruffleOptions.LatestECMAScriptVersion);
         }
 

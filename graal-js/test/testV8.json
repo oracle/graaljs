@@ -861,10 +861,6 @@
     "filePath" : "mjsunit/harmony/private.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/harmony/promise-all-settled.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/harmony/public-instance-class-fields.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1172,18 +1168,6 @@
     "filePath" : "mjsunit/osr-elements-kind.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
-  }, {
-    "filePath" : "mjsunit/promise-perform-all-resolve-lookup.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/promise-perform-all-settled-resolve-lookup.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/promise-perfrom-race-resolve-lookup.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "mjsunit/random-bit-correlations.js",
     "status" : "SKIP",
