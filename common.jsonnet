@@ -25,10 +25,15 @@
   weeklyBench: {targets+: ['bench', 'weekly']},
   weekly:      {targets+: ['weekly']},
 
-  local common = {
+  local python3 = {
+    environment+: {
+      MX_PYTHON_VERSION: "3",
+    },
+  },
+
+  local common = python3 + {
     packages+: {
-      'pip:astroid': '==1.1.0',
-      'pip:pylint': '==1.1.0',
+      'pip:pylint': '==1.9.3',
       'pip:ninja_syntax': '==1.7.2',
     },
     catch_files+: [

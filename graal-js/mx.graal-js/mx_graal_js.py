@@ -123,7 +123,7 @@ def parse_js_args(args, default_cp=None, useDoubleDash=False):
     return vm_args, remainder
 
 def _default_stacksize():
-    if mx.get_arch() is 'sparcv9':
+    if mx.get_arch() == 'sparcv9':
         return '24m'
     return '16m'
 
@@ -209,7 +209,7 @@ def testnashorn(args, nonZeroIsFatal=True):
         '-Dtruffle.js.NashornCompatibilityMode=true',
         '-Dtruffle.js.U180EWhitespace=true',
     ]
-    _stack_size = '2m' if mx.get_arch() is 'sparcv9' else '1m'
+    _stack_size = '2m' if mx.get_arch() == 'sparcv9' else '1m'
     _run_test_suite(
         location=_location,
         library_names=['TESTNASHORN', 'TESTNASHORN_EXTERNAL'],
@@ -225,7 +225,7 @@ def testnashorn(args, nonZeroIsFatal=True):
 def testv8(args, nonZeroIsFatal=True):
     """run the testV8 conformance suite"""
     _location = join(_suite.dir, 'lib', 'testv8')
-    _stack_size = '2m' if mx.get_arch() is 'sparcv9' else '1m'
+    _stack_size = '2m' if mx.get_arch() == 'sparcv9' else '1m'
     _run_test_suite(
         location=_location,
         library_names=['TESTV8'],
@@ -315,4 +315,3 @@ mx.update_commands(_suite, {
     'testnashorn': [testnashorn, ''],
     'testv8': [testv8, ''],
 })
-
