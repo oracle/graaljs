@@ -44,7 +44,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * ES6 7.4.5 IteratorStep(iterator).
@@ -63,8 +62,7 @@ public class IteratorStepNode extends JavaScriptBaseNode {
     }
 
     public Object execute(IteratorRecord iteratorRecord) {
-        // passing undefined might be wrong, we should NOT pass "value"
-        DynamicObject result = iteratorNextNode.execute(iteratorRecord, Undefined.instance);
+        DynamicObject result = iteratorNextNode.execute(iteratorRecord);
         Object done = iteratorCompleteNode.execute(result);
         if (done == Boolean.TRUE) {
             return false;
