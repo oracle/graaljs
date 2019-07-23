@@ -44,13 +44,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.IteratorStepNode;
-import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
+import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -61,65 +58,19 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
-public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
+public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
 
-    protected static final class BoxedInt {
-        int value;
-
-        BoxedInt() {
-        }
-
-        BoxedInt(int value) {
-            this.value = value;
-        }
-    }
-
-    protected static final class ResolveElementArgs {
-        boolean alreadyCalled;
-        final int index;
-        final SimpleArrayList<Object> values;
-        final PromiseCapabilityRecord capability;
-        final BoxedInt remainingElements;
-
-        ResolveElementArgs(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord capability, BoxedInt remainingElements) {
-            this.alreadyCalled = false;
-            this.index = index;
-            this.values = values;
-            this.capability = capability;
-            this.remainingElements = remainingElements;
-        }
-    }
-
-    static final HiddenKey RESOLVE_ELEMENT_ARGS_KEY = new HiddenKey("ResolveElementArgs");
-
-    @Child protected IteratorStepNode iteratorStep;
-    @Child protected IteratorValueNode iteratorValue;
-    @Child protected PropertyGetNode getResolve;
-    @Child protected JSFunctionCallNode callResolve;
-    @Child protected PropertyGetNode getThen;
-    @Child protected JSFunctionCallNode callThen;
-    @Child protected PropertySetNode setArgs;
-    protected final BranchProfile growProfile = BranchProfile.create();
-
-    protected PerformPromiseAllNode(JSContext context) {
+    protected PerformPromiseAllSettledNode(JSContext context) {
         super(context);
-        this.iteratorStep = IteratorStepNode.create(context);
-        this.iteratorValue = IteratorValueNode.create(context);
-        this.getResolve = PropertyGetNode.create(JSPromise.RESOLVE, false, context);
-        this.callResolve = JSFunctionCallNode.createCall();
-        this.getThen = PropertyGetNode.create(JSPromise.THEN, false, context);
-        this.callThen = JSFunctionCallNode.createCall();
-        this.setArgs = PropertySetNode.createSetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
     }
 
-    public static PerformPromiseAllNode create(JSContext context) {
-        return new PerformPromiseAllNode(context);
+    public static PerformPromiseAllSettledNode create(JSContext context) {
+        return new PerformPromiseAllSettledNode(context);
     }
 
     @Override
@@ -154,23 +105,34 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
             values.add(Undefined.instance, growProfile);
             Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, getResolve.getValue(constructor), nextValue));
             DynamicObject resolveElement = createResolveElementFunction(index, values, resultCapability, remainingElementsCount);
+            DynamicObject rejectElement = createRejectElementFunction(index, values, resultCapability, remainingElementsCount);
             remainingElementsCount.value++;
-            callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, resultCapability.getReject()));
+            callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resolveElement, rejectElement));
         }
     }
 
     private DynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
-        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllResolveElement, (c) -> createResolveElementFunctionImpl(c));
+        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllSettledResolveElement, (c) -> createResolveElementFunctionImpl(c));
+        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
+        return function;
+    }
+
+    private DynamicObject createRejectElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
+        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllSettledRejectElement, (c) -> createRejectElementFunctionImpl(c));
         DynamicObject function = JSFunction.create(context.getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
         return function;
     }
 
     private static JSFunctionData createResolveElementFunctionImpl(JSContext context) {
-        class PromiseAllResolveElementRootNode extends JavaScriptRootNode {
+        class PromiseAllSEttledResolveElementRootNode extends JavaScriptRootNode {
             @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
+            @Child private CreateObjectNode objectCreateNode = CreateObjectNode.create(context);
+            @Child private CreateDataPropertyNode createStatusPropertyNode = CreateDataPropertyNode.create(context, "status");
+            @Child private CreateDataPropertyNode createValuePropertyNode = CreateDataPropertyNode.create(context, "value");
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -181,7 +143,12 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 }
                 args.alreadyCalled = true;
                 Object value = valueNode.execute(frame);
-                args.values.set(args.index, value);
+
+                DynamicObject obj = objectCreateNode.execute(frame);
+                createStatusPropertyNode.executeVoid(obj, "fulfilled");
+                createValuePropertyNode.executeVoid(obj, value);
+
+                args.values.set(args.index, obj);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
                     DynamicObject valuesArray = JSArray.createConstantObjectArray(context, args.values.toArray());
@@ -190,7 +157,43 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 return Undefined.instance;
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAllResolveElementRootNode());
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAllSEttledResolveElementRootNode());
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+    }
+
+    private static JSFunctionData createRejectElementFunctionImpl(JSContext context) {
+        class PromiseAllSettledRejectElementRootNode extends JavaScriptRootNode {
+            @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
+            @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(RESOLVE_ELEMENT_ARGS_KEY, context);
+            @Child private JSFunctionCallNode callResolve = JSFunctionCallNode.createCall();
+            @Child private CreateObjectNode objectCreateNode = CreateObjectNode.create(context);
+            @Child private CreateDataPropertyNode createStatusPropertyNode = CreateDataPropertyNode.create(context, "status");
+            @Child private CreateDataPropertyNode createReasonPropertyNode = CreateDataPropertyNode.create(context, "reason");
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+                ResolveElementArgs args = (ResolveElementArgs) getArgs.getValue(functionObject);
+                if (args.alreadyCalled) {
+                    return Undefined.instance;
+                }
+                args.alreadyCalled = true;
+                Object value = valueNode.execute(frame);
+
+                DynamicObject obj = objectCreateNode.execute(frame);
+                createStatusPropertyNode.executeVoid(obj, "rejected");
+                createReasonPropertyNode.executeVoid(obj, value);
+
+                args.values.set(args.index, obj);
+                args.remainingElements.value--;
+                if (args.remainingElements.value == 0) {
+                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, args.values.toArray());
+                    return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
+                }
+                return Undefined.instance;
+            }
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAllSettledRejectElementRootNode());
         return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 }

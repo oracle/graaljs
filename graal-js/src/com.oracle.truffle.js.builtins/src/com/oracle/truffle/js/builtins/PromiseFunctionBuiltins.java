@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseAllOrRaceNodeGen;
+import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
@@ -55,12 +55,14 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseAllNode;
-import com.oracle.truffle.js.nodes.promise.PerformPromiseAllOrRaceNode;
+import com.oracle.truffle.js.nodes.promise.PerformPromiseCombinatorNode;
+import com.oracle.truffle.js.nodes.promise.PerformPromiseAllSettledNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseRaceNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -79,7 +81,9 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         all(1),
         race(1),
         reject(1),
-        resolve(1);
+        resolve(1),
+
+        allSettled(1);
 
         private final int length;
 
@@ -91,15 +95,25 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this == allSettled) {
+                return JSTruffleOptions.ECMAScript2020;
+            }
+            return 6;
+        }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, PromiseFunction builtinEnum) {
         switch (builtinEnum) {
             case all:
-                return PromiseAllOrRaceNodeGen.create(context, builtin, PerformPromiseAllNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return PromiseCombinatorNodeGen.create(context, builtin, PerformPromiseAllNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case allSettled:
+                return PromiseCombinatorNodeGen.create(context, builtin, PerformPromiseAllSettledNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
             case race:
-                return PromiseAllOrRaceNodeGen.create(context, builtin, PerformPromiseRaceNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return PromiseCombinatorNodeGen.create(context, builtin, PerformPromiseRaceNode.create(context), args().withThis().fixedArgs(1).createArgumentNodes(context));
             case reject:
                 return RejectNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case resolve:
@@ -108,16 +122,16 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         return null;
     }
 
-    public abstract static class PromiseAllOrRaceNode extends JSBuiltinNode {
+    public abstract static class PromiseCombinatorNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private GetIteratorNode getIteratorNode;
-        @Child private PerformPromiseAllOrRaceNode performPromiseOpNode;
+        @Child private PerformPromiseCombinatorNode performPromiseOpNode;
         @Child private JSFunctionCallNode callRejectNode;
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
         private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
-        protected PromiseAllOrRaceNode(JSContext context, JSBuiltin builtin, PerformPromiseAllOrRaceNode performPromiseOp) {
+        protected PromiseCombinatorNode(JSContext context, JSBuiltin builtin, PerformPromiseCombinatorNode performPromiseOp) {
             super(context, builtin);
             this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             this.getIteratorNode = GetIteratorNode.create(context);

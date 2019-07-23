@@ -52,7 +52,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 
-public class PerformPromiseRaceNode extends PerformPromiseAllOrRaceNode {
+public class PerformPromiseRaceNode extends PerformPromiseCombinatorNode {
 
     @Child private IteratorStepNode iteratorStep;
     @Child private IteratorValueNode iteratorValue;

@@ -46,10 +46,10 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 
-public abstract class PerformPromiseAllOrRaceNode extends JavaScriptBaseNode {
+public abstract class PerformPromiseCombinatorNode extends JavaScriptBaseNode {
     protected final JSContext context;
 
-    protected PerformPromiseAllOrRaceNode(JSContext context) {
+    protected PerformPromiseCombinatorNode(JSContext context) {
         this.context = context;
     }
 

@@ -229,6 +229,8 @@ public class JSContext {
         PromiseResolveThenableJob,
         PromiseReactionJob,
         PromiseAllResolveElement,
+        PromiseAllSettledResolveElement,
+        PromiseAllSettledRejectElement,
         PromiseThenFinally,
         PromiseCatchFinally,
         PromiseValueThunk,
