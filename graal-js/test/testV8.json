@@ -1134,9 +1134,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/modules-imports5.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/modules-imports8.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1153,10 +1150,6 @@
     "filePath" : "mjsunit/modules-init4.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
-    "filePath" : "mjsunit/modules-namespace4.js",
-    "status" : "FAIL",
-    "comment" : "Our uninitialized binding check does not work for an uninitialized default binding."
   }, {
     "filePath" : "mjsunit/number-tostring-big-integer.js",
     "status" : "FAIL"
