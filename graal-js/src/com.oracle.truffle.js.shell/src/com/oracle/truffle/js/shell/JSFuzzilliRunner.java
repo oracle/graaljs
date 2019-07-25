@@ -69,11 +69,10 @@ class JSFuzzilliRunner {
     }
 
     public static int runFuzzilliREPRL(Context.Builder contextBuilder) {
-        try {
+        try (RandomAccessFile controlReadF = new RandomAccessFile(new File("/dev/fd/100"), "rws");
+                        RandomAccessFile controlWriteF = new RandomAccessFile(new File("/dev/fd/101"), "rws");
+                        RandomAccessFile dataReadF = new RandomAccessFile(new File("/dev/fd/102"), "rws")) {
             log(LogLevel.info, "GraalJS Fuzzilli REPRL started");
-            final RandomAccessFile controlReadF = new RandomAccessFile(new File("/dev/fd/100"), "rws");
-            final RandomAccessFile controlWriteF = new RandomAccessFile(new File("/dev/fd/101"), "rws");
-            final RandomAccessFile dataReadF = new RandomAccessFile(new File("/dev/fd/102"), "rws");
             Consumer<String> fuzzout = (String s) -> {
                 try {
                     final RandomAccessFile dataWriteF = new RandomAccessFile(new File("/dev/fd/103"), "rws");
