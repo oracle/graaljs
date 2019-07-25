@@ -91,7 +91,6 @@ public abstract class JSScope {
     protected final Node node;
     protected final MaterializedFrame mFrame;
 
-    private static final String THIS_SLOT_ID = "<this>";
     private static final String THIS_NAME = "this";
 
     public JSScope(Node node, MaterializedFrame frame) {
@@ -185,7 +184,7 @@ public abstract class JSScope {
         assert frame == null || frame.getFrameDescriptor() == frameDesc;
         Map<String, Variable> slotMap = new LinkedHashMap<>();
         for (FrameSlot slot : frameDesc.getSlots()) {
-            if (slot.getIdentifier().equals(THIS_SLOT_ID)) {
+            if (JSFrameUtil.isThisSlot(slot)) {
                 continue;
             }
             if (JSFrameUtil.isInternal(slot)) {
@@ -411,7 +410,7 @@ public abstract class JSScope {
             if (mFrame == null) {
                 return null;
             }
-            FrameSlot thisSlot = mFrame.getFrameDescriptor().findFrameSlot(THIS_SLOT_ID);
+            FrameSlot thisSlot = JSFrameUtil.getThisSlot(mFrame.getFrameDescriptor());
             if (thisSlot == null) {
                 return thisFromArguments(mFrame.getArguments());
             } else {

@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -52,6 +53,7 @@ public final class JSFrameUtil {
     public static final MaterializedFrame NULL_MATERIALIZED_FRAME = Truffle.getRuntime().createMaterializedFrame(JSArguments.createNullArguments());
     public static final Object DEFAULT_VALUE = Undefined.instance;
 
+    private static final String THIS_SLOT_ID = "<this>";
     private static final Class<? extends MaterializedFrame> MATERIALIZED_FRAME_CLASS = NULL_MATERIALIZED_FRAME.getClass();
     private static final int IS_LET = 1 << 4;
     private static final int IS_CONST = 1 << 5;
@@ -116,5 +118,30 @@ public final class JSFrameUtil {
             return false;
         }
         return true;
+    }
+
+    public static String getPublicName(FrameSlot frameSlot) {
+        CompilerAsserts.neverPartOfCompilation();
+        Object identifier = frameSlot.getIdentifier();
+        if (frameSlot.getIdentifier() instanceof String) {
+            String name = (String) frameSlot.getIdentifier();
+            if (name.startsWith(":")) {
+                return name.substring(1);
+            } else if (name.startsWith("<") && name.endsWith(">")) {
+                return name.substring(1, name.length() - 1);
+            } else {
+                return name;
+            }
+        } else {
+            return identifier.toString();
+        }
+    }
+
+    public static boolean isThisSlot(FrameSlot frameSlot) {
+        return frameSlot.getIdentifier().equals(THIS_SLOT_ID);
+    }
+
+    public static FrameSlot getThisSlot(FrameDescriptor frameDescriptor) {
+        return frameDescriptor.findFrameSlot(THIS_SLOT_ID);
     }
 }
