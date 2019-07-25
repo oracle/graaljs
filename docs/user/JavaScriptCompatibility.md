@@ -74,7 +74,7 @@ Unicode mode (`'u'` flag)                                                       
 <br/>
 
 We are currently working on implementing negative lookahead and more support for lookbehind in TRegex. On the other hand, full support of backreferences is out of scope for a finite state automaton engine like TRegex.
-GrGraalVMaal JavaScript uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the Joni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
+GraalVM JavaScript uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the Joni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
 For more details on the implementation of the engines, see [RegExpImplementation.md](../contributor/RegExpImplementation.md).
 
 ## Compatibility extensions
@@ -106,7 +106,7 @@ Loads (parses and executes) the specified JavaScript source code.
 Source can be of type:
 
 * a String: the path of the source file or a URL to execute.
-* `java.lang.URL`: the URL is queried for the source code to execute.
+* `java.lang.URL`: the URL is queried for the source code to execute if the `js.load-from-url` option is set to `true`.
 * `java.io.File`: the File is read for the source code to execute.
 * a JavaScript object: the object is queried for a `name` and a `script` property, which represent the source name and code, respectively.
 * all other types: the source is converted to a String.
