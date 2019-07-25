@@ -6061,12 +6061,14 @@ public class Parser extends AbstractParser {
                 int lineNumber = line;
                 long rhsToken = token;
                 boolean declaration;
+                boolean hoistableDeclaration = false;
                 switch (type) {
                     case FUNCTION:
                         assignmentExpression = functionExpression(false, true);
                         FunctionNode functionNode = (FunctionNode) assignmentExpression;
                         ident = functionNode.isAnonymous() ? null : functionNode.getIdent();
                         declaration = true;
+                        hoistableDeclaration = true;
                         break;
                     case CLASS:
                         assignmentExpression = classDeclaration(false, false, true);
@@ -6078,6 +6080,7 @@ public class Parser extends AbstractParser {
                             assignmentExpression = asyncFunctionExpression(false, true);
                             ident = ((FunctionNode) assignmentExpression).getIdent();
                             declaration = true;
+                            hoistableDeclaration = true;
                             break;
                         }
                         assignmentExpression = assignmentExpression(true, false, false);
@@ -6086,17 +6089,20 @@ public class Parser extends AbstractParser {
                         break;
                 }
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, assignmentExpression, true));
-                if (ident != null) {
-                    lc.appendStatementToCurrentNode(new VarNode(lineNumber, Token.recast(rhsToken, LET), finish, ident, assignmentExpression).setFlag(VarNode.IS_EXPORT));
-                    module.addLocalExportEntry(ExportEntry.exportDefault(ident.getName()));
-                } else {
+                if (ident == null) {
                     ident = new IdentNode(Token.recast(rhsToken, IDENT), finish, Module.DEFAULT_EXPORT_BINDING_NAME);
-                    lc.appendStatementToCurrentNode(new VarNode(lineNumber, Token.recast(rhsToken, LET), finish, ident, assignmentExpression).setFlag(VarNode.IS_EXPORT));
                     if (!declaration) {
                         endOfLine();
                     }
-                    module.addLocalExportEntry(ExportEntry.exportDefault());
                 }
+                VarNode varNode = new VarNode(lineNumber, Token.recast(rhsToken, hoistableDeclaration ? VAR : LET), finish, ident, assignmentExpression).setFlag(VarNode.IS_EXPORT);
+                if (hoistableDeclaration) {
+                    functionDeclarations.add(varNode);
+                } else {
+                    varNode = varNode.setFlag(VarNode.IS_LET);
+                    lc.appendStatementToCurrentNode(varNode);
+                }
+                module.addLocalExportEntry(ExportEntry.exportDefault(ident.getName()));
                 break;
             case VAR:
             case LET:
