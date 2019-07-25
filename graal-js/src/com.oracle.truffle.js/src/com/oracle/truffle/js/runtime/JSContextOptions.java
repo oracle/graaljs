@@ -329,6 +329,11 @@ public final class JSContextOptions {
     @Option(name = LOCALE_NAME, category = OptionCategory.EXPERT, help = "Use a specific default locale for locale-sensitive operations.") //
     public static final OptionKey<String> LOCALE = new OptionKey<>("");
 
+    public static final String FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME = JS_OPTION_PREFIX + "function-constructor-cache-size";
+    @Option(name = FUNCTION_CONSTRUCTOR_CACHE_SIZE_NAME, category = OptionCategory.EXPERT, help = "Maximum size of the parsing cache used by the Function constructor to avoid re-parsing known sources.") //
+    public static final OptionKey<Integer> FUNCTION_CONSTRUCTOR_CACHE_SIZE = new OptionKey<>(32);
+    @CompilationFinal private int functionConstructorCacheSize;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -395,6 +400,7 @@ public final class JSContextOptions {
         this.test262Mode = readBooleanOption(TEST262_MODE);
         this.testV8Mode = readBooleanOption(TESTV8_MODE);
         this.validateRegExpLiterals = readBooleanOption(VALIDATE_REGEXP_LITERALS);
+        this.functionConstructorCacheSize = readIntegerOption(FUNCTION_CONSTRUCTOR_CACHE_SIZE);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -637,6 +643,10 @@ public final class JSContextOptions {
         return LOCALE.getValue(optionValues);
     }
 
+    public int getFunctionConstructorCacheSize() {
+        return functionConstructorCacheSize;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -668,6 +678,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.test262Mode ? 1 : 0);
         hash = 53 * hash + (this.testV8Mode ? 1 : 0);
         hash = 53 * hash + (this.validateRegExpLiterals ? 1 : 0);
+        hash = 53 * hash + this.functionConstructorCacheSize;
         return hash;
     }
 
@@ -762,6 +773,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.validateRegExpLiterals != other.validateRegExpLiterals) {
+            return false;
+        }
+        if (this.functionConstructorCacheSize != other.functionConstructorCacheSize) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
