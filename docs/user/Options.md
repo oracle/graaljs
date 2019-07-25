@@ -68,7 +68,7 @@ Stability: stable
 
 Provides compatibility to a specific version of the ECMAScript specification.
 Expects an integer value, where both the counting version numbers (`5` to `11`) and the publication years (starting from `2015`) are supported.
-The default is the latest finalized version of the specification, currently `ECMAScript 2019`.
+The default is the latest finalized version of the specification, currently the [`ECMAScript 2019 specification`](http://www.ecma-international.org/ecma-262/10.0/index.html).
 Graal.js implements some features of the current draft specification if you explicitly select that version.
 For production settings, it is recommended to set the `ecmascript-version` to an existing, finalized version of the specification.
 

@@ -10,8 +10,7 @@ This document explains the public API it provides to user applications written i
 ## ECMAScript language compliance
 
 GraalVM JavaScript implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
-GraalVM JavaScript is compatible with the 2019 edition of ECMAScript (sometimes referred to as "version 10" or "ES10"), see [http://www.ecma-international.org/ecma-262/](http://www.ecma-international.org/ecma-262/).
-(Remark: at the time of writing of this document, ECMAScript 2019 had been finalized, but the specification document was not yet published.)
+GraalVM JavaScript is compatible with the [ECMAScript 2019 specification](http://www.ecma-international.org/ecma-262/10.0/index.html) (sometimes referred to as "version 10" or "ES10").
 Some features of the upcoming ECMAScript 2020 are already implemented and are available behind specific flags.
 Older versions starting from ECMAScript 5 can be enabled with a config flag.
 It is recommended to use a fixed ECMAScript version, with the most recent published ECMAScript 2019 specification being a reasonable target.
@@ -75,7 +74,7 @@ Unicode mode (`'u'` flag)                                                       
 <br/>
 
 We are currently working on implementing negative lookahead and more support for lookbehind in TRegex. On the other hand, full support of backreferences is out of scope for a finite state automaton engine like TRegex.
-GrGraalVMaal JavaScript uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the Joni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
+GraalVM JavaScript uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the Joni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
 For more details on the implementation of the engines, see [RegExpImplementation.md](../contributor/RegExpImplementation.md).
 
 ## Compatibility extensions
@@ -107,7 +106,7 @@ Loads (parses and executes) the specified JavaScript source code.
 Source can be of type:
 
 * a String: the path of the source file or a URL to execute.
-* `java.lang.URL`: the URL is queried for the source code to execute.
+* `java.lang.URL`: the URL is queried for the source code to execute if the `js.load-from-url` option is set to `true`.
 * `java.io.File`: the File is read for the source code to execute.
 * a JavaScript object: the object is queried for a `name` and a `script` property, which represent the source name and code, respectively.
 * all other types: the source is converted to a String.
