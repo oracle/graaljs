@@ -40,60 +40,33 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * ES6 7.4.5 IteratorStep(iterator).
  */
-public abstract class IteratorStepNode extends JavaScriptNode {
-    @Child @Executed JavaScriptNode iteratorNode;
+public class IteratorStepNode extends JavaScriptBaseNode {
     @Child private IteratorNextNode iteratorNextNode;
     @Child private IteratorCompleteNode iteratorCompleteNode;
-    private final JSContext context;
 
-    protected IteratorStepNode(JSContext context, JavaScriptNode iteratorNode) {
-        this.context = context;
-        this.iteratorNode = iteratorNode;
+    protected IteratorStepNode(JSContext context) {
+        this.iteratorNextNode = IteratorNextNode.create();
+        this.iteratorCompleteNode = IteratorCompleteNode.create(context);
     }
 
     public static IteratorStepNode create(JSContext context) {
-        return create(context, null);
+        return new IteratorStepNode(context);
     }
 
-    public static IteratorStepNode create(JSContext context, JavaScriptNode iterator) {
-        return IteratorStepNodeGen.create(context, iterator);
-    }
-
-    @Specialization
-    protected Object doIteratorStep(IteratorRecord iteratorRecord) {
-        if (iteratorNextNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            iteratorNextNode = insert(IteratorNextNode.create());
-        }
-        if (iteratorCompleteNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            iteratorCompleteNode = insert(IteratorCompleteNode.create(context));
-        }
-        // passing undefined might be wrong, we should NOT pass "value"
-        DynamicObject result = iteratorNextNode.execute(iteratorRecord, Undefined.instance);
+    public Object execute(IteratorRecord iteratorRecord) {
+        DynamicObject result = iteratorNextNode.execute(iteratorRecord);
         Object done = iteratorCompleteNode.execute(result);
         if (done == Boolean.TRUE) {
             return false;
         }
         return result;
-    }
-
-    public abstract Object execute(IteratorRecord iterator);
-
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return IteratorStepNodeGen.create(context, cloneUninitialized(iteratorNode));
     }
 }

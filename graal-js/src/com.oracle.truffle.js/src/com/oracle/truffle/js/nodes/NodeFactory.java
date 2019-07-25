@@ -63,7 +63,6 @@ import com.oracle.truffle.js.nodes.access.DeclareGlobalFunctionNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalVariableNode;
-import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.EnumerateNode;
 import com.oracle.truffle.js.nodes.access.FrameSlotNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
@@ -76,7 +75,6 @@ import com.oracle.truffle.js.nodes.access.GlobalScopeNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextUnaryNode;
-import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepSpecialNode;
 import com.oracle.truffle.js.nodes.access.IteratorToArrayNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -101,6 +99,7 @@ import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode.RequireObje
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.access.WithTargetNode;
+import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
@@ -875,10 +874,6 @@ public class NodeFactory {
 
     public JavaScriptNode createIteratorComplete(JSContext context, JavaScriptNode iterResult) {
         return IteratorCompleteUnaryNode.create(context, iterResult);
-    }
-
-    public JavaScriptNode createIteratorStep(JSContext context, JavaScriptNode iterator) {
-        return IteratorStepNode.create(context, iterator);
     }
 
     public IteratorStepSpecialNode createIteratorStepSpecial(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode, boolean setDoneOnError) {

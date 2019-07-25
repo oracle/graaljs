@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.access.IteratorStepNode;
-import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -52,20 +50,14 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 
-public class PerformPromiseRaceNode extends PerformPromiseAllOrRaceNode {
+public class PerformPromiseRaceNode extends PerformPromiseCombinatorNode {
 
-    @Child private IteratorStepNode iteratorStep;
-    @Child private IteratorValueNode iteratorValue;
-    @Child private PropertyGetNode getResolve;
     @Child private JSFunctionCallNode callResolve;
     @Child private PropertyGetNode getThen;
     @Child private JSFunctionCallNode callThen;
 
     protected PerformPromiseRaceNode(JSContext context) {
         super(context);
-        this.iteratorStep = IteratorStepNode.create(context);
-        this.iteratorValue = IteratorValueNode.create(context);
-        this.getResolve = PropertyGetNode.create(JSPromise.RESOLVE, false, context);
         this.callResolve = JSFunctionCallNode.createCall();
         this.getThen = PropertyGetNode.create(JSPromise.THEN, false, context);
         this.callThen = JSFunctionCallNode.createCall();
@@ -78,26 +70,15 @@ public class PerformPromiseRaceNode extends PerformPromiseAllOrRaceNode {
     @Override
     public DynamicObject execute(IteratorRecord iteratorRecord, DynamicObject constructor, PromiseCapabilityRecord resultCapability) {
         assert JSRuntime.isConstructor(constructor);
+        Object promiseResolve = getPromiseResolve(constructor);
         for (;;) {
-            Object next;
-            try {
-                next = iteratorStep.execute(iteratorRecord);
-            } catch (Throwable error) {
-                iteratorRecord.setDone(true);
-                throw error;
-            }
+            Object next = iteratorStepOrSetDone(iteratorRecord);
             if (next == Boolean.FALSE) {
                 iteratorRecord.setDone(true);
                 return resultCapability.getPromise();
             }
-            Object nextValue;
-            try {
-                nextValue = iteratorValue.execute((DynamicObject) next);
-            } catch (Throwable error) {
-                iteratorRecord.setDone(true);
-                throw error;
-            }
-            Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, getResolve.getValue(constructor), nextValue));
+            Object nextValue = iteratorValueOrSetDone(iteratorRecord, next);
+            Object nextPromise = callResolve.executeCall(JSArguments.createOneArg(constructor, promiseResolve, nextValue));
             callThen.executeCall(JSArguments.create(nextPromise, getThen.getValue(nextPromise), resultCapability.getResolve(), resultCapability.getReject()));
         }
     }
