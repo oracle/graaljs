@@ -10,8 +10,7 @@ This document explains the public API it provides to user applications written i
 ## ECMAScript language compliance
 
 GraalVM JavaScript implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
-GraalVM JavaScript is compatible with the 2019 edition of ECMAScript (sometimes referred to as "version 10" or "ES10"), see [http://www.ecma-international.org/ecma-262/](http://www.ecma-international.org/ecma-262/).
-(Remark: at the time of writing of this document, ECMAScript 2019 had been finalized, but the specification document was not yet published.)
+GraalVM JavaScript is compatible with the [ECMAScript 2019 specification](http://www.ecma-international.org/ecma-262/10.0/index.html) (sometimes referred to as "version 10" or "ES10").
 Some features of the upcoming ECMAScript 2020 are already implemented and are available behind specific flags.
 Older versions starting from ECMAScript 5 can be enabled with a config flag.
 It is recommended to use a fixed ECMAScript version, with the most recent published ECMAScript 2019 specification being a reasonable target.
