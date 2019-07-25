@@ -1062,10 +1062,30 @@ public class NodeFactory {
             @Override
             public Object execute(VirtualFrame frame) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                MaterializedFrame environment = module.getEnvironment();
-                FrameSlot frameSlot = environment.getFrameDescriptor().findFrameSlot(bindingName);
+                FrameSlot frameSlot = module.getFrameDescriptor().findFrameSlot(bindingName);
                 assert frameSlot != null;
-                return replace(JSReadFrameSlotNode.create(frameSlot, new ModuleEnvFrameNode(module), JSFrameUtil.hasTemporalDeadZone(frameSlot))).execute(frame);
+                MaterializedFrame environment = module.getEnvironment();
+                boolean hasTDZ = JSFrameUtil.hasTemporalDeadZone(frameSlot);
+                JavaScriptNode specializedNode;
+                if (environment == null) {
+                    // Reading a binding from a module that is not evaluated yet (due to cyclic
+                    // dependencies).
+                    assert module.getStatus() == JSModuleRecord.Status.Evaluating;
+                    if (hasTDZ) {
+                        // Uninitialized binding
+                        specializedNode = new JavaScriptNode() {
+                            @Override
+                            public Object execute(VirtualFrame f) {
+                                throw Errors.createReferenceErrorNotDefined(bindingName, this);
+                            }
+                        };
+                    } else {
+                        specializedNode = JSConstantNode.createUndefined();
+                    }
+                } else {
+                    specializedNode = JSReadFrameSlotNode.create(frameSlot, new ModuleEnvFrameNode(module), hasTDZ);
+                }
+                return replace(specializedNode).execute(frame);
             }
 
             @Override

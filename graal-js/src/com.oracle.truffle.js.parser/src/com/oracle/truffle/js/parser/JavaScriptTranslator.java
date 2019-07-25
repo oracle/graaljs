@@ -128,6 +128,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         FunctionRootNode functionRoot = functionExpression.getFunctionNode();
         JSModuleRecord moduleRecord = (JSModuleRecord) scriptOrModule;
         moduleRecord.setFunctionData(functionRoot.getFunctionData());
+        moduleRecord.setFrameDescriptor(functionRoot.getFrameDescriptor());
         return moduleRecord;
     }
 
