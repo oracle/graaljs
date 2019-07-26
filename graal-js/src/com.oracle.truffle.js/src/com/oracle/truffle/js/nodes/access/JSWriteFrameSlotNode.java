@@ -74,7 +74,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("name", getIdentifier());
+        return JSTags.createNodeObjectDescriptor("name", JSFrameUtil.getPublicName(frameSlot));
     }
 
     @Override

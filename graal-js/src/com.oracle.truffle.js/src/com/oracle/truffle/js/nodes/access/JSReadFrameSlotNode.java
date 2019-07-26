@@ -83,7 +83,11 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == ReadVariableExpressionTag.class) {
-            return !JSFrameUtil.isInternal(frameSlot);
+            if (JSFrameUtil.isInternal(frameSlot)) {
+                // Reads to "<this>" are instrumentable
+                return JSFrameUtil.isThisSlot(frameSlot);
+            }
+            return true;
         } else {
             return super.hasTag(tag);
         }
@@ -91,7 +95,7 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("name", getIdentifier());
+        return JSTags.createNodeObjectDescriptor("name", JSFrameUtil.getPublicName(frameSlot));
     }
 
     @Override

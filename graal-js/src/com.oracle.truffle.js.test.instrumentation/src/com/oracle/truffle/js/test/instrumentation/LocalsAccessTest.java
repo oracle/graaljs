@@ -205,4 +205,13 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void readThis() {
+        evalWithTag("(()=>{return this;})()", ReadVariableExpressionTag.class);
+
+        enter(ReadVariableExpressionTag.class, (e, r) -> {
+            assertAttribute(e, NAME, "this");
+        }).exit();
+    }
+
 }
