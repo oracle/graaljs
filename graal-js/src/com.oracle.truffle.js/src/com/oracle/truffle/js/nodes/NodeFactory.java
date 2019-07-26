@@ -49,7 +49,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.annotations.GenerateDecoder;
@@ -1051,16 +1050,47 @@ public class NodeFactory {
                 return module.getEnvironment();
             }
         }
-        return new JavaScriptNode() {
-            private final JSModuleRecord module = moduleRecord;
+        class ReadModuleImportBindingNode extends JavaScriptNode {
+            private final JSModuleRecord module;
+            private final FrameSlot frameSlot;
+            private final boolean hasTDZ;
+
+            ReadModuleImportBindingNode(JSModuleRecord module, FrameSlot frameSlot) {
+                assert frameSlot != null;
+                this.module = module;
+                this.frameSlot = frameSlot;
+                this.hasTDZ = JSFrameUtil.hasTemporalDeadZone(frameSlot);
+            }
 
             @Override
             public Object execute(VirtualFrame frame) {
+                if (module.getEnvironment() == null) {
+                    // Reading a binding from a module that is not evaluated yet (due to cyclic
+                    // dependencies).
+                    assert module.getStatus() == JSModuleRecord.Status.Evaluating;
+                    if (hasTDZ) {
+                        // Uninitialized binding
+                        throw Errors.createReferenceErrorNotDefined(bindingName, this);
+                    } else {
+                        return Undefined.instance;
+                    }
+                } else {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    return replace(JSReadFrameSlotNode.create(frameSlot, new ModuleEnvFrameNode(module), hasTDZ)).execute(frame);
+                }
+            }
+
+            @Override
+            protected JavaScriptNode copyUninitialized() {
+                return new ReadModuleImportBindingNode(module, frameSlot);
+            }
+        }
+        return new JavaScriptNode() {
+            @Override
+            public Object execute(VirtualFrame frame) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                MaterializedFrame environment = module.getEnvironment();
-                FrameSlot frameSlot = environment.getFrameDescriptor().findFrameSlot(bindingName);
-                assert frameSlot != null;
-                return replace(JSReadFrameSlotNode.create(frameSlot, new ModuleEnvFrameNode(module), JSFrameUtil.hasTemporalDeadZone(frameSlot))).execute(frame);
+                FrameSlot frameSlot = moduleRecord.getFrameDescriptor().findFrameSlot(bindingName);
+                return replace(new ReadModuleImportBindingNode(moduleRecord, frameSlot)).execute(frame);
             }
 
             @Override

@@ -380,7 +380,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     public ExportResolution resolveExport(JSModuleRecord referencingModule, String exportName) {
-        return resolveExport(referencingModule, exportName, new HashSet<>(), new HashSet<>());
+        return resolveExport(referencingModule, exportName, new HashSet<>());
     }
 
     /**
@@ -397,7 +397,7 @@ public final class GraalJSEvaluator implements JSParser {
      * found or the request is found to be circular, null is returned. If the request is found to be
      * ambiguous, the string "ambiguous" is returned.
      */
-    private ExportResolution resolveExport(JSModuleRecord referencingModule, String exportName, Set<Pair<JSModuleRecord, String>> resolveSet, Set<JSModuleRecord> exportStarSet) {
+    private ExportResolution resolveExport(JSModuleRecord referencingModule, String exportName, Set<Pair<JSModuleRecord, String>> resolveSet) {
         Pair<JSModuleRecord, String> resolved = new Pair<>(referencingModule, exportName);
         if (resolveSet.contains(resolved)) {
             // Assert: this is a circular import request.
@@ -415,7 +415,7 @@ public final class GraalJSEvaluator implements JSParser {
             if (exportEntry.getExportName().equals(exportName)) {
                 // Assert: module imports a specific binding for this export.
                 JSModuleRecord importedModule = hostResolveImportedModule(referencingModule, exportEntry.getModuleRequest());
-                ExportResolution indirectResolution = resolveExport(importedModule, exportEntry.getImportName(), resolveSet, exportStarSet);
+                ExportResolution indirectResolution = resolveExport(importedModule, exportEntry.getImportName(), resolveSet);
                 if (!indirectResolution.isNull()) {
                     return indirectResolution;
                 }
@@ -427,14 +427,10 @@ public final class GraalJSEvaluator implements JSParser {
             // NOTE A default export cannot be provided by an export *.
             throw Errors.createSyntaxError("A default export cannot be provided by an export *");
         }
-        if (exportStarSet.contains(referencingModule)) {
-            return ExportResolution.notFound();
-        }
-        exportStarSet.add(referencingModule);
         ExportResolution starResolution = ExportResolution.notFound();
         for (ExportEntry exportEntry : module.getStarExportEntries()) {
             JSModuleRecord importedModule = hostResolveImportedModule(referencingModule, exportEntry.getModuleRequest());
-            ExportResolution resolution = resolveExport(importedModule, exportName, resolveSet, exportStarSet);
+            ExportResolution resolution = resolveExport(importedModule, exportName, resolveSet);
             if (resolution.isAmbiguous()) {
                 return resolution;
             }

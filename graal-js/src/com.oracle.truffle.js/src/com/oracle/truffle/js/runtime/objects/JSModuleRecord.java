@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
@@ -73,6 +74,7 @@ public final class JSModuleRecord extends ScriptOrModule {
     private Object executionResult;
 
     private JSFunctionData functionData;
+    private FrameDescriptor frameDescriptor;
 
     /** Lazily initialized Module Namespace object ({@code [[Namespace]]}). */
     private DynamicObject namespace;
@@ -122,6 +124,16 @@ public final class JSModuleRecord extends ScriptOrModule {
         this.functionData = functionData;
     }
 
+    public FrameDescriptor getFrameDescriptor() {
+        assert frameDescriptor != null;
+        return frameDescriptor;
+    }
+
+    public void setFrameDescriptor(FrameDescriptor frameDescriptor) {
+        assert this.frameDescriptor == null;
+        this.frameDescriptor = frameDescriptor;
+    }
+
     public Status getStatus() {
         return status;
     }
@@ -159,6 +171,7 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     public void setEnvironment(MaterializedFrame environment) {
         assert this.environment == null;
+        assert this.frameDescriptor == environment.getFrameDescriptor();
         this.environment = environment;
     }
 
