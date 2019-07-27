@@ -70,6 +70,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -111,6 +112,7 @@ import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSLoadNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
@@ -122,6 +124,8 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -1114,15 +1118,28 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             super(context, builtin);
         }
 
-        @Specialization(guards = "isString(source)")
-        protected Object indirectEvalString(Object source) {
+        @Specialization
+        protected Object indirectEvalString(String source) {
             JSRealm realm = getContext().getRealm();
             return indirectEvalImpl(realm, source);
         }
 
+        @Specialization(guards = "isForeignObject(source)", limit = "3")
+        protected Object indirectEvalForeignObject(TruffleObject source,
+                        @CachedLibrary("source") InteropLibrary interop) {
+            if (interop.isString(source)) {
+                try {
+                    return indirectEvalString(interop.asString(source));
+                } catch (UnsupportedMessageException ex) {
+                    throw Errors.createTypeErrorInteropException(source, ex, "asString", this);
+                }
+            } else {
+                return source;
+            }
+        }
+
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private Object indirectEvalImpl(JSRealm realm, Object source) {
-            String sourceText = source.toString();
+        private Object indirectEvalImpl(JSRealm realm, String source) {
             String sourceName = null;
             if (isCallerSensitive()) {
                 sourceName = EvalNode.findAndFormatEvalOrigin(realm.getCallNode());
@@ -1130,12 +1147,47 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (sourceName == null) {
                 sourceName = Evaluator.EVAL_SOURCE_NAME;
             }
-            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(JavaScriptLanguage.ID, sourceText, sourceName).build());
+            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(JavaScriptLanguage.ID, source, sourceName).build());
         }
 
-        @Specialization(guards = "!isString(source)")
-        protected Object indirectEval(Object source) {
+        @Specialization
+        protected int indirectEvalInt(int source) {
             return source;
+        }
+
+        @Specialization
+        protected LargeInteger indirectEvalLargeInteger(LargeInteger source) {
+            return source;
+        }
+
+        @Specialization
+        protected long indirectEvalLong(long source) {
+            return source;
+        }
+
+        @Specialization
+        protected double indirectEvalDouble(double source) {
+            return source;
+        }
+
+        @Specialization
+        protected boolean indirectEvalBoolean(boolean source) {
+            return source;
+        }
+
+        @Specialization
+        protected Symbol indirectEvalSymbol(Symbol source) {
+            return source;
+        }
+
+        @Specialization
+        protected BigInt indirectEvalBigInt(BigInt source) {
+            return source;
+        }
+
+        @Specialization(guards = "isJSType(object)")
+        public DynamicObject indirectEvalJSType(DynamicObject object) {
+            return object;
         }
 
         @Override
