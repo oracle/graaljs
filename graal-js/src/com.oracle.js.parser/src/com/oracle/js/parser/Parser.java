@@ -6057,43 +6057,39 @@ public class Parser extends AbstractParser {
             case DEFAULT:
                 next();
                 Expression assignmentExpression;
-                IdentNode ident;
+                IdentNode ident = null;
                 int lineNumber = line;
                 long rhsToken = token;
-                boolean declaration;
                 boolean hoistableDeclaration = false;
                 switch (type) {
                     case FUNCTION:
                         assignmentExpression = functionExpression(false, true);
-                        FunctionNode functionNode = (FunctionNode) assignmentExpression;
-                        ident = functionNode.isAnonymous() ? null : functionNode.getIdent();
-                        declaration = true;
                         hoistableDeclaration = true;
                         break;
                     case CLASS:
                         assignmentExpression = classDeclaration(false, false, true);
                         ident = getClassDeclarationName(assignmentExpression);
-                        declaration = true;
                         break;
                     default:
                         if (isAsync() && lookaheadIsAsyncFunction()) {
                             assignmentExpression = asyncFunctionExpression(false, true);
-                            ident = ((FunctionNode) assignmentExpression).getIdent();
-                            declaration = true;
                             hoistableDeclaration = true;
                             break;
                         }
                         assignmentExpression = assignmentExpression(true, false, false);
-                        ident = null;
-                        declaration = false;
+                        endOfLine();
                         break;
+                }
+                if (hoistableDeclaration) {
+                    FunctionNode functionNode = (FunctionNode) assignmentExpression;
+                    if (!functionNode.isAnonymous()) {
+                        ident = functionNode.getIdent();
+                        assignmentExpression = functionNode.setFlag(null, FunctionNode.IS_DECLARED);
+                    }
                 }
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, assignmentExpression, true));
                 if (ident == null) {
                     ident = new IdentNode(Token.recast(rhsToken, IDENT), finish, Module.DEFAULT_EXPORT_BINDING_NAME);
-                    if (!declaration) {
-                        endOfLine();
-                    }
                 }
                 VarNode varNode = new VarNode(lineNumber, Token.recast(rhsToken, hoistableDeclaration ? VAR : LET), finish, ident, assignmentExpression).setFlag(VarNode.IS_EXPORT);
                 if (hoistableDeclaration) {

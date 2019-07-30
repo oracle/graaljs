@@ -2042,78 +2042,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-arrow-assignment-expression-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-arrow-import-then-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-async-arrow-function-await-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-async-arrow-function-return-await-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-async-function-await-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-async-function-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-async-function-return-await-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-async-gen-await-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-async-gen-return-await-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-block-import-then-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-do-while-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-else-import-then-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-function-import-then-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-if-braceless-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-if-import-then-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/nested-while-import-then-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/syntax-nested-block-labeled-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/usage/top-level-import-then-eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
     "filePath" : "language/expressions/function/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -2249,9 +2177,6 @@
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
     "status" : "FAIL",
     "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode."
-  }, {
-    "filePath" : "language/module-code/eval-gtbndng-indirect-update-dflt.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/statements/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
