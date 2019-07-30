@@ -40,21 +40,37 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Set;
+
+import com.oracle.js.parser.ParserException;
+import com.oracle.js.parser.TokenType;
+import com.oracle.js.parser.ir.BinaryNode;
+import com.oracle.js.parser.ir.Expression;
+import com.oracle.js.parser.ir.LiteralNode;
+import com.oracle.js.parser.ir.UnaryNode;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
+import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -129,6 +145,80 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             default:
                 return Type.False;
         }
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == BinaryExpressionTag.class || tag == UnaryExpressionTag.class || tag == LiteralExpressionTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(BinaryExpressionTag.class) || materializedTags.contains(UnaryExpressionTag.class) || materializedTags.contains(LiteralExpressionTag.class)) {
+            Object[] info = parseMaterializationInfo();
+            if (info == null) {
+                info = new Object[]{type.name().toLowerCase(), true, true};
+            }
+            JavaScriptNode lhs = JSConstantNode.create(info[0]);
+            JavaScriptNode rhs = TypeOfNode.create(getOperand());
+            if ((Boolean) info[2]) {
+                JavaScriptNode tmp = lhs;
+                lhs = rhs;
+                rhs = tmp;
+            }
+            JavaScriptNode materialized = ((Boolean) info[1]) ? JSIdenticalNode.createUnoptimized(lhs, rhs) : JSEqualNode.createUnoptimized(lhs, rhs);
+            transferSourceSectionAddExpressionTag(this, lhs);
+            transferSourceSectionAddExpressionTag(this, rhs);
+            transferSourceSectionAndTags(this, materialized);
+            return materialized;
+        } else {
+            return this;
+        }
+    }
+
+    private Object[] parseMaterializationInfo() {
+        String literal;
+        boolean identity;
+        boolean typeofAsLeftOperand;
+        JSContext context = AbstractJavaScriptLanguage.getCurrentJSRealm().getContext();
+        try {
+            Expression expression = context.getEvaluator().parseExpression(context, getSourceSection().getCharacters().toString());
+            if (expression instanceof BinaryNode) {
+                BinaryNode binaryNode = (BinaryNode) expression;
+                Expression lhs = binaryNode.getLhs();
+                Expression rhs = binaryNode.getRhs();
+                if (isTypeOf(lhs) && rhs instanceof LiteralNode) {
+                    typeofAsLeftOperand = true;
+                    literal = ((LiteralNode<?>) rhs).getString();
+                } else if (isTypeOf(rhs) && lhs instanceof LiteralNode) {
+                    typeofAsLeftOperand = false;
+                    literal = ((LiteralNode<?>) lhs).getString();
+                } else {
+                    return null;
+                }
+                TokenType tokenType = binaryNode.tokenType();
+                if (tokenType == TokenType.EQ) {
+                    identity = false;
+                } else if (tokenType == TokenType.EQ_STRICT) {
+                    identity = true;
+                } else {
+                    return null;
+                }
+            } else {
+                return null;
+            }
+        } catch (ParserException ex) {
+            return null;
+        }
+        return new Object[]{literal, identity, typeofAsLeftOperand};
+    }
+
+    private static boolean isTypeOf(Expression expression) {
+        return (expression instanceof UnaryNode) && ((UnaryNode) expression).tokenType() == TokenType.TYPEOF;
     }
 
     @Override

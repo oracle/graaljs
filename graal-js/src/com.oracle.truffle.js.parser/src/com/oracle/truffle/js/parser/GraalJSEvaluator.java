@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.js.parser.ir.Module.ImportEntry;
@@ -694,4 +695,10 @@ public final class GraalJSEvaluator implements JSParser {
     private static boolean isJSArgumentsArray(Object[] arguments) {
         return arguments != null && arguments.length >= JSArguments.RUNTIME_ARGUMENT_COUNT && JSFunction.isJSFunction(JSArguments.getFunctionObject(arguments));
     }
+
+    @Override
+    public Expression parseExpression(JSContext context, String sourceString) {
+        return GraalJSParserHelper.parseExpression(context, Source.newBuilder(JavaScriptLanguage.ID, sourceString, "<unknown>").build(), context.getParserOptions());
+    }
+
 }

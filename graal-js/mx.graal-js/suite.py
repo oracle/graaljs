@@ -197,6 +197,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.js.parser",
         "com.oracle.truffle.js.annotations",
         "com.oracle.truffle.js.codec",
         "com.oracle.truffle.js.runtime.doubleconv",
@@ -230,7 +231,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.js.builtins",
-        "com.oracle.js.parser",
       ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
