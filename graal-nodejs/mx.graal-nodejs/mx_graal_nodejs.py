@@ -30,10 +30,10 @@ import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, shutil, tarfile, tempfile
 
 import mx_graal_nodejs_benchmark
 
-from mx import BinarySuite
+from mx import BinarySuite, TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
-from os.path import exists, join
+from os.path import exists, join, isdir
 
 _suite = mx.suite('graal-nodejs')
 _currentOs = mx.get_os()
@@ -82,38 +82,8 @@ def python_cmd():
     else:
         return join(_suite.mxDir, 'python2', 'python')
 
-def _build(args, debug, shared_library, parallelism, debug_mode, output_dir):
-    if _currentOs == 'windows':
-        _mxrun([join('.', 'vcbuild.bat'),
-                'projgen',
-                'no-cctest',
-                'noetw',
-                'nosnapshot',
-                'java-home', _getJdkHome()
-            ] + debug + shared_library,
-            cwd=_suite.dir, verbose=True)
-    else:
-        _mxrun([join('.', 'configure'),
-                '--partly-static',
-                '--without-dtrace',
-                '--without-snapshot',
-                '--java-home', _getJdkHome()
-            ] + debug + shared_library,
-            cwd=_suite.dir, verbose=True)
 
-        verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
-        _mxrun([mx.gmake_cmd(), '-j%d' % parallelism, verbose], cwd=_suite.dir, verbose=True)
-
-    # put headers for native modules into out/headers
-    _setEnvVar('HEADERS_ONLY', '1')
-    out = None if mx.get_opts().verbose else open(os.devnull, 'w')
-    _mxrun([python_cmd(), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out)
-
-    if _currentOs == 'darwin':
-        nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
-        _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), nodePath], verbose=True)
-
-class GraalNodeJsProject(mx.NativeProject):
+class GraalNodeJsProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, results, output, **args):
         self.suite = suite
         self.name = name
@@ -129,23 +99,59 @@ class GraalNodeJsProject(mx.NativeProject):
                 mx.warn('GraalNodeJsProject %s in %s did not find %s' % (self.name, self.suite.name, result))
         return res
 
+
 class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def __init__(self, project, args):
         mx.NativeBuildTask.__init__(self, args, project)
 
     def build(self):
+        pre_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=False)
+
         pythonPath = join(_suite.mxDir, 'python2')
         prevPATH = os.environ['PATH']
         _setEnvVar('PATH', "%s:%s" % (pythonPath, prevPATH))
 
-        debugMode = hasattr(self.args, 'debug') and self.args.debug
-        debug = ['--debug'] if debugMode else []
-        sharedlibrary = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
+        debug_mode = hasattr(self.args, 'debug') and self.args.debug
+        debug = ['--debug'] if debug_mode else []
+        shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
 
-        _build(args=[], debug=debug, shared_library=sharedlibrary, parallelism=self.parallelism, debug_mode=debugMode, output_dir=self.subject.output)
+        if _currentOs == 'windows':
+            _mxrun([join('.', 'vcbuild.bat'),
+                    'projgen',
+                    'no-cctest',
+                    'noetw',
+                    'nosnapshot',
+                    'java-home', _getJdkHome()
+                    ] + debug + shared_library,
+                   cwd=_suite.dir, verbose=True)
+        else:
+            _mxrun([join('.', 'configure'),
+                    '--partly-static',
+                    '--without-dtrace',
+                    '--without-snapshot',
+                    '--lazy-generator',
+                    '--java-home', _getJdkHome()
+                    ] + debug + shared_library,
+                   cwd=_suite.dir, verbose=True)
+
+            verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
+            _mxrun([mx.gmake_cmd(), '-j%d' % self.parallelism, verbose], cwd=_suite.dir, verbose=True)
+
+        # put headers for native modules into out/headers
+        _setEnvVar('HEADERS_ONLY', '1')
+        out = None if mx.get_opts().verbose else open(os.devnull, 'w')
+        _mxrun([python_cmd(), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out)
+
+        post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
+        mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
+        built = post_ts.isNewerThan(pre_ts)
+        if built and _currentOs == 'darwin':
+            nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
+            _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), nodePath], verbose=True)
+        return built
 
     def needsBuild(self, newestInput):
-        return (True, None) # Let make decide
+        return (True, None)  # Always try to build
 
     def clean(self, forBuild=False):
         if not forBuild:
@@ -156,6 +162,21 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                     ], cwd=_suite.dir)
             else:
                 mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
+
+    @staticmethod
+    def _get_newest_ts(results, fatalIfMissing=False):
+        paths = []
+        for result in results:
+            if not exists(result):
+                mx.abort_or_warn("Result file '{}' does not exist".format(result), fatalIfMissing)
+                return TimeStampFile(result)
+            if isdir(result):
+                for root, _, files in os.walk(result):
+                    paths += [join(root, f) for f in files]
+            else:
+                paths.append(result)
+        return TimeStampFile.newest(paths)
+
 
 class GraalNodeJsArchiveProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):
