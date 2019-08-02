@@ -81,6 +81,7 @@ import com.oracle.truffle.js.nodes.binary.JSBitwiseXorConstantNode;
 import com.oracle.truffle.js.nodes.binary.JSLeftShiftConstantNode;
 import com.oracle.truffle.js.nodes.binary.JSRightShiftConstantNode;
 import com.oracle.truffle.js.nodes.binary.JSUnsignedRightShiftConstantNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode.ToArrayIndexWrapperNode;
 import com.oracle.truffle.js.nodes.control.ForNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.WhileNode;
@@ -224,6 +225,14 @@ public class MaterializedNodes {
     @Test
     public void materializeTwiceElementWrite() {
         WriteElementNode elem = WriteElementNode.create(dummy, dummy, dummy, getDummyCx(), false);
+        assertNotMaterializedTwice(elem, WriteElementExpressionTag.class);
+    }
+
+    @Test
+    public void materializeTwiceElementWriteWithIndexWrapper() {
+        ToArrayIndexWrapperNode index = ToArrayIndexWrapperNode.create(JSConstantNode.createUndefined());
+        index.getOperand().setSourceSection(dummySourceSection);
+        WriteElementNode elem = WriteElementNode.create(dummy, index, dummy, getDummyCx(), false);
         assertNotMaterializedTwice(elem, WriteElementExpressionTag.class);
     }
 

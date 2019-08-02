@@ -195,7 +195,12 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private boolean materializationNeeded() {
-        // Materialization is needed only if we don't have source sections.
+        if (indexNode != null && indexNode instanceof ToArrayIndexWrapperNode) {
+            // With index wrapper nodes, materialization tags the operand. If the operand is already
+            // tagged, no materialization is needed.
+            return !(((ToArrayIndexWrapperNode) indexNode).getOperand() instanceof JSTaggedExecutionNode);
+        }
+        // In all other cases, materialization is needed when source sections are missing.
         return (targetNode != null && !targetNode.hasSourceSection()) || (indexNode != null && !indexNode.hasSourceSection()) || (valueNode != null && !valueNode.hasSourceSection());
     }
 
