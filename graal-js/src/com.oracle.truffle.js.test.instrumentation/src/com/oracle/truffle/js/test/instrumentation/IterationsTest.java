@@ -107,4 +107,40 @@ public class IterationsTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void emptyForOf() {
+        String src = "var obj = ['a', 'b', 'c']; for (var i of obj) {};";
+
+        evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
+        }, new Class[]{/* no input events */});
+
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
+            for (int a = 0; a < 3; a++) {
+                enter(ControlFlowBlockTag.class).exit();
+            }
+        }).exit();
+    }
+
+    @Test
+    public void emptyForIn() {
+        String src = "var obj = ['a', 'b', 'c']; for (var i in obj) {};";
+
+        evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
+        }, new Class[]{/* no input events */});
+
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
+            for (int a = 0; a < 3; a++) {
+                enter(ControlFlowBlockTag.class).exit();
+            }
+        }).exit();
+    }
+
 }
