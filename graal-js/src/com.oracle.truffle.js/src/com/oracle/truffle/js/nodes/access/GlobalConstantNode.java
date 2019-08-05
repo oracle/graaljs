@@ -217,7 +217,7 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
                 // on Windows, remove first "/" from /c:/test/dir/ style paths
                 path = path.substring(1);
             }
-            TruffleFile filePath = env.getTruffleFile(path).getAbsoluteFile();
+            TruffleFile filePath = env.getPublicTruffleFile(path).getAbsoluteFile();
             TruffleFile parentPath = filePath.getParent();
             String dirPath = (parentPath == null) ? "" : parentPath.getPath();
             if (!dirPath.isEmpty() && !(dirPath.charAt(dirPath.length() - 1) == '/' || fileSeparator.equals(String.valueOf(dirPath.charAt(dirPath.length() - 1))))) {

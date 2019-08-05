@@ -125,7 +125,7 @@ public class SnapshotTool {
         JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
         JSContext context = realm.getContext();
         Recording.logv("recording snapshot of %s", fileName);
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getTruffleFile(sourceFile.getPath())).name(fileName).build();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getPublicTruffleFile(sourceFile.getPath())).name(fileName).build();
         final Recording rec;
         try (TimerCloseable timer = timeStats.file(fileName)) {
             rec = new Recording();

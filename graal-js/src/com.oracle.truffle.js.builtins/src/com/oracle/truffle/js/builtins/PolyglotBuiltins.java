@@ -825,7 +825,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
             Source source;
             try {
-                source = Source.newBuilder(languageId, env.getTruffleFile(fileName)).mimeType(mimeType).build();
+                source = Source.newBuilder(languageId, env.getPublicTruffleFile(fileName)).mimeType(mimeType).build();
             } catch (AccessDeniedException e) {
                 throw Errors.createError("Cannot evaluate file " + fileName + ": permission denied");
             } catch (NoSuchFileException e) {
