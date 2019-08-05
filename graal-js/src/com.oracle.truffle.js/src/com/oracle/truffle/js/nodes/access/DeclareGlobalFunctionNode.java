@@ -42,9 +42,11 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -56,23 +58,42 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 public class DeclareGlobalFunctionNode extends DeclareGlobalNode {
     private final boolean configurable;
     @Child private JavaScriptNode valueNode;
+    @Child private JSGetOwnPropertyNode getOwnPropertyNode;
     private final JSClassProfile classProfile = JSClassProfile.create();
+    private final ConditionProfile isGlobalObject = ConditionProfile.createBinaryProfile();
 
     public DeclareGlobalFunctionNode(String varName, boolean configurable, JavaScriptNode valueNode) {
         super(varName);
         this.configurable = configurable;
         this.valueNode = valueNode;
+        this.getOwnPropertyNode = JSGetOwnPropertyNode.create(false);
     }
 
     @Override
-    public void executeVoid(VirtualFrame frame, JSContext context) {
-        Object value = valueNode == null ? Undefined.instance : valueNode.execute(frame);
-        DynamicObject globalObject = GlobalObjectNode.getGlobalObject(context);
-        PropertyDescriptor desc = JSObject.getOwnProperty(globalObject, varName, classProfile);
-        if (desc == null && JSGlobalObject.isJSGlobalObject(globalObject)) {
-            if (!JSObject.isExtensible(globalObject, classProfile)) {
+    public void verify(JSContext context, JSRealm realm) {
+        super.verify(context, realm);
+        // CanDeclareGlobalFunction
+        DynamicObject globalObject = realm.getGlobalObject();
+        PropertyDescriptor desc = getOwnPropertyNode.execute(globalObject, varName);
+        if (desc == null) {
+            if (JSGlobalObject.isJSGlobalObject(globalObject) && !JSObject.isExtensible(globalObject, classProfile)) {
+                errorProfile.enter();
                 throw Errors.createTypeErrorGlobalObjectNotExtensible(this);
             }
+        } else {
+            if (!desc.getConfigurable() && !(desc.isDataDescriptor() && desc.getWritable() && desc.getEnumerable())) {
+                errorProfile.enter();
+                throw Errors.createTypeErrorCannotDeclareGlobalFunction(varName, this);
+            }
+        }
+    }
+
+    @Override
+    public void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
+        Object value = valueNode == null ? Undefined.instance : valueNode.execute(frame);
+        DynamicObject globalObject = realm.getGlobalObject();
+        PropertyDescriptor desc = getOwnPropertyNode.execute(globalObject, varName);
+        if (valueNode == null && desc == null && isGlobalObject.profile(JSGlobalObject.isJSGlobalObject(globalObject))) {
             JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, value,
                             configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable());
         } else {

@@ -42,24 +42,40 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 public class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
     private final boolean isConst;
+    @Child private JSGetOwnPropertyNode getOwnPropertyNode;
 
     public DeclareGlobalLexicalVariableNode(String varName, boolean isConst) {
         super(varName);
         this.isConst = isConst;
+        this.getOwnPropertyNode = JSGetOwnPropertyNode.create(false);
     }
 
     @Override
-    public void executeVoid(VirtualFrame frame, JSContext context) {
-        DynamicObject globalScope = context.getRealm().getGlobalScope();
+    public void verify(JSContext context, JSRealm realm) {
+        super.verify(context, realm);
+        // HasRestrictedGlobalProperty
+        PropertyDescriptor desc = getOwnPropertyNode.execute(realm.getGlobalObject(), varName);
+        if (desc != null && !desc.getConfigurable()) {
+            errorProfile.enter();
+            throw Errors.createSyntaxErrorVariableAlreadyDeclared(varName, this);
+        }
+    }
+
+    @Override
+    public void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
+        DynamicObject globalScope = realm.getGlobalScope();
         assert !JSObject.hasOwnProperty(globalScope, varName); // checked in advance
         assert JSObject.isExtensible(globalScope);
         // Note: const variables are writable so as to not interfere with initialization (for now).

@@ -40,18 +40,35 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 
 public abstract class DeclareGlobalNode extends JavaScriptBaseNode {
     protected final String varName;
+    @Child private HasPropertyCacheNode hasLexicalBindingNode;
+    protected final BranchProfile errorProfile = BranchProfile.create();
 
     protected DeclareGlobalNode(String varName) {
         this.varName = varName;
     }
 
-    public abstract void executeVoid(VirtualFrame frame, JSContext context);
+    public abstract void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm);
+
+    public void verify(JSContext context, JSRealm realm) {
+        if (hasLexicalBindingNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            hasLexicalBindingNode = insert(HasPropertyCacheNode.create(varName, context, true));
+        }
+        if (hasLexicalBindingNode.hasProperty(realm.getGlobalScope())) {
+            errorProfile.enter();
+            throw Errors.createSyntaxErrorVariableAlreadyDeclared(varName, this);
+        }
+    }
 
     public boolean isLexicallyDeclared() {
         return false;
