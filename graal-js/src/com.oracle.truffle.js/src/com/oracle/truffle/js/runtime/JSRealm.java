@@ -1802,9 +1802,9 @@ public class JSRealm {
                         TruffleFile moduleFile;
                         if (refPath == null) {
                             // Importing module source does not originate from a file.
-                            moduleFile = getEnv().getTruffleFile(specifier).getCanonicalFile();
+                            moduleFile = getEnv().getPublicTruffleFile(specifier).getCanonicalFile();
                         } else {
-                            TruffleFile refFile = getEnv().getTruffleFile(refPath);
+                            TruffleFile refFile = getEnv().getPublicTruffleFile(refPath);
                             moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
                         }
                         String canonicalPath = moduleFile.getPath();
@@ -1830,7 +1830,7 @@ public class JSRealm {
                         canonicalPath = source.getName();
                     } else {
                         try {
-                            TruffleFile moduleFile = getEnv().getTruffleFile(path);
+                            TruffleFile moduleFile = getEnv().getPublicTruffleFile(path);
                             canonicalPath = moduleFile.getCanonicalFile().getPath();
                         } catch (IOException | SecurityException e) {
                             throw Errors.createErrorFromException(e);

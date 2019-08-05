@@ -434,7 +434,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     DynamicObject dynEnvObj = (DynamicObject) envObj;
                     Object pwd = JSObject.get(dynEnvObj, "PWD");
                     if (pwd != Undefined.instance) {
-                        builder.directory(env.getTruffleFile(JSRuntime.toString(pwd)));
+                        builder.directory(env.getPublicTruffleFile(JSRuntime.toString(pwd)));
                     }
 
                     builder.clearEnvironment(true);
@@ -528,7 +528,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     static TruffleFile resolveRelativeFilePath(String path, TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
-        TruffleFile file = env.getTruffleFile(path);
+        TruffleFile file = env.getPublicTruffleFile(path);
         if (!file.isAbsolute() && !file.exists()) {
             TruffleFile f = tryResolveCallerRelativeFilePath(path, env);
             if (f != null) {
@@ -546,7 +546,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (callerSourceSection != null && callerSourceSection.isAvailable()) {
                 String callerPath = callerSourceSection.getSource().getPath();
                 if (callerPath != null) {
-                    TruffleFile callerFile = env.getTruffleFile(callerPath);
+                    TruffleFile callerFile = env.getPublicTruffleFile(callerPath);
                     if (callerFile.isAbsolute()) {
                         TruffleFile file = callerFile.resolveSibling(path).normalize();
                         if (file.isRegularFile()) {
@@ -613,7 +613,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected final Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
-                return Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getTruffleFile(fileName)).name(fileName).build();
+                return Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getPublicTruffleFile(fileName)).name(fileName).build();
             } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
