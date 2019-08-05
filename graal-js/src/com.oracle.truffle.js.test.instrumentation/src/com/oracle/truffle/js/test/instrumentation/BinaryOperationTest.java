@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
@@ -240,6 +241,78 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
         testBinExpOnly("var foo = null; null == foo;",
                         Null.instance,
                         Null.instance);
+    }
+
+    @Test
+    public void typeofIdenticalString1() {
+        typeofIdenticalType("string", "==", true);
+    }
+
+    @Test
+    public void typeofIdenticalString2() {
+        typeofIdenticalType("string", "==", false);
+    }
+
+    @Test
+    public void typeofIdenticalString3() {
+        typeofIdenticalType("string", "===", true);
+    }
+
+    @Test
+    public void typeofIdenticalString4() {
+        typeofIdenticalType("string", "===", false);
+    }
+
+    @Test
+    public void typeofIdenticalUnknown1() {
+        typeofIdenticalType("foo", "==", true);
+    }
+
+    @Test
+    public void typeofIdenticalUnknown2() {
+        typeofIdenticalType("foo", "==", false);
+    }
+
+    @Test
+    public void typeofIdenticalUnknown3() {
+        typeofIdenticalType("foo", "===", true);
+    }
+
+    public void typeofIdenticalUnknown4() {
+        typeofIdenticalType("foo", "===", false);
+    }
+
+    public void typeofIdenticalType(String type, String operator, boolean typeofAsLeftOperand) {
+        String lhs = "'" + type + "'";
+        String rhs = "typeof a";
+
+        if (typeofAsLeftOperand) {
+            String tmp = lhs;
+            lhs = rhs;
+            rhs = tmp;
+        }
+
+        String src = "var a = 42; var c = " + lhs + operator + rhs;
+
+        evalWithTags(src, new Class[]{BinaryExpressionTag.class, UnaryExpressionTag.class, LiteralExpressionTag.class});
+
+        enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+
+        enter(BinaryExpressionTag.class, (e, binary) -> {
+            assertAttribute(e, OPERATOR, operator);
+            for (int eventNo = 0; eventNo < 2; eventNo++) {
+                if (typeofAsLeftOperand == (eventNo == 0)) {
+                    enter(UnaryExpressionTag.class, (e2, unary) -> {
+                        assertAttribute(e2, OPERATOR, "typeof");
+                        unary.input(42);
+                    }).exit();
+                    binary.input("number");
+                } else {
+                    enter(LiteralExpressionTag.class).exit(assertReturnValue(type));
+                    binary.input(type);
+                }
+            }
+        }).exit();
     }
 
     private void testBinExpOnly(String src, Object firstValue, Object secondValue) {

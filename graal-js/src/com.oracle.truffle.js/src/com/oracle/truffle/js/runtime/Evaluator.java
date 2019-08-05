@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.js.parser.ir.Expression;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -106,6 +107,8 @@ public interface Evaluator {
     ScriptNode parseScriptNode(JSContext context, Source source);
 
     ScriptNode parseScriptNode(JSContext context, String sourceString);
+
+    Expression parseExpression(JSContext context, String sourceString);
 
     /**
      * Creates a script that will be evaluated in a specified lexical context.
