@@ -47,15 +47,24 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -88,10 +97,29 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"!isEvalOverridden(evalFunction)"})
-    protected Object directEval(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, CharSequence sourceCode) {
+    protected Object directEvalCharSequence(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, CharSequence sourceCode) {
         evalOtherArgs(frame);
+        return directEvalImpl(frame, sourceCode);
+    }
+
+    private Object directEvalImpl(VirtualFrame frame, CharSequence sourceCode) {
         final Source source = sourceFromString(sourceCode);
         return context.getEvaluator().evaluate(context.getRealm(), this, source, currEnv, frame.materialize(), thisObject.execute(frame));
+    }
+
+    @Specialization(guards = {"!isEvalOverridden(evalFunction)", "isForeignObject(sourceCode)"}, limit = "3")
+    protected Object directEvalForeignObject(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, TruffleObject sourceCode,
+                    @CachedLibrary("sourceCode") InteropLibrary interop) {
+        evalOtherArgs(frame);
+        if (interop.isString(sourceCode)) {
+            try {
+                return directEvalImpl(frame, interop.asString(sourceCode));
+            } catch (UnsupportedMessageException ex) {
+                throw Errors.createTypeErrorInteropException(sourceCode, ex, "asString", this);
+            }
+        } else {
+            return sourceCode;
+        }
     }
 
     @TruffleBoundary
@@ -133,8 +161,50 @@ public abstract class EvalNode extends JavaScriptNode {
         return Truffle.getRuntime().iterateFrames(frameInstance -> formatEvalOrigin(frameInstance.getCallNode()));
     }
 
-    @Specialization(guards = {"!isEvalOverridden(evalFunction)", "!isString(arg0)"})
-    protected Object directEval(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, Object arg0) {
+    @Specialization(guards = {"!isEvalOverridden(evalFunction)"})
+    protected int directEvalInt(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, int arg0) {
+        evalOtherArgs(frame);
+        return arg0;
+    }
+
+    @Specialization(guards = {"!isEvalOverridden(evalFunction)"})
+    protected LargeInteger directEvalLargeInteger(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, LargeInteger arg0) {
+        evalOtherArgs(frame);
+        return arg0;
+    }
+
+    @Specialization(guards = {"!isEvalOverridden(evalFunction)"})
+    protected long directEvalLong(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, long arg0) {
+        evalOtherArgs(frame);
+        return arg0;
+    }
+
+    @Specialization(guards = {"!isEvalOverridden(evalFunction)"})
+    protected double directEvalDouble(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, double arg0) {
+        evalOtherArgs(frame);
+        return arg0;
+    }
+
+    @Specialization(guards = {"!isEvalOverridden(evalFunction)"})
+    protected boolean directEvalBoolean(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, boolean arg0) {
+        evalOtherArgs(frame);
+        return arg0;
+    }
+
+    @Specialization(guards = {"!isEvalOverridden(evalFunction)"})
+    protected Symbol directEvalSymbol(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, Symbol arg0) {
+        evalOtherArgs(frame);
+        return arg0;
+    }
+
+    @Specialization(guards = {"!isEvalOverridden(evalFunction)"})
+    protected BigInt directEvalBigInt(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, BigInt arg0) {
+        evalOtherArgs(frame);
+        return arg0;
+    }
+
+    @Specialization(guards = {"!isEvalOverridden(evalFunction)", "isJSType(arg0)"})
+    protected DynamicObject directEvalJSType(VirtualFrame frame, @SuppressWarnings("unused") Object evalFunction, DynamicObject arg0) {
         evalOtherArgs(frame);
         return arg0;
     }
