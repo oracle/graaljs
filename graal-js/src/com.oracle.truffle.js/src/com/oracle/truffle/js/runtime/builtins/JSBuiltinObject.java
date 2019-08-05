@@ -397,7 +397,7 @@ public abstract class JSBuiltinObject extends JSClass {
 
     @TruffleBoundary
     public static PropertyDescriptor ordinaryGetOwnPropertyIntl(DynamicObject thisObj, Object key, Property prop) {
-        PropertyDescriptor desc = null;
+        PropertyDescriptor desc;
         if (JSProperty.isData(prop)) {
             desc = PropertyDescriptor.createData(JSObject.get(thisObj, key));
             desc.setWritable(JSProperty.isWritable(prop));

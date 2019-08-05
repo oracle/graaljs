@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -56,8 +55,11 @@ import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.objects.Accessor;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -68,26 +70,31 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  */
 public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
 
-    @Child private ToArrayIndexNode toArrayIndexNode;
-    private final BranchProfile exceptional1 = BranchProfile.create();
-    private final ValueProfile typeProfile = ValueProfile.createClassProfile();
-    @CompilationFinal private boolean seenNonArrayIndex = false;
+    private final boolean getValue;
+    @CompilationFinal private boolean seenNonArrayIndex;
 
-    protected JSGetOwnPropertyNode() {
+    protected JSGetOwnPropertyNode(boolean getValue) {
+        this.getValue = getValue;
     }
 
     public static JSGetOwnPropertyNode create() {
-        return JSGetOwnPropertyNodeGen.create();
+        return create(true);
+    }
+
+    public static JSGetOwnPropertyNode create(boolean getValue) {
+        return JSGetOwnPropertyNodeGen.create(getValue);
     }
 
     public abstract PropertyDescriptor execute(DynamicObject object, Object key);
 
-    @Specialization(guards = "isJSArray(thisObj)")
-    // from JSArray.ordinaryGetOwnPropertyArray
-    public PropertyDescriptor array(DynamicObject thisObj, Object propertyKey) {
-        assert JSRuntime.isPropertyKey(propertyKey) || propertyKey instanceof HiddenKey;
-
-        long idx = toArrayIndex(propertyKey);
+    /** @see JSArray#ordinaryGetOwnPropertyArray */
+    @Specialization(guards = {"isJSArray(thisObj)"})
+    PropertyDescriptor array(DynamicObject thisObj, Object propertyKey,
+                    @Cached ToArrayIndexNode toArrayIndexNode,
+                    @Cached BranchProfile exceptional1,
+                    @Cached("createIdentityProfile()") ValueProfile typeProfile) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        long idx = toArrayIndex(propertyKey, toArrayIndexNode);
         if (JSRuntime.isArrayIndex(idx)) {
             ScriptArray array = typeProfile.profile(JSAbstractArray.arrayGetArrayType(thisObj, false));
             if (array.hasElement(thisObj, idx)) {
@@ -97,65 +104,56 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         }
         exceptional1.enter();
         Property prop = thisObj.getShape().getProperty(propertyKey);
-        if (prop == null) {
-            return null;
-        }
-        return JSBuiltinObject.ordinaryGetOwnPropertyIntl(thisObj, propertyKey, prop);
+        return ordinaryGetOwnProperty(thisObj, prop);
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSUserObject(thisObj)", "cachedPropertyKey.equals(propertyKey)", "cachedShape == thisObj.getShape()", "cachedProperty != null"}, assumptions = {
-                    "cachedShape.getValidAssumption()"}, limit = "1")
-    public PropertyDescriptor userObjectCacheShape(DynamicObject thisObj, Object propertyKey,
+    @Specialization(guards = {
+                    "cachedJSClass != null",
+                    "cachedJSClass.isInstance(thisObj)",
+                    "cachedPropertyKey.equals(propertyKey)",
+                    "cachedShape == thisObj.getShape()"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "3")
+    PropertyDescriptor cachedOrdinary(DynamicObject thisObj, Object propertyKey,
+                    @Cached("getJSClassIfOrdinary(thisObj)") JSClass cachedJSClass,
                     @Cached("thisObj.getShape()") Shape cachedShape,
                     @Cached("propertyKey") Object cachedPropertyKey,
                     @Cached("cachedShape.getProperty(propertyKey)") Property cachedProperty) {
-        assert cachedProperty == thisObj.getShape().getProperty(propertyKey);
-        return getUserObjectIntl(thisObj, cachedProperty);
-
+        assert JSRuntime.isPropertyKey(propertyKey) && JSObject.getJSClass(thisObj).usesOrdinaryGetOwnProperty();
+        return ordinaryGetOwnProperty(thisObj, cachedProperty);
     }
 
-    @Specialization(guards = "isJSUserObject(thisObj)", replaces = "userObjectCacheShape")
-    public PropertyDescriptor userObject(DynamicObject thisObj, Object propertyKey) {
-        assert JSRuntime.isPropertyKey(propertyKey) || propertyKey instanceof HiddenKey;
+    @Specialization(guards = "getJSClassIfOrdinary(thisObj) != null", replaces = "cachedOrdinary")
+    PropertyDescriptor uncachedOrdinary(DynamicObject thisObj, Object propertyKey) {
+        assert JSRuntime.isPropertyKey(propertyKey) && JSObject.getJSClass(thisObj).usesOrdinaryGetOwnProperty();
         Property prop = thisObj.getShape().getProperty(propertyKey);
+        return ordinaryGetOwnProperty(thisObj, prop);
+    }
+
+    static JSClass getJSClassIfOrdinary(DynamicObject obj) {
+        JSClass jsclass = JSObject.getJSClass(obj);
+        if (jsclass.usesOrdinaryGetOwnProperty()) {
+            return jsclass;
+        }
+        return null;
+    }
+
+    /** @see JSBuiltinObject#ordinaryGetOwnProperty */
+    private PropertyDescriptor ordinaryGetOwnProperty(DynamicObject thisObj, Property prop) {
         if (prop == null) {
             return null;
         }
-        return getUserObjectIntl(thisObj, prop);
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"isJSFunction(thisObj)", "cachedPropertyKey.equals(propertyKey)", "cachedShape == thisObj.getShape()", "cachedProperty != null"}, assumptions = {
-                    "cachedShape.getValidAssumption()"}, limit = "1")
-    public PropertyDescriptor jsFunctionCacheShape(DynamicObject thisObj, Object propertyKey,
-                    @Cached("thisObj.getShape()") Shape cachedShape,
-                    @Cached("propertyKey") Object cachedPropertyKey,
-                    @Cached("cachedShape.getProperty(propertyKey)") Property cachedProperty) {
-        assert cachedProperty == thisObj.getShape().getProperty(propertyKey);
-        return getUserObjectIntl(thisObj, cachedProperty);
-
-    }
-
-    @Specialization(guards = "isJSFunction(thisObj)", replaces = "jsFunctionCacheShape")
-    public PropertyDescriptor jsFunction(DynamicObject thisObj, Object propertyKey) {
-        assert JSRuntime.isPropertyKey(propertyKey) || propertyKey instanceof HiddenKey;
-        Property prop = thisObj.getShape().getProperty(propertyKey);
-        if (prop == null) {
-            return null;
-        }
-        return getUserObjectIntl(thisObj, prop);
-    }
-
-    private static PropertyDescriptor getUserObjectIntl(DynamicObject thisObj, Property prop) {
-        PropertyDescriptor d = null;
+        PropertyDescriptor d;
         if (JSProperty.isData(prop)) {
-            Object value = JSProperty.getValue(prop, thisObj, thisObj, false);
+            Object value = getValue ? JSProperty.getValue(prop, thisObj, thisObj, false) : null;
             d = PropertyDescriptor.createData(value);
             d.setWritable(JSProperty.isWritable(prop));
         } else if (JSProperty.isAccessor(prop)) {
-            Accessor acc = (Accessor) prop.get(thisObj, false);
-            d = PropertyDescriptor.createAccessor(acc.getGetter(), acc.getSetter());
+            if (getValue) {
+                Accessor acc = (Accessor) prop.get(thisObj, false);
+                d = PropertyDescriptor.createAccessor(acc.getGetter(), acc.getSetter());
+            } else {
+                d = PropertyDescriptor.createAccessor(null, null);
+            }
         } else {
             d = PropertyDescriptor.createEmpty();
         }
@@ -164,17 +162,13 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         return d;
     }
 
-    @Specialization(guards = {"!isJSArray(thisObj)", "!isJSUserObject(thisObj)"})
-    public PropertyDescriptor generic(DynamicObject thisObj, Object key,
-                    @Cached("create()") JSClassProfile profile) {
-        return profile.getJSClass(thisObj).getOwnProperty(thisObj, key);
+    @Specialization(guards = {"!jsclassProfile.getJSClass(thisObj).usesOrdinaryGetOwnProperty()", "!isJSArray(thisObj)"}, limit = "1")
+    static PropertyDescriptor generic(DynamicObject thisObj, Object key,
+                    @Cached("create()") JSClassProfile jsclassProfile) {
+        return JSObject.getOwnProperty(thisObj, key, jsclassProfile);
     }
 
-    private long toArrayIndex(Object propertyKey) {
-        if (toArrayIndexNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toArrayIndexNode = insert(ToArrayIndexNode.create());
-        }
+    private long toArrayIndex(Object propertyKey, ToArrayIndexNode toArrayIndexNode) {
         if (seenNonArrayIndex) {
             Object result = toArrayIndexNode.execute(propertyKey);
             return result instanceof Long ? (long) result : JSRuntime.INVALID_ARRAY_INDEX;

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -52,6 +53,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSBuiltinObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -72,7 +74,6 @@ public abstract class GetOwnPropertyNode extends JavaScriptBaseNode {
     private final BranchProfile isDataPropertyBranch = BranchProfile.create();
     private final BranchProfile isAccessorPropertyBranch = BranchProfile.create();
     private final BranchProfile isOtherPropertyBranch = BranchProfile.create();
-    private final JSClassProfile classProfile = JSClassProfile.create();
 
     protected GetOwnPropertyNode(boolean needValue, boolean needEnumerability, boolean needConfigurability, boolean needWritability) {
         this.needValue = needValue;
@@ -91,12 +92,9 @@ public abstract class GetOwnPropertyNode extends JavaScriptBaseNode {
 
     public abstract PropertyDescriptor execute(DynamicObject obj, Object key);
 
-    protected boolean usesOrdinaryGetOwnProperty(DynamicObject thisObj) {
-        return classProfile.getJSClass(thisObj).usesOrdinaryGetOwnProperty();
-    }
-
-    @Specialization(guards = "usesOrdinaryGetOwnProperty(thisObj)")
-    protected PropertyDescriptor getOwnPropertyBuiltinObject(DynamicObject thisObj, Object key) {
+    @Specialization(guards = "jsclassProfile.getJSClass(thisObj).usesOrdinaryGetOwnProperty()", limit = "1")
+    protected PropertyDescriptor getOwnPropertyBuiltinObject(DynamicObject thisObj, Object key,
+                    @Cached @Shared("jsclassProfile") @SuppressWarnings("unused") JSClassProfile jsclassProfile) {
         return getOwnPropertyBuiltinObject(thisObj, key, false);
     }
 
@@ -111,6 +109,7 @@ public abstract class GetOwnPropertyNode extends JavaScriptBaseNode {
         }
     }
 
+    /** @see JSArray#ordinaryGetOwnPropertyArray */
     @Specialization(guards = "isJSArray(thisObj)")
     protected PropertyDescriptor getOwnPropertyArray(DynamicObject thisObj, Object key,
                     @Cached("create()") BranchProfile isArrayBranch,
@@ -132,11 +131,13 @@ public abstract class GetOwnPropertyNode extends JavaScriptBaseNode {
         return getOwnPropertyBuiltinObject(thisObj, key, false);
     }
 
-    @Specialization(guards = {"!usesOrdinaryGetOwnProperty(thisObj)", "!isJSArray(thisObj)", "!isJSString(thisObj)"})
-    protected PropertyDescriptor getOwnPropertyGeneric(DynamicObject thisObj, Object key) {
-        return JSObject.getOwnProperty(thisObj, key);
+    @Specialization(guards = {"!jsclassProfile.getJSClass(thisObj).usesOrdinaryGetOwnProperty()", "!isJSArray(thisObj)", "!isJSString(thisObj)"}, limit = "1")
+    protected PropertyDescriptor getOwnPropertyGeneric(DynamicObject thisObj, Object key,
+                    @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
+        return JSObject.getOwnProperty(thisObj, key, jsclassProfile);
     }
 
+    /** @see JSBuiltinObject#ordinaryGetOwnProperty */
     private PropertyDescriptor getOwnPropertyBuiltinObject(DynamicObject thisObj, Object key, boolean isProxy) {
         assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
         Property prop = thisObj.getShape().getProperty(key);
