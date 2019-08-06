@@ -59,7 +59,7 @@ public class IterationsTest extends FineGrainedAccessTest {
         }, new Class[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
-            assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
             for (int a = 0; a < 3; a++) {
                 enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
                 enter(ControlFlowBlockTag.class).exit();
@@ -79,7 +79,7 @@ public class IterationsTest extends FineGrainedAccessTest {
         }, new Class[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
-            assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.WhileIteration.name());
             for (int a = 0; a < 3; a++) {
                 enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
                 enter(ControlFlowBlockTag.class).exit();
@@ -89,8 +89,8 @@ public class IterationsTest extends FineGrainedAccessTest {
     }
 
     @Test
-    public void emptyForLet() {
-        String src = "for (let i = 0; i < 10; i++) {};";
+    public void basicDoWhile() {
+        String src = "var a=0; do { a++; } while(a<3);";
 
         evalWithTags(src, new Class[]{
                         ControlFlowRootTag.class,
@@ -99,8 +99,29 @@ public class IterationsTest extends FineGrainedAccessTest {
         }, new Class[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
-            assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
-            for (int a = 0; a < 10; a++) {
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.DoWhileIteration.name());
+            for (int a = 0; a < 2; a++) {
+                enter(ControlFlowBlockTag.class).exit();
+                enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+            }
+            enter(ControlFlowBlockTag.class).exit();
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+        }).exit();
+    }
+
+    @Test
+    public void emptyForLet() {
+        String src = "for (let i = 0; i < 3; i++) {};";
+
+        evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
+        }, new Class[]{/* no input events */});
+
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
+            for (int a = 0; a < 3; a++) {
                 enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
             }
             enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
@@ -109,26 +130,15 @@ public class IterationsTest extends FineGrainedAccessTest {
 
     @Test
     public void emptyForOf() {
-        String src = "var obj = ['a', 'b', 'c']; for (var i of obj) {};";
-
-        evalWithTags(src, new Class[]{
-                        ControlFlowRootTag.class,
-                        ControlFlowBranchTag.class,
-                        ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
-
-        enter(ControlFlowRootTag.class, (e) -> {
-            assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
-            for (int a = 0; a < 3; a++) {
-                enter(ControlFlowBlockTag.class).exit();
-            }
-        }).exit();
+        testForInForOf("var obj = ['a', 'b', 'c']; for (var i of obj) {};", ControlFlowRootTag.Type.ForOfIteration.name());
     }
 
     @Test
     public void emptyForIn() {
-        String src = "var obj = ['a', 'b', 'c']; for (var i in obj) {};";
+        testForInForOf("var obj = ['a', 'b', 'c']; for (var i in obj) {};", ControlFlowRootTag.Type.ForInIteration.name());
+    }
 
+    private void testForInForOf(String src, String expectedName) {
         evalWithTags(src, new Class[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
@@ -136,7 +146,7 @@ public class IterationsTest extends FineGrainedAccessTest {
         }, new Class[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
-            assertAttribute(e, TYPE, ControlFlowRootTag.Type.Iteration.name());
+            assertAttribute(e, TYPE, expectedName);
             for (int a = 0; a < 3; a++) {
                 enter(ControlFlowBlockTag.class).exit();
             }

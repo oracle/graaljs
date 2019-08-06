@@ -436,6 +436,22 @@ public class NodeFactory {
         return WhileNode.createDoWhile(condition, body);
     }
 
+    public JavaScriptNode createDesugaredFor(JavaScriptNode condition, JavaScriptNode body) {
+        return WhileNode.createDesugaredFor(condition, body);
+    }
+
+    public JavaScriptNode createDesugaredForOf(JavaScriptNode condition, JavaScriptNode body) {
+        return WhileNode.createDesugaredForOf(condition, body);
+    }
+
+    public JavaScriptNode createDesugaredForIn(JavaScriptNode condition, JavaScriptNode body) {
+        return WhileNode.createDesugaredForIn(condition, body);
+    }
+
+    public JavaScriptNode createDesugaredForAwaitOf(JavaScriptNode condition, JavaScriptNode body) {
+        return WhileNode.createDesugaredForAwaitOf(condition, body);
+    }
+
     public StatementNode createFor(JavaScriptNode condition, JavaScriptNode body, JavaScriptNode modify, FrameDescriptor frameDescriptor, JavaScriptNode isFirstNode, JavaScriptNode setNotFirstNode) {
         IterationScopeNode perIterationScope = createIterationScope(frameDescriptor);
         return ForNode.createFor(condition, body, modify, perIterationScope, isFirstNode, setNotFirstNode);
