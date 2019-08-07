@@ -40,16 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class CompoundWriteElementNode extends WriteElementNode {
-    @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
-    @Child private ToArrayIndexNode arrayIndexNode;
     @Child private JSWriteFrameSlotNode writeIndexNode;
 
     public static CompoundWriteElementNode create(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSWriteFrameSlotNode writeIndexNode, JSContext context,
@@ -65,38 +61,37 @@ public class CompoundWriteElementNode extends WriteElementNode {
     protected CompoundWriteElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSWriteFrameSlotNode writeIndexNode, JSContext context, boolean isStrict,
                     boolean writeOwn) {
         super(targetNode, indexNode, valueNode, context, isStrict, writeOwn);
-        this.requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
         this.writeIndexNode = writeIndexNode;
     }
 
     @Override
     protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index) {
-        return super.executeWithTargetAndIndex(frame, requireObjectCoercibleNode.execute(target), writeIndex(frame, toArrayIndexNode().execute(index)));
+        return super.executeWithTargetAndIndex(frame, requireObjectCoercible(target, index), writeIndex(frame, toArrayIndexNode().execute(index)));
     }
 
     @Override
     protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index) {
-        return super.executeWithTargetAndIndex(frame, requireObjectCoercibleNode.execute(target), writeIndex(frame, index));
+        return super.executeWithTargetAndIndex(frame, requireObjectCoercible(target, index), writeIndex(frame, index));
     }
 
     @Override
     protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
-        return super.executeWithTargetAndIndexInt(frame, requireObjectCoercibleNode.execute(target), writeIndex(frame, toArrayIndexNode().execute(index)));
+        return super.executeWithTargetAndIndexInt(frame, requireObjectCoercible(target, index), writeIndex(frame, toArrayIndexNode().execute(index)));
     }
 
     @Override
     protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
-        return super.executeWithTargetAndIndexInt(frame, requireObjectCoercibleNode.execute(target), writeIndex(frame, index));
+        return super.executeWithTargetAndIndexInt(frame, requireObjectCoercible(target, index), writeIndex(frame, index));
     }
 
     @Override
     protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
-        return super.executeWithTargetAndIndexDouble(frame, requireObjectCoercibleNode.execute(target), writeIndex(frame, toArrayIndexNode().execute(index)));
+        return super.executeWithTargetAndIndexDouble(frame, requireObjectCoercible(target, index), writeIndex(frame, toArrayIndexNode().execute(index)));
     }
 
     @Override
     protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
-        return super.executeWithTargetAndIndexDouble(frame, requireObjectCoercibleNode.execute(target), writeIndex(frame, index));
+        return super.executeWithTargetAndIndexDouble(frame, requireObjectCoercible(target, index), writeIndex(frame, index));
     }
 
     private Object writeIndex(VirtualFrame frame, Object index) {
@@ -111,14 +106,6 @@ public class CompoundWriteElementNode extends WriteElementNode {
             writeIndexNode.executeWrite(frame, index);
         }
         return index;
-    }
-
-    private ToArrayIndexNode toArrayIndexNode() {
-        if (arrayIndexNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            arrayIndexNode = ToArrayIndexNode.create();
-        }
-        return arrayIndexNode;
     }
 
     @Override

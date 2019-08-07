@@ -127,8 +127,10 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
 public class WriteElementNode extends JSTargetableNode {
     @Child protected JavaScriptNode targetNode;
     @Child protected JavaScriptNode indexNode;
+    @Child private ToArrayIndexNode toArrayIndexNode;
     @Child protected JavaScriptNode valueNode;
     @Child private WriteElementTypeCacheNode typeCacheNode;
+    private final BranchProfile nullOrUndefinedTargetBranch;
 
     final JSContext context;
     final boolean isStrict;
@@ -154,12 +156,33 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     protected WriteElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSContext context, boolean isStrict, boolean writeOwn) {
+        // ToPropertyKey conversion should not be performed by indexNode
+        // (we need to RequireObjectCoercible(target) before this conversion)
+        assert !(indexNode instanceof ToArrayIndexWrapperNode);
+
         this.targetNode = targetNode;
         this.indexNode = indexNode;
         this.valueNode = valueNode;
         this.context = context;
         this.isStrict = isStrict;
         this.writeOwn = writeOwn;
+        this.nullOrUndefinedTargetBranch = BranchProfile.create();
+    }
+
+    protected final ToArrayIndexNode toArrayIndexNode() {
+        if (toArrayIndexNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toArrayIndexNode = insert(ToArrayIndexNode.create());
+        }
+        return toArrayIndexNode;
+    }
+
+    protected final Object requireObjectCoercible(Object target, Object index) {
+        if (JSRuntime.isNullOrUndefined(target)) {
+            nullOrUndefinedTargetBranch.enter();
+            throw Errors.createTypeErrorCannotSetProperty(JSRuntime.safeToString(index), target, this);
+        }
+        return target;
     }
 
     @Override
@@ -175,7 +198,7 @@ public class WriteElementNode extends JSTargetableNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializationNeeded() && materializedTags.contains(WriteElementExpressionTag.class)) {
             JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
-            JavaScriptNode clonedIndex = wrapArrayIndex();
+            JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
             JavaScriptNode clonedValue = valueNode == null || valueNode.hasSourceSection() ? valueNode : JSTaggedExecutionNode.createForInput(valueNode, this);
             WriteElementNode cloned = createMaterialized(clonedTarget, clonedIndex, clonedValue);
             transferSourceSectionAndTags(this, cloned);
@@ -184,23 +207,8 @@ public class WriteElementNode extends JSTargetableNode {
         return this;
     }
 
-    private JavaScriptNode wrapArrayIndex() {
-        JavaScriptNode clonedIndex;
-        if (indexNode instanceof ToArrayIndexWrapperNode) {
-            clonedIndex = ToArrayIndexWrapperNode.create(JSTaggedExecutionNode.createForInput(((ToArrayIndexWrapperNode) indexNode).getOperand(), this));
-        } else {
-            clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
-        }
-        return clonedIndex;
-    }
-
     private boolean materializationNeeded() {
-        if (indexNode != null && indexNode instanceof ToArrayIndexWrapperNode) {
-            // With index wrapper nodes, materialization tags the operand. If the operand is already
-            // tagged, no materialization is needed.
-            return !(((ToArrayIndexWrapperNode) indexNode).getOperand() instanceof JSTaggedExecutionNode);
-        }
-        // In all other cases, materialization is needed when source sections are missing.
+        // Materialization is needed when source sections are missing.
         return (targetNode != null && !targetNode.hasSourceSection()) || (indexNode != null && !indexNode.hasSourceSection()) || (valueNode != null && !valueNode.hasSourceSection());
     }
 
@@ -234,12 +242,13 @@ public class WriteElementNode extends JSTargetableNode {
         if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = indexNode.execute(frame);
+            requireObjectCoercible(target, index);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
                 return executeWithTargetAndIndex(frame, target, (int) index);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndex(frame, target, index);
+                return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(index));
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -247,13 +256,16 @@ public class WriteElementNode extends JSTargetableNode {
                 index = indexNode.executeInt(frame);
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndex(frame, target, e.getResult());
+                requireObjectCoercible(target, e.getResult());
+                return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(e.getResult()));
             }
+            requireObjectCoercible(target, index);
             return executeWithTargetAndIndex(frame, target, index);
         } else {
             assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
-            return executeWithTargetAndIndex(frame, target, index);
+            requireObjectCoercible(target, index);
+            return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(index));
         }
     }
 
@@ -262,12 +274,13 @@ public class WriteElementNode extends JSTargetableNode {
         if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = indexNode.execute(frame);
+            requireObjectCoercible(target, index);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
                 return executeWithTargetAndIndexInt(frame, target, (int) index);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexInt(frame, target, index);
+                return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(index));
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -275,13 +288,16 @@ public class WriteElementNode extends JSTargetableNode {
                 index = indexNode.executeInt(frame);
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexInt(frame, target, e.getResult());
+                requireObjectCoercible(target, e.getResult());
+                return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(e.getResult()));
             }
+            requireObjectCoercible(target, index);
             return executeWithTargetAndIndexInt(frame, target, index);
         } else {
             assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
-            return executeWithTargetAndIndexInt(frame, target, index);
+            requireObjectCoercible(target, index);
+            return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(index));
         }
     }
 
@@ -290,12 +306,13 @@ public class WriteElementNode extends JSTargetableNode {
         if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = indexNode.execute(frame);
+            requireObjectCoercible(target, index);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
                 return executeWithTargetAndIndexDouble(frame, target, (int) index);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexDouble(frame, target, index);
+                return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(index));
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -303,13 +320,16 @@ public class WriteElementNode extends JSTargetableNode {
                 index = indexNode.executeInt(frame);
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexDouble(frame, target, e.getResult());
+                requireObjectCoercible(target, e.getResult());
+                return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(e.getResult()));
             }
+            requireObjectCoercible(target, index);
             return executeWithTargetAndIndexDouble(frame, target, index);
         } else {
             assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
-            return executeWithTargetAndIndexDouble(frame, target, index);
+            requireObjectCoercible(target, index);
+            return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(index));
         }
     }
 
