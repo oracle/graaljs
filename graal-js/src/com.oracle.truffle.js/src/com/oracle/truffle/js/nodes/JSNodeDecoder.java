@@ -319,7 +319,7 @@ public class JSNodeDecoder {
                     boolean hasStatementTag = state.getBoolean();
                     boolean hasCallTag = state.getBoolean();
                     boolean hasExpressionTag = state.getBoolean();
-                    boolean hasRootTag = state.getBoolean();
+                    boolean hasRootBodyTag = state.getBoolean();
                     if (hasStatementTag) {
                         jsnode.addStatementTag();
                     }
@@ -329,8 +329,8 @@ public class JSNodeDecoder {
                     if (hasExpressionTag) {
                         jsnode.addExpressionTag();
                     }
-                    if (hasRootTag) {
-                        jsnode.addRootTag();
+                    if (hasRootBodyTag) {
+                        jsnode.addRootBodyTag();
                     }
                     break;
                 }

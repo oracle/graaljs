@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,56 +38,56 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.function;
+package com.oracle.truffle.js.nodes.control;
 
-import java.util.Set;
-
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(cost = NodeCost.NONE)
-public class FunctionBodyNode extends AbstractBodyNode {
-    @Child private JavaScriptNode body;
+public class DiscardResultNode extends JSUnaryNode {
 
-    public FunctionBodyNode(JavaScriptNode body) {
-        this.body = body;
+    protected DiscardResultNode(JavaScriptNode operand) {
+        super(operand);
     }
 
-    public static FunctionBodyNode create(JavaScriptNode body) {
-        return new FunctionBodyNode(body);
-    }
-
-    public JavaScriptNode getBody() {
-        return body;
+    public static JavaScriptNode create(JavaScriptNode operand) {
+        if (operand.isResultAlwaysOfType(Undefined.class)) {
+            return operand;
+        }
+        if (operand instanceof JSConstantNode) {
+            return EmptyNode.create();
+        }
+        return new DiscardResultNode(operand);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        return body.execute(frame);
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return clazz == Undefined.class;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(cloneUninitialized(body));
+        return new DiscardResultNode(cloneUninitialized(getOperand()));
     }
 
     @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
-            assert getParent() instanceof FunctionRootNode : "Malformed AST";
-            FrameDescriptor frameDescriptor = ((FunctionRootNode) getParent()).getFrameDescriptor();
-            JavaScriptNode materialized = DeclareTagProvider.createMaterializedFunctionBodyNode(body, getSourceSection(), frameDescriptor);
-            materialized.setSourceSection(getSourceSection());
-            return materialized;
-        } else {
-            return this;
-        }
+    public Object execute(VirtualFrame frame, Object operandValue) {
+        return Undefined.instance;
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        operandNode.execute(frame);
+        return Undefined.instance;
+    }
+
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        operandNode.executeVoid(frame);
     }
 }

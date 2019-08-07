@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -66,21 +67,28 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         if (left instanceof DualNode && !(right instanceof DualNode || right instanceof AbstractBlockNode)) {
             // When de-sugaring certain inc/dec operations, we end up having two (nested) dual
-            // nodes. In this case, rather than flattering the nodes in a block, we return the
+            // nodes. In this case, rather than flattening the nodes in a block, we return the
             // nested dual nodes. In this way, they can be detected as expressions by instruments.
             return new DualNode(left, right);
         } else if (left instanceof DualNode || left instanceof AbstractBlockNode || right instanceof DualNode || right instanceof AbstractBlockNode) {
             final int len = getLen(left) + getLen(right);
-            JavaScriptNode[] arr = new JavaScriptNode[len];
-            int pos = flatten(arr, 0, left);
-            flatten(arr, pos, right);
-            return right instanceof BlockNode ? BlockNode.createVoidBlock(arr) : ExprBlockNode.createExprBlock(arr);
+            if (len > 2) {
+                JavaScriptNode[] arr = new JavaScriptNode[len];
+                int pos = 0;
+                pos = flatten(arr, pos, left);
+                pos = flatten(arr, pos, right);
+                assert pos == len;
+                return right instanceof BlockNode ? BlockNode.createVoidBlock(arr) : ExprBlockNode.createExprBlock(arr);
+            }
         }
         return new DualNode(left, right);
     }
 
     private static int flatten(JavaScriptNode[] arr, int pos, JavaScriptNode node) {
-        if (node instanceof DualNode) {
+        if (node.hasTag(RootBodyTag.class)) {
+            arr[pos] = node;
+            return pos + 1;
+        } else if (node instanceof DualNode) {
             DualNode dual = (DualNode) node;
             arr[pos] = dual.left;
             arr[pos + 1] = dual.right;
@@ -97,7 +105,15 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     }
 
     private static int getLen(JavaScriptNode node) {
-        return node instanceof DualNode ? 2 : node instanceof AbstractBlockNode ? ((AbstractBlockNode) node).getStatements().length : 1;
+        if (node.hasTag(RootBodyTag.class)) {
+            return 1;
+        } else if (node instanceof DualNode) {
+            return 2;
+        } else if (node instanceof AbstractBlockNode) {
+            return ((AbstractBlockNode) node).getStatements().length;
+        } else {
+            return 1;
+        }
     }
 
     @Override

@@ -123,11 +123,13 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
-@ProvidedTags({StandardTags.CallTag.class,
+@ProvidedTags({
                 StandardTags.StatementTag.class,
-                DebuggerTags.AlwaysHalt.class,
                 StandardTags.RootTag.class,
+                StandardTags.RootBodyTag.class,
                 StandardTags.ExpressionTag.class,
+                StandardTags.CallTag.class,
+                DebuggerTags.AlwaysHalt.class,
                 // Expressions
                 ObjectAllocationExpressionTag.class,
                 BinaryExpressionTag.class,

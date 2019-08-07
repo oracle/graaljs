@@ -119,7 +119,12 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        return (tag == StandardTags.RootTag.class);
+        if (tag == StandardTags.RootTag.class) {
+            return true;
+        } else if (tag == StandardTags.RootBodyTag.class) {
+            return true;
+        }
+        return false;
     }
 
     @Override

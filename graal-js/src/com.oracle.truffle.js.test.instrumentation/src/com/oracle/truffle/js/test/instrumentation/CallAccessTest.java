@@ -265,9 +265,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
             // arguments
             enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
             call.input(42);
-            // 'undefined' is the return value from the function call.
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
-        }).exit();
+        }).exit(assertReturnValue(Undefined.instance));
 
     }
 

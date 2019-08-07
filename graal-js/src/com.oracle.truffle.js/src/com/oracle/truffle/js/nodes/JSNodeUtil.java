@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.js.nodes;
 
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.source.SourceSection;
@@ -80,6 +78,9 @@ public final class JSNodeUtil {
         }
         if (node.hasTag(StandardTags.RootTag.class)) {
             sb.append('R');
+        }
+        if (node.hasTag(StandardTags.RootBodyTag.class)) {
+            sb.append('B');
         }
         if (node.hasTag(StandardTags.ExpressionTag.class)) {
             sb.append('E');
@@ -123,40 +124,8 @@ public final class JSNodeUtil {
         }
     }
 
-    @TruffleBoundary
-    public static <T> T getCacheTopNode(Node start, Class<T> baseNodeClass) {
-        assert baseNodeClass.isInstance(start);
-        Node current = start;
-        for (; baseNodeClass.isInstance(current.getParent()); current = current.getParent()) {
-        }
-        return baseNodeClass.cast(current);
-    }
-
-    @TruffleBoundary
-    public static int getCacheNodeDepth(Node start, Class<?> baseNodeClass) {
-        assert baseNodeClass.isInstance(start);
-        int depth = 1;
-        for (Node current = start; baseNodeClass.isInstance(current.getParent()); current = current.getParent()) {
-            depth++;
-        }
-        return depth;
-    }
-
-    public static void forEachDeep(final Node root, Predicate<? super Node> filter, Consumer<? super Node> action) {
-        root.accept(node -> {
-            if (filter.test(node)) {
-                action.accept(node);
-            }
-            return true;
-        });
-    }
-
-    public static <T> void forEachDeep(final Node root, Class<T> classFilter, Consumer<T> action) {
-        root.accept(node -> {
-            if (classFilter.isInstance(node)) {
-                action.accept(classFilter.cast(node));
-            }
-            return true;
-        });
+    public static boolean hasExactlyOneRootBodyTag(JavaScriptNode body) {
+        CompilerAsserts.neverPartOfCompilation();
+        return NodeUtil.countNodes(body, node -> node instanceof JavaScriptNode && ((JavaScriptNode) node).hasTag(RootBodyTag.class)) == 1;
     }
 }

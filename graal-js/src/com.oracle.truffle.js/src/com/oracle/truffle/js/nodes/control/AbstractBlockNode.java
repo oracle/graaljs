@@ -44,14 +44,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
-import com.oracle.truffle.js.nodes.unary.VoidNode;
 
 @NodeInfo(cost = NodeCost.NONE)
 public abstract class AbstractBlockNode extends StatementNode implements SequenceNode, ResumableNode {
@@ -85,14 +84,15 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
         boolean returnExprBlock = exprBlock;
         for (int i = 0; i < originalStatements.length; i++) {
             JavaScriptNode statement = originalStatements[i];
-            if (statement instanceof EmptyNode || statement instanceof AbstractBlockNode || statement instanceof VoidNode || statement instanceof JSConstantUndefinedNode) {
+            if ((statement instanceof EmptyNode || statement instanceof AbstractBlockNode || statement instanceof DiscardResultNode || statement instanceof JSConstantUndefinedNode) &&
+                            !statement.hasTag(RootBodyTag.class)) {
                 if (filteredStatements == null) {
                     filteredStatements = newListFromRange(originalStatements, 0, i);
                 }
                 if (statement instanceof AbstractBlockNode) {
                     filteredStatements.addAll(Arrays.asList(((AbstractBlockNode) statement).getStatements()));
-                } else if (statement instanceof VoidNode) {
-                    VoidNode voidNode = (VoidNode) statement;
+                } else if (statement instanceof DiscardResultNode) {
+                    DiscardResultNode voidNode = (DiscardResultNode) statement;
                     filteredStatements.add(voidNode.getOperand());
                     transferSourceSectionAndTags(statement, voidNode.getOperand());
                 } else {
@@ -113,7 +113,7 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
 
         if (returnExprBlock) {
             if (finalStatements.length == 0) {
-                return new EmptyNode();
+                return EmptyNode.create();
             } else if (finalStatements.length == 1) {
                 return finalStatements[0];
             } else if (finalStatements.length == 2) {
@@ -123,9 +123,9 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
             }
         } else {
             if (finalStatements.length == 0) {
-                return JSConstantNode.createUndefined();
+                return EmptyNode.create();
             } else if (finalStatements.length == 1) {
-                return VoidNode.create(finalStatements[0]);
+                return DiscardResultNode.create(finalStatements[0]);
             } else {
                 return new BlockNode(finalStatements);
             }

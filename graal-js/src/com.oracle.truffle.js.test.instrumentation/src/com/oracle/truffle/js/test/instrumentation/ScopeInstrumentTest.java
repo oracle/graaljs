@@ -51,6 +51,7 @@ import java.util.Iterator;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -66,7 +67,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -92,21 +92,57 @@ public class ScopeInstrumentTest {
 
     @Test
     public void testDefaultScope() throws Throwable {
-        ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
-        TestJSScopeInstrument.instance.setTester(new DefaultScopeTester());
-        context.eval(ID, "" +
+        Source source = Source.create(ID, "" +
                         "function testFunction() {\n" +
                         "  var a = 10;\n" +
                         "  var b = 20;\n" +
                         "  return a + b;\n" +
                         "}\n" +
                         "testFunction();\n");
+
+        TestJSScopeInstrument.filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build();
+        ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
+        TestJSScopeInstrument.instance.setTester(new DefaultScopeTester());
+        context.eval(source);
         TestJSScopeInstrument.instance.checkSuccess(4);
+    }
+
+    @Test
+    public void testParams() throws Throwable {
+        Source source = Source.create(ID, "" +
+                        "function testParams(a, [b, c], d = 9) {\n" +
+                        "   return a + b + c + d;\n" +
+                        "}\n" +
+                        "testParams(4, [7, 6, 2]);\n");
+
+        TestJSScopeInstrument.filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).rootNameIs("testParams"::equals).build();
+        ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
+        TestJSScopeInstrument.instance.setTester((env, node, frame) -> {
+            Scope scope = findFirstLocalScope(env, node, frame);
+            int line = node.getSourceSection().getStartLine();
+            assertEquals("Function name", "testParams", scope.getName());
+            assertEquals("Line = " + line, 2, line);
+
+            Object vars = scope.getVariables();
+            int varCount = getSize(getKeys(vars));
+            assertEquals("Line = " + line + ", num vars:", 4, varCount);
+            assertTrue("Param a", INTEROP.isMemberReadable(vars, "a"));
+            assertTrue("Param b", INTEROP.isMemberReadable(vars, "b"));
+            assertTrue("Param c", INTEROP.isMemberReadable(vars, "c"));
+            assertTrue("Param d", INTEROP.isMemberReadable(vars, "d"));
+            assertEquals("Param a", 4, INTEROP.readMember(vars, "a"));
+            assertEquals("Param b", 7, INTEROP.readMember(vars, "b"));
+            assertEquals("Param c", 6, INTEROP.readMember(vars, "c"));
+            assertEquals("Param d", 9, INTEROP.readMember(vars, "d"));
+        });
+        context.eval(source);
+        TestJSScopeInstrument.instance.checkSuccess(1);
     }
 
     @TruffleInstrument.Registration(id = "TestJSScopeInstrument", services = Object.class)
     public static class TestJSScopeInstrument extends TruffleInstrument {
 
+        static SourceSectionFilter filter;
         static TestJSScopeInstrument instance;
 
         private ScopeTester tester;
@@ -116,8 +152,8 @@ public class ScopeInstrumentTest {
         @Override
         protected void onCreate(TruffleInstrument.Env env) {
             instance = this;
-            SourceSectionFilter statements = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build();
-            env.getInstrumenter().attachExecutionEventListener(statements, new ExecutionEventListener() {
+            assertNotNull("SourceSectionFilter", filter);
+            env.getInstrumenter().attachExecutionEventListener(filter, new ExecutionEventListener() {
                 @Override
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     count++;
@@ -145,12 +181,18 @@ public class ScopeInstrumentTest {
         }
 
         void checkSuccess(int expectedEventCount) throws Exception {
-            tester = null;
+            reset();
             assertTrue("Scope instrument not triggered", count > 0);
             if (failure != null) {
                 throw failure;
             }
             assertEquals("Number of tested statements", expectedEventCount, count);
+        }
+
+        private void reset() {
+            tester = null;
+            instance = null;
+            filter = null;
         }
     }
 
@@ -158,8 +200,27 @@ public class ScopeInstrumentTest {
         void testScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception;
     }
 
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    private static Scope findFirstLocalScope(TruffleInstrument.Env env, Node node, Frame frame) {
+        Iterable<Scope> lscopes = env.findLocalScopes(node, frame);
+        assertNotNull(lscopes);
+        Iterator<Scope> iterator = lscopes.iterator();
+        assertTrue(iterator.hasNext());
+        Scope lscope = iterator.next();
+        assertFalse(iterator.hasNext());
+        return lscope;
+    }
+
+    private static Object getKeys(Object object) throws UnsupportedMessageException {
+        return INTEROP.getMembers(object);
+    }
+
+    private static int getSize(Object keys) throws UnsupportedMessageException {
+        return (int) INTEROP.getArraySize(keys);
+    }
+
     private static class DefaultScopeTester implements ScopeTester {
-        private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
         @Override
         public void testScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception {
@@ -171,11 +232,11 @@ public class ScopeInstrumentTest {
 
                 final int numVars = 2;
                 final int setVars = Math.min(Math.max(0, line - 2), numVars);
-                TruffleObject vars;
+                Object vars;
                 int varCount;
 
                 // Dynamic access:
-                vars = (TruffleObject) dynamicScope.getVariables();
+                vars = dynamicScope.getVariables();
                 varCount = getSize(getKeys(vars));
                 assertEquals("Line = " + line + ", num vars:", numVars, varCount);
                 assertTrue("Var a: ", INTEROP.isMemberReadable(vars, "a"));
@@ -188,7 +249,7 @@ public class ScopeInstrumentTest {
                 }
 
                 // Lexical access:
-                vars = (TruffleObject) lexicalScope.getVariables();
+                vars = lexicalScope.getVariables();
                 varCount = getSize(getKeys(vars));
                 assertEquals("Line = " + line + ", num vars:", numVars, varCount);
                 assertTrue("Var a: ", INTEROP.isMemberReadable(vars, "a"));
@@ -205,16 +266,6 @@ public class ScopeInstrumentTest {
             }
         }
 
-        private static Scope findFirstLocalScope(TruffleInstrument.Env env, Node node, Frame frame) {
-            Iterable<Scope> lscopes = env.findLocalScopes(node, frame);
-            assertNotNull(lscopes);
-            Iterator<Scope> iterator = lscopes.iterator();
-            assertTrue(iterator.hasNext());
-            Scope lscope = iterator.next();
-            assertFalse(iterator.hasNext());
-            return lscope;
-        }
-
         private static void testGlobalScope(TruffleInstrument.Env env) throws Exception {
             Iterable<Scope> topScopes = env.findTopScopes(ID);
             Iterator<Scope> iterator = topScopes.iterator();
@@ -225,7 +276,7 @@ public class ScopeInstrumentTest {
             assertEquals("global", globalScope.getName());
             assertNull(globalScope.getNode());
             assertNull(globalScope.getArguments());
-            TruffleObject variables = (TruffleObject) globalScope.getVariables();
+            Object variables = globalScope.getVariables();
             Object keys = getKeys(variables);
             assertNotNull(keys);
             assertTrue("number of keys >= 1", getSize(keys) >= 1);
@@ -233,14 +284,6 @@ public class ScopeInstrumentTest {
             assertTrue(hasValue(keys, "testFunction"));
             Object function = INTEROP.readMember(variables, functionName);
             assertTrue(INTEROP.isExecutable(function));
-        }
-
-        private static Object getKeys(TruffleObject object) throws UnsupportedMessageException {
-            return INTEROP.getMembers(object);
-        }
-
-        private static int getSize(Object keys) throws UnsupportedMessageException {
-            return (int) INTEROP.getArraySize(keys);
         }
 
         private static boolean hasValue(Object object, String key) throws UnsupportedMessageException, InvalidArrayIndexException {

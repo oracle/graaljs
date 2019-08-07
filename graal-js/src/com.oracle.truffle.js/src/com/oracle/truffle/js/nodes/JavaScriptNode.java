@@ -69,9 +69,9 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     private static final int CALL_TAG_BIT = 1 << 30;
     private static final int CHAR_LENGTH_MASK = ~(STATEMENT_TAG_BIT | CALL_TAG_BIT);
 
-    private static final int ROOT_TAG_BIT = 1 << 31;
+    private static final int ROOT_BODY_TAG_BIT = 1 << 31;
     private static final int EXPRESSION_TAG_BIT = 1 << 30;
-    private static final int CHAR_INDEX_MASK = ~(ROOT_TAG_BIT | EXPRESSION_TAG_BIT);
+    private static final int CHAR_INDEX_MASK = ~(ROOT_BODY_TAG_BIT | EXPRESSION_TAG_BIT);
 
     protected static final String INTERMEDIATE_VALUE = "(intermediate value)";
 
@@ -340,8 +340,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
             return (charLength & STATEMENT_TAG_BIT) != 0;
         } else if (tag == StandardTags.CallTag.class) {
             return (charLength & CALL_TAG_BIT) != 0;
-        } else if (tag == StandardTags.RootTag.class) {
-            return (charIndex & ROOT_TAG_BIT) != 0;
+        } else if (tag == StandardTags.RootBodyTag.class) {
+            return (charIndex & ROOT_BODY_TAG_BIT) != 0;
         } else if (tag == StandardTags.ExpressionTag.class) {
             return (charIndex & EXPRESSION_TAG_BIT) != 0;
         } else {
@@ -357,8 +357,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         charLength |= CALL_TAG_BIT;
     }
 
-    public final void addRootTag() {
-        charIndex |= ROOT_TAG_BIT;
+    public final void addRootBodyTag() {
+        charIndex |= ROOT_BODY_TAG_BIT;
     }
 
     public final void addExpressionTag() {
