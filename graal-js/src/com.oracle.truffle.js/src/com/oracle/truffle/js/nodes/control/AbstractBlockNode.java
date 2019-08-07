@@ -43,17 +43,16 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
+import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
 
 @NodeInfo(cost = NodeCost.NONE)
-public abstract class AbstractBlockNode extends StatementNode implements SequenceNode, ResumableNode {
+public abstract class AbstractBlockNode extends StatementNode implements SequenceNode {
     @Children protected final JavaScriptNode[] statements;
 
     protected AbstractBlockNode(JavaScriptNode[] statements) {
@@ -65,14 +64,7 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
         return statements;
     }
 
-    @ExplodeLoop
-    @Override
-    public final void executeVoid(VirtualFrame frame) {
-        JavaScriptNode[] stmts = statements;
-        for (int i = 0; i < stmts.length; ++i) {
-            stmts[i].executeVoid(frame);
-        }
-    }
+    public abstract AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode);
 
     /**
      * Filter out empty statements, unwrap void nodes, and inline block nodes.

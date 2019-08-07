@@ -124,6 +124,7 @@ import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.binary.JSBinaryNode;
 import com.oracle.truffle.js.nodes.binary.JSOrNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
+import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
@@ -582,13 +583,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
         }
         if (parent instanceof SuspendNode) {
-            return wrapResumableNode((ResumableNode) parent);
+            return wrapResumableNode(parent);
         } else if (!hasSuspendChild) {
             return null;
         }
 
-        if (parent instanceof ResumableNode) {
-            return wrapResumableNode((ResumableNode) parent);
+        if (parent instanceof ResumableNode || parent instanceof AbstractBlockNode) {
+            return wrapResumableNode(parent);
         } else if (parent instanceof ReturnNode || parent instanceof ReturnTargetNode || isSideEffectFreeUnaryOpNode(parent)) {
             // these are side-effect-free, skip
             return parent;
@@ -607,7 +608,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 extracted.add((JavaScriptNode) parent);
                 // insert block node wrapper
                 JavaScriptNode exprBlock = factory.createExprBlock(extracted.toArray(EMPTY_NODE_ARRAY));
-                return wrapResumableNode((ResumableNode) exprBlock);
+                return wrapResumableNode(exprBlock);
             } else {
                 // nothing to do
                 return parent;
@@ -621,12 +622,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private JavaScriptNode wrapResumableNode(ResumableNode parent) {
+    private JavaScriptNode wrapResumableNode(Node resumableNode) {
+        assert resumableNode instanceof ResumableNode || resumableNode instanceof AbstractBlockNode;
         String identifier = ":generatorstate:" + environment.getFunctionFrameDescriptor().getSize();
         environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
         LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
         WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
-        return factory.createGeneratorWrapper((JavaScriptNode) parent, readState, writeState);
+        return factory.createGeneratorWrapper((JavaScriptNode) resumableNode, readState, writeState);
     }
 
     private static boolean isSideEffectFreeUnaryOpNode(Node node) {

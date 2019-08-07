@@ -45,10 +45,11 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(cost = NodeCost.NONE)
-public final class VoidBlockNode extends AbstractBlockNode implements SequenceNode, ResumableNode {
+public final class VoidBlockNode extends AbstractBlockNode implements SequenceNode {
     VoidBlockNode(JavaScriptNode[] statements) {
         super(statements);
     }
@@ -57,16 +58,46 @@ public final class VoidBlockNode extends AbstractBlockNode implements SequenceNo
         return filterStatements(statements, false);
     }
 
+    @ExplodeLoop
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        for (JavaScriptNode statement : statements) {
+            statement.executeVoid(frame);
+        }
+    }
+
     @Override
     public Object execute(VirtualFrame frame) {
         executeVoid(frame);
         return EMPTY;
     }
 
-    @ExplodeLoop
     @Override
-    public Object resume(VirtualFrame frame) {
-        int index = getStateAsIntAndReset(frame);
+    protected JavaScriptNode copyUninitialized() {
+        return new VoidBlockNode(cloneUninitialized(statements));
+    }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        assert EMPTY == Undefined.instance;
+        return clazz == Undefined.class;
+    }
+
+    @Override
+    public AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode) {
+        return new GeneratorVoidBlockNode(statements, readStateNode, writeStateNode);
+    }
+}
+
+final class GeneratorVoidBlockNode extends AbstractGeneratorBlockNode {
+
+    GeneratorVoidBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
+        super(statements, readStateNode, writeStateNode);
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        int index = getStateAndReset(frame);
         JavaScriptNode[] stmts = statements;
         for (int i = 0; i < stmts.length; i++) {
             if (i < index) {
@@ -84,12 +115,6 @@ public final class VoidBlockNode extends AbstractBlockNode implements SequenceNo
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new VoidBlockNode(cloneUninitialized(statements));
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        assert EMPTY == Undefined.instance;
-        return clazz == Undefined.class;
+        return new GeneratorVoidBlockNode(cloneUninitialized(statements), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
     }
 }

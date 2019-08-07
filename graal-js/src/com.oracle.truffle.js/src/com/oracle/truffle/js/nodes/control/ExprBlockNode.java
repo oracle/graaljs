@@ -46,10 +46,11 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.runtime.Errors;
 
 @NodeInfo(cost = NodeCost.NONE)
-public final class ExprBlockNode extends AbstractBlockNode implements SequenceNode, ResumableNode {
+public final class ExprBlockNode extends AbstractBlockNode implements SequenceNode {
     ExprBlockNode(JavaScriptNode[] statements) {
         super(statements);
         assert statements.length >= 1 : "block must contain at least 1 statement";
@@ -57,6 +58,14 @@ public final class ExprBlockNode extends AbstractBlockNode implements SequenceNo
 
     public static JavaScriptNode createExprBlock(JavaScriptNode[] statements) {
         return filterStatements(statements, true);
+    }
+
+    @ExplodeLoop
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        for (JavaScriptNode statement : statements) {
+            statement.executeVoid(frame);
+        }
     }
 
     @ExplodeLoop
@@ -103,10 +112,31 @@ public final class ExprBlockNode extends AbstractBlockNode implements SequenceNo
         return stmts[last].executeDouble(frame);
     }
 
-    @ExplodeLoop
     @Override
-    public Object resume(VirtualFrame frame) {
-        int index = getStateAsIntAndReset(frame);
+    protected JavaScriptNode copyUninitialized() {
+        return new ExprBlockNode(cloneUninitialized(statements));
+    }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return statements[statements.length - 1].isResultAlwaysOfType(clazz);
+    }
+
+    @Override
+    public AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode) {
+        return new GeneratorExprBlockNode(statements, readStateNode, writeStateNode);
+    }
+}
+
+final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
+
+    GeneratorExprBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
+        super(statements, readStateNode, writeStateNode);
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        int index = getStateAndReset(frame);
         JavaScriptNode[] stmts = statements;
         assert index < stmts.length;
         int last = stmts.length - 1;
@@ -130,11 +160,6 @@ public final class ExprBlockNode extends AbstractBlockNode implements SequenceNo
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new ExprBlockNode(cloneUninitialized(statements));
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return statements[statements.length - 1].isResultAlwaysOfType(clazz);
+        return new GeneratorExprBlockNode(cloneUninitialized(statements), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
     }
 }
