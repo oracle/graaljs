@@ -127,7 +127,7 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
             } else if (finalStatements.length == 1) {
                 return DiscardResultNode.create(finalStatements[0]);
             } else {
-                return new BlockNode(finalStatements);
+                return new VoidBlockNode(finalStatements);
             }
         }
     }

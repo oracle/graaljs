@@ -48,8 +48,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(cost = NodeCost.NONE)
-public final class BlockNode extends AbstractBlockNode implements SequenceNode, ResumableNode {
-    BlockNode(JavaScriptNode[] statements) {
+public final class VoidBlockNode extends AbstractBlockNode implements SequenceNode, ResumableNode {
+    VoidBlockNode(JavaScriptNode[] statements) {
         super(statements);
     }
 
@@ -84,7 +84,7 @@ public final class BlockNode extends AbstractBlockNode implements SequenceNode, 
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new BlockNode(cloneUninitialized(statements));
+        return new VoidBlockNode(cloneUninitialized(statements));
     }
 
     @Override

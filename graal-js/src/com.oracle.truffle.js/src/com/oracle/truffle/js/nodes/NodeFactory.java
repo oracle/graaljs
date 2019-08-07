@@ -147,7 +147,7 @@ import com.oracle.truffle.js.nodes.control.AsyncGeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorYieldNode;
 import com.oracle.truffle.js.nodes.control.AsyncIteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.AwaitNode;
-import com.oracle.truffle.js.nodes.control.BlockNode;
+import com.oracle.truffle.js.nodes.control.VoidBlockNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueNode;
@@ -486,7 +486,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createVoidBlock(JavaScriptNode... statements) {
-        return BlockNode.createVoidBlock(statements);
+        return VoidBlockNode.createVoidBlock(statements);
     }
 
     public JavaScriptNode createExprBlock(JavaScriptNode... statements) {
