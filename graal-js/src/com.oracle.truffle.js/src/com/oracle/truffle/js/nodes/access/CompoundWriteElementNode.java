@@ -40,16 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class CompoundWriteElementNode extends WriteElementNode {
-    @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
-    @Child private ToArrayIndexNode arrayIndexNode;
     @Child private JSWriteFrameSlotNode writeIndexNode;
 
     public static CompoundWriteElementNode create(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSWriteFrameSlotNode writeIndexNode, JSContext context,
@@ -65,7 +61,6 @@ public class CompoundWriteElementNode extends WriteElementNode {
     protected CompoundWriteElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSWriteFrameSlotNode writeIndexNode, JSContext context, boolean isStrict,
                     boolean writeOwn) {
         super(targetNode, indexNode, valueNode, context, isStrict, writeOwn);
-        this.requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
         this.writeIndexNode = writeIndexNode;
     }
 
@@ -111,14 +106,6 @@ public class CompoundWriteElementNode extends WriteElementNode {
             writeIndexNode.executeWrite(frame, index);
         }
         return index;
-    }
-
-    private ToArrayIndexNode toArrayIndexNode() {
-        if (arrayIndexNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            arrayIndexNode = ToArrayIndexNode.create();
-        }
-        return arrayIndexNode;
     }
 
     @Override

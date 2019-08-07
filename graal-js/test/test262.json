@@ -1986,12 +1986,6 @@
     "filePath" : "language/expressions/assignment/S11.13.1_A5_T5.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/assignment/S11.13.1_A7_T1.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/assignment/S11.13.1_A7_T2.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/async-arrow-function/await-as-param-ident-nested-arrow-parameter-position.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
