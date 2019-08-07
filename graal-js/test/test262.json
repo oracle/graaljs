@@ -1983,9 +1983,6 @@
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/assignment/fn-name-lhs-cover.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/assignment/S11.13.1_A5_T5.js",
     "status" : "FAIL"
   }, {
