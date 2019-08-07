@@ -2451,7 +2451,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode transformAssignmentIdent(IdentNode identNode, JavaScriptNode assignedValue, BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric,
                     boolean initializationAssignment) {
-        setAnonymousFunctionName(assignedValue, identNode.getName());
+        // no CoverParenthesizedExpressionAndArrowParameterList (IsIdentifierRef must be true)
+        if (!identNode.isParenthesized()) {
+            setAnonymousFunctionName(assignedValue, identNode.getName());
+        }
         JavaScriptNode rhs = assignedValue;
         String ident = identNode.getName();
         VarRef scopeVar = findScopeVarCheckTDZ(ident, initializationAssignment);
