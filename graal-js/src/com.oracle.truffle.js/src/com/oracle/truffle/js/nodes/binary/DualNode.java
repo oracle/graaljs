@@ -67,26 +67,17 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         if (left instanceof DualNode && !(right instanceof DualNode || right instanceof AbstractBlockNode)) {
             // When de-sugaring certain inc/dec operations, we end up having two (nested) dual
-            // nodes. In this case, rather than flattering the nodes in a block, we return the
+            // nodes. In this case, rather than flattening the nodes in a block, we return the
             // nested dual nodes. In this way, they can be detected as expressions by instruments.
             return new DualNode(left, right);
         } else if (left instanceof DualNode || left instanceof AbstractBlockNode || right instanceof DualNode || right instanceof AbstractBlockNode) {
-            int leftLen = getLen(left);
-            int rightLen = getLen(right);
-            final int len = leftLen + rightLen;
+            final int len = getLen(left) + getLen(right);
             if (len > 2) {
                 JavaScriptNode[] arr = new JavaScriptNode[len];
                 int pos = 0;
-                if (leftLen == 1) {
-                    arr[pos++] = left;
-                } else {
-                    pos = flatten(arr, 0, left);
-                }
-                if (rightLen == 1) {
-                    arr[pos] = right;
-                } else {
-                    flatten(arr, pos, right);
-                }
+                pos = flatten(arr, pos, left);
+                pos = flatten(arr, pos, right);
+                assert pos == len;
                 return right instanceof BlockNode ? BlockNode.createVoidBlock(arr) : ExprBlockNode.createExprBlock(arr);
             }
         }
@@ -94,7 +85,10 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     }
 
     private static int flatten(JavaScriptNode[] arr, int pos, JavaScriptNode node) {
-        if (node instanceof DualNode) {
+        if (node.hasTag(RootBodyTag.class)) {
+            arr[pos] = node;
+            return pos + 1;
+        } else if (node instanceof DualNode) {
             DualNode dual = (DualNode) node;
             arr[pos] = dual.left;
             arr[pos + 1] = dual.right;
@@ -113,8 +107,13 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
     private static int getLen(JavaScriptNode node) {
         if (node.hasTag(RootBodyTag.class)) {
             return 1;
+        } else if (node instanceof DualNode) {
+            return 2;
+        } else if (node instanceof AbstractBlockNode) {
+            return ((AbstractBlockNode) node).getStatements().length;
+        } else {
+            return 1;
         }
-        return node instanceof DualNode ? 2 : node instanceof AbstractBlockNode ? ((AbstractBlockNode) node).getStatements().length : 1;
     }
 
     @Override
