@@ -59,7 +59,7 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
  * Equivalent to the following steps:
  *
  * <ol>
- * <li>Let next = IteratorStep(iteratorRecord).
+ * <li>Let next be IteratorStep(iteratorRecord).
  * <li>(opt) If next is an abrupt completion, set iteratorRecord.[[Done]] to true.
  * <li>ReturnIfAbrupt(next).
  * <li>If next is false,
@@ -67,7 +67,12 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
  * <li>(opt) Set iteratorRecord.[[Done]] to true.
  * <li>Return doneResult.
  * </ol>
- * <li>Else, return IteratorValue(next).
+ * <li>Else,
+ * <ol>
+ * <li>Let value be IteratorValue(next).
+ * <li>(opt) If value is an abrupt completion, set iteratorRecord.[[Done]] to true.
+ * <li>Return value.
+ * </ol>
  * </ol>
  */
 public abstract class IteratorGetNextValueNode extends JavaScriptNode {
@@ -95,31 +100,34 @@ public abstract class IteratorGetNextValueNode extends JavaScriptNode {
         return IteratorGetNextValueNodeGen.create(context, iterator, doneNode, setDone);
     }
 
-    @Specialization
-    protected Object doIteratorStep(VirtualFrame frame, IteratorRecord iteratorRecord) {
+    private Object iteratorNext(IteratorRecord iteratorRecord) {
         Object next = iteratorRecord.getNextMethod();
         DynamicObject iterator = iteratorRecord.getIterator();
-        Object result;
+        Object result = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, next));
+        if (!isObjectNode.executeBoolean(result)) {
+            throw Errors.createTypeErrorIterResultNotAnObject(result, this);
+        }
+        return result;
+    }
+
+    @Specialization
+    protected Object iteratorStepAndGetValue(VirtualFrame frame, IteratorRecord iteratorRecord) {
         try {
-            result = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, next));
-            if (!isObjectNode.executeBoolean(result)) {
-                throw Errors.createTypeErrorIterResultNotAnObject(result, this);
+            Object result = iteratorNext(iteratorRecord);
+            boolean done = toBooleanNode.executeBoolean(getDoneNode.getValue(result));
+            if (!done) {
+                return getValueNode.getValue(result);
+            } else {
+                if (setDone) {
+                    iteratorRecord.setDone(true);
+                }
+                return doneResultNode.execute(frame);
             }
         } catch (Exception ex) {
             if (setDone) {
                 iteratorRecord.setDone(true);
             }
             throw ex;
-        }
-
-        boolean done = toBooleanNode.executeBoolean(getDoneNode.getValue(result));
-        if (!done) {
-            return getValueNode.getValue(result);
-        } else {
-            if (setDone) {
-                iteratorRecord.setDone(true);
-            }
-            return doneResultNode.execute(frame);
         }
     }
 
