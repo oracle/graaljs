@@ -1872,19 +1872,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef iteratorVar = environment.createTempVar();
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(iterator);
         VarRef nextResultVar = environment.createTempVar();
-        VarRef dontCloseIterVar = environment.createTempVar();
         JavaScriptNode iteratorNext = factory.createIteratorNext(iteratorVar.createReadNode());
         // nextResult = IteratorNext(iterator)
         // while(!(done = IteratorComplete(nextResult)))
         JavaScriptNode condition = factory.createDual(context,
-                        dontCloseIterVar.createWriteNode(factory.createConstantBoolean(true)),
+                        factory.createIteratorSetDone(iteratorVar.createReadNode(), factory.createConstantBoolean(true)),
                         factory.createUnary(UnaryOperation.NOT, factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
         JavaScriptNode wrappedBody;
         try (EnvironmentCloseable blockEnv = forNode.hasPerIterationScope() ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
             // var nextValue = IteratorValue(nextResult);
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
             VarRef nextValueVar = environment.createTempVar();
-            VarRef dontCloseIterVar2 = environment.findTempVar(dontCloseIterVar.getFrameSlot());
+            VarRef iteratorVar2 = environment.findTempVar(iteratorVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
             JavaScriptNode nextValue = factory.createIteratorValue(context, nextResult);
             JavaScriptNode writeNextValue = nextValueVar.createWriteNode(nextValue);
@@ -1892,13 +1891,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode body = transform(forNode.getBody());
             wrappedBody = blockEnv.wrapBlockScope(createBlock(
                             writeNextValue,
-                            dontCloseIterVar2.createWriteNode(factory.createConstantBoolean(false)),
+                            factory.createIteratorSetDone(iteratorVar2.createReadNode(), factory.createConstantBoolean(false)),
                             writeNext,
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
         JavaScriptNode whileNode = createWhileDo(condition, wrappedBody);
-        JavaScriptNode wrappedWhile = factory.createIteratorCloseIfNotDone(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), dontCloseIterVar.createReadNode());
+        JavaScriptNode wrappedWhile = factory.createIteratorCloseIfNotDone(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode());
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
         return createBlock(iteratorInit, wrappedWhile);
@@ -1920,7 +1919,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         VarRef iteratorVar = environment.createTempVar();
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(getIterator);
         VarRef nextResultVar = environment.createTempVar();
-        VarRef dontCloseIterVar = environment.createTempVar();
 
         currentFunction().addAwait();
         JSReadFrameSlotNode asyncResultNode = (JSReadFrameSlotNode) environment.findTempVar(currentFunction().getAsyncResultSlot()).createReadNode();
@@ -1929,14 +1927,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         // nextResult = Await(IteratorNext(iterator))
         // while(!(done = IteratorComplete(nextResult)))
         JavaScriptNode condition = factory.createDual(context,
-                        dontCloseIterVar.createWriteNode(factory.createConstantBoolean(true)),
+                        factory.createIteratorSetDone(iteratorVar.createReadNode(), factory.createConstantBoolean(true)),
                         factory.createUnary(UnaryOperation.NOT, factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
         JavaScriptNode wrappedBody;
         try (EnvironmentCloseable blockEnv = forNode.hasPerIterationScope() ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
             // var nextValue = IteratorValue(nextResult);
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
             VarRef nextValueVar = environment.createTempVar();
-            VarRef dontCloseIterVar2 = environment.findTempVar(dontCloseIterVar.getFrameSlot());
+            VarRef iteratorVar2 = environment.findTempVar(iteratorVar.getFrameSlot());
             JavaScriptNode nextResult = nextResultVar2.createReadNode();
             JavaScriptNode nextValue = factory.createIteratorValue(context, nextResult);
             JavaScriptNode writeNextValue = nextValueVar.createWriteNode(nextValue);
@@ -1944,15 +1942,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode body = transform(forNode.getBody());
             wrappedBody = blockEnv.wrapBlockScope(createBlock(
                             writeNextValue,
-                            dontCloseIterVar2.createWriteNode(factory.createConstantBoolean(false)),
+                            factory.createIteratorSetDone(iteratorVar2.createReadNode(), factory.createConstantBoolean(false)),
                             writeNext,
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
         JavaScriptNode whileNode = createWhileDo(condition, wrappedBody);
         currentFunction().addAwait();
-        JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), asyncContextNode, asyncResultNode,
-                        dontCloseIterVar.createReadNode());
+        JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), asyncContextNode, asyncResultNode);
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
         return createBlock(iteratorInit, wrappedWhile);
@@ -2623,12 +2620,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode[] initElements = javaScriptNodeArray(elementExpressions.size());
         VarRef iteratorTempVar = environment.createTempVar();
         VarRef valueTempVar = environment.createTempVar();
-        VarRef doneVar = environment.createTempVar();
         JavaScriptNode initValue = valueTempVar.createWriteNode(assignedValue);
         // By default, we use the hint to track the type of iterator.
         JavaScriptNode getIterator = factory.createGetIterator(context, initValue);
         JavaScriptNode initIteratorTempVar = iteratorTempVar.createWriteNode(getIterator);
-        JavaScriptNode writeDone = doneVar.createWriteNode(factory.createConstantBoolean(true));
 
         for (int i = 0; i < elementExpressions.size(); i++) {
             Expression element = elementExpressions.get(i);
@@ -2643,12 +2638,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             } else {
                 lhsExpr = element;
             }
-            JavaScriptNode rhsNode = factory.createIteratorStepSpecial(context, iteratorTempVar.createReadNode(), factory.createExprBlock(writeDone, factory.createConstantUndefined()), true);
+            JavaScriptNode rhsNode = factory.createIteratorGetNextValue(context, iteratorTempVar.createReadNode(), factory.createConstantUndefined(), true);
             if (init != null) {
                 rhsNode = factory.createNotUndefinedOr(rhsNode, transform(init));
             }
             if (lhsExpr != null && lhsExpr.isTokenType(TokenType.SPREAD_ARRAY)) {
-                rhsNode = factory.createIteratorToArray(context, iteratorTempVar.createReadNode(), writeDone);
+                rhsNode = factory.createIteratorToArray(context, iteratorTempVar.createReadNode());
                 lhsExpr = ((UnaryNode) lhsExpr).getExpression();
             }
             if (lhsExpr != null) {
@@ -2657,7 +2652,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 initElements[i] = rhsNode;
             }
         }
-        JavaScriptNode closeIfNotDone = factory.createIteratorCloseIfNotDone(context, createBlock(initElements), iteratorTempVar.createReadNode(), doneVar.createReadNode());
+        JavaScriptNode closeIfNotDone = factory.createIteratorCloseIfNotDone(context, createBlock(initElements), iteratorTempVar.createReadNode());
         return factory.createExprBlock(initIteratorTempVar, closeIfNotDone, valueTempVar.createReadNode());
     }
 

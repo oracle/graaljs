@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,51 +40,35 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
- * Absorb iterator to new array.
+ * Sets the [[Done]] field of an IteratorRecord.
  */
-public abstract class IteratorToArrayNode extends JavaScriptNode {
-    private final JSContext context;
+public abstract class IteratorSetDoneNode extends JavaScriptNode {
     @Child @Executed JavaScriptNode iteratorNode;
-    @Child private IteratorGetNextValueNode iteratorStepNode;
+    @Child @Executed JavaScriptNode isDoneNode;
 
-    protected IteratorToArrayNode(JSContext context, JavaScriptNode iteratorNode, IteratorGetNextValueNode iteratorStepNode) {
-        this.context = context;
+    protected IteratorSetDoneNode(JavaScriptNode iteratorNode, JavaScriptNode isDoneNode) {
         this.iteratorNode = iteratorNode;
-        this.iteratorStepNode = iteratorStepNode;
+        this.isDoneNode = isDoneNode;
     }
 
-    public static IteratorToArrayNode create(JSContext context, JavaScriptNode iterator) {
-        IteratorGetNextValueNode iteratorStep = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
-        return IteratorToArrayNodeGen.create(context, iterator, iteratorStep);
+    public static IteratorSetDoneNode create(JavaScriptNode iteratorNode, JavaScriptNode isDoneNode) {
+        return IteratorSetDoneNodeGen.create(iteratorNode, isDoneNode);
     }
 
     @Specialization
-    protected Object doIterator(VirtualFrame frame, IteratorRecord iteratorRecord) {
-        List<Object> elements = new ArrayList<>();
-        Object value;
-        while ((value = iteratorStepNode.execute(frame, iteratorRecord)) != null) {
-            Boundaries.listAdd(elements, value);
-        }
-        return JSArray.createZeroBasedObjectArray(context, Boundaries.listToArray(elements));
+    protected static boolean doIteratorStep(IteratorRecord iteratorRecord, boolean isDone) {
+        iteratorRecord.setDone(isDone);
+        return isDone;
     }
-
-    public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return IteratorToArrayNodeGen.create(context, cloneUninitialized(iteratorNode), cloneUninitialized(iteratorStepNode));
+        return create(cloneUninitialized(iteratorNode), cloneUninitialized(isDoneNode));
     }
 }

@@ -67,26 +67,22 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
     @Child private GetMethodNode getReturnNode;
     @Child private JSFunctionCallNode returnMethodCallNode;
     @Child private JavaScriptNode iteratorNode;
-    @Child private JavaScriptNode doneNode;
     private final BranchProfile errorBranch = BranchProfile.create();
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
     private final BranchProfile notDoneBranch = BranchProfile.create();
     private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
-    protected AsyncIteratorCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iteratorNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode,
-                    JavaScriptNode doneNode) {
+    protected AsyncIteratorCloseWrapperNode(JSContext context, JavaScriptNode loopNode, JavaScriptNode iteratorNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
         super(context, null, asyncContextNode, asyncResultNode);
         this.loopNode = loopNode;
         this.iteratorNode = iteratorNode;
-        this.doneNode = doneNode;
 
         this.getReturnNode = GetMethodNode.create(context, null, "return");
     }
 
-    public static JavaScriptNode create(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode,
-                    JSReadFrameSlotNode asyncResultNode, JavaScriptNode doneNode) {
-        return new AsyncIteratorCloseWrapperNode(context, loopNode, iterator, asyncContextNode, asyncResultNode, doneNode);
+    public static JavaScriptNode create(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
+        return new AsyncIteratorCloseWrapperNode(context, loopNode, iterator, asyncContextNode, asyncResultNode);
     }
 
     @Override
@@ -133,11 +129,11 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                     throw e;
                 }
             }
-            if (StatementNode.executeConditionAsBoolean(frame, doneNode)) {
+            IteratorRecord iteratorRecord = getIteratorRecord(frame);
+            if (iteratorRecord.isDone()) {
                 return result;
             } else {
                 notDoneBranch.enter();
-                IteratorRecord iteratorRecord = getIteratorRecord(frame);
                 DynamicObject iterator = iteratorRecord.getIterator();
                 Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
                 if (returnMethod != Undefined.instance) {
@@ -191,6 +187,6 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
     @Override
     protected JavaScriptNode copyUninitialized() {
         return new AsyncIteratorCloseWrapperNode(context, cloneUninitialized(loopNode), cloneUninitialized(iteratorNode), cloneUninitialized(readAsyncContextNode),
-                        cloneUninitialized(readAsyncResultNode), cloneUninitialized(doneNode));
+                        cloneUninitialized(readAsyncResultNode));
     }
 }

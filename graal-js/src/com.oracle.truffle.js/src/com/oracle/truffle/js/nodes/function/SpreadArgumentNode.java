@@ -44,7 +44,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
-import com.oracle.truffle.js.nodes.access.IteratorStepSpecialNode;
+import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public final class SpreadArgumentNode extends JavaScriptNode {
     @Child private GetIteratorNode getIteratorNode;
-    @Child private IteratorStepSpecialNode iteratorStepNode;
+    @Child private IteratorGetNextValueNode iteratorStepNode;
     private final BranchProfile errorBranch = BranchProfile.create();
     private final BranchProfile listGrowProfile = BranchProfile.create();
     private final JSContext context;
@@ -61,7 +61,7 @@ public final class SpreadArgumentNode extends JavaScriptNode {
     private SpreadArgumentNode(JSContext context, JavaScriptNode arg) {
         this.context = context;
         this.getIteratorNode = GetIteratorNode.create(context, arg);
-        this.iteratorStepNode = IteratorStepSpecialNode.create(context, null, JSConstantNode.create(null), false);
+        this.iteratorStepNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), false);
     }
 
     @Override

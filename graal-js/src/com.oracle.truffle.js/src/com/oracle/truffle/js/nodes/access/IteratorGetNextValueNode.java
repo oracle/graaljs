@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,34 +54,45 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
- * (partially) implements ES6 7.4.5 IteratorStep(iterator).
+ * Combines IteratorStep and IteratorValue in one node.
  *
- * Note that this node returns the value instead of the result, thus is non-standard! For the
- * standard-compliant version, see {@link IteratorStepNode}.
+ * Equivalent to the following steps:
+ *
+ * <ol>
+ * <li>Let next = IteratorStep(iteratorRecord).
+ * <li>(opt) If next is an abrupt completion, set iteratorRecord.[[Done]] to true.
+ * <li>ReturnIfAbrupt(next).
+ * <li>If next is false,
+ * <ol>
+ * <li>(opt) Set iteratorRecord.[[Done]] to true.
+ * <li>Return doneResult.
+ * </ol>
+ * <li>Else, return IteratorValue(next).
+ * </ol>
  */
-public abstract class IteratorStepSpecialNode extends JavaScriptNode {
+public abstract class IteratorGetNextValueNode extends JavaScriptNode {
     @Child @Executed JavaScriptNode iteratorNode;
     @Child private PropertyGetNode getValueNode;
     @Child private PropertyGetNode getDoneNode;
     @Child private JSFunctionCallNode methodCallNode;
     @Child private IsJSObjectNode isObjectNode;
-    @Child private JavaScriptNode doneNode;
+    @Child private JavaScriptNode doneResultNode;
     @Child private JSToBooleanNode toBooleanNode;
-    private final boolean setDoneOnError;
+    private final boolean setDone;
 
-    protected IteratorStepSpecialNode(JSContext context, JavaScriptNode iteratorNode, JavaScriptNode doneNode, boolean setDoneOnError) {
+    protected IteratorGetNextValueNode(JSContext context, JavaScriptNode iteratorNode, JavaScriptNode doneNode, boolean setDone) {
         this.iteratorNode = iteratorNode;
         this.getValueNode = PropertyGetNode.create(JSRuntime.VALUE, false, context);
         this.getDoneNode = PropertyGetNode.create(JSRuntime.DONE, false, context);
         this.methodCallNode = JSFunctionCallNode.createCall();
         this.isObjectNode = IsJSObjectNode.create();
         this.toBooleanNode = JSToBooleanNode.create();
-        this.doneNode = doneNode;
-        this.setDoneOnError = setDoneOnError;
+        this.doneResultNode = doneNode;
+        this.setDone = setDone;
     }
 
-    public static IteratorStepSpecialNode create(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode, boolean setDoneOnError) {
-        return IteratorStepSpecialNodeGen.create(context, iterator, doneNode, setDoneOnError);
+    public static IteratorGetNextValueNode create(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode, boolean setDone) {
+        return IteratorGetNextValueNodeGen.create(context, iterator, doneNode, setDone);
     }
 
     @Specialization
@@ -95,20 +106,27 @@ public abstract class IteratorStepSpecialNode extends JavaScriptNode {
                 throw Errors.createTypeErrorIterResultNotAnObject(result, this);
             }
         } catch (Exception ex) {
-            if (setDoneOnError) {
-                doneNode.execute(frame);
+            if (setDone) {
+                iteratorRecord.setDone(true);
             }
             throw ex;
         }
 
-        Object done = toBooleanNode.executeBoolean(getDoneNode.getValue(result));
-        return done == Boolean.FALSE ? getValueNode.getValue(result) : doneNode.execute(frame);
+        boolean done = toBooleanNode.executeBoolean(getDoneNode.getValue(result));
+        if (!done) {
+            return getValueNode.getValue(result);
+        } else {
+            if (setDone) {
+                iteratorRecord.setDone(true);
+            }
+            return doneResultNode.execute(frame);
+        }
     }
 
     public abstract Object execute(VirtualFrame frame, IteratorRecord iteratorRecord);
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return create(getValueNode.getContext(), cloneUninitialized(iteratorNode), cloneUninitialized(doneNode), setDoneOnError);
+        return create(getValueNode.getContext(), cloneUninitialized(iteratorNode), cloneUninitialized(doneResultNode), setDone);
     }
 }

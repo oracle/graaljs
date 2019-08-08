@@ -590,11 +590,11 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
     public static final class SpreadArrayNode extends JavaScriptNode {
         @Child private GetIteratorNode getIteratorNode;
-        @Child private IteratorStepSpecialNode iteratorStepNode;
+        @Child private IteratorGetNextValueNode iteratorStepNode;
 
         private SpreadArrayNode(JSContext context, JavaScriptNode arg) {
             this.getIteratorNode = GetIteratorNode.create(context, arg);
-            this.iteratorStepNode = IteratorStepSpecialNode.create(context, null, JSConstantNode.create(null), false);
+            this.iteratorStepNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), false);
         }
 
         public static SpreadArrayNode create(JSContext context, JavaScriptNode arg) {
