@@ -3180,8 +3180,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     // ---
 
     private SourceSection createSourceSection(FunctionNode functionNode) {
-        int start = functionNode.getStart();
-        int finish = functionNode.getFinish();
+        int start = functionNode.getStartWithoutParens();
+        int finish = functionNode.getFinishWithoutParens();
         return source.createSection(start, finish - start);
     }
 

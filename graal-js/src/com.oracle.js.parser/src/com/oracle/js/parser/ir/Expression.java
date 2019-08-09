@@ -51,6 +51,8 @@ public abstract class Expression extends Node {
      * Determines whether this expression is enclosed in parenthesis.
      */
     private boolean parenthesized;
+    private int parensStart;
+    private int parensFinish;
 
     Expression(final long token, final int start, final int finish) {
         super(token, start, finish);
@@ -99,15 +101,36 @@ public abstract class Expression extends Node {
      * @return {@code true} if this expression is enclosed in parenthesis, returns {@code false}
      *         otherwise.
      */
-    public boolean isParenthesized() {
+    public final boolean isParenthesized() {
         return parenthesized;
     }
 
     /**
      * Marks this expression as enclosed in parenthesis.
      */
-    public void makeParenthesized() {
+    public final void makeParenthesized(int parenStart, int parenFinish) {
+        assert parenthesized ? (parenStart <= parensStart && parensFinish <= parenFinish) : (parenStart <= super.getStart() && super.getFinish() <= parenFinish);
         parenthesized = true;
+        parensStart = parenStart;
+        parensFinish = parenFinish;
+    }
+
+    @Override
+    public int getStart() {
+        return parenthesized ? parensStart : super.getStart();
+    }
+
+    public final int getStartWithoutParens() {
+        return super.getStart();
+    }
+
+    @Override
+    public int getFinish() {
+        return parenthesized ? parensFinish : super.getFinish();
+    }
+
+    public final int getFinishWithoutParens() {
+        return super.getFinish();
     }
 
 }
