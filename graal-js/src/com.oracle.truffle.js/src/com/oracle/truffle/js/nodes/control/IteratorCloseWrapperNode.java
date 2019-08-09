@@ -54,22 +54,20 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
     @Child private JavaScriptNode blockNode;
     @Child private JavaScriptNode iteratorNode;
     @Child private IteratorCloseNode iteratorCloseNode;
-    @Child private JavaScriptNode doneNode;
     private final JSContext context;
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
     private final BranchProfile notDoneBranch = BranchProfile.create();
     private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
-    protected IteratorCloseWrapperNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done) {
+    protected IteratorCloseWrapperNode(JSContext context, JavaScriptNode block, JavaScriptNode iterator) {
         this.context = context;
         this.blockNode = block;
         this.iteratorNode = iterator;
-        this.doneNode = done;
     }
 
-    public static JavaScriptNode create(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode done) {
-        return new IteratorCloseWrapperNode(context, block, iterator, done);
+    public static JavaScriptNode create(JSContext context, JavaScriptNode block, JavaScriptNode iterator) {
+        return new IteratorCloseWrapperNode(context, block, iterator);
     }
 
     @Override
@@ -81,29 +79,28 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
             throw e;
         } catch (ControlFlowException e) {
             exitBranch.enter();
-            if (!isDone(frame)) {
-                iteratorClose().executeVoid(getIteratorRecord(frame).getIterator());
+            IteratorRecord iteratorRecord = getIteratorRecord(frame);
+            if (!iteratorRecord.isDone()) {
+                iteratorClose().executeVoid(iteratorRecord.getIterator());
             }
             throw e;
         } catch (Throwable e) {
             if (TryCatchNode.shouldCatch(e, typeProfile)) {
                 throwBranch.enter();
-                if (!isDone(frame)) {
-                    iteratorClose().executeAbrupt(getIteratorRecord(frame).getIterator());
+                IteratorRecord iteratorRecord = getIteratorRecord(frame);
+                if (!iteratorRecord.isDone()) {
+                    iteratorClose().executeAbrupt(iteratorRecord.getIterator());
                 }
             }
             throw e;
         }
 
-        if (!isDone(frame)) {
+        IteratorRecord iteratorRecord = getIteratorRecord(frame);
+        if (!iteratorRecord.isDone()) {
             notDoneBranch.enter();
-            iteratorClose().executeVoid(getIteratorRecord(frame).getIterator());
+            iteratorClose().executeVoid(iteratorRecord.getIterator());
         }
         return result;
-    }
-
-    private boolean isDone(VirtualFrame frame) {
-        return doneNode.execute(frame) == Boolean.TRUE;
     }
 
     private IteratorRecord getIteratorRecord(VirtualFrame frame) {
@@ -125,6 +122,6 @@ public class IteratorCloseWrapperNode extends JavaScriptNode implements Resumabl
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new IteratorCloseWrapperNode(context, cloneUninitialized(blockNode), cloneUninitialized(iteratorNode), cloneUninitialized(doneNode));
+        return new IteratorCloseWrapperNode(context, cloneUninitialized(blockNode), cloneUninitialized(iteratorNode));
     }
 }

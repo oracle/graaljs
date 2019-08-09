@@ -73,8 +73,9 @@ import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeNode;
 import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteUnaryNode;
+import com.oracle.truffle.js.nodes.access.IteratorGetNextValueNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextUnaryNode;
-import com.oracle.truffle.js.nodes.access.IteratorStepSpecialNode;
+import com.oracle.truffle.js.nodes.access.IteratorSetDoneNode;
 import com.oracle.truffle.js.nodes.access.IteratorToArrayNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -875,8 +876,12 @@ public class NodeFactory {
         return IteratorCompleteUnaryNode.create(context, iterResult);
     }
 
-    public IteratorStepSpecialNode createIteratorStepSpecial(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode, boolean setDoneOnError) {
-        return IteratorStepSpecialNode.create(context, iterator, doneNode, setDoneOnError);
+    public JavaScriptNode createIteratorGetNextValue(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode, boolean setDoneOnError) {
+        return IteratorGetNextValueNode.create(context, iterator, doneNode, setDoneOnError);
+    }
+
+    public JavaScriptNode createIteratorSetDone(JavaScriptNode iterator, JavaScriptNode isDone) {
+        return IteratorSetDoneNode.create(iterator, isDone);
     }
 
     public JavaScriptNode createAsyncIteratorNext(JSContext context, JavaScriptNode createReadNode, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
@@ -888,16 +893,16 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createAsyncIteratorCloseWrapper(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode,
-                    JSReadFrameSlotNode asyncResultNode, JavaScriptNode doneNode) {
-        return AsyncIteratorCloseWrapperNode.create(context, loopNode, iterator, asyncContextNode, asyncResultNode, doneNode);
+                    JSReadFrameSlotNode asyncResultNode) {
+        return AsyncIteratorCloseWrapperNode.create(context, loopNode, iterator, asyncContextNode, asyncResultNode);
     }
 
-    public JavaScriptNode createIteratorCloseIfNotDone(JSContext context, JavaScriptNode block, JavaScriptNode iterator, JavaScriptNode isDoneNode) {
-        return IteratorCloseWrapperNode.create(context, block, iterator, isDoneNode);
+    public JavaScriptNode createIteratorCloseIfNotDone(JSContext context, JavaScriptNode block, JavaScriptNode iterator) {
+        return IteratorCloseWrapperNode.create(context, block, iterator);
     }
 
-    public IteratorToArrayNode createIteratorToArray(JSContext context, JavaScriptNode iterator, JavaScriptNode doneNode) {
-        return IteratorToArrayNode.create(context, iterator, doneNode);
+    public IteratorToArrayNode createIteratorToArray(JSContext context, JavaScriptNode iterator) {
+        return IteratorToArrayNode.create(context, iterator);
     }
 
     public JavaScriptNode createGetPrototype(JavaScriptNode object) {
