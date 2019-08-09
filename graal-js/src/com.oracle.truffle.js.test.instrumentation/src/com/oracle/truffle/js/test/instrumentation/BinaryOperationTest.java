@@ -284,7 +284,7 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
 
     public void typeofIdenticalType(String type, String operator, boolean typeofAsLeftOperand) {
         String lhs = "'" + type + "'";
-        String rhs = "typeof a";
+        String rhs = "(typeof a)";
 
         if (typeofAsLeftOperand) {
             String tmp = lhs;
