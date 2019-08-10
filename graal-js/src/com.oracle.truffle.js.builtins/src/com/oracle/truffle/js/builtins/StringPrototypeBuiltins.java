@@ -434,7 +434,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 requireObjectCoercibleNode = insert(RequireObjectCoercibleNode.create());
             }
-            requireObjectCoercibleNode.execute(target);
+            requireObjectCoercibleNode.executeVoid(target);
         }
 
         protected String toString(Object target) {

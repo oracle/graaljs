@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -130,7 +131,7 @@ public class WriteElementNode extends JSTargetableNode {
     @Child private ToArrayIndexNode toArrayIndexNode;
     @Child protected JavaScriptNode valueNode;
     @Child private WriteElementTypeCacheNode typeCacheNode;
-    private final BranchProfile nullOrUndefinedTargetBranch;
+    @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
 
     final JSContext context;
     final boolean isStrict;
@@ -166,7 +167,7 @@ public class WriteElementNode extends JSTargetableNode {
         this.context = context;
         this.isStrict = isStrict;
         this.writeOwn = writeOwn;
-        this.nullOrUndefinedTargetBranch = BranchProfile.create();
+        this.requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
     }
 
     protected final ToArrayIndexNode toArrayIndexNode() {
@@ -177,12 +178,20 @@ public class WriteElementNode extends JSTargetableNode {
         return toArrayIndexNode;
     }
 
-    protected final Object requireObjectCoercible(Object target, Object index) {
-        if (JSRuntime.isNullOrUndefined(target)) {
-            nullOrUndefinedTargetBranch.enter();
+    protected final void requireObjectCoercible(Object target, int index) {
+        try {
+            requireObjectCoercibleNode.executeVoid(target);
+        } catch (JSException e) {
             throw Errors.createTypeErrorCannotSetProperty(JSRuntime.safeToString(index), target, this);
         }
-        return target;
+    }
+
+    protected final void requireObjectCoercible(Object target, Object index) {
+        try {
+            requireObjectCoercibleNode.executeVoid(target);
+        } catch (JSException e) {
+            throw Errors.createTypeErrorCannotSetProperty(JSRuntime.safeToString(index), target, this);
+        }
     }
 
     @Override

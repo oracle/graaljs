@@ -40,13 +40,18 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNodeGen.RequireObjectCoercibleWrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
 
 /**
  * Implementation of the abstract operation RequireObjectCoercible(argument) (ES6 7.2.1).
@@ -60,37 +65,62 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
         return RequireObjectCoercibleNodeGen.create();
     }
 
-    public abstract Object execute(Object operand);
+    public final Object execute(Object operand) {
+        executeVoid(operand);
+        return operand;
+    }
+
+    public abstract void executeVoid(Object operand);
 
     @Specialization
-    protected Object doInt(int value) {
-        return value;
+    protected static void doInt(@SuppressWarnings("unused") int value) {
     }
 
     @Specialization
-    protected Object doDouble(double value) {
-        return value;
+    protected static void doLargeInteger(@SuppressWarnings("unused") LargeInteger value) {
     }
 
     @Specialization
-    protected Object doCharSequence(CharSequence value) {
-        return value;
+    protected static void doLong(@SuppressWarnings("unused") long value) {
     }
 
     @Specialization
-    protected Object doBoolean(boolean value) {
-        return value;
+    protected static void doDouble(@SuppressWarnings("unused") double value) {
+    }
+
+    @Specialization
+    protected static void doCharSequence(@SuppressWarnings("unused") CharSequence value) {
+    }
+
+    @Specialization
+    protected static void doBoolean(@SuppressWarnings("unused") boolean value) {
+    }
+
+    @Specialization(guards = {"cachedShape != null", "cachedShape.check(object)"}, limit = "1")
+    protected static void doCachedShape(@SuppressWarnings("unused") DynamicObject object,
+                    @Cached("getShapeIfObject(object)") @SuppressWarnings("unused") Shape cachedShape) {
+    }
+
+    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1", replaces = "doCachedShape")
+    protected static void doCachedJSClass(@SuppressWarnings("unused") DynamicObject object,
+                    @Cached("getJSClassIfObject(object)") @SuppressWarnings("unused") JSClass cachedClass) {
+    }
+
+    @Specialization(guards = {"!isNullOrUndefined(object)"}, replaces = "doCachedJSClass")
+    protected static void doObjectCoercible(Object object) {
+        assert object != null;
     }
 
     @Specialization(guards = "isNullOrUndefined(object)")
-    protected Object doNullOrUndefined(DynamicObject object) {
+    protected void doNullOrUndefined(DynamicObject object) {
         throw Errors.createTypeErrorNotObjectCoercible(object, this);
     }
 
-    @Specialization(guards = {"!isNullOrUndefined(object)"})
-    protected Object doCoercible(Object object) {
-        assert object != null;
-        return object;
+    protected static Shape getShapeIfObject(DynamicObject object) {
+        if (JSGuards.isJSObject(object)) {
+            return object.getShape();
+        }
+        return null;
     }
 
     public abstract static class RequireObjectCoercibleWrapperNode extends JSUnaryNode {
