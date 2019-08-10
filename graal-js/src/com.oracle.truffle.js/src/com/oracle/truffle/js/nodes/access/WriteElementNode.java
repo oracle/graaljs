@@ -73,8 +73,8 @@ import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
+import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
-import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode.ToArrayIndexWrapperNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -158,7 +158,7 @@ public class WriteElementNode extends JSTargetableNode {
     protected WriteElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSContext context, boolean isStrict, boolean writeOwn) {
         // ToPropertyKey conversion should not be performed by indexNode
         // (we need to RequireObjectCoercible(target) before this conversion)
-        assert !(indexNode instanceof ToArrayIndexWrapperNode);
+        assert !(indexNode instanceof JSToPropertyKeyWrapperNode);
 
         this.targetNode = targetNode;
         this.indexNode = indexNode;
