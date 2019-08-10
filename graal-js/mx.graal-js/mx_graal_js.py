@@ -286,11 +286,11 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     truffle_jars=[
         'graal-js:GRAALJS',
         'graal-js:ICU4J',
-        'graal-js:ASM-6.2.1',
-        'graal-js:ASM_TREE-6.2.1',
-        'graal-js:ASM_ANALYSIS-6.2.1',
-        'graal-js:ASM_COMMONS-6.2.1',
-        'graal-js:ASM_UTIL-6.2.1',
+        'graal-js:ASM-7.1',
+        'graal-js:ASM_TREE-7.1',
+        'graal-js:ASM_ANALYSIS-7.1',
+        'graal-js:ASM_COMMONS-7.1',
+        'graal-js:ASM_UTIL-7.1',
     ],
     support_distributions=[
         'graal-js:GRAALJS_GRAALVM_SUPPORT',

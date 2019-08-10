@@ -59,83 +59,84 @@ suite = {
     },
 
     "ICU4J" : {
-      # automatic module
-      "sha1" : "7a4d00d5ec5febd252a6182e8b6e87a0a9821f81",
+      "moduleName" : "com.ibm.icu",
+      "sha1" : "1d2b0ed49ba380d0c69c0a912a9909c1dbcc3d7c",
+      "sourceSha1" : "18e8f26d5ba2c50b84c79238e971accd89a6cf0c",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j",
-        "version" : "62.1",
+        "version" : "64.2",
       },
     },
 
-    "ASM-6.2.1" : {
+    "ASM-7.1" : {
       "moduleName" : "org.objectweb.asm",
-      "sha1" : "c01b6798f81b0fc2c5faa70cbe468c275d4b50c7",
-      "sourceSha1" : "cee28077ac7a63d3de0b205ec314d83944ff6267",
+      "sha1" : "fa29aa438674ff19d5e1386d2c3527a0267f291e",
+      "sourceSha1" : "9d170062d595240da35301362b079e5579c86f49",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm",
-        "version" : "6.2.1",
+        "version" : "7.1",
       },
     },
 
-    "ASM_TREE-6.2.1" : {
+    "ASM_TREE-7.1" : {
       "moduleName" : "org.objectweb.asm.tree",
-      "sha1" : "332b022092ecec53cdb6272dc436884b2d940615",
-      "sourceSha1" : "072bd64989090e4ed58e4657e3d4481d96f643af",
+      "sha1" : "a3662cf1c1d592893ffe08727f78db35392fa302",
+      "sourceSha1" : "157238292b551de8680505fa2d19590d136e25b9",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-tree",
-        "version" : "6.2.1",
+        "version" : "7.1",
       },
       "dependencies" : [
-        "ASM-6.2.1",
+        "ASM-7.1",
       ],
     },
 
-    "ASM_ANALYSIS-6.2.1" : {
+    "ASM_ANALYSIS-7.1" : {
       "moduleName" : "org.objectweb.asm.tree.analysis",
-      "sha1" : "e8b876c5ccf226cae2f44ed2c436ad3407d0ec1d",
-      "sourceSha1" : "b0b249bd185677648692e7c57b488b6d7c2a6653",
+      "sha1" : "379e0250f7a4a42c66c5e94e14d4c4491b3c2ed3",
+      "sourceSha1" : "36789198124eb075f1a5efa18a0a7812fb16f47f",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-analysis",
-        "version" : "6.2.1",
+        "version" : "7.1",
       },
       "dependencies" : [
-        "ASM_TREE-6.2.1",
+        "ASM_TREE-7.1",
       ],
     },
 
-    "ASM_COMMONS-6.2.1" : {
+    "ASM_COMMONS-7.1" : {
       "moduleName" : "org.objectweb.asm.commons",
-      "sha1" : "eaf31376d741a3e2017248a4c759209fe25c77d3",
-      "sourceSha1" : "667fa0f9d370e7848b0e3d173942855a91fd1daf",
+      "sha1" : "431dc677cf5c56660c1c9004870de1ed1ea7ce6c",
+      "sourceSha1" : "a62ff3ae6e37affda7c6fb7d63b89194c6d006ee",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-commons",
-        "version" : "6.2.1",
+        "version" : "7.1",
       },
       "dependencies" : [
-        "ASM-6.2.1",
-        "ASM_TREE-6.2.1",
-        "ASM_ANALYSIS-6.2.1",
+        "ASM-7.1",
+        "ASM_TREE-7.1",
+        "ASM_ANALYSIS-7.1",
       ],
     },
 
-    "ASM_UTIL-6.2.1" : {
+    "ASM_UTIL-7.1" : {
       "moduleName" : "org.objectweb.asm.util",
-      "sha1" : "400d664d7c92a659d988c00cb65150d1b30cf339",
-      "sourceSha1" : "c9f7246bf93bb0dc7fe9e7c9eca531a8fb98d252",
+      "sha1" : "5b0b0f8cdb6c90582302ffcf5c20447206122f48",
+      "sourceSha1" : "728ab1171a60dd2c408e6dd1d12fceb560635346",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-util",
-        "version" : "6.2.1",
+        "version" : "7.1",
       },
       "dependencies" : [
-        "ASM-6.2.1",
-        "ASM_TREE-6.2.1",
-        "ASM_ANALYSIS-6.2.1",
+        "ASM-7.1",
+        "ASM_TREE-7.1",
+        "ASM_ANALYSIS-7.1",
       ],
     },
 
@@ -203,9 +204,9 @@ suite = {
         "com.oracle.truffle.js.runtime.doubleconv",
         "regex:TREGEX",
         "com.oracle.truffle.regex.nashorn",
-        "ASM-6.2.1",
-        "ASM_COMMONS-6.2.1",
-        "ASM_UTIL-6.2.1",
+        "ASM-7.1",
+        "ASM_COMMONS-7.1",
+        "ASM_UTIL-7.1",
         "ICU4J",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
@@ -469,11 +470,11 @@ suite = {
         "sdk:GRAAL_SDK",
       ],
       "exclude": [
-        "ASM-6.2.1",
-        "ASM_TREE-6.2.1",
-        "ASM_ANALYSIS-6.2.1",
-        "ASM_COMMONS-6.2.1",
-        "ASM_UTIL-6.2.1",
+        "ASM-7.1",
+        "ASM_TREE-7.1",
+        "ASM_ANALYSIS-7.1",
+        "ASM_COMMONS-7.1",
+        "ASM_UTIL-7.1",
         "ICU4J",
       ],
       "description" : "Graal JavaScript engine",
