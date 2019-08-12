@@ -73,8 +73,8 @@ import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
+import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
-import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode.ToArrayIndexWrapperNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -130,7 +131,7 @@ public class WriteElementNode extends JSTargetableNode {
     @Child private ToArrayIndexNode toArrayIndexNode;
     @Child protected JavaScriptNode valueNode;
     @Child private WriteElementTypeCacheNode typeCacheNode;
-    private final BranchProfile nullOrUndefinedTargetBranch;
+    @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
 
     final JSContext context;
     final boolean isStrict;
@@ -158,7 +159,7 @@ public class WriteElementNode extends JSTargetableNode {
     protected WriteElementNode(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSContext context, boolean isStrict, boolean writeOwn) {
         // ToPropertyKey conversion should not be performed by indexNode
         // (we need to RequireObjectCoercible(target) before this conversion)
-        assert !(indexNode instanceof ToArrayIndexWrapperNode);
+        assert !(indexNode instanceof JSToPropertyKeyWrapperNode);
 
         this.targetNode = targetNode;
         this.indexNode = indexNode;
@@ -166,7 +167,7 @@ public class WriteElementNode extends JSTargetableNode {
         this.context = context;
         this.isStrict = isStrict;
         this.writeOwn = writeOwn;
-        this.nullOrUndefinedTargetBranch = BranchProfile.create();
+        this.requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
     }
 
     protected final ToArrayIndexNode toArrayIndexNode() {
@@ -177,12 +178,20 @@ public class WriteElementNode extends JSTargetableNode {
         return toArrayIndexNode;
     }
 
-    protected final Object requireObjectCoercible(Object target, Object index) {
-        if (JSRuntime.isNullOrUndefined(target)) {
-            nullOrUndefinedTargetBranch.enter();
+    protected final void requireObjectCoercible(Object target, int index) {
+        try {
+            requireObjectCoercibleNode.executeVoid(target);
+        } catch (JSException e) {
             throw Errors.createTypeErrorCannotSetProperty(JSRuntime.safeToString(index), target, this);
         }
-        return target;
+    }
+
+    protected final void requireObjectCoercible(Object target, Object index) {
+        try {
+            requireObjectCoercibleNode.executeVoid(target);
+        } catch (JSException e) {
+            throw Errors.createTypeErrorCannotSetProperty(JSRuntime.safeToString(index), target, this);
+        }
     }
 
     @Override

@@ -142,7 +142,6 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
-import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.control.AsyncFunctionBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorYieldNode;
@@ -994,10 +993,6 @@ public class NodeFactory {
 
     public JavaScriptNode copy(JavaScriptNode node) {
         return node.copy();
-    }
-
-    public JavaScriptNode createToArrayIndex(JavaScriptNode operand) {
-        return ToArrayIndexNode.ToArrayIndexWrapperNode.create(operand);
     }
 
     public JavaScriptNode createToObject(JSContext context, JavaScriptNode operand) {

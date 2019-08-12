@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -48,9 +47,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.ToArrayIndexNodeGen.ToArrayIndexWrapperNodeGen;
-import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 
@@ -156,32 +152,5 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
     protected static Object doNonArrayIndex(Object value,
                     @Cached("create()") JSToPropertyKeyNode toPropertyKey) {
         return toPropertyKey.execute(value);
-    }
-
-    public abstract static class ToArrayIndexWrapperNode extends JSUnaryNode {
-
-        @Child private ToArrayIndexNode toArrayIndexNode;
-
-        protected ToArrayIndexWrapperNode(JavaScriptNode operand) {
-            super(operand);
-        }
-
-        public static ToArrayIndexWrapperNode create(JavaScriptNode operand) {
-            return ToArrayIndexWrapperNodeGen.create(operand);
-        }
-
-        @Specialization
-        protected Object doDefault(Object value) {
-            if (toArrayIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toArrayIndexNode = insert(ToArrayIndexNode.create());
-            }
-            return toArrayIndexNode.execute(value);
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized() {
-            return ToArrayIndexWrapperNodeGen.create(cloneUninitialized(getOperand()));
-        }
     }
 }

@@ -841,12 +841,12 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             throw Errors.createTypeErrorInvalidPrototype(newProto);
         }
 
-        protected final Object requireObjectCoercible(Object target) {
+        protected final void requireObjectCoercible(Object target) {
             if (objectCoercibleNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 objectCoercibleNode = insert(RequireObjectCoercibleNode.create());
             }
-            return objectCoercibleNode.execute(target);
+            objectCoercibleNode.executeVoid(target);
         }
     }
 
@@ -1035,7 +1035,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected DynamicObject entries(Object iterable) {
-            requireObjectCoercibleNode.execute(iterable);
+            requireObjectCoercibleNode.executeVoid(iterable);
             DynamicObject obj = JSUserObject.create(getContext());
             return addEntriesFromIterable(obj, iterable);
         }

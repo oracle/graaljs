@@ -90,7 +90,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
                     @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("createNoToPropertyKey()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("create()") JSClassProfile jsclassProfile) {
-        requireObjectCoercibleNode.execute(target);
+        requireObjectCoercibleNode.executeVoid(target);
         long index = (long) toArrayIndexNode.execute(key);
         return JSObject.getOrDefault(target, index, defaultValue, jsclassProfile);
     }
@@ -107,7 +107,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile getType,
                     @Cached("create()") JSClassProfile jsclassProfile) {
-        requireObjectCoercibleNode.execute(target);
+        requireObjectCoercibleNode.executeVoid(target);
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(arrayIndex instanceof Long)) {
             return JSObject.getOrDefault(target, (long) arrayIndex, defaultValue, jsclassProfile);
