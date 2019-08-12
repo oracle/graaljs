@@ -67,16 +67,39 @@ public final class WhileNode extends StatementNode {
 
     @Child private LoopNode loop;
 
-    private WhileNode(RepeatingNode repeatingNode) {
+    private final ControlFlowRootTag.Type loopType;
+
+    private WhileNode(RepeatingNode repeatingNode, ControlFlowRootTag.Type type) {
         this.loop = Truffle.getRuntime().createLoopNode(repeatingNode);
+        this.loopType = type;
     }
 
-    public static JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
+    private static JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body, ControlFlowRootTag.Type type) {
         if (condition instanceof JSConstantNode && !JSRuntime.toBoolean(((JSConstantNode) condition).getValue())) {
             return new EmptyNode();
         }
         JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
-        return new WhileNode(new WhileDoRepeatingNode(condition, nonVoidBody));
+        return new WhileNode(new WhileDoRepeatingNode(condition, nonVoidBody), type);
+    }
+
+    public static JavaScriptNode createWhileDo(JavaScriptNode condition, JavaScriptNode body) {
+        return createWhileDo(condition, body, ControlFlowRootTag.Type.WhileIteration);
+    }
+
+    public static JavaScriptNode createDesugaredFor(JavaScriptNode condition, JavaScriptNode body) {
+        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForIteration);
+    }
+
+    public static JavaScriptNode createDesugaredForOf(JavaScriptNode condition, JavaScriptNode body) {
+        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForOfIteration);
+    }
+
+    public static JavaScriptNode createDesugaredForIn(JavaScriptNode condition, JavaScriptNode body) {
+        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForInIteration);
+    }
+
+    public static JavaScriptNode createDesugaredForAwaitOf(JavaScriptNode condition, JavaScriptNode body) {
+        return createWhileDo(condition, body, ControlFlowRootTag.Type.ForAwaitOfIteration);
     }
 
     public static JavaScriptNode createDoWhile(JavaScriptNode condition, JavaScriptNode body) {
@@ -85,7 +108,7 @@ public final class WhileNode extends StatementNode {
             return body;
         }
         JavaScriptNode nonVoidBody = body instanceof DiscardResultNode ? ((DiscardResultNode) body).getOperand() : body;
-        return new WhileNode(new DoWhileRepeatingNode(condition, nonVoidBody));
+        return new WhileNode(new DoWhileRepeatingNode(condition, nonVoidBody), ControlFlowRootTag.Type.DoWhileIteration);
     }
 
     @Override
@@ -98,7 +121,7 @@ public final class WhileNode extends StatementNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", ControlFlowRootTag.Type.Iteration.name());
+        return JSTags.createNodeObjectDescriptor("type", loopType.name());
     }
 
     @Override
@@ -112,10 +135,10 @@ public final class WhileNode extends StatementNode {
                 transferSourceSectionAndTags(this, bodyNode);
                 WhileNode materialized;
                 if (repeatingNode instanceof DoWhileRepeatingNode) {
-                    materialized = new WhileNode(new DoWhileRepeatingNode(conditionNode, bodyNode));
+                    materialized = new WhileNode(new DoWhileRepeatingNode(conditionNode, bodyNode), loopType);
                 } else {
                     assert repeatingNode instanceof WhileDoRepeatingNode;
-                    materialized = new WhileNode(new WhileDoRepeatingNode(conditionNode, bodyNode));
+                    materialized = new WhileNode(new WhileDoRepeatingNode(conditionNode, bodyNode), loopType);
                 }
                 transferSourceSectionAndTags(this, materialized);
                 return materialized;
@@ -131,7 +154,7 @@ public final class WhileNode extends StatementNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new WhileNode((RepeatingNode) cloneUninitialized((JavaScriptNode) loop.getRepeatingNode()));
+        return new WhileNode((RepeatingNode) cloneUninitialized((JavaScriptNode) loop.getRepeatingNode()), loopType);
     }
 
     @Override

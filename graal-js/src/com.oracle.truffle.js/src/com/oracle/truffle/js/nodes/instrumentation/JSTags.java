@@ -375,8 +375,13 @@ public final class JSTags {
     public static final class ControlFlowRootTag extends Tag {
         public enum Type {
             Conditional,
-            Iteration,
             ExceptionHandler,
+            ForOfIteration,
+            ForAwaitOfIteration,
+            ForInIteration,
+            ForIteration,
+            DoWhileIteration,
+            WhileIteration,
         }
 
         private ControlFlowRootTag() {

@@ -91,7 +91,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", ControlFlowRootTag.Type.Iteration.name());
+        return JSTags.createNodeObjectDescriptor("type", ControlFlowRootTag.Type.ForIteration.name());
     }
 
     @Override

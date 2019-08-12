@@ -1847,7 +1847,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             ensureHasSourceSection(newFor, forNode);
             return createBlock(init, firstTempVar.createWriteNode(factory.createConstantBoolean(true)), newFor);
         }
-        JavaScriptNode whileDo = createWhileDo(test, createBlock(wrappedBody, modify));
+        JavaScriptNode whileDo = factory.createDesugaredFor(test, createBlock(wrappedBody, modify));
         return createBlock(init, ensureHasSourceSection(whileDo, forNode));
     }
 
@@ -1869,6 +1869,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode desugarForInOrOfBody(ForNode forNode, JavaScriptNode iterator, JumpTargetCloseable<ContinueTarget> jumpTarget) {
+        assert forNode.isForInOrOf();
         VarRef iteratorVar = environment.createTempVar();
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(iterator);
         VarRef nextResultVar = environment.createTempVar();
@@ -1896,10 +1897,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
-        JavaScriptNode whileNode = createWhileDo(condition, wrappedBody);
+        JavaScriptNode whileNode = forNode.isForOf() ? factory.createDesugaredForOf(condition, wrappedBody) : factory.createDesugaredForIn(condition, wrappedBody);
         JavaScriptNode wrappedWhile = factory.createIteratorCloseIfNotDone(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode());
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
+        ensureHasSourceSection(whileNode, forNode);
         return createBlock(iteratorInit, wrappedWhile);
     }
 
@@ -1947,11 +1949,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             body));
         }
         wrappedBody = jumpTarget.wrapContinueTargetNode(wrappedBody);
-        JavaScriptNode whileNode = createWhileDo(condition, wrappedBody);
+        JavaScriptNode whileNode = factory.createDesugaredForAwaitOf(condition, wrappedBody);
         currentFunction().addAwait();
         JavaScriptNode wrappedWhile = factory.createAsyncIteratorCloseWrapper(context, jumpTarget.wrapBreakTargetNode(whileNode), iteratorVar.createReadNode(), asyncContextNode, asyncResultNode);
         JavaScriptNode resetIterator = iteratorVar.createWriteNode(factory.createConstant(JSFrameUtil.DEFAULT_VALUE));
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
+        ensureHasSourceSection(whileNode, forNode);
         return createBlock(iteratorInit, wrappedWhile);
     }
 
