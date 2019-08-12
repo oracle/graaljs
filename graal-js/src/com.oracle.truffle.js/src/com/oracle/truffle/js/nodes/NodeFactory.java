@@ -783,6 +783,10 @@ public class NodeFactory {
         return ReturnNode.createFrameReturn(expression);
     }
 
+    public ReturnNode createTerminalPositionReturn(JavaScriptNode expression) {
+        return ReturnNode.createTerminalPositionReturn(expression);
+    }
+
     public JSFunctionData createFunctionData(JSContext context, int length, String name, boolean isConstructor, boolean isDerived, boolean isStrict, boolean isBuiltin, boolean needsParentFrame,
                     boolean isGenerator, boolean isAsync, boolean isClassConstructor, boolean strictProperties, boolean needsNewTarget) {
         return JSFunctionData.create(context, null, null, null, length, name, isConstructor, isDerived, isStrict, isBuiltin, needsParentFrame, isGenerator, isAsync, isClassConstructor,
