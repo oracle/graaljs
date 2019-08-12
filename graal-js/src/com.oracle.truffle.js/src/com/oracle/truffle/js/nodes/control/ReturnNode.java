@@ -70,6 +70,10 @@ public class ReturnNode extends StatementNode {
         return new FrameReturnNode(expression);
     }
 
+    public static ReturnNode createTerminalPositionReturn(JavaScriptNode expression) {
+        return new TerminalPositionReturnNode(expression);
+    }
+
     @Override
     public Object execute(VirtualFrame frame) {
         throw new ReturnException(expression.execute(frame));
@@ -132,4 +136,17 @@ public class ReturnNode extends StatementNode {
             throw RETURN_EXCEPTION;
         }
     }
+
+    public static class TerminalPositionReturnNode extends ReturnNode {
+
+        protected TerminalPositionReturnNode(JavaScriptNode expression) {
+            super(expression);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return expression.execute(frame);
+        }
+    }
+
 }

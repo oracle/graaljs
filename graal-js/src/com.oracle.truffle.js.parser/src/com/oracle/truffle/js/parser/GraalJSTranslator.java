@@ -1306,11 +1306,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             expression = factory.createConstantUndefined();
         }
 
-        if (returnNode.isInTerminalPosition()) {
-            return tagStatement(expression, returnNode);
-        }
-
-        return tagStatement(createReturnNode(expression), returnNode);
+        ReturnNode returnStatement = returnNode.isInTerminalPosition() ? factory.createTerminalPositionReturn(expression) : createReturnNode(expression);
+        return tagStatement(returnStatement, returnNode);
     }
 
     private ReturnNode createReturnNode(JavaScriptNode expression) {
