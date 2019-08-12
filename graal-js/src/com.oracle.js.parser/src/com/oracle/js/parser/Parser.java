@@ -5152,12 +5152,13 @@ public class Parser extends AbstractParser {
             throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
         }
 
+        expect(RPAREN);
+
         if (!arrowAhead) {
             // parenthesized expression
-            assignmentExpression.makeParenthesized();
+            assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
         } // else arrow parameter list
 
-        expect(RPAREN);
         return assignmentExpression;
     }
 
