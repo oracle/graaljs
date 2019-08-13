@@ -421,12 +421,12 @@ public abstract class JSClass extends ObjectType {
         throw Errors.shouldNotReachHere(getClass().getName());
     }
 
-    public boolean usesOrdinaryGetOwnProperty() {
-        return false;
-    }
+    public abstract boolean usesOrdinaryGetOwnProperty();
+
+    public abstract boolean usesOrdinaryIsExtensible();
 
     @Override
-    public Class<?> dispatch() {
+    public final Class<?> dispatch() {
         return JSClass.class;
     }
 

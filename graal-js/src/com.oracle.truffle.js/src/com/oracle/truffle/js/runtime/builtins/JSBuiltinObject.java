@@ -531,4 +531,9 @@ public abstract class JSBuiltinObject extends JSClass {
     public boolean usesOrdinaryGetOwnProperty() {
         return true;
     }
+
+    @Override
+    public boolean usesOrdinaryIsExtensible() {
+        return true;
+    }
 }

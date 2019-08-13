@@ -54,12 +54,11 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
     private final boolean configurable;
     @Child private HasPropertyCacheNode hasOwnPropertyNode;
-    private final JSClassProfile classProfile = JSClassProfile.create();
+    @Child private IsExtensibleNode isExtensibleNode = IsExtensibleNode.create();
 
     protected DeclareGlobalVariableNode(String varName, boolean configurable) {
         super(varName);
@@ -80,7 +79,7 @@ public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
         }
         // CanDeclareGlobalVar
         if (!hasOwnPropertyNode.hasProperty(globalObject)) {
-            if (!JSObject.isExtensible(globalObject, classProfile)) {
+            if (!isExtensibleNode.executeBoolean(globalObject)) {
                 errorProfile.enter();
                 throw Errors.createTypeErrorGlobalObjectNotExtensible(this);
             }

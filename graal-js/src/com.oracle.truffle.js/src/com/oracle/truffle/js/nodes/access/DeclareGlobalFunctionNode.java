@@ -54,13 +54,12 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 public abstract class DeclareGlobalFunctionNode extends DeclareGlobalNode {
     private final boolean configurable;
     @Child protected JavaScriptNode valueNode;
     @Child private JSGetOwnPropertyNode getOwnPropertyNode;
-    private final JSClassProfile classProfile = JSClassProfile.create();
+    @Child private IsExtensibleNode isExtensibleNode = IsExtensibleNode.create();
 
     protected DeclareGlobalFunctionNode(String varName, boolean configurable, JavaScriptNode valueNode) {
         super(varName);
@@ -80,7 +79,7 @@ public abstract class DeclareGlobalFunctionNode extends DeclareGlobalNode {
         DynamicObject globalObject = realm.getGlobalObject();
         PropertyDescriptor desc = getOwnPropertyNode.execute(globalObject, varName);
         if (desc == null) {
-            if (JSGlobalObject.isJSGlobalObject(globalObject) && !JSObject.isExtensible(globalObject, classProfile)) {
+            if (!isExtensibleNode.executeBoolean(globalObject)) {
                 errorProfile.enter();
                 throw Errors.createTypeErrorGlobalObjectNotExtensible(this);
             }
