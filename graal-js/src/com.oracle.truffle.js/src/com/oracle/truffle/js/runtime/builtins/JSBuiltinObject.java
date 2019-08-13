@@ -47,7 +47,6 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
@@ -387,7 +386,7 @@ public abstract class JSBuiltinObject extends JSClass {
      * 9.1.5.1 OrdinaryGetOwnProperty (O, P).
      */
     public static PropertyDescriptor ordinaryGetOwnProperty(DynamicObject thisObj, Object key) {
-        assert JSRuntime.isPropertyKey(key) || key instanceof HiddenKey;
+        assert JSRuntime.isPropertyKey(key);
         Property prop = thisObj.getShape().getProperty(key);
         if (prop == null) {
             return null;
