@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
@@ -52,14 +54,18 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
-public class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
+public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
     private final boolean isConst;
     @Child private JSGetOwnPropertyNode getOwnPropertyNode;
 
-    public DeclareGlobalLexicalVariableNode(String varName, boolean isConst) {
+    protected DeclareGlobalLexicalVariableNode(String varName, boolean isConst) {
         super(varName);
         this.isConst = isConst;
         this.getOwnPropertyNode = JSGetOwnPropertyNode.create(false);
+    }
+
+    public static DeclareGlobalLexicalVariableNode create(String varName, boolean isConst) {
+        return DeclareGlobalLexicalVariableNodeGen.create(varName, isConst);
     }
 
     @Override
@@ -74,14 +80,34 @@ public class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
     }
 
     @Override
-    public void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
+    public final void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
         DynamicObject globalScope = realm.getGlobalScope();
         assert !JSObject.hasOwnProperty(globalScope, varName); // checked in advance
         assert JSObject.isExtensible(globalScope);
+        executeVoid(globalScope, context);
+    }
+
+    private int getAttributeFlags() {
         // Note: const variables are writable so as to not interfere with initialization (for now).
         // As a consequence, dynamically resolved const variable assignments need explicit guards.
-        int attributes = isConst ? (JSAttributes.notConfigurableEnumerableWritable() | JSProperty.CONST) : JSAttributes.notConfigurableEnumerableWritable();
-        JSObjectUtil.putDeclaredDataProperty(context, globalScope, varName, Dead.instance(), attributes);
+        return isConst ? (JSAttributes.notConfigurableEnumerableWritable() | JSProperty.CONST) : JSAttributes.notConfigurableEnumerableWritable();
+    }
+
+    protected abstract void executeVoid(DynamicObject globalScope, JSContext context);
+
+    @Specialization(guards = {"PropertyCacheLimit > 0"})
+    protected void doCached(DynamicObject globalScope, @SuppressWarnings("unused") JSContext context,
+                    @Cached("makeDefineOwnPropertyCache(context)") PropertySetNode cache) {
+        cache.setValue(globalScope, Dead.instance());
+    }
+
+    @Specialization(replaces = {"doCached"})
+    protected void doUncached(DynamicObject globalScope, JSContext context) {
+        JSObjectUtil.putDeclaredDataProperty(context, globalScope, varName, Dead.instance(), getAttributeFlags());
+    }
+
+    protected final PropertySetNode makeDefineOwnPropertyCache(JSContext context) {
+        return PropertySetNode.createImpl(varName, false, context, true, true, getAttributeFlags(), true);
     }
 
     @Override
@@ -91,6 +117,6 @@ public class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
 
     @Override
     protected DeclareGlobalNode copyUninitialized() {
-        return new DeclareGlobalLexicalVariableNode(varName, isConst);
+        return create(varName, isConst);
     }
 }

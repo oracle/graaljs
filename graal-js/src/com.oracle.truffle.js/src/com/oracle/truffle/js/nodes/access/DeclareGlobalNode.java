@@ -41,13 +41,17 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 
+@ImportStatic({JSGlobalObject.class, JSTruffleOptions.class})
 public abstract class DeclareGlobalNode extends JavaScriptBaseNode {
     protected final String varName;
     @Child private HasPropertyCacheNode hasLexicalBindingNode;

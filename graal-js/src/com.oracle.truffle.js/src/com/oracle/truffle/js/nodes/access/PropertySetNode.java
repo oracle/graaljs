@@ -84,6 +84,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -104,6 +105,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     private final boolean isGlobal;
     private final boolean isStrict;
     private final boolean setOwnProperty;
+    private final boolean declaration;
     private final byte attributeFlags;
     private boolean propertyAssumptionCheckEnabled;
 
@@ -113,20 +115,25 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     public static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags) {
-        return new PropertySetNode(key, context, isGlobal, isStrict, setOwnProperty, attributeFlags);
+        return createImpl(key, isGlobal, context, isStrict, setOwnProperty, attributeFlags, false);
+    }
+
+    public static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags, boolean declaration) {
+        return new PropertySetNode(key, context, isGlobal, isStrict, setOwnProperty, attributeFlags, declaration);
     }
 
     public static PropertySetNode createSetHidden(HiddenKey key, JSContext context) {
         return createImpl(key, false, context, false, true, 0);
     }
 
-    protected PropertySetNode(Object key, JSContext context, boolean isGlobal, boolean isStrict, boolean setOwnProperty, int attributeFlags) {
+    protected PropertySetNode(Object key, JSContext context, boolean isGlobal, boolean isStrict, boolean setOwnProperty, int attributeFlags, boolean declaration) {
         super(key, context);
-        assert setOwnProperty ? attributeFlags == (attributeFlags & JSAttributes.ATTRIBUTES_MASK) : attributeFlags == JSAttributes.getDefault();
+        assert setOwnProperty ? attributeFlags == (attributeFlags & (JSAttributes.ATTRIBUTES_MASK | JSProperty.CONST)) : attributeFlags == JSAttributes.getDefault();
         this.isGlobal = isGlobal;
         this.isStrict = isStrict;
         this.setOwnProperty = setOwnProperty;
         this.attributeFlags = (byte) attributeFlags;
+        this.declaration = declaration;
     }
 
     public final void setValue(Object obj, Object value) {
@@ -990,7 +997,12 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             } else if (root.isGlobal() && root.isStrict() && !JSObject.hasProperty(thisJSObj, key, jsclassProfile)) {
                 root.globalPropertySetInStrictMode(thisObj);
             } else if (root.isOwnProperty()) {
-                JSObject.defineOwnProperty(thisJSObj, key, PropertyDescriptor.createData(value, root.getAttributeFlags()), root.isStrict());
+                if (root.isDeclaration()) {
+                    assert JSGlobalObject.isJSGlobalObject(thisJSObj) && !JSObject.hasProperty(thisJSObj, key);
+                    JSObjectUtil.putDeclaredDataProperty(root.getContext(), thisJSObj, key, value, root.getAttributeFlags());
+                } else {
+                    JSObject.defineOwnProperty(thisJSObj, key, PropertyDescriptor.createData(value, root.getAttributeFlags()), root.isStrict());
+                }
             } else {
                 JSObject.setWithReceiver(thisJSObj, key, value, receiver, root.isStrict(), jsclassProfile);
             }
@@ -1241,9 +1253,10 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    private static SetCacheNode createDefinePropertyNode(Object key, ReceiverCheckNode shapeCheck, Object value, JSContext context, int attributeFlags) {
+    private static SetCacheNode createDefinePropertyNode(Object key, ReceiverCheckNode shapeCheck, Object value, JSContext context, int attributeFlags, boolean declaration) {
         Shape oldShape = shapeCheck.getShape();
-        Shape newShape = JSObjectUtil.shapeDefineDataProperty(context, oldShape, key, value, attributeFlags);
+        Shape newShape = declaration ? JSObjectUtil.shapeDefineDeclaredDataProperty(context, oldShape, key, value, attributeFlags)
+                        : JSObjectUtil.shapeDefineDataProperty(context, oldShape, key, value, attributeFlags);
         return createResolvedDefinePropertyNode(key, shapeCheck, oldShape, newShape, attributeFlags);
     }
 
@@ -1301,7 +1314,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             } else if (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) {
                 return new ArrayBufferViewNonIntegerIndexSetNode(shapeCheck);
             } else if (JSShape.isExtensible(cacheShape)) {
-                return createDefinePropertyNode(key, shapeCheck, value, context, getAttributeFlags());
+                return createDefinePropertyNode(key, shapeCheck, value, context, getAttributeFlags(), isDeclaration());
             } else {
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false), isStrict());
             }
@@ -1344,6 +1357,10 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     protected final int getAttributeFlags() {
         return attributeFlags;
+    }
+
+    protected final boolean isDeclaration() {
+        return declaration;
     }
 
     @Override

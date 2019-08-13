@@ -976,15 +976,15 @@ public class NodeFactory {
     }
 
     public DeclareGlobalNode createDeclareGlobalVariable(String varName, boolean configurable) {
-        return new DeclareGlobalVariableNode(varName, configurable);
+        return DeclareGlobalVariableNode.create(varName, configurable);
     }
 
     public DeclareGlobalNode createDeclareGlobalFunction(String varName, boolean configurable, JavaScriptNode valueNode) {
-        return new DeclareGlobalFunctionNode(varName, configurable, valueNode);
+        return DeclareGlobalFunctionNode.create(varName, configurable, valueNode);
     }
 
     public DeclareGlobalNode createDeclareGlobalLexicalVariable(String varName, boolean isConst) {
-        return new DeclareGlobalLexicalVariableNode(varName, isConst);
+        return DeclareGlobalLexicalVariableNode.create(varName, isConst);
     }
 
     public JavaScriptNode createGlobalDeclarationInstantiation(JSContext context, List<DeclareGlobalNode> declarations) {

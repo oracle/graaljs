@@ -41,9 +41,10 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -55,15 +56,18 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
-public class DeclareGlobalVariableNode extends DeclareGlobalNode {
+public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
     private final boolean configurable;
     @Child private HasPropertyCacheNode hasOwnPropertyNode;
     private final JSClassProfile classProfile = JSClassProfile.create();
-    private final ConditionProfile isGlobalObject = ConditionProfile.createBinaryProfile();
 
-    public DeclareGlobalVariableNode(String varName, boolean configurable) {
+    protected DeclareGlobalVariableNode(String varName, boolean configurable) {
         super(varName);
         this.configurable = configurable;
+    }
+
+    public static DeclareGlobalVariableNode create(String varName, boolean configurable) {
+        return DeclareGlobalVariableNodeGen.create(varName, configurable);
     }
 
     @Override
@@ -84,22 +88,42 @@ public class DeclareGlobalVariableNode extends DeclareGlobalNode {
     }
 
     @Override
-    public void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
+    public final void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
         DynamicObject globalObject = realm.getGlobalObject();
         if (!hasOwnPropertyNode.hasProperty(globalObject)) {
             assert JSObject.isExtensible(globalObject);
-            if (isGlobalObject.profile(JSGlobalObject.isJSGlobalObject(globalObject))) {
-                JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, Undefined.instance,
-                                configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable());
-            } else {
-                PropertyDescriptor desc = configurable ? PropertyDescriptor.undefinedDataDesc : PropertyDescriptor.undefinedDataDescNotConfigurable;
-                JSObject.defineOwnProperty(globalObject, varName, desc, true);
-            }
+            executeVoid(globalObject, context);
         }
+    }
+
+    protected abstract void executeVoid(DynamicObject globalObject, JSContext context);
+
+    @Specialization(guards = {"PropertyCacheLimit > 0", "isJSGlobalObject(globalObject)"})
+    protected void doCached(DynamicObject globalObject, @SuppressWarnings("unused") JSContext context,
+                    @Cached("makeDefineOwnPropertyCache(context)") PropertySetNode cache) {
+        cache.setValue(globalObject, Undefined.instance);
+    }
+
+    @Specialization(replaces = {"doCached"})
+    protected void doUncached(DynamicObject globalObject, JSContext context) {
+        if (JSGlobalObject.isJSGlobalObject(globalObject)) {
+            JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, Undefined.instance, getAttributeFlags());
+        } else {
+            PropertyDescriptor desc = configurable ? PropertyDescriptor.undefinedDataDesc : PropertyDescriptor.undefinedDataDescNotConfigurable;
+            JSObject.defineOwnProperty(globalObject, varName, desc, true);
+        }
+    }
+
+    private int getAttributeFlags() {
+        return configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable();
+    }
+
+    protected final PropertySetNode makeDefineOwnPropertyCache(JSContext context) {
+        return PropertySetNode.createImpl(varName, false, context, true, true, getAttributeFlags(), true);
     }
 
     @Override
     protected DeclareGlobalNode copyUninitialized() {
-        return new DeclareGlobalVariableNode(varName, configurable);
+        return create(varName, configurable);
     }
 }
