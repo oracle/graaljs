@@ -4948,10 +4948,8 @@ public class Parser extends AbstractParser {
         }
 
         if (lhs instanceof IdentNode) {
-            if (!checkIdentLValue((IdentNode) lhs)) {
-                return referenceError(lhs, null, false);
-            }
-            if (((IdentNode) lhs).isMetaProperty()) {
+            IdentNode ident = (IdentNode) lhs;
+            if (!checkIdentLValue(ident) || ident.isMetaProperty()) {
                 return referenceError(lhs, null, true);
             }
             assert opType == TokenType.INCPREFIX || opType == TokenType.DECPREFIX;
