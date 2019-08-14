@@ -132,7 +132,7 @@ public final class WhileNode extends StatementNode {
                 JavaScriptNode bodyNode = JSTaggedExecutionNode.createFor(repeatingNode.bodyNode, ControlFlowBlockTag.class);
                 JavaScriptNode conditionNode = JSTaggedExecutionNode.createForInput(repeatingNode.conditionNode, ControlFlowBranchTag.class,
                                 JSTags.createNodeObjectDescriptor("type", ControlFlowBranchTag.Type.Condition.name()));
-                transferSourceSectionAndTags(this, bodyNode);
+                transferSourceSection(this, bodyNode);
                 WhileNode materialized;
                 if (repeatingNode instanceof DoWhileRepeatingNode) {
                     materialized = new WhileNode(new DoWhileRepeatingNode(conditionNode, bodyNode), loopType);
