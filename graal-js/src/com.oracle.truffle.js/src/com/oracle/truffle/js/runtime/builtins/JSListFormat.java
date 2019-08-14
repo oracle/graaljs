@@ -45,13 +45,11 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 
-import com.ibm.icu.impl.ICUData;
 import com.ibm.icu.impl.ICUResourceBundle;
 import com.ibm.icu.text.ListFormatter;
 import com.ibm.icu.text.SimpleFormatter;
 import com.ibm.icu.util.ULocale;
 import com.ibm.icu.util.UResourceBundle;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -246,7 +244,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     @SuppressWarnings("deprecation")
     private static ListFormatter createFormatter(Locale locale, String style) {
         ULocale ulocale = ULocale.forLocale(locale);
-        ICUResourceBundle r = (ICUResourceBundle) UResourceBundle.getBundleInstance(ICUData.ICU_BASE_NAME, ulocale);
+        ICUResourceBundle r = (ICUResourceBundle) UResourceBundle.getBundleInstance(null, ulocale);
 
         String end = r.getWithFallback("listPattern/" + style + "/end").getString();
         String middle = r.getWithFallback("listPattern/" + style + "/middle").getString();
