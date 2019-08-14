@@ -136,6 +136,8 @@ public final class IntlUtil {
     public static final String NUMERIC = "numeric";
     public static final String NUMBERING_SYSTEM = "numberingSystem";
     public static final String OR = "or";
+    public static final String OR_NARROW = "or-narrow";
+    public static final String OR_SHORT = "or-short";
     public static final String ORDINAL = "ordinal";
     public static final String PERCENT = "percent";
     public static final String SEARCH = "search";
@@ -147,6 +149,8 @@ public final class IntlUtil {
     public static final String SHORT = "short";
     public static final String SORT = "sort";
     public static final String STANDARD = "standard";
+    public static final String STANDARD_NARROW = "standard-narrow";
+    public static final String STANDARD_SHORT = "standard-short";
     public static final String STRICT = "strict";
     public static final String STYLE = "style";
     public static final String SYMBOL = "symbol";
