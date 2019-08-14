@@ -40,15 +40,12 @@
  */
 package com.oracle.truffle.js.builtins.math;
 
-import java.util.SplittableRandom;
-
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.js.nodes.function.*;
-import com.oracle.truffle.js.runtime.*;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.JSContext;
 
 public abstract class RandomNode extends JSBuiltinNode {
-
-    private final SplittableRandom r = new SplittableRandom();
 
     public RandomNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
@@ -56,6 +53,6 @@ public abstract class RandomNode extends JSBuiltinNode {
 
     @Specialization
     protected double random() {
-        return r.nextDouble();
+        return getContext().getRealm().getRandom().nextDouble();
     }
 }

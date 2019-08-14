@@ -1169,9 +1169,7 @@ public class JSRealm {
      * Add optional global properties. Used by initializeContext and patchContext.
      */
     public void addOptionalGlobals() {
-        if (getEnv().isPreInitialization()) {
-            return;
-        }
+        assert !getEnv().isPreInitialization();
 
         addGlobalGlobal();
         addShellGlobals();
@@ -1567,7 +1565,7 @@ public class JSRealm {
         if (localTimeZoneHolder != null) {
             localTimeZoneHolder = getTimeZoneFromEnv();
         }
-        initTimeOffset();
+        initTimeOffsetAndRandom();
 
         // Perform the deferred part of setting up properties in the function prototype.
         // Taken from JSFunction#fillFunctionPrototype, which is called from the JSRealm
@@ -1581,10 +1579,14 @@ public class JSRealm {
 
     public void initialize() {
         CompilerAsserts.neverPartOfCompilation();
+        if (getEnv().isPreInitialization()) {
+            return;
+        }
+
         setArguments(getEnv().getApplicationArguments());
         addOptionalGlobals();
 
-        initTimeOffset();
+        initTimeOffsetAndRandom();
     }
 
     @TruffleBoundary
@@ -1885,15 +1887,17 @@ public class JSRealm {
         return getLocalTimeZoneHolder().localTZA;
     }
 
-    private void initTimeOffset() {
-        if (getEnv().isPreInitialization()) {
-            return;
-        }
+    private void initTimeOffsetAndRandom() {
+        assert !getEnv().isPreInitialization();
 
         random = new SplittableRandom();
         nanoToZeroTimeOffset = -System.nanoTime();
         nanoToCurrentTimeOffset = System.currentTimeMillis() * NANOSECONDS_PER_MILLISECOND + nanoToZeroTimeOffset;
         lastFuzzyTime = Long.MIN_VALUE;
+    }
+
+    public final SplittableRandom getRandom() {
+        return random;
     }
 
     public JSRealm getParent() {
