@@ -2141,10 +2141,6 @@
     "filePath" : "language/expressions/super/prop-expr-obj-val-from-eval.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/this/S11.1.1_A1.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
     "filePath" : "language/function-code/each-param-has-own-non-shared-eval-scope.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
