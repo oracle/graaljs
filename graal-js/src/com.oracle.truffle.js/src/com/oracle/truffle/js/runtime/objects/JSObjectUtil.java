@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -75,8 +76,18 @@ public final class JSObjectUtil {
         return JSObject.LAYOUT.createAllocator().constantLocation(value);
     }
 
+    private static LocationFactory declaredLocationFactory() {
+        return (shape, val) -> shape.allocator().declaredLocation(val);
+    }
+
     public static Shape shapeDefineDataProperty(JSContext context, Shape shape, Object key, Object value, int flags) {
+        CompilerAsserts.neverPartOfCompilation();
         return shape.defineProperty(checkForNoSuchPropertyOrMethod(context, key), value, flags);
+    }
+
+    public static Shape shapeDefineDeclaredDataProperty(JSContext context, Shape shape, Object key, Object value, int flags) {
+        CompilerAsserts.neverPartOfCompilation();
+        return shape.defineProperty(checkForNoSuchPropertyOrMethod(context, key), value, flags, declaredLocationFactory());
     }
 
     @TruffleBoundary
@@ -195,7 +206,7 @@ public final class JSObjectUtil {
     public static void putDeclaredDataProperty(JSContext context, DynamicObject thisObj, Object key, Object value, int flags) {
         assert checkForExistingProperty(thisObj, key);
 
-        thisObj.define(checkForNoSuchPropertyOrMethod(context, key), value, flags, (shape, val) -> shape.allocator().declaredLocation(val));
+        thisObj.define(checkForNoSuchPropertyOrMethod(context, key), value, flags, declaredLocationFactory());
     }
 
     public static void putConstructorProperty(JSContext context, DynamicObject prototype, DynamicObject constructor) {

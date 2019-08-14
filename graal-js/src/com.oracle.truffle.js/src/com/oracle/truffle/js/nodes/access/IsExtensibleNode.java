@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,47 +40,52 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 
-@ImportStatic({JSGlobalObject.class, JSTruffleOptions.class})
-public abstract class DeclareGlobalNode extends JavaScriptBaseNode {
-    protected final String varName;
-    @Child private HasPropertyCacheNode hasLexicalBindingNode;
-    protected final BranchProfile errorProfile = BranchProfile.create();
+/**
+ * Implements abstract operation IsExtensible.
+ */
+@ImportStatic({JSShape.class})
+public abstract class IsExtensibleNode extends JavaScriptBaseNode {
 
-    protected DeclareGlobalNode(String varName) {
-        this.varName = varName;
+    protected IsExtensibleNode() {
     }
 
-    public abstract void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm);
+    public abstract boolean executeBoolean(DynamicObject obj);
 
-    public void verify(JSContext context, JSRealm realm) {
-        if (hasLexicalBindingNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            hasLexicalBindingNode = insert(HasPropertyCacheNode.create(varName, context, true));
-        }
-        if (hasLexicalBindingNode.hasProperty(realm.getGlobalScope())) {
-            errorProfile.enter();
-            throw Errors.createSyntaxErrorVariableAlreadyDeclared(varName, this);
-        }
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"getJSClass(cachedShape).usesOrdinaryIsExtensible()", "cachedShape.check(object)"}, limit = "1")
+    protected static boolean doCachedShape(DynamicObject object,
+                    @Cached("object.getShape()") Shape cachedShape,
+                    @Cached("isExtensible(cachedShape)") boolean result) {
+        return result;
     }
 
-    public boolean isLexicallyDeclared() {
-        return false;
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"cachedJSClass.usesOrdinaryIsExtensible()", "cachedJSClass.isInstance(object)"}, limit = "1", replaces = "doCachedShape")
+    protected static boolean doCachedJSClass(DynamicObject object,
+                    @Cached("getJSClassChecked(object)") JSClass cachedJSClass,
+                    @Cached("createBinaryProfile()") @Shared("resultProfile") ConditionProfile resultProfile) {
+        return resultProfile.profile(JSShape.isExtensible(object.getShape()));
     }
 
-    public boolean isGlobalFunctionDeclaration() {
-        return false;
+    @Specialization(replaces = {"doCachedJSClass"})
+    protected static boolean doUncached(DynamicObject object,
+                    @Cached("createBinaryProfile()") @Shared("resultProfile") ConditionProfile resultProfile) {
+        return resultProfile.profile(JSObject.isExtensible(object));
     }
 
-    protected abstract DeclareGlobalNode copyUninitialized();
+    public static IsExtensibleNode create() {
+        return IsExtensibleNodeGen.create();
+    }
 }

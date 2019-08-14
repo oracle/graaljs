@@ -174,13 +174,18 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createSyntaxError(String message, Node originatingNode) {
+        return JSException.create(JSErrorType.SyntaxError, message, originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createSyntaxError(String message, SourceSection sourceLocation, boolean isIncompleteSource) {
         return JSException.create(JSErrorType.SyntaxError, message, sourceLocation, isIncompleteSource);
     }
 
     @TruffleBoundary
-    public static JSException createSyntaxErrorVariableAlreadyDeclared(String varName) {
-        return Errors.createSyntaxError("Variable \"" + varName + "\" has already been declared");
+    public static JSException createSyntaxErrorVariableAlreadyDeclared(String varName, Node originatingNode) {
+        return Errors.createSyntaxError("Variable \"" + varName + "\" has already been declared", originatingNode);
     }
 
     @TruffleBoundary
@@ -407,8 +412,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotDeclareGlobalFunction(String varName) {
-        return Errors.createTypeError("Cannot declare global function '" + varName + "'");
+    public static JSException createTypeErrorCannotDeclareGlobalFunction(String varName, Node originatingNode) {
+        return Errors.createTypeError("Cannot declare global function '" + varName + "'", originatingNode);
     }
 
     @TruffleBoundary

@@ -165,7 +165,15 @@ public abstract class AbstractJSClass extends JSClass {
         return false;
     }
 
-    // internal methods
+    @Override
+    public boolean usesOrdinaryGetOwnProperty() {
+        return false;
+    }
+
+    @Override
+    public boolean usesOrdinaryIsExtensible() {
+        return false;
+    }
 
     @Override
     public DynamicObject getPrototypeOf(DynamicObject thisObj) {

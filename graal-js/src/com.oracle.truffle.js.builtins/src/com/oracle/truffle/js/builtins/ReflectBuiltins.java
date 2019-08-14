@@ -60,6 +60,7 @@ import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectOwnKeysNodeG
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectPreventExtensionsNodeGen;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectSetNodeGen;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectSetPrototypeOfNodeGen;
+import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -349,9 +350,10 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization
-        protected boolean reflectIsExtensible(Object target) {
+        protected boolean reflectIsExtensible(Object target,
+                        @Cached IsExtensibleNode isExtensibleNode) {
             ensureObject(target);
-            return JSObject.isExtensible((DynamicObject) target);
+            return isExtensibleNode.executeBoolean((DynamicObject) target);
         }
     }
 

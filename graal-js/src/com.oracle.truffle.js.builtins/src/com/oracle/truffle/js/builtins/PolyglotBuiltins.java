@@ -254,7 +254,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             try {
                 polyglotBindings = getContext().getRealm().getEnv().getPolyglotBindings();
             } catch (SecurityException e) {
-                throw Errors.createError(e.getMessage(), e);
+                throw Errors.createErrorFromException(e);
             }
             JSInteropUtil.writeMember(polyglotBindings, identifier, value, interop, exportValue, this);
             return value;
@@ -295,7 +295,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             try {
                 polyglotBindings = getContext().getRealm().getEnv().getPolyglotBindings();
             } catch (SecurityException e) {
-                throw Errors.createError(e.getMessage(), e);
+                throw Errors.createErrorFromException(e);
             }
             try {
                 return importValueNode.executeWithTarget(interop.readMember(polyglotBindings, identifier));
@@ -785,7 +785,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             try {
                 callTarget = getContext().getRealm().getEnv().parsePublic(source);
             } catch (Exception e) {
-                throw Errors.createError(e.getMessage());
+                throw Errors.createErrorFromException(e);
             }
 
             return callTarget.call();
@@ -838,7 +838,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             try {
                 callTarget = env.parsePublic(source);
             } catch (Exception e) {
-                throw Errors.createError(e.getMessage(), e);
+                throw Errors.createErrorFromException(e);
             }
 
             return callTarget.call();

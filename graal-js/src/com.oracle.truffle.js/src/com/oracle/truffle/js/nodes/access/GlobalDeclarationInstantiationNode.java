@@ -48,7 +48,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.StatementNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -77,34 +76,25 @@ public class GlobalDeclarationInstantiationNode extends StatementNode {
     @Override
     public Object execute(VirtualFrame frame) {
         JSRealm realm = context.getRealm();
-        DynamicObject globalScope = realm.getGlobalScope();
-        DynamicObject globalObject = realm.getGlobalObject();
-
-        // verify that declarations are definable
-        for (DeclareGlobalNode declaration : globalDeclarations) {
-            String varName = declaration.varName;
-            if (hasLexicalDeclaration(globalScope, varName)) {
-                throw Errors.createSyntaxErrorVariableAlreadyDeclared(varName);
-            }
-            if (declaration.isLexicallyDeclared()) {
-                if (hasRestrictedGlobalProperty(globalObject, varName)) {
-                    throw Errors.createSyntaxErrorVariableAlreadyDeclared(varName);
-                }
-            } else if (declaration.isGlobalFunctionDeclaration()) {
-                if (!canDeclareGlobalFunction(globalObject, varName)) {
-                    throw Errors.createTypeErrorCannotDeclareGlobalFunction(varName);
-                }
-            }
-        }
-
-        instantiateDeclarations(frame);
+        verifyDeclarations(realm);
+        instantiateDeclarations(frame, realm);
         return EMPTY;
     }
 
+    /**
+     * Verify that all declarations can be instantiated.
+     */
     @ExplodeLoop
-    private void instantiateDeclarations(VirtualFrame frame) {
+    private void verifyDeclarations(JSRealm realm) {
         for (DeclareGlobalNode declaration : globalDeclarations) {
-            declaration.executeVoid(frame, context);
+            declaration.verify(context, realm);
+        }
+    }
+
+    @ExplodeLoop
+    private void instantiateDeclarations(VirtualFrame frame, JSRealm realm) {
+        for (DeclareGlobalNode declaration : globalDeclarations) {
+            declaration.executeVoid(frame, context, realm);
         }
     }
 

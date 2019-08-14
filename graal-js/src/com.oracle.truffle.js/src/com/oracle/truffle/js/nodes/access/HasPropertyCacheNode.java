@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -69,7 +67,6 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  */
 public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode.HasCacheNode> {
     private final boolean hasOwnProperty;
-    @CompilationFinal private boolean isMethod;
     private boolean propertyAssumptionCheckEnabled = true;
 
     public static HasPropertyCacheNode create(Object key, JSContext context, boolean hasOwnProperty) {
@@ -162,21 +159,15 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     }
 
     public static final class JSAdapterHasPropertyCacheNode extends LinkedHasPropertyCacheNode {
-        private final boolean isMethod;
 
-        public JSAdapterHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode, boolean isMethod) {
+        public JSAdapterHasPropertyCacheNode(Object key, ReceiverCheckNode receiverCheckNode) {
             super(receiverCheckNode);
             assert JSRuntime.isPropertyKey(key);
-            this.isMethod = isMethod;
         }
 
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
-            if (isMethod) {
-                throw new UnsupportedOperationException();
-            } else {
-                return JSObject.hasOwnProperty((DynamicObject) thisObj, root.getKey());
-            }
+            return JSObject.hasOwnProperty((DynamicObject) thisObj, root.getKey());
         }
     }
 
@@ -303,7 +294,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
             ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
             if (JSAdapter.isJSAdapter(store)) {
-                return new JSAdapterHasPropertyCacheNode(key, receiverCheck, isMethod());
+                return new JSAdapterHasPropertyCacheNode(key, receiverCheck);
             } else if (JSProxy.isProxy(store)) {
                 return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isOwnProperty());
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
@@ -334,15 +325,6 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     @Override
     protected HasCacheNode createGenericPropertyNode() {
         return new GenericHasPropertyCacheNode();
-    }
-
-    protected boolean isMethod() {
-        return isMethod;
-    }
-
-    protected void setMethod() {
-        CompilerAsserts.neverPartOfCompilation();
-        isMethod = true;
     }
 
     @Override

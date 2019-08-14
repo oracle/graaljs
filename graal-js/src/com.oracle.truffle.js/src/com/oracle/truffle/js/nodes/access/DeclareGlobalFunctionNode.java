@@ -40,51 +40,92 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
-public class DeclareGlobalFunctionNode extends DeclareGlobalNode {
+public abstract class DeclareGlobalFunctionNode extends DeclareGlobalNode {
     private final boolean configurable;
-    @Child private JavaScriptNode valueNode;
-    private final JSClassProfile classProfile = JSClassProfile.create();
+    @Child protected JavaScriptNode valueNode;
+    @Child private JSGetOwnPropertyNode getOwnPropertyNode;
+    @Child private IsExtensibleNode isExtensibleNode = IsExtensibleNode.create();
 
-    public DeclareGlobalFunctionNode(String varName, boolean configurable, JavaScriptNode valueNode) {
+    protected DeclareGlobalFunctionNode(String varName, boolean configurable, JavaScriptNode valueNode) {
         super(varName);
         this.configurable = configurable;
         this.valueNode = valueNode;
+        this.getOwnPropertyNode = JSGetOwnPropertyNode.create(false);
+    }
+
+    public static DeclareGlobalFunctionNode create(String varName, boolean configurable, JavaScriptNode valueNode) {
+        return DeclareGlobalFunctionNodeGen.create(varName, configurable, valueNode);
     }
 
     @Override
-    public void executeVoid(VirtualFrame frame, JSContext context) {
-        Object value = valueNode == null ? Undefined.instance : valueNode.execute(frame);
-        DynamicObject globalObject = GlobalObjectNode.getGlobalObject(context);
-        PropertyDescriptor desc = JSObject.getOwnProperty(globalObject, varName, classProfile);
-        if (desc == null && JSGlobalObject.isJSGlobalObject(globalObject)) {
-            if (!JSObject.isExtensible(globalObject, classProfile)) {
+    public void verify(JSContext context, JSRealm realm) {
+        super.verify(context, realm);
+        // CanDeclareGlobalFunction
+        DynamicObject globalObject = realm.getGlobalObject();
+        PropertyDescriptor desc = getOwnPropertyNode.execute(globalObject, varName);
+        if (desc == null) {
+            if (!isExtensibleNode.executeBoolean(globalObject)) {
+                errorProfile.enter();
                 throw Errors.createTypeErrorGlobalObjectNotExtensible(this);
             }
-            JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, value,
-                            configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable());
+        } else {
+            if (!desc.getConfigurable() && !(desc.isDataDescriptor() && desc.getWritable() && desc.getEnumerable())) {
+                errorProfile.enter();
+                throw Errors.createTypeErrorCannotDeclareGlobalFunction(varName, this);
+            }
+        }
+    }
+
+    @Override
+    public final void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
+        Object value = valueNode == null ? Undefined.instance : valueNode.execute(frame);
+        DynamicObject globalObject = realm.getGlobalObject();
+        PropertyDescriptor desc = getOwnPropertyNode.execute(globalObject, varName);
+        executeVoid(globalObject, value, desc, context);
+    }
+
+    protected abstract void executeVoid(DynamicObject globalObject, Object value, PropertyDescriptor desc, JSContext context);
+
+    @Specialization(guards = {"PropertyCacheLimit > 0", "isJSGlobalObject(globalObject)", "desc == null"})
+    protected void doCached(DynamicObject globalObject, Object value, @SuppressWarnings("unused") PropertyDescriptor desc, @SuppressWarnings("unused") JSContext context,
+                    @Cached("makeDefineOwnPropertyCache(context)") PropertySetNode cache) {
+        cache.setValue(globalObject, value);
+    }
+
+    @Specialization(replaces = {"doCached"})
+    protected void doUncached(DynamicObject globalObject, Object value, PropertyDescriptor desc, JSContext context) {
+        if (valueNode == null && desc == null && JSGlobalObject.isJSGlobalObject(globalObject)) {
+            JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, value, getAttributeFlags());
         } else {
             if (desc == null || desc.getConfigurable()) {
                 JSObject.defineOwnProperty(globalObject, varName, PropertyDescriptor.createData(value, true, true, configurable), true);
             } else {
                 JSObject.defineOwnProperty(globalObject, varName, PropertyDescriptor.createData(value), true);
             }
-            if (valueNode != null) {
-                JSObject.set(globalObject, varName, value, false, classProfile);
-            }
         }
+    }
+
+    private int getAttributeFlags() {
+        return configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable();
+    }
+
+    protected final PropertySetNode makeDefineOwnPropertyCache(JSContext context) {
+        return PropertySetNode.createImpl(varName, false, context, true, true, getAttributeFlags(), valueNode == null);
     }
 
     @Override
@@ -94,6 +135,6 @@ public class DeclareGlobalFunctionNode extends DeclareGlobalNode {
 
     @Override
     protected DeclareGlobalNode copyUninitialized() {
-        return new DeclareGlobalFunctionNode(varName, configurable, valueNode);
+        return create(varName, configurable, JavaScriptNode.cloneUninitialized(valueNode));
     }
 }

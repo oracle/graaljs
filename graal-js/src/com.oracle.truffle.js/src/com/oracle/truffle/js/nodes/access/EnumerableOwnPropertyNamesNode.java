@@ -66,7 +66,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
     private final boolean keys;
     private final boolean values;
     private final JSContext context;
-    @Child private GetOwnPropertyNode getOwnPropertyNode;
+    @Child private JSGetOwnPropertyNode getOwnPropertyNode;
     private final ConditionProfile hasFastShapesProfile = ConditionProfile.createBinaryProfile();
 
     protected EnumerableOwnPropertyNamesNode(JSContext context, boolean keys, boolean values) {
@@ -125,7 +125,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
     protected PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
         if (getOwnPropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getOwnPropertyNode = insert(GetOwnPropertyNode.create(values, true, false, false));
+            getOwnPropertyNode = insert(JSGetOwnPropertyNode.create(values, true, false, false, false));
         }
         return getOwnPropertyNode.execute(thisObj, key);
     }
