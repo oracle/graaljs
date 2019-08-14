@@ -825,10 +825,7 @@ public class Parser extends AbstractParser {
             case ASSIGN_SUB:
                 if (lhs instanceof IdentNode) {
                     IdentNode ident = (IdentNode) lhs;
-                    if (!checkIdentLValue(ident)) {
-                        return referenceError(lhs, rhs, false);
-                    }
-                    if (ident.isMetaProperty()) {
+                    if (!checkIdentLValue(ident) || ident.isMetaProperty()) {
                         return referenceError(lhs, rhs, true);
                     }
                     verifyStrictIdent(ident, ASSIGNMENT_TARGET_CONTEXT);
@@ -4951,10 +4948,8 @@ public class Parser extends AbstractParser {
         }
 
         if (lhs instanceof IdentNode) {
-            if (!checkIdentLValue((IdentNode) lhs)) {
-                return referenceError(lhs, null, false);
-            }
-            if (((IdentNode) lhs).isMetaProperty()) {
+            IdentNode ident = (IdentNode) lhs;
+            if (!checkIdentLValue(ident) || ident.isMetaProperty()) {
                 return referenceError(lhs, null, true);
             }
             assert opType == TokenType.INCPREFIX || opType == TokenType.DECPREFIX;
