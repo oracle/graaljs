@@ -311,9 +311,9 @@ public class JSRealm {
     @CompilationFinal private LocalTimeZoneHolder localTimeZoneHolder;
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
-    private final SplittableRandom random = new SplittableRandom();
-    private final long nanoToZeroTimeOffset = -System.nanoTime();
-    private final long nanoToCurrentTimeOffset = System.currentTimeMillis() * NANOSECONDS_PER_MILLISECOND + nanoToZeroTimeOffset;
+    private SplittableRandom random;
+    private long nanoToZeroTimeOffset;
+    private long nanoToCurrentTimeOffset;
     private long lastFuzzyTime = Long.MIN_VALUE;
 
     private OutputStream outputStream;
@@ -1567,6 +1567,7 @@ public class JSRealm {
         if (localTimeZoneHolder != null) {
             localTimeZoneHolder = getTimeZoneFromEnv();
         }
+        initTimeOffset();
 
         // Perform the deferred part of setting up properties in the function prototype.
         // Taken from JSFunction#fillFunctionPrototype, which is called from the JSRealm
@@ -1582,6 +1583,8 @@ public class JSRealm {
         CompilerAsserts.neverPartOfCompilation();
         setArguments(getEnv().getApplicationArguments());
         addOptionalGlobals();
+
+        initTimeOffset();
     }
 
     @TruffleBoundary
@@ -1880,6 +1883,17 @@ public class JSRealm {
 
     public final long getLocalTZA() {
         return getLocalTimeZoneHolder().localTZA;
+    }
+
+    private void initTimeOffset() {
+        if (getEnv().isPreInitialization()) {
+            return;
+        }
+
+        random = new SplittableRandom();
+        nanoToZeroTimeOffset = -System.nanoTime();
+        nanoToCurrentTimeOffset = System.currentTimeMillis() * NANOSECONDS_PER_MILLISECOND + nanoToZeroTimeOffset;
+        lastFuzzyTime = Long.MIN_VALUE;
     }
 
     public JSRealm getParent() {
