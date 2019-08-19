@@ -45,19 +45,18 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 
-import com.ibm.icu.impl.ICUData;
 import com.ibm.icu.impl.ICUResourceBundle;
 import com.ibm.icu.text.ListFormatter;
 import com.ibm.icu.text.SimpleFormatter;
 import com.ibm.icu.util.ULocale;
 import com.ibm.icu.util.UResourceBundle;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -147,21 +146,47 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     @TruffleBoundary
     public static void setupInternalListFormatter(InternalState state) {
         state.javaLocale = Locale.forLanguageTag(state.locale);
-        String lfStyle = null;
-        if (state.type.equals(IntlUtil.CONJUNCTION)) {
-            lfStyle = IntlUtil.STANDARD;
-        } else if (state.type.equals(IntlUtil.DISJUNCTION)) {
-            lfStyle = IntlUtil.OR;
-        } else if (state.type.equals(IntlUtil.UNIT)) {
-            if (state.style.equals(IntlUtil.NARROW)) {
-                lfStyle = IntlUtil.UNIT_NARROW;
-            } else if (state.style.equals(IntlUtil.SHORT)) {
-                lfStyle = IntlUtil.UNIT_SHORT;
-            } else {
-                lfStyle = IntlUtil.UNIT;
-            }
+        state.listFormatter = createFormatter(state.javaLocale, getICUListFormatterStyle(state.type, state.style));
+    }
+
+    private static String getICUListFormatterStyle(String type, String style) {
+        switch (type) {
+            case IntlUtil.CONJUNCTION:
+                switch (style) {
+                    case IntlUtil.LONG:
+                        return IntlUtil.STANDARD;
+                    case IntlUtil.NARROW:
+                        return IntlUtil.STANDARD_NARROW;
+                    case IntlUtil.SHORT:
+                        return IntlUtil.STANDARD_SHORT;
+                    default:
+                        throw Errors.shouldNotReachHere(style);
+                }
+            case IntlUtil.DISJUNCTION:
+                switch (style) {
+                    case IntlUtil.LONG:
+                        return IntlUtil.OR;
+                    case IntlUtil.NARROW:
+                        return IntlUtil.OR_NARROW;
+                    case IntlUtil.SHORT:
+                        return IntlUtil.OR_SHORT;
+                    default:
+                        throw Errors.shouldNotReachHere(style);
+                }
+            case IntlUtil.UNIT:
+                switch (style) {
+                    case IntlUtil.LONG:
+                        return IntlUtil.UNIT;
+                    case IntlUtil.NARROW:
+                        return IntlUtil.UNIT_NARROW;
+                    case IntlUtil.SHORT:
+                        return IntlUtil.UNIT_SHORT;
+                    default:
+                        throw Errors.shouldNotReachHere(style);
+                }
+            default:
+                throw Errors.shouldNotReachHere(type);
         }
-        state.listFormatter = createFormatter(state.javaLocale, lfStyle);
     }
 
     public static ListFormatter getListFormatterProperty(DynamicObject obj) {
@@ -246,7 +271,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     @SuppressWarnings("deprecation")
     private static ListFormatter createFormatter(Locale locale, String style) {
         ULocale ulocale = ULocale.forLocale(locale);
-        ICUResourceBundle r = (ICUResourceBundle) UResourceBundle.getBundleInstance(ICUData.ICU_BASE_NAME, ulocale);
+        ICUResourceBundle r = (ICUResourceBundle) UResourceBundle.getBundleInstance(null, ulocale);
 
         String end = r.getWithFallback("listPattern/" + style + "/end").getString();
         String middle = r.getWithFallback("listPattern/" + style + "/middle").getString();

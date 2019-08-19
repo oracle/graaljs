@@ -1837,14 +1837,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl402/ListFormat/prototype/format/en-us-short.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl402/ListFormat/prototype/formatToParts/en-us-short.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
     "filePath" : "intl402/Number/prototype/toLocaleString/returns-same-results-as-NumberFormat.js",
     "status" : "PASS",
     "statusOverrides" : {
