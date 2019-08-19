@@ -54,7 +54,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -95,7 +95,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == UnaryExpressionTag.class ? true : super.hasTag(tag);
+        return tag == UnaryOperationTag.class ? true : super.hasTag(tag);
     }
 
     @Override

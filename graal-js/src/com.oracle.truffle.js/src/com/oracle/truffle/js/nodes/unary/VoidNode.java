@@ -47,7 +47,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(shortName = "void", cost = NodeCost.NONE)
@@ -70,7 +70,7 @@ public abstract class VoidNode extends JSUnaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == UnaryExpressionTag.class) {
+        if (tag == UnaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

@@ -42,14 +42,14 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class EvalTest extends FineGrainedAccessTest {
@@ -59,13 +59,13 @@ public class EvalTest extends FineGrainedAccessTest {
         evalAllTags("eval('var a = 42;')");
 
         enter(EvalCallTag.class, (e, eval) -> {
-            enter(ReadPropertyExpressionTag.class, assertPropertyReadName("eval")).input(assertGlobalObjectInput).exit();
+            enter(ReadPropertyTag.class, assertPropertyReadName("eval")).input(assertGlobalObjectInput).exit();
             eval.input(assertJSFunctionInput);
-            enter(LiteralExpressionTag.class, assertLiteralType(LiteralExpressionTag.Type.StringLiteral)).exit();
+            enter(LiteralTag.class, assertLiteralType(LiteralTag.Type.StringLiteral)).exit();
             eval.input("var a = 42;");
-            enter(WritePropertyExpressionTag.class, (e1, prop) -> {
+            enter(WritePropertyTag.class, (e1, prop) -> {
                 prop.input(assertJSObjectInput);
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+                enter(LiteralTag.class).exit(assertReturnValue(42));
                 prop.input(42);
             }).exit();
         }).exit();
@@ -84,33 +84,33 @@ public class EvalTest extends FineGrainedAccessTest {
                         "foo(42)();");
 
         // write function foo
-        enter(WritePropertyExpressionTag.class, (e, wp) -> {
+        enter(WritePropertyTag.class, (e, wp) -> {
             wp.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+            enter(LiteralTag.class).exit((e2) -> {
+                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             wp.input(assertJSFunctionInput);
         }).exit();
 
         // foo(42)();
-        enter(FunctionCallExpressionTag.class, (e1, call) -> {
+        enter(FunctionCallTag.class, (e1, call) -> {
             // receiver undefined
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
 
             // foo(42);
-            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            enter(FunctionCallTag.class, (e2, call2) -> {
+                enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
                 call.input(assertUndefinedInput);
                 // get the function from the property foo
-                enter(ReadPropertyExpressionTag.class, (e3, pr) -> {
+                enter(ReadPropertyTag.class, (e3, pr) -> {
                     assertAttribute(e3, KEY, "foo");
                     pr.input(assertGlobalObjectInput);
                 }).exit();
                 call.input(assertJSFunctionInput);
 
                 // argument 42
-                enter(LiteralExpressionTag.class).exit();
+                enter(LiteralTag.class).exit();
                 call.input(42);
 
                 // locals declaration
@@ -120,34 +120,34 @@ public class EvalTest extends FineGrainedAccessTest {
 
                 // inside the foo function
                 // write the 42 into the argument variable
-                enter(WriteVariableExpressionTag.class, (e3, vw) -> {
+                enter(WriteVariableTag.class, (e3, vw) -> {
                     vw.input(42);
                 }).exit();
 
                 // create a local function bar
-                enter(WriteVariableExpressionTag.class, (e3, vw) -> {
-                    enter(LiteralExpressionTag.class).exit();
+                enter(WriteVariableTag.class, (e3, vw) -> {
+                    enter(LiteralTag.class).exit();
                     vw.input(assertJSFunctionInput);
                 }).exit();
 
                 // eval
                 enter(EvalCallTag.class, (e3, eval) -> {
                     // read the eval function
-                    enter(ReadVariableExpressionTag.class).exit();
+                    enter(ReadVariableTag.class).exit();
                     eval.input();
                     // read the String
-                    enter(LiteralExpressionTag.class).exit();
+                    enter(LiteralTag.class).exit();
                     eval.input();
 
                     // var a = 30
-                    enter(WriteVariableExpressionTag.class, (e4, vw) -> {
-                        enter(LiteralExpressionTag.class).exit();
+                    enter(WriteVariableTag.class, (e4, vw) -> {
+                        enter(LiteralTag.class).exit();
                         vw.input(30);
                     }).exit();
                 }).exit();
 
                 // return bar
-                enter(ReadVariableExpressionTag.class).exit();
+                enter(ReadVariableTag.class).exit();
             }).exit();
 
             // foo(42) returns the function (bar)
@@ -155,20 +155,20 @@ public class EvalTest extends FineGrainedAccessTest {
 
             // inside bar
             // a = a + 1;
-            enter(WriteVariableExpressionTag.class, (e2, vw) -> {
+            enter(WriteVariableTag.class, (e2, vw) -> {
 
                 // a + 1
-                enter(BinaryExpressionTag.class, (e3, b) -> {
-                    enter(ReadVariableExpressionTag.class).exit();
+                enter(BinaryOperationTag.class, (e3, b) -> {
+                    enter(ReadVariableTag.class).exit();
                     b.input(30);
-                    enter(LiteralExpressionTag.class).exit();
+                    enter(LiteralTag.class).exit();
                     b.input(1);
                 }).exit();
                 vw.input(31);
             }).exit();
 
             // return a;
-            enter(ReadVariableExpressionTag.class).exit();
+            enter(ReadVariableTag.class).exit();
         }).exit();
     }
 

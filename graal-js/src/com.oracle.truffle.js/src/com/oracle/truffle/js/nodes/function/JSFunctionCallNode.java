@@ -85,9 +85,9 @@ import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.interop.ExportArgumentsNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
@@ -203,7 +203,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == FunctionCallExpressionTag.class) {
+        if (tag == FunctionCallTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -525,7 +525,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-            if (materializedTags.contains(FunctionCallExpressionTag.class)) {
+            if (materializedTags.contains(FunctionCallTag.class)) {
                 materializeInstrumentableArguments();
                 if (this.hasSourceSection() && !functionNode.hasSourceSection()) {
                     transferSourceSectionAddExpressionTag(this, functionNode);
@@ -729,8 +729,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 // if we have a target, no de-sugaring needed
                 return this;
             }
-            if (materializedTags.contains(FunctionCallExpressionTag.class) || materializedTags.contains(ReadPropertyExpressionTag.class) ||
-                            materializedTags.contains(ReadElementExpressionTag.class)) {
+            if (materializedTags.contains(FunctionCallTag.class) || materializedTags.contains(ReadPropertyTag.class) ||
+                            materializedTags.contains(ReadElementTag.class)) {
                 materializeInstrumentableArguments();
                 InvokeNode invoke = (InvokeNode) createInvoke(null, getArgumentNodes(), isNew(flags), isNewTarget(flags));
                 JSTargetableNode functionTargetNodeDelegate = getFunctionTargetDelegate();

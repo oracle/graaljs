@@ -44,12 +44,12 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -59,12 +59,12 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
     public void typeof() {
         evalAllTags("var b = typeof Uint8Array;");
 
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "b");
             write.input(assertGlobalObjectInput);
-            enter(UnaryExpressionTag.class, (e2, unary) -> {
+            enter(UnaryOperationTag.class, (e2, unary) -> {
                 assertAttribute(e2, OPERATOR, "typeof");
-                enter(ReadPropertyExpressionTag.class, (e3, prop) -> {
+                enter(ReadPropertyTag.class, (e3, prop) -> {
                     assertAttribute(e3, KEY, "Uint8Array");
                     prop.input((e4) -> {
                         assertTrue(JSObject.isJSObject(e4.val));
@@ -80,12 +80,12 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
     public void voidMethod() {
         evalAllTags("void function foo() {}();");
 
-        enter(UnaryExpressionTag.class, (e2, unary) -> {
+        enter(UnaryOperationTag.class, (e2, unary) -> {
             assertAttribute(e2, OPERATOR, "void");
-            enter(FunctionCallExpressionTag.class, (e3, call) -> {
-                enter(LiteralExpressionTag.class).exit();
+            enter(FunctionCallTag.class, (e3, call) -> {
+                enter(LiteralTag.class).exit();
                 call.input(assertUndefinedInput);
-                enter(LiteralExpressionTag.class).exit();
+                enter(LiteralTag.class).exit();
                 call.input(assertJSFunctionInput);
             }).exit(assertReturnValue(Undefined.instance));
             unary.input(Undefined.instance);
@@ -118,12 +118,12 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
 
         assertGlobalVarDeclaration("x", true);
 
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "b");
             write.input(assertGlobalObjectInput);
-            enter(UnaryExpressionTag.class, (e2, unary) -> {
+            enter(UnaryOperationTag.class, (e2, unary) -> {
                 assertAttribute(e2, OPERATOR, operator);
-                enter(ReadPropertyExpressionTag.class, (e3, prop) -> {
+                enter(ReadPropertyTag.class, (e3, prop) -> {
                     assertAttribute(e3, KEY, "x");
                     prop.input(assertGlobalObjectInput);
                 }).exit(assertReturnValue(expectedLiteralValue));
@@ -137,12 +137,12 @@ public class UnaryOperationTest extends FineGrainedAccessTest {
     public void complement() {
         evalAllTags("0 & (~-1073741824);");
 
-        enter(BinaryExpressionTag.class, (e, b) -> {
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(0));
+        enter(BinaryOperationTag.class, (e, b) -> {
+            enter(LiteralTag.class).exit(assertReturnValue(0));
             b.input(0);
 
-            enter(UnaryExpressionTag.class, (e2, u) -> {
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(-1073741824));
+            enter(UnaryOperationTag.class, (e2, u) -> {
+                enter(LiteralTag.class).exit(assertReturnValue(-1073741824));
                 u.input(-1073741824);
             }).exit(assertReturnValue(1073741823));
 

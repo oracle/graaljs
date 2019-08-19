@@ -51,7 +51,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -92,7 +92,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == LiteralExpressionTag.class) {
+        if (tag == LiteralTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -103,15 +103,15 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
     public Object getNodeObject() {
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
         if (this instanceof JSConstantDoubleNode || this instanceof JSConstantIntegerNode) {
-            descriptor.addProperty("type", LiteralExpressionTag.Type.NumericLiteral.name());
+            descriptor.addProperty("type", LiteralTag.Type.NumericLiteral.name());
         } else if (this instanceof JSConstantBooleanNode) {
-            descriptor.addProperty("type", LiteralExpressionTag.Type.BooleanLiteral.name());
+            descriptor.addProperty("type", LiteralTag.Type.BooleanLiteral.name());
         } else if (this instanceof JSConstantStringNode) {
-            descriptor.addProperty("type", LiteralExpressionTag.Type.StringLiteral.name());
+            descriptor.addProperty("type", LiteralTag.Type.StringLiteral.name());
         } else if (this instanceof JSConstantNullNode) {
-            descriptor.addProperty("type", LiteralExpressionTag.Type.NullLiteral.name());
+            descriptor.addProperty("type", LiteralTag.Type.NullLiteral.name());
         } else if (this instanceof JSConstantUndefinedNode) {
-            descriptor.addProperty("type", LiteralExpressionTag.Type.UndefinedLiteral.name());
+            descriptor.addProperty("type", LiteralTag.Type.UndefinedLiteral.name());
         }
         return descriptor;
     }
@@ -315,7 +315,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
         @Override
         public boolean hasTag(Class<? extends Tag> tag) {
-            if (tag == JSTags.LiteralExpressionTag.class) {
+            if (tag == LiteralTag.class) {
                 return false;
             } else {
                 return super.hasTag(tag);
@@ -352,7 +352,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
 
         @Override
         public boolean hasTag(Class<? extends Tag> tag) {
-            if (tag == JSTags.LiteralExpressionTag.class) {
+            if (tag == LiteralTag.class) {
                 return false;
             } else {
                 return super.hasTag(tag);

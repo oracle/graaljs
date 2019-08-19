@@ -50,7 +50,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -85,7 +85,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == LiteralExpressionTag.class) {
+        if (tag == LiteralTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -94,7 +94,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", LiteralExpressionTag.Type.FunctionLiteral.name());
+        return JSTags.createNodeObjectDescriptor("type", LiteralTag.Type.FunctionLiteral.name());
     }
 
     @Override

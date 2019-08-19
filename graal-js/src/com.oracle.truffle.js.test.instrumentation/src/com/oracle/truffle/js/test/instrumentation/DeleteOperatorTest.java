@@ -42,10 +42,10 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 
 public class DeleteOperatorTest extends FineGrainedAccessTest {
 
@@ -53,24 +53,24 @@ public class DeleteOperatorTest extends FineGrainedAccessTest {
     public void delete() {
         evalAllTags("var a = {x:42}; delete a.x;");
         // var a = {x:42}
-        enter(WritePropertyExpressionTag.class, (e, p) -> {
+        enter(WritePropertyTag.class, (e, p) -> {
             assertAttribute(e, KEY, "a");
             p.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class, (e1, p1) -> {
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class, (e1, p1) -> {
+                enter(LiteralTag.class).exit(assertReturnValue(42));
                 p1.input(42);
             }).exit();
             p.input(assertJSObjectInput);
         }).exit();
         // delete a.x
-        enter(UnaryExpressionTag.class, (e, p) -> {
+        enter(UnaryOperationTag.class, (e, p) -> {
             assertAttribute(e, OPERATOR, "delete");
-            enter(ReadPropertyExpressionTag.class, (e1, p1) -> {
+            enter(ReadPropertyTag.class, (e1, p1) -> {
                 p1.input(assertGlobalObjectInput);
             }).exit();
             // target
             p.input(assertJSObjectInput);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue("x"));
+            enter(LiteralTag.class).exit(assertReturnValue("x"));
             p.input("x");
         }).exit(assertReturnValue(true));
     }
@@ -79,17 +79,17 @@ public class DeleteOperatorTest extends FineGrainedAccessTest {
     public void deleteGlobal() {
         evalAllTags("a = 'foo'; delete a;");
         // a = 'foo'
-        enter(WritePropertyExpressionTag.class, (e, p) -> {
+        enter(WritePropertyTag.class, (e, p) -> {
             assertAttribute(e, KEY, "a");
             p.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue("foo"));
+            enter(LiteralTag.class).exit(assertReturnValue("foo"));
             p.input("foo");
         }).exit();
         // delete a
-        enter(UnaryExpressionTag.class, (e, p) -> {
+        enter(UnaryOperationTag.class, (e, p) -> {
             assertAttribute(e, OPERATOR, "delete");
             p.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue("a"));
+            enter(LiteralTag.class).exit(assertReturnValue("a"));
             p.input("a");
         }).exit(assertReturnValue(true));
     }

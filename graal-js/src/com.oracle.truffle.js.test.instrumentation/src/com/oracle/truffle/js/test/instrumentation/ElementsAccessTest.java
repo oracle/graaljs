@@ -45,10 +45,10 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -61,12 +61,12 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
 
         assertGlobalArrayLiteralDeclaration("a");
 
-        enter(ReadElementExpressionTag.class, (e, elem) -> {
-            enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+        enter(ReadElementTag.class, (e, elem) -> {
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
             elem.input((e1) -> {
                 assertTrue(JSArray.isJSArray(e1.val));
             });
-            enter(LiteralExpressionTag.class).exit();
+            enter(LiteralTag.class).exit();
             elem.input(0);
         }).exit();
     }
@@ -77,18 +77,18 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
 
         assertGlobalArrayLiteralDeclaration("a");
 
-        enter(ReadElementExpressionTag.class, (e, elem) -> {
-            enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+        enter(ReadElementTag.class, (e, elem) -> {
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
             elem.input((e1) -> {
                 assertTrue(JSArray.isJSArray(e1.val));
             });
             // nested read a[0]
-            enter(ReadElementExpressionTag.class, (e1, elem1) -> {
-                enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+            enter(ReadElementTag.class, (e1, elem1) -> {
+                enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
                 elem1.input((e2) -> {
                     assertTrue(JSArray.isJSArray(e2.val));
                 });
-                enter(LiteralExpressionTag.class).exit();
+                enter(LiteralTag.class).exit();
                 elem1.input(0);
             }).exit();
             // outer read
@@ -102,23 +102,23 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
 
         assertGlobalArrayLiteralDeclaration("a");
         // write element
-        enter(WriteElementExpressionTag.class, (e, elem) -> {
-            enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+        enter(WriteElementTag.class, (e, elem) -> {
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
             elem.input((e1) -> {
                 assertTrue(JSArray.isJSArray(e1.val));
             });
-            enter(LiteralExpressionTag.class).exit();
+            enter(LiteralTag.class).exit();
             elem.input(1);
-            enter(LiteralExpressionTag.class).exit();
+            enter(LiteralTag.class).exit();
             elem.input("foo");
         }).exit();
     }
 
     @Test
     public void elementWriteIncDec() {
-        evalWithTag("var u=[2,4,6]; var p = 1; u[p] -= 42", WriteElementExpressionTag.class);
+        evalWithTag("var u=[2,4,6]; var p = 1; u[p] -= 42", WriteElementTag.class);
 
-        enter(WriteElementExpressionTag.class, (e, b) -> {
+        enter(WriteElementTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
             b.input(1);
             b.input(-38);
@@ -127,9 +127,9 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void elementReadInvoke() {
-        evalWithTag("var u={x:[function(){}]}; u.x[0]()", ReadElementExpressionTag.class);
+        evalWithTag("var u={x:[function(){}]}; u.x[0]()", ReadElementTag.class);
 
-        enter(ReadElementExpressionTag.class, (e, b) -> {
+        enter(ReadElementTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
             b.input(0);
         }).exit((res) -> {
@@ -147,9 +147,9 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void targetTest() {
-        evalWithTag("var Box2d = {};Box2d.postDefs = [function(){}];function test(){var i = 0;Box2d.postDefs[i]();}; test();", ReadElementExpressionTag.class);
+        evalWithTag("var Box2d = {};Box2d.postDefs = [function(){}];function test(){var i = 0;Box2d.postDefs[i]();}; test();", ReadElementTag.class);
 
-        enter(ReadElementExpressionTag.class, (e, b) -> {
+        enter(ReadElementTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
             b.input(0);
         }).exit();
@@ -184,9 +184,9 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
                         "    }" +
                         "  };" +
                         "  var doc = self.cursorState.documents[" + op + "];" +
-                        "})()", ReadElementExpressionTag.class);
+                        "})()", ReadElementTag.class);
 
-        enter(ReadElementExpressionTag.class, (e, b) -> {
+        enter(ReadElementTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
             b.input(returned);
         }).exit();
@@ -206,12 +206,12 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
                         " setKey({" +
                         " a: 1" +
                         " }, callable);" +
-                        "}", ReadElementExpressionTag.class);
+                        "}", ReadElementTag.class);
 
         for (int i = 0; i < 3; i++) {
             // First to reads are to retrieve the invoke "target"
-            enter(ReadElementExpressionTag.class, (e, elem) -> {
-                enter(ReadElementExpressionTag.class, (e1, elem1) -> {
+            enter(ReadElementTag.class, (e, elem) -> {
+                enter(ReadElementTag.class, (e1, elem1) -> {
                     elem1.input(assertJSArrayInput);
                     elem1.input(0);
                 }).exit(assertJSObjectReturn);
@@ -220,7 +220,7 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
                 elem.input(1);
             }).exit(assertJSObjectReturn);
             // Third read to retrieve the invoked function
-            enter(ReadElementExpressionTag.class, (e, elem) -> {
+            enter(ReadElementTag.class, (e, elem) -> {
                 elem.input(assertJSArrayInput);
                 elem.input(2);
             }).exit(assertJSFunctionReturn);
@@ -229,21 +229,21 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void elementWriteIndexConvert() {
-        evalWithTag("var a = []; a[true] = 0; a[undefined] = 0; a[{}] = 0;", WriteElementExpressionTag.class);
+        evalWithTag("var a = []; a[true] = 0; a[undefined] = 0; a[{}] = 0;", WriteElementTag.class);
 
-        enter(WriteElementExpressionTag.class, (e, b) -> {
+        enter(WriteElementTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
             b.input(true);
             b.input(0);
         }).exit();
 
-        enter(WriteElementExpressionTag.class, (e, b) -> {
+        enter(WriteElementTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
             b.input(Undefined.instance);
             b.input(0);
         }).exit();
 
-        enter(WriteElementExpressionTag.class, (e, b) -> {
+        enter(WriteElementTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
             b.input(assertJSObjectInput);
             b.input(0);
@@ -253,19 +253,19 @@ public class ElementsAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void elementReadIndexConvert() {
-        evalWithTag("var a = []; a[true]; a[undefined]; a[{}];", ReadElementExpressionTag.class);
+        evalWithTag("var a = []; a[true]; a[undefined]; a[{}];", ReadElementTag.class);
 
-        enter(ReadElementExpressionTag.class, (e, b) -> {
+        enter(ReadElementTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
             b.input(true);
         }).exit();
 
-        enter(ReadElementExpressionTag.class, (e, b) -> {
+        enter(ReadElementTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
             b.input(Undefined.instance);
         }).exit();
 
-        enter(ReadElementExpressionTag.class, (e, b) -> {
+        enter(ReadElementTag.class, (e, b) -> {
             b.input(assertJSArrayInput);
             b.input(assertJSObjectInput);
         }).exit();

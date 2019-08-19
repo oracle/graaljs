@@ -55,7 +55,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
@@ -82,7 +82,7 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ReadVariableExpressionTag.class) {
+        if (tag == ReadVariableTag.class) {
             if (JSFrameUtil.isInternal(frameSlot)) {
                 // Reads to "<this>" are instrumentable
                 return JSFrameUtil.isThisSlot(frameSlot);

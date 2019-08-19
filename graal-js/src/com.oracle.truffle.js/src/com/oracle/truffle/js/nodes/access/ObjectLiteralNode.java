@@ -72,7 +72,7 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapp
 import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -92,7 +92,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == LiteralExpressionTag.class) {
+        if (tag == LiteralTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -101,7 +101,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", LiteralExpressionTag.Type.ObjectLiteral.name());
+        return JSTags.createNodeObjectDescriptor("type", LiteralTag.Type.ObjectLiteral.name());
     }
 
     public static final class MakeMethodNode extends JavaScriptNode implements FunctionNameHolder.Delegate {

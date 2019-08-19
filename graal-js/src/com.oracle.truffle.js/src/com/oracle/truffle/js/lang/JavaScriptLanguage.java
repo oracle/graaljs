@@ -77,24 +77,24 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -131,17 +131,17 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 StandardTags.CallTag.class,
                 DebuggerTags.AlwaysHalt.class,
                 // Expressions
-                ObjectAllocationExpressionTag.class,
-                BinaryExpressionTag.class,
-                UnaryExpressionTag.class,
-                WriteVariableExpressionTag.class,
-                ReadElementExpressionTag.class,
-                WriteElementExpressionTag.class,
-                ReadPropertyExpressionTag.class,
-                WritePropertyExpressionTag.class,
-                ReadVariableExpressionTag.class,
-                LiteralExpressionTag.class,
-                FunctionCallExpressionTag.class,
+                ObjectAllocationTag.class,
+                BinaryOperationTag.class,
+                UnaryOperationTag.class,
+                WriteVariableTag.class,
+                ReadElementTag.class,
+                WriteElementTag.class,
+                ReadPropertyTag.class,
+                WritePropertyTag.class,
+                ReadVariableTag.class,
+                LiteralTag.class,
+                FunctionCallTag.class,
                 // Statements and builtins
                 BuiltinRootTag.class,
                 EvalCallTag.class,

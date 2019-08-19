@@ -53,8 +53,8 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class WritePropertyNode extends JSTargetableWriteNode {
@@ -84,9 +84,9 @@ public class WritePropertyNode extends JSTargetableWriteNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == WriteVariableExpressionTag.class && isScopeAccess()) {
+        if (tag == WriteVariableTag.class && isScopeAccess()) {
             return true;
-        } else if (tag == WritePropertyExpressionTag.class && !isScopeAccess()) {
+        } else if (tag == WritePropertyTag.class && !isScopeAccess()) {
             return true;
         } else if (tag == InputNodeTag.class) {
             return true;
@@ -109,7 +109,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(WritePropertyExpressionTag.class) && !isScopeAccess()) {
+        if (materializedTags.contains(WritePropertyTag.class) && !isScopeAccess()) {
             // if we have no source section, we must assign one to be discoverable at
             // instrumentation time.
             if (materializationNeeded()) {

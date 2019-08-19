@@ -42,9 +42,9 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 
 public class SpreadSyntaxTest extends FineGrainedAccessTest {
 
@@ -54,18 +54,18 @@ public class SpreadSyntaxTest extends FineGrainedAccessTest {
         String src = "var x = [1,2];" +
                         "[...x];";
 
-        evalWithTags(src, new Class[]{LiteralExpressionTag.class, ReadPropertyExpressionTag.class,
-                        WritePropertyExpressionTag.class});
+        evalWithTags(src, new Class[]{LiteralTag.class, ReadPropertyTag.class,
+                        WritePropertyTag.class});
 
-        enter(WritePropertyExpressionTag.class, (e, p) -> {
+        enter(WritePropertyTag.class, (e, p) -> {
             assertAttribute(e, KEY, "x");
             p.input(assertJSObjectInput);
-            enter(LiteralExpressionTag.class).exit();
+            enter(LiteralTag.class).exit();
             p.input(assertJSArrayInput);
         }).exit();
 
-        enter(LiteralExpressionTag.class, (o, l) -> {
-            enter(ReadPropertyExpressionTag.class, (e, p) -> {
+        enter(LiteralTag.class, (o, l) -> {
+            enter(ReadPropertyTag.class, (e, p) -> {
                 assertAttribute(e, KEY, "x");
                 p.input(assertGlobalObjectInput);
             }).exit();

@@ -52,7 +52,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
@@ -63,7 +63,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == WriteVariableExpressionTag.class) {
+        if (tag == WriteVariableTag.class) {
             return !JSFrameUtil.isInternal(frameSlot);
         } else if (tag == JSTags.InputNodeTag.class) {
             return !JSFrameUtil.isInternal(frameSlot);
@@ -79,7 +79,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(WriteVariableExpressionTag.class)) {
+        if (materializedTags.contains(WriteVariableTag.class)) {
             if (getRhs() != null && !getRhs().hasSourceSection() && this.hasSourceSection()) {
                 transferSourceSectionAddExpressionTag(this, getRhs());
             }

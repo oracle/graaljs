@@ -59,7 +59,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.binary.JSEqualNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -87,7 +87,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == BinaryExpressionTag.class) {
+        if (tag == BinaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -96,7 +96,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(BinaryExpressionTag.class)) {
+        if (materializedTags.contains(BinaryOperationTag.class)) {
             JSConstantNode constantNode = isUndefined ? JSConstantNode.createUndefined() : JSConstantNode.createNull();
             JavaScriptNode left = isLeft ? constantNode : getOperand();
             JavaScriptNode right = isLeft ? getOperand() : constantNode;

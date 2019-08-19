@@ -51,7 +51,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -76,7 +76,7 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == BinaryExpressionTag.class) {
+        if (tag == BinaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

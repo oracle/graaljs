@@ -47,8 +47,8 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -89,9 +89,9 @@ public final class EvalVariableNode extends JSTargetableNode implements ReadNode
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ReadVariableExpressionTag.class && !isWrite()) {
+        if (tag == ReadVariableTag.class && !isWrite()) {
             return true;
-        } else if (tag == WriteVariableExpressionTag.class && isWrite()) {
+        } else if (tag == WriteVariableTag.class && isWrite()) {
             return true;
         } else {
             return super.hasTag(tag);

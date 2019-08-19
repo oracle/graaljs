@@ -49,7 +49,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -78,7 +78,7 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == UnaryExpressionTag.class) {
+        if (tag == UnaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

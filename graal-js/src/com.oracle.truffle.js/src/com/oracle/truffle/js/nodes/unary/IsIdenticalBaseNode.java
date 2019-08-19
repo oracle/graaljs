@@ -47,7 +47,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 
 public abstract class IsIdenticalBaseNode extends JSUnaryNode {
 
@@ -62,7 +62,7 @@ public abstract class IsIdenticalBaseNode extends JSUnaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == BinaryExpressionTag.class) {
+        if (tag == BinaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -71,7 +71,7 @@ public abstract class IsIdenticalBaseNode extends JSUnaryNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(BinaryExpressionTag.class)) {
+        if (materializedTags.contains(BinaryOperationTag.class)) {
             JSConstantNode constantNode = JSConstantNode.create(getConstantValue());
             JavaScriptNode materialized;
             if (leftConstant) {

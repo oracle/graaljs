@@ -42,23 +42,23 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class LiteralsTest extends FineGrainedAccessTest {
 
-    protected void testLiteral(String src, LiteralExpressionTag.Type expectedTagType) {
+    protected void testLiteral(String src, LiteralTag.Type expectedTagType) {
         testLiteral(src, expectedTagType, null);
     }
 
-    protected void testLiteral(String src, LiteralExpressionTag.Type expectedTagType, Object expectedValue) {
+    protected void testLiteral(String src, LiteralTag.Type expectedTagType, Object expectedValue) {
         evalAllTags(src);
 
-        enter(WritePropertyExpressionTag.class, (e1, prop) -> {
+        enter(WritePropertyTag.class, (e1, prop) -> {
             prop.input(assertJSObjectInput);
             assertAttribute(e1, KEY, "x");
-            enter(LiteralExpressionTag.class, (e2) -> {
+            enter(LiteralTag.class, (e2) -> {
                 assertAttribute(e2, TYPE, expectedTagType.name());
             }).exit();
             if (expectedValue != null) {
@@ -71,51 +71,51 @@ public class LiteralsTest extends FineGrainedAccessTest {
 
     @Test
     public void object() {
-        testLiteral("x = {};", LiteralExpressionTag.Type.ObjectLiteral);
+        testLiteral("x = {};", LiteralTag.Type.ObjectLiteral);
     }
 
     @Test
     public void array() {
-        testLiteral("x = [];", LiteralExpressionTag.Type.ArrayLiteral);
+        testLiteral("x = [];", LiteralTag.Type.ArrayLiteral);
     }
 
     @Test
     public void number() {
-        testLiteral("x = 42;", LiteralExpressionTag.Type.NumericLiteral, 42);
+        testLiteral("x = 42;", LiteralTag.Type.NumericLiteral, 42);
     }
 
     @Test
     public void string() {
-        testLiteral("x = \"foo\";", LiteralExpressionTag.Type.StringLiteral, "foo");
+        testLiteral("x = \"foo\";", LiteralTag.Type.StringLiteral, "foo");
     }
 
     @Test
     public void bool() {
-        testLiteral("x = true;", LiteralExpressionTag.Type.BooleanLiteral, true);
+        testLiteral("x = true;", LiteralTag.Type.BooleanLiteral, true);
     }
 
     @Test
     public void nullLit() {
-        testLiteral("x = null;", LiteralExpressionTag.Type.NullLiteral);
+        testLiteral("x = null;", LiteralTag.Type.NullLiteral);
     }
 
     @Test
     public void undefined() {
-        testLiteral("x = undefined;", LiteralExpressionTag.Type.UndefinedLiteral, Undefined.instance);
+        testLiteral("x = undefined;", LiteralTag.Type.UndefinedLiteral, Undefined.instance);
     }
 
     @Test
     public void regexp() {
-        testLiteral("x = /\\w+/;", LiteralExpressionTag.Type.RegExpLiteral);
+        testLiteral("x = /\\w+/;", LiteralTag.Type.RegExpLiteral);
     }
 
     @Test
     public void function() {
-        testLiteral("x = function foo(){};", LiteralExpressionTag.Type.FunctionLiteral);
+        testLiteral("x = function foo(){};", LiteralTag.Type.FunctionLiteral);
     }
 
     @Test
     public void anonFunction() {
-        testLiteral("x = () => {};", LiteralExpressionTag.Type.FunctionLiteral);
+        testLiteral("x = () => {};", LiteralTag.Type.FunctionLiteral);
     }
 }

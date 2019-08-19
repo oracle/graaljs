@@ -46,7 +46,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 
 @NodeInfo(shortName = "+")
 public abstract class JSUnaryPlusNode extends JSToNumberNode.JSToNumberUnaryNode {
@@ -67,7 +67,7 @@ public abstract class JSUnaryPlusNode extends JSToNumberNode.JSToNumberUnaryNode
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == UnaryExpressionTag.class) {
+        if (tag == UnaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

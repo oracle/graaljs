@@ -45,8 +45,8 @@ import org.junit.Test;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 
 public class IfStatementTest extends FineGrainedAccessTest {
 
@@ -60,7 +60,7 @@ public class IfStatementTest extends FineGrainedAccessTest {
             enter(ControlFlowBranchTag.class, (e2, ifstatement) -> {
                 assertAttribute(e2, TYPE, ControlFlowBranchTag.Type.Condition.name());
 
-                enter(LiteralExpressionTag.class).exit();
+                enter(LiteralTag.class).exit();
                 ifstatement.input(false);
             }).exit(assertReturnValue(false));
             ifbody.input(false);
@@ -78,13 +78,13 @@ public class IfStatementTest extends FineGrainedAccessTest {
             enter(ControlFlowBranchTag.class, (e2, ifstatement) -> {
                 assertAttribute(e2, TYPE, ControlFlowBranchTag.Type.Condition.name());
 
-                enter(LiteralExpressionTag.class).exit();
+                enter(LiteralTag.class).exit();
                 ifstatement.input(true);
             }).exit(assertReturnValue(true));
             ifbody.input(true);
             // enter if branch
             enter(ControlFlowBlockTag.class, (e2, b) -> {
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(3));
+                enter(LiteralTag.class).exit(assertReturnValue(3));
             }).exit();
             ifbody.input(3);
         }).exit();
@@ -98,14 +98,14 @@ public class IfStatementTest extends FineGrainedAccessTest {
     @Test
     public void writeWithTernary() {
         String src = "var a = {x:0}; a.x = 100 > 0 ? 1 : 0;";
-        evalWithTag(src, WritePropertyExpressionTag.class);
+        evalWithTag(src, WritePropertyTag.class);
 
-        enter(WritePropertyExpressionTag.class, (e1, pw1) -> {
+        enter(WritePropertyTag.class, (e1, pw1) -> {
             assertAttribute(e1, KEY, "a");
             pw1.input(assertGlobalObjectInput);
             pw1.input(assertJSObjectInput);
         }).exit();
-        enter(WritePropertyExpressionTag.class, (e1, pw1) -> {
+        enter(WritePropertyTag.class, (e1, pw1) -> {
             assertAttribute(e1, KEY, "x");
             pw1.input(assertJSObjectInput);
             pw1.input(1);

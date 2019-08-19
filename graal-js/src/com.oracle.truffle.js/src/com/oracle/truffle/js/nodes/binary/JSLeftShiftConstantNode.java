@@ -54,7 +54,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -86,7 +86,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == BinaryExpressionTag.class) {
+        if (tag == BinaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -95,7 +95,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(BinaryExpressionTag.class)) {
+        if (materializedTags.contains(BinaryOperationTag.class)) {
             // need to call the generated factory directly to avoid constant optimizations
             JSConstantNode constantNode = JSConstantIntegerNode.create(shiftValue);
             JavaScriptNode node = JSLeftShiftNodeGen.create(getOperand(), constantNode);

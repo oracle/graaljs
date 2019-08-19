@@ -65,7 +65,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
@@ -107,7 +107,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ObjectAllocationExpressionTag.class) {
+        if (tag == ObjectAllocationTag.class) {
             return true;
         }
         return super.hasTag(tag);
@@ -134,7 +134,7 @@ public abstract class JSNewNode extends JavaScriptNode {
     }
 
     private boolean materializationNeeded(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ObjectAllocationExpressionTag.class)) {
+        if (materializedTags.contains(ObjectAllocationTag.class)) {
             return (!getTarget().hasSourceSection() && !(getTarget() instanceof JSInputGeneratingNodeWrapper));
         }
         return false;

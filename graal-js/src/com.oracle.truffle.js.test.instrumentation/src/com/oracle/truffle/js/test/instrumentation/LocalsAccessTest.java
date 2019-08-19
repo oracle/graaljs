@@ -42,11 +42,11 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class LocalsAccessTest extends FineGrainedAccessTest {
@@ -55,20 +55,20 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
     public void write() {
         evalAllTags("(function() { var a = 42; })();");
 
-        enter(FunctionCallExpressionTag.class, (e1, call) -> {
+        enter(FunctionCallTag.class, (e1, call) -> {
             // fetch the target for the call (which is undefined)
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
             // fetch the function, i.e., read the literal
-            enter(LiteralExpressionTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+            enter(LiteralTag.class).exit((e2) -> {
+                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
 
             enterDeclareTag("a");
 
-            enter(WriteVariableExpressionTag.class, (e3, var) -> {
-                enter(LiteralExpressionTag.class).exit();
+            enter(WriteVariableTag.class, (e3, var) -> {
+                enter(LiteralTag.class).exit();
                 var.input(42);
             }).exit();
         }).exit(assertReturnValue(Undefined.instance));
@@ -78,35 +78,35 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
     public void writeScope() {
         evalAllTags("(function() { var level; (function() { (function() { level = 42; })(); })();})();");
 
-        enter(FunctionCallExpressionTag.class, (e1, call) -> {
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+        enter(FunctionCallTag.class, (e1, call) -> {
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
-            enter(LiteralExpressionTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+            enter(LiteralTag.class).exit((e2) -> {
+                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
 
             enterDeclareTag("level");
 
             // second call
-            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            enter(FunctionCallTag.class, (e2, call2) -> {
+                enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
                 call2.input(assertUndefinedInput);
-                enter(LiteralExpressionTag.class).exit((e3) -> {
-                    assertAttribute(e3, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+                enter(LiteralTag.class).exit((e3) -> {
+                    assertAttribute(e3, TYPE, LiteralTag.Type.FunctionLiteral.name());
                 });
                 call2.input(assertJSFunctionInput);
                 // third call
-                enter(FunctionCallExpressionTag.class, (e3, call3) -> {
-                    enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+                enter(FunctionCallTag.class, (e3, call3) -> {
+                    enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
                     call3.input(assertUndefinedInput);
-                    enter(LiteralExpressionTag.class).exit((e4) -> {
-                        assertAttribute(e4, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+                    enter(LiteralTag.class).exit((e4) -> {
+                        assertAttribute(e4, TYPE, LiteralTag.Type.FunctionLiteral.name());
                     });
                     call3.input(assertJSFunctionInput);
                     // TODO missing input event for arguments to FunctionCallTag
-                    enter(WriteVariableExpressionTag.class, (e4, var) -> {
-                        enter(LiteralExpressionTag.class).exit();
+                    enter(WriteVariableTag.class, (e4, var) -> {
+                        enter(LiteralTag.class).exit();
                         var.input(42);
                     }).exit();
                 }).exit(assertReturnValue(Undefined.instance));
@@ -118,25 +118,25 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
     public void read() {
         evalAllTags("(function() { var a = 42; return a; })();");
 
-        enter(FunctionCallExpressionTag.class, (e1, call) -> {
+        enter(FunctionCallTag.class, (e1, call) -> {
             // fetch the target for the call (which is undefined)
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
             // get the function from the literal
-            enter(LiteralExpressionTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+            enter(LiteralTag.class).exit((e2) -> {
+                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
 
             enterDeclareTag("a");
 
             // write 42
-            enter(WriteVariableExpressionTag.class, (e2, var) -> {
-                enter(LiteralExpressionTag.class).exit();
+            enter(WriteVariableTag.class, (e2, var) -> {
+                enter(LiteralTag.class).exit();
                 var.input(42);
             }).exit();
             // return statement
-            enter(ReadVariableExpressionTag.class).exit();
+            enter(ReadVariableTag.class).exit();
         }).exit();
     }
 
@@ -144,49 +144,49 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
     public void readConst() {
         evalAllTags("(function() { const a = 42; return a; })();");
 
-        enter(FunctionCallExpressionTag.class, (e1, call) -> {
+        enter(FunctionCallTag.class, (e1, call) -> {
 
             // fetch the target for the call (which is undefined)
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
             // get the function from the literal
-            enter(LiteralExpressionTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+            enter(LiteralTag.class).exit((e2) -> {
+                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
 
             enterDeclareTag("a");
             // write 42
-            enter(WriteVariableExpressionTag.class, (e2, var) -> {
-                enter(LiteralExpressionTag.class).exit();
+            enter(WriteVariableTag.class, (e2, var) -> {
+                enter(LiteralTag.class).exit();
                 var.input(42);
             }).exit();
             // return statement
-            enter(ReadVariableExpressionTag.class).exit();
+            enter(ReadVariableTag.class).exit();
         }).exit(assertReturnValue(42));
     }
 
     @Test
     public void forOfConst() {
-        evalWithTag("for(const a of [41,42]) {};", WriteVariableExpressionTag.class);
+        evalWithTag("for(const a of [41,42]) {};", WriteVariableTag.class);
 
-        enter(WriteVariableExpressionTag.class, (e, w) -> {
+        enter(WriteVariableTag.class, (e, w) -> {
             w.input(41);
         }).exit();
-        enter(WriteVariableExpressionTag.class, (e, w) -> {
+        enter(WriteVariableTag.class, (e, w) -> {
             w.input(42);
         }).exit();
     }
 
     @Test
     public void forOfVar() {
-        evalWithTag("for(var a of [41,42]) {};", WritePropertyExpressionTag.class);
+        evalWithTag("for(var a of [41,42]) {};", WritePropertyTag.class);
 
-        enter(WritePropertyExpressionTag.class, (e, w) -> {
+        enter(WritePropertyTag.class, (e, w) -> {
             w.input(assertGlobalObjectInput);
             w.input(41);
         }).exit();
-        enter(WritePropertyExpressionTag.class, (e, w) -> {
+        enter(WritePropertyTag.class, (e, w) -> {
             w.input(assertGlobalObjectInput);
             w.input(42);
         }).exit();
@@ -194,9 +194,9 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void readThis() {
-        evalWithTag("(()=>{return this;})()", ReadVariableExpressionTag.class);
+        evalWithTag("(()=>{return this;})()", ReadVariableTag.class);
 
-        enter(ReadVariableExpressionTag.class, (e, r) -> {
+        enter(ReadVariableTag.class, (e, r) -> {
             assertAttribute(e, NAME, "this");
         }).exit();
     }

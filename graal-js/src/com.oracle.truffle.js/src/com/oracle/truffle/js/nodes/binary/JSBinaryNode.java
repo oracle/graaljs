@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -96,7 +96,7 @@ public abstract class JSBinaryNode extends JavaScriptNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == BinaryExpressionTag.class) {
+        if (tag == BinaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

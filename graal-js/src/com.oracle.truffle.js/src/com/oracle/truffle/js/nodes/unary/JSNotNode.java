@@ -53,7 +53,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBooleanNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 @NodeInfo(shortName = "!")
@@ -84,7 +84,7 @@ public abstract class JSNotNode extends JSUnaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == UnaryExpressionTag.class) {
+        if (tag == UnaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

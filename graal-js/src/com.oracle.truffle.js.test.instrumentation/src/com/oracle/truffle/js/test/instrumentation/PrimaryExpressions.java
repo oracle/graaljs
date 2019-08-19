@@ -43,35 +43,35 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 
 public class PrimaryExpressions extends FineGrainedAccessTest {
 
     @Test
     public void literalUnd() {
-        evalWithTag("x = undefined;", LiteralExpressionTag.class);
+        evalWithTag("x = undefined;", LiteralTag.class);
 
-        enter(LiteralExpressionTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralExpressionTag.Type.UndefinedLiteral.name());
+        enter(LiteralTag.class, (l) -> {
+            assertAttribute(l, TYPE, LiteralTag.Type.UndefinedLiteral.name());
         }).exit();
     }
 
     @Test
     public void literalObj() {
-        evalWithTag("x = {};", LiteralExpressionTag.class);
+        evalWithTag("x = {};", LiteralTag.class);
 
-        enter(LiteralExpressionTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralExpressionTag.Type.ObjectLiteral.name());
+        enter(LiteralTag.class, (l) -> {
+            assertAttribute(l, TYPE, LiteralTag.Type.ObjectLiteral.name());
         }).exit();
     }
 
     @Test
     public void literalArray() {
-        evalWithTag("x = [];", LiteralExpressionTag.class);
+        evalWithTag("x = [];", LiteralTag.class);
 
-        enter(LiteralExpressionTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralExpressionTag.Type.ArrayLiteral.name());
+        enter(LiteralTag.class, (l) -> {
+            assertAttribute(l, TYPE, LiteralTag.Type.ArrayLiteral.name());
         }).exit();
     }
 
@@ -79,10 +79,10 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
     public void functionExpression() {
         String src = "x = function() {}";
 
-        evalWithTag(src, LiteralExpressionTag.class);
+        evalWithTag(src, LiteralTag.class);
 
-        enter(LiteralExpressionTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+        enter(LiteralTag.class, (l) -> {
+            assertAttribute(l, TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
     }
 
@@ -91,10 +91,10 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
     public void classExpression() {
         String src = "x = class A {}";
 
-        evalWithTag(src, LiteralExpressionTag.class);
+        evalWithTag(src, LiteralTag.class);
 
-        enter(LiteralExpressionTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+        enter(LiteralTag.class, (l) -> {
+            assertAttribute(l, TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
     }
 
@@ -102,10 +102,10 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
     public void generatorExpression() {
         String src = "x = function* foo() {}";
 
-        evalWithTag(src, LiteralExpressionTag.class);
+        evalWithTag(src, LiteralTag.class);
 
-        enter(LiteralExpressionTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+        enter(LiteralTag.class, (l) -> {
+            assertAttribute(l, TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
     }
 
@@ -113,10 +113,10 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
     public void asyncFunctionExpression() {
         String src = "x = async function foo() {}";
 
-        evalWithTag(src, LiteralExpressionTag.class);
+        evalWithTag(src, LiteralTag.class);
 
-        enter(LiteralExpressionTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+        enter(LiteralTag.class, (l) -> {
+            assertAttribute(l, TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
     }
 
@@ -124,13 +124,13 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
     public void coverParentheszed() {
         String src = "x = (async function foo() {}, undefined)";
 
-        evalWithTag(src, LiteralExpressionTag.class);
+        evalWithTag(src, LiteralTag.class);
 
-        enter(LiteralExpressionTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+        enter(LiteralTag.class, (l) -> {
+            assertAttribute(l, TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
-        enter(LiteralExpressionTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralExpressionTag.Type.UndefinedLiteral.name());
+        enter(LiteralTag.class, (l) -> {
+            assertAttribute(l, TYPE, LiteralTag.Type.UndefinedLiteral.name());
         }).exit();
     }
 
@@ -138,10 +138,10 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
     public void thiz() {
         String src = "(function foo() { this.x = 3 })();";
 
-        evalWithTag(src, WritePropertyExpressionTag.class);
+        evalWithTag(src, WritePropertyTag.class);
 
         // actual test
-        enter(WritePropertyExpressionTag.class, (e, w) -> {
+        enter(WritePropertyTag.class, (e, w) -> {
             assertAttribute(e, KEY, "x");
             w.input(assertJSObjectInput);
             w.input(3);
