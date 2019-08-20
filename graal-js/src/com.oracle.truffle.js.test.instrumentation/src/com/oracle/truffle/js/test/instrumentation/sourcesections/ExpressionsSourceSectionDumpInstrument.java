@@ -83,7 +83,6 @@ public class ExpressionsSourceSectionDumpInstrument extends TruffleInstrument {
         return new ExecutionEventListener() {
             @Override
             public void onReturnValue(EventContext cx, VirtualFrame frame, Object result) {
-                System.out.println(cx.getInstrumentedSourceSection().getCharacters());
             }
 
             @Override
@@ -92,6 +91,7 @@ public class ExpressionsSourceSectionDumpInstrument extends TruffleInstrument {
 
             @Override
             public void onEnter(EventContext cx, VirtualFrame frame) {
+                System.out.println(cx.getInstrumentedSourceSection().getCharacters());
             }
         };
     }

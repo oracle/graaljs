@@ -86,8 +86,8 @@ public class IfExpressionTest extends SourceSectionInstrumentationTest {
 
         assertSourceSections(new String[]{
                         "19",
-                        "true",
                         "if (21 > 20) true; else false;",
+                        "true",
                         "42",
         });
     }

@@ -44,9 +44,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
 import org.junit.Before;
 
@@ -63,8 +66,56 @@ public class SourceSectionInstrumentationTest extends FineGrainedAccessTest {
 
     private ArrayList<CharSequence> sources = new ArrayList<>();
 
-    private void eval(SourceSectionFilter filter, String src) {
-        instrumenter.attachExecutionEventListener(filter, new ExecutionEventListener() {
+    private void initStatementInstrument(int maxEvents) {
+        SourceSectionFilter stmFilter = SourceSectionFilter.newBuilder().tagIs(StatementTag.class).includeInternal(false).build();
+        instrumenter.attachExecutionEventListener(stmFilter, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext cx, VirtualFrame frame) {
+                if (sources.size() < maxEvents) {
+                    sources.add(cx.getInstrumentedSourceSection().getCharacters());
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext cx, VirtualFrame frame, Object result) {
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext cx, VirtualFrame frame, Throwable exception) {
+            }
+        });
+    }
+
+    protected void evalStatements(String src) {
+        initStatementInstrument(Integer.MAX_VALUE);
+        context.eval("js", src);
+    }
+
+    protected void evalMaxStatementsTimeout(String src, int maxEvents, int timeout) {
+        initStatementInstrument(maxEvents);
+        context.initialize("js");
+        Timer timer = new Timer(true);
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                context.close(true);
+            }
+        }, timeout);
+        try {
+            context.eval("js", src);
+            assert false;
+        } catch (PolyglotException e) {
+            assert e.isCancelled();
+        }
+    }
+
+    protected void evalExpressions(String src) {
+        SourceSectionFilter expFilter = SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).includeInternal(false).build();
+        instrumenter.attachExecutionEventListener(expFilter, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext cx, VirtualFrame frame) {
+            }
+
             @Override
             public void onReturnValue(EventContext cx, VirtualFrame frame, Object result) {
                 sources.add(cx.getInstrumentedSourceSection().getCharacters());
@@ -73,22 +124,8 @@ public class SourceSectionInstrumentationTest extends FineGrainedAccessTest {
             @Override
             public void onReturnExceptional(EventContext cx, VirtualFrame frame, Throwable exception) {
             }
-
-            @Override
-            public void onEnter(EventContext cx, VirtualFrame frame) {
-            }
         });
         context.eval("js", src);
-    }
-
-    protected void evalStatements(String src) {
-        SourceSectionFilter stmFilter = SourceSectionFilter.newBuilder().tagIs(StatementTag.class).includeInternal(false).build();
-        eval(stmFilter, src);
-    }
-
-    protected void evalExpressions(String src) {
-        SourceSectionFilter expFilter = SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).includeInternal(false).build();
-        eval(expFilter, src);
     }
 
     public final void assertSourceSections(String[] expected) {

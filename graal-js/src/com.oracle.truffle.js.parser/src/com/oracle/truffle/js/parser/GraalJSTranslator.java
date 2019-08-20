@@ -1845,7 +1845,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return createBlock(init, firstTempVar.createWriteNode(factory.createConstantBoolean(true)), newFor);
         }
         JavaScriptNode whileDo = factory.createDesugaredFor(test, createBlock(wrappedBody, modify));
-        return createBlock(init, ensureHasSourceSection(whileDo, forNode));
+        if (forNode.getTest() == null) {
+            tagStatement(test, forNode);
+        } else {
+            ensureHasSourceSection(whileDo, forNode);
+        }
+        return createBlock(init, whileDo);
     }
 
     private JavaScriptNode desugarForIn(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
