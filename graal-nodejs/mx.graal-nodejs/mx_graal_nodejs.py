@@ -39,6 +39,8 @@ _suite = mx.suite('graal-nodejs')
 _currentOs = mx.get_os()
 _currentArch = mx.get_arch()
 _jdkHome = None
+_config_files = [join(_suite.dir, f) for f in ('configure', 'configure.py')]
+_generated_config_files = [join(_suite.dir, f) for f in ('config.gypi', 'config.status', 'configure.pyc', 'config.mk', 'icu_config.gypi')]
 
 class GraalNodeJsTags:
     allTests = 'all'
@@ -116,7 +118,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
 
         if _currentOs == 'windows':
-            _mxrun([join('.', 'vcbuild.bat'),
+            _mxrun([join(_suite.dir, 'vcbuild.bat'),
                     'projgen',
                     'no-cctest',
                     'noetw',
@@ -125,13 +127,18 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                     ] + debug + shared_library,
                    cwd=_suite.dir, verbose=True)
         else:
-            _mxrun([join('.', 'configure'),
+            newest_config_file_ts = GraalNodeJsBuildTask._get_newest_ts(_config_files, fatalIfMissing=True)
+            newest_generated_config_file_ts = GraalNodeJsBuildTask._get_newest_ts(_generated_config_files, fatalIfMissing=False)
+            # Lazily generate config files only if `configure` and `configure.py` are older than the files they generate.
+            # If we don't do this, the `Makefile` always considers `config.gypi` out of date, triggering a second, unnecessary configure.
+            lazy_generator = ['--lazy-generator'] if newest_generated_config_file_ts.isNewerThan(newest_config_file_ts) else []
+
+            _mxrun([join(_suite.dir, 'configure'),
                     '--partly-static',
                     '--without-dtrace',
                     '--without-snapshot',
-                    '--lazy-generator',
                     '--java-home', _getJdkHome()
-                    ] + debug + shared_library,
+                    ] + debug + shared_library + lazy_generator,
                    cwd=_suite.dir, verbose=True)
 
             verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
@@ -164,17 +171,17 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                 mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
 
     @staticmethod
-    def _get_newest_ts(results, fatalIfMissing=False):
+    def _get_newest_ts(files, fatalIfMissing=False):
         paths = []
-        for result in results:
-            if not exists(result):
-                mx.abort_or_warn("Result file '{}' does not exist".format(result), fatalIfMissing)
-                return TimeStampFile(result)
-            if isdir(result):
-                for root, _, files in os.walk(result):
-                    paths += [join(root, f) for f in files]
+        for f in files:
+            if not exists(f):
+                mx.abort_or_warn("Result file '{}' does not exist".format(f), fatalIfMissing)
+                return TimeStampFile(f)
+            if isdir(f):
+                for _root, _, _files in os.walk(f):
+                    paths += [join(_root, _f) for _f in _files]
             else:
-                paths.append(result)
+                paths.append(f)
         return TimeStampFile.newest(paths)
 
 
