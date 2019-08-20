@@ -26,7 +26,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, shutil, tarfile, tempfile
+import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, tarfile, tempfile
 
 import mx_graal_nodejs_benchmark
 
@@ -66,7 +66,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                 npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir, '--build-from-source', 'microtime'], cwd=tmpdir)
                 node(['-e', 'print(require("microtime").now());'], cwd=tmpdir)
             finally:
-                shutil.rmtree(tmpdir)
+                mx.rmtree(tmpdir)
 
     with Task('JniProfilerTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.jniProfilerTests]) as t:
         if t:
@@ -169,6 +169,9 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                     ], cwd=_suite.dir)
             else:
                 mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
+            for f in _generated_config_files:
+                if exists(f):
+                    mx.rmtree(f)
 
     @staticmethod
     def _get_newest_ts(files, fatalIfMissing=False):
