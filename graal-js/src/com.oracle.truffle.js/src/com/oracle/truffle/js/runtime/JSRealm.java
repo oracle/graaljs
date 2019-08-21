@@ -203,7 +203,6 @@ public class JSRealm {
     private final DynamicObject callSitePrototype;
 
     private final Shape initialRegExpPrototypeShape;
-    private final Shape initialUserObjectShape;
     private final JSObjectFactory.RealmData objectFactories;
 
     // ES6:
@@ -372,8 +371,6 @@ public class JSRealm {
         JSObjectUtil.putFunctionsFromContainer(this, this.objectPrototype, JSUserObject.PROTOTYPE_NAME);
         this.functionConstructor = JSFunction.createFunctionConstructor(this);
         JSFunction.fillFunctionPrototype(this);
-
-        this.initialUserObjectShape = JSObjectUtil.getProtoChildShape(this.objectPrototype, JSUserObject.INSTANCE, context);
 
         JSConstructor ctor;
         ctor = JSArray.createConstructor(this);
@@ -794,10 +791,6 @@ public class JSRealm {
 
     public final DynamicObject getWeakSetPrototype() {
         return weakSetPrototype;
-    }
-
-    public final Shape getInitialUserObjectShape() {
-        return initialUserObjectShape;
     }
 
     public final Shape getInitialRegExpPrototypeShape() {
