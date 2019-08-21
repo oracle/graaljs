@@ -127,6 +127,17 @@ public class AssignmentExpressions extends FineGrainedAccessTest {
         }).exit(assertReturnValue(43));
     }
 
+    @Test
+    public void assignExpr() {
+        evalWithTags("var a = 42;", new Class[]{WritePropertyExpressionTag.class, LiteralExpressionTag.class});
+
+        enter(WritePropertyExpressionTag.class, (e, write) -> {
+            write.input(assertGlobalObjectInput);
+            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            write.input(42);
+        }).exit();
+    }
+
     private void assertDesugaredOperation(String operation, String desugaredOperator, int initial, int operand, int result) {
         evalAllTags("var a = " + initial + "; a " + operation + " " + operand + ";");
 
