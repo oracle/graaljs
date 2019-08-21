@@ -26,19 +26,21 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, shutil, tarfile, tempfile
+import mx, mx_gate, mx_subst, mx_sdk, mx_graal_js, os, tarfile, tempfile
 
 import mx_graal_nodejs_benchmark
 
-from mx import BinarySuite
+from mx import BinarySuite, TimeStampFile
 from mx_gate import Task
 from argparse import ArgumentParser
-from os.path import exists, join
+from os.path import exists, join, isdir
 
 _suite = mx.suite('graal-nodejs')
 _currentOs = mx.get_os()
 _currentArch = mx.get_arch()
 _jdkHome = None
+_config_files = [join(_suite.dir, f) for f in ('configure', 'configure.py')]
+_generated_config_files = [join(_suite.dir, f) for f in ('config.gypi', 'config.status', 'configure.pyc', 'config.mk', 'icu_config.gypi')]
 
 class GraalNodeJsTags:
     allTests = 'all'
@@ -64,7 +66,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                 npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir, '--build-from-source', 'microtime'], cwd=tmpdir)
                 node(['-e', 'print(require("microtime").now());'], cwd=tmpdir)
             finally:
-                shutil.rmtree(tmpdir)
+                mx.rmtree(tmpdir)
 
     with Task('JniProfilerTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.jniProfilerTests]) as t:
         if t:
@@ -82,38 +84,8 @@ def python_cmd():
     else:
         return join(_suite.mxDir, 'python2', 'python')
 
-def _build(args, debug, shared_library, parallelism, debug_mode, output_dir):
-    if _currentOs == 'windows':
-        _mxrun([join('.', 'vcbuild.bat'),
-                'projgen',
-                'no-cctest',
-                'noetw',
-                'nosnapshot',
-                'java-home', _getJdkHome()
-            ] + debug + shared_library,
-            cwd=_suite.dir, verbose=True)
-    else:
-        _mxrun([join('.', 'configure'),
-                '--partly-static',
-                '--without-dtrace',
-                '--without-snapshot',
-                '--java-home', _getJdkHome()
-            ] + debug + shared_library,
-            cwd=_suite.dir, verbose=True)
 
-        verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
-        _mxrun([mx.gmake_cmd(), '-j%d' % parallelism, verbose], cwd=_suite.dir, verbose=True)
-
-    # put headers for native modules into out/headers
-    _setEnvVar('HEADERS_ONLY', '1')
-    out = None if mx.get_opts().verbose else open(os.devnull, 'w')
-    _mxrun([python_cmd(), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out)
-
-    if _currentOs == 'darwin':
-        nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
-        _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), nodePath], verbose=True)
-
-class GraalNodeJsProject(mx.NativeProject):
+class GraalNodeJsProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, results, output, **args):
         self.suite = suite
         self.name = name
@@ -129,23 +101,64 @@ class GraalNodeJsProject(mx.NativeProject):
                 mx.warn('GraalNodeJsProject %s in %s did not find %s' % (self.name, self.suite.name, result))
         return res
 
+
 class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def __init__(self, project, args):
         mx.NativeBuildTask.__init__(self, args, project)
 
     def build(self):
+        pre_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=False)
+
         pythonPath = join(_suite.mxDir, 'python2')
         prevPATH = os.environ['PATH']
         _setEnvVar('PATH', "%s:%s" % (pythonPath, prevPATH))
 
-        debugMode = hasattr(self.args, 'debug') and self.args.debug
-        debug = ['--debug'] if debugMode else []
-        sharedlibrary = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
+        debug_mode = hasattr(self.args, 'debug') and self.args.debug
+        debug = ['--debug'] if debug_mode else []
+        shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
 
-        _build(args=[], debug=debug, shared_library=sharedlibrary, parallelism=self.parallelism, debug_mode=debugMode, output_dir=self.subject.output)
+        if _currentOs == 'windows':
+            _mxrun([join(_suite.dir, 'vcbuild.bat'),
+                    'projgen',
+                    'no-cctest',
+                    'noetw',
+                    'nosnapshot',
+                    'java-home', _getJdkHome()
+                    ] + debug + shared_library,
+                   cwd=_suite.dir, verbose=True)
+        else:
+            newest_config_file_ts = GraalNodeJsBuildTask._get_newest_ts(_config_files, fatalIfMissing=True)
+            newest_generated_config_file_ts = GraalNodeJsBuildTask._get_newest_ts(_generated_config_files, fatalIfMissing=False)
+            # Lazily generate config files only if `configure` and `configure.py` are older than the files they generate.
+            # If we don't do this, the `Makefile` always considers `config.gypi` out of date, triggering a second, unnecessary configure.
+            lazy_generator = ['--lazy-generator'] if newest_generated_config_file_ts.isNewerThan(newest_config_file_ts) else []
+
+            _mxrun([join(_suite.dir, 'configure'),
+                    '--partly-static',
+                    '--without-dtrace',
+                    '--without-snapshot',
+                    '--java-home', _getJdkHome()
+                    ] + debug + shared_library + lazy_generator,
+                   cwd=_suite.dir, verbose=True)
+
+            verbose = 'V={}'.format('1' if mx.get_opts().verbose else '')
+            _mxrun([mx.gmake_cmd(), '-j%d' % self.parallelism, verbose], cwd=_suite.dir, verbose=True)
+
+        # put headers for native modules into out/headers
+        _setEnvVar('HEADERS_ONLY', '1')
+        out = None if mx.get_opts().verbose else open(os.devnull, 'w')
+        _mxrun([python_cmd(), join('tools', 'install.py'), 'install', join('out', 'headers'), '/'], out=out)
+
+        post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
+        mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
+        built = post_ts.isNewerThan(pre_ts)
+        if built and _currentOs == 'darwin':
+            nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
+            _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), nodePath], verbose=True)
+        return built
 
     def needsBuild(self, newestInput):
-        return (True, None) # Let make decide
+        return (True, None)  # Always try to build
 
     def clean(self, forBuild=False):
         if not forBuild:
@@ -156,6 +169,24 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                     ], cwd=_suite.dir)
             else:
                 mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
+            for f in _generated_config_files:
+                if exists(f):
+                    mx.rmtree(f)
+
+    @staticmethod
+    def _get_newest_ts(files, fatalIfMissing=False):
+        paths = []
+        for f in files:
+            if not exists(f):
+                mx.abort_or_warn("Result file '{}' does not exist".format(f), fatalIfMissing)
+                return TimeStampFile(f)
+            if isdir(f):
+                for _root, _, _files in os.walk(f):
+                    paths += [join(_root, _f) for _f in _files]
+            else:
+                paths.append(f)
+        return TimeStampFile.newest(paths)
+
 
 class GraalNodeJsArchiveProject(mx.ArchivableProject):
     def __init__(self, suite, name, deps, workingSets, theLicense, **args):

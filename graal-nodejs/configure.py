@@ -598,6 +598,11 @@ parser.add_option('--verbose',
     default=True,
     help='get more output from this script')
 
+parser.add_option('--lazy-generator',
+    action='store_true',
+    dest='lazy_generator',
+    help='generate files only if they differ from the existing ones')
+
 # Create compile_commands.json in out/Debug and out/Release.
 parser.add_option('-C',
     action='store_true',
@@ -1300,6 +1305,11 @@ def configure_static(o):
 
 
 def write(filename, data):
+  if options.lazy_generator and os.path.exists(filename):
+    with open(filename, 'r') as f:
+      if data == f.read():
+        print_verbose("%s is already up-to-date" % filename)
+        return
   print_verbose('creating %s' % filename)
   with open(filename, 'w+') as f:
     f.write(data)
