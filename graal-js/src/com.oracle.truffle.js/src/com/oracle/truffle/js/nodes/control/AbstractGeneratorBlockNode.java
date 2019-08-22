@@ -67,6 +67,44 @@ public abstract class AbstractGeneratorBlockNode extends AbstractBlockNode {
     }
 
     @Override
+    public void executeVoid(VirtualFrame frame) {
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        block.executeVoid(frame, index);
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        return block.executeGeneric(frame, index);
+    }
+
+    @Override
+    public void executeVoid(VirtualFrame frame, JavaScriptNode node, int index, int startIndex) {
+        if (index < startIndex) {
+            return;
+        }
+        try {
+            node.executeVoid(frame);
+        } catch (YieldException e) {
+            setState(frame, index);
+            throw e;
+        }
+    }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame, JavaScriptNode node, int index, int startIndex) {
+        assert index == getStatements().length - 1;
+        try {
+            return node.execute(frame);
+        } catch (YieldException e) {
+            setState(frame, index);
+            throw e;
+        }
+    }
+
+    @Override
     public final AbstractBlockNode toGeneratorNode(JavaScriptNode readState, WriteNode writeState) {
         throw Errors.unsupported("toGeneratorNode");
     }

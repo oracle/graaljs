@@ -43,7 +43,9 @@ package com.oracle.truffle.js.nodes.control;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
+import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -52,19 +54,39 @@ import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
 
 @NodeInfo(cost = NodeCost.NONE)
-public abstract class AbstractBlockNode extends StatementNode implements SequenceNode {
-    @Children protected final JavaScriptNode[] statements;
+public abstract class AbstractBlockNode extends StatementNode implements SequenceNode, BlockNode.ElementExecutor<JavaScriptNode> {
+    @Child protected BlockNode<JavaScriptNode> block;
 
     protected AbstractBlockNode(JavaScriptNode[] statements) {
-        this.statements = statements;
+        this.block = BlockNode.create(statements, this);
     }
 
     @Override
     public final JavaScriptNode[] getStatements() {
-        return statements;
+        return block.getElements();
     }
 
     public abstract AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode);
+
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        block.executeVoid(frame, BlockNode.NO_ARGUMENT);
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        return block.executeGeneric(frame, BlockNode.NO_ARGUMENT);
+    }
+
+    @Override
+    public void executeVoid(VirtualFrame frame, JavaScriptNode node, int index, int argument) {
+        node.executeVoid(frame);
+    }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame, JavaScriptNode node, int index, int argument) {
+        return node.execute(frame);
+    }
 
     /**
      * Filter out empty statements, unwrap void nodes, and inline block nodes.

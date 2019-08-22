@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -58,14 +57,6 @@ public final class VoidBlockNode extends AbstractBlockNode implements SequenceNo
         return filterStatements(statements, false);
     }
 
-    @ExplodeLoop
-    @Override
-    public void executeVoid(VirtualFrame frame) {
-        for (JavaScriptNode statement : statements) {
-            statement.executeVoid(frame);
-        }
-    }
-
     @Override
     public Object execute(VirtualFrame frame) {
         executeVoid(frame);
@@ -74,7 +65,7 @@ public final class VoidBlockNode extends AbstractBlockNode implements SequenceNo
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new VoidBlockNode(cloneUninitialized(statements));
+        return new VoidBlockNode(cloneUninitialized(getStatements()));
     }
 
     @Override
@@ -85,7 +76,7 @@ public final class VoidBlockNode extends AbstractBlockNode implements SequenceNo
 
     @Override
     public AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        return new GeneratorVoidBlockNode(statements, readStateNode, writeStateNode);
+        return new GeneratorVoidBlockNode(getStatements(), readStateNode, writeStateNode);
     }
 }
 
@@ -97,24 +88,12 @@ final class GeneratorVoidBlockNode extends AbstractGeneratorBlockNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        int index = getStateAndReset(frame);
-        JavaScriptNode[] stmts = statements;
-        for (int i = 0; i < stmts.length; i++) {
-            if (i < index) {
-                continue;
-            }
-            try {
-                stmts[i].executeVoid(frame);
-            } catch (YieldException e) {
-                setState(frame, i);
-                throw e;
-            }
-        }
+        executeVoid(frame);
         return EMPTY;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new GeneratorVoidBlockNode(cloneUninitialized(statements), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
+        return new GeneratorVoidBlockNode(cloneUninitialized(getStatements()), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
     }
 }
