@@ -303,7 +303,7 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
 
     def clean(self, forBuild=False):
         outputDir = self.subject.output_dir()
-        if os.path.exists(outputDir):
+        if not forBuild and os.path.exists(outputDir):
             mx.rmtree(outputDir)
 
 def node_gyp(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
