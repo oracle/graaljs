@@ -143,7 +143,11 @@ goto next-arg
 
 :args-done
 
-if "%*"=="lint" (
+:: Remove possible quotes from command line arguments (parameters) before checking if they match "lint"
+set "parameters=%*"
+set "parameters_without_quotes=%parameters:"=%"
+
+if "%parameters_without_quotes%"=="lint" (
   goto lint-cpp
 )
 
