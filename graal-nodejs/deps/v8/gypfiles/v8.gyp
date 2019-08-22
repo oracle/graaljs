@@ -458,6 +458,7 @@
         'conditions' : [
           ['OS=="linux" or OS=="solaris"', {
             'libraries': [
+              '-L<(java_home)/lib',
               "-Wl,-rpath='$$ORIGIN/../../../../lib/'",
               "-Wl,-rpath='$$ORIGIN/../../../../jre/lib/'",
               "-Wl,-rpath='$$ORIGIN/../../../../jre/languages/R/lib/'",
@@ -479,7 +480,7 @@
           }],
           ['OS=="mac"', {
             'libraries': [
-              '-L<(java_home)/jre/lib/server -L<(java_home)/jre/lib',
+              '-L<(java_home)/jre/lib/server -L<(java_home)/jre/lib -L<(java_home)/lib',
               "-Wl,-rpath,'@loader_path/../../../../lib/'",
               "-Wl,-rpath,'@loader_path/../../../../jre/lib/'",
               "-Wl,-rpath,'@loader_path/../../../../jre/languages/R/lib/'",
