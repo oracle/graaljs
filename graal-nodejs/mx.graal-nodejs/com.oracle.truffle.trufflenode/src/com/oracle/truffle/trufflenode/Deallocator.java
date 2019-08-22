@@ -52,11 +52,12 @@ import java.util.Set;
 
 /**
  * A class responsible for the deallocation of the external memory segments associated with Java
- * objects.A direct {@code ByteBuffer} created by a JNI call is built on top of an existing memory
+ * objects. A direct {@code ByteBuffer} created by a JNI call is built on top of an existing memory
  * segment whose life-cycle may be associated with the created buffer.
  */
 final class Deallocator {
 
+    private static final boolean IS_JAVA8 = "1.8".equals(System.getProperty("java.specification.version"));
     /**
      * Determines whether {@code sun.misc.Cleaner} can be used for deallocation.
      */
@@ -73,7 +74,7 @@ final class Deallocator {
     static {
         Class<?> clazz;
         Field field;
-        if (!JSTruffleOptions.SubstrateVM && USE_CLEANER) {
+        if (!JSTruffleOptions.SubstrateVM && IS_JAVA8 && USE_CLEANER) {
             try {
                 clazz = Class.forName("java.nio.DirectByteBuffer");
                 field = clazz.getDeclaredField("cleaner");
