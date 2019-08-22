@@ -571,8 +571,14 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
 
     // Externalization support
     jclass directByteBufferClass = env->GetObjectClass(shared_buffer);
-    cleanerField_ = env->GetFieldID(directByteBufferClass, "cleaner", "Lsun/misc/Cleaner;");
-    if (cleanerField_ == NULL) EXIT_WITH_MESSAGE(env, "DirectByteBuffer.cleaner field not found!\n")
+    cleanerField_ = env->GetFieldID(directByteBufferClass, "cleaner", "Lsun/misc/Cleaner;"); // JDK 8
+    if (cleanerField_ == NULL) {
+        env->ExceptionClear();
+        cleanerField_ = env->GetFieldID(directByteBufferClass, "cleaner", "Ljdk/internal/ref/Cleaner;"); // JDK 9+
+    }
+    if (cleanerField_ == NULL) {
+        EXIT_WITH_MESSAGE(env, "DirectByteBuffer.cleaner field not found!\n")
+    }
     jobject cleaner = env->GetObjectField(shared_buffer, cleanerField_);
     jclass cleanerClass = env->GetObjectClass(cleaner);
     thunkField_ = env->GetFieldID(cleanerClass, "thunk", "Ljava/lang/Runnable;");
