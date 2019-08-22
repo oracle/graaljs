@@ -44,7 +44,6 @@ suite = {
   "projects" : {
     "trufflenodeNative" : {
       "dependencies" : [
-        "graal-js:GRAALJS",
         "coremodules",
       ],
       "class" : "GraalNodeJsProject",
