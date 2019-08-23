@@ -535,8 +535,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     truffle_jars=['graal-nodejs:TRUFFLENODE'],
     support_distributions=['graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
     provided_executables=[
-        join('bin', 'node'),
-        join('bin', 'npm'),
+        'bin/<exe:node>',
+        'bin/<exe:npm>',
     ],
     polyglot_lib_build_args=[
         "-H:+ReportExceptionStackTraces",
