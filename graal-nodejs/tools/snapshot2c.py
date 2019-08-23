@@ -43,6 +43,7 @@
 # into a C++ header file. The resulting snapshots are thus embedded in the resulting
 # Node.js binary.
 
+import os
 import re
 import sys
 
@@ -124,11 +125,23 @@ def JS2C(modules, target):
     })
 
   # Emit result
-  with open(target, "w") as output:
-    output.write(HEADER_TEMPLATE % {
-      'data_lines': "\n".join(data_lines),
-      'record_lines': "\n".join(record_lines)
-    })
+  if os.path.exists(target):
+    with open(target, "r") as t:
+      old_content = t.read()
+  else:
+    old_content = ''
+
+  new_content = HEADER_TEMPLATE % {
+    'data_lines': "\n".join(data_lines),
+    'record_lines': "\n".join(record_lines)
+  }
+
+  if new_content != old_content:
+    print 'creating %s' % target
+    with open(target, "w") as output:
+      output.write(new_content)
+  else:
+    print '%s is already up-to-date' % target
 
 
 def main():
