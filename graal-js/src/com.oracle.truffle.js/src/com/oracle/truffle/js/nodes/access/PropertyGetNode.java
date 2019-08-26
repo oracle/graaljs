@@ -1393,7 +1393,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             CharSequence charSequence = JSString.getCharSequence(receiverCheck.getStore(thisObj));
-            return charSequenceClassProfile.profile(charSequence).length();
+            return JSRuntime.length(charSequenceClassProfile.profile(charSequence));
         }
 
         @Override
