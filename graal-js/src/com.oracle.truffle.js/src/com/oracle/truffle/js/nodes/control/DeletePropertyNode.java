@@ -68,7 +68,7 @@ import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -109,7 +109,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == UnaryExpressionTag.class) {
+        if (tag == UnaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -123,7 +123,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializationNeeded() && materializedTags.contains(UnaryExpressionTag.class)) {
+        if (materializationNeeded() && materializedTags.contains(UnaryOperationTag.class)) {
             JavaScriptNode key = cloneUninitialized(propertyNode);
             JavaScriptNode target = cloneUninitialized(targetNode);
             transferSourceSectionAddExpressionTag(this, key);

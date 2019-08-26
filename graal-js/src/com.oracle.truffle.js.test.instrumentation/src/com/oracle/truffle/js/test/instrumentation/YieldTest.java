@@ -42,8 +42,8 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationTag;
 
 public class YieldTest extends FineGrainedAccessTest {
 
@@ -59,9 +59,9 @@ public class YieldTest extends FineGrainedAccessTest {
                         "};" +
                         "a = boom();" +
                         "a.next();" +
-                        "a.next(42);", ObjectAllocationExpressionTag.class);
+                        "a.next(42);", ObjectAllocationTag.class);
 
-        enter(ObjectAllocationExpressionTag.class, (e, call) -> {
+        enter(ObjectAllocationTag.class, (e, call) -> {
             call.input(assertJSFunctionInputWithName("Noop"));
             call.input(42);
         }).exit();
@@ -76,23 +76,23 @@ public class YieldTest extends FineGrainedAccessTest {
                         "};" +
                         "a = boom();" +
                         "a.next();" +
-                        "a.next(42);", FunctionCallExpressionTag.class);
+                        "a.next(42);", FunctionCallTag.class);
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertUndefinedInput);
             call.input(assertJSFunctionInputWithName("boom"));
         }).exit();
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInputWithName("next"));
         }).exit();
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInputWithName("next"));
             call.input(42);
 
-            enter(FunctionCallExpressionTag.class, (e1, call1) -> {
+            enter(FunctionCallTag.class, (e1, call1) -> {
                 call.input(assertUndefinedInput);
                 call.input(assertJSFunctionInputWithName("Noop"));
                 call.input(42);
@@ -109,23 +109,23 @@ public class YieldTest extends FineGrainedAccessTest {
                         "};" +
                         "a = boom();" +
                         "a.next();" +
-                        "a.next(42);", FunctionCallExpressionTag.class);
+                        "a.next(42);", FunctionCallTag.class);
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertUndefinedInput);
             call.input(assertJSFunctionInputWithName("boom"));
         }).exit();
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInputWithName("next"));
         }).exit();
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInputWithName("next"));
             call.input(42);
 
-            enter(FunctionCallExpressionTag.class, (e1, call1) -> {
+            enter(FunctionCallTag.class, (e1, call1) -> {
                 call.input(assertJSObjectInput);
                 call.input(assertJSFunctionInputWithName("fun"));
                 call.input(42);

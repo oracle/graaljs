@@ -58,8 +58,8 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
@@ -276,8 +276,8 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ReadVariableExpressionTag.class) ||
-                        materializedTags.contains(WriteVariableExpressionTag.class)) {
+        if (materializedTags.contains(ReadVariableTag.class) ||
+                        materializedTags.contains(WriteVariableTag.class)) {
             return new LocalVarPostfixIncMaterializedNode(this);
         } else {
             return this;
@@ -404,8 +404,8 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ReadVariableExpressionTag.class) ||
-                        materializedTags.contains(WriteVariableExpressionTag.class)) {
+        if (materializedTags.contains(ReadVariableTag.class) ||
+                        materializedTags.contains(WriteVariableTag.class)) {
             return new LocalVarPrefixIncMaterializedNode(this);
         } else {
             return this;

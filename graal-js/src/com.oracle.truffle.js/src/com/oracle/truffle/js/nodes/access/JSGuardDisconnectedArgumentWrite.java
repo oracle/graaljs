@@ -50,7 +50,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 
 public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode implements WriteNode {
@@ -75,7 +75,7 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == WriteVariableExpressionTag.class) {
+        if (tag == WriteVariableTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

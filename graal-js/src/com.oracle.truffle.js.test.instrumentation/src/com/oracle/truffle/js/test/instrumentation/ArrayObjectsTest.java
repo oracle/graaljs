@@ -45,8 +45,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationTag;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -57,9 +57,9 @@ public class ArrayObjectsTest extends FineGrainedAccessTest {
     public void arrayTest1() {
         String src = "var a = new Array(42);";
 
-        evalWithTag(src, ObjectAllocationExpressionTag.class);
+        evalWithTag(src, ObjectAllocationTag.class);
 
-        enter(ObjectAllocationExpressionTag.class, (e, call) -> {
+        enter(ObjectAllocationTag.class, (e, call) -> {
             assertAttribute(e, "isNew", true);
             assertAttribute(e, "isInvoke", false);
             // Allocations have only one input: constructor
@@ -76,9 +76,9 @@ public class ArrayObjectsTest extends FineGrainedAccessTest {
     public void arrayTest2() {
         String src = "var a = Array(42);";
 
-        evalWithTag(src, FunctionCallExpressionTag.class);
+        evalWithTag(src, FunctionCallTag.class);
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             assertAttribute(e, "isNew", false);
             assertAttribute(e, "isInvoke", false);
             call.input(assertUndefinedInput);
@@ -95,9 +95,9 @@ public class ArrayObjectsTest extends FineGrainedAccessTest {
     public void arrayTest3() {
         String src = "var a = [1,2,3]; a.push(42);";
 
-        evalWithTag(src, FunctionCallExpressionTag.class);
+        evalWithTag(src, FunctionCallTag.class);
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             assertAttribute(e, "isNew", false);
             assertAttribute(e, "isInvoke", true);
             call.input(assertJSArrayInput);
@@ -117,9 +117,9 @@ public class ArrayObjectsTest extends FineGrainedAccessTest {
     public void arrayTest4() {
         String src = "var a = [1,2,3]; a.push(42,41,40);";
 
-        evalWithTag(src, FunctionCallExpressionTag.class);
+        evalWithTag(src, FunctionCallTag.class);
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             assertAttribute(e, "isNew", false);
             assertAttribute(e, "isInvoke", true);
             call.input(assertJSArrayInput);

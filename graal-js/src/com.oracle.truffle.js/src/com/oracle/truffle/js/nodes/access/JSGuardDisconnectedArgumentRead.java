@@ -51,7 +51,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -75,7 +75,7 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ReadVariableExpressionTag.class) {
+        if (tag == ReadVariableTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

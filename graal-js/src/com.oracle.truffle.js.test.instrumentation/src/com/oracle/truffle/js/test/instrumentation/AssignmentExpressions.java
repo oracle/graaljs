@@ -42,13 +42,13 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag.Type;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag.Type;
 
 public class AssignmentExpressions extends FineGrainedAccessTest {
 
@@ -97,30 +97,30 @@ public class AssignmentExpressions extends FineGrainedAccessTest {
         evalAllTags("var a = [42]; a[0] += 1;");
 
         // var a = [42];
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
             write.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class, (e2) -> {
+            enter(LiteralTag.class, (e2) -> {
                 assertAttribute(e2, TYPE, Type.ArrayLiteral.name());
             }).exit();
             write.input(assertJSArrayInput);
         }).exit();
 
-        enter(WriteElementExpressionTag.class, (e, write) -> {
-            enter(ReadPropertyExpressionTag.class).input().exit();
+        enter(WriteElementTag.class, (e, write) -> {
+            enter(ReadPropertyTag.class).input().exit();
             write.input(assertJSArrayInput);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(0));
+            enter(LiteralTag.class).exit(assertReturnValue(0));
             write.input(0);
-            enter(BinaryExpressionTag.class, (e1, bin) -> {
+            enter(BinaryOperationTag.class, (e1, bin) -> {
                 assertAttribute(e1, "operator", "+");
 
-                enter(ReadElementExpressionTag.class, (e2, p) -> {
+                enter(ReadElementTag.class, (e2, p) -> {
                     p.input(assertJSArrayInput);
                     p.input(0);
                 }).exit();
                 bin.input(42);
 
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(1));
+                enter(LiteralTag.class).exit(assertReturnValue(1));
                 bin.input(1);
             }).exit(assertReturnValue(43));
             write.input(43);
@@ -129,11 +129,11 @@ public class AssignmentExpressions extends FineGrainedAccessTest {
 
     @Test
     public void assignExpr() {
-        evalWithTags("var a = 42;", new Class[]{WritePropertyExpressionTag.class, LiteralExpressionTag.class});
+        evalWithTags("var a = 42;", new Class[]{WritePropertyTag.class, LiteralTag.class});
 
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             write.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class).exit(assertReturnValue(42));
             write.input(42);
         }).exit();
     }
@@ -144,19 +144,19 @@ public class AssignmentExpressions extends FineGrainedAccessTest {
         assertGlobalVarDeclaration("a", initial);
 
         // '+=' operation de-sugared to e.g. 'a = a + 3';
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
             write.input(assertGlobalObjectInput);
-            enter(BinaryExpressionTag.class, (e1, bin) -> {
+            enter(BinaryOperationTag.class, (e1, bin) -> {
                 assertAttribute(e1, "operator", desugaredOperator);
 
-                enter(ReadPropertyExpressionTag.class, (e2, p) -> {
+                enter(ReadPropertyTag.class, (e2, p) -> {
                     assertAttribute(e2, KEY, "a");
                     p.input(assertGlobalObjectInput);
                 }).exit();
                 bin.input(initial);
 
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(operand));
+                enter(LiteralTag.class).exit(assertReturnValue(operand));
                 bin.input(operand);
             }).exit(assertReturnValue(result));
             write.input(result);

@@ -53,17 +53,17 @@ public final class JSTags {
     }
 
     public static final Class<?>[] ALL = new Class[]{
-                    ObjectAllocationExpressionTag.class,
-                    BinaryExpressionTag.class,
-                    UnaryExpressionTag.class,
-                    WriteVariableExpressionTag.class,
-                    ReadElementExpressionTag.class,
-                    WriteElementExpressionTag.class,
-                    ReadPropertyExpressionTag.class,
-                    WritePropertyExpressionTag.class,
-                    ReadVariableExpressionTag.class,
-                    LiteralExpressionTag.class,
-                    FunctionCallExpressionTag.class,
+                    ObjectAllocationTag.class,
+                    BinaryOperationTag.class,
+                    UnaryOperationTag.class,
+                    WriteVariableTag.class,
+                    ReadElementTag.class,
+                    WriteElementTag.class,
+                    ReadPropertyTag.class,
+                    WritePropertyTag.class,
+                    ReadVariableTag.class,
+                    LiteralTag.class,
+                    FunctionCallTag.class,
                     BuiltinRootTag.class,
                     EvalCallTag.class,
                     ControlFlowRootTag.class,
@@ -72,10 +72,10 @@ public final class JSTags {
                     DeclareTag.class,
     };
 
-    // ##### ECMA218 12.x - JavaScript Expressions
+    // ##### ECMAScript Language Expressions
 
     /**
-     * ECMA2018 12.3.4 Function Calls.
+     * Function Calls.
      *
      * Marks all code locations that perform function calls.
      * <p>
@@ -96,14 +96,14 @@ public final class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("FunctionCallExpression")
-    public static final class FunctionCallExpressionTag extends Tag {
-        private FunctionCallExpressionTag() {
+    @Tag.Identifier("FunctionCall")
+    public static final class FunctionCallTag extends Tag {
+        private FunctionCallTag() {
         }
     }
 
     /**
-     * ECMA2018 12.3.3 The <code>new</code> operator and ECMA2018 12.2.4 literal allocations.
+     * The <code>new</code> operator and literal allocations.
      *
      * Marks all code locations that allocate objects using either the <code>new</code> operator, or
      * Object and Array literals.
@@ -116,14 +116,14 @@ public final class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("ObjectAllocationExpression")
-    public static final class ObjectAllocationExpressionTag extends Tag {
-        private ObjectAllocationExpressionTag() {
+    @Tag.Identifier("ObjectAllocation")
+    public static final class ObjectAllocationTag extends Tag {
+        private ObjectAllocationTag() {
         }
     }
 
     /**
-     * ECMA2018 12.2.4 Literals.
+     * Literals.
      *
      * Marks all code locations corresponding to literal expressions.
      * <p>
@@ -144,8 +144,8 @@ public final class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("LiteralExpression")
-    public static final class LiteralExpressionTag extends Tag {
+    @Tag.Identifier("Literal")
+    public static final class LiteralTag extends Tag {
         public enum Type {
             ObjectLiteral,
             ArrayLiteral,
@@ -158,12 +158,12 @@ public final class JSTags {
             RegExpLiteral,
         }
 
-        private LiteralExpressionTag() {
+        private LiteralTag() {
         }
     }
 
     /**
-     * ECMA2018 12.5 Unary expressions.
+     * Unary expressions.
      *
      * Marks all code locations that perform unary operations, e.g., <code>!true</code>.
      * <p>
@@ -171,7 +171,7 @@ public final class JSTags {
      * <ul>
      * <li><b>#0 Operand</b> The operand for the unary operation.</li>
      * </ul>
-     * The ECMA2018 12.5.3 <code>delete</code> expression provides two intermediate values:
+     * The <code>delete</code> expression provides two intermediate values:
      * <ul>
      * <li><b>#0 Target</b> The target object instance.</li>
      * <li><b>#1 Key</b> The property key to be deleted.</li>
@@ -184,15 +184,15 @@ public final class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("UnaryExpression")
-    public static final class UnaryExpressionTag extends Tag {
-        private UnaryExpressionTag() {
+    @Tag.Identifier("UnaryOperation")
+    public static final class UnaryOperationTag extends Tag {
+        private UnaryOperationTag() {
         }
     }
 
     /**
-     * Binary expressions, including ECMA2018 12.8 Additive operations, ECMA2018 12.7 Multiplicative
-     * operations, ECMA2018 12.9 Bitwise operations, and more.
+     * Binary expressions, including Additive operations, Multiplicative operations, Bitwise
+     * operations, and more.
      *
      * Marks all code locations that perform binary operations, that is, expressions with a left and
      * right operands. E.g., <code>a + b</code>.
@@ -210,14 +210,14 @@ public final class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("BinaryExpression")
-    public static final class BinaryExpressionTag extends Tag {
-        private BinaryExpressionTag() {
+    @Tag.Identifier("BinaryOperation")
+    public static final class BinaryOperationTag extends Tag {
+        private BinaryOperationTag() {
         }
     }
 
     /**
-     * ECMA2018 12.15 Assignment expressions to local variables.
+     * Assignment expressions to local variables.
      *
      * Marks all code locations that assign values to local variables.
      * <p>
@@ -232,14 +232,14 @@ public final class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("WriteVariableExpression")
-    public static final class WriteVariableExpressionTag extends Tag {
-        private WriteVariableExpressionTag() {
+    @Tag.Identifier("WriteVariable")
+    public static final class WriteVariableTag extends Tag {
+        private WriteVariableTag() {
         }
     }
 
     /**
-     * ECMA2018 12.2 Primary expressions reading local variables.
+     * Primary expressions reading local variables.
      *
      * Marks all code locations that read values from local variables.
      * <p>
@@ -249,15 +249,14 @@ public final class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("ReadVariableExpression")
-    public static final class ReadVariableExpressionTag extends Tag {
-        private ReadVariableExpressionTag() {
+    @Tag.Identifier("ReadVariable")
+    public static final class ReadVariableTag extends Tag {
+        private ReadVariableTag() {
         }
     }
 
     /**
-     * ECMA2018 12.15 Assignment operations to object properties using the <code>[ ]</code>
-     * expression.
+     * Assignment operations to object properties using the <code>[ ]</code> expression.
      *
      * Marks all code locations that write an object property using the <code>[ ]</code> expression.
      * <p>
@@ -269,14 +268,14 @@ public final class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("WriteElementExpression")
-    public static final class WriteElementExpressionTag extends Tag {
-        private WriteElementExpressionTag() {
+    @Tag.Identifier("WriteElement")
+    public static final class WriteElementTag extends Tag {
+        private WriteElementTag() {
         }
     }
 
     /**
-     * ECMA2018 12.3.2 Property Accessors performed using the <code>[ ]</code> expression.
+     * Property Accessors performed using the <code>[ ]</code> expression.
      *
      * Marks all code locations that read a property from an object using the <code>[ ]</code>
      * expression.
@@ -288,15 +287,14 @@ public final class JSTags {
      * </ul>
      * </p>
      */
-    @Tag.Identifier("ReadElementExpression")
-    public static final class ReadElementExpressionTag extends Tag {
-        private ReadElementExpressionTag() {
+    @Tag.Identifier("ReadElement")
+    public static final class ReadElementTag extends Tag {
+        private ReadElementTag() {
         }
     }
 
     /**
-     * ECMA2018 12.15 Assignment operations to object properties using the "<code>.</code>"
-     * notation.
+     * Assignment operations to object properties using the "<code>.</code>" notation.
      *
      * Marks all code locations that write an object property using the "<code>.</code>" notation.
      * <p>
@@ -312,14 +310,14 @@ public final class JSTags {
      * </p>
      * </p>
      */
-    @Tag.Identifier("WritePropertyExpression")
-    public static final class WritePropertyExpressionTag extends Tag {
-        private WritePropertyExpressionTag() {
+    @Tag.Identifier("WriteProperty")
+    public static final class WritePropertyTag extends Tag {
+        private WritePropertyTag() {
         }
     }
 
     /**
-     * ECMA2018 12.3.2 Property Accessors performed using the "<code>.</code>" notation.
+     * Property Accessors performed using the "<code>.</code>" notation.
      *
      * Marks all code locations that read a property from an object using the "<code>.</code>"
      * notation.
@@ -335,13 +333,13 @@ public final class JSTags {
      * </p>
      * </p>
      */
-    @Tag.Identifier("ReadPropertyExpression")
-    public static final class ReadPropertyExpressionTag extends Tag {
-        private ReadPropertyExpressionTag() {
+    @Tag.Identifier("ReadProperty")
+    public static final class ReadPropertyTag extends Tag {
+        private ReadPropertyTag() {
         }
     }
 
-    // ##### ECMA2018 13.x - JavaScript Statements
+    // ##### ECMAScript Statements
 
     /**
      * Control flow root nodes.
@@ -352,9 +350,9 @@ public final class JSTags {
      * <p>
      * Examples are:
      * <ul>
-     * <li>ECMA2018 13.6 The <code>if</code> statement.</li>
-     * <li>ECMA2018 13.7 Iteration statements.</li>
-     * <li>ECMA2018 13.12 The <code>switch</code> statement.</li>
+     * <li>The <code>if</code> statement.</li>
+     * <li>Iteration statements.</li>
+     * <li>The <code>switch</code> statement.</li>
      * </ul>
      *
      * Tagged nodes provide the following metadata:
@@ -397,13 +395,13 @@ public final class JSTags {
      * <p>
      * Examples are:
      * <ul>
-     * <li>ECMA2018 13.6 Condition of <code>if</code> statements.</li>
-     * <li>ECMA2018 13.7 Repeating conditions for iteration statements such as <code>while</code>,
+     * <li>Condition of <code>if</code> statements.</li>
+     * <li>Repeating conditions for iteration statements such as <code>while</code>,
      * <code>for</code>, etc.</li>
-     * <li>ECMA2018 13.12 The <code>case</code> expressions in <code>switch</code> statements.</li>
-     * <li>ECMA2018 13.8 The <code>continue</code> statement.</li>
-     * <li>ECMA2018 13.9 The <code>break</code> statement.</li>
-     * <li>ECMA2018 13.14 The <code>throw</code> statement.</li>
+     * <li>The <code>case</code> expressions in <code>switch</code> statements.</li>
+     * <li>The <code>continue</code> statement.</li>
+     * <li>The <code>break</code> statement.</li>
+     * <li>The <code>throw</code> statement.</li>
      * </ul>
      *
      * Tagged nodes provide the following metadata:
@@ -443,11 +441,11 @@ public final class JSTags {
      * <p>
      * Examples are:
      * <ul>
-     * <li>ECMA2018 13.6 The <code>if</code> or the <code>else</code> branches of an <code>if</code>
-     * statement.</li>
-     * <li>ECMA2018 13.7 The body of an iteration statement.</li>
-     * <li>ECMA2018 13.12 The block following any <code>case</code> expression in
-     * <code>switch</code> statements.</li>
+     * <li>The <code>if</code> or the <code>else</code> branches of an <code>if</code> statement.
+     * </li>
+     * <li>The body of an iteration statement.</li>
+     * <li>The block following any <code>case</code> expression in <code>switch</code> statements.
+     * </li>
      * </ul>
      * </p>
      */
@@ -457,17 +455,17 @@ public final class JSTags {
         }
     }
 
-    // ##### ECMA Builtin operations
+    // ##### Builtin operations
 
     /**
-     * ECMA Builtin Objects Calls.
+     * Builtin Objects Calls.
      *
      * Marks all code locations that execute an ECMA built-in operation. Examples of such built-in
-     * operations are all functions of ECMA2018 19.x Fundamental objects, e.g., <code>Math</code>,
+     * operations are all functions of ECMA Fundamental objects, e.g., <code>Math</code>,
      * <code>Array</code>, <code>Date</code>, etc.
      * <p>
      * Builtin calls do not provide Intermediate values. Call-specific values can be accessed using
-     * the {@link FunctionCallExpressionTag}, since Builtin calls are regular JavaScript calls.
+     * the {@link FunctionCallTag}, since Builtin calls are regular JavaScript calls.
      * <p>
      * Tagged nodes provide the following metadata:
      * <ul>
@@ -483,7 +481,7 @@ public final class JSTags {
     }
 
     /**
-     * ECMA2018 18.2.1 Eval.
+     * Eval.
      *
      * Marks all code locations that call the <code>eval</code> built-in operation.
      * <p>

@@ -70,7 +70,7 @@ import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
@@ -140,7 +140,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ReadElementExpressionTag.class) && !alreadyMaterialized()) {
+        if (materializedTags.contains(ReadElementTag.class) && !alreadyMaterialized()) {
             JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
             JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
             JavaScriptNode cloned = ReadElementNode.create(clonedTarget, clonedIndex, getContext());
@@ -156,7 +156,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ReadElementExpressionTag.class) {
+        if (tag == ReadElementTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

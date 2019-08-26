@@ -57,7 +57,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -92,7 +92,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == LiteralExpressionTag.class) {
+        if (tag == LiteralTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -101,7 +101,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", LiteralExpressionTag.Type.ArrayLiteral.name());
+        return JSTags.createNodeObjectDescriptor("type", LiteralTag.Type.ArrayLiteral.name());
     }
 
     @Override

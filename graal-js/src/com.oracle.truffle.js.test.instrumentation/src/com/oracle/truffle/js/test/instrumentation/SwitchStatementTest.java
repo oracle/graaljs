@@ -42,7 +42,7 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
@@ -138,15 +138,15 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                         "         break;" +
                         "}";
 
-        evalWithTag(src, BinaryExpressionTag.class);
+        evalWithTag(src, BinaryOperationTag.class);
 
-        enter(BinaryExpressionTag.class, (e, b) -> {
+        enter(BinaryOperationTag.class, (e, b) -> {
             assertAttribute(e, "operator", "===");
             b.input(2);
             b.input(1);
         }).exit();
 
-        enter(BinaryExpressionTag.class, (e, b) -> {
+        enter(BinaryOperationTag.class, (e, b) -> {
             assertAttribute(e, "operator", "===");
             b.input(2);
             b.input(2);

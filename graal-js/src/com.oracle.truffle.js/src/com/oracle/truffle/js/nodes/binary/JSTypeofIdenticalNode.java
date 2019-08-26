@@ -62,9 +62,9 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
@@ -149,7 +149,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == BinaryExpressionTag.class || tag == UnaryExpressionTag.class || tag == LiteralExpressionTag.class) {
+        if (tag == BinaryOperationTag.class || tag == UnaryOperationTag.class || tag == LiteralTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -158,7 +158,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(BinaryExpressionTag.class) || materializedTags.contains(UnaryExpressionTag.class) || materializedTags.contains(LiteralExpressionTag.class)) {
+        if (materializedTags.contains(BinaryOperationTag.class) || materializedTags.contains(UnaryOperationTag.class) || materializedTags.contains(LiteralTag.class)) {
             Object[] info = parseMaterializationInfo();
             if (info == null) {
                 info = new Object[]{type.name().toLowerCase(), true, true};

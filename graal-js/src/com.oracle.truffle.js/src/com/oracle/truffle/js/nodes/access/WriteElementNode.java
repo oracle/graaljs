@@ -76,7 +76,7 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -196,7 +196,7 @@ public class WriteElementNode extends JSTargetableNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == WriteElementExpressionTag.class) {
+        if (tag == WriteElementTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -205,7 +205,7 @@ public class WriteElementNode extends JSTargetableNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializationNeeded() && materializedTags.contains(WriteElementExpressionTag.class)) {
+        if (materializationNeeded() && materializedTags.contains(WriteElementTag.class)) {
             JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this);
             JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this);
             JavaScriptNode clonedValue = valueNode == null || valueNode.hasSourceSection() ? valueNode : JSTaggedExecutionNode.createForInput(valueNode, this);

@@ -51,8 +51,8 @@ import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
@@ -88,9 +88,9 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ReadVariableExpressionTag.class && isScopeAccess()) {
+        if (tag == ReadVariableTag.class && isScopeAccess()) {
             return true;
-        } else if (tag == ReadPropertyExpressionTag.class && !isScopeAccess()) {
+        } else if (tag == ReadPropertyTag.class && !isScopeAccess()) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -111,7 +111,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ReadPropertyExpressionTag.class) && !isScopeAccess() && globalObjectNode == null) {
+        if (materializedTags.contains(ReadPropertyTag.class) && !isScopeAccess() && globalObjectNode == null) {
             GlobalObjectNode global = GlobalObjectNode.create(context);
             GlobalPropertyNode materialized = new GlobalPropertyNode(context, propertyName, global);
             if (this.cache != null && this.cache.isMethod()) {

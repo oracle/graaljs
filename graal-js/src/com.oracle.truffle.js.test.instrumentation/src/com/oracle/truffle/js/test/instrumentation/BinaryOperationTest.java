@@ -42,11 +42,11 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -61,18 +61,18 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
         // var a = 43
         assertGlobalVarDeclaration("b", 43);
         // var c = a + b;
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "c");
             write.input(assertGlobalObjectInput);
 
-            enter(BinaryExpressionTag.class, (e2, binary) -> {
-                enter(ReadPropertyExpressionTag.class, (e3, prop) -> {
+            enter(BinaryOperationTag.class, (e2, binary) -> {
+                enter(ReadPropertyTag.class, (e3, prop) -> {
                     assertAttribute(e3, KEY, "a");
                     prop.input(assertGlobalObjectInput);
                 }).exit();
                 binary.input(42);
 
-                enter(ReadPropertyExpressionTag.class, (e3, prop) -> {
+                enter(ReadPropertyTag.class, (e3, prop) -> {
                     assertAttribute(e3, KEY, "b");
                     prop.input(assertGlobalObjectInput);
                 }).exit();
@@ -88,9 +88,9 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
     public void leftConstantAnd() {
         String src = "var a = 42; var c = 43 + a;";
 
-        evalWithTag(src, BinaryExpressionTag.class);
+        evalWithTag(src, BinaryOperationTag.class);
 
-        enter(BinaryExpressionTag.class, (e2, binary) -> {
+        enter(BinaryOperationTag.class, (e2, binary) -> {
             binary.input(43);
             binary.input(42);
         }).exit();
@@ -294,21 +294,21 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
 
         String src = "var a = 42; var c = " + lhs + operator + rhs;
 
-        evalWithTags(src, new Class[]{BinaryExpressionTag.class, UnaryExpressionTag.class, LiteralExpressionTag.class});
+        evalWithTags(src, new Class[]{BinaryOperationTag.class, UnaryOperationTag.class, LiteralTag.class});
 
-        enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+        enter(LiteralTag.class).exit(assertReturnValue(42));
 
-        enter(BinaryExpressionTag.class, (e, binary) -> {
+        enter(BinaryOperationTag.class, (e, binary) -> {
             assertAttribute(e, OPERATOR, operator);
             for (int eventNo = 0; eventNo < 2; eventNo++) {
                 if (typeofAsLeftOperand == (eventNo == 0)) {
-                    enter(UnaryExpressionTag.class, (e2, unary) -> {
+                    enter(UnaryOperationTag.class, (e2, unary) -> {
                         assertAttribute(e2, OPERATOR, "typeof");
                         unary.input(42);
                     }).exit();
                     binary.input("number");
                 } else {
-                    enter(LiteralExpressionTag.class).exit(assertReturnValue(type));
+                    enter(LiteralTag.class).exit(assertReturnValue(type));
                     binary.input(type);
                 }
             }
@@ -316,8 +316,8 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
     }
 
     private void testBinExpOnly(String src, Object firstValue, Object secondValue) {
-        evalWithTag(src, BinaryExpressionTag.class);
-        enter(BinaryExpressionTag.class, (e, binary) -> {
+        evalWithTag(src, BinaryOperationTag.class);
+        enter(BinaryOperationTag.class, (e, binary) -> {
             binary.input(firstValue);
             binary.input(secondValue);
         }).exit();
@@ -326,11 +326,11 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
     private void binaryOperationTest(String srcOperator, String unOperator, String binOperator) {
         String src = "var a = 42 " + srcOperator + " 41";
 
-        evalWithTags(src, new Class[]{BinaryExpressionTag.class, UnaryExpressionTag.class});
+        evalWithTags(src, new Class[]{BinaryOperationTag.class, UnaryOperationTag.class});
 
-        enter(UnaryExpressionTag.class, (e, u) -> {
+        enter(UnaryOperationTag.class, (e, u) -> {
             assertAttribute(e, OPERATOR, unOperator);
-            enter(BinaryExpressionTag.class, (e2, b) -> {
+            enter(BinaryOperationTag.class, (e2, b) -> {
                 assertAttribute(e2, OPERATOR, binOperator);
                 b.input(42);
                 b.input(41);
@@ -342,10 +342,10 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
     private void binaryOperationTest(int leftValue, int rightValue, String operator) {
         String src = "var a = " + leftValue + " ; var b = a " + operator + " " + rightValue + ";";
 
-        evalWithTag(src, BinaryExpressionTag.class);
+        evalWithTag(src, BinaryOperationTag.class);
 
         // we assign the left value to another var to avoid optimizations
-        enter(BinaryExpressionTag.class, (e, binary) -> {
+        enter(BinaryOperationTag.class, (e, binary) -> {
             assertAttribute(e, OPERATOR, operator);
             binary.input(leftValue);
             binary.input(rightValue);
@@ -355,9 +355,9 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
     private void constantBinaryOperationTestRight(int rightValue, String operator) {
         String src = "var a = 42; var c = a " + operator + " " + rightValue + ";";
 
-        evalWithTag(src, BinaryExpressionTag.class);
+        evalWithTag(src, BinaryOperationTag.class);
 
-        enter(BinaryExpressionTag.class, (e, binary) -> {
+        enter(BinaryOperationTag.class, (e, binary) -> {
             assertAttribute(e, OPERATOR, operator);
             binary.input(42);
             binary.input(rightValue);

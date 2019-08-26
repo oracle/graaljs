@@ -77,9 +77,9 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag.Type;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag.Type;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -412,7 +412,7 @@ public abstract class FineGrainedAccessTest {
         };
     }
 
-    protected static final Consumer<Event> assertLiteralType(LiteralExpressionTag.Type type) {
+    protected static final Consumer<Event> assertLiteralType(LiteralTag.Type type) {
         return e -> {
             assertAttribute(e, TYPE, type.name());
         };
@@ -487,10 +487,10 @@ public abstract class FineGrainedAccessTest {
     };
 
     protected void assertGlobalVarDeclaration(String name, Object value) {
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, name);
             write.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class, (e2) -> {
+            enter(LiteralTag.class, (e2) -> {
                 if (value instanceof Integer) {
                     assertAttribute(e2, TYPE, Type.NumericLiteral.name());
                 } else if (value instanceof Boolean) {
@@ -504,10 +504,10 @@ public abstract class FineGrainedAccessTest {
     }
 
     protected void assertGlobalFunctionExpressionDeclaration(String name) {
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             write.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class).exit((e1) -> {
-                assertAttribute(e1, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+            enter(LiteralTag.class).exit((e1) -> {
+                assertAttribute(e1, TYPE, LiteralTag.Type.FunctionLiteral.name());
                 Object[] results = (Object[]) e1.val;
                 assertTrue(results.length == 1);
                 assertTrue(JSFunction.isJSFunction(results[0]));
@@ -518,10 +518,10 @@ public abstract class FineGrainedAccessTest {
     }
 
     protected void assertGlobalArrayLiteralDeclaration(String name) {
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, name);
             write.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class).exit();
+            enter(LiteralTag.class).exit();
             write.input(assertJSArrayInput);
         }).exit();
     }

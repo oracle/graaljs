@@ -43,12 +43,12 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class BuiltinOperationTest extends FineGrainedAccessTest {
@@ -58,12 +58,12 @@ public class BuiltinOperationTest extends FineGrainedAccessTest {
         evalAllTags("var a = Math.random; a();");
 
         // var a = Math.random
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
             write.input(assertGlobalObjectInput);
-            enter(ReadPropertyExpressionTag.class, (e1, read) -> {
+            enter(ReadPropertyTag.class, (e1, read) -> {
                 assertAttribute(e1, KEY, "random");
-                enter(ReadPropertyExpressionTag.class, (e2, prop) -> {
+                enter(ReadPropertyTag.class, (e2, prop) -> {
                     assertAttribute(e2, KEY, "Math");
                     prop.input(assertGlobalObjectInput);
                 }).exit();
@@ -73,12 +73,12 @@ public class BuiltinOperationTest extends FineGrainedAccessTest {
         }).exit();
 
         // a()
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             // read target for 'a' (which is undefined)
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
             // read function 'a'
-            enter(ReadPropertyExpressionTag.class, assertPropertyReadName("a")).input().exit();
+            enter(ReadPropertyTag.class, assertPropertyReadName("a")).input().exit();
             call.input(assertJSFunctionInput);
             enter(BuiltinRootTag.class, (e2) -> {
                 assertAttribute(e2, NAME, "Math.random");
@@ -94,29 +94,29 @@ public class BuiltinOperationTest extends FineGrainedAccessTest {
                         "});");
 
         // const foo = {}
-        enter(WriteVariableExpressionTag.class, (e, w) -> {
+        enter(WriteVariableTag.class, (e, w) -> {
             assertAttribute(e, NAME, "foo");
-            enter(LiteralExpressionTag.class).exit();
+            enter(LiteralTag.class).exit();
             w.input(assertJSObjectInput);
         }).exit();
 
         // call to 'defineProperty'
-        enter(FunctionCallExpressionTag.class, (e, f) -> {
+        enter(FunctionCallTag.class, (e, f) -> {
             // target
-            enter(ReadPropertyExpressionTag.class, assertPropertyReadName("Object")).input(assertJSObjectInput).exit();
+            enter(ReadPropertyTag.class, assertPropertyReadName("Object")).input(assertJSObjectInput).exit();
             f.input(assertJSFunctionInput);
             // function
-            enter(ReadPropertyExpressionTag.class, assertPropertyReadName("defineProperty")).input().exit();
+            enter(ReadPropertyTag.class, assertPropertyReadName("defineProperty")).input().exit();
             f.input(assertJSFunctionInput);
             // 1st argument is the 'foo' variable
-            enter(ReadVariableExpressionTag.class, assertVarReadName("foo")).exit();
+            enter(ReadVariableTag.class, assertVarReadName("foo")).exit();
             f.input(assertJSObjectInput);
             // 2nd argument is the 'bar' literal
-            enter(LiteralExpressionTag.class).exit(assertReturnValue("bar"));
+            enter(LiteralTag.class).exit(assertReturnValue("bar"));
             f.input("bar");
             // create the object literal...
-            enter(LiteralExpressionTag.class, (e1, l) -> {
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class, (e1, l) -> {
+                enter(LiteralTag.class).exit(assertReturnValue(42));
                 l.input(42);
             }).exit();
             // ...use it as argument

@@ -88,15 +88,15 @@ import com.oracle.truffle.js.nodes.function.IterationScopeNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode.InvokeNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -129,7 +129,7 @@ public class MaterializedNodes {
         JSFunctionCallNode c = JSFunctionCallNode.createCall(JSConstantNode.createUndefined(), null, args, false, false);
         c.setSourceSection(Source.newBuilder(JavaScriptLanguage.ID, "", "").build().createUnavailableSection());
         Set<Class<? extends Tag>> s = new HashSet<>();
-        s.add(FunctionCallExpressionTag.class);
+        s.add(FunctionCallTag.class);
         c.addStatementTag();
         JSFunctionCallNode m = (JSFunctionCallNode) c.materializeInstrumentableNodes(s);
         assertTrue(m.hasTag(StatementTag.class));
@@ -144,7 +144,7 @@ public class MaterializedNodes {
         c.setSourceSection(Source.newBuilder(JavaScriptLanguage.ID, "", "").build().createUnavailableSection());
         undef.setSourceSection(Source.newBuilder(JavaScriptLanguage.ID, "", "").build().createUnavailableSection());
         Set<Class<? extends Tag>> s = new HashSet<>();
-        s.add(FunctionCallExpressionTag.class);
+        s.add(FunctionCallTag.class);
         c.addStatementTag();
         JSFunctionCallNode m = (JSFunctionCallNode) c.materializeInstrumentableNodes(s);
         m = (JSFunctionCallNode) m.materializeInstrumentableNodes(s);
@@ -161,7 +161,7 @@ public class MaterializedNodes {
         JavaScriptNode optimized = JSAddNode.create(dummyDouble, dummyInt);
         optimized.setSourceSection(Source.newBuilder(JavaScriptLanguage.ID, "", "").build().createUnavailableSection());
         Set<Class<? extends Tag>> s = new HashSet<>();
-        s.add(BinaryExpressionTag.class);
+        s.add(BinaryOperationTag.class);
         optimized.addStatementTag();
         // materialization should return a node of the same class
         JavaScriptNode desugared = (JavaScriptNode) optimized.materializeInstrumentableNodes(s);
@@ -206,87 +206,87 @@ public class MaterializedNodes {
     @Test
     public void materializeTwiceGlobalProperty() {
         JavaScriptNode prop = GlobalPropertyNode.createPropertyNode(getDummyCx(), "foo");
-        assertNotMaterializedTwice(prop, ReadPropertyExpressionTag.class);
+        assertNotMaterializedTwice(prop, ReadPropertyTag.class);
     }
 
     @Test
     public void materializeTwicePropertyRead() {
         PropertyNode prop = PropertyNode.createProperty(getDummyCx(), dummy, "foo");
-        assertNotMaterializedTwice(prop, ReadPropertyExpressionTag.class);
+        assertNotMaterializedTwice(prop, ReadPropertyTag.class);
     }
 
     @Test
     public void materializeTwiceElementRead() {
         ReadElementNode elem = ReadElementNode.create(dummy, dummy, getDummyCx());
-        assertNotMaterializedTwice(elem, ReadElementExpressionTag.class);
+        assertNotMaterializedTwice(elem, ReadElementTag.class);
     }
 
     @Test
     public void materializeTwiceElementWrite() {
         WriteElementNode elem = WriteElementNode.create(dummy, dummy, dummy, getDummyCx(), false);
-        assertNotMaterializedTwice(elem, WriteElementExpressionTag.class);
+        assertNotMaterializedTwice(elem, WriteElementTag.class);
     }
 
     @Test
     public void materializeTwicePropertyWrite() {
         WritePropertyNode prop = WritePropertyNode.create(dummy, "foo", dummy, getDummyCx(), false);
-        assertNotMaterializedTwice(prop, WritePropertyExpressionTag.class);
+        assertNotMaterializedTwice(prop, WritePropertyTag.class);
     }
 
     @Test
     public void materializeTwiceAddLeft() {
         JavaScriptNode add = JSAddNode.create(dummyJSNode, dummyInt);
         assert add instanceof JSAddConstantRightNumberNode;
-        assertNotMaterializedTwice(add, BinaryExpressionTag.class);
+        assertNotMaterializedTwice(add, BinaryOperationTag.class);
     }
 
     @Test
     public void materializeTwiceAddRight() {
         JavaScriptNode add = JSAddNode.create(dummyDouble, dummyJSNode);
         assert add instanceof JSAddConstantLeftNumberNode;
-        assertNotMaterializedTwice(add, BinaryExpressionTag.class);
+        assertNotMaterializedTwice(add, BinaryOperationTag.class);
     }
 
     @Test
     public void materializeTwiceAnd() {
         JavaScriptNode node = JSBitwiseAndConstantNode.create(dummy, 42);
-        assertNotMaterializedTwice(node, BinaryExpressionTag.class);
+        assertNotMaterializedTwice(node, BinaryOperationTag.class);
     }
 
     @Test
     public void materializeTwiceOr() {
         JavaScriptNode node = JSBitwiseOrConstantNode.create(dummy, 42);
-        assertNotMaterializedTwice(node, BinaryExpressionTag.class);
+        assertNotMaterializedTwice(node, BinaryOperationTag.class);
     }
 
     @Test
     public void materializeTwiceXor() {
         JavaScriptNode node = JSBitwiseXorConstantNode.create(dummy, 42);
-        assertNotMaterializedTwice(node, BinaryExpressionTag.class);
+        assertNotMaterializedTwice(node, BinaryOperationTag.class);
     }
 
     @Test
     public void materializeTwiceLeftShift() {
         JavaScriptNode node = JSLeftShiftConstantNode.create(dummy, dummyInt);
-        assertNotMaterializedTwice(node, BinaryExpressionTag.class);
+        assertNotMaterializedTwice(node, BinaryOperationTag.class);
     }
 
     @Test
     public void materializeTwiceRightShift() {
         JavaScriptNode node = JSRightShiftConstantNode.create(dummy, dummyInt);
-        assertNotMaterializedTwice(node, BinaryExpressionTag.class);
+        assertNotMaterializedTwice(node, BinaryOperationTag.class);
     }
 
     @Test
     public void materializeTwiceUnsignedRightShift() {
         JavaScriptNode node = JSUnsignedRightShiftConstantNode.create(dummy, dummyInt);
-        assertNotMaterializedTwice(node, BinaryExpressionTag.class);
+        assertNotMaterializedTwice(node, BinaryOperationTag.class);
     }
 
     @Test
     public void materializeTwiceNot() {
         JSNotNode node = (JSNotNode) JSNotNode.create(dummyJSNode);
-        assertNotMaterializedTwice(node, UnaryExpressionTag.class);
+        assertNotMaterializedTwice(node, UnaryOperationTag.class);
     }
 
     @Test
@@ -320,7 +320,7 @@ public class MaterializedNodes {
     public void materializeMultiCall() {
         JavaScriptNode[] args = new JavaScriptNode[]{};
         JSFunctionCallNode c = JSFunctionCallNode.createCall(JSConstantNode.createUndefined(), null, args, false, false);
-        assertNotMaterializedTwice(c, FunctionCallExpressionTag.class);
+        assertNotMaterializedTwice(c, FunctionCallTag.class);
     }
 
     @Test
@@ -329,7 +329,7 @@ public class MaterializedNodes {
         prop.setSourceSection(dummySourceSection);
         JavaScriptNode[] args = new JavaScriptNode[]{};
         JSFunctionCallNode c = JSFunctionCallNode.createInvoke(prop, args, false, false);
-        assertNotMaterializedTwice(c, FunctionCallExpressionTag.class);
+        assertNotMaterializedTwice(c, FunctionCallTag.class);
     }
 
     @Test
@@ -337,7 +337,7 @@ public class MaterializedNodes {
         JSTargetableNode prop = GlobalPropertyNode.createPropertyNode(getDummyCx(), "foo");
         JavaScriptNode[] args = new JavaScriptNode[]{};
         JSNewNode newnode = JSNewNode.create(getDummyCx(), prop, args);
-        assertNotMaterializedTwice(newnode, ObjectAllocationExpressionTag.class);
+        assertNotMaterializedTwice(newnode, ObjectAllocationTag.class);
     }
 
     private static void assertNotMaterializedTwice(JavaScriptNode node, Class<? extends Tag> tag) {

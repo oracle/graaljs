@@ -50,7 +50,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
@@ -71,7 +71,7 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ReadPropertyExpressionTag.class) {
+        if (tag == ReadPropertyTag.class) {
             return true;
         } else {
             return super.hasTag(tag);

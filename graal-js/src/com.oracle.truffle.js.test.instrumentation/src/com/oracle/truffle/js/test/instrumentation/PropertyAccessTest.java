@@ -44,12 +44,12 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag.Type;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag.Type;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public class PropertyAccessTest extends FineGrainedAccessTest {
@@ -59,21 +59,21 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
         evalAllTags("var a = {x:42}; a.x;");
 
         // var a = {x:42}
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
             write.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class, (e2) -> {
+            enter(LiteralTag.class, (e2) -> {
                 assertAttribute(e2, TYPE, Type.ObjectLiteral.name());
                 // num literal
-                enter(LiteralExpressionTag.class).exit();
+                enter(LiteralTag.class).exit();
             }).input(42).exit();
         }).input((e) -> {
             assertTrue(JSObject.isJSObject(e.val));
         }).exit();
         // a.x;
-        enter(ReadPropertyExpressionTag.class, (e) -> {
+        enter(ReadPropertyTag.class, (e) -> {
             assertAttribute(e, KEY, "x");
-            enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
         }).input((e) -> {
             assertTrue(JSObject.isJSObject(e.val));
         }).exit();
@@ -84,25 +84,25 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
         evalAllTags("var a = {x:{y:42}}; a.x.y;");
 
         // var a = {x:{y:42}}
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
             write.input(assertGlobalObjectInput);
-            enter(LiteralExpressionTag.class, (e2) -> {
-                enter(LiteralExpressionTag.class, (e3) -> {
+            enter(LiteralTag.class, (e2) -> {
+                enter(LiteralTag.class, (e3) -> {
                     assertAttribute(e3, TYPE, Type.ObjectLiteral.name());
                     // num literal
-                    enter(LiteralExpressionTag.class).exit();
+                    enter(LiteralTag.class).exit();
                 }).input(42).exit();
             }).input().exit();
             write.input(assertJSObjectInput);
         }).exit();
         // a.x.y;
-        enter(ReadPropertyExpressionTag.class, (e, prop) -> {
+        enter(ReadPropertyTag.class, (e, prop) -> {
             assertAttribute(e, KEY, "y");
             // a.x
-            enter(ReadPropertyExpressionTag.class, (e1, read) -> {
+            enter(ReadPropertyTag.class, (e1, read) -> {
                 assertAttribute(e1, KEY, "x");
-                enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+                enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
                 read.input(assertJSObjectInput);
             }).exit();
             prop.input(assertJSObjectInput);
@@ -114,24 +114,24 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
         evalAllTags("var a = {}; a.x = 42;");
 
         // var a = {}
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
             write.input(assertGlobalObjectInput);
             // {}
-            enter(LiteralExpressionTag.class).exit();
+            enter(LiteralTag.class).exit();
             write.input(assertJSObjectInput);
         }).exit();
 
         // a.x = 42
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "x");
             // global read
-            enter(ReadPropertyExpressionTag.class, (e1, p) -> {
+            enter(ReadPropertyTag.class, (e1, p) -> {
                 assertAttribute(e1, KEY, "a");
                 p.input(assertGlobalObjectInput);
             }).exit();
             write.input(assertJSObjectInput);
-            enter(LiteralExpressionTag.class).exit();
+            enter(LiteralTag.class).exit();
             write.input(42);
         }).exit();
     }
@@ -139,16 +139,16 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     @Test
     public void read2() {
         String src = "var a = {log:function(){}}; a.log(42);";
-        evalWithTag(src, ReadPropertyExpressionTag.class);
+        evalWithTag(src, ReadPropertyTag.class);
 
         // Invoke operations perform the two read operations independently.
         // 1. read the target object
-        enter(ReadPropertyExpressionTag.class, (e1, pr1) -> {
+        enter(ReadPropertyTag.class, (e1, pr1) -> {
             assertAttribute(e1, KEY, "a");
             pr1.input(assertGlobalObjectInput);
         }).exit();
         // 2. read the function to invoke
-        enter(ReadPropertyExpressionTag.class, (e1, pr1) -> {
+        enter(ReadPropertyTag.class, (e1, pr1) -> {
             assertAttribute(e1, KEY, "log");
             pr1.input(assertJSObjectInput);
         }).exit(assertJSFunctionReturn);
@@ -162,7 +162,7 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
                         "for(var i = 0; i < 10; i++) {" +
                         "    bar.a.x(bar);" +
                         "}";
-        evalWithTag(src, ReadPropertyExpressionTag.class);
+        evalWithTag(src, ReadPropertyTag.class);
 
         assertPropertyRead("Bar");
         assertPropertyRead("bar");
@@ -200,7 +200,7 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
                         "  a.x();" +
                         "  cnt++;" +
                         "}";
-        evalWithTag(src, ReadPropertyExpressionTag.class);
+        evalWithTag(src, ReadPropertyTag.class);
 
         assertNestedPropertyRead("prototype", "foo");
         assertNestedPropertyRead("prototype", "foo");
@@ -229,7 +229,7 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
                         "    addProperty(c, function(){});" +
                         "  }" +
                         ");";
-        evalWithTag(src, ReadPropertyExpressionTag.class);
+        evalWithTag(src, ReadPropertyTag.class);
 
         assertPropertyRead("addProperty");
         assertPropertyRead("colors");
@@ -260,22 +260,22 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
                         "catch (e) {" +
                         // exception must be reference error
                         "  e instanceof ReferenceError;" +
-                        "}", new Class[]{ReadPropertyExpressionTag.class, BinaryExpressionTag.class});
+                        "}", new Class[]{ReadPropertyTag.class, BinaryOperationTag.class});
 
-        enter(ReadPropertyExpressionTag.class, (e, p) -> {
+        enter(ReadPropertyTag.class, (e, p) -> {
             p.input(assertGlobalObjectInput);
             assertAttribute(e, KEY, "o");
         }).exit();
 
-        enter(ReadPropertyExpressionTag.class, (e, p) -> {
+        enter(ReadPropertyTag.class, (e, p) -> {
             assertAttribute(e, KEY, "foo");
             p.input(assertGlobalObjectInput);
         }).exitExceptional();
 
-        enter(BinaryExpressionTag.class, (e, b) -> {
+        enter(BinaryOperationTag.class, (e, b) -> {
 
             b.input(assertJSObjectInput);
-            enter(ReadPropertyExpressionTag.class, (e1, p) -> {
+            enter(ReadPropertyTag.class, (e1, p) -> {
                 p.input(assertGlobalObjectInput);
                 assertAttribute(e1, KEY, "ReferenceError");
             }).exit();
@@ -304,14 +304,14 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
                         "Object.keys(exports.val)" +
                         "  .concat(Object.keys(exports.bool.relaxing))" +
                         "  .concat();";
-        evalWithTags(src, new Class[]{FunctionCallExpressionTag.class, ReadPropertyExpressionTag.class});
+        evalWithTags(src, new Class[]{FunctionCallTag.class, ReadPropertyTag.class});
 
         // .concat()
-        enter(FunctionCallExpressionTag.class, (e0, call0) -> {
+        enter(FunctionCallTag.class, (e0, call0) -> {
             // .concat(Object.keys((...))
-            enter(FunctionCallExpressionTag.class, (e1, call1) -> {
+            enter(FunctionCallTag.class, (e1, call1) -> {
                 // Object.keys(exports.val)
-                enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                enter(FunctionCallTag.class, (e2, call2) -> {
                     assertPropertyRead("Object");
                     call2.input(assertJSFunctionInput);
                     assertPropertyRead("keys");
@@ -323,7 +323,7 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
                 assertPropertyRead("concat");
                 call1.input(assertJSFunctionInput);
                 // .concat(Object.keys(exports.bool.relaxing))
-                enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                enter(FunctionCallTag.class, (e2, call2) -> {
                     assertPropertyRead("Object");
                     call2.input(assertJSFunctionInput);
                     assertPropertyRead("keys");
@@ -340,16 +340,16 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     }
 
     private void assertPropertyRead(String key) {
-        enter(ReadPropertyExpressionTag.class, (e, pr) -> {
+        enter(ReadPropertyTag.class, (e, pr) -> {
             assertAttribute(e, KEY, key);
             pr.input(assertTruffleObject);
         }).exit();
     }
 
     private void assertNestedPropertyRead(String key1, String key2) {
-        enter(ReadPropertyExpressionTag.class, (e, pr) -> {
+        enter(ReadPropertyTag.class, (e, pr) -> {
             assertAttribute(e, KEY, key1);
-            enter(ReadPropertyExpressionTag.class, (e1, pr1) -> {
+            enter(ReadPropertyTag.class, (e1, pr1) -> {
                 assertAttribute(e1, KEY, key2);
                 pr1.input(assertTruffleObject);
             }).exit();
@@ -358,11 +358,11 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
     }
 
     private void assertNestedPropertyRead(String key1, String key2, String key3) {
-        enter(ReadPropertyExpressionTag.class, (e, pr) -> {
+        enter(ReadPropertyTag.class, (e, pr) -> {
             assertAttribute(e, KEY, key1);
-            enter(ReadPropertyExpressionTag.class, (e1, pr1) -> {
+            enter(ReadPropertyTag.class, (e1, pr1) -> {
                 assertAttribute(e1, KEY, key2);
-                enter(ReadPropertyExpressionTag.class, (e2, pr2) -> {
+                enter(ReadPropertyTag.class, (e2, pr2) -> {
                     assertAttribute(e2, KEY, key3);
                     pr2.input(assertTruffleObject);
                 }).exit();

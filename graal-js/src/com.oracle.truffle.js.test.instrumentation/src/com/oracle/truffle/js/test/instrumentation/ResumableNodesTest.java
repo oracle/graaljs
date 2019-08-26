@@ -42,10 +42,10 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class ResumableNodesTest extends FineGrainedAccessTest {
@@ -64,8 +64,8 @@ public class ResumableNodesTest extends FineGrainedAccessTest {
                         "};" +
                         "asyncCall();";
 
-        evalWithTags(src, new Class[]{WriteVariableExpressionTag.class,
-                        ReadVariableExpressionTag.class});
+        evalWithTags(src, new Class[]{WriteVariableTag.class,
+                        ReadVariableTag.class});
 
         assertVariableWrite("local", 2);
         // 1st call to res()
@@ -96,8 +96,8 @@ public class ResumableNodesTest extends FineGrainedAccessTest {
                         "iterator.next().value;" +
                         "iterator.next().value;";
 
-        evalWithTags(src, new Class[]{WriteVariableExpressionTag.class,
-                        ReadVariableExpressionTag.class});
+        evalWithTags(src, new Class[]{WriteVariableTag.class,
+                        ReadVariableTag.class});
         // iterator init
         assertVariableWrite("local", 1);
         // 1st next() call
@@ -129,33 +129,33 @@ public class ResumableNodesTest extends FineGrainedAccessTest {
                         "a.next();" +
                         "a.next();";
 
-        evalWithTags(src, new Class[]{FunctionCallExpressionTag.class});
+        evalWithTags(src, new Class[]{FunctionCallTag.class});
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertUndefinedInput);
             call.input(assertJSFunctionInputWithName("myGen"));
         }).exit();
         // 1st next() calls 'crash()' and yields
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInputWithName("next"));
-            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+            enter(FunctionCallTag.class, (e2, call2) -> {
                 call2.input(assertJSObjectInput);
                 call2.input(assertJSFunctionInputWithName("crash"));
             }).exit();
         }).exit();
         // 2nd next() resumes and calls 'dummy()' -- but does not call crash
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInputWithName("next"));
-            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+            enter(FunctionCallTag.class, (e2, call2) -> {
                 call2.input(assertJSObjectInput);
                 call2.input(assertJSFunctionInputWithName("dummy"));
                 call2.input(assertUndefinedInput);
             }).exit();
         }).exit();
         // 3rd next() does no calls
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInputWithName("next"));
         }).exit();
@@ -172,9 +172,9 @@ public class ResumableNodesTest extends FineGrainedAccessTest {
                         "  val;" +
                         "}";
 
-        evalWithTags(src, new Class[]{WriteElementExpressionTag.class});
+        evalWithTags(src, new Class[]{WriteElementTag.class});
 
-        enter(WriteElementExpressionTag.class, (e, w) -> {
+        enter(WriteElementTag.class, (e, w) -> {
             w.input(assertJSArrayInput);
             w.input(0);
             w.input(Undefined.instance);
@@ -182,9 +182,9 @@ public class ResumableNodesTest extends FineGrainedAccessTest {
     }
 
     protected void assertVariableInc(String name, int value) {
-        enter(WriteVariableExpressionTag.class, (e, var) -> {
+        enter(WriteVariableTag.class, (e, var) -> {
             assertAttribute(e, NAME, name);
-            enter(ReadVariableExpressionTag.class, (e1) -> {
+            enter(ReadVariableTag.class, (e1) -> {
                 assertAttribute(e, NAME, name);
             }).exit(assertReturnValue(value));
             var.input(value + 1);
@@ -192,26 +192,26 @@ public class ResumableNodesTest extends FineGrainedAccessTest {
     }
 
     protected void assertVariableRead(String name, Object value) {
-        enter(ReadVariableExpressionTag.class, (e) -> {
+        enter(ReadVariableTag.class, (e) -> {
             assertAttribute(e, NAME, name);
         }).exit(assertReturnValue(value));
     }
 
     protected void assertVariableRead(String name) {
-        enter(ReadVariableExpressionTag.class, (e) -> {
+        enter(ReadVariableTag.class, (e) -> {
             assertAttribute(e, NAME, name);
         }).exit();
     }
 
     protected void assertVariableWrite(String name, Object value) {
-        enter(WriteVariableExpressionTag.class, (e, var) -> {
+        enter(WriteVariableTag.class, (e, var) -> {
             assertAttribute(e, NAME, name);
             var.input(value);
         }).exit();
     }
 
     protected void assertVariableWrite(String name) {
-        enter(WriteVariableExpressionTag.class, (e, var) -> {
+        enter(WriteVariableTag.class, (e, var) -> {
             assertAttribute(e, NAME, name);
             var.input();
         }).exit();

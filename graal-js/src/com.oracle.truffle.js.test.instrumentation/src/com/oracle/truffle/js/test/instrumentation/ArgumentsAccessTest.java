@@ -42,11 +42,11 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class ArgumentsAccessTest extends FineGrainedAccessTest {
@@ -57,12 +57,12 @@ public class ArgumentsAccessTest extends FineGrainedAccessTest {
 
         assertGlobalFunctionExpressionDeclaration("foo");
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+        enter(FunctionCallTag.class, (e, call) -> {
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
-            enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
             call.input(assertJSFunctionInput);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class).exit(assertReturnValue(42));
             call.input(42);
 
             // var and args declarations
@@ -70,14 +70,14 @@ public class ArgumentsAccessTest extends FineGrainedAccessTest {
             enterDeclareTag("x");
 
             // Argument 'a' is stored in the frame
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 assertAttribute(e1, NAME, "a");
                 call1.input(42);
             }).exit();
             // Variable 'x' is created
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 assertAttribute(e1, NAME, "x");
-                enter(ReadVariableExpressionTag.class, (e2, call2) -> {
+                enter(ReadVariableTag.class, (e2, call2) -> {
                     assertAttribute(e2, NAME, "a");
                 }).exit();
                 call1.input(42);
@@ -93,18 +93,18 @@ public class ArgumentsAccessTest extends FineGrainedAccessTest {
 
         assertGlobalFunctionExpressionDeclaration("foo");
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+        enter(FunctionCallTag.class, (e, call) -> {
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
-            enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
             call.input(assertJSFunctionInput);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class).exit(assertReturnValue(42));
             call.input(42);
 
             enterDeclareTag("id");
 
             // Argument 'id' is stored in frame even if not used
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 assertAttribute(e1, NAME, "id");
                 call1.input(42);
             }).exit();
@@ -118,12 +118,12 @@ public class ArgumentsAccessTest extends FineGrainedAccessTest {
 
         assertGlobalFunctionExpressionDeclaration("foo");
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+        enter(FunctionCallTag.class, (e, call) -> {
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
-            enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
             call.input(assertJSFunctionInput);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class).exit(assertReturnValue(42));
             call.input(42);
 
             // var and args declarations
@@ -131,12 +131,12 @@ public class ArgumentsAccessTest extends FineGrainedAccessTest {
             enterDeclareTag("b");
 
             // Argument 'a' is stored in frame even if not used
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 assertAttribute(e1, NAME, "a");
                 call1.input(42);
             }).exit();
             // No argument: set undefined
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 assertAttribute(e1, NAME, "b");
                 call1.input(Undefined.instance);
             }).exit();

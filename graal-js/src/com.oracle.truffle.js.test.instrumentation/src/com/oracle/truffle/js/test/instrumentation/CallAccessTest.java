@@ -44,13 +44,13 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -64,20 +64,20 @@ public class CallAccessTest extends FineGrainedAccessTest {
         assertGlobalFunctionExpressionDeclaration("foo");
 
         // foo(1)
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             // target (which is undefined in this case) and function
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
             // read 'foo' from the global object
-            enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
             call.input(assertJSFunctionInput);
             // one argument
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class).exit(assertReturnValue(42));
             call.input(42);
 
             enterDeclareTag("a");
 
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 call1.input(42);
             }).exit();
         }).exit();
@@ -91,26 +91,26 @@ public class CallAccessTest extends FineGrainedAccessTest {
         assertGlobalFunctionExpressionDeclaration("foo");
 
         // foo(1)
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             // tead the target for 'foo', which is undefined
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(Undefined.instance));
+            enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
-            enter(ReadPropertyExpressionTag.class).input(assertGlobalObjectInput).exit();
+            enter(ReadPropertyTag.class).input(assertGlobalObjectInput).exit();
             // target (which is undefined in this case) and function
             call.input(assertJSFunctionInput);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class).exit(assertReturnValue(42));
             call.input(42);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(24));
+            enter(LiteralTag.class).exit(assertReturnValue(24));
             call.input(24);
 
             // locals declarations
             enterDeclareTag("a");
             enterDeclareTag("b");
 
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 call1.input(42);
             }).exit();
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 call1.input(24);
             }).exit();
         }).exit();
@@ -121,14 +121,14 @@ public class CallAccessTest extends FineGrainedAccessTest {
         evalAllTags("var foo = {x:function foo(a,b) {}}; foo.x(42,24);");
 
         // var foo = ...
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "foo");
             write.input(assertJSObjectInput);
 
-            enter(LiteralExpressionTag.class, (e1, literal) -> {
-                assertAttribute(e1, TYPE, LiteralExpressionTag.Type.ObjectLiteral.name());
-                enter(LiteralExpressionTag.class, (e2) -> {
-                    assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+            enter(LiteralTag.class, (e1, literal) -> {
+                assertAttribute(e1, TYPE, LiteralTag.Type.ObjectLiteral.name());
+                enter(LiteralTag.class, (e2) -> {
+                    assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
                 }).exit();
                 literal.input(assertJSFunctionInput);
             }).exit();
@@ -137,32 +137,32 @@ public class CallAccessTest extends FineGrainedAccessTest {
         }).exit();
 
         // x.foo(1)
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             // read 'foo' from global
-            enter(ReadPropertyExpressionTag.class, (e1, prop) -> {
+            enter(ReadPropertyTag.class, (e1, prop) -> {
                 assertAttribute(e1, KEY, "foo");
                 prop.input(assertGlobalObjectInput);
             }).exit();
             // 1st argument to function is target
             call.input(assertJSObjectInput);
             // 2nd argument is the function itself
-            enter(ReadPropertyExpressionTag.class, assertPropertyReadName("x")).input(assertJSObjectInput).exit();
+            enter(ReadPropertyTag.class, assertPropertyReadName("x")).input(assertJSObjectInput).exit();
             call.input(assertJSFunctionInput);
             // arguments
 
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class).exit(assertReturnValue(42));
             call.input(42);
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(24));
+            enter(LiteralTag.class).exit(assertReturnValue(24));
             call.input(24);
 
             // locals declarations
             enterDeclareTag("a");
             enterDeclareTag("b");
 
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 call1.input(42);
             }).exit();
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 call1.input(24);
             }).exit();
         }).exit();
@@ -173,14 +173,14 @@ public class CallAccessTest extends FineGrainedAccessTest {
         evalAllTags("var foo = {x:function foo(a,b) {}}; foo.x(42);");
 
         // var foo = ...
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "foo");
             write.input(assertJSObjectInput);
 
-            enter(LiteralExpressionTag.class, (e1, literal) -> {
-                assertAttribute(e1, TYPE, LiteralExpressionTag.Type.ObjectLiteral.name());
-                enter(LiteralExpressionTag.class, (e2) -> {
-                    assertAttribute(e2, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+            enter(LiteralTag.class, (e1, literal) -> {
+                assertAttribute(e1, TYPE, LiteralTag.Type.ObjectLiteral.name());
+                enter(LiteralTag.class, (e2) -> {
+                    assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
                 }).exit();
                 literal.input(assertJSFunctionInput);
             }).exit();
@@ -189,29 +189,29 @@ public class CallAccessTest extends FineGrainedAccessTest {
         }).exit();
 
         // x.foo(1)
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             // read 'foo' from global
-            enter(ReadPropertyExpressionTag.class, (e1, prop) -> {
+            enter(ReadPropertyTag.class, (e1, prop) -> {
                 assertAttribute(e1, KEY, "foo");
                 prop.input(assertGlobalObjectInput);
             }).exit();
             // 1st argument to function is target
             call.input(assertJSObjectInput);
             // 2nd argument is the function itself
-            enter(ReadPropertyExpressionTag.class, assertPropertyReadName("x")).input().exit();
+            enter(ReadPropertyTag.class, assertPropertyReadName("x")).input().exit();
             call.input(assertJSFunctionInput);
             // arguments
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class).exit(assertReturnValue(42));
             call.input(42);
 
             // locals declarations
             enterDeclareTag("a");
             enterDeclareTag("b");
 
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 call1.input(42);
             }).exit();
-            enter(WriteVariableExpressionTag.class, (e1, call1) -> {
+            enter(WriteVariableTag.class, (e1, call1) -> {
                 call1.input(Undefined.instance);
             }).exit();
         }).exit();
@@ -222,16 +222,16 @@ public class CallAccessTest extends FineGrainedAccessTest {
         evalAllTags("var a = {x:[function(){}]}; a.x[0](42);");
 
         // var a = ...
-        enter(WritePropertyExpressionTag.class, (e, write) -> {
+        enter(WritePropertyTag.class, (e, write) -> {
             assertAttribute(e, KEY, "a");
             write.input(assertGlobalObjectInput);
 
-            enter(LiteralExpressionTag.class, (e1, oblit) -> {
-                assertAttribute(e1, TYPE, LiteralExpressionTag.Type.ObjectLiteral.name());
-                enter(LiteralExpressionTag.class, (e2, arrlit) -> {
-                    assertAttribute(e2, TYPE, LiteralExpressionTag.Type.ArrayLiteral.name());
-                    enter(LiteralExpressionTag.class, (e3) -> {
-                        assertAttribute(e3, TYPE, LiteralExpressionTag.Type.FunctionLiteral.name());
+            enter(LiteralTag.class, (e1, oblit) -> {
+                assertAttribute(e1, TYPE, LiteralTag.Type.ObjectLiteral.name());
+                enter(LiteralTag.class, (e2, arrlit) -> {
+                    assertAttribute(e2, TYPE, LiteralTag.Type.ArrayLiteral.name());
+                    enter(LiteralTag.class, (e3) -> {
+                        assertAttribute(e3, TYPE, LiteralTag.Type.FunctionLiteral.name());
                     }).exit();
                     arrlit.input(assertJSFunctionInput);
                 }).exit();
@@ -241,11 +241,11 @@ public class CallAccessTest extends FineGrainedAccessTest {
         }).exit();
 
         // a.x[0](42)
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             // read 'a.x' from global
-            enter(ReadPropertyExpressionTag.class, (e1, prop) -> {
+            enter(ReadPropertyTag.class, (e1, prop) -> {
                 assertAttribute(e1, KEY, "x");
-                enter(ReadPropertyExpressionTag.class, (e2, p2) -> {
+                enter(ReadPropertyTag.class, (e2, p2) -> {
                     assertAttribute(e2, KEY, "a");
                     p2.input(assertGlobalObjectInput);
                 }).exit();
@@ -255,15 +255,15 @@ public class CallAccessTest extends FineGrainedAccessTest {
             call.input(assertJSArrayInput);
             // 2nd argument is the function itself
 
-            enter(ReadElementExpressionTag.class, (e1, el) -> {
+            enter(ReadElementTag.class, (e1, el) -> {
                 el.input(assertJSArrayInput);
-                enter(LiteralExpressionTag.class).exit(assertReturnValue(0));
+                enter(LiteralTag.class).exit(assertReturnValue(0));
                 el.input(0);
             }).exit();
 
             call.input(assertJSFunctionInput);
             // arguments
-            enter(LiteralExpressionTag.class).exit(assertReturnValue(42));
+            enter(LiteralTag.class).exit(assertReturnValue(42));
             call.input(42);
         }).exit(assertReturnValue(Undefined.instance));
 
@@ -271,13 +271,13 @@ public class CallAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void newTest() {
-        evalWithTags("function A() {}; var a = {x:function(){return 1;}}; new A(a.x(), a.x());", new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
+        evalWithTags("function A() {}; var a = {x:function(){return 1;}}; new A(a.x(), a.x());", new Class<?>[]{ObjectAllocationTag.class, FunctionCallTag.class});
 
-        enter(ObjectAllocationExpressionTag.class, (e, call) -> {
+        enter(ObjectAllocationTag.class, (e, call) -> {
             call.input(assertJSFunctionInput);
-            enter(FunctionCallExpressionTag.class).input().input().exit();
+            enter(FunctionCallTag.class).input().input().exit();
             call.input(1);
-            enter(FunctionCallExpressionTag.class).input().input().exit();
+            enter(FunctionCallTag.class).input().input().exit();
             call.input(1);
 
         }).exit((r) -> {
@@ -301,44 +301,44 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         " t.f = bar;" +
                         " t.r();" +
                         "}";
-        evalWithTags(src, new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
+        evalWithTags(src, new Class<?>[]{ObjectAllocationTag.class, FunctionCallTag.class});
 
         // Invoke operations perform the two read operations independently.
         // 1. read the target object
-        enter(ObjectAllocationExpressionTag.class, (e, call) -> {
+        enter(ObjectAllocationTag.class, (e, call) -> {
             call.input(assertJSFunctionInput);
         }).exit();
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInput);
-            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+            enter(FunctionCallTag.class, (e2, call2) -> {
                 call2.input(assertJSObjectInput);
                 call2.input(assertJSFunctionInput);
             }).exit();
         }).exit();
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInput);
-            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+            enter(FunctionCallTag.class, (e2, call2) -> {
                 call2.input(assertJSObjectInput);
                 call2.input(assertJSFunctionInput);
             }).exit();
         }).exit();
-        enter(ObjectAllocationExpressionTag.class, (e, call) -> {
+        enter(ObjectAllocationTag.class, (e, call) -> {
             call.input(assertJSFunctionInput);
         }).exit();
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInput);
-            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+            enter(FunctionCallTag.class, (e2, call2) -> {
                 call2.input(assertJSObjectInput);
                 call2.input(assertJSFunctionInput);
             }).exit();
         }).exit();
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInput);
-            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+            enter(FunctionCallTag.class, (e2, call2) -> {
                 call2.input(assertJSObjectInput);
                 call2.input(assertJSFunctionInput);
             }).exit();
@@ -348,12 +348,12 @@ public class CallAccessTest extends FineGrainedAccessTest {
     @Test
     public void castCrash() {
         String src = "function foo(){var fArr = [function (){}];for(i in fArr) {fArr[i]();}} foo();";
-        evalWithTag(src, FunctionCallExpressionTag.class);
+        evalWithTag(src, FunctionCallTag.class);
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInput);
-            enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+            enter(FunctionCallTag.class, (e2, call2) -> {
                 call2.input(assertJSArrayInput);
                 call2.input(assertJSFunctionInput);
             }).exit();
@@ -364,14 +364,14 @@ public class CallAccessTest extends FineGrainedAccessTest {
     public void callForeignTest() {
         String src = "var r = Polyglot.import('run'); r.run();";
         declareInteropSymbol("run", new ForeignTestObject());
-        evalWithTag(src, FunctionCallExpressionTag.class);
+        evalWithTag(src, FunctionCallTag.class);
 
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertJSObjectInput);
             call.input(assertJSFunctionInput);
             call.input("run");
         }).exit();
-        enter(FunctionCallExpressionTag.class, (e, call) -> {
+        enter(FunctionCallTag.class, (e, call) -> {
             call.input(assertTruffleObject);
             call.input(assertTruffleObject);
         }).exit();
@@ -384,13 +384,13 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         "  arr.push(\"\");\n" +
                         "}";
 
-        evalWithTags(src, new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
+        evalWithTags(src, new Class<?>[]{ObjectAllocationTag.class, FunctionCallTag.class});
 
-        enter(ObjectAllocationExpressionTag.class, (e, call) -> {
+        enter(ObjectAllocationTag.class, (e, call) -> {
             call.input(assertJSFunctionInput);
         }).exit();
         for (int i = 0; i < 100; i++) {
-            enter(FunctionCallExpressionTag.class, (e, call) -> {
+            enter(FunctionCallTag.class, (e, call) -> {
                 call.input(assertJSArrayInput);
                 call.input(assertJSFunctionInput);
                 call.input("");
@@ -406,13 +406,13 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         "function bar() {" +
                         "  return arguments[0];" +
                         "};" +
-                        "foo(42);", FunctionCallExpressionTag.class);
+                        "foo(42);", FunctionCallTag.class);
 
-        enter(FunctionCallExpressionTag.class, (e, fooCall) -> {
+        enter(FunctionCallTag.class, (e, fooCall) -> {
             fooCall.input(assertJSObjectInput);
             fooCall.input(assertJSFunctionInput);
             fooCall.input(42);
-            enter(FunctionCallExpressionTag.class, (e2, barCall) -> {
+            enter(FunctionCallTag.class, (e2, barCall) -> {
                 barCall.input(assertJSObjectInput);
                 barCall.input(assertJSFunctionInput);
                 barCall.input(assertJSArrayInput);
@@ -428,9 +428,9 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         "function bar() {" +
                         "  return arguments[4];" +
                         "};" +
-                        "foo('a', 'b', 40, 41, 42);", FunctionCallExpressionTag.class);
+                        "foo('a', 'b', 40, 41, 42);", FunctionCallTag.class);
 
-        enter(FunctionCallExpressionTag.class, (e, fooCall) -> {
+        enter(FunctionCallTag.class, (e, fooCall) -> {
             fooCall.input(assertJSObjectInput);
             fooCall.input(assertJSFunctionInput);
             fooCall.input("a");
@@ -438,7 +438,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
             fooCall.input(40);
             fooCall.input(41);
             fooCall.input(42);
-            enter(FunctionCallExpressionTag.class, (e2, barCall) -> {
+            enter(FunctionCallTag.class, (e2, barCall) -> {
                 barCall.input(assertJSObjectInput);
                 barCall.input(assertJSFunctionInput);
                 barCall.input("a");
@@ -464,16 +464,16 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         "  };" +
                         "};" +
                         "var bar = new Bar();" +
-                        "bar.use();", new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
+                        "bar.use();", new Class<?>[]{ObjectAllocationTag.class, FunctionCallTag.class});
 
-        enter(ObjectAllocationExpressionTag.class, (e, newCall) -> {
+        enter(ObjectAllocationTag.class, (e, newCall) -> {
             newCall.input(assertJSFunctionInputWithName("Bar"));
         }).exit(assertJSObjectReturn);
 
-        enter(FunctionCallExpressionTag.class, (e2, useCall) -> {
+        enter(FunctionCallTag.class, (e2, useCall) -> {
             useCall.input(assertJSObjectInput);
             useCall.input(assertJSFunctionInputWithName("use"));
-            enter(FunctionCallExpressionTag.class, (e3, defCall) -> {
+            enter(FunctionCallTag.class, (e3, defCall) -> {
                 defCall.input(assertJSObjectInput);
                 defCall.input(assertJSFunctionInputWithName("def"));
             }).exit(assertJSObjectReturn);
@@ -489,17 +489,17 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         "setKey({}, ['a']);" +
                         "for(var i =0; i<2; i++) {" +
                         "  setKey({a:1}, ['a']);" +
-                        "};", new Class<?>[]{ObjectAllocationExpressionTag.class, FunctionCallExpressionTag.class});
+                        "};", new Class<?>[]{ObjectAllocationTag.class, FunctionCallTag.class});
 
         for (int i = 0; i < 3; i++) {
-            enter(FunctionCallExpressionTag.class, (e, call) -> {
+            enter(FunctionCallTag.class, (e, call) -> {
                 call.input(assertUndefinedInput);
                 call.input(assertJSFunctionInputWithName("setKey"));
                 call.input(assertJSObjectInput);
                 call.input(assertJSArrayInput);
 
-                enter(FunctionCallExpressionTag.class, (e1, call1) -> {
-                    enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                enter(FunctionCallTag.class, (e1, call1) -> {
+                    enter(FunctionCallTag.class, (e2, call2) -> {
                         call2.input(assertJSArrayInput);
                         call2.input(assertJSFunctionInputWithName("slice"));
                         call2.input(0);
@@ -528,17 +528,17 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         "  setKey({" +
                         "    a: 1" +
                         "  }, callable);" +
-                        "};", FunctionCallExpressionTag.class);
+                        "};", FunctionCallTag.class);
 
         for (int i = 0; i < 3; i++) {
-            enter(FunctionCallExpressionTag.class, (e, call) -> {
+            enter(FunctionCallTag.class, (e, call) -> {
                 call.input(assertUndefinedInput);
                 call.input(assertJSFunctionInputWithName("setKey"));
                 call.input(assertJSObjectInput);
                 call.input(assertJSObjectInput);
 
-                enter(FunctionCallExpressionTag.class, (e1, call1) -> {
-                    enter(FunctionCallExpressionTag.class, (e2, call2) -> {
+                enter(FunctionCallTag.class, (e1, call1) -> {
+                    enter(FunctionCallTag.class, (e2, call2) -> {
                         call2.input(assertJSArrayInput);
                         call2.input(assertJSFunctionInputWithName("fakeslice"));
                         call2.input(0);
@@ -562,12 +562,12 @@ public class CallAccessTest extends FineGrainedAccessTest {
                         "  with(obj)" +
                         "    return foo('str', 42);" +
                         "}" +
-                        "bar();", FunctionCallExpressionTag.class);
+                        "bar();", FunctionCallTag.class);
 
-        enter(FunctionCallExpressionTag.class, (e, barCall) -> {
+        enter(FunctionCallTag.class, (e, barCall) -> {
             barCall.input(assertUndefinedInput);
             barCall.input(assertJSFunctionInputWithName("bar"));
-            enter(FunctionCallExpressionTag.class, (e2, fooCall) -> {
+            enter(FunctionCallTag.class, (e2, fooCall) -> {
                 fooCall.input(assertJSObjectInput);
                 fooCall.input(assertJSFunctionInputWithName("foo"));
                 fooCall.input("str");

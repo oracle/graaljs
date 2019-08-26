@@ -63,10 +63,10 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BuiltinRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 /**
@@ -180,19 +180,19 @@ public class FullExecutionTracerInstrument extends TruffleInstrument {
                             String tagAttribute = getAttributeFrom(cx, "name");
                             extra += tagAttribute;
                         }
-                        if (n.hasTag(ReadPropertyExpressionTag.class)) {
+                        if (n.hasTag(ReadPropertyTag.class)) {
                             String tagAttribute = "'" + getAttributeFrom(cx, "key") + "' ";
                             extra += tagAttribute;
                         }
-                        if (n.hasTag(ReadVariableExpressionTag.class)) {
+                        if (n.hasTag(ReadVariableTag.class)) {
                             String tagAttribute = "'" + getAttributeFrom(cx, "name") + "' ";
                             extra += tagAttribute;
                         }
-                        if (n.hasTag(WritePropertyExpressionTag.class)) {
+                        if (n.hasTag(WritePropertyTag.class)) {
                             String tagAttribute = "'" + getAttributeFrom(cx, "key") + "' ";
                             extra += tagAttribute;
                         }
-                        if (n.hasTag(WriteVariableExpressionTag.class)) {
+                        if (n.hasTag(WriteVariableTag.class)) {
                             String tagAttribute = "'" + getAttributeFrom(cx, "name") + "' ";
                             extra += tagAttribute;
                         }

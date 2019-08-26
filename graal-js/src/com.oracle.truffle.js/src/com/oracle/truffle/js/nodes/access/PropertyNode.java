@@ -53,8 +53,8 @@ import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyExpressionTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.runtime.JSContext;
 
 public class PropertyNode extends JSTargetableNode implements ReadNode {
@@ -64,9 +64,9 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == ReadVariableExpressionTag.class && isScopeAccess()) {
+        if (tag == ReadVariableTag.class && isScopeAccess()) {
             return true;
-        } else if (tag == ReadPropertyExpressionTag.class && !isScopeAccess()) {
+        } else if (tag == ReadPropertyTag.class && !isScopeAccess()) {
             return true;
         } else if (tag == InputNodeTag.class) {
             return true;
@@ -89,7 +89,7 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ReadPropertyExpressionTag.class) && !isScopeAccess()) {
+        if (materializedTags.contains(ReadPropertyTag.class) && !isScopeAccess()) {
             if (target instanceof JSTaggedExecutionNode) {
                 // this node is already materialized
                 return this;

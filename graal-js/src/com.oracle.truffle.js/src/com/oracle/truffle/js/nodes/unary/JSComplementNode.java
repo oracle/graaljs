@@ -52,7 +52,7 @@ import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryExpressionTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 
 @NodeInfo(shortName = "~")
@@ -69,7 +69,7 @@ public abstract class JSComplementNode extends JSUnaryNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == UnaryExpressionTag.class) {
+        if (tag == UnaryOperationTag.class) {
             return true;
         } else {
             return super.hasTag(tag);
@@ -78,7 +78,7 @@ public abstract class JSComplementNode extends JSUnaryNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(UnaryExpressionTag.class) && !(getOperand() instanceof JSInputGeneratingNodeWrapper)) {
+        if (materializedTags.contains(UnaryOperationTag.class) && !(getOperand() instanceof JSInputGeneratingNodeWrapper)) {
             JSComplementNode materialized = JSComplementNodeGen.create(JSInputGeneratingNodeWrapper.create(getOperand()));
             transferSourceSectionAddExpressionTag(this, materialized);
             return materialized;
