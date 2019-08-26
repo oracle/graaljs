@@ -410,7 +410,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else {
             functionExpression = factory.createFunctionExpression(functionData, functionRoot);
         }
-        return tagExpression(functionExpression, functionNode);
+
+        if (functionNode.isDeclared()) {
+            ensureHasSourceSection(functionExpression, functionNode);
+        } else {
+            functionExpression = tagExpression(functionExpression, functionNode);
+        }
+        return functionExpression;
     }
 
     JavaScriptNode translateFunctionBody(FunctionNode functionNode, boolean isArrowFunction, boolean isGeneratorFunction, boolean isAsyncFunction, boolean isDerivedConstructor,

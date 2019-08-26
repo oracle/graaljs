@@ -87,6 +87,8 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == LiteralTag.class) {
             return true;
+        } else if (tag == JSTags.InputNodeTag.class) {
+            return true;
         } else {
             return super.hasTag(tag);
         }

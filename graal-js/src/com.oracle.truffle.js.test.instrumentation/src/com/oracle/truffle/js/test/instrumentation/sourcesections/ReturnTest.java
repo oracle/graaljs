@@ -53,7 +53,7 @@ public class ReturnTest extends SourceSectionInstrumentationTest {
     @Test
     public void returnInTerminalPositionExpressions() {
         evalExpressions("function f() { return NaN } f()");
-        assertSourceSections(new String[]{"function f() { return NaN }", "f", "NaN", "f()"});
+        assertSourceSections(new String[]{"f", "NaN", "f()"});
     }
 
 }
