@@ -142,24 +142,17 @@ suite = {
         "artifactId" : "graal-nodejs-jniboundaryprofiler",
       }
     },
-    "TRUFFLENODE_GRAALVM_SUPPORT" : {
+    "TRUFFLENODE_HEADERS" : {
       "native" : True,
       "platformDependent" : True,
-      "description" : "Graal.nodejs support distribution for the GraalVM",
+      "description" : "Generated header files",
       "os_arch": {
         "windows": {
           "<others>": {
             "layout" : {
               "./" : [
-                "file:deps/npm",
                 "dependency:trufflenodeNative/out/headers/include",
               ],
-              "NODE_README.md" : "file:README.md",
-              "bin/" : [
-                "dependency:trufflenodeNative/Release/node.exe"
-              ],
-              "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
-              "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
             },
           },
         },
@@ -167,18 +160,28 @@ suite = {
           "<others>": {
             "layout" : {
               "./" : [
-                "file:deps/npm",
                 "dependency:trufflenodeNative/headers/include",
               ],
-              "NODE_README.md" : "file:README.md",
-              "bin/" : [
-                "dependency:trufflenodeNative/Release/node"
-              ],
-              "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
-              "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
             },
           },
         },
+      },
+    },
+    "TRUFFLENODE_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "platformDependent" : True,
+      "description" : "Graal.nodejs support distribution for the GraalVM",
+      "layout" : {
+        "./" : [
+          "file:deps/npm",
+          "dependency:TRUFFLENODE_HEADERS",
+        ],
+        "NODE_README.md" : "file:README.md",
+        "bin/" : [
+          "dependency:trufflenodeNative/Release/<exe:node>"
+        ],
+        "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
+        "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
       },
     },
   },
