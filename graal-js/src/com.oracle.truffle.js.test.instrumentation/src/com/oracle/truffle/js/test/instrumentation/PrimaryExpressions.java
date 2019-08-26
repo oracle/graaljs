@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 
@@ -146,6 +147,18 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
             w.input(assertJSObjectInput);
             w.input(3);
         }).exit();
+    }
+
+    @Test
+    public void expressionTagInFunctionExpression() {
+        evalWithTag("(function foo() {})", StandardTags.ExpressionTag.class);
+        enter(StandardTags.ExpressionTag.class, (e, expr) -> {
+        }).exit();
+    }
+
+    @Test
+    public void noExpressionTagInFunctionDeclaration() {
+        evalWithTag("function foo() {};", StandardTags.ExpressionTag.class);
     }
 
 }
