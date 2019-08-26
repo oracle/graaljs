@@ -71,12 +71,14 @@
 #define LIBJLI_RELPATH     "/lib/jli/libjli.dylib"
 #elif defined(__sparc__)
 // SVM currently not supported
-#define LIBJVM_RELPATH     "/lib/sparcv9/server/libjvm.so"
+#define LIBJVM_RELPATH     "/lib/server/libjvm.so"
+#define LIBJVM_RELPATH2    "/lib/sparcv9/server/libjvm.so"
 #elif defined(_WIN32)
 #define LIBJVM_RELPATH     "\\bin\\server\\jvm.dll"
 #else
 #define LIBNODESVM_RELPATH "/jre/lib/polyglot/libpolyglot.so"
-#define LIBJVM_RELPATH     "/lib/amd64/server/libjvm.so"
+#define LIBJVM_RELPATH     "/lib/server/libjvm.so"
+#define LIBJVM_RELPATH2    "/lib/amd64/server/libjvm.so"
 #endif
 
 #define EXIT_WITH_MESSAGE(env, message) { \
@@ -255,6 +257,11 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
     std::string jvmlib_path = getstdenv("NODE_JVM_LIB");
     if (jvmlib_path.empty()) {
         jvmlib_path = jdk_path + LIBJVM_RELPATH;
+#ifdef LIBJVM_RELPATH2
+        if (access(jvmlib_path.c_str(), F_OK) == -1) {
+            jvmlib_path = jdk_path + LIBJVM_RELPATH2;
+        }
+#endif
         SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
     }
     if (access(jvmlib_path.c_str(), F_OK) == -1) {
