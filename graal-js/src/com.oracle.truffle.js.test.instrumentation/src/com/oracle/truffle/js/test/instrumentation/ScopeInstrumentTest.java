@@ -108,6 +108,16 @@ public class ScopeInstrumentTest {
     }
 
     @Test
+    public void asyncFindScopes() {
+        asyncFindScopes("Promise.resolve(42).then(async function foo (x) {});", "foo");
+    }
+
+    @Test
+    public void anonAsyncFindScopes() {
+        asyncFindScopes("Promise.resolve(42).then(async (x) => {});", ":async");
+    }
+
+    @Test
     public void testParams() throws Throwable {
         Source source = Source.create(ID, "" +
                         "function testParams(a, [b, c], d = 9) {\n" +
@@ -137,6 +147,29 @@ public class ScopeInstrumentTest {
         });
         context.eval(source);
         TestJSScopeInstrument.instance.checkSuccess(1);
+    }
+
+    public void asyncFindScopes(String src, String expectedAsyncFunctionName) {
+        Source source = Source.create(ID, src);
+        TestJSScopeInstrument.filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).build();
+        ensureCreated(context.getEngine().getInstruments().get("TestJSScopeInstrument"));
+        int[] scopes = new int[]{0, 0};
+        TestJSScopeInstrument.instance.setTester((env, node, frame) -> {
+            Scope scope = findFirstLocalScope(env, node, frame);
+            if (expectedAsyncFunctionName.equals(scope.getName())) {
+                Object vars = scope.getVariables();
+                int varCount = getSize(getKeys(vars));
+                int line = node.getSourceSection().getStartLine();
+                assertEquals("Line = " + line + ", num vars:", 1, varCount);
+                assertTrue("Param x", INTEROP.isMemberReadable(vars, "x"));
+                assertEquals("Param x", 42, INTEROP.readMember(vars, "x"));
+                scopes[1] = 1;
+            }
+            scopes[0]++;
+        });
+        context.eval(source);
+        assertEquals("Async function scope inspected", scopes[1], 1);
+        assertEquals("All scopes have been entered", 9, scopes[0]);
     }
 
     @TruffleInstrument.Registration(id = "TestJSScopeInstrument", services = Object.class)
