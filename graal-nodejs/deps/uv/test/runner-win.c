@@ -76,6 +76,11 @@ int process_start(char *name, char *part, process_info_t *p, int is_helper) {
   PROCESS_INFORMATION pi;
   DWORD result;
 
+  if (!is_helper) {
+    /* Give the helpers time to settle. Race-y, fix this. */
+    uv_sleep(250);
+  }
+
   if (GetTempPathW(sizeof(path) / sizeof(WCHAR), (WCHAR*)&path) == 0)
     goto error;
   if (GetTempFileNameW((WCHAR*)&path, L"uv", 0, (WCHAR*)&filename) == 0)
@@ -189,7 +194,7 @@ int process_wait(process_info_t *vec, int n, int timeout) {
 
   result = WaitForMultipleObjects(n, handles, TRUE, timeout_api);
 
-  if (result >= WAIT_OBJECT_0 && result < WAIT_OBJECT_0 + n) {
+  if (result < WAIT_OBJECT_0 + n) {
     /* All processes are terminated. */
     return 0;
   }
@@ -263,7 +268,8 @@ int process_read_last_line(process_info_t *p,
   if (!ReadFile(p->stdio_out, buffer, buffer_len - 1, &read, &overlapped))
     return -1;
 
-  for (start = read - 1; start >= 0; start--) {
+  start = read;
+  while (start-- > 0) {
     if (buffer[start] == '\n' || buffer[start] == '\r')
       break;
   }
@@ -303,7 +309,7 @@ void process_cleanup(process_info_t *p) {
 }
 
 
-static int clear_line() {
+static int clear_line(void) {
   HANDLE handle;
   CONSOLE_SCREEN_BUFFER_INFO info;
   COORD coord;

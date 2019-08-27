@@ -379,6 +379,7 @@ class Finalizer {
   napi_finalize _finalize_callback;
   void* _finalize_data;
   void* _finalize_hint;
+  bool _finalize_ran = false;
 };
 
 // Wrapper around node::Persistent that implements reference counting.
@@ -422,8 +423,29 @@ class Reference : private Finalizer {
       finalize_hint);
   }
 
+  // Delete is called in 2 ways. Either from the finalizer or
+  // from one of Unwrap or napi_delete_reference.
+  //
+  // When it is called from Unwrap or napi_delete_reference we only
+  // want to do the delete if the finalizer has already run,
+  // otherwise we may crash when the finalizer does run.
+  // If the finalizer has not already run delay the delete until
+  // the finalizer runs by not doing the delete
+  // and setting _delete_self to true so that the finalizer will
+  // delete it when it runs.
+  //
+  // The second way this is called is from
+  // the finalizer and _delete_self is set. In this case we
+  // know we need to do the deletion so just do it.
   static void Delete(Reference* reference) {
-    delete reference;
+    if ((reference->_delete_self) || (reference->_finalize_ran)) {
+      delete reference;
+    } else {
+      // reduce the reference count to 0 and defer until
+      // finalizer runs
+      reference->_delete_self = true;
+      while (reference->Unref() != 0) {}
+    }
   }
 
   uint32_t Ref() {
@@ -459,13 +481,25 @@ class Reference : private Finalizer {
   }
 
  private:
+  // The N-API finalizer callback may make calls into the engine. V8's heap is
+  // not in a consistent state during the weak callback, and therefore it does
+  // not support calls back into it. However, it provides a mechanism for adding
+  // a finalizer which may make calls back into the engine by allowing us to
+  // attach such a second-pass finalizer from the first pass finalizer. Thus,
+  // we do that here to ensure that the N-API finalizer callback is free to call
+  // into the engine.
   static void FinalizeCallback(const v8::WeakCallbackInfo<Reference>& data) {
     Reference* reference = data.GetParameter();
+
+    // The reference must be reset during the first pass.
     reference->_persistent.Reset();
 
-    // Check before calling the finalize callback, because the callback might
-    // delete it.
-    bool delete_self = reference->_delete_self;
+    data.SetSecondPassCallback(SecondPassCallback);
+  }
+
+  static void SecondPassCallback(const v8::WeakCallbackInfo<Reference>& data) {
+    Reference* reference = data.GetParameter();
+
     napi_env env = reference->_env;
 
     if (reference->_finalize_callback != nullptr) {
@@ -476,8 +510,13 @@ class Reference : private Finalizer {
             reference->_finalize_hint));
     }
 
-    if (delete_self) {
+    // this is safe because if a request to delete the reference
+    // is made in the finalize_callback it will defer deletion
+    // to this block and set _delete_self to true
+    if (reference->_delete_self) {
       Delete(reference);
+    } else {
+      reference->_finalize_ran = true;
     }
   }
 
@@ -2026,12 +2065,15 @@ napi_status napi_create_string_latin1(napi_env env,
                                       napi_value* result) {
   CHECK_ENV(env);
   CHECK_ARG(env, result);
+  RETURN_STATUS_IF_FALSE(env,
+      (length == NAPI_AUTO_LENGTH) || length <= INT_MAX,
+      napi_invalid_arg);
 
   auto isolate = env->isolate;
   auto str_maybe =
       v8::String::NewFromOneByte(isolate,
                                  reinterpret_cast<const uint8_t*>(str),
-                                 v8::NewStringType::kInternalized,
+                                 v8::NewStringType::kNormal,
                                  length);
   CHECK_MAYBE_EMPTY(env, str_maybe, napi_generic_failure);
 
@@ -2045,11 +2087,18 @@ napi_status napi_create_string_utf8(napi_env env,
                                     napi_value* result) {
   CHECK_ENV(env);
   CHECK_ARG(env, result);
+  RETURN_STATUS_IF_FALSE(env,
+      (length == NAPI_AUTO_LENGTH) || length <= INT_MAX,
+      napi_invalid_arg);
 
-  v8::Local<v8::String> s;
-  CHECK_NEW_FROM_UTF8_LEN(env, s, str, length);
-
-  *result = v8impl::JsValueFromV8LocalValue(s);
+  auto isolate = env->isolate;
+  auto str_maybe =
+      v8::String::NewFromUtf8(isolate,
+                              str,
+                              v8::NewStringType::kNormal,
+                              static_cast<int>(length));
+  CHECK_MAYBE_EMPTY(env, str_maybe, napi_generic_failure);
+  *result = v8impl::JsValueFromV8LocalValue(str_maybe.ToLocalChecked());
   return napi_clear_last_error(env);
 }
 
@@ -2059,12 +2108,15 @@ napi_status napi_create_string_utf16(napi_env env,
                                      napi_value* result) {
   CHECK_ENV(env);
   CHECK_ARG(env, result);
+  RETURN_STATUS_IF_FALSE(env,
+      (length == NAPI_AUTO_LENGTH) || length <= INT_MAX,
+      napi_invalid_arg);
 
   auto isolate = env->isolate;
   auto str_maybe =
       v8::String::NewFromTwoByte(isolate,
                                  reinterpret_cast<const uint16_t*>(str),
-                                 v8::NewStringType::kInternalized,
+                                 v8::NewStringType::kNormal,
                                  length);
   CHECK_MAYBE_EMPTY(env, str_maybe, napi_generic_failure);
 

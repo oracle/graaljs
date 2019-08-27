@@ -275,11 +275,8 @@ function Socket(options) {
       throw errnoException(err, 'open');
 
     this[async_id_symbol] = this._handle.getAsyncId();
-    // options.fd can be string (since it is user-defined),
-    // so changing this to === would be semver-major
-    // See: https://github.com/nodejs/node/pull/11513
-    // eslint-disable-next-line eqeqeq
-    if ((fd == 1 || fd == 2) &&
+
+    if ((fd === 1 || fd === 2) &&
         (this._handle instanceof Pipe) &&
         process.platform === 'win32') {
       // Make stdout and stderr blocking on Windows
@@ -344,7 +341,7 @@ Socket.prototype._unrefTimer = function _unrefTimer() {
 // sent out to the other side.
 Socket.prototype._final = function(cb) {
   // If still connecting - defer handling `_final` until 'connect' will happen
-  if (this.connecting) {
+  if (this.pending) {
     debug('_final: not yet connected');
     return this.once('connect', () => this._final(cb));
   }
@@ -360,13 +357,15 @@ Socket.prototype._final = function(cb) {
   req.callback = cb;
   var err = this._handle.shutdown(req);
 
-  if (err)
+  if (err === 1)  // synchronous finish
+    return afterShutdown.call(req, 0);
+  else if (err !== 0)
     return this.destroy(errnoException(err, 'shutdown'));
 };
 
 
-function afterShutdown(status, handle) {
-  var self = handle[owner_symbol];
+function afterShutdown(status) {
+  var self = this.handle[owner_symbol];
 
   debug('afterShutdown destroyed=%j', self.destroyed,
         self._readableState);
@@ -481,6 +480,13 @@ Object.defineProperty(Socket.prototype, '_connecting', {
   get: function() {
     return this.connecting;
   }
+});
+
+Object.defineProperty(Socket.prototype, 'pending', {
+  get() {
+    return !this._handle || this.connecting;
+  },
+  configurable: true
 });
 
 
@@ -1070,10 +1076,6 @@ function afterConnect(status, handle, req, readable, writable) {
   if (self.destroyed) {
     return;
   }
-
-  // Update handle if it was wrapped
-  // TODO(indutny): assert that the handle is actually an ancestor of old one
-  handle = self._handle;
 
   debug('afterConnect');
 
