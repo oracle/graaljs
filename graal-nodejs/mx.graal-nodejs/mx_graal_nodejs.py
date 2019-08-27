@@ -154,7 +154,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         built = post_ts.isNewerThan(pre_ts)
         if built and _currentOs == 'darwin':
             nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
-            _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), nodePath], verbose=True)
+            _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), '-add_rpath', join(_getJdkHome(), 'lib'), nodePath], verbose=True)
         return built
 
     def needsBuild(self, newestInput):
@@ -338,6 +338,8 @@ def setLibraryPath(additionalPath=None):
         libraryPath = join(javaHome, 'jre', 'lib', 'sparcv9')
     else:
         libraryPath = join(javaHome, 'jre', 'lib', 'amd64')
+
+    libraryPath += ':' + join(javaHome, 'lib')
 
     if additionalPath:
         libraryPath += ':' + additionalPath

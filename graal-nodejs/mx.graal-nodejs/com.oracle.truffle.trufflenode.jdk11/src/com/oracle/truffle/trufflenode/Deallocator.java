@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,28 +40,21 @@
  */
 package com.oracle.truffle.trufflenode;
 
+import java.lang.ref.Cleaner;
 import java.nio.ByteBuffer;
 
-/**
- * A class responsible for the deallocation of the external memory segments associated with Java
- * objects. A direct {@code ByteBuffer} created by a JNI call is built on top of an existing memory
- * segment whose life-cycle may be associated with the created buffer.
- */
 final class Deallocator {
 
+    private final Cleaner cleaner;
+
     Deallocator() {
-        throw new UnsupportedOperationException();
+        this.cleaner = Cleaner.create();
     }
 
-    /**
-     * Registers the given {@code buffer} for deallocation.
-     *
-     * @param buffer buffer whose memory should be deallocated once it is no longer used.
-     * @param pointer pointer to the memory that should be deallocated.
-     */
-    @SuppressWarnings("static-method")
     public void register(ByteBuffer buffer, long pointer) {
-        throw new UnsupportedOperationException();
+        cleaner.register(buffer, () -> {
+            NativeAccess.deallocate(pointer);
+        });
     }
 
 }
