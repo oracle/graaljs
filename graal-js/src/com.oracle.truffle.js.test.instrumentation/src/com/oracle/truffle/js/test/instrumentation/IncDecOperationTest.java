@@ -200,4 +200,29 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void postfixToNumeric() {
+        evalWithTag("(function() { var x = {}; x++; })()", WriteVariableTag.class);
+        assertToNumericConversion();
+    }
+
+    @Test
+    public void prefixToNumeric() {
+        evalWithTag("(function() { var x = {}; ++x; })()", WriteVariableTag.class);
+        assertToNumericConversion();
+    }
+
+    private void assertToNumericConversion() {
+        // x = {};
+        enter(WriteVariableTag.class, (e, p) -> {
+            assertAttribute(e, NAME, "x");
+            p.input();
+        }).exit();
+        // x++
+        enter(WriteVariableTag.class, (e, p) -> {
+            assertAttribute(e, NAME, "x");
+            p.input(Double.NaN);
+        }).exit();
+    }
+
 }
