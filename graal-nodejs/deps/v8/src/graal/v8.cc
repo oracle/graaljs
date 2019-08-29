@@ -1139,6 +1139,11 @@ namespace v8 {
         graal_object->MakeWeak();
     }
 
+    void V8::MakeWeak(internal::Object*** location_addr) {
+        GraalObject* graal_object = reinterpret_cast<GraalObject*> (*location_addr);
+        graal_object->MakeWeak();
+    }
+
     void V8::SetEntropySource(EntropySource source) {
         TRACE
     }
