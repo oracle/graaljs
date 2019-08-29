@@ -1736,7 +1736,7 @@ public final class GraalJSAccess {
 
         code.append("(function (");
         code.append(parameterList);
-        code.append(") {\n");
+        code.append(") {");
         code.append(body);
         code.append("\n})");
 
