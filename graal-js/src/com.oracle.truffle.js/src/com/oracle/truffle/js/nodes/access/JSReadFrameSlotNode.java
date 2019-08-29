@@ -49,7 +49,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
@@ -147,7 +146,7 @@ abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSReadScopeFrameSlotNodeGen.create(frameSlot, NodeUtil.cloneNode(getLevelFrameNode()));
+        return JSReadScopeFrameSlotNodeGen.create(frameSlot, getLevelFrameNode());
     }
 }
 
@@ -169,7 +168,7 @@ abstract class JSReadScopeFrameSlotWithTDZNode extends JSReadScopeFrameSlotNode 
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSReadScopeFrameSlotWithTDZNodeGen.create(frameSlot, NodeUtil.cloneNode(getLevelFrameNode()));
+        return JSReadScopeFrameSlotWithTDZNodeGen.create(frameSlot, getLevelFrameNode());
     }
 }
 
