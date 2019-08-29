@@ -113,7 +113,7 @@ def _build(args, debug, shared_library, parallelism, debug_mode, output_dir):
         nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
         _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), nodePath], verbose=True)
 
-class GraalNodeJsProject(mx.NativeProject):
+class GraalNodeJsProject(mx.NativeProject): # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, results, output, **args):
         self.suite = suite
         self.name = name
