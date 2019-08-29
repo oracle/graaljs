@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,15 +43,11 @@ package com.oracle.truffle.js.nodes.control;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class VoidBlockNode extends AbstractBlockNode implements SequenceNode {
-    VoidBlockNode(JavaScriptNode[] statements) {
-        super(statements);
-    }
+final class GeneratorVoidBlockNode extends AbstractGeneratorBlockNode {
 
-    public static JavaScriptNode createVoidBlock(JavaScriptNode... statements) {
-        return filterStatements(statements, false);
+    GeneratorVoidBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
+        super(statements, readStateNode, writeStateNode);
     }
 
     @Override
@@ -62,17 +58,6 @@ public final class VoidBlockNode extends AbstractBlockNode implements SequenceNo
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new VoidBlockNode(cloneUninitialized(getStatements()));
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        assert EMPTY == Undefined.instance;
-        return clazz == Undefined.class;
-    }
-
-    @Override
-    public AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        return new GeneratorVoidBlockNode(getStatements(), readStateNode, writeStateNode);
+        return new GeneratorVoidBlockNode(cloneUninitialized(getStatements()), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
     }
 }
