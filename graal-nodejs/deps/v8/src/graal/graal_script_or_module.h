@@ -51,7 +51,7 @@ public:
     GraalScriptOrModule(GraalIsolate* isolate, jobject java_object);
 
     v8::Local<v8::Value> GetResourceName();
-
+    v8::Local<v8::PrimitiveArray> GetHostDefinedOptions();
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };

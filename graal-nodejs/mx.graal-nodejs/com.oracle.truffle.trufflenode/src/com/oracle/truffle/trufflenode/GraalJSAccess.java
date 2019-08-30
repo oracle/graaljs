@@ -269,6 +269,11 @@ public final class GraalJSAccess {
      */
     private final Map<String, Reference<String>> sourceCodeCache = new WeakHashMap<>();
 
+    /**
+     * HostDefinedOptions, see v8::ScriptOrModule::GetHostDefinedOptions() and v8::PrimitiveArray.
+     */
+    private final Map<Source, Object> hostDefinedOptionsMap = new WeakHashMap<>();
+
     private final boolean exposeGC;
 
     private GraalJSAccess(String[] args) throws Exception {
@@ -1703,7 +1708,7 @@ public final class GraalJSAccess {
         template.setFunctionHandler(functionHandler);
     }
 
-    public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] extensions) {
+    public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] extensions, Object hostDefinedOptions) {
         JSRealm realm = (JSRealm) context;
         JSContext jsContext = realm.getContext();
         Evaluator nodeEvaluator = jsContext.getEvaluator();
@@ -1746,12 +1751,13 @@ public final class GraalJSAccess {
 
         code.append(";})");
         Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
+        hostDefinedOptionsMap.put(source, hostDefinedOptions);
         DynamicObject wrapper = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
         return JSFunction.call(wrapper, Undefined.instance, extensions);
     }
 
-    public Object scriptCompile(Object context, Object sourceCode, Object fileName) {
-        UnboundScript unboundScript = (UnboundScript) unboundScriptCompile(sourceCode, fileName);
+    public Object scriptCompile(Object context, Object sourceCode, Object fileName, Object hostDefinedOptions) {
+        UnboundScript unboundScript = (UnboundScript) unboundScriptCompile(sourceCode, fileName, hostDefinedOptions);
         return unboundScriptBindToContext(context, unboundScript);
     }
 
@@ -1843,10 +1849,12 @@ public final class GraalJSAccess {
         return parseResult;
     }
 
-    public Object unboundScriptCompile(Object sourceCode, Object fileName) {
+    public Object unboundScriptCompile(Object sourceCode, Object fileName, Object hostDefinedOptions) {
         String sourceCodeStr = (String) sourceCode;
         String fileNameStr = (String) fileName;
         Source source = UnboundScript.createSource(internSourceCode(sourceCodeStr), fileNameStr);
+
+        hostDefinedOptionsMap.put(source, hostDefinedOptions);
 
         if (USE_SNAPSHOTS && fileNameStr != null && UnboundScript.isCoreModule(fileNameStr)) {
             // bootstrap_node.js is located in the internal folder,
@@ -2888,12 +2896,13 @@ public final class GraalJSAccess {
         return moduleLoader;
     }
 
-    public Object moduleCompile(Object context, Object sourceCode, Object name) {
+    public Object moduleCompile(Object context, Object sourceCode, Object name, Object hostDefinedOptions) {
         JSContext jsContext = ((JSRealm) context).getContext();
         NodeFactory factory = NodeFactory.getInstance(jsContext);
         String moduleName = (String) name;
         URI uri = URI.create(moduleName);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, (String) sourceCode, moduleName).uri(uri).build();
+        hostDefinedOptionsMap.put(source, hostDefinedOptions);
         return JavaScriptTranslator.translateModule(factory, jsContext, source, getModuleLoader());
     }
 
@@ -2969,6 +2978,12 @@ public final class GraalJSAccess {
     public String scriptOrModuleGetResourceName(Object scriptOrModule) {
         ScriptOrModule record = (ScriptOrModule) scriptOrModule;
         return record.getSource().getName();
+    }
+
+    public Object scriptOrModuleGetHostDefinedOptions(Object scriptOrModule) {
+        ScriptOrModule record = (ScriptOrModule) scriptOrModule;
+        Object hostDefinedOptions = hostDefinedOptionsMap.get(record.getSource());
+        return (hostDefinedOptions == null) ? new Object[0] : hostDefinedOptions;
     }
 
     public Object valueSerializerNew(long delegatePointer) {

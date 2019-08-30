@@ -48,7 +48,7 @@
 class GraalUnboundScript : GraalHandleContent {
 public:
     GraalUnboundScript(GraalIsolate* isolate, jobject java_script);
-    static v8::Local<v8::UnboundScript> Compile(v8::Local<v8::String> source, v8::Local<v8::String> file_name);
+    static v8::Local<v8::UnboundScript> Compile(v8::Local<v8::String> source, v8::Local<v8::String> file_name, v8::Local<v8::PrimitiveArray> options);
     v8::Local<v8::Script> BindToCurrentContext();
     int GetId();
     v8::Local<v8::String> GetContent();

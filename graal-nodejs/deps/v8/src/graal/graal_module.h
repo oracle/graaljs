@@ -49,7 +49,7 @@ class GraalIsolate;
 class GraalModule : public GraalHandleContent {
 public:
     GraalModule(GraalIsolate* isolate, jobject java_module);
-    static v8::MaybeLocal<v8::Module> Compile(v8::Local<v8::String> source, v8::Local<v8::String> name);
+    static v8::MaybeLocal<v8::Module> Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::PrimitiveArray> options);
     v8::Maybe<bool> InstantiateModule(v8::Local<v8::Context> context, v8::Module::ResolveCallback callback);
     v8::MaybeLocal<v8::Value> Evaluate(v8::Local<v8::Context> context);
     v8::Module::Status GetStatus() const;

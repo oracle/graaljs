@@ -789,15 +789,16 @@ namespace v8 {
         Isolate* isolate = context->GetIsolate();
         Local<Value> resource_name = source->resource_name;
         Local<String> file_name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(isolate);
-        return GraalScript::Compile(source->source_string, file_name);
+        return Script::Compile(source->source_string, file_name);
     }
 
     Local<Script> Script::Compile(Local<String> source, Local<String> filename) {
-        return GraalScript::Compile(source, filename);
+        ScriptOrigin origin(filename);
+        return GraalScript::Compile(source, &origin);
     }
 
     Local<Script> Script::Compile(Local<String> source, ScriptOrigin* origin) {
-        return GraalScript::Compile(source, origin == nullptr ? Local<String>() : origin->ResourceName().As<String>());
+        return GraalScript::Compile(source, origin);
     }
 
     Local<Value> Script::Run() {
@@ -2008,7 +2009,7 @@ namespace v8 {
         }
         Local<Value> resource_name = source->resource_name;
         Local<String> file_name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(isolate);
-        return GraalUnboundScript::Compile(source->source_string, file_name);
+        return GraalUnboundScript::Compile(source->source_string, file_name, source->host_defined_options);
     }
 
     bool Value::IsDataView() const {
@@ -2338,7 +2339,7 @@ namespace v8 {
     MaybeLocal<Module> ScriptCompiler::CompileModule(Isolate* isolate, Source* source) {
         Local<Value> resource_name = source->resource_name;
         Local<String> name = resource_name.IsEmpty() ? resource_name.As<String>() : resource_name->ToString(isolate);
-        return GraalModule::Compile(source->source_string, name);
+        return GraalModule::Compile(source->source_string, name, source->host_defined_options);
     }
 
     uint32_t ScriptCompiler::CachedDataVersionTag() {
@@ -2888,6 +2889,10 @@ namespace v8 {
         return reinterpret_cast<GraalScriptOrModule*> (this)->GetResourceName();
     }
 
+    Local<PrimitiveArray> ScriptOrModule::GetHostDefinedOptions() {
+        return reinterpret_cast<GraalScriptOrModule*> (this)->GetHostDefinedOptions();
+    }
+
     Local<BigInt> BigInt::New(Isolate* isolate, int64_t value) {
         return GraalBigInt::New(isolate, value);
     }
@@ -3094,7 +3099,10 @@ namespace v8 {
             env->SetObjectArrayElement(java_context_extensions, i, java_context_extension);
         }
 
-        JNI_CALL(jobject, java_function, graal_isolate, GraalAccessMethod::script_compiler_compile_function_in_context, Object, java_context, java_source_name, java_body, java_arguments, java_context_extensions);
+        Local<PrimitiveArray> host_options = source->host_defined_options;
+        jobject java_options = host_options.IsEmpty() ? NULL : reinterpret_cast<GraalPrimitiveArray*> (*host_options)->GetJavaObject();
+
+        JNI_CALL(jobject, java_function, graal_isolate, GraalAccessMethod::script_compiler_compile_function_in_context, Object, java_context, java_source_name, java_body, java_arguments, java_context_extensions, java_options);
 
         if (java_function == nullptr) {
             return MaybeLocal<Function>();

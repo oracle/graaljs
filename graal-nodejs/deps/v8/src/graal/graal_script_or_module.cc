@@ -41,6 +41,7 @@
 
 #include "graal_context.h"
 #include "graal_isolate.h"
+#include "graal_primitive_array.h"
 #include "graal_script_or_module.h"
 #include "graal_value.h"
 
@@ -56,4 +57,11 @@ v8::Local<v8::Value> GraalScriptOrModule::GetResourceName() {
     JNI_CALL(jobject, java_resource_name, graal_isolate, GraalAccessMethod::script_or_module_get_resource_name, Object, GetJavaObject());
     GraalValue* graal_resource_name = GraalValue::FromJavaObject(graal_isolate, java_resource_name);
     return reinterpret_cast<v8::Value*> (graal_resource_name);
+}
+
+v8::Local<v8::PrimitiveArray> GraalScriptOrModule::GetHostDefinedOptions() {
+    GraalIsolate* graal_isolate = Isolate();
+    JNI_CALL(jobject, java_options, graal_isolate, GraalAccessMethod::script_or_module_get_host_defined_options, Object, GetJavaObject());
+    GraalPrimitiveArray* graal_options = new GraalPrimitiveArray(graal_isolate, java_options);
+    return reinterpret_cast<v8::PrimitiveArray*> (graal_options);
 }
