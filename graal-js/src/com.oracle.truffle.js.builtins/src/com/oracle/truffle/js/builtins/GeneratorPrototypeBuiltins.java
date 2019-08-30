@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltinsFactory.GeneratorResumeNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.InternalCallNode;
@@ -106,6 +107,7 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
         @Child private PropertyGetNode getGeneratorTarget;
         @Child private PropertyGetNode getGeneratorContext;
         @Child private InternalCallNode callNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public GeneratorResumeNode(JSContext context, JSBuiltin builtin, Completion.Type resumeType) {
             super(context, builtin);
@@ -122,6 +124,7 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 Object generatorContext = getGeneratorContext.getValue(generator);
                 return callNode.execute((CallTarget) generatorTarget, new Object[]{generatorContext, generator, value, resumeType});
             } else {
+                errorBranch.enter();
                 throw Errors.createTypeErrorGeneratorObjectExpected();
             }
         }
