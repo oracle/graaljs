@@ -1,0 +1,12 @@
+[
+  {
+    "name" : "com.oracle.truffle.js.builtins.helper.HeapDump",
+    "methods" : [
+        { "name" : "dumpSVM",
+          "parameterTypes" : [
+              "java.lang.String",
+              "boolean"
+        ]}
+    ]
+  }
+]

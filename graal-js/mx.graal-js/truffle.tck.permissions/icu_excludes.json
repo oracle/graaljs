@@ -1,0 +1,126 @@
+[
+  {
+    "name" : "com.ibm.icu.text.RuleBasedNumberFormat",
+    "methods" : [
+        { "name" : "postProcess",
+          "parameterTypes" : [
+              "java.lang.StringBuilder",
+              "com.ibm.icu.text.NFRuleSet"
+        ]},
+        { "name" : "getLenientScannerProvider",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "com.ibm.icu.impl.ResourceBundleWrapper$2",
+    "methods" : [
+        { "name" : "load",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "com.ibm.icu.text.NumberFormat",
+    "methods" : [
+        { "name" : "getShim",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "com.ibm.icu.text.BreakIterator",
+    "methods" : [
+        { "name" : "getShim",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "com.ibm.icu.text.Collator",
+    "methods" : [
+        { "name" : "getShim",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "com.ibm.icu.impl.ClassLoaderUtil",
+    "methods" : [
+        { "name" : "getBootstrapClassLoader",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+
+  {
+    "name" : "com.ibm.icu.impl.ICUData",
+    "methods" : [
+        { "name" : "getStream",
+          "parameterTypes" : [
+            "java.lang.Class",
+            "java.lang.String",
+            "boolean"
+        ]},
+        { "name" : "getStream",
+          "parameterTypes" : [
+            "java.lang.ClassLoader",
+            "java.lang.String",
+            "boolean"
+        ]}
+    ]
+  },
+  {
+    "name" : "com.ibm.icu.impl.ICUBinary",
+    "methods" : [
+        { "name" : "mapFile",
+          "parameterTypes" : [
+            "java.io.File"
+        ]}
+    ]
+  },
+
+  {
+    "name" : "com.ibm.icu.impl.ICUConfig",
+    "methods" : [
+        { "name" : "get",
+          "parameterTypes" : [
+            "java.lang.String",
+            "java.lang.String"
+        ]}
+    ]
+  },
+
+  {
+    "name" : "com.ibm.icu.impl.URLHandler$JarURLHandler",
+    "methods" : [
+        { "name" : "<init>",
+          "parameterTypes" : [
+            "java.net.URL"
+        ]}
+    ]
+  },
+  {
+    "name" : "com.ibm.icu.impl.URLHandler$FileURLHandler",
+    "methods" : [
+        { "name" : "<init>",
+          "parameterTypes" : [
+            "java.net.URL"
+        ]},
+        { "name" : "guide",
+          "parameterTypes" : [
+            "com.ibm.icu.impl.URLHandler$URLVisitor",
+            "boolean",
+            "boolean"
+        ]},
+        { "name" : "process",
+          "parameterTypes" : [
+            "com.ibm.icu.impl.URLHandler$URLVisitor",
+            "boolean",
+            "boolean",
+            "java.lang.String",
+            "java.io.File[]" 
+        ]}
+    ]
+  }
+]
