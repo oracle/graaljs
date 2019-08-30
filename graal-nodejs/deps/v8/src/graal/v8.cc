@@ -55,6 +55,7 @@
 #include "graal_module.h"
 #include "graal_number.h"
 #include "graal_object_template.h"
+#include "graal_primitive_array.h"
 #include "graal_promise.h"
 #include "graal_proxy.h"
 #include "graal_regexp.h"
@@ -3120,6 +3121,22 @@ namespace v8 {
 
     SnapshotCreator::SnapshotCreator(const intptr_t* external_references, StartupData* existing_blob) {
         TRACE
+    }
+
+    Local<PrimitiveArray> PrimitiveArray::New(Isolate* isolate, int length) {
+        return GraalPrimitiveArray::New(isolate, length);
+    }
+
+    int PrimitiveArray::Length() const {
+        return reinterpret_cast<const GraalPrimitiveArray*> (this)->Length();
+    }
+
+    void PrimitiveArray::Set(Isolate* isolate, int index, Local<Primitive> item) {
+        reinterpret_cast<GraalPrimitiveArray*> (this)->Set(isolate, index, item);
+    }
+
+    Local<Primitive> PrimitiveArray::Get(Isolate* isolate, int index) {
+        return reinterpret_cast<GraalPrimitiveArray*> (this)->Get(isolate, index);
     }
 
     void Object::CheckCast(v8::Value* obj) {}

@@ -534,6 +534,7 @@
         '../src/graal/graal_object.cc',
         '../src/graal/graal_object_template.cc',
         '../src/graal/graal_primitive.cc',
+        '../src/graal/graal_primitive_array.cc',
         '../src/graal/graal_promise.cc',
         '../src/graal/graal_property_callback_info.cc',
         '../src/graal/graal_proxy.cc',
