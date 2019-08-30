@@ -50,6 +50,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -78,6 +79,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         @Child private JSWriteFrameSlotNode writeYieldValue;
         @Child private JSReadFrameSlotNode readYieldResult;
         private final BranchProfile errorBranch = BranchProfile.create();
+        private final ConditionProfile returnOrExceptionProfile = ConditionProfile.createBinaryProfile();
 
         GeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection) {
             super(context.getLanguage(), functionSourceSection, null);
@@ -111,7 +113,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
                     setGeneratorState.setValue(generatorObject, generatorState);
                 }
                 if (GeneratorState.Completed.equals(generatorState)) {
-                    if (completion.isReturn()) {
+                    if (returnOrExceptionProfile.profile(completion.isReturn())) {
                         return createIterResultObject.execute(frame, completion.getValue(), true);
                     } else {
                         assert completion.isThrow();
