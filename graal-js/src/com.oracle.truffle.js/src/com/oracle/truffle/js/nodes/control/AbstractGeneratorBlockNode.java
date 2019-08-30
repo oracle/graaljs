@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
@@ -48,22 +49,33 @@ import com.oracle.truffle.js.runtime.Errors;
 public abstract class AbstractGeneratorBlockNode extends AbstractBlockNode {
     @Child protected JavaScriptNode readStateNode;
     @Child protected WriteNode writeStateNode;
+    @CompilationFinal(dimensions = 1) protected final long[] resumableIndices;
 
-    protected AbstractGeneratorBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
+    protected AbstractGeneratorBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode, long[] suspendableIndices) {
         super(statements);
         this.readStateNode = readStateNode;
         this.writeStateNode = writeStateNode;
+        this.resumableIndices = suspendableIndices;
     }
 
     protected final int getStateAndReset(VirtualFrame frame) {
         Object value = readStateNode.execute(frame);
         int index = (value instanceof Integer) ? (int) value : 0;
-        setState(frame, 0);
+        assert index == 0 || canResumeAt(index) : index;
+        writeStateNode.executeWrite(frame, 0);
         return index;
     }
 
     protected final void setState(VirtualFrame frame, int index) {
-        writeStateNode.executeWrite(frame, index);
+        if (canResumeAt(index)) {
+            writeStateNode.executeWrite(frame, index);
+        } else {
+            assert false : index;
+        }
+    }
+
+    protected final boolean canResumeAt(int index) {
+        return ((resumableIndices[index >> 6] & (1L << index)) != 0);
     }
 
     @Override
@@ -105,7 +117,7 @@ public abstract class AbstractGeneratorBlockNode extends AbstractBlockNode {
     }
 
     @Override
-    public final AbstractBlockNode toGeneratorNode(JavaScriptNode readState, WriteNode writeState) {
+    public final AbstractBlockNode toGeneratorNode(JavaScriptNode readState, WriteNode writeState, long[] suspendableIndices) {
         throw Errors.unsupported("toGeneratorNode");
     }
 }

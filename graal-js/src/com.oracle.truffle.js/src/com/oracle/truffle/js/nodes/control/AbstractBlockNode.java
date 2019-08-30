@@ -66,7 +66,7 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
         return block.getElements();
     }
 
-    public abstract AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode);
+    public abstract AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode, long[] suspendableIndices);
 
     @Override
     public void executeVoid(VirtualFrame frame) {

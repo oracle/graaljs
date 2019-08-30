@@ -54,18 +54,13 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
     @Child private WriteNode writeStateNode;
 
     private GeneratorWrapperNode(JavaScriptNode childNode, JavaScriptNode stateNode, WriteNode writeStateNode) {
-        assert !(childNode instanceof GeneratorWrapperNode);
+        assert childNode instanceof ResumableNode : childNode;
         this.childNode = childNode;
         this.stateNode = stateNode;
         this.writeStateNode = writeStateNode;
     }
 
     public static JavaScriptNode createWrapper(JavaScriptNode child, JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        if (child instanceof AbstractBlockNode) {
-            AbstractBlockNode generatorNode = ((AbstractBlockNode) child).toGeneratorNode(readStateNode, writeStateNode);
-            transferSourceSectionAndTags(child, generatorNode);
-            return generatorNode;
-        }
         return new GeneratorWrapperNode(child, readStateNode, writeStateNode);
     }
 

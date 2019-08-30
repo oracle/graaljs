@@ -47,8 +47,8 @@ import com.oracle.truffle.js.nodes.access.WriteNode;
 
 final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
 
-    GeneratorExprBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        super(statements, readStateNode, writeStateNode);
+    GeneratorExprBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode, long[] suspendableIndices) {
+        super(statements, readStateNode, writeStateNode, suspendableIndices);
     }
 
     @Override
@@ -107,6 +107,6 @@ final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new GeneratorExprBlockNode(cloneUninitialized(getStatements()), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
+        return new GeneratorExprBlockNode(cloneUninitialized(getStatements()), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode), resumableIndices);
     }
 }

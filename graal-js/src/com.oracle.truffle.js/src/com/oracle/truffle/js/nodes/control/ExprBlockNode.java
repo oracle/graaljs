@@ -97,7 +97,7 @@ public final class ExprBlockNode extends AbstractBlockNode implements SequenceNo
     }
 
     @Override
-    public AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        return new GeneratorExprBlockNode(getStatements(), readStateNode, writeStateNode);
+    public AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode, long[] suspendableIndices) {
+        return new GeneratorExprBlockNode(getStatements(), readStateNode, writeStateNode, suspendableIndices);
     }
 }

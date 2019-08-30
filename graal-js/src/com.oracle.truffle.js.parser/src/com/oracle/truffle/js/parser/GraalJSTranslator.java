@@ -42,6 +42,7 @@ package com.oracle.truffle.js.parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -574,12 +575,28 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private Node instrumentSuspendHelper(Node parent, Node grandparent) {
         boolean hasSuspendChild = false;
-        for (Node child : getChildrenInExecutionOrder(parent)) {
-            Node newChild = instrumentSuspendHelper(child, parent);
-            if (newChild != null) {
-                hasSuspendChild = true;
-                NodeUtil.replaceChild(parent, child, newChild);
-                assert !(child instanceof ResumableNode) || newChild instanceof GeneratorWrapperNode : "resumable node not wrapped: " + child;
+        BitSet suspendableIndices = null;
+        if (parent instanceof AbstractBlockNode) {
+            Node[] statements = ((AbstractBlockNode) parent).getStatements();
+            for (int i = 0; i < statements.length; i++) {
+                Node newChild = instrumentSuspendHelper(statements[i], parent);
+                if (newChild != null) {
+                    hasSuspendChild = true;
+                    statements[i] = newChild;
+                    if (suspendableIndices == null) {
+                        suspendableIndices = new BitSet();
+                    }
+                    suspendableIndices.set(i);
+                }
+            }
+        } else {
+            for (Node child : getChildrenInExecutionOrder(parent)) {
+                Node newChild = instrumentSuspendHelper(child, parent);
+                if (newChild != null) {
+                    hasSuspendChild = true;
+                    NodeUtil.replaceChild(parent, child, newChild);
+                    assert !(child instanceof ResumableNode) || newChild instanceof GeneratorWrapperNode : "resumable node not wrapped: " + child;
+                }
             }
         }
         if (parent instanceof SuspendNode) {
@@ -588,7 +605,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return null;
         }
 
-        if (parent instanceof ResumableNode || parent instanceof AbstractBlockNode) {
+        if (parent instanceof AbstractBlockNode) {
+            assert suspendableIndices != null && !suspendableIndices.isEmpty();
+            return toGeneratorBlockNode((AbstractBlockNode) parent, suspendableIndices);
+        } else if (parent instanceof ResumableNode) {
             return wrapResumableNode(parent);
         } else if (parent instanceof ReturnNode || parent instanceof ReturnTargetNode || isSideEffectFreeUnaryOpNode(parent)) {
             // these are side-effect-free, skip
@@ -623,12 +643,24 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode wrapResumableNode(Node resumableNode) {
-        assert resumableNode instanceof ResumableNode || resumableNode instanceof AbstractBlockNode;
+        if (resumableNode instanceof AbstractBlockNode) {
+            BitSet all = new BitSet();
+            all.set(0, ((AbstractBlockNode) resumableNode).getStatements().length);
+            return toGeneratorBlockNode((AbstractBlockNode) resumableNode, all);
+        }
         String identifier = ":generatorstate:" + environment.getFunctionFrameDescriptor().getSize();
         environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
         LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
         WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
         return factory.createGeneratorWrapper((JavaScriptNode) resumableNode, readState, writeState);
+    }
+
+    private JavaScriptNode toGeneratorBlockNode(AbstractBlockNode blockNode, BitSet suspendableIndices) {
+        String identifier = ":generatorstate:" + environment.getFunctionFrameDescriptor().getSize();
+        environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
+        LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
+        WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
+        return factory.createGeneratorBlock(blockNode, readState, writeState, suspendableIndices.toLongArray());
     }
 
     private static boolean isSideEffectFreeUnaryOpNode(Node node) {

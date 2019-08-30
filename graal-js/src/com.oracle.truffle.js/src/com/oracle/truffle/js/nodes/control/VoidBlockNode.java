@@ -72,7 +72,7 @@ public final class VoidBlockNode extends AbstractBlockNode implements SequenceNo
     }
 
     @Override
-    public AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        return new GeneratorVoidBlockNode(getStatements(), readStateNode, writeStateNode);
+    public AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode, long[] suspendableIndices) {
+        return new GeneratorVoidBlockNode(getStatements(), readStateNode, writeStateNode, suspendableIndices);
     }
 }

@@ -142,6 +142,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode.JSToStringWrapperNode;
+import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.control.AsyncFunctionBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorYieldNode;
@@ -847,6 +848,12 @@ public class NodeFactory {
 
     public JavaScriptNode createGeneratorWrapper(JavaScriptNode child, JavaScriptNode state, WriteNode writeStateNode) {
         return GeneratorWrapperNode.createWrapper(child, state, writeStateNode);
+    }
+
+    public JavaScriptNode createGeneratorBlock(AbstractBlockNode block, JavaScriptNode readState, WriteNode writeState, long[] suspendableIndices) {
+        AbstractBlockNode generatorBlock = block.toGeneratorNode(readState, writeState, suspendableIndices);
+        JavaScriptNode.transferSourceSectionAndTags(block, generatorBlock);
+        return generatorBlock;
     }
 
     public LazyReadFrameSlotNode createLazyReadFrameSlot(Object identifier) {

@@ -368,6 +368,8 @@ public class Recording {
             String stringified;
             if (constant == null || constant instanceof Integer || constant instanceof Double || constant instanceof Boolean) {
                 stringified = String.valueOf(constant);
+            } else if (constant instanceof Long) {
+                stringified = String.valueOf(constant) + 'L';
             } else if (constant instanceof String) {
                 stringified = JSONParser.quote((String) constant);
             } else if (constant.getClass().isEnum()) {

@@ -46,8 +46,8 @@ import com.oracle.truffle.js.nodes.access.WriteNode;
 
 final class GeneratorVoidBlockNode extends AbstractGeneratorBlockNode {
 
-    GeneratorVoidBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        super(statements, readStateNode, writeStateNode);
+    GeneratorVoidBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode, long[] suspendableIndices) {
+        super(statements, readStateNode, writeStateNode, suspendableIndices);
     }
 
     @Override
@@ -58,6 +58,6 @@ final class GeneratorVoidBlockNode extends AbstractGeneratorBlockNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new GeneratorVoidBlockNode(cloneUninitialized(getStatements()), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
+        return new GeneratorVoidBlockNode(cloneUninitialized(getStatements()), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode), resumableIndices);
     }
 }
