@@ -109,6 +109,7 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
@@ -1756,7 +1757,8 @@ public final class GraalJSAccess {
             code.append(";})");
         }
 
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
+        TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code.toString()).name(sourceName).build();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
 
         DynamicObject fn = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
