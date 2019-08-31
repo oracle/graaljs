@@ -1731,29 +1731,36 @@ public final class GraalJSAccess {
 
         StringBuilder code = new StringBuilder();
 
-        code.append("(function () {");
+        boolean anyExtension = extensions.length > 0;
+        if (anyExtension) {
+            code.append("(function () {");
 
-        for (int i = 0; i < extensions.length; i++) {
-            code.append("with (arguments[").append(i).append("]) {");
+            for (int i = 0; i < extensions.length; i++) {
+                code.append("with (arguments[").append(i).append("]) {");
+            }
+
+            code.append("return ");
         }
-
-        code.append("return ");
 
         code.append("(function (");
         code.append(parameterList);
         code.append(") {");
         code.append(body);
-        code.append("\n})");
+        code.append("\n});");
 
-        for (int i = 0; i < extensions.length; i++) {
-            code.append("}"); // with (arguments[i]) {
+        if (anyExtension) {
+            for (int i = 0; i < extensions.length; i++) {
+                code.append("}"); // with (arguments[i]) {
+            }
+
+            code.append(";})");
         }
 
-        code.append(";})");
         Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
-        DynamicObject wrapper = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
-        return JSFunction.call(wrapper, Undefined.instance, extensions);
+
+        DynamicObject fn = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
+        return anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
     }
 
     public Object scriptCompile(Object context, Object sourceCode, Object fileName, Object hostDefinedOptions) {
