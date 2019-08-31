@@ -113,11 +113,18 @@ test-fs-write                                                      : FAIL
 # missing support for lineOffset and columnOffset in ScriptOrigin
 test-vm-basic                                                      : FAIL
 
+# The code of module wrapper is visible in the source
+test-assert-first-line                                             : FAIL
+
+# Incorrect name of source in SyntaxError from ScriptCompiler::CompileFunctionInContext()
+test-util-internal                                                 : FAIL
+
 # unclassified
 test-async-hooks-async-await                                       : FAIL
 test-async-hooks-recursive-stack                                   : SKIP
 test-common-gc                                                     : FAIL
 test-crypto-fips                                                   : FAIL
+test-domain-async-id-map-leak                                      : FAIL
 test-domain-no-error-handler-abort-on-uncaught-0                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-1                   : FAIL
 test-domain-no-error-handler-abort-on-uncaught-2                   : FAIL
