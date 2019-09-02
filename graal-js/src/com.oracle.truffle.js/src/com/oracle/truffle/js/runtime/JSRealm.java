@@ -494,10 +494,16 @@ public class JSRealm {
         this.segmenterPrototype = ctor.getPrototype();
         this.segmentIteratorPrototype = JSSegmenter.createSegmentIteratorPrototype(context, this);
 
-        ctor = es6 ? JSFunction.createGeneratorFunctionConstructor(this) : null;
-        this.generatorFunctionConstructor = es6 ? ctor.getFunctionObject() : null;
-        this.generatorFunctionPrototype = es6 ? ctor.getPrototype() : null;
-        this.generatorObjectPrototype = es6 ? (DynamicObject) generatorFunctionPrototype.get(JSObject.PROTOTYPE, null) : null;
+        if (es6) {
+            ctor = JSFunction.createGeneratorFunctionConstructor(this);
+            this.generatorFunctionConstructor = ctor.getFunctionObject();
+            this.generatorFunctionPrototype = ctor.getPrototype();
+            this.generatorObjectPrototype = (DynamicObject) generatorFunctionPrototype.get(JSObject.PROTOTYPE, null);
+        } else {
+            this.generatorFunctionConstructor = null;
+            this.generatorFunctionPrototype = null;
+            this.generatorObjectPrototype = null;
+        }
         this.enumerateIteratorPrototype = JSFunction.createEnumerateIteratorPrototype(this);
         this.arrayProtoValuesIterator = (DynamicObject) getArrayPrototype().get(Symbol.SYMBOL_ITERATOR, Undefined.instance);
 
