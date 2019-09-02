@@ -90,5 +90,8 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk11 + common.gate  + common.linux + gateGraalImport  + {environment+: {GATE_TAGS: 'style,fullbuild'}}    + {name: 'js-gate-style-fullbuild-graal-import-jdk11-linux-amd64'},
     graalJs + common.jdk11 + common.gate  + common.linux + gateGraalTip     + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-linux-amd64'},
     graalJs + common.jdk11 + common.gate  + common.linux                    + mavenDeployDryRun                                 + {name: 'js-gate-maven-dry-run-jdk11-linux-amd64'},
+
+    // jdk 11 - linux aarch64
+    graalJs + common.jdk11 + common.gate  + common.linux_aarch64 + gateGraalTip     + {environment+: {GATE_TAGS: 'default'}}            + {name: 'js-gate-default-graal-tip-jdk11-linux-aarch64'},
   ],
 }
