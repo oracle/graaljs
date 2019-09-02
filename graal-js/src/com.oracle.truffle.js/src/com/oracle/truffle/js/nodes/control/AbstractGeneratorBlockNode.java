@@ -41,68 +41,65 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class GeneratorWrapperNode extends JavaScriptNode implements RepeatingNode {
-    @Child private JavaScriptNode childNode;
-    @Child private JavaScriptNode stateNode;
-    @Child private WriteNode writeStateNode;
+public abstract class AbstractGeneratorBlockNode extends AbstractBlockNode {
+    @Child protected JavaScriptNode readStateNode;
+    @Child protected WriteNode writeStateNode;
 
-    private GeneratorWrapperNode(JavaScriptNode childNode, JavaScriptNode stateNode, WriteNode writeStateNode) {
-        assert childNode instanceof ResumableNode : childNode;
-        this.childNode = childNode;
-        this.stateNode = stateNode;
+    protected AbstractGeneratorBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
+        super(statements);
+        this.readStateNode = readStateNode;
         this.writeStateNode = writeStateNode;
     }
 
-    public static JavaScriptNode createWrapper(JavaScriptNode child, JavaScriptNode readStateNode, WriteNode writeStateNode) {
-        return new GeneratorWrapperNode(child, readStateNode, writeStateNode);
+    protected final int getStateAndReset(VirtualFrame frame) {
+        Object value = readStateNode.execute(frame);
+        int index = (value instanceof Integer) ? (int) value : 0;
+        setState(frame, 0);
+        return index;
+    }
+
+    protected final void setState(VirtualFrame frame, int index) {
+        writeStateNode.executeWrite(frame, index);
+    }
+
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        block.executeVoid(frame, index);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Node child = childNode;
-        if (child instanceof WrapperNode) {
-            child = ((WrapperNode) child).getDelegateNode();
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        return block.executeGeneric(frame, index);
+    }
+
+    @Override
+    public void executeVoid(VirtualFrame frame, JavaScriptNode node, int index, int startIndex) {
+        if (index < startIndex) {
+            return;
         }
-        if (child instanceof ResumableNode) {
-            return ((ResumableNode) child).resume(frame);
-        } else {
-            assert false : child.getClass();
-            throw Errors.shouldNotReachHere();
+        try {
+            node.executeVoid(frame);
+        } catch (YieldException e) {
+            setState(frame, index);
+            throw e;
         }
     }
 
     @Override
-    public boolean executeRepeating(VirtualFrame frame) {
-        assert childNode instanceof ResumableNode && childNode instanceof RepeatingNode : childNode.getClass();
-        return (boolean) execute(frame);
-    }
-
-    public Object isResuming(VirtualFrame frame) {
-        return stateNode.execute(frame) != Undefined.instance;
-    }
-
-    public Object getState(VirtualFrame frame) {
-        return stateNode.execute(frame);
-    }
-
-    public int getStateAsInt(VirtualFrame frame) {
-        Object value = stateNode.execute(frame);
-        return (value instanceof Integer) ? (int) value : 0;
-    }
-
-    public void setState(VirtualFrame frame, Object resumeState) {
-        writeStateNode.executeWrite(frame, resumeState);
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized() {
-        return createWrapper(cloneUninitialized(childNode), cloneUninitialized(stateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
+    public Object executeGeneric(VirtualFrame frame, JavaScriptNode node, int index, int startIndex) {
+        assert index == getStatements().length - 1;
+        try {
+            return node.execute(frame);
+        } catch (YieldException e) {
+            setState(frame, index);
+            throw e;
+        }
     }
 }

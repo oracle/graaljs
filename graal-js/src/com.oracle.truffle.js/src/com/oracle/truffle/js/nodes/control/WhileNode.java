@@ -159,13 +159,13 @@ public final class WhileNode extends StatementNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        loop.executeLoop(frame);
+        loop.execute(frame);
         return EMPTY;
     }
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        loop.executeLoop(frame);
+        loop.execute(frame);
     }
 
     @Override

@@ -120,7 +120,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        loop.executeLoop(copy.execute(frame));
+        loop.execute(copy.execute(frame));
     }
 
     @Override
@@ -128,7 +128,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
         Object state = getStateAndReset(frame);
         MaterializedFrame loopFrame = state == Undefined.instance ? copy.execute(frame).materialize() : JSFrameUtil.castMaterializedFrame(state);
         try {
-            loop.executeLoop(loopFrame);
+            loop.execute(loopFrame);
         } catch (YieldException e) {
             setState(frame, loopFrame);
             throw e;

@@ -49,7 +49,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
@@ -185,7 +184,7 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, NodeUtil.cloneNode(getLevelFrameNode()), cloneUninitialized(getRhs()));
+        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, getLevelFrameNode(), cloneUninitialized(getRhs()));
     }
 }
 

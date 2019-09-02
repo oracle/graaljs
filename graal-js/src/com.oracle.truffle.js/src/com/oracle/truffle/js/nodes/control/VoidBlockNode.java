@@ -41,15 +41,11 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-@NodeInfo(cost = NodeCost.NONE)
-public final class BlockNode extends AbstractBlockNode implements SequenceNode, ResumableNode {
-    BlockNode(JavaScriptNode[] statements) {
+public final class VoidBlockNode extends AbstractBlockNode implements SequenceNode {
+    VoidBlockNode(JavaScriptNode[] statements) {
         super(statements);
     }
 
@@ -63,28 +59,9 @@ public final class BlockNode extends AbstractBlockNode implements SequenceNode, 
         return EMPTY;
     }
 
-    @ExplodeLoop
-    @Override
-    public Object resume(VirtualFrame frame) {
-        int index = getStateAsIntAndReset(frame);
-        JavaScriptNode[] stmts = statements;
-        for (int i = 0; i < stmts.length; i++) {
-            if (i < index) {
-                continue;
-            }
-            try {
-                stmts[i].executeVoid(frame);
-            } catch (YieldException e) {
-                setState(frame, i);
-                throw e;
-            }
-        }
-        return EMPTY;
-    }
-
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new BlockNode(cloneUninitialized(statements));
+        return new VoidBlockNode(cloneUninitialized(getStatements()));
     }
 
     @Override

@@ -93,7 +93,7 @@ public class ReturnNode extends StatementNode {
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return true;
+        return expression.isResultAlwaysOfType(clazz);
     }
 
     private static class ConstantReturnNode extends ReturnNode {

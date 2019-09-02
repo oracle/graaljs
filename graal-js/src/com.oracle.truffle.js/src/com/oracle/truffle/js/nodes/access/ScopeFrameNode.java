@@ -85,6 +85,11 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
 
     public abstract Frame executeFrame(Frame frame);
 
+    @Override
+    public boolean isAdoptable() {
+        return false;
+    }
+
     @NodeInfo(cost = NodeCost.NONE)
     private static final class CurrentFrameNode extends ScopeFrameNode {
         @Override

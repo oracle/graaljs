@@ -42,6 +42,7 @@ package com.oracle.truffle.js.parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -124,6 +125,7 @@ import com.oracle.truffle.js.nodes.binary.DualNode;
 import com.oracle.truffle.js.nodes.binary.JSBinaryNode;
 import com.oracle.truffle.js.nodes.binary.JSOrNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
+import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
@@ -169,6 +171,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 
 abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor<LexicalContext, JavaScriptNode> {
@@ -573,22 +576,41 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private Node instrumentSuspendHelper(Node parent, Node grandparent) {
         boolean hasSuspendChild = false;
-        for (Node child : getChildrenInExecutionOrder(parent)) {
-            Node newChild = instrumentSuspendHelper(child, parent);
-            if (newChild != null) {
-                hasSuspendChild = true;
-                NodeUtil.replaceChild(parent, child, newChild);
-                assert !(child instanceof ResumableNode) || newChild instanceof GeneratorWrapperNode : "resumable node not wrapped: " + child;
+        BitSet suspendableIndices = null;
+        if (parent instanceof AbstractBlockNode) {
+            Node[] statements = ((AbstractBlockNode) parent).getStatements();
+            for (int i = 0; i < statements.length; i++) {
+                Node newChild = instrumentSuspendHelper(statements[i], parent);
+                if (newChild != null) {
+                    hasSuspendChild = true;
+                    statements[i] = newChild;
+                    if (suspendableIndices == null) {
+                        suspendableIndices = new BitSet();
+                    }
+                    suspendableIndices.set(i);
+                }
+            }
+        } else {
+            for (Node child : getChildrenInExecutionOrder(parent)) {
+                Node newChild = instrumentSuspendHelper(child, parent);
+                if (newChild != null) {
+                    hasSuspendChild = true;
+                    NodeUtil.replaceChild(parent, child, newChild);
+                    assert !(child instanceof ResumableNode) || newChild instanceof GeneratorWrapperNode : "resumable node not wrapped: " + child;
+                }
             }
         }
         if (parent instanceof SuspendNode) {
-            return wrapResumableNode((ResumableNode) parent);
+            return wrapResumableNode(parent);
         } else if (!hasSuspendChild) {
             return null;
         }
 
-        if (parent instanceof ResumableNode) {
-            return wrapResumableNode((ResumableNode) parent);
+        if (parent instanceof AbstractBlockNode) {
+            assert suspendableIndices != null && !suspendableIndices.isEmpty();
+            return toGeneratorBlockNode((AbstractBlockNode) parent, suspendableIndices);
+        } else if (parent instanceof ResumableNode) {
+            return wrapResumableNode(parent);
         } else if (parent instanceof ReturnNode || parent instanceof ReturnTargetNode || isSideEffectFreeUnaryOpNode(parent)) {
             // these are side-effect-free, skip
             return parent;
@@ -607,7 +629,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 extracted.add((JavaScriptNode) parent);
                 // insert block node wrapper
                 JavaScriptNode exprBlock = factory.createExprBlock(extracted.toArray(EMPTY_NODE_ARRAY));
-                return wrapResumableNode((ResumableNode) exprBlock);
+                return wrapResumableNode(exprBlock);
             } else {
                 // nothing to do
                 return parent;
@@ -621,12 +643,59 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private JavaScriptNode wrapResumableNode(ResumableNode parent) {
+    private JavaScriptNode wrapResumableNode(Node resumableNode) {
+        if (resumableNode instanceof AbstractBlockNode) {
+            BitSet all = new BitSet();
+            all.set(0, ((AbstractBlockNode) resumableNode).getStatements().length);
+            return toGeneratorBlockNode((AbstractBlockNode) resumableNode, all);
+        }
         String identifier = ":generatorstate:" + environment.getFunctionFrameDescriptor().getSize();
         environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
         LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
         WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
-        return factory.createGeneratorWrapper((JavaScriptNode) parent, readState, writeState);
+        return factory.createGeneratorWrapper((JavaScriptNode) resumableNode, readState, writeState);
+    }
+
+    private JavaScriptNode toGeneratorBlockNode(AbstractBlockNode blockNode, BitSet suspendableIndices) {
+        String identifier = ":generatorstate:" + environment.getFunctionFrameDescriptor().getSize();
+        environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
+        LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
+        WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
+
+        JavaScriptNode[] statements = blockNode.getStatements();
+        boolean returnsResult = !blockNode.isResultAlwaysOfType(Undefined.class);
+        JavaScriptNode genBlock;
+        // we can resume at index 0 (start state) and every statement that contains a yield
+        int resumePoints = suspendableIndices.cardinality() + (suspendableIndices.get(0) ? 0 : 1);
+        if (resumePoints == statements.length) {
+            // all statements are resume points
+            genBlock = returnsResult ? factory.createGeneratorExprBlock(statements, readState, writeState) : factory.createGeneratorVoidBlock(statements, readState, writeState);
+        } else {
+            // split block into resumable chunks of at least 1 statement.
+            JavaScriptNode[] chunks = new JavaScriptNode[resumePoints];
+            int fromIndex = 0;
+            int toIndex;
+            for (int chunkI = 0; chunkI < resumePoints; chunkI++) {
+                toIndex = suspendableIndices.nextSetBit(fromIndex + 1);
+                if (toIndex < 0) {
+                    assert chunkI == resumePoints - 1;
+                    toIndex = statements.length;
+                }
+                returnsResult = chunkI == resumePoints - 1 && !blockNode.isResultAlwaysOfType(Undefined.class);
+                JavaScriptNode chunk;
+                if (fromIndex + 1 == toIndex) {
+                    chunk = statements[fromIndex];
+                } else {
+                    JavaScriptNode[] chunkStatements = Arrays.copyOfRange(statements, fromIndex, toIndex);
+                    chunk = (returnsResult && chunkI == resumePoints - 1) ? factory.createExprBlock(chunkStatements) : factory.createVoidBlock(chunkStatements);
+                }
+                chunks[chunkI] = chunk;
+                fromIndex = toIndex;
+            }
+            genBlock = returnsResult ? factory.createGeneratorExprBlock(chunks, readState, writeState) : factory.createGeneratorVoidBlock(chunks, readState, writeState);
+        }
+        JavaScriptNode.transferSourceSectionAndTags(blockNode, genBlock);
+        return genBlock;
     }
 
     private static boolean isSideEffectFreeUnaryOpNode(Node node) {

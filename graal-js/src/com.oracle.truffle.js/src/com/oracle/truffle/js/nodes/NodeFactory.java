@@ -147,7 +147,6 @@ import com.oracle.truffle.js.nodes.control.AsyncGeneratorBodyNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorYieldNode;
 import com.oracle.truffle.js.nodes.control.AsyncIteratorCloseWrapperNode;
 import com.oracle.truffle.js.nodes.control.AwaitNode;
-import com.oracle.truffle.js.nodes.control.BlockNode;
 import com.oracle.truffle.js.nodes.control.BreakNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueNode;
@@ -160,6 +159,8 @@ import com.oracle.truffle.js.nodes.control.EmptyNode;
 import com.oracle.truffle.js.nodes.control.ExprBlockNode;
 import com.oracle.truffle.js.nodes.control.ForNode;
 import com.oracle.truffle.js.nodes.control.GeneratorBodyNode;
+import com.oracle.truffle.js.nodes.control.GeneratorExprBlockNode;
+import com.oracle.truffle.js.nodes.control.GeneratorVoidBlockNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.IfNode;
 import com.oracle.truffle.js.nodes.control.IteratorCloseWrapperNode;
@@ -172,6 +173,7 @@ import com.oracle.truffle.js.nodes.control.SwitchNode;
 import com.oracle.truffle.js.nodes.control.ThrowNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.control.TryFinallyNode;
+import com.oracle.truffle.js.nodes.control.VoidBlockNode;
 import com.oracle.truffle.js.nodes.control.WhileNode;
 import com.oracle.truffle.js.nodes.control.WithNode;
 import com.oracle.truffle.js.nodes.control.YieldNode;
@@ -486,7 +488,7 @@ public class NodeFactory {
     }
 
     public JavaScriptNode createVoidBlock(JavaScriptNode... statements) {
-        return BlockNode.createVoidBlock(statements);
+        return VoidBlockNode.createVoidBlock(statements);
     }
 
     public JavaScriptNode createExprBlock(JavaScriptNode... statements) {
@@ -847,6 +849,14 @@ public class NodeFactory {
 
     public JavaScriptNode createGeneratorWrapper(JavaScriptNode child, JavaScriptNode state, WriteNode writeStateNode) {
         return GeneratorWrapperNode.createWrapper(child, state, writeStateNode);
+    }
+
+    public JavaScriptNode createGeneratorVoidBlock(JavaScriptNode[] statements, JavaScriptNode readState, WriteNode writeState) {
+        return GeneratorVoidBlockNode.create(statements, readState, writeState);
+    }
+
+    public JavaScriptNode createGeneratorExprBlock(JavaScriptNode[] statements, JavaScriptNode readState, WriteNode writeState) {
+        return GeneratorExprBlockNode.create(statements, readState, writeState);
     }
 
     public LazyReadFrameSlotNode createLazyReadFrameSlot(Object identifier) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,56 +41,76 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.WriteNode;
 
-public final class ExprBlockNode extends AbstractBlockNode implements SequenceNode {
-    ExprBlockNode(JavaScriptNode[] statements) {
-        super(statements);
+public final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
+
+    GeneratorExprBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
+        super(statements, readStateNode, writeStateNode);
     }
 
-    public static JavaScriptNode createExprBlock(JavaScriptNode[] statements) {
-        return filterStatements(statements, true);
+    public static JavaScriptNode create(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
+        return new GeneratorExprBlockNode(statements, readStateNode, writeStateNode);
     }
 
     @Override
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return block.executeBoolean(frame, BlockNode.NO_ARGUMENT);
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        return block.executeBoolean(frame, index);
     }
 
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        return block.executeInt(frame, BlockNode.NO_ARGUMENT);
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        return block.executeInt(frame, index);
     }
 
     @Override
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        return block.executeDouble(frame, BlockNode.NO_ARGUMENT);
+        int index = getStateAndReset(frame);
+        assert index < getStatements().length;
+        return block.executeDouble(frame, index);
     }
 
     @Override
     public boolean executeBoolean(VirtualFrame frame, JavaScriptNode node, int index, int argument) throws UnexpectedResultException {
-        return node.executeBoolean(frame);
+        assert index == getStatements().length - 1;
+        try {
+            return node.executeBoolean(frame);
+        } catch (YieldException e) {
+            setState(frame, index);
+            throw e;
+        }
     }
 
     @Override
     public int executeInt(VirtualFrame frame, JavaScriptNode node, int index, int argument) throws UnexpectedResultException {
-        return node.executeInt(frame);
+        assert index == getStatements().length - 1;
+        try {
+            return node.executeInt(frame);
+        } catch (YieldException e) {
+            setState(frame, index);
+            throw e;
+        }
     }
 
     @Override
     public double executeDouble(VirtualFrame frame, JavaScriptNode node, int index, int argument) throws UnexpectedResultException {
-        return node.executeDouble(frame);
+        assert index == getStatements().length - 1;
+        try {
+            return node.executeDouble(frame);
+        } catch (YieldException e) {
+            setState(frame, index);
+            throw e;
+        }
     }
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new ExprBlockNode(cloneUninitialized(getStatements()));
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return getStatements()[getStatements().length - 1].isResultAlwaysOfType(clazz);
+        return new GeneratorExprBlockNode(cloneUninitialized(getStatements()), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
     }
 }

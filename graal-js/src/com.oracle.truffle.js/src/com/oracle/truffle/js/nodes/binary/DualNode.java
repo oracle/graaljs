@@ -47,7 +47,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.AbstractBlockNode;
-import com.oracle.truffle.js.nodes.control.BlockNode;
+import com.oracle.truffle.js.nodes.control.VoidBlockNode;
 import com.oracle.truffle.js.nodes.control.ExprBlockNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.SequenceNode;
@@ -78,7 +78,7 @@ public class DualNode extends JavaScriptNode implements SequenceNode, ResumableN
                 pos = flatten(arr, pos, left);
                 pos = flatten(arr, pos, right);
                 assert pos == len;
-                return right instanceof BlockNode ? BlockNode.createVoidBlock(arr) : ExprBlockNode.createExprBlock(arr);
+                return right instanceof VoidBlockNode ? VoidBlockNode.createVoidBlock(arr) : ExprBlockNode.createExprBlock(arr);
             }
         }
         return new DualNode(left, right);
