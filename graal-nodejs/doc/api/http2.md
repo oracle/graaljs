@@ -125,7 +125,7 @@ Every `Http2Session` instance is associated with exactly one [`net.Socket`][] or
 [`tls.TLSSocket`][] when it is created. When either the `Socket` or the
 `Http2Session` are destroyed, both will be destroyed.
 
-Because the of the specific serialization and processing requirements imposed
+Because of the specific serialization and processing requirements imposed
 by the HTTP/2 protocol, it is not recommended for user code to read data from
 or write data to a `Socket` instance bound to a `Http2Session`. Doing so can
 put the HTTP/2 session into an indeterminate state causing the session and
@@ -1012,6 +1012,15 @@ added: v8.4.0
 Set to `true` if the `Http2Stream` instance was aborted abnormally. When set,
 the `'aborted'` event will have been emitted.
 
+#### http2stream.bufferSize
+<!-- YAML
+added: v10.16.0
+-->
+* {number}
+
+This property shows the number of characters currently buffered to be written.
+See [`net.Socket.bufferSize`][] for details.
+
 #### http2stream.close(code[, callback])
 <!-- YAML
 added: v8.4.0
@@ -1123,7 +1132,7 @@ added: v9.5.0
 
 * {HTTP/2 Headers Object}
 
-An object containing the outbound trailers sent for this this `HttpStream`.
+An object containing the outbound trailers sent for this `HttpStream`.
 
 #### http2stream.session
 <!-- YAML
@@ -1593,7 +1602,7 @@ default behavior is to destroy the stream.
 
 When the `options.waitForTrailers` option is set, the `'wantTrailers'` event
 will be emitted immediately after queuing the last chunk of payload data to be
-sent. The `http2stream.sendTrilers()` method can then be used to sent trailing
+sent. The `http2stream.sendTrailers()` method can then be used to sent trailing
 header fields to the peer.
 
 When `options.waitForTrailers` is set, the `Http2Stream` will not automatically
@@ -2288,7 +2297,7 @@ For incoming headers:
 `upgrade-insecure-requests`, `user-agent` or `x-content-type-options` are
 discarded.
 * `set-cookie` is always an array. Duplicates are added to the array.
-* `cookie`: the values are joined together with '; '.
+* For duplicate `cookie` headers, the values are joined together with '; '.
 * For all other headers, the values are joined together with ', '.
 
 ```js
@@ -2645,6 +2654,16 @@ added: v10.1.0
 The `request.aborted` property will be `true` if the request has
 been aborted.
 
+#### request.authority
+<!-- YAML
+added: v8.4.0
+-->
+
+* {string}
+
+The request authority pseudo header field. It can also be accessed via
+`req.headers[':authority']`.
+
 #### request.destroy([error])
 <!-- YAML
 added: v8.4.0
@@ -2752,6 +2771,16 @@ added: v8.4.0
 
 The raw request/response trailer keys and values exactly as they were
 received. Only populated at the `'end'` event.
+
+#### request.scheme
+<!-- YAML
+added: v8.4.0
+-->
+
+* {string}
+
+The request scheme pseudo header field indicating the scheme
+portion of the target URL.
 
 #### request.setTimeout(msecs, callback)
 <!-- YAML
@@ -3415,6 +3444,7 @@ following additional properties:
 [`http2session.close()`]: #http2_http2session_close_callback
 [`http2stream.pushStream()`]: #http2_http2stream_pushstream_headers_options_callback
 [`net.Server.close()`]: net.html#net_server_close_callback
+[`net.Socket.bufferSize`]: net.html#net_socket_buffersize
 [`net.Socket.prototype.ref()`]: net.html#net_socket_ref
 [`net.Socket.prototype.unref()`]: net.html#net_socket_unref
 [`net.Socket`]: net.html#net_class_net_socket

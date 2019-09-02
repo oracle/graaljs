@@ -14,7 +14,7 @@ npm-install(1) -- Install a package
     npm install <tarball url>
     npm install <folder>
 
-    alias: npm i
+    aliases: npm i, npm add
     common options: [-P|--save-prod|-D|--save-dev|-O|--save-optional] [-E|--save-exact] [-B|--save-bundle] [--no-save] [--dry-run]
 
 ## DESCRIPTION
@@ -199,7 +199,7 @@ after packing it up into a tarball (b).
     be any valid semver range or exact version, and npm will look for any tags
     or refs matching that range in the remote repository, much as it would for a
     registry dependency. If neither `#<commit-ish>` or `#semver:<semver>` is
-    specified, then `master` is used.
+    specified, then the default branch of the repository is used.
 
     If the repository makes use of submodules, those submodules will be cloned
     as well.

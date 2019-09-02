@@ -42,6 +42,7 @@
 #include "graal_context.h"
 #include "graal_isolate.h"
 #include "graal_module.h"
+#include "graal_primitive_array.h"
 #include "graal_string.h"
 
 GraalModule::GraalModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
@@ -51,13 +52,14 @@ GraalHandleContent* GraalModule::CopyImpl(jobject java_object_copy) {
     return new GraalModule(Isolate(), java_object_copy);
 }
 
-v8::MaybeLocal<v8::Module> GraalModule::Compile(v8::Local<v8::String> source, v8::Local<v8::String> name) {
+v8::MaybeLocal<v8::Module> GraalModule::Compile(v8::Local<v8::String> source, v8::Local<v8::String> name, v8::Local<v8::PrimitiveArray> options) {
     GraalString* graal_source = reinterpret_cast<GraalString*> (*source);
     jobject java_source = graal_source->GetJavaObject();
     jobject java_name = name.IsEmpty() ? NULL : reinterpret_cast<GraalString*> (*name)->GetJavaObject();
+    jobject java_options = options.IsEmpty() ? NULL : reinterpret_cast<GraalPrimitiveArray*> (*options)->GetJavaObject();
     GraalIsolate* graal_isolate = graal_source->Isolate();
     jobject java_context = graal_isolate->CurrentJavaContext();
-    JNI_CALL(jobject, java_module, graal_isolate, GraalAccessMethod::module_compile, Object, java_context, java_source, java_name);
+    JNI_CALL(jobject, java_module, graal_isolate, GraalAccessMethod::module_compile, Object, java_context, java_source, java_name, java_options);
     if (java_module == NULL) {
         return v8::Local<v8::Module>();
     } else {

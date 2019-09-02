@@ -299,7 +299,7 @@ ClientRequest.prototype.abort = function abort() {
   if (this.res) {
     this.res._dump();
   } else {
-    this.once('response', function(res) {
+    this.once('response', (res) => {
       res._dump();
     });
   }
@@ -727,6 +727,10 @@ function _deferToConnect(method, arguments_, cb) {
 }
 
 ClientRequest.prototype.setTimeout = function setTimeout(msecs, callback) {
+  if (this._ended) {
+    return this;
+  }
+
   listenSocketTimeout(this);
   msecs = validateTimerDuration(msecs);
   if (callback) this.once('timeout', callback);

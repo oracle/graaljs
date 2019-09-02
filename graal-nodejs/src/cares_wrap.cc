@@ -163,9 +163,7 @@ class ChannelWrap : public AsyncWrap {
 
   inline uv_timer_t* timer_handle() { return timer_handle_; }
   inline ares_channel cares_channel() { return channel_; }
-  inline bool query_last_ok() const { return query_last_ok_; }
   inline void set_query_last_ok(bool ok) { query_last_ok_ = ok; }
-  inline bool is_servers_default() const { return is_servers_default_; }
   inline void set_is_servers_default(bool is_default) {
     is_servers_default_ = is_default;
   }
@@ -1212,15 +1210,15 @@ class QueryAnyWrap: public QueryWrap {
                                ret,
                                addrttls,
                                &naddrttls);
-    int a_count = ret->Length();
+    uint32_t a_count = ret->Length();
     if (status != ARES_SUCCESS && status != ARES_ENODATA) {
       ParseError(status);
       return;
     }
 
     if (type == ns_t_a) {
-      CHECK_EQ(naddrttls, a_count);
-      for (int i = 0; i < a_count; i++) {
+      CHECK_EQ(static_cast<uint32_t>(naddrttls), a_count);
+      for (uint32_t i = 0; i < a_count; i++) {
         Local<Object> obj = Object::New(env()->isolate());
         obj->Set(context,
                  env()->address_string(),
@@ -1234,7 +1232,7 @@ class QueryAnyWrap: public QueryWrap {
         ret->Set(context, i, obj).FromJust();
       }
     } else {
-      for (int i = 0; i < a_count; i++) {
+      for (uint32_t i = 0; i < a_count; i++) {
         Local<Object> obj = Object::New(env()->isolate());
         obj->Set(context,
                  env()->value_string(),
@@ -1258,13 +1256,14 @@ class QueryAnyWrap: public QueryWrap {
                                ret,
                                addr6ttls,
                                &naddr6ttls);
-    int aaaa_count = ret->Length() - a_count;
+    uint32_t aaaa_count = ret->Length() - a_count;
     if (status != ARES_SUCCESS && status != ARES_ENODATA) {
       ParseError(status);
       return;
     }
 
-    CHECK_EQ(aaaa_count, naddr6ttls);
+    CHECK_EQ(aaaa_count, static_cast<uint32_t>(naddr6ttls));
+    CHECK_EQ(ret->Length(), a_count + aaaa_count);
     for (uint32_t i = a_count; i < ret->Length(); i++) {
       Local<Object> obj = Object::New(env()->isolate());
       obj->Set(context,
@@ -1272,7 +1271,8 @@ class QueryAnyWrap: public QueryWrap {
                ret->Get(context, i).ToLocalChecked()).FromJust();
       obj->Set(context,
                env()->ttl_string(),
-               Integer::New(env()->isolate(), addr6ttls[i].ttl)).FromJust();
+               Integer::New(env()->isolate(), addr6ttls[i - a_count].ttl))
+          .FromJust();
       obj->Set(context,
                env()->type_string(),
                env()->dns_aaaa_string()).FromJust();

@@ -1,10 +1,17 @@
 'use strict';
 
-const config = process.binding('config');
 const prefix = `(${process.release.name}:${process.pid}) `;
 const { ERR_INVALID_ARG_TYPE } = require('internal/errors').codes;
 
 exports.setup = setupProcessWarnings;
+
+let options;
+function lazyOption(name) {
+  if (!options) {
+    options = require('internal/options');
+  }
+  return options.getOptionValue(name);
+}
 
 var cachedFd;
 var acquiringFd = false;
@@ -20,14 +27,16 @@ function writeOut(message) {
 }
 
 function onClose(fd) {
-  return function() {
+  return () => {
     if (fs === null) fs = require('fs');
-    fs.close(fd, nop);
+    try {
+      fs.closeSync(fd);
+    } catch {}
   };
 }
 
 function onOpen(cb) {
-  return function(err, fd) {
+  return (err, fd) => {
     acquiringFd = false;
     if (fd !== undefined) {
       cachedFd = fd;
@@ -41,7 +50,7 @@ function onOpen(cb) {
 function onAcquired(message) {
   // make a best effort attempt at writing the message
   // to the fd. Errors are ignored at this point.
-  return function(err, fd) {
+  return (err, fd) => {
     if (err)
       return writeOut(message);
     if (fs === null) fs = require('fs');
@@ -49,11 +58,11 @@ function onAcquired(message) {
   };
 }
 
-function acquireFd(cb) {
+function acquireFd(warningFile, cb) {
   if (cachedFd === undefined && !acquiringFd) {
     acquiringFd = true;
     if (fs === null) fs = require('fs');
-    fs.open(config.warningFile, 'a', onOpen(cb));
+    fs.open(warningFile, 'a', onOpen(cb));
   } else if (cachedFd !== undefined && !acquiringFd) {
     cb(null, cachedFd);
   } else {
@@ -62,15 +71,16 @@ function acquireFd(cb) {
 }
 
 function output(message) {
-  if (typeof config.warningFile === 'string') {
-    acquireFd(onAcquired(message));
+  const warningFile = lazyOption('--redirect-warnings');
+  if (warningFile) {
+    acquireFd(warningFile, onAcquired(message));
     return;
   }
   writeOut(message);
 }
 
 function doEmitWarning(warning) {
-  return function() {
+  return () => {
     process.emit('warning', warning);
   };
 }
@@ -104,7 +114,7 @@ function setupProcessWarnings() {
   // process.emitWarning(error)
   // process.emitWarning(str[, type[, code]][, ctor])
   // process.emitWarning(str[, options])
-  process.emitWarning = function(warning, type, code, ctor, now) {
+  process.emitWarning = (warning, type, code, ctor, now) => {
     var detail;
     if (type !== null && typeof type === 'object' && !Array.isArray(type)) {
       ctor = type.ctor;

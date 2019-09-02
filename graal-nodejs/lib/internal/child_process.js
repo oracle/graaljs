@@ -62,11 +62,11 @@ const handleConversion = {
   'net.Native': {
     simultaneousAccepts: true,
 
-    send: function(message, handle, options) {
+    send(message, handle, options) {
       return handle;
     },
 
-    got: function(message, handle, emit) {
+    got(message, handle, emit) {
       emit(handle);
     }
   },
@@ -74,20 +74,20 @@ const handleConversion = {
   'net.Server': {
     simultaneousAccepts: true,
 
-    send: function(message, server, options) {
+    send(message, server, options) {
       return server._handle;
     },
 
-    got: function(message, handle, emit) {
+    got(message, handle, emit) {
       var server = new net.Server();
-      server.listen(handle, function() {
+      server.listen(handle, () => {
         emit(server);
       });
     }
   },
 
   'net.Socket': {
-    send: function(message, socket, options) {
+    send(message, socket, options) {
       if (!socket._handle)
         return;
 
@@ -135,7 +135,7 @@ const handleConversion = {
       return handle;
     },
 
-    postSend: function(message, handle, options, callback, target) {
+    postSend(message, handle, options, callback, target) {
       // Store the handle after successfully sending it, so it can be closed
       // when the NODE_HANDLE_ACK is received. If the handle could not be sent,
       // just close it.
@@ -153,7 +153,7 @@ const handleConversion = {
       }
     },
 
-    got: function(message, handle, emit) {
+    got(message, handle, emit) {
       var socket = new net.Socket({
         handle: handle,
         readable: true,
@@ -177,11 +177,11 @@ const handleConversion = {
   'dgram.Native': {
     simultaneousAccepts: false,
 
-    send: function(message, handle, options) {
+    send(message, handle, options) {
       return handle;
     },
 
-    got: function(message, handle, emit) {
+    got(message, handle, emit) {
       emit(handle);
     }
   },
@@ -189,16 +189,16 @@ const handleConversion = {
   'dgram.Socket': {
     simultaneousAccepts: false,
 
-    send: function(message, socket, options) {
+    send(message, socket, options) {
       message.dgramType = socket.type;
 
       return socket[kStateSymbol].handle;
     },
 
-    got: function(message, handle, emit) {
+    got(message, handle, emit) {
       var socket = new dgram.Socket(message.dgramType);
 
-      socket.bind(handle, function() {
+      socket.bind(handle, () => {
         emit(socket);
       });
     }
@@ -614,7 +614,7 @@ function setupChannel(target, channel) {
     }
 
     // Convert handle object
-    obj.got.call(this, message, handle, function(handle) {
+    obj.got.call(this, message, handle, (handle) => {
       handleMessage(message.msg, handle, isInternal(message.msg));
     });
   });
@@ -651,6 +651,18 @@ function setupChannel(target, channel) {
 
     if (message === undefined)
       throw new ERR_MISSING_ARGS('message');
+
+    // Non-serializable messages should not reach the remote
+    // end point; as any failure in the stringification there
+    // will result in error message that is weakly consumable.
+    // So perform a sanity check on message prior to sending.
+    if (typeof message !== 'string' &&
+        typeof message !== 'object' &&
+        typeof message !== 'number' &&
+        typeof message !== 'boolean') {
+      throw new ERR_INVALID_ARG_TYPE(
+        'message', ['string', 'object', 'number', 'boolean'], message);
+    }
 
     // Support legacy function signature
     if (typeof options === 'boolean') {
@@ -736,7 +748,7 @@ function setupChannel(target, channel) {
       }
 
       if (req.async) {
-        req.oncomplete = function() {
+        req.oncomplete = () => {
           control.unref();
           if (typeof callback === 'function')
             callback(null);
@@ -873,7 +885,7 @@ function _validateStdio(stdio, sync) {
 
   // Translate stdio into C++-readable form
   // (i.e. PipeWraps or fds)
-  stdio = stdio.reduce(function(acc, stdio, i) {
+  stdio = stdio.reduce((acc, stdio, i) => {
     function cleanup() {
       for (var i = 0; i < acc.length; i++) {
         if ((acc[i].type === 'pipe' || acc[i].type === 'ipc') && acc[i].handle)
