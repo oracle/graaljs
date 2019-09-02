@@ -45,21 +45,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Currency;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
+
 import com.ibm.icu.text.DecimalFormat;
 import com.ibm.icu.text.NumberFormat;
-
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -73,18 +75,19 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.LargeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.LazyValue;
 
 public final class JSNumberFormat extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -529,34 +532,22 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         return numberFormat.format(x);
     }
 
-    private static volatile Map<NumberFormat.Field, String> fieldToTypeMap;
-    private static final Object fieldToTypeMapLock = new Object();
+    private static final LazyValue<UnmodifiableEconomicMap<NumberFormat.Field, String>> fieldToTypeMap = new LazyValue<>(JSNumberFormat::initializeFieldToTypeMap);
 
-    @TruffleBoundary
-    private static void initializeFieldToTypeMap() {
-        Map<NumberFormat.Field, String> map = new HashMap<>();
+    private static UnmodifiableEconomicMap<NumberFormat.Field, String> initializeFieldToTypeMap() {
+        CompilerAsserts.neverPartOfCompilation();
+        EconomicMap<NumberFormat.Field, String> map = EconomicMap.create(6);
         map.put(NumberFormat.Field.INTEGER, "integer");
         map.put(NumberFormat.Field.DECIMAL_SEPARATOR, "decimal");
         map.put(NumberFormat.Field.FRACTION, "fraction");
         map.put(NumberFormat.Field.GROUPING_SEPARATOR, "group");
         map.put(NumberFormat.Field.CURRENCY, "currency");
         map.put(NumberFormat.Field.PERCENT, "percentSign");
-        fieldToTypeMap = map;
-    }
-
-    private static void ensureFieldToTypeMapInitialized() {
-        if (fieldToTypeMap == null) {
-            synchronized (fieldToTypeMapLock) {
-                if (fieldToTypeMap == null) {
-                    initializeFieldToTypeMap();
-                }
-            }
-        }
+        return map;
     }
 
     private static String fieldToType(NumberFormat.Field field) {
-        ensureFieldToTypeMapInitialized();
-        return fieldToTypeMap.get(field);
+        return fieldToTypeMap.get().get(field);
     }
 
     @TruffleBoundary
@@ -820,7 +811,6 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
         public void setCurrencyDisplay(String currencyDisplay) {
             this.currencyDisplay = currencyDisplay;
         }
-
     }
 
     @TruffleBoundary
