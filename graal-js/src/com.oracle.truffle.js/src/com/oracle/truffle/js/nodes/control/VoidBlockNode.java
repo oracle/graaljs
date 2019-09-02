@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class VoidBlockNode extends AbstractBlockNode implements SequenceNode {
@@ -69,10 +68,5 @@ public final class VoidBlockNode extends AbstractBlockNode implements SequenceNo
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         assert EMPTY == Undefined.instance;
         return clazz == Undefined.class;
-    }
-
-    @Override
-    public AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode, long[] suspendableIndices) {
-        return new GeneratorVoidBlockNode(getStatements(), readStateNode, writeStateNode, suspendableIndices);
     }
 }

@@ -44,12 +44,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.WriteNode;
 
 public final class ExprBlockNode extends AbstractBlockNode implements SequenceNode {
     ExprBlockNode(JavaScriptNode[] statements) {
         super(statements);
-        assert statements.length >= 1 : "block must contain at least 1 statement";
     }
 
     public static JavaScriptNode createExprBlock(JavaScriptNode[] statements) {
@@ -94,10 +92,5 @@ public final class ExprBlockNode extends AbstractBlockNode implements SequenceNo
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return getStatements()[getStatements().length - 1].isResultAlwaysOfType(clazz);
-    }
-
-    @Override
-    public AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode, long[] suspendableIndices) {
-        return new GeneratorExprBlockNode(getStatements(), readStateNode, writeStateNode, suspendableIndices);
     }
 }

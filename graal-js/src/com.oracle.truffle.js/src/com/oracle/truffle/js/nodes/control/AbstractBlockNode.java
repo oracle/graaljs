@@ -50,7 +50,6 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
-import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.binary.DualNode;
 
 @NodeInfo(cost = NodeCost.NONE)
@@ -65,8 +64,6 @@ public abstract class AbstractBlockNode extends StatementNode implements Sequenc
     public final JavaScriptNode[] getStatements() {
         return block.getElements();
     }
-
-    public abstract AbstractBlockNode toGeneratorNode(JavaScriptNode readStateNode, WriteNode writeStateNode, long[] suspendableIndices);
 
     @Override
     public void executeVoid(VirtualFrame frame) {

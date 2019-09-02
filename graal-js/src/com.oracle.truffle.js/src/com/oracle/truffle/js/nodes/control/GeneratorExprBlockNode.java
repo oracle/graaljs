@@ -45,10 +45,14 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 
-final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
+public final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
 
-    GeneratorExprBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode, long[] suspendableIndices) {
-        super(statements, readStateNode, writeStateNode, suspendableIndices);
+    GeneratorExprBlockNode(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
+        super(statements, readStateNode, writeStateNode);
+    }
+
+    public static JavaScriptNode create(JavaScriptNode[] statements, JavaScriptNode readStateNode, WriteNode writeStateNode) {
+        return new GeneratorExprBlockNode(statements, readStateNode, writeStateNode);
     }
 
     @Override
@@ -107,6 +111,6 @@ final class GeneratorExprBlockNode extends AbstractGeneratorBlockNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        return new GeneratorExprBlockNode(cloneUninitialized(getStatements()), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode), resumableIndices);
+        return new GeneratorExprBlockNode(cloneUninitialized(getStatements()), cloneUninitialized(readStateNode), (WriteNode) cloneUninitialized((JavaScriptNode) writeStateNode));
     }
 }

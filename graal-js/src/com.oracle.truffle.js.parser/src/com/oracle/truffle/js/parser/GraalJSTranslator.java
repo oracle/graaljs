@@ -171,6 +171,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 
 abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor<LexicalContext, JavaScriptNode> {
@@ -660,7 +661,41 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
         LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
         WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
-        return factory.createGeneratorBlock(blockNode, readState, writeState, suspendableIndices.toLongArray());
+
+        JavaScriptNode[] statements = blockNode.getStatements();
+        boolean returnsResult = !blockNode.isResultAlwaysOfType(Undefined.class);
+        JavaScriptNode genBlock;
+        // we can resume at index 0 (start state) and every statement that contains a yield
+        int resumePoints = suspendableIndices.cardinality() + (suspendableIndices.get(0) ? 0 : 1);
+        if (resumePoints == statements.length) {
+            // all statements are resume points
+            genBlock = returnsResult ? factory.createGeneratorExprBlock(statements, readState, writeState) : factory.createGeneratorVoidBlock(statements, readState, writeState);
+        } else {
+            // split block into resumable chunks of at least 1 statement.
+            JavaScriptNode[] chunks = new JavaScriptNode[resumePoints];
+            int fromIndex = 0;
+            int toIndex;
+            for (int chunkI = 0; chunkI < resumePoints; chunkI++) {
+                toIndex = suspendableIndices.nextSetBit(fromIndex + 1);
+                if (toIndex < 0) {
+                    assert chunkI == resumePoints - 1;
+                    toIndex = statements.length;
+                }
+                returnsResult = chunkI == resumePoints - 1 && !blockNode.isResultAlwaysOfType(Undefined.class);
+                JavaScriptNode chunk;
+                if (fromIndex + 1 == toIndex) {
+                    chunk = statements[fromIndex];
+                } else {
+                    JavaScriptNode[] chunkStatements = Arrays.copyOfRange(statements, fromIndex, toIndex);
+                    chunk = (returnsResult && chunkI == resumePoints - 1) ? factory.createExprBlock(chunkStatements) : factory.createVoidBlock(chunkStatements);
+                }
+                chunks[chunkI] = chunk;
+                fromIndex = toIndex;
+            }
+            genBlock = returnsResult ? factory.createGeneratorExprBlock(chunks, readState, writeState) : factory.createGeneratorVoidBlock(chunks, readState, writeState);
+        }
+        JavaScriptNode.transferSourceSectionAndTags(blockNode, genBlock);
+        return genBlock;
     }
 
     private static boolean isSideEffectFreeUnaryOpNode(Node node) {
