@@ -42,6 +42,8 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -72,6 +74,7 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child private ReturnNode returnNode;
     @Child private YieldResultNode generatorYieldNode;
     private final JSContext context;
+    private final ConditionProfile returnOrExceptionProfile = ConditionProfile.createBinaryProfile();
 
     protected YieldNode(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
         this.context = context;
@@ -116,7 +119,7 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
             if (value instanceof Completion) {
                 Completion completion = (Completion) value;
                 value = completion.getValue();
-                if (completion.isThrow()) {
+                if (returnOrExceptionProfile.profile(completion.isThrow())) {
                     return throwValue(value);
                 } else {
                     assert completion.isReturn();
@@ -187,6 +190,8 @@ class YieldStarNode extends YieldNode {
     @Child private JSFunctionCallNode callThrowNode;
     @Child private JSFunctionCallNode callReturnNode;
     @Child private IteratorCloseNode iteratorCloseNode;
+    private final ConditionProfile returnOrExceptionProfile = ConditionProfile.createBinaryProfile();
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected YieldStarNode(JSContext context, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, JSWriteFrameSlotNode writeYieldResultNode) {
         super(context, expression, yieldValue, returnNode, writeYieldResultNode);
@@ -235,7 +240,7 @@ class YieldStarNode extends YieldNode {
             } else {
                 Completion completion = (Completion) received;
                 received = completion.getValue();
-                if (completion.isThrow()) {
+                if (returnOrExceptionProfile.profile(completion.isThrow())) {
                     return resumeThrow(frame, iteratorRecord, received);
                 } else {
                     assert completion.isReturn();
@@ -269,6 +274,7 @@ class YieldStarNode extends YieldNode {
             }
             return saveStateAndYield(frame, iteratorRecord, innerResult);
         } else {
+            errorBranch.enter();
             iteratorCloseNode.executeVoid(iterator);
             throw Errors.createTypeErrorYieldStarThrowMethodMissing(this);
         }
@@ -277,6 +283,7 @@ class YieldStarNode extends YieldNode {
     private DynamicObject callThrowMethod(DynamicObject iterator, Object received, Object throwMethod) {
         Object innerResult = callThrowNode.executeCall(JSArguments.createOneArg(iterator, throwMethod, received));
         if (!JSRuntime.isObject(innerResult)) {
+            errorBranch.enter();
             throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
         }
         return (DynamicObject) innerResult;
@@ -285,6 +292,7 @@ class YieldStarNode extends YieldNode {
     private DynamicObject callReturnMethod(DynamicObject iterator, Object received, Object returnMethod) {
         Object innerResult = callReturnNode.executeCall(JSArguments.createOneArg(iterator, returnMethod, received));
         if (!JSRuntime.isObject(innerResult)) {
+            errorBranch.enter();
             throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
         }
         return (DynamicObject) innerResult;

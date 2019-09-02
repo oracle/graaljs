@@ -1222,6 +1222,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     public abstract static class JSGlobalPrintNode extends JSGlobalOperation {
 
         private final ConditionProfile argumentsCount = ConditionProfile.createBinaryProfile();
+        private final BranchProfile consoleIndentation = BranchProfile.create();
         private final boolean useErr;
 
         public JSGlobalPrintNode(JSContext context, JSBuiltin builtin, boolean useErr) {
@@ -1237,6 +1238,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             StringBuilder builder = new StringBuilder();
             JSConsoleUtil consoleUtil = getContext().getRealm().getConsoleUtil();
             if (consoleUtil.getConsoleIndentation() > 0) {
+                consoleIndentation.enter();
                 Boundaries.builderAppend(builder, consoleUtil.getConsoleIndentationString());
             }
             if (argumentsCount.profile(arguments.length == 1)) {
