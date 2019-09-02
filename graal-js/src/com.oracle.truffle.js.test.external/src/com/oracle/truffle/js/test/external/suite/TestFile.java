@@ -350,7 +350,9 @@ public final class TestFile {
         BIG_ENDIAN(cfg -> ByteOrder.BIG_ENDIAN.equals(ByteOrder.nativeOrder())),
         LITTLE_ENDIAN(cfg -> ByteOrder.LITTLE_ENDIAN.equals(ByteOrder.nativeOrder())),
         SVM(cfg -> cfg.isExtLauncher()),
-        COMPILE_IMMEDIATELY(cfg -> cfg.isCompile());
+        COMPILE_IMMEDIATELY(cfg -> cfg.isCompile()),
+        AMD64(cfg -> System.getProperty("os.arch").equals("amd64") || System.getProperty("os.arch").equals("x86_64")),
+        AARCH64(cfg -> System.getProperty("os.arch").equals("aarch64"));
 
         private final Predicate<SuiteConfig> condition;
 
