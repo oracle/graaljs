@@ -56,6 +56,7 @@
         <in>graal_object.cc</in>
         <in>graal_object_template.cc</in>
         <in>graal_primitive.cc</in>
+        <in>graal_primitive_array.cc</in>
         <in>graal_promise.cc</in>
         <in>graal_property_callback_info.cc</in>
         <in>graal_proxy.cc</in>
@@ -1251,6 +1252,16 @@
             flavor2="8">
         <ccTool flags="2">
         </ccTool>
+      </item>
+      <item path="deps/v8/src/graal/graal_primitive_array.cc"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="deps/v8/src/graal/graal_primitive_array.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
       </item>
       <item path="deps/v8/src/graal/graal_promise.cc" ex="false" tool="1" flavor2="8">
         <ccTool flags="2">

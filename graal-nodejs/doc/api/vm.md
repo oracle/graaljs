@@ -167,10 +167,19 @@ const contextifiedSandbox = vm.createContext({ secret: 42 });
     in stack traces produced by this `Module`.
   * `columnOffset` {integer} Specifies the column number offset that is
     displayed in stack traces produced by this `Module`.
-  * `initalizeImportMeta` {Function} Called during evaluation of this `Module`
+  * `initializeImportMeta` {Function} Called during evaluation of this `Module`
     to initialize the `import.meta`. This function has the signature `(meta,
     module)`, where `meta` is the `import.meta` object in the `Module`, and
     `module` is this `vm.SourceTextModule` object.
+  * `importModuleDynamically` {Function} Called during evaluation of this
+    module when `import()` is called. This function has the signature
+    `(specifier, module)` where `specifier` is the specifier passed to
+    `import()` and `module` is this `vm.SourceTextModule`. If this option is
+    not specified, calls to `import()` will reject with
+    [`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`][]. This method can return a
+    [Module Namespace Object][], but returning a `vm.SourceTextModule` is
+    recommended in order to take advantage of error tracking, and to avoid
+    issues with namespaces that contain `then` function exports.
 
 Creates a new ES `Module` object.
 
@@ -425,10 +434,10 @@ changes:
     in stack traces produced by this script.
   * `columnOffset` {number} Specifies the column number offset that is displayed
     in stack traces produced by this script.
-  * `cachedData` {Buffer} Provides an optional `Buffer` with V8's code cache
-    data for the supplied source. When supplied, the `cachedDataRejected` value
-    will be set to either `true` or `false` depending on acceptance of the data
-    by V8.
+  * `cachedData` {Buffer|TypedArray|DataView} Provides an optional `Buffer` or
+    `TypedArray`, or `DataView` with V8's code cache data for the supplied
+     source. When supplied, the `cachedDataRejected` value will be set to
+     either `true` or `false` depending on acceptance of the data by V8.
   * `produceCachedData` {boolean} When `true` and no `cachedData` is present, V8
     will attempt to produce code cache data for `code`. Upon success, a
     `Buffer` with V8's code cache data will be produced and stored in the
@@ -436,6 +445,15 @@ changes:
     The `cachedDataProduced` value will be set to either `true` or `false`
     depending on whether code cache data is produced successfully.
     This option is deprecated in favor of `script.createCachedData()`.
+  * `importModuleDynamically` {Function} Called during evaluation of this
+    module when `import()` is called. This function has the signature
+    `(specifier, module)` where `specifier` is the specifier passed to
+    `import()` and `module` is this `vm.SourceTextModule`. If this option is
+    not specified, calls to `import()` will reject with
+    [`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`][]. This method can return a
+    [Module Namespace Object][], but returning a `vm.SourceTextModule` is
+    recommended in order to take advantage of error tracking, and to avoid
+    issues with namespaces that contain `then` function exports.
 
 Creating a new `vm.Script` object compiles `code` but does not run it. The
 compiled `vm.Script` can be run later multiple times. The `code` is not bound to
@@ -651,8 +669,9 @@ added: v10.10.0
     in stack traces produced by this script. **Default:** `0`.
   * `columnOffset` {number} Specifies the column number offset that is displayed
     in stack traces produced by this script. **Default:** `0`.
-  * `cachedData` {Buffer} Provides an optional `Buffer` with V8's code cache
-    data for the supplied source.
+  * `cachedData` {Buffer|TypedArray|DataView} Provides an optional `Buffer` or
+    `TypedArray`, or `DataView` with V8's code cache data for the supplied
+     source.
   * `produceCachedData` {boolean} Specifies whether to produce new cache data.
     **Default:** `false`.
   * `parsingContext` {Object} The [contextified][] sandbox in which the said
@@ -977,6 +996,7 @@ This issue occurs because all contexts share the same microtask and nextTick
 queues.
 
 [`Error`]: errors.html#errors_class_error
+[`ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`]: errors.html#ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING
 [`URL`]: url.html#url_class_url
 [`eval()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval
 [`script.runInContext()`]: #vm_script_runincontext_contextifiedsandbox_options
@@ -985,6 +1005,7 @@ queues.
 [`vm.createContext()`]: #vm_vm_createcontext_sandbox_options
 [`vm.runInContext()`]: #vm_vm_runincontext_code_contextifiedsandbox_options
 [`vm.runInThisContext()`]: #vm_vm_runinthiscontext_code_options
+[Module Namespace Object]: https://tc39.github.io/ecma262/#sec-module-namespace-exotic-objects
 [ECMAScript Module Loader]: esm.html#esm_ecmascript_modules
 [Evaluate() concrete method]: https://tc39.github.io/ecma262/#sec-moduleevaluation
 [GetModuleNamespace]: https://tc39.github.io/ecma262/#sec-getmodulenamespace

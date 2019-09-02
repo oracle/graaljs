@@ -63,6 +63,8 @@ addlicense "OpenSSL" "deps/openssl" \
 addlicense "Punycode.js" "lib/punycode.js" \
            "$(curl -sL https://raw.githubusercontent.com/bestiejs/punycode.js/master/LICENSE-MIT.txt)"
 addlicense "V8" "deps/v8" "$(cat ${rootdir}/deps/v8/LICENSE)"
+addlicense "SipHash" "deps/v8/src/third_party/siphash" \
+           "$(sed -e '/You should have received a copy of the CC0/,$d' -e 's/^\/\* *//' -e 's/^ \* *//' deps/v8/src/third_party/siphash/halfsiphash.cc)"
 addlicense "zlib" "deps/zlib" \
            "$(sed -e '/The data format used by the zlib library/,$d' -e 's/^\/\* *//' -e 's/^ *//' ${rootdir}/deps/zlib/zlib.h)"
 
@@ -87,5 +89,11 @@ addlicense "nghttp2" "deps/nghttp2" "$(cat ${rootdir}/deps/nghttp2/COPYING)"
 
 # node-inspect
 addlicense "node-inspect" "deps/node-inspect" "$(cat ${rootdir}/deps/node-inspect/LICENSE)"
+
+# large_pages
+addlicense "large_pages" "src/large_pages" "$(sed -e '/SPDX-License-Identifier/,$d' -e 's/^\/\///' ${rootdir}/src/large_pages/node_large_page.h)"
+
+# brotli
+addlicense "brotli" "deps/brotli" "$(cat ${rootdir}/deps/brotli/LICENSE)"
 
 mv $tmplicense $licensefile

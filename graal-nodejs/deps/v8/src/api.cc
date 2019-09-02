@@ -7143,31 +7143,32 @@ enum class MapAsArrayKind {
 i::Handle<i::JSArray> MapAsArray(i::Isolate* isolate, i::Object* table_obj,
                                  int offset, MapAsArrayKind kind) {
   i::Factory* factory = isolate->factory();
-  i::Handle<i::OrderedHashMap> table(i::OrderedHashMap::cast(table_obj));
-  if (offset >= table->NumberOfElements()) return factory->NewJSArray(0);
-  int length = (table->NumberOfElements() - offset) *
-               (kind == MapAsArrayKind::kEntries ? 2 : 1);
-  i::Handle<i::FixedArray> result = factory->NewFixedArray(length);
+  i::Handle<i::OrderedHashMap> table(i::OrderedHashMap::cast(table_obj),
+                                     isolate);
+  const bool collect_keys =
+      kind == MapAsArrayKind::kEntries || kind == MapAsArrayKind::kKeys;
+  const bool collect_values =
+      kind == MapAsArrayKind::kEntries || kind == MapAsArrayKind::kValues;
+  int capacity = table->UsedCapacity();
+  int max_length =
+      (capacity - offset) * ((collect_keys && collect_values) ? 2 : 1);
+  i::Handle<i::FixedArray> result = factory->NewFixedArray(max_length);
   int result_index = 0;
   {
     i::DisallowHeapAllocation no_gc;
-    int capacity = table->UsedCapacity();
     i::Oddball* the_hole = isolate->heap()->the_hole_value();
-    for (int i = 0; i < capacity; ++i) {
+    for (int i = offset; i < capacity; ++i) {
       i::Object* key = table->KeyAt(i);
       if (key == the_hole) continue;
-      if (offset-- > 0) continue;
-      if (kind == MapAsArrayKind::kEntries || kind == MapAsArrayKind::kKeys) {
-        result->set(result_index++, key);
-      }
-      if (kind == MapAsArrayKind::kEntries || kind == MapAsArrayKind::kValues) {
-        result->set(result_index++, table->ValueAt(i));
-      }
+      if (collect_keys) result->set(result_index++, key);
+      if (collect_values) result->set(result_index++, table->ValueAt(i));
     }
   }
-  DCHECK_EQ(result_index, result->length());
-  DCHECK_EQ(result_index, length);
-  return factory->NewJSArrayWithElements(result, i::PACKED_ELEMENTS, length);
+  DCHECK_GE(max_length, result_index);
+  if (result_index == 0) return factory->NewJSArray(0);
+  result->Shrink(result_index);
+  return factory->NewJSArrayWithElements(result, i::PACKED_ELEMENTS,
+                                         result_index);
 }
 
 }  // namespace
@@ -7250,25 +7251,28 @@ namespace {
 i::Handle<i::JSArray> SetAsArray(i::Isolate* isolate, i::Object* table_obj,
                                  int offset) {
   i::Factory* factory = isolate->factory();
-  i::Handle<i::OrderedHashSet> table(i::OrderedHashSet::cast(table_obj));
-  int length = table->NumberOfElements() - offset;
-  if (length <= 0) return factory->NewJSArray(0);
-  i::Handle<i::FixedArray> result = factory->NewFixedArray(length);
+  i::Handle<i::OrderedHashSet> table(i::OrderedHashSet::cast(table_obj),
+                                     isolate);
+  // Elements skipped by |offset| may already be deleted.
+  int capacity = table->UsedCapacity();
+  int max_length = capacity - offset;
+  if (max_length == 0) return factory->NewJSArray(0);
+  i::Handle<i::FixedArray> result = factory->NewFixedArray(max_length);
   int result_index = 0;
   {
     i::DisallowHeapAllocation no_gc;
-    int capacity = table->UsedCapacity();
     i::Oddball* the_hole = isolate->heap()->the_hole_value();
-    for (int i = 0; i < capacity; ++i) {
+    for (int i = offset; i < capacity; ++i) {
       i::Object* key = table->KeyAt(i);
       if (key == the_hole) continue;
-      if (offset-- > 0) continue;
       result->set(result_index++, key);
     }
   }
-  DCHECK_EQ(result_index, result->length());
-  DCHECK_EQ(result_index, length);
-  return factory->NewJSArrayWithElements(result, i::PACKED_ELEMENTS, length);
+  DCHECK_GE(max_length, result_index);
+  if (result_index == 0) return factory->NewJSArray(0);
+  result->Shrink(result_index);
+  return factory->NewJSArrayWithElements(result, i::PACKED_ELEMENTS,
+                                         result_index);
 }
 }  // namespace
 
@@ -9999,6 +10003,47 @@ size_t debug::TypeProfile::ScriptCount() const { return type_profile_->size(); }
 debug::TypeProfile::ScriptData debug::TypeProfile::GetScriptData(
     size_t i) const {
   return ScriptData(i, type_profile_);
+}
+
+v8::MaybeLocal<v8::Value> debug::WeakMap::Get(v8::Local<v8::Context> context,
+                                              v8::Local<v8::Value> key) {
+  PREPARE_FOR_EXECUTION(context, WeakMap, Get, Value);
+  auto self = Utils::OpenHandle(this);
+  Local<Value> result;
+  i::Handle<i::Object> argv[] = {Utils::OpenHandle(*key)};
+  has_pending_exception =
+      !ToLocal<Value>(i::Execution::Call(isolate, isolate->weakmap_get(), self,
+                                         arraysize(argv), argv),
+                      &result);
+  RETURN_ON_FAILED_EXECUTION(Value);
+  RETURN_ESCAPED(result);
+}
+
+v8::MaybeLocal<debug::WeakMap> debug::WeakMap::Set(
+    v8::Local<v8::Context> context, v8::Local<v8::Value> key,
+    v8::Local<v8::Value> value) {
+  PREPARE_FOR_EXECUTION(context, WeakMap, Set, WeakMap);
+  auto self = Utils::OpenHandle(this);
+  i::Handle<i::Object> result;
+  i::Handle<i::Object> argv[] = {Utils::OpenHandle(*key),
+                                 Utils::OpenHandle(*value)};
+  has_pending_exception = !i::Execution::Call(isolate, isolate->weakmap_set(),
+                                              self, arraysize(argv), argv)
+                               .ToHandle(&result);
+  RETURN_ON_FAILED_EXECUTION(WeakMap);
+  RETURN_ESCAPED(Local<WeakMap>::Cast(Utils::ToLocal(result)));
+}
+
+Local<debug::WeakMap> debug::WeakMap::New(v8::Isolate* isolate) {
+  i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
+  LOG_API(i_isolate, WeakMap, New);
+  ENTER_V8_NO_SCRIPT_NO_EXCEPTION(i_isolate);
+  i::Handle<i::JSWeakMap> obj = i_isolate->factory()->NewJSWeakMap();
+  return ToApiHandle<debug::WeakMap>(obj);
+}
+
+debug::WeakMap* debug::WeakMap::Cast(v8::Value* value) {
+  return static_cast<debug::WeakMap*>(value);
 }
 
 const char* CpuProfileNode::GetFunctionNameStr() const {

@@ -109,6 +109,7 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
@@ -268,6 +269,11 @@ public final class GraalJSAccess {
      * different locations does not trigger any caching on the Node.js side.
      */
     private final Map<String, Reference<String>> sourceCodeCache = new WeakHashMap<>();
+
+    /**
+     * HostDefinedOptions, see v8::ScriptOrModule::GetHostDefinedOptions() and v8::PrimitiveArray.
+     */
+    private final Map<Source, Object> hostDefinedOptionsMap = new WeakHashMap<>();
 
     private final boolean exposeGC;
 
@@ -1703,7 +1709,7 @@ public final class GraalJSAccess {
         template.setFunctionHandler(functionHandler);
     }
 
-    public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] extensions) {
+    public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] extensions, Object hostDefinedOptions) {
         JSRealm realm = (JSRealm) context;
         JSContext jsContext = realm.getContext();
         Evaluator nodeEvaluator = jsContext.getEvaluator();
@@ -1726,32 +1732,41 @@ public final class GraalJSAccess {
 
         StringBuilder code = new StringBuilder();
 
-        code.append("(function () {");
+        boolean anyExtension = extensions.length > 0;
+        if (anyExtension) {
+            code.append("(function () {");
 
-        for (int i = 0; i < extensions.length; i++) {
-            code.append("with (arguments[").append(i).append("]) {");
+            for (int i = 0; i < extensions.length; i++) {
+                code.append("with (arguments[").append(i).append("]) {");
+            }
+
+            code.append("return ");
         }
-
-        code.append("return ");
 
         code.append("(function (");
         code.append(parameterList);
-        code.append(") {\n");
+        code.append(") {");
         code.append(body);
-        code.append("\n})");
+        code.append("\n});");
 
-        for (int i = 0; i < extensions.length; i++) {
-            code.append("}"); // with (arguments[i]) {
+        if (anyExtension) {
+            for (int i = 0; i < extensions.length; i++) {
+                code.append("}"); // with (arguments[i]) {
+            }
+
+            code.append(";})");
         }
 
-        code.append(";})");
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
-        DynamicObject wrapper = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
-        return JSFunction.call(wrapper, Undefined.instance, extensions);
+        TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code.toString()).name(sourceName).build();
+        hostDefinedOptionsMap.put(source, hostDefinedOptions);
+
+        DynamicObject fn = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
+        return anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
     }
 
-    public Object scriptCompile(Object context, Object sourceCode, Object fileName) {
-        UnboundScript unboundScript = (UnboundScript) unboundScriptCompile(sourceCode, fileName);
+    public Object scriptCompile(Object context, Object sourceCode, Object fileName, Object hostDefinedOptions) {
+        UnboundScript unboundScript = (UnboundScript) unboundScriptCompile(sourceCode, fileName, hostDefinedOptions);
         return unboundScriptBindToContext(context, unboundScript);
     }
 
@@ -1843,10 +1858,12 @@ public final class GraalJSAccess {
         return parseResult;
     }
 
-    public Object unboundScriptCompile(Object sourceCode, Object fileName) {
+    public Object unboundScriptCompile(Object sourceCode, Object fileName, Object hostDefinedOptions) {
         String sourceCodeStr = (String) sourceCode;
         String fileNameStr = (String) fileName;
         Source source = UnboundScript.createSource(internSourceCode(sourceCodeStr), fileNameStr);
+
+        hostDefinedOptionsMap.put(source, hostDefinedOptions);
 
         if (USE_SNAPSHOTS && fileNameStr != null && UnboundScript.isCoreModule(fileNameStr)) {
             // bootstrap_node.js is located in the internal folder,
@@ -2888,12 +2905,13 @@ public final class GraalJSAccess {
         return moduleLoader;
     }
 
-    public Object moduleCompile(Object context, Object sourceCode, Object name) {
+    public Object moduleCompile(Object context, Object sourceCode, Object name, Object hostDefinedOptions) {
         JSContext jsContext = ((JSRealm) context).getContext();
         NodeFactory factory = NodeFactory.getInstance(jsContext);
         String moduleName = (String) name;
         URI uri = URI.create(moduleName);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, (String) sourceCode, moduleName).uri(uri).build();
+        hostDefinedOptionsMap.put(source, hostDefinedOptions);
         return JavaScriptTranslator.translateModule(factory, jsContext, source, getModuleLoader());
     }
 
@@ -2969,6 +2987,12 @@ public final class GraalJSAccess {
     public String scriptOrModuleGetResourceName(Object scriptOrModule) {
         ScriptOrModule record = (ScriptOrModule) scriptOrModule;
         return record.getSource().getName();
+    }
+
+    public Object scriptOrModuleGetHostDefinedOptions(Object scriptOrModule) {
+        ScriptOrModule record = (ScriptOrModule) scriptOrModule;
+        Object hostDefinedOptions = hostDefinedOptionsMap.get(record.getSource());
+        return (hostDefinedOptions == null) ? new Object[0] : hostDefinedOptions;
     }
 
     public Object valueSerializerNew(long delegatePointer) {

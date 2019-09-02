@@ -125,7 +125,7 @@ structured data, memory regions and other `MessagePort`s between different
 [`Worker`][]s.
 
 With the exception of `MessagePort`s being [`EventEmitter`][]s rather
-than `EventTarget`s, this implementation matches [browser `MessagePort`][]s.
+than [`EventTarget`][]s, this implementation matches [browser `MessagePort`][]s.
 
 ### Event: 'close'
 <!-- YAML
@@ -234,6 +234,8 @@ listeners for the event exist.
 added: v10.5.0
 -->
 
+* Extends: {EventEmitter}
+
 The `Worker` class represents an independent JavaScript execution thread.
 Most Node.js APIs are available inside of it.
 
@@ -242,7 +244,7 @@ Notable differences inside a Worker environment are:
 - The [`process.stdin`][], [`process.stdout`][] and [`process.stderr`][]
   may be redirected by the parent thread.
 - The [`require('worker_threads').isMainThread`][] property is set to `false`.
-- The [`require('worker_threads').parentPort`][] message port is available,
+- The [`require('worker_threads').parentPort`][] message port is available.
 - [`process.exit()`][] does not stop the whole program, just the single thread,
   and [`process.abort()`][] is not available.
 - [`process.chdir()`][] and `process` methods that set group or user ids
@@ -305,10 +307,10 @@ if (isMainThread) {
 * `filename` {string} The path to the Worker’s main script. Must be
   either an absolute path or a relative path (i.e. relative to the
   current working directory) starting with `./` or `../`.
-  If `options.eval` is true, this is a string containing JavaScript code rather
-  than a path.
+  If `options.eval` is `true`, this is a string containing JavaScript code
+  rather than a path.
 * `options` {Object}
-  * `eval` {boolean} If true, interpret the first argument to the constructor
+  * `eval` {boolean} If `true`, interpret the first argument to the constructor
     as a script that is executed once the worker is online.
   * `workerData` {any} Any JavaScript value that will be cloned and made
     available as [`require('worker_threads').workerData`][]. The cloning will
@@ -353,8 +355,8 @@ added: v10.5.0
 * `value` {any} The transmitted value
 
 The `'message'` event is emitted when the worker thread has invoked
-[`require('worker_threads').postMessage()`][]. See the [`port.on('message')`][]
-event for more details.
+[`require('worker_threads').parentPort.postMessage()`][].
+See the [`port.on('message')`][] event for more details.
 
 ### Event: 'online'
 <!-- YAML
@@ -461,6 +463,7 @@ active handle in the event system. If the worker is already `unref()`ed calling
 
 [`Buffer`]: buffer.html
 [`EventEmitter`]: events.html
+[`EventTarget`]: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget
 [`MessagePort`]: #worker_threads_class_messageport
 [`SharedArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
 [`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
@@ -480,7 +483,7 @@ active handle in the event system. If the worker is already `unref()`ed calling
 [`require('worker_threads').isMainThread`]: #worker_threads_worker_ismainthread
 [`require('worker_threads').parentPort.on('message')`]: #worker_threads_event_message
 [`require('worker_threads').parentPort`]: #worker_threads_worker_parentport
-[`require('worker_threads').postMessage()`]: #worker_threads_worker_postmessage_value_transferlist
+[`require('worker_threads').parentPort.postMessage()`]: #worker_threads_worker_postmessage_value_transferlist
 [`require('worker_threads').threadId`]: #worker_threads_worker_threadid
 [`require('worker_threads').workerData`]: #worker_threads_worker_workerdata
 [`worker.on('message')`]: #worker_threads_event_message_1

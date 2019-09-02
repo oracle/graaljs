@@ -36,6 +36,7 @@ const {
 const { safeGetenv } = process.binding('util');
 const {
   makeRequireFunction,
+  normalizeReferrerURL,
   requireDepth,
   stripBOM,
   stripShebang
@@ -44,12 +45,13 @@ const { getOptionValue } = require('internal/options');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
 const experimentalModules = getOptionValue('--experimental-modules');
+const { compileFunction } = internalBinding('contextify');
 
 const {
-  ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
   ERR_REQUIRE_ESM
 } = require('internal/errors').codes;
+const { validateString } = require('internal/validators');
 
 module.exports = Module;
 
@@ -121,14 +123,51 @@ Module._extensions = Object.create(null);
 var modulePaths = [];
 Module.globalPaths = [];
 
-Module.wrap = function(script) {
+let patched = false;
+
+// eslint-disable-next-line func-style
+let wrap = function(script) {
   return Module.wrapper[0] + script + Module.wrapper[1];
 };
 
-Module.wrapper = [
+const wrapper = [
   '(function (exports, require, module, __filename, __dirname) { ',
   '\n});'
 ];
+
+let wrapperProxy = new Proxy(wrapper, {
+  set(target, property, value, receiver) {
+    patched = true;
+    return Reflect.set(target, property, value, receiver);
+  },
+
+  defineProperty(target, property, descriptor) {
+    patched = true;
+    return Object.defineProperty(target, property, descriptor);
+  }
+});
+
+Object.defineProperty(Module, 'wrap', {
+  get() {
+    return wrap;
+  },
+
+  set(value) {
+    patched = true;
+    wrap = value;
+  }
+});
+
+Object.defineProperty(Module, 'wrapper', {
+  get() {
+    return wrapperProxy;
+  },
+
+  set(value) {
+    patched = true;
+    wrapperProxy = value;
+  }
+});
 
 const debug = util.debuglog('module');
 
@@ -214,6 +253,22 @@ function tryExtensions(p, exts, isMain) {
     }
   }
   return false;
+}
+
+// find the longest (possibly multi-dot) extension registered in
+// Module._extensions
+function findLongestRegisteredExtension(filename) {
+  const name = path.basename(filename);
+  let currentExtension;
+  let index;
+  let startIndex = 0;
+  while ((index = name.indexOf('.', startIndex)) !== -1) {
+    startIndex = index + 1;
+    if (index === 0) continue; // Skip dotfiles like .gitignore
+    currentExtension = name.slice(index);
+    if (Module._extensions[currentExtension]) return currentExtension;
+  }
+  return '.js';
 }
 
 var warned = false;
@@ -594,31 +649,33 @@ Module.prototype.load = function(filename) {
   this.filename = filename;
   this.paths = Module._nodeModulePaths(path.dirname(filename));
 
-  var extension = path.extname(filename) || '.js';
-  if (!Module._extensions[extension]) extension = '.js';
+  var extension = findLongestRegisteredExtension(filename);
   Module._extensions[extension](this, filename);
   this.loaded = true;
 
   if (experimentalModules) {
     if (asyncESM === undefined) lazyLoadESM();
     const ESMLoader = asyncESM.ESMLoader;
-    const url = pathToFileURL(filename);
-    const urlString = `${url}`;
+    const url = `${pathToFileURL(filename)}`;
+    const module = ESMLoader.moduleMap.get(url);
+    // create module entry at load time to snapshot exports correctly
     const exports = this.exports;
-    if (ESMLoader.moduleMap.has(urlString) !== true) {
+    if (module !== undefined) { // called from cjs translator
+      if (module.reflect) {
+        module.reflect.onReady((reflect) => {
+          reflect.exports.default.set(exports);
+        });
+      }
+    } else { // preemptively cache
       ESMLoader.moduleMap.set(
-        urlString,
+        url,
         new ModuleJob(ESMLoader, url, async () => {
-          const ctx = createDynamicModule(
-            ['default'], url);
-          ctx.reflect.exports.default.set(exports);
-          return ctx;
+          return createDynamicModule(
+            ['default'], url, (reflect) => {
+              reflect.exports.default.set(exports);
+            });
         })
       );
-    } else {
-      const job = ESMLoader.moduleMap.get(urlString);
-      if (job.reflect)
-        job.reflect.exports.default.set(exports);
     }
   }
 };
@@ -627,9 +684,7 @@ Module.prototype.load = function(filename) {
 // Loads a module at the given file path. Returns that module's
 // `exports` property.
 Module.prototype.require = function(id) {
-  if (typeof id !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('id', 'string', id);
-  }
+  validateString(id, 'id');
   if (id === '') {
     throw new ERR_INVALID_ARG_VALUE('id', id,
                                     'must be a non-empty string');
@@ -651,14 +706,48 @@ Module.prototype._compile = function(content, filename) {
 
   content = stripShebang(content);
 
-  // create wrapper function
-  var wrapper = Module.wrap(content);
-
-  var compiledWrapper = vm.runInThisContext(wrapper, {
-    filename: filename,
-    lineOffset: 0,
-    displayErrors: true
-  });
+  let compiledWrapper;
+  if (patched) {
+    const wrapper = Module.wrap(content);
+    compiledWrapper = vm.runInThisContext(wrapper, {
+      filename,
+      lineOffset: 0,
+      displayErrors: true,
+      importModuleDynamically: experimentalModules ? async (specifier) => {
+        if (asyncESM === undefined) lazyLoadESM();
+        const loader = await asyncESM.loaderPromise;
+        return loader.import(specifier, normalizeReferrerURL(filename));
+      } : undefined,
+    });
+  } else {
+    compiledWrapper = compileFunction(
+      content,
+      filename,
+      0,
+      0,
+      undefined,
+      false,
+      undefined,
+      [],
+      [
+        'exports',
+        'require',
+        'module',
+        '__filename',
+        '__dirname',
+      ]
+    );
+    if (experimentalModules) {
+      const { callbackMap } = internalBinding('module_wrap');
+      callbackMap.set(compiledWrapper, {
+        importModuleDynamically: async (specifier) => {
+          if (asyncESM === undefined) lazyLoadESM();
+          const loader = await asyncESM.loaderPromise;
+          return loader.import(specifier, normalizeReferrerURL(filename));
+        }
+      });
+    }
+  }
 
   var inspectorWrapper = null;
   if (process._breakFirstLine && process._eval == null) {

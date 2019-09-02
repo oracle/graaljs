@@ -86,12 +86,11 @@ const {
   validateUint32
 } = require('internal/validators');
 
-let promisesWarn = true;
 let truncateWarn = true;
 let fs;
 
 // Lazy loaded
-let promises;
+let promises = null;
 let watchers;
 let ReadFileContext;
 
@@ -137,7 +136,7 @@ function makeCallback(cb) {
     throw new ERR_INVALID_CALLBACK();
   }
 
-  return function(...args) {
+  return (...args) => {
     return Reflect.apply(cb, undefined, args);
   };
 }
@@ -150,7 +149,7 @@ function makeStatsCallback(cb) {
     throw new ERR_INVALID_CALLBACK();
   }
 
-  return function(err, stats) {
+  return (err, stats) => {
     if (err) return cb(err);
     cb(err, getStatsFromBinding(stats));
   };
@@ -341,7 +340,7 @@ function tryReadSync(fd, isUserFd, buffer, pos, len) {
 function readFileSync(path, options) {
   options = getOptions(options, { flag: 'r' });
   const isUserFd = isFd(path); // file descriptor ownership
-  const fd = isUserFd ? path : fs.openSync(path, options.flag || 'r', 0o666);
+  const fd = isUserFd ? path : fs.openSync(path, options.flag, 0o666);
 
   const stats = tryStatSync(fd, isUserFd);
   const size = isFileType(stats, S_IFREG) ? stats[8] : 0;
@@ -407,14 +406,19 @@ function closeSync(fd) {
 function open(path, flags, mode, callback) {
   path = toPathIfFileURL(path);
   validatePath(path);
-  const flagsNumber = stringToFlags(flags);
-  if (typeof mode === 'function') {
-    callback = makeCallback(mode);
+  if (arguments.length < 3) {
+    callback = flags;
+    flags = 'r';
     mode = 0o666;
-  } else {
-    mode = validateMode(mode, 'mode', 0o666);
-    callback = makeCallback(callback);
+  } else if (arguments.length === 3) {
+    callback = mode;
+    mode = 0o666;
   }
+  const flagsNumber = stringToFlags(flags);
+  if (arguments.length >= 4) {
+    mode = validateMode(mode, 'mode', 0o666);
+  }
+  callback = makeCallback(callback);
 
   const req = new FSReqWrap();
   req.oncomplete = callback;
@@ -429,7 +433,7 @@ function open(path, flags, mode, callback) {
 function openSync(path, flags, mode) {
   path = toPathIfFileURL(path);
   validatePath(path);
-  const flagsNumber = stringToFlags(flags);
+  const flagsNumber = stringToFlags(flags || 'r');
   mode = validateMode(mode, 'mode', 0o666);
 
   const ctx = { path };
@@ -608,11 +612,11 @@ function truncate(path, len, callback) {
 
   validateInteger(len, 'len');
   callback = maybeCallback(callback);
-  fs.open(path, 'r+', function(er, fd) {
+  fs.open(path, 'r+', (er, fd) => {
     if (er) return callback(er);
     const req = new FSReqWrap();
     req.oncomplete = function oncomplete(er) {
-      fs.close(fd, function(er2) {
+      fs.close(fd, (er2) => {
         callback(er || er2);
       });
     };
@@ -972,15 +976,15 @@ function fchmodSync(fd, mode) {
 
 function lchmod(path, mode, callback) {
   callback = maybeCallback(callback);
-  fs.open(path, O_WRONLY | O_SYMLINK, function(err, fd) {
+  fs.open(path, O_WRONLY | O_SYMLINK, (err, fd) => {
     if (err) {
       callback(err);
       return;
     }
     // Prefer to return the chmod error, if one occurs,
     // but still try to close, and report closing errors if they occur.
-    fs.fchmod(fd, mode, function(err) {
-      fs.close(fd, function(err2) {
+    fs.fchmod(fd, mode, (err) => {
+      fs.close(fd, (err2) => {
         callback(err || err2);
       });
     });
@@ -1129,7 +1133,7 @@ function futimesSync(fd, atime, mtime) {
 
 function writeAll(fd, isUserFd, buffer, offset, length, position, callback) {
   // write(fd, buffer, offset, length, position, callback)
-  fs.write(fd, buffer, offset, length, position, function(writeErr, written) {
+  fs.write(fd, buffer, offset, length, position, (writeErr, written) => {
     if (writeErr) {
       if (isUserFd) {
         callback(writeErr);
@@ -1165,7 +1169,7 @@ function writeFile(path, data, options, callback) {
     return;
   }
 
-  fs.open(path, flag, options.mode, function(openErr, fd) {
+  fs.open(path, flag, options.mode, (openErr, fd) => {
     if (openErr) {
       callback(openErr);
     } else {
@@ -1508,7 +1512,7 @@ function realpathSync(p, options) {
 }
 
 
-realpathSync.native = function(path, options) {
+realpathSync.native = (path, options) => {
   options = getOptions(options, {});
   path = toPathIfFileURL(path);
   validatePath(path);
@@ -1549,7 +1553,7 @@ function realpath(p, options, callback) {
 
   // On windows, check that the root exists. On unix there is no need.
   if (isWindows && !knownHard[base]) {
-    fs.lstat(base, function(err, stats) {
+    fs.lstat(base, (err, stats) => {
       if (err) return callback(err);
       knownHard[base] = true;
       LOOP();
@@ -1613,10 +1617,10 @@ function realpath(p, options, callback) {
         return gotTarget(null, seenLinks[id], base);
       }
     }
-    fs.stat(base, function(err) {
+    fs.stat(base, (err) => {
       if (err) return callback(err);
 
-      fs.readlink(base, function(err, target) {
+      fs.readlink(base, (err, target) => {
         if (!isWindows) seenLinks[id] = target;
         gotTarget(err, target);
       });
@@ -1637,7 +1641,7 @@ function realpath(p, options, callback) {
 
     // On windows, check that the root exists. On unix there is no need.
     if (isWindows && !knownHard[base]) {
-      fs.lstat(base, function(err) {
+      fs.lstat(base, (err) => {
         if (err) return callback(err);
         knownHard[base] = true;
         LOOP();
@@ -1649,7 +1653,7 @@ function realpath(p, options, callback) {
 }
 
 
-realpath.native = function(path, options, callback) {
+realpath.native = (path, options, callback) => {
   callback = makeCallback(callback || options);
   options = getOptions(options, {});
   path = toPathIfFileURL(path);
@@ -1837,9 +1841,8 @@ Object.defineProperties(fs, {
     configurable: true,
     enumerable: false,
     get() {
-      if (promisesWarn) {
+      if (promises === null) {
         promises = require('internal/fs/promises');
-        promisesWarn = false;
         process.emitWarning('The fs.promises API is experimental',
                             'ExperimentalWarning');
       }

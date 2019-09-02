@@ -53,6 +53,9 @@ TEST_DECLARE   (tty_raw)
 TEST_DECLARE   (tty_empty_write)
 TEST_DECLARE   (tty_large_write)
 TEST_DECLARE   (tty_raw_cancel)
+TEST_DECLARE   (tty_duplicate_vt100_fn_key)
+TEST_DECLARE   (tty_duplicate_alt_modifier_key)
+TEST_DECLARE   (tty_composing_character)
 #endif
 TEST_DECLARE   (tty_file)
 TEST_DECLARE   (tty_pty)
@@ -69,6 +72,7 @@ TEST_DECLARE   (ipc_send_recv_pipe_inprocess)
 TEST_DECLARE   (ipc_send_recv_tcp)
 TEST_DECLARE   (ipc_send_recv_tcp_inprocess)
 TEST_DECLARE   (ipc_tcp_connection)
+TEST_DECLARE   (ipc_send_zero)
 #ifndef _WIN32
 TEST_DECLARE   (ipc_closed_handle)
 #endif
@@ -128,6 +132,7 @@ TEST_DECLARE   (tcp_write_ready)
 TEST_DECLARE   (udp_alloc_cb_fail)
 TEST_DECLARE   (udp_bind)
 TEST_DECLARE   (udp_bind_reuseaddr)
+TEST_DECLARE   (udp_connect)
 TEST_DECLARE   (udp_create_early)
 TEST_DECLARE   (udp_create_early_bad_bind)
 TEST_DECLARE   (udp_create_early_bad_domain)
@@ -148,6 +153,11 @@ TEST_DECLARE   (udp_options6)
 TEST_DECLARE   (udp_no_autobind)
 TEST_DECLARE   (udp_open)
 TEST_DECLARE   (udp_open_twice)
+TEST_DECLARE   (udp_open_bound)
+TEST_DECLARE   (udp_open_connect)
+#ifndef _WIN32
+TEST_DECLARE   (udp_send_unix)
+#endif
 TEST_DECLARE   (udp_try_send)
 TEST_DECLARE   (pipe_bind_error_addrinuse)
 TEST_DECLARE   (pipe_bind_error_addrnotavail)
@@ -245,6 +255,7 @@ TEST_DECLARE   (getnameinfo_basic_ip4_sync)
 TEST_DECLARE   (getnameinfo_basic_ip6)
 TEST_DECLARE   (getsockname_tcp)
 TEST_DECLARE   (getsockname_udp)
+TEST_DECLARE   (gettimeofday)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
 TEST_DECLARE   (socket_buffer_size)
@@ -276,6 +287,9 @@ TEST_DECLARE   (spawn_quoted_path)
 TEST_DECLARE   (spawn_tcp_server)
 TEST_DECLARE   (fs_poll)
 TEST_DECLARE   (fs_poll_getpath)
+TEST_DECLARE   (fs_poll_close_request)
+TEST_DECLARE   (fs_poll_close_request_multi_start_stop)
+TEST_DECLARE   (fs_poll_close_request_multi_stop_start)
 TEST_DECLARE   (kill)
 TEST_DECLARE   (kill_invalid_signum)
 TEST_DECLARE   (fs_file_noent)
@@ -335,6 +349,10 @@ TEST_DECLARE   (fs_scandir_empty_dir)
 TEST_DECLARE   (fs_scandir_non_existent_dir)
 TEST_DECLARE   (fs_scandir_file)
 TEST_DECLARE   (fs_open_dir)
+TEST_DECLARE   (fs_readdir_empty_dir)
+TEST_DECLARE   (fs_readdir_file)
+TEST_DECLARE   (fs_readdir_non_empty_dir)
+TEST_DECLARE   (fs_readdir_non_existing_dir)
 TEST_DECLARE   (fs_rename_to_existing_file)
 TEST_DECLARE   (fs_write_multiple_bufs)
 TEST_DECLARE   (fs_read_write_null_arguments)
@@ -346,11 +364,14 @@ TEST_DECLARE   (fs_partial_read)
 TEST_DECLARE   (fs_partial_write)
 TEST_DECLARE   (fs_file_pos_after_op_with_offset)
 TEST_DECLARE   (fs_null_req)
+TEST_DECLARE   (fs_read_dir)
 #ifdef _WIN32
 TEST_DECLARE   (fs_exclusive_sharing_mode)
+TEST_DECLARE   (fs_file_flag_no_buffering)
 TEST_DECLARE   (fs_open_readonly_acl)
 TEST_DECLARE   (fs_fchmod_archive_readonly)
 #endif
+TEST_DECLARE   (strscpy)
 TEST_DECLARE   (threadpool_queue_work_simple)
 TEST_DECLARE   (threadpool_queue_work_einval)
 TEST_DECLARE   (threadpool_multiple_event_loops)
@@ -361,6 +382,7 @@ TEST_DECLARE   (threadpool_cancel_fs)
 TEST_DECLARE   (threadpool_cancel_single)
 TEST_DECLARE   (thread_local_storage)
 TEST_DECLARE   (thread_stack_size)
+TEST_DECLARE   (thread_stack_size_explicit)
 TEST_DECLARE   (thread_mutex)
 TEST_DECLARE   (thread_mutex_recursive)
 TEST_DECLARE   (thread_rwlock)
@@ -433,13 +455,21 @@ TEST_DECLARE  (fork_socketpair)
 TEST_DECLARE  (fork_socketpair_started)
 TEST_DECLARE  (fork_signal_to_child)
 TEST_DECLARE  (fork_signal_to_child_closed)
+#ifndef __APPLE__ /* This is forbidden in a fork child: The process has forked
+                     and you cannot use this CoreFoundation functionality
+                     safely. You MUST exec(). */
 TEST_DECLARE  (fork_fs_events_child)
 TEST_DECLARE  (fork_fs_events_child_dir)
 TEST_DECLARE  (fork_fs_events_file_parent_child)
+#endif
 #ifndef __MVS__
 TEST_DECLARE  (fork_threadpool_queue_work_simple)
 #endif
 #endif
+
+TEST_DECLARE  (idna_toascii)
+TEST_DECLARE  (utf8_decode1)
+TEST_DECLARE  (uname)
 
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
@@ -488,6 +518,9 @@ TASK_LIST_START
   TEST_ENTRY  (tty_empty_write)
   TEST_ENTRY  (tty_large_write)
   TEST_ENTRY  (tty_raw_cancel)
+  TEST_ENTRY  (tty_duplicate_vt100_fn_key)
+  TEST_ENTRY  (tty_duplicate_alt_modifier_key)
+  TEST_ENTRY  (tty_composing_character)
 #endif
   TEST_ENTRY  (tty_file)
   TEST_ENTRY  (tty_pty)
@@ -504,6 +537,7 @@ TASK_LIST_START
   TEST_ENTRY  (ipc_send_recv_tcp)
   TEST_ENTRY  (ipc_send_recv_tcp_inprocess)
   TEST_ENTRY  (ipc_tcp_connection)
+  TEST_ENTRY  (ipc_send_zero)
 #ifndef _WIN32
   TEST_ENTRY  (ipc_closed_handle)
 #endif
@@ -599,6 +633,7 @@ TASK_LIST_START
   TEST_ENTRY  (udp_alloc_cb_fail)
   TEST_ENTRY  (udp_bind)
   TEST_ENTRY  (udp_bind_reuseaddr)
+  TEST_ENTRY  (udp_connect)
   TEST_ENTRY  (udp_create_early)
   TEST_ENTRY  (udp_create_early_bad_bind)
   TEST_ENTRY  (udp_create_early_bad_domain)
@@ -622,6 +657,12 @@ TASK_LIST_START
   TEST_ENTRY  (udp_open)
   TEST_HELPER (udp_open, udp4_echo_server)
   TEST_ENTRY  (udp_open_twice)
+  TEST_ENTRY  (udp_open_bound)
+  TEST_ENTRY  (udp_open_connect)
+  TEST_HELPER (udp_open_connect, udp4_echo_server)
+#ifndef _WIN32
+  TEST_ENTRY  (udp_send_unix)
+#endif
 
   TEST_ENTRY  (pipe_bind_error_addrinuse)
   TEST_ENTRY  (pipe_bind_error_addrnotavail)
@@ -751,6 +792,8 @@ TASK_LIST_START
   TEST_ENTRY  (getsockname_tcp)
   TEST_ENTRY  (getsockname_udp)
 
+  TEST_ENTRY  (gettimeofday)
+
   TEST_ENTRY  (poll_duplex)
   TEST_ENTRY  (poll_unidirectional)
   TEST_ENTRY  (poll_close)
@@ -797,6 +840,9 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_tcp_server)
   TEST_ENTRY  (fs_poll)
   TEST_ENTRY  (fs_poll_getpath)
+  TEST_ENTRY  (fs_poll_close_request)
+  TEST_ENTRY  (fs_poll_close_request_multi_start_stop)
+  TEST_ENTRY  (fs_poll_close_request_multi_stop_start)
   TEST_ENTRY  (kill)
   TEST_ENTRY  (kill_invalid_signum)
 
@@ -888,6 +934,10 @@ TASK_LIST_START
   TEST_ENTRY  (fs_scandir_non_existent_dir)
   TEST_ENTRY  (fs_scandir_file)
   TEST_ENTRY  (fs_open_dir)
+  TEST_ENTRY  (fs_readdir_empty_dir)
+  TEST_ENTRY  (fs_readdir_file)
+  TEST_ENTRY  (fs_readdir_non_empty_dir)
+  TEST_ENTRY  (fs_readdir_non_existing_dir)
   TEST_ENTRY  (fs_rename_to_existing_file)
   TEST_ENTRY  (fs_write_multiple_bufs)
   TEST_ENTRY  (fs_write_alotof_bufs)
@@ -897,13 +947,16 @@ TASK_LIST_START
   TEST_ENTRY  (fs_read_write_null_arguments)
   TEST_ENTRY  (fs_file_pos_after_op_with_offset)
   TEST_ENTRY  (fs_null_req)
+  TEST_ENTRY  (fs_read_dir)
 #ifdef _WIN32
   TEST_ENTRY  (fs_exclusive_sharing_mode)
+  TEST_ENTRY  (fs_file_flag_no_buffering)
   TEST_ENTRY  (fs_open_readonly_acl)
   TEST_ENTRY  (fs_fchmod_archive_readonly)
 #endif
   TEST_ENTRY  (get_osfhandle_valid_handle)
   TEST_ENTRY  (open_osfhandle_valid_handle)
+  TEST_ENTRY  (strscpy)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
   TEST_ENTRY  (threadpool_multiple_event_loops)
@@ -914,6 +967,7 @@ TASK_LIST_START
   TEST_ENTRY  (threadpool_cancel_single)
   TEST_ENTRY  (thread_local_storage)
   TEST_ENTRY  (thread_stack_size)
+  TEST_ENTRY  (thread_stack_size_explicit)
   TEST_ENTRY  (thread_mutex)
   TEST_ENTRY  (thread_mutex_recursive)
   TEST_ENTRY  (thread_rwlock)
@@ -936,12 +990,22 @@ TASK_LIST_START
   TEST_ENTRY  (fork_socketpair_started)
   TEST_ENTRY  (fork_signal_to_child)
   TEST_ENTRY  (fork_signal_to_child_closed)
+#ifndef __APPLE__
   TEST_ENTRY  (fork_fs_events_child)
   TEST_ENTRY  (fork_fs_events_child_dir)
   TEST_ENTRY  (fork_fs_events_file_parent_child)
+#endif
 #ifndef __MVS__
   TEST_ENTRY  (fork_threadpool_queue_work_simple)
 #endif
+#endif
+
+  TEST_ENTRY  (utf8_decode1)
+  TEST_ENTRY  (uname)
+
+/* Doesn't work on z/OS because that platform uses EBCDIC, not ASCII. */
+#ifndef __MVS__
+  TEST_ENTRY  (idna_toascii)
 #endif
 
 #if 0

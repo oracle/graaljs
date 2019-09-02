@@ -8,5 +8,5 @@ prefix es-module
 
 ### Graal.js-specific ###
 
-# dynamic import via eval (not supported by Graal.js yet)
+# Invalid host defined options for a dynamic import in eval
 test-esm-dynamic-import                          : FAIL

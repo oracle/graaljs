@@ -43,7 +43,7 @@ const {
   domainToUnicode: _domainToUnicode,
   encodeAuth,
   toUSVString: _toUSVString,
-  parse: _parse,
+  parse,
   setURLConstructor,
   URL_FLAGS_CANNOT_BE_BASE,
   URL_FLAGS_HAS_FRAGMENT,
@@ -243,21 +243,6 @@ function onParseError(flags, input) {
   throw error;
 }
 
-// Reused by URL constructor and URL#href setter.
-function parse(url, input, base) {
-  const base_context = base ? base[context] : undefined;
-  // In the URL#href setter
-  if (!url[context]) {
-    Object.defineProperty(url, context, {
-      enumerable: false,
-      configurable: false,
-      value: new URLContext()
-    });
-  }
-  _parse(input.trim(), -1, base_context, undefined,
-         onParseComplete.bind(url), onParseError);
-}
-
 function onParseProtocolComplete(flags, protocol, username, password,
                                  host, port, path, query, fragment) {
   const ctx = this[context];
@@ -326,10 +311,13 @@ class URL {
   constructor(input, base) {
     // toUSVString is not needed.
     input = `${input}`;
+    let base_context;
     if (base !== undefined) {
-      base = new URL(base);
+      base_context = new URL(base)[context];
     }
-    parse(this, input, base);
+    this[context] = new URLContext();
+    parse(input, -1, base_context, undefined, onParseComplete.bind(this),
+          onParseError);
   }
 
   get [special]() {
@@ -452,7 +440,8 @@ Object.defineProperties(URL.prototype, {
     set(input) {
       // toUSVString is not needed.
       input = `${input}`;
-      parse(this, input);
+      parse(input, -1, undefined, undefined, onParseComplete.bind(this),
+            onParseError);
     }
   },
   origin: {  // readonly
@@ -498,8 +487,8 @@ Object.defineProperties(URL.prototype, {
           (ctx.host === '' || ctx.host === null)) {
         return;
       }
-      _parse(scheme, kSchemeStart, null, ctx,
-             onParseProtocolComplete.bind(this));
+      parse(scheme, kSchemeStart, null, ctx,
+            onParseProtocolComplete.bind(this));
     }
   },
   username: {
@@ -562,7 +551,7 @@ Object.defineProperties(URL.prototype, {
         // Cannot set the host if cannot-be-base is set
         return;
       }
-      _parse(host, kHost, null, ctx, onParseHostComplete.bind(this));
+      parse(host, kHost, null, ctx, onParseHostComplete.bind(this));
     }
   },
   hostname: {
@@ -579,7 +568,7 @@ Object.defineProperties(URL.prototype, {
         // Cannot set the host if cannot-be-base is set
         return;
       }
-      _parse(host, kHostname, null, ctx, onParseHostnameComplete.bind(this));
+      parse(host, kHostname, null, ctx, onParseHostnameComplete.bind(this));
     }
   },
   port: {
@@ -599,7 +588,7 @@ Object.defineProperties(URL.prototype, {
         ctx.port = null;
         return;
       }
-      _parse(port, kPort, null, ctx, onParsePortComplete.bind(this));
+      parse(port, kPort, null, ctx, onParsePortComplete.bind(this));
     }
   },
   pathname: {
@@ -618,8 +607,8 @@ Object.defineProperties(URL.prototype, {
       path = `${path}`;
       if (this[cannotBeBase])
         return;
-      _parse(path, kPathStart, null, this[context],
-             onParsePathComplete.bind(this));
+      parse(path, kPathStart, null, this[context],
+            onParsePathComplete.bind(this));
     }
   },
   search: {
@@ -642,7 +631,7 @@ Object.defineProperties(URL.prototype, {
         ctx.query = '';
         ctx.flags |= URL_FLAGS_HAS_QUERY;
         if (search) {
-          _parse(search, kQuery, null, ctx, onParseSearchComplete.bind(this));
+          parse(search, kQuery, null, ctx, onParseSearchComplete.bind(this));
         }
       }
       initSearchParams(this[searchParams], search);
@@ -676,7 +665,7 @@ Object.defineProperties(URL.prototype, {
       if (hash[0] === '#') hash = hash.slice(1);
       ctx.fragment = '';
       ctx.flags |= URL_FLAGS_HAS_FRAGMENT;
-      _parse(hash, kFragment, null, ctx, onParseHashComplete.bind(this));
+      parse(hash, kFragment, null, ctx, onParseHashComplete.bind(this));
     }
   },
   toJSON: {
@@ -782,8 +771,7 @@ function parseParams(qs) {
       if (code === CHAR_PERCENT) {
         encodeCheck = 1;
       } else if (encodeCheck > 0) {
-        // eslint-disable-next-line no-extra-boolean-cast
-        if (!!isHexTable[code]) {
+        if (isHexTable[code] === 1) {
           if (++encodeCheck === 3) {
             querystring = require('querystring');
             encoded = true;
@@ -1286,6 +1274,8 @@ function urlToOptions(url) {
   return options;
 }
 
+const forwardSlashRegEx = /\//g;
+
 function getPathFromURLWin32(url) {
   var hostname = url.hostname;
   var pathname = url.pathname;
@@ -1300,6 +1290,7 @@ function getPathFromURLWin32(url) {
       }
     }
   }
+  pathname = pathname.replace(forwardSlashRegEx, '\\');
   pathname = decodeURIComponent(pathname);
   if (hostname !== '') {
     // If hostname is set, then we have a UNC path
@@ -1308,7 +1299,7 @@ function getPathFromURLWin32(url) {
     // about percent encoding because the URL parser will have
     // already taken care of that for us. Note that this only
     // causes IDNs with an appropriate `xn--` prefix to be decoded.
-    return `//${domainToUnicode(hostname)}${pathname}`;
+    return `\\\\${domainToUnicode(hostname)}${pathname}`;
   } else {
     // Otherwise, it's a local path that requires a drive letter
     var letter = pathname.codePointAt(1) | 0x20;
@@ -1350,11 +1341,22 @@ function fileURLToPath(path) {
   return isWindows ? getPathFromURLWin32(path) : getPathFromURLPosix(path);
 }
 
-// We percent-encode % character when converting from file path to URL,
-// as this is the only character that won't be percent encoded by
-// default URL percent encoding when pathname is set.
+// The following characters are percent-encoded when converting from file path
+// to URL:
+// - %: The percent character is the only character not encoded by the
+//        `pathname` setter.
+// - \: Backslash is encoded on non-windows platforms since it's a valid
+//      character but the `pathname` setters replaces it by a forward slash.
+// - LF: The newline character is stripped out by the `pathname` setter.
+//       (See whatwg/url#419)
+// - CR: The carriage return character is also stripped out by the `pathname`
+//       setter.
+// - TAB: The tab character is also stripped out by the `pathname` setter.
 const percentRegEx = /%/g;
 const backslashRegEx = /\\/g;
+const newlineRegEx = /\n/g;
+const carriageReturnRegEx = /\r/g;
+const tabRegEx = /\t/g;
 function pathToFileURL(filepath) {
   let resolved = path.resolve(filepath);
   // path.resolve strips trailing slashes so we must add them back
@@ -1369,6 +1371,12 @@ function pathToFileURL(filepath) {
   // in posix, "/" is a valid character in paths
   if (!isWindows && resolved.includes('\\'))
     resolved = resolved.replace(backslashRegEx, '%5C');
+  if (resolved.includes('\n'))
+    resolved = resolved.replace(newlineRegEx, '%0A');
+  if (resolved.includes('\r'))
+    resolved = resolved.replace(carriageReturnRegEx, '%0D');
+  if (resolved.includes('\t'))
+    resolved = resolved.replace(tabRegEx, '%09');
   outURL.pathname = resolved;
   return outURL;
 }
@@ -1379,15 +1387,6 @@ function toPathIfFileURL(fileURLOrPath) {
     return fileURLOrPath;
   return fileURLToPath(fileURLOrPath);
 }
-
-function NativeURL(ctx) {
-  Object.defineProperty(this, context, {
-    enumerable: false,
-    configurable: false,
-    value: ctx
-  });
-}
-NativeURL.prototype = URL.prototype;
 
 function constructUrl(flags, protocol, username, password,
                       host, port, path, query, fragment) {
@@ -1401,10 +1400,13 @@ function constructUrl(flags, protocol, username, password,
   ctx.query = query;
   ctx.fragment = fragment;
   ctx.host = host;
-  const url = new NativeURL(ctx);
-  url[searchParams] = new URLSearchParams();
-  url[searchParams][context] = url;
-  initSearchParams(url[searchParams], query);
+
+  const url = Object.create(URL.prototype);
+  url[context] = ctx;
+  const params = new URLSearchParams();
+  url[searchParams] = params;
+  params[context] = url;
+  initSearchParams(params, query);
   return url;
 }
 setURLConstructor(constructUrl);
