@@ -45,23 +45,17 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
 /**
  * IR representation for a list of statements.
  */
-public class Block extends Node implements BreakableNode, Terminal, Flags<Block> {
+public class Block extends Node implements BreakableNode, Terminal, Flags<Block>, LexicalContextScope {
     /** List of statements */
     protected final List<Statement> statements;
 
-    /** Symbol table - keys must be returned in the order they were put in. */
-    protected final EconomicMap<String, Symbol> symbols;
-
-    private int blockScopedOrRedeclaredSymbols;
-    private int declaredNames;
+    protected final Scope scope;
 
     /** Does the block/function need a new scope? Is this synthetic? */
     protected final int flags;
@@ -120,12 +114,12 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      * @param flags The flags of the block
      * @param statements All statements in the block
      */
-    public Block(final long token, final int finish, final int flags, final Statement... statements) {
+    public Block(final long token, final int finish, final int flags, final Scope scope, final Statement... statements) {
         super(token, finish);
         assert start <= finish;
 
         this.statements = statements.length == 0 ? Collections.emptyList() : Arrays.asList(statements);
-        this.symbols = EconomicMap.create();
+        this.scope = scope;
         final int len = statements.length;
         final int terminalFlags = len > 0 && statements[len - 1].hasTerminalFlags() ? IS_TERMINAL : 0;
         this.flags = terminalFlags | flags;
@@ -139,18 +133,15 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      * @param flags The flags of the block
      * @param statements All statements in the block
      */
-    public Block(final long token, final int finish, final int flags, final List<Statement> statements) {
-        this(token, finish, flags, statements.toArray(new Statement[statements.size()]));
+    public Block(final long token, final int finish, final int flags, final Scope scope, final List<Statement> statements) {
+        this(token, finish, flags, scope, statements.toArray(new Statement[statements.size()]));
     }
 
-    private Block(final Block block, final int finish, final List<Statement> statements, final int flags, final EconomicMap<String, Symbol> symbols) {
+    private Block(final Block block, final int finish, final List<Statement> statements, final int flags) {
         super(block, finish);
         this.statements = statements;
         this.flags = flags;
-        this.symbols = EconomicMap.create(symbols);
-
-        this.declaredNames = block.declaredNames;
-        this.blockScopedOrRedeclaredSymbols = block.blockScopedOrRedeclaredSymbols;
+        this.scope = block.scope;
     }
 
     /**
@@ -189,7 +180,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      * @return symbol iterator
      */
     public Iterable<Symbol> getSymbols() {
-        return symbols.getValues();
+        return scope.getSymbols();
     }
 
     /**
@@ -200,7 +191,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      *         this block doesn't define a symbol with this name.
      */
     public Symbol getExistingSymbol(final String name) {
-        return symbols.get(name);
+        return scope.getExistingSymbol(name);
     }
 
     /**
@@ -209,14 +200,14 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
      * @param name the name of the symbol
      */
     public boolean hasSymbol(final String name) {
-        return symbols.containsKey(name);
+        return scope.hasSymbol(name);
     }
 
     /**
      * Get the number of symbols defined in this block.
      */
     public int getSymbolCount() {
-        return symbols.size();
+        return scope.getSymbolCount();
     }
 
     /**
@@ -315,23 +306,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
         if (!statements.isEmpty()) {
             lastFinish = statements.get(statements.size() - 1).getFinish();
         }
-        return Node.replaceInLexicalContext(lc, this, new Block(this, Math.max(finish, lastFinish), statements, flags, symbols));
-    }
-
-    /**
-     * Add or overwrite an existing symbol in the block
-     *
-     * @param lc get lexical context
-     * @param symbol symbol
-     */
-    public void putSymbol(final LexicalContext lc, final Symbol symbol) {
-        symbols.put(symbol.getName(), symbol);
-        if ((symbol.isBlockScoped() || symbol.isVarRedeclaredHere()) && !symbol.isImportBinding()) {
-            blockScopedOrRedeclaredSymbols++;
-        }
-        if ((symbol.isBlockScoped() || (symbol.isVar() && symbol.isVarDeclaredHere())) && !symbol.isImportBinding()) {
-            declaredNames++;
-        }
+        return Node.replaceInLexicalContext(lc, this, new Block(this, Math.max(finish, lastFinish), statements, flags));
     }
 
     /**
@@ -357,7 +332,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
         if (this.flags == flags) {
             return this;
         }
-        return Node.replaceInLexicalContext(lc, this, new Block(this, finish, statements, flags, symbols));
+        return Node.replaceInLexicalContext(lc, this, new Block(this, finish, statements, flags));
     }
 
     @Override
@@ -385,12 +360,17 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
         return BreakableNode.super.accept(visitor);
     }
 
-    public boolean hasBlockScopedOrRedeclaredSymbols() {
-        return blockScopedOrRedeclaredSymbols != 0;
+    @Override
+    public Scope getScope() {
+        return scope;
+    }
+
+    public boolean hasBlockScopedSymbols() {
+        return scope.hasBlockScopedSymbols();
     }
 
     public boolean hasDeclarations() {
-        return declaredNames != 0;
+        return scope.hasDeclarations();
     }
 
     public boolean isFunctionBody() {

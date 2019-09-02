@@ -48,6 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -550,7 +551,7 @@ public abstract class Environment {
             if (symbol.isImportBinding()) {
                 continue; // no frame slot required
             }
-            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && symbol.isVarDeclaredHere())) {
+            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isParam() && !symbol.isGlobal())) {
                 addFrameSlotFromSymbol(symbol);
             }
         }
@@ -559,7 +560,7 @@ public abstract class Environment {
     public void addFrameSlotFromSymbol(com.oracle.js.parser.ir.Symbol symbol) {
         // Frame slot may already exist for simple parameters and "arguments".
         assert !getBlockFrameDescriptor().getIdentifiers().contains(symbol.getName()) || this instanceof FunctionEnvironment;
-        int flags = symbol.getFlags();
+        int flags = symbol.getFlags() & Symbol.KINDMASK; // other bits not needed
         getBlockFrameDescriptor().findOrAddFrameSlot(symbol.getName(), FrameSlotFlags.of(flags), FrameSlotKind.Illegal);
     }
 

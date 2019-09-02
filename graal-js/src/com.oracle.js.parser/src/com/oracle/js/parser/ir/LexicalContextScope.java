@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,50 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.js.parser;
 
-import com.oracle.js.parser.ir.Scope;
+package com.oracle.js.parser.ir;
 
 /**
- * A ParserContextNode that represents a block that is currently being parsed
+ * Interface for AST nodes that provide a scope (blocks, classes, loops).
  */
-class ParserContextBlockNode extends ParserContextBaseNode implements ParserContextBreakableNode, ParserContextScopableNode {
-
-    private final long token;
-    private Scope scope;
-
-    /**
-     * Constructs a ParserContextBlockNode
-     *
-     * @param token The first token of the block
-     * @param scope The block's scope.
-     */
-    ParserContextBlockNode(final long token, Scope scope) {
-        this.token = token;
-        this.scope = scope;
-    }
-
-    @Override
-    public boolean isBreakableWithoutLabel() {
-        return false;
-    }
-
-    /**
-     * Get token
-     *
-     * @return The first token of the block
-     */
-    public long getToken() {
-        return token;
-    }
-
-    @Override
-    public Scope getScope() {
-        return scope;
-    }
-
-    public void setScope(Scope scope) {
-        this.scope = scope;
-    }
-
+public interface LexicalContextScope extends LexicalContextNode {
+    Scope getScope();
 }

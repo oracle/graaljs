@@ -56,23 +56,21 @@ package com.oracle.js.parser.ir;
  * to their location.
  */
 public final class Symbol implements Comparable<Symbol> {
-    /** Is this a global variable */
-    public static final int IS_GLOBAL = 1;
-    /** Is this a variable */
-    public static final int IS_VAR = 2;
-    /** Is this a parameter */
-    public static final int IS_PARAM = 3;
+    /** Is this a let binding */
+    public static final int IS_LET = 1 << 0;
+    /** Is this a const binding */
+    public static final int IS_CONST = 1 << 1;
+    /** Is this a var binding */
+    public static final int IS_VAR = 1 << 2;
     /** Mask for kind flags */
-    public static final int KINDMASK = (1 << 2) - 1; // Kinds are represented by lower three bits
+    public static final int KINDMASK = IS_LET | IS_CONST | IS_VAR;
 
-    /** Is this symbol in scope */
-    public static final int IS_SCOPE = 1 << 2;
+    /** Is this a global binding */
+    public static final int IS_GLOBAL = 1 << 3;
+    /** Is this a parameter */
+    public static final int IS_PARAM = 1 << 4;
     /** Is this a this symbol */
-    public static final int IS_THIS = 1 << 3;
-    /** Is this a let */
-    public static final int IS_LET = 1 << 4;
-    /** Is this a const */
-    public static final int IS_CONST = 1 << 5;
+    public static final int IS_THIS = 1 << 5;
     /** Is this an internal symbol, never represented explicitly in source code */
     public static final int IS_INTERNAL = 1 << 6;
     /** Is this a function self-reference symbol */
@@ -83,17 +81,6 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_PROGRAM_LEVEL = 1 << 9;
     /** Is this symbol seen a declaration? Used for block scoped LET and CONST symbols only. */
     public static final int HAS_BEEN_DECLARED = 1 << 10;
-    /**
-     * Is this symbol a var declaration instantiated in this block? If not, this is a var
-     * declaration hoisted to another block. Used for duplicate checking with block scoped symbols.
-     */
-    public static final int IS_VAR_DECLARED_HERE = 1 << 11;
-    /**
-     * Is this symbol a var declaration binding that needs to be initialized with the value of the
-     * parent's scope's binding with the same name? Used for parameter bindings that are replicated
-     * in the body's VariableEnvironment.
-     */
-    public static final int IS_VAR_REDECLARED_HERE = 1 << 12;
     /** Is this symbol declared in an unprotected switch case context? */
     public static final int IS_DECLARED_IN_SWITCH_BLOCK = 1 << 13;
     /** Is this symbol an indirect import binding of a module environment? */
@@ -119,6 +106,7 @@ public final class Symbol implements Comparable<Symbol> {
     public Symbol(final String name, final int flags) {
         this.name = name;
         this.flags = flags;
+        assert (flags & KINDMASK) != 0;
     }
 
     @Override
@@ -127,10 +115,19 @@ public final class Symbol implements Comparable<Symbol> {
 
         sb.append(name);
 
-        if (isGlobal()) {
-            sb.append(" G");
-        } else if (isScope()) {
-            sb.append(" S");
+        sb.append(' ');
+        if (isLet()) {
+            sb.append('L');
+        } else if (isConst()) {
+            sb.append('C');
+        } else if (isVar()) {
+            if (isGlobal()) {
+                sb.append('G');
+            } else if (isParam()) {
+                sb.append('P');
+            } else {
+                sb.append('V');
+            }
         }
 
         return sb.toString();
@@ -139,17 +136,6 @@ public final class Symbol implements Comparable<Symbol> {
     @Override
     public int compareTo(final Symbol other) {
         return name.compareTo(other.name);
-    }
-
-    /**
-     * Check if this is a symbol in scope. Scope symbols cannot, for obvious reasons be stored in
-     * byte code slots on the local frame
-     *
-     * @return true if this is scoped
-     */
-    public boolean isScope() {
-        assert (flags & KINDMASK) != IS_GLOBAL || (flags & IS_SCOPE) == IS_SCOPE : "global without scope flag";
-        return (flags & IS_SCOPE) != 0;
     }
 
     /**
@@ -167,7 +153,7 @@ public final class Symbol implements Comparable<Symbol> {
      * @return true if variable
      */
     public boolean isVar() {
-        return (flags & KINDMASK) == IS_VAR;
+        return (flags & IS_VAR) != 0;
     }
 
     /**
@@ -176,7 +162,7 @@ public final class Symbol implements Comparable<Symbol> {
      * @return true if global
      */
     public boolean isGlobal() {
-        return (flags & KINDMASK) == IS_GLOBAL;
+        return (flags & IS_GLOBAL) != 0;
     }
 
     /**
@@ -185,7 +171,7 @@ public final class Symbol implements Comparable<Symbol> {
      * @return true if parameter
      */
     public boolean isParam() {
-        return (flags & KINDMASK) == IS_PARAM;
+        return (flags & IS_PARAM) != 0;
     }
 
     /**
@@ -269,12 +255,15 @@ public final class Symbol implements Comparable<Symbol> {
         }
     }
 
-    public boolean isVarDeclaredHere() {
-        return (flags & IS_VAR_DECLARED_HERE) != 0;
-    }
-
-    public boolean isVarRedeclaredHere() {
-        return (flags & IS_VAR_REDECLARED_HERE) != 0;
+    /**
+     * Mark this symbol as declared
+     */
+    public void setHasBeenDeclared(boolean declared) {
+        if (declared) {
+            flags |= HAS_BEEN_DECLARED;
+        } else {
+            flags &= ~HAS_BEEN_DECLARED;
+        }
     }
 
     /**

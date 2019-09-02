@@ -110,8 +110,11 @@ public final class ScriptEnvironment {
     /** is BigInt supported? */
     final boolean allowBigInt;
 
+    /** Are Annex B Web Compatibility extensions enabled? */
+    final boolean annexB;
+
     private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean earlyLvalueError, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
-                    boolean constAsVar, boolean allowBigInt, FunctionStatementBehavior functionStatementBehavior, PrintWriter dumpOnError) {
+                    boolean constAsVar, boolean allowBigInt, boolean annexB, FunctionStatementBehavior functionStatementBehavior, PrintWriter dumpOnError) {
         this.namespace = new Namespace();
         this.err = dumpOnError;
 
@@ -126,6 +129,7 @@ public final class ScriptEnvironment {
         this.shebang = shebang;
         this.ecmaScriptVersion = ecmaScriptVersion;
         this.allowBigInt = allowBigInt;
+        this.annexB = annexB;
     }
 
     /**
@@ -165,6 +169,7 @@ public final class ScriptEnvironment {
         private boolean shebang;
         private boolean strict;
         private boolean allowBigInt;
+        private boolean annexB = true;
         private FunctionStatementBehavior functionStatementBehavior = FunctionStatementBehavior.ERROR;
         private PrintWriter dumpOnError;
 
@@ -216,6 +221,11 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder annexB(boolean annexB) {
+            this.annexB = annexB;
+            return this;
+        }
+
         public Builder functionStatementBehavior(FunctionStatementBehavior functionStatementBehavior) {
             this.functionStatementBehavior = functionStatementBehavior;
             return this;
@@ -227,7 +237,7 @@ public final class ScriptEnvironment {
         }
 
         public ScriptEnvironment build() {
-            return new ScriptEnvironment(strict, ecmaScriptVersion, earlyLvalueError, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt,
+            return new ScriptEnvironment(strict, ecmaScriptVersion, earlyLvalueError, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
                             functionStatementBehavior, dumpOnError);
         }
     }

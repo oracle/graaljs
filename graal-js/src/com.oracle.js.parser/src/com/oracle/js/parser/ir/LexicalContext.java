@@ -236,6 +236,14 @@ public class LexicalContext {
         return null;
     }
 
+    /**
+     * Returns the innermost scope in the context.
+     */
+    public Scope getCurrentScope() {
+        NodeIterator<LexicalContextScope> iterator = new NodeIterator<>(LexicalContextScope.class);
+        return iterator.hasNext() ? iterator.next().getScope() : null;
+    }
+
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();

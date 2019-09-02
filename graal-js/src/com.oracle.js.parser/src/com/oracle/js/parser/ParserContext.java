@@ -44,6 +44,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import com.oracle.js.parser.ir.FunctionNode;
+import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Statement;
 
 /**
@@ -206,22 +207,6 @@ class ParserContext {
     }
 
     /**
-     * Get the function body of a function node on the stack. This will trigger an assertion if node
-     * isn't present
-     *
-     * @param functionNode function node
-     * @return body of function node
-     */
-    public ParserContextBlockNode getFunctionBody(final ParserContextFunctionNode functionNode) {
-        for (int i = sp - 1; i >= 0; i--) {
-            if (stack[i] == functionNode) {
-                return (ParserContextBlockNode) stack[i + 1];
-            }
-        }
-        throw new AssertionError(functionNode.getName() + " not on context stack");
-    }
-
-    /**
      * Check the stack for a given label node by name
      *
      * @param name name of the label
@@ -323,6 +308,14 @@ class ParserContext {
             }
         }
         return null;
+    }
+
+    /**
+     * Returns the innermost scope in the context.
+     */
+    public Scope getCurrentScope() {
+        NodeIterator<ParserContextScopableNode> iterator = new NodeIterator<>(ParserContextScopableNode.class);
+        return iterator.hasNext() ? iterator.next().getScope() : null;
     }
 
     private class NodeIterator<T extends ParserContextNode> implements Iterator<T> {

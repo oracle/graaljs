@@ -117,7 +117,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     private final Module module;
 
-    private boolean analyzed;
     private boolean usesAncestorScope;
 
     /** Is anonymous function flag. */
@@ -695,14 +694,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     public boolean hasSimpleParameterList() {
         return !getFlag(HAS_NON_SIMPLE_PARAMETER_LIST);
-    }
-
-    public boolean isAnalyzed() {
-        return analyzed;
-    }
-
-    public void setAnalyzed(boolean analyzed) {
-        this.analyzed = analyzed;
     }
 
     public boolean usesAncestorScope() {

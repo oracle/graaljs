@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,45 +43,8 @@ package com.oracle.js.parser;
 import com.oracle.js.parser.ir.Scope;
 
 /**
- * A ParserContextNode that represents a block that is currently being parsed
+ * An interface that is implemented by ParserContextNodes that have a {@link Scope}.
  */
-class ParserContextBlockNode extends ParserContextBaseNode implements ParserContextBreakableNode, ParserContextScopableNode {
-
-    private final long token;
-    private Scope scope;
-
-    /**
-     * Constructs a ParserContextBlockNode
-     *
-     * @param token The first token of the block
-     * @param scope The block's scope.
-     */
-    ParserContextBlockNode(final long token, Scope scope) {
-        this.token = token;
-        this.scope = scope;
-    }
-
-    @Override
-    public boolean isBreakableWithoutLabel() {
-        return false;
-    }
-
-    /**
-     * Get token
-     *
-     * @return The first token of the block
-     */
-    public long getToken() {
-        return token;
-    }
-
-    @Override
-    public Scope getScope() {
-        return scope;
-    }
-
-    public void setScope(Scope scope) {
-        this.scope = scope;
-    }
-
+interface ParserContextScopableNode extends ParserContextNode {
+    Scope getScope();
 }

@@ -52,6 +52,8 @@ import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.IdentNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.ParameterNode;
+import com.oracle.js.parser.ir.Scope;
+import com.oracle.js.parser.ir.Symbol;
 import com.oracle.js.parser.ir.VarNode;
 
 /**
@@ -74,10 +76,14 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /** Function node kind, see FunctionNode.Kind */
     private final FunctionNode.Kind kind;
 
+    private final Scope parentScope;
+
     /** List of parameter identifiers (for simple and rest parameters). */
     private List<IdentNode> parameters;
     /** Optional parameter initialization block (replaces parameter list). */
     private ParserContextBlockNode parameterBlock;
+    /** Function body block. */
+    private ParserContextBlockNode bodyBlock;
 
     /** Token for function start */
     private final long token;
@@ -105,9 +111,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param line The source line of the function
      * @param kind Function kind
      * @param parameters The parameters of the function
+     * @param parentScope The parent scope
      */
     ParserContextFunctionNode(final long token, final IdentNode ident, final String name, final Namespace namespace, final int line, final FunctionNode.Kind kind,
-                    final List<IdentNode> parameters, final int length) {
+                    final List<IdentNode> parameters, final int length, Scope parentScope) {
         this.ident = ident;
         this.namespace = namespace;
         this.line = line;
@@ -116,6 +123,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         this.parameters = parameters;
         this.token = token;
         this.length = length;
+        this.parentScope = parentScope;
         this.parameterCount = parameters == null ? 0 : parameters.size();
         assert calculateLength(parameters) == length;
     }
@@ -316,6 +324,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             parameterBoundNames = new HashSet<>();
         }
         if (parameterBoundNames.add(bindingIdentifier.getName())) {
+            declareParameter(bindingIdentifier.getName());
             return true;
         } else {
             duplicateParameterBinding = bindingIdentifier;
@@ -373,7 +382,8 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     private void initParameterBlock() {
-        parameterBlock = new ParserContextBlockNode(token);
+        assert bodyBlock == null; // parameter block must be created before body block
+        parameterBlock = new ParserContextBlockNode(token, Scope.createParameter(parentScope));
         parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK);
 
         if (parameters != null) {
@@ -395,6 +405,37 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             paramValue = new ParameterNode(paramToken, paramFinish, index);
         }
         parameterBlock.appendStatement(new VarNode(line, Token.recast(paramToken, TokenType.LET), paramFinish, param, paramValue, VarNode.IS_LET));
+        declareParameter(param.getName());
+    }
+
+    private void declareParameter(String parameterName) {
+        if (parameterBlock != null) {
+            // Parameters have a temporal dead zone (unless the parameter list is simple).
+            parameterBlock.getScope().putSymbol(new Symbol(parameterName, Symbol.IS_LET | Symbol.IS_PARAM));
+        }
+    }
+
+    private void finalizeParameters() {
+        if (parameterBlock == null) {
+            if (parameters != null) {
+                for (int i = 0; i < parameters.size(); i++) {
+                    IdentNode parameter = parameters.get(i);
+                    bodyBlock.getScope().putSymbol(new Symbol(parameter.getName(), Symbol.IS_VAR | Symbol.IS_PARAM));
+                }
+            }
+        } else {
+            parameterBlock.getScope().close();
+        }
+    }
+
+    public ParserContextBlockNode getBodyBlock() {
+        return bodyBlock;
+    }
+
+    public void setBodyBlock(ParserContextBlockNode bodyBlock) {
+        assert this.bodyBlock == null;
+        this.bodyBlock = bodyBlock;
+        finalizeParameters();
     }
 
     private static int calculateLength(final List<IdentNode> parameters) {

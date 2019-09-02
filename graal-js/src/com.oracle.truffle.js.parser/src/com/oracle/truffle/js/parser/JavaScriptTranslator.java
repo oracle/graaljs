@@ -50,7 +50,6 @@ import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.js.parser.ir.Module.ImportEntry;
-import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -137,29 +136,27 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         assert functionNode.isModule();
         final List<JavaScriptNode> declarations = new ArrayList<>();
 
-        Block moduleBlock = functionNode.getBody();
         GraalJSEvaluator evaluator = (GraalJSEvaluator) context.getEvaluator();
         // Assert: all named exports from module are resolvable.
         for (ImportEntry importEntry : moduleNode.getImportEntries()) {
             JSModuleRecord importedModule = evaluator.hostResolveImportedModule(context, scriptOrModule, importEntry.getModuleRequest());
+            String localName = importEntry.getLocalName();
             if (importEntry.getImportName().equals(Module.STAR_NAME)) {
-                Symbol symbol = new Symbol(importEntry.getLocalName(), Symbol.IS_CONST | Symbol.HAS_BEEN_DECLARED);
-                moduleBlock.putSymbol(lc, symbol);
+                assert functionNode.getBody().getScope().hasSymbol(localName) && functionNode.getBody().getScope().getExistingSymbol(localName).hasBeenDeclared();
                 // GetModuleNamespace(importedModule)
                 DynamicObject namespace = evaluator.getModuleNamespace(importedModule);
                 // envRec.CreateImmutableBinding(in.[[LocalName]], true).
                 // Call envRec.InitializeBinding(in.[[LocalName]], namespace).
-                declarations.add(factory.createLazyWriteFrameSlot(importEntry.getLocalName(), factory.createConstant(namespace)));
+                declarations.add(factory.createLazyWriteFrameSlot(localName, factory.createConstant(namespace)));
             } else {
-                Symbol symbol = new Symbol(importEntry.getLocalName(), Symbol.IS_CONST | Symbol.IS_IMPORT_BINDING);
-                moduleBlock.putSymbol(lc, symbol);
+                assert functionNode.getBody().getScope().hasSymbol(localName) && functionNode.getBody().getScope().getExistingSymbol(localName).isImportBinding();
                 // Let resolution be importedModule.ResolveExport(in.[[ImportName]], << >>, << >>).
                 // If resolution is null or resolution is "ambiguous", throw SyntaxError.
                 // Call envRec.CreateImportBinding(in.[[LocalName]], resolution.[[module]],
                 // resolution.[[bindingName]]).
                 ExportResolution resolution = evaluator.resolveExport(importedModule, importEntry.getImportName());
                 assert !(resolution.isNull() || resolution.isAmbiguous());
-                createImportBinding(importEntry.getLocalName(), resolution.getModule(), resolution.getBindingName());
+                createImportBinding(localName, resolution.getModule(), resolution.getBindingName());
             }
         }
 
@@ -187,9 +184,9 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     @Override
-    protected void verifyModuleLocalExports(Block bodyBlock) {
+    protected void verifyModuleLocalExports(Block moduleBodyBlock) {
         for (ExportEntry exportEntry : moduleNode.getLocalExportEntries()) {
-            if (!bodyBlock.hasSymbol(exportEntry.getLocalName())) {
+            if (!moduleBodyBlock.getScope().hasSymbol(exportEntry.getLocalName())) {
                 throw Errors.createSyntaxError(String.format("Export specifies undeclared identifier: '%s'", exportEntry.getLocalName()));
             }
         }
