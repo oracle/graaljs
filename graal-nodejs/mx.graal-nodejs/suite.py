@@ -173,7 +173,11 @@ suite = {
       "description" : "Graal.nodejs support distribution for the GraalVM",
       "layout" : {
         "./" : [
-          "file:deps/npm",
+          {
+            "source_type": "file",
+            "path": "deps/npm",
+            "exclude": ["deps/npm/test"]
+          },
           "dependency:TRUFFLENODE_HEADERS",
         ],
         "NODE_README.md" : "file:README.md",
