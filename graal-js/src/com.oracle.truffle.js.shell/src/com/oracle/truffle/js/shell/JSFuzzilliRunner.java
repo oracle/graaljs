@@ -75,9 +75,9 @@ class JSFuzzilliRunner {
             log(LogLevel.info, "GraalJS Fuzzilli REPRL started");
             Consumer<String> fuzzout = (String s) -> {
                 try {
-                    final RandomAccessFile dataWriteF = new RandomAccessFile(new File("/dev/fd/103"), "rws");
-                    dataWriteF.write(s.getBytes(StandardCharsets.UTF_8));
-                    dataWriteF.close();
+                    try (RandomAccessFile dataWriteF = new RandomAccessFile(new File("/dev/fd/103"), "rws")) {
+                        dataWriteF.write(s.getBytes(StandardCharsets.UTF_8));
+                    }
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
