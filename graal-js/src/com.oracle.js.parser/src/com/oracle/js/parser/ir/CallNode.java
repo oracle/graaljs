@@ -68,6 +68,9 @@ public final class CallNode extends LexicalContextExpression {
     /** Is this an ImportCall? */
     private static final int IS_IMPORT = 1 << 2;
 
+    /** Does this look like an apply call? */
+    private static final int IS_APPLY_ARGUMENTS = 1 << 3;
+
     private final int flags;
 
     private final int lineNumber;
@@ -106,8 +109,9 @@ public final class CallNode extends LexicalContextExpression {
         this(lineNumber, token, start, finish, function, args, isNew ? IS_NEW : 0);
     }
 
-    public CallNode(final int lineNumber, final long token, final int start, final int finish, final Expression function, final List<Expression> args, final boolean isNew, final boolean isEval) {
-        this(lineNumber, token, start, finish, function, args, (isNew ? IS_NEW : 0) | (isEval ? IS_EVAL : 0));
+    public CallNode(final int lineNumber, final long token, final int start, final int finish, final Expression function, final List<Expression> args, final boolean isNew,
+                    final boolean isEval, final boolean isApplyArguments) {
+        this(lineNumber, token, start, finish, function, args, (isNew ? IS_NEW : 0) | (isEval ? IS_EVAL : 0) | (isApplyArguments ? IS_APPLY_ARGUMENTS : 0));
     }
 
     public static Expression forImport(int lineNumber, long token, int start, int finish, IdentNode importIdent, List<Expression> args) {
@@ -260,5 +264,12 @@ public final class CallNode extends LexicalContextExpression {
      */
     public boolean isImport() {
         return (flags & IS_IMPORT) != 0;
+    }
+
+    /**
+     * Check if this call is an apply call.
+     */
+    public boolean isApplyArguments() {
+        return (flags & IS_APPLY_ARGUMENTS) != 0;
     }
 }

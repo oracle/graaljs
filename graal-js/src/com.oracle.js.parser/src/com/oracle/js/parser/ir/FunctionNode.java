@@ -169,8 +169,8 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Does this function have nested declarations? */
     public static final int HAS_FUNCTION_DECLARATIONS = 1 << 10;
 
-    /** Are we vararg, but do we just pass the arguments along to apply or call */
-    public static final int HAS_APPLY_TO_CALL_SPECIALIZATION = 1 << 12;
+    /** Does this function contain a {@code fn.apply(_, arguments)} call? */
+    public static final int HAS_APPLY_ARGUMENTS_CALL = 1 << 12;
 
     /**
      * Is this function the top-level program?
@@ -715,5 +715,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     boolean isFunctionDeclaration() {
         return isDeclared() && kind == FunctionNode.Kind.NORMAL && !isAsync();
+    }
+
+    public boolean hasApplyArgumentsCall() {
+        return getFlag(HAS_APPLY_ARGUMENTS_CALL);
     }
 }

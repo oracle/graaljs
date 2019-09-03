@@ -887,7 +887,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (functionNode.getKind() != FunctionNode.Kind.ARROW && functionNode.needsArguments()) {
             currentFunction.reserveArgumentsSlot();
 
-            if (JSTruffleOptions.OptimizeApplyArguments && functionNode.getNumOfParams() == 0 && !functionNode.hasEval() && checkDirectArgumentsAccess(functionNode, currentFunction)) {
+            if (JSTruffleOptions.OptimizeApplyArguments && functionNode.getNumOfParams() == 0 && !functionNode.hasEval() && functionNode.hasApplyArgumentsCall() &&
+                            checkDirectArgumentsAccess(functionNode, currentFunction)) {
                 currentFunction.setDirectArgumentsAccess(true);
             } else {
                 currentFunction.declareVar(Environment.ARGUMENTS_NAME);
@@ -1109,19 +1110,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 super(lc);
             }
 
-            private boolean isArguments(IdentNode identNode) {
-                return !identNode.isPropertyName() && identNode.getName().equals(Environment.ARGUMENTS_NAME);
-            }
-
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
                 if (JSTruffleOptions.OptimizeApplyArguments) {
-                    if (isArguments(identNode) && functionNode.needsArguments() && !currentFunction.isDirectEval()) {
+                    if (identNode.isArguments() && !identNode.isPropertyName() && functionNode.needsArguments() && !currentFunction.isDirectEval() && !identNode.isApplyArguments()) {
                         // function.apply(_, arguments);
-                        LexicalContextNode callNode = lc.getAllNodes().next();
-                        if (!(callNode instanceof CallNode && isApply((CallNode) callNode) && ((CallNode) callNode).getArgs().size() == 2 && ((CallNode) callNode).getArgs().get(1) == identNode)) {
-                            directArgumentsAccess = false;
-                        }
+                        directArgumentsAccess = false;
                     } else {
                         checkParameterUse(identNode);
                     }
@@ -2317,7 +2311,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode call;
         if (callNode.isEval() && args.length >= 1) {
             call = createCallEvalNode(function, args);
-        } else if (currentFunction().isDirectArgumentsAccess() && isCallApplyArguments(callNode)) {
+        } else if (callNode.isApplyArguments() && currentFunction().isDirectArgumentsAccess()) {
             call = createCallApplyArgumentsNode(function, args);
         } else if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).isDirectSuper()) {
             args = insertNewTargetArg(args);
@@ -2367,11 +2361,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode createCallApplyArgumentsNode(JavaScriptNode function, JavaScriptNode[] args) {
         return factory.createCallApplyArguments(context, (JSFunctionCallNode) createCallDefaultNode(function, args));
-    }
-
-    private static boolean isCallApplyArguments(CallNode callNode) {
-        return isApply(callNode) && callNode.getArgs().size() == 2 && callNode.getArgs().get(1) instanceof IdentNode &&
-                        ((IdentNode) callNode.getArgs().get(1)).getName().equals(Environment.ARGUMENTS_NAME);
     }
 
     private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {

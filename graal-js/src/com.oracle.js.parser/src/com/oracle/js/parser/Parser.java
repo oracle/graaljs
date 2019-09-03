@@ -184,6 +184,8 @@ public class Parser extends AbstractParser {
     private static final String NEW_TARGET_NAME = "new.target";
     private static final String IMPORT_META_NAME = "import.meta";
     private static final String PROTOTYPE_NAME = "prototype";
+    /** Function.prototype.apply method name. */
+    private static final String APPLY_NAME = "apply";
 
     /** EXEC name - special property used by $EXEC API. */
     private static final String EXEC_NAME = "$EXEC";
@@ -747,11 +749,13 @@ public class Parser extends AbstractParser {
      *
      * @param ident Referenced property.
      */
-    private void detectSpecialProperty(final IdentNode ident) {
+    private IdentNode detectSpecialProperty(final IdentNode ident) {
         if (isArguments(ident)) {
             // skip over arrow functions, e.g. function f() { return (() => arguments.length)(); }
             lc.getCurrentNonArrowFunction().setFlag(FunctionNode.USES_ARGUMENTS);
+            return ident.setIsArguments();
         }
+        return ident;
     }
 
     private boolean useBlockScope() {
@@ -3114,8 +3118,7 @@ public class Parser extends AbstractParser {
                 if (ident == null) {
                     break;
                 }
-                detectSpecialProperty(ident);
-                return ident;
+                return detectSpecialProperty(ident);
             case NON_OCTAL_DECIMAL:
                 if (isStrictMode) {
                     throw error(AbstractParser.message("strict.no.nonoctaldecimal"), token);
@@ -3761,13 +3764,13 @@ public class Parser extends AbstractParser {
 
         if (type == LPAREN) {
             boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC);
-            final List<Expression> arguments = optimizeList(argumentList(yield, await, async));
+            final List<Expression> arguments = argumentList(yield, await, async);
 
             if (async) {
                 if (type == ARROW && checkNoLineTerminator()) {
                     // async () => ...
                     // async ( ArgumentsList ) => ...
-                    return new ExpressionList(callToken, callLine, arguments);
+                    return new ExpressionList(callToken, callLine, optimizeList(arguments));
                 } else {
                     // invocation of a function named 'async'
                     for (Expression argument : arguments) {
@@ -3782,6 +3785,7 @@ public class Parser extends AbstractParser {
 
             // Catch special functions.
             boolean eval = false;
+            boolean applyArguments = false;
             if (lhs instanceof IdentNode) {
                 final IdentNode ident = (IdentNode) lhs;
                 final String name = ident.getName();
@@ -3792,9 +3796,14 @@ public class Parser extends AbstractParser {
                     assert ident.isDirectSuper();
                     markSuperCall(lc);
                 }
+            } else if (lhs instanceof AccessNode && arguments.size() == 2 && arguments.get(1) instanceof IdentNode &&
+                            ((IdentNode) arguments.get(1)).isArguments() && APPLY_NAME.equals(((AccessNode) lhs).getProperty())) {
+                if (markApplyArgumentsCall(lc, arguments)) {
+                    applyArguments = true;
+                }
             }
 
-            lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, eval);
+            lhs = new CallNode(callLine, callToken, lhs.getStart(), finish, lhs, optimizeList(arguments), false, eval, applyArguments);
         }
 
         loop: while (true) {
@@ -6284,6 +6293,17 @@ public class Parser extends AbstractParser {
                 break;
             }
         }
+    }
+
+    private static boolean markApplyArgumentsCall(final ParserContext lc, List<Expression> arguments) {
+        assert arguments.size() == 2 && arguments.get(1) instanceof IdentNode && ((IdentNode) arguments.get(1)).isArguments();
+        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+        if (currentFunction.getKind() != FunctionNode.Kind.ARROW) {
+            currentFunction.setFlag(FunctionNode.HAS_APPLY_ARGUMENTS_CALL);
+            arguments.set(1, ((IdentNode) arguments.get(1)).setIsApplyArguments());
+            return true;
+        }
+        return false;
     }
 
     private boolean inGeneratorFunction() {
