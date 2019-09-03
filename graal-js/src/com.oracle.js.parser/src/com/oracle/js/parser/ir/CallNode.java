@@ -51,7 +51,7 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 /**
  * IR representation for a function call.
  */
-public final class CallNode extends LexicalContextExpression {
+public final class CallNode extends Expression {
 
     /** Function identifier or function body. */
     private final Expression function;
@@ -152,25 +152,16 @@ public final class CallNode extends LexicalContextExpression {
      * @return node or replacement
      */
     @Override
-    public Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor) {
+    public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterCallNode(this)) {
-            //@formatter:off
-            final CallNode newCallNode = (CallNode) visitor.leaveCallNode(
-                    setFunction((Expression) function.accept(visitor)).
-                    setArgs(Node.accept(visitor, args)));
-            // Theoretically, we'd need to instead pass lc to every setter and do a replacement on each. In practice,
-            // setType from TypeOverride can't accept a lc, and we don't necessarily want to go there now.
-            if (this != newCallNode) {
-                return Node.replaceInLexicalContext(lc, this, newCallNode);
-            }
-            //@formatter:on
+            return visitor.leaveCallNode(setFunction((Expression) function.accept(visitor)).setArgs(Node.accept(visitor, args)));
         }
 
         return this;
     }
 
     @Override
-    public <R> R accept(LexicalContext lc, TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
+    public <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
         return visitor.enterCallNode(this);
     }
 
