@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 
@@ -54,19 +55,37 @@ public final class ExprBlockNode extends AbstractBlockNode implements SequenceNo
         return filterStatements(statements, true);
     }
 
+    @ExplodeLoop
     @Override
     public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return block.executeBoolean(frame, BlockNode.NO_ARGUMENT);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            executeVoid(frame, stmts[i], i, BlockNode.NO_ARGUMENT);
+        }
+        return executeBoolean(frame, stmts[last], last, BlockNode.NO_ARGUMENT);
     }
 
+    @ExplodeLoop
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        return block.executeInt(frame, BlockNode.NO_ARGUMENT);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            executeVoid(frame, stmts[i], i, BlockNode.NO_ARGUMENT);
+        }
+        return executeInt(frame, stmts[last], last, BlockNode.NO_ARGUMENT);
     }
 
+    @ExplodeLoop
     @Override
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        return block.executeDouble(frame, BlockNode.NO_ARGUMENT);
+        JavaScriptNode[] stmts = statements;
+        int last = stmts.length - 1;
+        for (int i = 0; i < last; ++i) {
+            executeVoid(frame, stmts[i], i, BlockNode.NO_ARGUMENT);
+        }
+        return executeDouble(frame, stmts[last], last, BlockNode.NO_ARGUMENT);
     }
 
     @Override
