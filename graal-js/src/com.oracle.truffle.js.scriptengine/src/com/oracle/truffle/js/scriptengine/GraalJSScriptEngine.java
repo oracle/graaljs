@@ -158,7 +158,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                         @Override
                         public Builder setOption(Builder builder, Object value) {
                             if (value instanceof Boolean) {
-                                return builder.allowHostClassLookup(((Boolean) value) ? s -> true : null);
+                                boolean enabled = (Boolean) value;
+                                return builder.allowHostClassLookup(enabled ? s -> true : null);
                             } else {
                                 try {
                                     return builder.allowHostClassLookup((Predicate<String>) value);

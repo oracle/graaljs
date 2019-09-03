@@ -42,16 +42,18 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.ibm.icu.text.DisplayContext;
 import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.text.RelativeDateTimeFormatter;
 import com.ibm.icu.text.RelativeDateTimeFormatter.RelativeDateTimeUnit;
 import com.ibm.icu.util.ULocale;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -67,6 +69,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.LazyValue;
 
 public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -243,12 +246,15 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         return realm.getRelativeTimeFormatPrototype();
     }
 
-    private static volatile Map<String, RelativeDateTimeFormatter.RelativeDateTimeUnit> timeUnitMap;
-    private static final Object timeUnitMapLock = new Object();
+    private static RelativeDateTimeFormatter.RelativeDateTimeUnit toRelTimeUnit(String unit) {
+        return timeUnitMap.get().get(unit);
+    }
 
-    @TruffleBoundary
-    private static void initTimeUnitMap() {
-        Map<String, RelativeDateTimeUnit> map = new HashMap<>();
+    private static final LazyValue<UnmodifiableEconomicMap<String, RelativeDateTimeFormatter.RelativeDateTimeUnit>> timeUnitMap = new LazyValue<>(JSRelativeTimeFormat::initTimeUnitMap);
+
+    private static UnmodifiableEconomicMap<String, RelativeDateTimeFormatter.RelativeDateTimeUnit> initTimeUnitMap() {
+        CompilerAsserts.neverPartOfCompilation();
+        EconomicMap<String, RelativeDateTimeUnit> map = EconomicMap.create(16);
         map.put("second", RelativeDateTimeUnit.SECOND);
         map.put("seconds", RelativeDateTimeUnit.SECOND);
         map.put("minute", RelativeDateTimeUnit.MINUTE);
@@ -265,22 +271,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         map.put("quarters", RelativeDateTimeUnit.QUARTER);
         map.put("year", RelativeDateTimeUnit.YEAR);
         map.put("years", RelativeDateTimeUnit.YEAR);
-        timeUnitMap = map;
-    }
-
-    private static void ensureTimeUnitMapInitialized() {
-        if (timeUnitMap == null) {
-            synchronized (timeUnitMapLock) {
-                if (timeUnitMap == null) {
-                    initTimeUnitMap();
-                }
-            }
-        }
-    }
-
-    private static RelativeDateTimeFormatter.RelativeDateTimeUnit toRelTimeUnit(String unit) {
-        ensureTimeUnitMapInitialized();
-        return timeUnitMap.get(unit);
+        return map;
     }
 
     private static RelativeDateTimeUnit singularRelativeTimeUnit(String functionName, String unit) {

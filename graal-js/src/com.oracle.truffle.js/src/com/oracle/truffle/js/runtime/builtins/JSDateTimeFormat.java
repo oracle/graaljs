@@ -41,15 +41,17 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.text.AttributedCharacterIterator;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.ibm.icu.text.DateFormat;
 import com.ibm.icu.text.DateTimePatternGenerator;
@@ -57,6 +59,7 @@ import com.ibm.icu.text.SimpleDateFormat;
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -74,18 +77,19 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.LazyValue;
 
 public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -101,7 +105,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
      * Maps the upper-case version of a supported time zone to the corresponding case-regularized
      * canonical ID.
      */
-    private static Map<String, String> canonicalTimeZoneIDMap;
+    private static final LazyValue<UnmodifiableEconomicMap<String, String>> canonicalTimeZoneIDMap = new LazyValue<>(JSDateTimeFormat::initCanonicalTimeZoneIDMap);
 
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
@@ -421,14 +425,11 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
                         minuteOptToSkeleton(minuteOpt) + secondOptToSkeleton(secondOpt) + timeZoneNameOptToSkeleton(timeZoneNameOpt);
     }
 
-    private static synchronized Map<String, String> getCanonicalTimeZoneIDMap() {
-        Map<String, String> map = canonicalTimeZoneIDMap;
-        if (map == null) {
-            map = new HashMap<>();
-            for (String available : TimeZone.getAvailableIDs()) {
-                map.put(IntlUtil.toUpperCase(available), TimeZone.getCanonicalID(available));
-            }
-            canonicalTimeZoneIDMap = map;
+    private static UnmodifiableEconomicMap<String, String> initCanonicalTimeZoneIDMap() {
+        CompilerAsserts.neverPartOfCompilation();
+        EconomicMap<String, String> map = EconomicMap.create();
+        for (String available : TimeZone.getAvailableIDs()) {
+            map.put(IntlUtil.toUpperCase(available), TimeZone.getCanonicalID(available));
         }
         return map;
     }
@@ -451,7 +452,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     // https://tc39.github.io/ecma402/#sec-canonicalizetimezonename
     private static String canonicalizeTimeZone(String tzId) {
         String ucTzId = IntlUtil.toUpperCase(tzId);
-        String canTzId = getCanonicalTimeZoneIDMap().get(ucTzId);
+        String canTzId = canonicalTimeZoneIDMap.get().get(ucTzId);
         if (canTzId == null) {
             return null;
         }
@@ -498,22 +499,11 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         throw Errors.createRangeError("Provided date is not in valid range.");
     }
 
-    private static volatile Map<DateFormat.Field, String> fieldToTypeMap;
-    private static final Object fieldToTypeMapLock = new Object();
+    private static final LazyValue<UnmodifiableEconomicMap<DateFormat.Field, String>> fieldToTypeMap = new LazyValue<>(JSDateTimeFormat::initializeFieldToTypeMap);
 
-    private static void ensureFieldToTypeMapInitialized() {
-        if (fieldToTypeMap == null) {
-            synchronized (fieldToTypeMapLock) {
-                if (fieldToTypeMap == null) {
-                    initializeFieldToTypeMap();
-                }
-            }
-        }
-    }
-
-    @TruffleBoundary
-    private static void initializeFieldToTypeMap() {
-        Map<DateFormat.Field, String> map = new HashMap<>();
+    private static UnmodifiableEconomicMap<DateFormat.Field, String> initializeFieldToTypeMap() {
+        CompilerAsserts.neverPartOfCompilation();
+        EconomicMap<DateFormat.Field, String> map = EconomicMap.create(14);
         map.put(DateFormat.Field.AM_PM, "dayPeriod");
         map.put(DateFormat.Field.ERA, "era");
         map.put(DateFormat.Field.YEAR, "year");
@@ -528,12 +518,11 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         map.put(DateFormat.Field.MINUTE, "minute");
         map.put(DateFormat.Field.SECOND, "second");
         map.put(DateFormat.Field.TIME_ZONE, "timeZoneName");
-        fieldToTypeMap = map;
+        return map;
     }
 
     private static String fieldToType(DateFormat.Field field) {
-        ensureFieldToTypeMapInitialized();
-        return fieldToTypeMap.get(field);
+        return fieldToTypeMap.get().get(field);
     }
 
     @TruffleBoundary
@@ -543,7 +532,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
 
         double x = timeClip(context, n);
 
-        List<Object> resultParts = new LinkedList<>();
+        List<Object> resultParts = new ArrayList<>();
         AttributedCharacterIterator fit = dateFormat.formatToCharacterIterator(x);
         String formatted = dateFormat.format(x);
         int i = fit.getBeginIndex();
