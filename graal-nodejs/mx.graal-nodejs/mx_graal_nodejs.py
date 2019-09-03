@@ -536,7 +536,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     support_distributions=['graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
     provided_executables=[
         'bin/<exe:node>',
-        'bin/<exe:npm>',
+        'bin/<cmd:npm>',
     ],
     polyglot_lib_build_args=[
         "-H:+ReportExceptionStackTraces",

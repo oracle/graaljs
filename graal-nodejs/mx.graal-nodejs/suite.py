@@ -182,9 +182,9 @@ suite = {
         ],
         "NODE_README.md" : "file:README.md",
         "bin/" : [
-          "dependency:trufflenodeNative/Release/<exe:node>"
+          "dependency:trufflenodeNative/Release/<exe:node>",
+          "file:mx.graal-nodejs/graalvm_launchers/<cmd:npm>",
         ],
-        "bin/npm" : "file:mx.graal-nodejs/graalvm_launchers/npm",
         "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
       },
     },
