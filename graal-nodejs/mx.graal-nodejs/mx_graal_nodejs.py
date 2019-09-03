@@ -522,7 +522,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         join('bin', 'npm'),
     ],
     polyglot_lib_build_args=[
-        "-H:JNIConfigurationResources=svmnodejs.jniconfig",
+        "-H:JNIConfigurationResources=svmnodejs.jniconfig,svmnodejs_jdkspecific.jniconfig",
         "-H:ReflectionConfigurationResources=svmnodejs.reflectconfig",
     ],
     polyglot_lib_jar_dependencies=[

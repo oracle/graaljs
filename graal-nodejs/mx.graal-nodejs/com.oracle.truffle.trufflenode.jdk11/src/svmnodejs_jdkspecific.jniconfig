@@ -1,0 +1,8 @@
+[
+  {
+    "name": "jdk.internal.ref.Cleaner",
+    "fields": [
+      { "name": "thunk" }
+    ]
+  }
+]
