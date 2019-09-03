@@ -1271,10 +1271,10 @@ jobject GraalIsolate::CorrectReturnValue(GraalValue* value, jobject null_replace
         result = value->GetJavaObject();
         if (result == int32_placeholder_) {
             ResetSharedBuffer();
-            WriteInt32ToSharedBuffer((uint32_t) return_value_);
+            WriteInt32ToSharedBuffer((int32_t) return_value_);
         } else if (result == uint32_placeholder_) {
             ResetSharedBuffer();
-            WriteInt64ToSharedBuffer((uint64_t) return_value_);
+            WriteInt64ToSharedBuffer((int64_t) return_value_);
         } else if (result == double_placeholder_) {
             ResetSharedBuffer();
             WriteDoubleToSharedBuffer((double) return_value_);
