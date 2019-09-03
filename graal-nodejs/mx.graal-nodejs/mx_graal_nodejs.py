@@ -499,9 +499,15 @@ if _suite.primary:
 
 def _prepare_svm_env():
     import mx_vm
-    libpolyglot = join(mx_vm.graalvm_home(), 'jre', 'lib', 'polyglot', mx.add_lib_suffix(mx.add_lib_prefix('polyglot')))
-    if not exists(libpolyglot):
-        mx.abort("Cannot find polyglot library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(libpolyglot))
+    graalvm_home = mx_vm.graalvm_home()
+    libpolyglot_filename = mx.add_lib_suffix(mx.add_lib_prefix('polyglot'))
+    libpolyglots = [join(graalvm_home, directory, libpolyglot_filename) for directory in [join('jre', 'lib', 'polyglot'), join('lib', 'polyglot')]]
+    libpolyglot = None
+    for candidate in libpolyglots:
+        if exists(candidate):
+            libpolyglot = candidate
+    if libpolyglot is None:
+        mx.abort("Cannot find polyglot library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(libpolyglots))
     _setEnvVar('NODE_JVM_LIB', libpolyglot)
     _setEnvVar('ICU4J_DATA_PATH', join(mx.suite('graal-js').dir, 'lib', 'icu4j', 'icudt'))
 
@@ -522,6 +528,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         join('bin', 'npm'),
     ],
     polyglot_lib_build_args=[
+        "-H:+ReportExceptionStackTraces",
         "-H:JNIConfigurationResources=svmnodejs.jniconfig,svmnodejs_jdkspecific.jniconfig",
         "-H:ReflectionConfigurationResources=svmnodejs.reflectconfig",
     ],
