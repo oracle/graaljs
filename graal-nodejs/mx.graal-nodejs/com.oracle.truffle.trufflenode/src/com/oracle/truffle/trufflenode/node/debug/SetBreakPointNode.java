@@ -75,44 +75,50 @@ public class SetBreakPointNode extends JavaScriptRootNode {
         if (JSFunction.isJSFunction(arg0)) {
             CallTarget callTarget = JSFunction.getFunctionData((DynamicObject) arg0).getCallTarget();
             if (callTarget instanceof RootCallTarget) {
-                SourceSection sourceSection = ((RootCallTarget) callTarget).getRootNode().getSourceSection();
-                Source source = sourceSection.getSource();
-                int lineNo = sourceSection.getStartLine();
-                int columnNo = sourceSection.getStartColumn();
-                int userLine = 0;
-                if (numArgs >= 2) {
-                    Object arg1 = JSArguments.getUserArgument(args, 1);
-                    if (arg1 instanceof Number) {
-                        userLine = ((Number) arg1).intValue();
-                        lineNo += userLine;
-                    }
-                }
-                if (userLine > 0) {
-                    columnNo = 1; // ignore the section column
-                } else {
-                    // skip "function"
-                    if (startsWith(sourceSection, "function")) {
-                        columnNo += 9;
-                    }
-                }
-                if (numArgs >= 3) {
-                    Object arg2 = JSArguments.getUserArgument(args, 2);
-                    if (arg2 instanceof Number) {
-                        columnNo += ((Number) arg2).intValue();
-                    }
-                }
-                // JSArguments.getUserArgument(args, 3) is condition
-                // We do not support conditional breakpoints here (yet?)
-                boolean oneShot = false;
-                if (numArgs >= 5) {
-                    Object arg4 = JSArguments.getUserArgument(args, 4);
-                    oneShot = JSRuntime.toBoolean(arg4);
-                }
-                addBreakPoint(source, lineNo, columnNo, oneShot);
-                return 0;
+                return addBreakPoint((RootCallTarget) callTarget, args);
             }
         }
         unsupported();
+        return 0;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private int addBreakPoint(RootCallTarget callTarget, Object[] args) {
+        int numArgs = JSArguments.getUserArgumentCount(args);
+        SourceSection sourceSection = callTarget.getRootNode().getSourceSection();
+        Source source = sourceSection.getSource();
+        int lineNo = sourceSection.getStartLine();
+        int columnNo = sourceSection.getStartColumn();
+        int userLine = 0;
+        if (numArgs >= 2) {
+            Object arg1 = JSArguments.getUserArgument(args, 1);
+            if (arg1 instanceof Number) {
+                userLine = ((Number) arg1).intValue();
+                lineNo += userLine;
+            }
+        }
+        if (userLine > 0) {
+            columnNo = 1; // ignore the section column
+        } else {
+            // skip "function"
+            if (startsWith(sourceSection, "function")) {
+                columnNo += 9;
+            }
+        }
+        if (numArgs >= 3) {
+            Object arg2 = JSArguments.getUserArgument(args, 2);
+            if (arg2 instanceof Number) {
+                columnNo += ((Number) arg2).intValue();
+            }
+        }
+        // JSArguments.getUserArgument(args, 3) is condition
+        // We do not support conditional breakpoints here (yet?)
+        boolean oneShot = false;
+        if (numArgs >= 5) {
+            Object arg4 = JSArguments.getUserArgument(args, 4);
+            oneShot = JSRuntime.toBoolean(arg4);
+        }
+        addBreakPoint(source, lineNo, columnNo, oneShot);
         return 0;
     }
 

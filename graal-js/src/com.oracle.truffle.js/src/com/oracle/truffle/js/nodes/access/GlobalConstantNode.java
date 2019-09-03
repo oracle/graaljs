@@ -147,6 +147,7 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
             return getLineNumber();
         }
 
+        @TruffleBoundary
         private int getLineNumber() {
             return getEncapsulatingSourceSection().getStartLine();
         }
