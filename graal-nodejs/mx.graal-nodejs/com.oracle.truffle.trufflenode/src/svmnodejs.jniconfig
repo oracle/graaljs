@@ -318,12 +318,6 @@
     ]
   },
   {
-    "name": "sun.misc.Cleaner",
-    "fields": [
-      { "name": "thunk" }
-    ]
-  },
-  {
     "name": "java.nio.DirectByteBuffer$Deallocator",
     "fields": [
       { "name": "address" }

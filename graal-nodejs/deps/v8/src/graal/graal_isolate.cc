@@ -66,7 +66,7 @@
 #endif
 
 #ifdef __APPLE__
-#define LIBNODESVM_RELPATH "/jre/lib/polyglot/libpolyglot.dylib"
+#define LIBNODESVM_RELPATH "/lib/polyglot/libpolyglot.dylib"
 #define LIBJVM_RELPATH     "/lib/server/libjvm.dylib"
 #define LIBJLI_RELPATH     "/lib/jli/libjli.dylib"
 #elif defined(__sparc__)
@@ -76,7 +76,7 @@
 #elif defined(_WIN32)
 #define LIBJVM_RELPATH     "\\bin\\server\\jvm.dll"
 #else
-#define LIBNODESVM_RELPATH "/jre/lib/polyglot/libpolyglot.so"
+#define LIBNODESVM_RELPATH "/lib/polyglot/libpolyglot.so"
 #define LIBJVM_RELPATH     "/lib/server/libjvm.so"
 #define LIBJVM_RELPATH2    "/lib/amd64/server/libjvm.so"
 #endif
@@ -214,11 +214,14 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
 
     std::string node = nodeExe();
 
-    if (ends_with(up(node), "/jre/languages/js/bin")) {
+    std::string node_path = up(node);
+    bool graalvm8 = ends_with(node_path, "/jre/languages/js/bin");
+    bool graalvm11plus = ends_with(node_path, "/languages/js/bin");
+    if (graalvm8 || graalvm11plus) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
         // We set environment variables to ensure these values are correctly
         // propagated to child processes.
-        std::string graalvm_home = up(node, 5);
+        std::string graalvm_home = up(node, graalvm8 ? 5 : 4);
         SetEnv("JAVA_HOME", graalvm_home.c_str());
 
 #       ifdef LIBNODESVM_RELPATH
@@ -234,7 +237,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
                 } // else reuse NODE_JVM_LIB
             }
             if (force_native) {
-                std::string node_jvm_lib = graalvm_home + LIBNODESVM_RELPATH;
+                std::string node_jvm_lib = graalvm_home + (graalvm8 ? "/jre" : "") + LIBNODESVM_RELPATH;
                 SetEnv("NODE_JVM_LIB", node_jvm_lib.c_str());
             }
 #       else
