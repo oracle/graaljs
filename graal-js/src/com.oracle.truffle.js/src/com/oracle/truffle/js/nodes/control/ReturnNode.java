@@ -41,9 +41,11 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 
 /**
  * 12.9 The return Statement.
@@ -64,6 +66,19 @@ public class ReturnNode extends StatementNode {
             assert !(expression instanceof EmptyNode);
             return new ReturnNode(expression);
         }
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSTags.ControlFlowBranchTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("type", JSTags.ControlFlowBranchTag.Type.Return.name());
     }
 
     public static ReturnNode createFrameReturn(JavaScriptNode expression) {
