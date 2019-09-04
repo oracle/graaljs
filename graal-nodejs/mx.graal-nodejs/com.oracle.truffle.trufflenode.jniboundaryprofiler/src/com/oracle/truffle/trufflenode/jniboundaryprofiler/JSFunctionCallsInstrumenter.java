@@ -55,7 +55,10 @@ public class JSFunctionCallsInstrumenter {
         if (instrumentJSFunctionCalls(className)) {
             System.out.println("Instrumenting JSFunction calls in: " + className);
             ClassReader cr = new ClassReader(classfileBuffer);
-            ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES);
+            ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES) {
+                // This seemingly redundant subclassing is needed because
+                // ClassWriter uses getClass().getClassLoader() to load some classes.
+            };
             ClassVisitor cv = new JSFunctionProfilerClassVisitor(cw);
             cr.accept(cv, 0);
             return cw.toByteArray();
