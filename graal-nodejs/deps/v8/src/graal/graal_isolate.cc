@@ -320,11 +320,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             fprintf(stderr, "Cannot find %s. Update GRAALJS_JAR_PATH environment variable!\n", graaljs_jar_path.c_str());
             exit(1);
         }
-        std::string tregex_jar_path = getstdenv("TREGEX_JAR_PATH");
-        if (!tregex_jar_path.empty() && access(tregex_jar_path.c_str(), F_OK) == -1) {
-            fprintf(stderr, "Cannot find %s. Update TREGEX_JAR_PATH environment variable!\n", tregex_jar_path.c_str());
-            exit(1);
-        }
         std::string graalnode_jar_path = getstdenv("TRUFFLENODE_JAR_PATH");
         if (!graalnode_jar_path.empty() && access(graalnode_jar_path.c_str(), F_OK) == -1) {
             fprintf(stderr, "Cannot find %s. Update TRUFFLENODE_JAR_PATH environment variable!\n", graalnode_jar_path.c_str());
@@ -367,11 +362,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         std::string classpath_sep = "";
         if (!graaljs_jar_path.empty()) {
             classpath += graaljs_jar_path;
-            classpath_sep = path_separator;
-        }
-        if (!tregex_jar_path.empty()) {
-            classpath += classpath_sep;
-            classpath += tregex_jar_path;
             classpath_sep = path_separator;
         }
         if (!graalnode_jar_path.empty()) {
