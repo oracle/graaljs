@@ -315,26 +315,10 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             fprintf(stderr, "Cannot find %s. Update GRAAL_SDK_JAR_PATH environment variable!\n", graal_sdk_jar_path.c_str());
             exit(1);
         }
-        std::string truffle_jar_path = getstdenv("TRUFFLE_JAR_PATH");
-        if (!truffle_jar_path.empty() && access(truffle_jar_path.c_str(), F_OK) == -1) {
-            fprintf(stderr, "Cannot find %s. Update TRUFFLE_JAR_PATH environment variable!\n", truffle_jar_path.c_str());
-            exit(1);
-        }
         std::string graaljs_jar_path = getstdenv("GRAALJS_JAR_PATH");
         if (!graaljs_jar_path.empty() && access(graaljs_jar_path.c_str(), F_OK) == -1) {
             fprintf(stderr, "Cannot find %s. Update GRAALJS_JAR_PATH environment variable!\n", graaljs_jar_path.c_str());
             exit(1);
-        }
-        std::string tregex_jar_path = getstdenv("TREGEX_JAR_PATH");
-        if (!tregex_jar_path.empty() && access(tregex_jar_path.c_str(), F_OK) == -1) {
-            fprintf(stderr, "Cannot find %s. Update TREGEX_JAR_PATH environment variable!\n", tregex_jar_path.c_str());
-            exit(1);
-        }
-        std::string truffleom_jar_path = getstdenv("TRUFFLEOM_JAR_PATH");
-        if (!truffleom_jar_path.empty() && access(truffleom_jar_path.c_str(), F_OK) == -1) {
-            // Cannot find the jar of the enterprise object model.
-            // Unless this is added to the classpath using the NODE_JVM_CLASSPATH env var, run with the basic object model.
-            truffleom_jar_path = "";
         }
         std::string graalnode_jar_path = getstdenv("TRUFFLENODE_JAR_PATH");
         if (!graalnode_jar_path.empty() && access(graalnode_jar_path.c_str(), F_OK) == -1) {
@@ -366,14 +350,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
                 boot_classpath += path_separator;
                 boot_classpath += graal_sdk_jar_path;
             }
-            if (!truffle_jar_path.empty()) {
-                boot_classpath += path_separator;
-                boot_classpath += truffle_jar_path;
-            }
-            if (!truffleom_jar_path.empty()) {
-                boot_classpath += path_separator;
-                boot_classpath += truffleom_jar_path;
-            }
         } else {
             boot_classpath = path_separator + boot_classpath;
         }
@@ -386,11 +362,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
         std::string classpath_sep = "";
         if (!graaljs_jar_path.empty()) {
             classpath += graaljs_jar_path;
-            classpath_sep = path_separator;
-        }
-        if (!tregex_jar_path.empty()) {
-            classpath += classpath_sep;
-            classpath += tregex_jar_path;
             classpath_sep = path_separator;
         }
         if (!graalnode_jar_path.empty()) {
