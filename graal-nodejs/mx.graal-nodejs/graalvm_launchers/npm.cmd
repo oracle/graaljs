@@ -13,11 +13,7 @@ call :dirname "%bin_dir%" parent_bin_dir
 
 echo %* | findstr \"" >nul && echo Warning: the " character in program arguments is not fully supported.
 
-rem Storing the first argument at index 1 rather than 0 simplifies iterating over the list of vm arguments
-set "vm_args[1]=--experimental-options"
-set "vm_args[2]=--engine.Mode=latency"
-set n_vm_args=2
-set n_prog_args=0
+set "vm_args=--experimental-options --engine.Mode=latency"
 set "node_dir=--nodedir="%parent_bin_dir%""
 
 rem This is the best I could come up with to parse command line arguments.
@@ -39,64 +35,26 @@ for /f "tokens=1*" %%a in ("%next_arg%") do (
   if "!arg:~0,8!"=="--native" set vm_arg=true
 
   if !vm_arg!==true (
-    set /a n_vm_args+=1
-    set "vm_args[!n_vm_args!]=!arg!"
+    set "vm_args=!vm_args! !arg!"
   ) else if "!arg:~0,10!"=="--nodedir=" (
-    set node_dir="!arg!"
+    set "node_dir="!arg!""
   ) else if "!arg!"=="--nodedir" (
     echo Error: "--nodedir PATH" is not supported. Please use "--nodedir=PATH".
     exit /b 2
   ) else (
-    set /a n_prog_args+=1
-    set "prog_args[!n_prog_args!]=!arg!"
+    if defined prog_args (
+      set "prog_args=!prog_args! !arg!"
+    ) else (
+      set "prog_args=!arg!"
+    )
   )
 
   set next_arg=%%~b
 )
 if defined next_arg goto :loop
 
-if defined node_dir echo node_dir !node_dir!
-
-set "vm_args="
-for /l %%i in (1, 1, %n_vm_args%) do (
-  echo vm_args[%%i]: !vm_args[%%i]!
-  set "vm_args=!vm_args! !vm_args[%%i]!"
-)
-
-echo vm_args %vm_args%
-
-set "prog_args="
-for /l %%i in (1, 1, %n_prog_args%) do (
-  echo prog_args[%%i]: !prog_args[%%i]!
-  set "prog_args=!prog_args! !prog_args[%%i]!"
-)
-
-echo prog_args %prog_args%
-
 "%node_exe%" %vm_args% "%parent_bin_dir%/npm/bin/npm-cli.js" %node_dir% %prog_args%
 goto :eof
-
-set n_vm_args=0
-set n_prog_args=0
-
-for %%a in (%*) do (
-  echo "--------------->" "%%~a"
-  set "arg=%%a"
-  set vm_arg=false
-  if "!arg:~0,4!"=="--vm" set vm_arg=true
-  if "!arg:~0,5!"=="--jvm" set vm_arg=true
-  if "!arg:~0,8!"=="--native" set vm_arg=true
-
-  if !vm_arg!==true (
-    set /a n_vm_args+=1
-    set "vm_args[!n_vm_args!]=!arg!"
-  ) else if "!arg:~0:10"=="--nodedir=" (
-    set "node_dir=!arg!"
-  ) else (
-    set /a n_prog_args+=1
-    set "prog_args[!n_prog_args!]=!arg!"
-  )
-)
 
 :dirname file output
   setlocal
