@@ -58,8 +58,10 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import java.io.ByteArrayOutputStream;
 import org.graalvm.polyglot.Value;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class InnerContextTest {
     @Test
@@ -111,6 +113,22 @@ public class InnerContextTest {
         }
     }
 
+    @Test
+    public void innerParseSingleStatement() throws Exception {
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("a", "b"))) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try (Context context = Context.newBuilder(JavaScriptLanguage.ID, TestLanguage.ID).out(out).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                Value mul = context.eval(Source.create(TestLanguage.ID,
+                                "print(a + ' * ' + b + ' = ' + (a * b));" //
+                ));
+                Value undefined = mul.execute(6, 7);
+                String output = out.toString("UTF-8");
+                assertEquals("6 * 7 = 42\n", output);
+                assertTrue(undefined.isNull());
+            }
+        }
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static final class ExecutableObject implements TruffleObject {
         private final CallTarget target;
@@ -121,12 +139,18 @@ public class InnerContextTest {
 
         @ExportMessage
         static boolean isExecutable(ExecutableObject obj) {
-            return true;
+            return obj.target != null;
         }
 
         @ExportMessage
         static Object execute(ExecutableObject obj, Object[] args) {
-            return obj.target.call(args);
+            Object res = obj.target.call(args);
+            return res == null ? new ExecutableObject(null) : res;
+        }
+
+        @ExportMessage
+        static boolean isNull(ExecutableObject obj) {
+            return obj.target == null;
         }
     }
 
