@@ -365,7 +365,6 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     _setEnvVar('JAVA_HOME', javaHome)
     if mx.suite('compiler', fatalIfMissing=False) is None:
         _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
-        _setEnvVar('TRUFFLE_JAR_PATH', mx.distribution('truffle:TRUFFLE_API').path)
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
     _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
     node_jvm_cp = (os.environ['NODE_JVM_CLASSPATH'] + os.pathsep) if 'NODE_JVM_CLASSPATH' in os.environ else ''
