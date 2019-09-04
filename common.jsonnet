@@ -69,6 +69,10 @@
     capabilities: ['solaris', 'sparcv9'],
   },
 
+  linux_aarch64: common + {
+    capabilities+: ['linux', 'aarch64'],
+  },
+
   darwin: common + {
     environment+: {
       // for compatibility with macOS El Capitan

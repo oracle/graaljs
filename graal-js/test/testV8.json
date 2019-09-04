@@ -165,7 +165,10 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "intl/general/mapped-locale.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "statusOverrides" : {
+      "AARCH64" : "PASS"
+    }
   }, {
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
@@ -246,6 +249,9 @@
   }, {
     "filePath" : "intl/regress-8604.js",
     "status" : "FAIL",
+    "statusOverrides" : {
+      "AARCH64" : "PASS"
+    },
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "intl/regress-8657.js",
@@ -482,7 +488,10 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/div-mod.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "statusOverrides" : {
+      "AARCH64" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/duplicate-parameters.js",
     "status" : "FAIL",
@@ -1278,7 +1287,10 @@
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regress/regress-353551.js",
-    "status" : "FAIL"
+    "status" : "FAIL",
+    "statusOverrides" : {
+      "AARCH64" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/regress-360733.js",
     "runInIsolation" : true,
@@ -1669,9 +1681,10 @@
     "filePath" : "mjsunit/regress/regress-crbug-621611.js",
     "status" : "PASS",
     "statusOverrides" : {
-      "BIG_ENDIAN" : "SKIP"
+      "BIG_ENDIAN" : "SKIP",
+      "AARCH64" : "SKIP"
     },
-    "comment" : "fails due to byte order (LE required)\nfails atm on SPARC GR-1672\nmore fails on SPARC"
+    "comment" : "fails due to byte order (LE required)\nfails atm on SPARC GR-1672\nmore fails on SPARC (AArch64: GR-17983)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-627934.js",
     "status" : "SKIP",
@@ -1766,6 +1779,9 @@
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-808192.js",
     "status" : "FAIL",
+    "statusOverrides" : {
+      "AARCH64" : "PASS"
+    },
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-816961.js",

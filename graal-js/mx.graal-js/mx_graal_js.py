@@ -123,7 +123,7 @@ def parse_js_args(args, default_cp=None, useDoubleDash=False):
     return vm_args, remainder
 
 def _default_stacksize():
-    if mx.get_arch() == 'sparcv9':
+    if mx.get_arch() in ('aarch64', 'sparcv9'):
         return '24m'
     return '16m'
 
@@ -190,13 +190,14 @@ def test262(args, nonZeroIsFatal=True):
     _default_vm_args = [
         '-Dpolyglot.js.test262-mode=true',
     ]
+    _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
     return _run_test_suite(
         location=_location,
         library_names=['TEST262'],
         custom_args=args,
         default_vm_args=_default_vm_args,
         max_heap='4g',
-        stack_size='1m',
+        stack_size=_stack_size,
         main_class='com.oracle.truffle.js.test.external.test262.Test262',
         nonZeroIsFatal=nonZeroIsFatal,
         cwd=_suite.dir
@@ -209,7 +210,7 @@ def testnashorn(args, nonZeroIsFatal=True):
         '-Dtruffle.js.NashornCompatibilityMode=true',
         '-Dtruffle.js.U180EWhitespace=true',
     ]
-    _stack_size = '2m' if mx.get_arch() == 'sparcv9' else '1m'
+    _stack_size = '2m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
     _run_test_suite(
         location=_location,
         library_names=['TESTNASHORN', 'TESTNASHORN_EXTERNAL'],
@@ -225,7 +226,7 @@ def testnashorn(args, nonZeroIsFatal=True):
 def testv8(args, nonZeroIsFatal=True):
     """run the testV8 conformance suite"""
     _location = join(_suite.dir, 'lib', 'testv8')
-    _stack_size = '2m' if mx.get_arch() == 'sparcv9' else '1m'
+    _stack_size = '3m' if mx.get_arch() in ('aarch64', 'sparcv9') else '1m'
     _run_test_suite(
         location=_location,
         library_names=['TESTV8'],
