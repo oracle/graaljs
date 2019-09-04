@@ -429,6 +429,7 @@ public final class JSTags {
             Break,
             Throw,
             Return,
+            Await,
         }
 
         private ControlFlowBranchTag() {
