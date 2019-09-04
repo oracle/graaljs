@@ -560,9 +560,6 @@ describe('Value - *Value()', function () {
         it('should return 3 for 3.1415', function () {
             assert.strictEqual(module.Value_IntegerValue(3.1415), 3n);
         });
-        it('should return -9223372036854775808 for NaN', function () {
-            assert.strictEqual(module.Value_IntegerValue(NaN), -9223372036854775808n);
-        });
     });
     describe('IntegerValue(Context)', function () {
         it('should return 1234 for "1234"', function () {
