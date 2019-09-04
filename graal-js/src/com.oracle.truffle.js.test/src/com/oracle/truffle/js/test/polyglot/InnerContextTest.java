@@ -46,13 +46,20 @@ import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import org.graalvm.polyglot.Value;
+import static org.junit.Assert.assertEquals;
 
 public class InnerContextTest {
     @Test
@@ -90,6 +97,65 @@ public class InnerContextTest {
                 context.initialize(JavaScriptLanguage.ID);
                 context.eval(Source.create(TestLanguage.ID, ""));
             }
+        }
+    }
+
+    @Test
+    public void innerParseSimpleExpression() throws Exception {
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("multiplier"))) {
+            try (Context context = Context.newBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                Value mul = context.eval(Source.create(TestLanguage.ID, "6 * multiplier"));
+                Value fourtyTwo = mul.execute(7);
+                assertEquals(42, fourtyTwo.asInt());
+            }
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class ExecutableObject implements TruffleObject {
+        private final CallTarget target;
+
+        ExecutableObject(CallTarget target) {
+            this.target = target;
+        }
+
+        @ExportMessage
+        static boolean isExecutable(ExecutableObject obj) {
+            return true;
+        }
+
+        @ExportMessage
+        static Object execute(ExecutableObject obj, Object[] args) {
+            return obj.target.call(args);
+        }
+    }
+
+    private static class ProxyParsingLanguage extends TestLanguage {
+        private final String[] argumentNames;
+
+        ProxyParsingLanguage(String... argumentNames) {
+            this.argumentNames = argumentNames;
+        }
+
+        @Override
+        protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+            final String jsCode = request.getSource().getCharacters().toString();
+            class ParseJsRootNode extends RootNode {
+                ParseJsRootNode(TruffleLanguage<?> language) {
+                    super(language);
+                }
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    CompilerDirectives.transferToInterpreter();
+                    TestLanguage.LanguageContext ctx = languageInstance.getContextReference().get();
+                    TruffleLanguage.Env e = ctx.env;
+                    com.oracle.truffle.api.source.Source src = com.oracle.truffle.api.source.Source.newBuilder("js", jsCode, "jscode.js").build();
+                    CallTarget call = e.parseInternal(src, argumentNames);
+                    return new ExecutableObject(call);
+                }
+            }
+            return Truffle.getRuntime().createCallTarget(new ParseJsRootNode(languageInstance));
         }
     }
 }
