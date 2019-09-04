@@ -366,10 +366,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
                 boot_classpath += path_separator;
                 boot_classpath += graal_sdk_jar_path;
             }
-            if (!truffle_jar_path.empty()) {
-                boot_classpath += path_separator;
-                boot_classpath += truffle_jar_path;
-            }
             if (!truffleom_jar_path.empty()) {
                 boot_classpath += path_separator;
                 boot_classpath += truffleom_jar_path;
