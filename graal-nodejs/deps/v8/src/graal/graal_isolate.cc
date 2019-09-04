@@ -325,12 +325,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             fprintf(stderr, "Cannot find %s. Update TREGEX_JAR_PATH environment variable!\n", tregex_jar_path.c_str());
             exit(1);
         }
-        std::string truffleom_jar_path = getstdenv("TRUFFLEOM_JAR_PATH");
-        if (!truffleom_jar_path.empty() && access(truffleom_jar_path.c_str(), F_OK) == -1) {
-            // Cannot find the jar of the enterprise object model.
-            // Unless this is added to the classpath using the NODE_JVM_CLASSPATH env var, run with the basic object model.
-            truffleom_jar_path = "";
-        }
         std::string graalnode_jar_path = getstdenv("TRUFFLENODE_JAR_PATH");
         if (!graalnode_jar_path.empty() && access(graalnode_jar_path.c_str(), F_OK) == -1) {
             fprintf(stderr, "Cannot find %s. Update TRUFFLENODE_JAR_PATH environment variable!\n", graalnode_jar_path.c_str());
@@ -360,10 +354,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params) {
             if (!graal_sdk_jar_path.empty()) {
                 boot_classpath += path_separator;
                 boot_classpath += graal_sdk_jar_path;
-            }
-            if (!truffleom_jar_path.empty()) {
-                boot_classpath += path_separator;
-                boot_classpath += truffleom_jar_path;
             }
         } else {
             boot_classpath = path_separator + boot_classpath;
