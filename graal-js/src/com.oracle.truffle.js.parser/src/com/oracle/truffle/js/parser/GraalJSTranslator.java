@@ -1301,7 +1301,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             Block block = iterator.next();
             Symbol existingSymbol = block.getExistingSymbol(varName);
             if (existingSymbol != null && existingSymbol.isBlockScoped()) {
-                if (existingSymbol.isCatchParameter() && !lexcon.getCurrentBlock().isForOfBlock() && options.isAnnexB()) {
+                if (existingSymbol.isCatchParameter() && options.isAnnexB()) {
                     continue; // B.3.5 VariableStatements in Catch Blocks
                 }
                 return true;
