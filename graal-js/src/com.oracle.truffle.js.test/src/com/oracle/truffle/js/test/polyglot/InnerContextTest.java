@@ -129,6 +129,31 @@ public class InnerContextTest {
         }
     }
 
+    @Test
+    public void innerParseMultipleStatement() throws Exception {
+        try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new ProxyParsingLanguage("a", "b"))) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try (Context context = Context.newBuilder(JavaScriptLanguage.ID, TestLanguage.ID).out(out).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+                // @formatter:off
+                Value mul = context.eval(Source.create(TestLanguage.ID,
+                    "print(a + ' + ' + b + ' = ' + (a + b));" +
+                    "print(a + ' * ' + b + ' = ' + (a * b));"
+                ));
+                // @formatter:on
+                Value undefined = mul.execute(6, 7);
+                String output = out.toString("UTF-8");
+                // @formatter:off
+                assertEquals(
+                    "6 + 7 = 13\n" +
+                    "6 * 7 = 42\n",
+                    output
+                );
+                // @formatter:on
+                assertTrue(undefined.isNull());
+            }
+        }
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static final class ExecutableObject implements TruffleObject {
         private final CallTarget target;
