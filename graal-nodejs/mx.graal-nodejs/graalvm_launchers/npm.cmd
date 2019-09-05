@@ -29,12 +29,19 @@ set "next_arg=%*"
 :loop
 for /f "tokens=1*" %%a in ("%next_arg%") do (
   set "arg=%%a"
-  set vm_arg=false
-  if "!arg:~0,4!"=="--vm" set vm_arg=true
-  if "!arg:~0,5!"=="--jvm" set vm_arg=true
-  if "!arg:~0,8!"=="--native" set vm_arg=true
+  set "vm_arg=false"
 
-  if !vm_arg!==true (
+  rem Unfortunately, parsing of `--vm`, `--jvm`, and `--native` arguments has to be done blind:
+  rem Maybe some of those arguments where not really intended for the launcher but were application arguments
+  if "!arg:~0,4!"=="--vm" (
+    set "vm_arg=true"
+  ) else if "!arg:~0,5!"=="--jvm" (
+    set "vm_arg=true"
+  ) else if "!arg:~0,8!"=="--native" (
+    set "vm_arg=true"
+  )
+
+  if "!vm_arg!"=="true" (
     set "vm_args=!vm_args! !arg!"
   ) else if "!arg:~0,10!"=="--nodedir=" (
     set "node_dir="!arg!""
@@ -49,16 +56,18 @@ for /f "tokens=1*" %%a in ("%next_arg%") do (
     )
   )
 
-  set next_arg=%%~b
+  set "next_arg=%%~b"
 )
 if defined next_arg goto :loop
+
+if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
 "%node_exe%" %vm_args% "%parent_bin_dir%/npm/bin/npm-cli.js" %node_dir% %prog_args%
 goto :eof
 
 :dirname file output
   setlocal
-  set dir=%~dp1
-  set dir=%dir:~0,-1%
-  endlocal & set %2=%dir%
+  set "dir=%~dp1"
+  set "dir=%dir:~0,-1%"
+  endlocal & set "%2=%dir%"
   exit /b 0
