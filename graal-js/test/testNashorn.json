@@ -47,9 +47,6 @@
     "filePath" : "basic/es6/const-reassign.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/es6/const-redeclare-extra.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/es6/const-redeclare.js",
     "status" : "FAIL"
   }, {

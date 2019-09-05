@@ -1929,18 +1929,6 @@
     },
     "comment" : "Segfaults on SVM, see GR-15064"
   }, {
-    "filePath" : "language/block-scope/syntax/redeclaration/inner-block-var-name-redeclaration-attempt-with-class.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/block-scope/syntax/redeclaration/inner-block-var-name-redeclaration-attempt-with-const.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/block-scope/syntax/redeclaration/inner-block-var-name-redeclaration-attempt-with-let.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
     "filePath" : "language/eval-code/direct/new.target-fn.js",
     "status" : "FAIL"
   }, {
@@ -2132,9 +2120,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/global-code/new.target-arrow.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/import/dup-bound-names.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
