@@ -431,7 +431,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             body = handleFunctionReturn(functionNode, body);
 
             if (isAsyncFunction) {
-                body = handleAsyncFunctionBody(body);
+                body = handleAsyncFunctionBody(body, currentFunction.getFunctionName());
             }
         }
 
@@ -518,14 +518,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      *
      * @return instrumented function body
      */
-    private JavaScriptNode handleAsyncFunctionBody(JavaScriptNode body) {
+    private JavaScriptNode handleAsyncFunctionBody(JavaScriptNode body, String functionName) {
         assert currentFunction().isAsyncFunction() && !currentFunction().isGeneratorFunction();
         VarRef asyncContextVar = environment.findAsyncContextVar();
         VarRef asyncResultVar = environment.findAsyncResultVar();
         JSWriteFrameSlotNode writeResultNode = (JSWriteFrameSlotNode) asyncResultVar.createWriteNode(null);
         JSWriteFrameSlotNode writeContextNode = (JSWriteFrameSlotNode) asyncContextVar.createWriteNode(null);
         JavaScriptNode instrumentedBody = instrumentSuspendNodes(body);
-        return factory.createAsyncFunctionBody(context, instrumentedBody, writeContextNode, writeResultNode);
+        return factory.createAsyncFunctionBody(context, instrumentedBody, writeContextNode, writeResultNode, functionName);
     }
 
     /**
