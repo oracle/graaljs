@@ -3023,9 +3023,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             tagExpression(classDefinition, classNode);
 
             if (className != null) {
-                classDefinition = findScopeVar(className, true).createWriteNode(classDefinition);
+                classDefinition = ensureHasSourceSection(findScopeVar(className, true).createWriteNode(classDefinition), classNode);
             }
-            return blockEnv.wrapBlockScope(classDefinition);
+            return ensureHasSourceSection(blockEnv.wrapBlockScope(classDefinition), classNode);
         }
     }
 
