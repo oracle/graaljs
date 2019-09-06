@@ -179,8 +179,9 @@ public final class Scope {
      *
      * @param varName the declared name
      * @param annexB if true, ignore catch parameters
+     * @param includeParameters include parameter scope?
      */
-    public boolean isLexicallyDeclaredName(final String varName, final boolean annexB) {
+    public boolean isLexicallyDeclaredName(final String varName, final boolean annexB, final boolean includeParameters) {
         for (Scope current = this; current != null; current = current.getParent()) {
             Symbol existingSymbol = current.getExistingSymbol(varName);
             if (existingSymbol != null && existingSymbol.isBlockScoped()) {
@@ -189,7 +190,7 @@ public final class Scope {
                 }
                 return true;
             }
-            if (current.isFunctionTopScope()) {
+            if (includeParameters ? current.isFunctionTopScope() : current.isFunctionBodyScope()) {
                 break;
             }
         }

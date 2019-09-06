@@ -2036,7 +2036,7 @@ public class Parser extends AbstractParser {
                 if (!function.isStrict() && scope != varScope && (varScope.isGlobalScope() || !name.equals(ARGUMENTS_NAME))) {
                     assert !scope.isFunctionBodyScope() && !scope.isFunctionParameterScope();
                     // If we already find a conflicting declaration, we can skip this step.
-                    if (varScope.getExistingSymbol(name) == null && !scope.getParent().isLexicallyDeclaredName(name, true)) {
+                    if (varScope.getExistingSymbol(name) == null && !scope.getParent().isLexicallyDeclaredName(name, true, true)) {
                         varScope.recordHoistableBlockFunctionDeclaration(varNode, scope);
                     }
                 }
@@ -2083,7 +2083,7 @@ public class Parser extends AbstractParser {
                 }
             }
         } else {
-            alreadyDeclared = scope.isLexicallyDeclaredName(varName, isAnnexB());
+            alreadyDeclared = scope.isLexicallyDeclaredName(varName, isAnnexB(), false);
         }
         if (alreadyDeclared) {
             throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", varName), varNode.getToken());
