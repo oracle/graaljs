@@ -1,2 +1,0 @@
-DYNAMIC_IMPORTS=/vm,/substratevm
-FORCE_BASH_LAUNCHERS=true
