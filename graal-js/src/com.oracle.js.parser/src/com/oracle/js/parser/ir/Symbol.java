@@ -81,6 +81,12 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_PROGRAM_LEVEL = 1 << 9;
     /** Is this symbol seen a declaration? Used for block scoped LET and CONST symbols only. */
     public static final int HAS_BEEN_DECLARED = 1 << 10;
+    /**
+     * Is this symbol a var declaration binding that needs to be initialized with the value of the
+     * parent's scope's binding with the same name? Used for parameter bindings that are replicated
+     * in the body's VariableEnvironment.
+     */
+    public static final int IS_VAR_REDECLARED_HERE = 1 << 12;
     /** Is this symbol declared in an unprotected switch case context? */
     public static final int IS_DECLARED_IN_SWITCH_BLOCK = 1 << 13;
     /** Is this symbol an indirect import binding of a module environment? */
@@ -325,5 +331,9 @@ public final class Symbol implements Comparable<Symbol> {
      */
     public boolean isCatchParameter() {
         return (flags & IS_CATCH_PARAMETER) != 0;
+    }
+
+    public boolean isVarRedeclaredHere() {
+        return (flags & IS_VAR_REDECLARED_HERE) != 0;
     }
 }

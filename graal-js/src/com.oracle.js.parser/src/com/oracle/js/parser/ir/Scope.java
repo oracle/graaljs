@@ -69,7 +69,7 @@ public final class Scope {
     protected List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
     protected List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
 
-    private int blockScopedSymbols;
+    private int blockScopedOrRedeclaredSymbols;
     private int declaredNames;
     private boolean closed;
 
@@ -157,16 +157,18 @@ public final class Scope {
             assert (existing.getFlags() & Symbol.KINDMASK) == (symbol.getFlags() & Symbol.KINDMASK) : symbol;
             return;
         }
-        if (symbol.isBlockScoped() && !symbol.isImportBinding()) {
-            blockScopedSymbols++;
-        }
-        if ((symbol.isBlockScoped() || (symbol.isVar() && !symbol.isParam())) && !symbol.isImportBinding()) {
-            declaredNames++;
+        if (!symbol.isImportBinding()) {
+            if (symbol.isBlockScoped() || symbol.isVarRedeclaredHere()) {
+                blockScopedOrRedeclaredSymbols++;
+            }
+            if (symbol.isBlockScoped() || (symbol.isVar() && !symbol.isParam())) {
+                declaredNames++;
+            }
         }
     }
 
-    public boolean hasBlockScopedSymbols() {
-        return blockScopedSymbols != 0;
+    public boolean hasBlockScopedOrRedeclaredSymbols() {
+        return blockScopedOrRedeclaredSymbols != 0;
     }
 
     public boolean hasDeclarations() {

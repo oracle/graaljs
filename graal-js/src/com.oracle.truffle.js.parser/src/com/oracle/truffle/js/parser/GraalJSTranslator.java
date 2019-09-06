@@ -1220,7 +1220,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      * Initialize block-scoped symbols with a <i>dead</i> marker value.
      */
     private List<JavaScriptNode> createTemporalDeadZoneInit(Block block) {
-        if (!block.hasBlockScopedSymbols() || environment instanceof GlobalEnvironment) {
+        if (!block.getScope().hasBlockScopedOrRedeclaredSymbols() || environment instanceof GlobalEnvironment) {
             return Collections.emptyList();
         }
 
@@ -1233,6 +1233,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (!symbol.hasBeenDeclared()) {
                     blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(factory.createConstant(Dead.instance())));
                 }
+            }
+            if (symbol.isVarRedeclaredHere()) {
+                // redeclaration of parameter binding; initial value is copied from outer scope.
+                assert block.isFunctionBody();
+                assert environment.getScopeLevel() == 1;
+                JavaScriptNode outerVar = factory.createLocal(environment.getParent().findLocalVar(symbol.getName()).getFrameSlot(), 0, 1, environment.getParentSlots());
+                blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(outerVar));
             }
         }
         return blockWithInit;

@@ -2043,11 +2043,16 @@ public class Parser extends AbstractParser {
             }
         } else {
             // var declarations are added to the function body scope (a.k.a. VariableEnvironment).
-            Scope varScope = lc.getCurrentFunction().getBodyBlock().getScope();
+            ParserContextFunctionNode function = lc.getCurrentFunction();
+            Scope varScope = function.getBodyBlock().getScope();
             assert varScope.isFunctionBodyScope();
             int symbolFlags = varNode.getSymbolFlags() |
                             (varNode.isHoistableDeclaration() ? Symbol.IS_FUNCTION_DECLARATION : 0) |
                             (varScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0);
+            // if the var name appears in a non-simple parameter list, we need to copy its value.
+            if (function.getParameterBlock() != null && function.getParameterBlock().getScope().hasSymbol(name)) {
+                symbolFlags |= Symbol.IS_VAR_REDECLARED_HERE;
+            }
             varScope.putSymbol(new Symbol(name, symbolFlags));
 
             /*

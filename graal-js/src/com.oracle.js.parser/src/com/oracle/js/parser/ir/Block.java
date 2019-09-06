@@ -365,14 +365,6 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
         return scope;
     }
 
-    public boolean hasBlockScopedSymbols() {
-        return scope.hasBlockScopedSymbols();
-    }
-
-    public boolean hasDeclarations() {
-        return scope.hasDeclarations();
-    }
-
     public boolean isFunctionBody() {
         return getFlag(IS_BODY);
     }
