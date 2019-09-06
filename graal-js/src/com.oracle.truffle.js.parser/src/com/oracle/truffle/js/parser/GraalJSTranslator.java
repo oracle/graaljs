@@ -1441,25 +1441,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return accessThisNode;
     }
 
-    private Symbol findBlockScopedSymbolInFunction(String varName) {
-        for (Iterator<LexicalContextNode> iterator = lc.getAllNodes(); iterator.hasNext();) {
-            LexicalContextNode node = iterator.next();
-            if (node instanceof LexicalContextScope) {
-                Symbol existingSymbol = ((LexicalContextScope) node).getScope().getExistingSymbol(varName);
-                if (existingSymbol != null) {
-                    if (existingSymbol.isBlockScoped()) {
-                        return existingSymbol;
-                    } else {
-                        break;
-                    }
-                }
-            } else if (node instanceof FunctionNode) {
-                break;
-            }
-        }
-        return null;
-    }
-
     private VarRef findScopeVar(String name, boolean skipWith) {
         return environment.findVar(name, skipWith);
     }
@@ -1467,7 +1448,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private VarRef findScopeVarCheckTDZ(String name, boolean initializationAssignment) {
         VarRef varRef = findScopeVar(name, false);
         if (varRef.isFunctionLocal()) {
-            Symbol symbol = findBlockScopedSymbolInFunction(varRef.getName());
+            Symbol symbol = lc.getCurrentScope().findBlockScopedSymbolInFunction(varRef.getName());
             if (symbol == null) {
                 // variable is not block-scoped
                 return varRef;

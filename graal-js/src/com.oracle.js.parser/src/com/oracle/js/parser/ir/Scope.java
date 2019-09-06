@@ -196,6 +196,30 @@ public final class Scope {
         return false;
     }
 
+    /**
+     * Returns a block scoped symbol in this scope or any of its enclosing scopes within this
+     * function.
+     *
+     * @param varName the symbol name
+     */
+    public Symbol findBlockScopedSymbolInFunction(String varName) {
+        for (Scope current = this; current != null; current = current.getParent()) {
+            Symbol existingSymbol = current.getExistingSymbol(varName);
+            if (existingSymbol != null) {
+                if (existingSymbol.isBlockScoped()) {
+                    return existingSymbol;
+                } else {
+                    // early exit
+                    break;
+                }
+            }
+            if (current.isFunctionTopScope()) {
+                break;
+            }
+        }
+        return null;
+    }
+
     public void recordHoistedVarDeclaration(final VarNode varDecl, final Scope scope) {
         assert !varDecl.isBlockScoped();
         if (hoistedVarDeclarations == null) {
