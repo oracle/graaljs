@@ -4802,7 +4802,6 @@ public class Parser extends AbstractParser {
         ParserContextBlockNode body = newBlock(Scope.createFunctionBody(lc.getCurrentScope()));
         functionNode.setBodyBlock(body);
         try {
-            assert functionNode != null;
             final int functionId = functionNode.getId();
             parseBody = reparsedFunction == null || functionId <= reparsedFunction.getFunctionNodeId();
             // Nashorn extension: expression closures
