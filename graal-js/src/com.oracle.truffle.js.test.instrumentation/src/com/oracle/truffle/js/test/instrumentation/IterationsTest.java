@@ -123,6 +123,27 @@ public class IterationsTest extends FineGrainedAccessTest {
             assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
             for (int a = 0; a < 3; a++) {
                 enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBlockTag.class).exit();
+            }
+            enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
+        }).exit();
+    }
+
+    @Test
+    public void forLetWithPerIterationScope() {
+        String src = "for (let i = 0; i < 3; i++) { function dummy(){return i;} };";
+
+        evalWithTags(src, new Class[]{
+                        ControlFlowRootTag.class,
+                        ControlFlowBranchTag.class,
+                        ControlFlowBlockTag.class
+        }, new Class[]{/* no input events */});
+
+        enter(ControlFlowRootTag.class, (e) -> {
+            assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
+            for (int a = 0; a < 3; a++) {
+                enter(ControlFlowBranchTag.class).exit(assertReturnValue(true));
+                enter(ControlFlowBlockTag.class).exit();
             }
             enter(ControlFlowBranchTag.class).exit(assertReturnValue(false));
         }).exit();

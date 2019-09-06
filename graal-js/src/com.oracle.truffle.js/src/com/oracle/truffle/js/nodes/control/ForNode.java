@@ -98,8 +98,9 @@ public final class ForNode extends StatementNode implements ResumableNode {
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (hasMaterializationTag(materializedTags) && AbstractRepeatingNode.materializationNeeded(loop.getRepeatingNode())) {
             IterationScopeNode newCopy = cloneUninitialized(copy);
-            InstrumentableNode materializedLoop = ((AbstractRepeatingNode) loop.getRepeatingNode()).materializeInstrumentableNodes(materializedTags);
-            ForNode materializedNode = new ForNode((RepeatingNode) materializedLoop, newCopy);
+            AbstractRepeatingNode materializedLoop = (AbstractRepeatingNode) ((AbstractRepeatingNode) loop.getRepeatingNode()).materializeInstrumentableNodes(materializedTags);
+            transferSourceSection(this, materializedLoop.bodyNode);
+            ForNode materializedNode = new ForNode(materializedLoop, newCopy);
             transferSourceSectionAndTags(this, materializedNode);
             return materializedNode;
         } else {
