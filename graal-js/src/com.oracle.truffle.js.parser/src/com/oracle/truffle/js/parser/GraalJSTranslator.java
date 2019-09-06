@@ -86,6 +86,7 @@ import com.oracle.js.parser.ir.TryNode;
 import com.oracle.js.parser.ir.UnaryNode;
 import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WithNode;
+import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -1911,7 +1912,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode desugarFor(ForNode forNode, JavaScriptNode init, JavaScriptNode test, JavaScriptNode modify, JavaScriptNode wrappedBody) {
-        if (forNode.hasPerIterationScope()) {
+        if (needsPerIterationScope(forNode)) {
             VarRef firstTempVar = environment.createTempVar();
             FrameDescriptor iterationBlockFrameDescriptor = environment.getBlockFrameDescriptor();
             StatementNode newFor = factory.createFor(test, wrappedBody, modify, iterationBlockFrameDescriptor, firstTempVar.createReadNode(),
@@ -1957,7 +1958,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         factory.createIteratorSetDone(iteratorVar.createReadNode(), factory.createConstantBoolean(true)),
                         factory.createUnary(UnaryOperation.NOT, factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
         JavaScriptNode wrappedBody;
-        try (EnvironmentCloseable blockEnv = forNode.hasPerIterationScope() ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
+        try (EnvironmentCloseable blockEnv = needsPerIterationScope(forNode) ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
             // var nextValue = IteratorValue(nextResult);
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
             VarRef nextValueVar = environment.createTempVar();
@@ -2009,7 +2010,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                         factory.createIteratorSetDone(iteratorVar.createReadNode(), factory.createConstantBoolean(true)),
                         factory.createUnary(UnaryOperation.NOT, factory.createIteratorComplete(context, nextResultVar.createWriteNode(iteratorNext))));
         JavaScriptNode wrappedBody;
-        try (EnvironmentCloseable blockEnv = forNode.hasPerIterationScope() ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
+        try (EnvironmentCloseable blockEnv = needsPerIterationScope(forNode) ? enterBlockEnvironment(lc.getCurrentBlock()) : new EnvironmentCloseable(environment)) {
             // var nextValue = IteratorValue(nextResult);
             VarRef nextResultVar2 = environment.findTempVar(nextResultVar.getFrameSlot());
             VarRef nextValueVar = environment.createTempVar();
@@ -2033,6 +2034,30 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         wrappedWhile = factory.createTryFinally(wrappedWhile, resetIterator);
         ensureHasSourceSection(whileNode, forNode);
         return createBlock(iteratorInit, wrappedWhile);
+    }
+
+    private boolean needsPerIterationScope(ForNode forNode) {
+        // for loop init block may contain closures, too; that's why we check the surrounding block.
+        return forNode.hasPerIterationScope() && hasClosures(lc.getCurrentBlock());
+    }
+
+    private static boolean hasClosures(com.oracle.js.parser.ir.Node node) {
+        class HasClosuresVisitor extends NodeVisitor<LexicalContext> {
+            boolean hasClosures;
+
+            HasClosuresVisitor(LexicalContext lc) {
+                super(lc);
+            }
+
+            @Override
+            public boolean enterFunctionNode(FunctionNode functionNode) {
+                hasClosures = true;
+                return false; // do not descend into functions
+            }
+        }
+        HasClosuresVisitor visitor = new HasClosuresVisitor(new LexicalContext());
+        node.accept(visitor);
+        return visitor.hasClosures;
     }
 
     @Override
