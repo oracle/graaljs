@@ -95,6 +95,8 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_IMPORT_BINDING = 1 << 14;
     /** Is this symbol a catch parameter binding? */
     public static final int IS_CATCH_PARAMETER = 1 << 15;
+    /** Is this symbol a block function declaration? */
+    public static final int IS_BLOCK_FUNCTION_DECLARATION = 1 << 16;
 
     /** Null or name identifying symbol. */
     private final String name;
@@ -345,5 +347,12 @@ public final class Symbol implements Comparable<Symbol> {
     public void setHoistedBlockFunctionDeclaration() {
         assert isBlockScoped();
         flags |= IS_HOISTED_BLOCK_FUNCTION;
+    }
+
+    /**
+     * Is this symbol a block function declaration.
+     */
+    public boolean isBlockFunctionDeclaration() {
+        return (flags & IS_BLOCK_FUNCTION_DECLARATION) != 0;
     }
 }

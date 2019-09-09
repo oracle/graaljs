@@ -2023,10 +2023,13 @@ public class Parser extends AbstractParser {
 
     private void declareVar(Scope scope, VarNode varNode) {
         String name = varNode.getName().getName();
-        detectVarNameConflict(scope, varNode);
+        if (detectVarNameConflict(scope, varNode)) {
+            throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", name), varNode.getToken());
+        }
         if (varNode.isBlockScoped()) {
             int symbolFlags = varNode.getSymbolFlags() |
-                            (scope.isSwitchBlockScope() ? Symbol.IS_DECLARED_IN_SWITCH_BLOCK : 0);
+                            (scope.isSwitchBlockScope() ? Symbol.IS_DECLARED_IN_SWITCH_BLOCK : 0) |
+                            (varNode.isFunctionDeclaration() ? Symbol.IS_BLOCK_FUNCTION_DECLARATION : 0);
             scope.putSymbol(new Symbol(name, symbolFlags));
 
             if (varNode.isFunctionDeclaration() && isAnnexB()) {
@@ -2074,26 +2077,30 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private void detectVarNameConflict(Scope scope, VarNode varNode) {
-        boolean alreadyDeclared = false;
+    private boolean detectVarNameConflict(Scope scope, VarNode varNode) {
         String varName = varNode.getName().getName();
         if (varNode.isBlockScoped()) {
             Scope currentScope = scope;
-            if (currentScope.getExistingSymbol(varName) != null) {
-                alreadyDeclared = true;
+            Symbol existingSymbol = currentScope.getExistingSymbol(varName);
+            if (existingSymbol != null) {
+                // B.3.3.4 Changes to Block Static Semantics: Early Errors
+                // In non-strict mode, allow duplicate function declarations in a block.
+                if (existingSymbol.isBlockFunctionDeclaration() && !isStrictMode && isAnnexB() && varNode.isFunctionDeclaration()) {
+                    return false;
+                } else {
+                    return true;
+                }
             } else {
-                Scope parentBlock = scope.getParent();
-                if (parentBlock != null && (parentBlock.isCatchParameterScope() || parentBlock.isFunctionParameterScope())) {
-                    if (parentBlock.getExistingSymbol(varName) != null) {
-                        alreadyDeclared = true;
+                Scope parentScope = scope.getParent();
+                if (parentScope != null && (parentScope.isCatchParameterScope() || parentScope.isFunctionParameterScope())) {
+                    if (parentScope.getExistingSymbol(varName) != null) {
+                        return true;
                     }
                 }
+                return false;
             }
         } else {
-            alreadyDeclared = scope.isLexicallyDeclaredName(varName, isAnnexB(), false);
-        }
-        if (alreadyDeclared) {
-            throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", varName), varNode.getToken());
+            return scope.isLexicallyDeclaredName(varName, isAnnexB(), false);
         }
     }
 
