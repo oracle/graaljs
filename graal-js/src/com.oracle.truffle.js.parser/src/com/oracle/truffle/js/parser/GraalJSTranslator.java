@@ -1100,7 +1100,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         final List<DeclareGlobalNode> declarations = new ArrayList<>(symbolCount);
         for (Symbol symbol : functionNode.getBody().getSymbols()) {
             if (symbol.isGlobal() && symbol.isVar()) {
-                if (symbol.isFunctionDeclaration()) {
+                if (symbol.isHoistableDeclaration()) {
                     declarations.add(factory.createDeclareGlobalFunction(symbol.getName(), configurable, null));
                 } else {
                     declarations.add(factory.createDeclareGlobalVariable(symbol.getName(), configurable));

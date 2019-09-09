@@ -75,8 +75,8 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_INTERNAL = 1 << 6;
     /** Is this a function self-reference symbol */
     public static final int IS_FUNCTION_SELF = 1 << 7;
-    /** Is this a function declaration? */
-    public static final int IS_FUNCTION_DECLARATION = 1 << 8;
+    /** Is this a hoistable var declaration? */
+    public static final int IS_HOISTABLE_DECLARATION = 1 << 8;
     /** Is this a program level symbol? */
     public static final int IS_PROGRAM_LEVEL = 1 << 9;
     /** Is this symbol seen a declaration? Used for block scoped LET and CONST symbols only. */
@@ -147,12 +147,13 @@ public final class Symbol implements Comparable<Symbol> {
     }
 
     /**
-     * Check if this symbol is a function declaration
+     * Check if this symbol is a hoistable var declaration.
      *
-     * @return true if a function declaration
+     * @return true if a hoistable var declaration
+     * @see VarNode#isHoistableDeclaration()
      */
-    public boolean isFunctionDeclaration() {
-        return (flags & IS_FUNCTION_DECLARATION) != 0;
+    public boolean isHoistableDeclaration() {
+        return (flags & IS_HOISTABLE_DECLARATION) != 0;
     }
 
     /**

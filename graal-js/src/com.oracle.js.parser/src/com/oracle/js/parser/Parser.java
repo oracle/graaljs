@@ -2049,7 +2049,7 @@ public class Parser extends AbstractParser {
             Scope varScope = function.getBodyBlock().getScope();
             assert varScope.isFunctionBodyScope();
             int symbolFlags = varNode.getSymbolFlags() |
-                            (varNode.isHoistableDeclaration() ? Symbol.IS_FUNCTION_DECLARATION : 0) |
+                            (varNode.isHoistableDeclaration() ? Symbol.IS_HOISTABLE_DECLARATION : 0) |
                             (varScope.isGlobalScope() ? Symbol.IS_GLOBAL : 0);
             // if the var name appears in a non-simple parameter list, we need to copy its value.
             if (function.getParameterBlock() != null && function.getParameterBlock().getScope().hasSymbol(name)) {

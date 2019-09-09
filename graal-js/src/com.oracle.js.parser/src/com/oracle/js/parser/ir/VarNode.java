@@ -293,7 +293,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Returns true if this is a HoistableDeclaration (i.e., FunctionDeclaration,
-     * GeneratorDeclaration, or AsyncFunctionDeclaration).
+     * GeneratorDeclaration, AsyncFunctionDeclaration, or AsyncGeneratorDeclaration).
      *
      * @return true if this is a HoistableDeclaration
      */
