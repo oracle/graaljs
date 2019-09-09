@@ -78,6 +78,7 @@ import static com.oracle.js.parser.TokenType.LBRACKET;
 import static com.oracle.js.parser.TokenType.LET;
 import static com.oracle.js.parser.TokenType.LPAREN;
 import static com.oracle.js.parser.TokenType.MUL;
+import static com.oracle.js.parser.TokenType.OF;
 import static com.oracle.js.parser.TokenType.PERIOD;
 import static com.oracle.js.parser.TokenType.RBRACE;
 import static com.oracle.js.parser.TokenType.RBRACKET;
@@ -2467,6 +2468,7 @@ public class Parser extends AbstractParser {
                     }
                 case IN:
                     if (isForAwaitOf) {
+                        expectDontAdvance(OF);
                         flags |= ForNode.IS_FOR_AWAIT_OF;
                     } else {
                         flags |= isForOf ? ForNode.IS_FOR_OF : ForNode.IS_FOR_IN;
