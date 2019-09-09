@@ -63,6 +63,7 @@ public final class Scope {
     private static final int GLOBAL_SCOPE = 1 << 4;
     private static final int MODULE_SCOPE = 1 << 5;
     private static final int FUNCTION_TOP_SCOPE = 1 << 6;
+    private static final int SWITCH_BLOCK_SCOPE = 1 << 7;
 
     /** Symbol table - keys must be returned in the order they were put in. */
     protected final EconomicMap<String, Symbol> symbols;
@@ -105,6 +106,10 @@ public final class Scope {
 
     public static Scope createParameter(Scope parent) {
         return new Scope(parent, FUNCTION_PARAMETER_SCOPE);
+    }
+
+    public static Scope createSwitchBlock(Scope parent) {
+        return new Scope(parent, BLOCK_SCOPE | SWITCH_BLOCK_SCOPE);
     }
 
     public Scope getParent() {
@@ -317,6 +322,10 @@ public final class Scope {
         return (type & FUNCTION_TOP_SCOPE) != 0;
     }
 
+    public boolean isSwitchBlockScope() {
+        return (type & SWITCH_BLOCK_SCOPE) != 0;
+    }
+
     /**
      * Closes the scope for symbol registration.
      */
@@ -350,6 +359,8 @@ public final class Scope {
             return "Param";
         } else if (isCatchParameterScope()) {
             return "Catch";
+        } else if (isSwitchBlockScope()) {
+            return "Switch";
         }
         return "";
     }

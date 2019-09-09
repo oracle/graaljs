@@ -258,13 +258,14 @@ public final class Symbol implements Comparable<Symbol> {
      * Mark this symbol as declared
      */
     public void setHasBeenDeclared() {
+        assert !isDeclaredInSwitchBlock();
         if (!hasBeenDeclared()) {
             flags |= HAS_BEEN_DECLARED;
         }
     }
 
     /**
-     * Mark this symbol as declared
+     * Mark this symbol as declared/undeclared
      */
     public void setHasBeenDeclared(boolean declared) {
         if (declared) {
@@ -308,15 +309,6 @@ public final class Symbol implements Comparable<Symbol> {
      */
     public boolean isDeclaredInSwitchBlock() {
         return (flags & IS_DECLARED_IN_SWITCH_BLOCK) != 0;
-    }
-
-    /**
-     * Mark this symbol as declared
-     */
-    public void setDeclaredInSwitchBlock() {
-        if (!isDeclaredInSwitchBlock()) {
-            flags |= IS_DECLARED_IN_SWITCH_BLOCK;
-        }
     }
 
     /**

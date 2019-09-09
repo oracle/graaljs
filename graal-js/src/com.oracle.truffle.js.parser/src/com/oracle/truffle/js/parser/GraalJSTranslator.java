@@ -1519,23 +1519,21 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assert symbol != null : varName;
         }
 
-        try {
-            if (varNode.isAssignment()) {
-                return createVarAssignNode(varNode, varName);
-            } else if (varNode.isBlockScoped() && (!varNode.isDestructuring() || lc.inUnprotectedSwitchContext()) && !symbol.hasBeenDeclared()) {
-                return findScopeVar(varName, false).createWriteNode(factory.createConstantUndefined());
-            }
-            return factory.createEmpty();
-        } finally {
-            if (varNode.isBlockScoped()) {
-                if (lc.inUnprotectedSwitchContext()) {
-                    // mark as declared in switch block; always needs dynamic TDZ check
-                    symbol.setDeclaredInSwitchBlock();
-                } else if (!varNode.isDestructuring()) {
-                    symbol.setHasBeenDeclared();
-                }
-            }
+        JavaScriptNode assignment;
+        if (varNode.isAssignment()) {
+            assignment = createVarAssignNode(varNode, varName);
+        } else if (varNode.isBlockScoped() && (!varNode.isDestructuring() || symbol.isDeclaredInSwitchBlock()) && !symbol.hasBeenDeclared()) {
+            assignment = findScopeVar(varName, false).createWriteNode(factory.createConstantUndefined());
+        } else {
+            assignment = factory.createEmpty();
         }
+        // mark block-scoped symbols as declared, except:
+        // (a) symbols declared in a switch case always need the dynamic TDZ check
+        // (b) destructuring: the symbol does not come alive until the destructuring assignment
+        if (varNode.isBlockScoped() && (!symbol.isDeclaredInSwitchBlock() && !varNode.isDestructuring())) {
+            symbol.setHasBeenDeclared();
+        }
+        return assignment;
     }
 
     private JavaScriptNode createVarAssignNode(VarNode varNode, String varName) {

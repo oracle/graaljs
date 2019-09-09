@@ -2025,7 +2025,9 @@ public class Parser extends AbstractParser {
         String name = varNode.getName().getName();
         detectVarNameConflict(scope, varNode);
         if (varNode.isBlockScoped()) {
-            scope.putSymbol(new Symbol(name, varNode.getSymbolFlags()));
+            int symbolFlags = varNode.getSymbolFlags() |
+                            (scope.isSwitchBlockScope() ? Symbol.IS_DECLARED_IN_SWITCH_BLOCK : 0);
+            scope.putSymbol(new Symbol(name, symbolFlags));
 
             if (varNode.isFunctionDeclaration() && isAnnexB()) {
                 // B.3.3 Block-Level Function Declaration hoisting
@@ -2913,7 +2915,7 @@ public class Parser extends AbstractParser {
         final ParserContextBlockNode outerBlock = useBlockScope() ? newBlock() : null;
 
         // Block to capture variables declared inside the switch statement.
-        final ParserContextBlockNode switchBlock = newBlock();
+        final ParserContextBlockNode switchBlock = newBlock(Scope.createSwitchBlock(lc.getCurrentScope()));
 
         // SWITCH tested in caller.
         next();
