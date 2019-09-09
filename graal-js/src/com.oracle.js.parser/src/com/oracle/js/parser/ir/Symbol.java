@@ -81,6 +81,8 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_PROGRAM_LEVEL = 1 << 9;
     /** Is this symbol seen a declaration? Used for block scoped LET and CONST symbols only. */
     public static final int HAS_BEEN_DECLARED = 1 << 10;
+    /** Is this symbol a block function declaration hoisted into the body scope. */
+    public static final int IS_HOISTED_BLOCK_FUNCTION = 1 << 11;
     /**
      * Is this symbol a var declaration binding that needs to be initialized with the value of the
      * parent's scope's binding with the same name? Used for parameter bindings that are replicated
@@ -335,5 +337,20 @@ public final class Symbol implements Comparable<Symbol> {
 
     public boolean isVarRedeclaredHere() {
         return (flags & IS_VAR_REDECLARED_HERE) != 0;
+    }
+
+    /**
+     * Is this symbol a hoisted block function declaration.
+     */
+    public boolean isHoistedBlockFunctionDeclaration() {
+        return (flags & IS_HOISTED_BLOCK_FUNCTION) != 0;
+    }
+
+    /**
+     * Mark this symbol as a hoisted block function declaration.
+     */
+    public void setHoistedBlockFunctionDeclaration() {
+        assert isBlockScoped();
+        flags |= IS_HOISTED_BLOCK_FUNCTION;
     }
 }

@@ -1547,12 +1547,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // B.3.3 Block-Level Function Declarations Web Legacy Compatibility Semantics
             FunctionNode fn = lc.getCurrentFunction();
             if (!fn.isStrict() && !varName.equals(Environment.ARGUMENTS_NAME)) {
-                Symbol symbol = fn.getVarDeclarationBlock().getScope().getExistingSymbol(varName);
-                if (symbol != null && (symbol.isVar() && !symbol.isParam())) {
-                    if (!lc.getCurrentScope().getParent().isLexicallyDeclaredName(varName, true, true)) {
-                        assignment = environment.findVar(varName, true, false, true, false).withRequired(false).createWriteNode(assignment);
-                        tagExpression(assignment, varNode);
-                    }
+                Symbol symbol = lc.getCurrentScope().getExistingSymbol(varName);
+                if (symbol.isHoistedBlockFunctionDeclaration()) {
+                    assert hasVarSymbol(fn.getVarDeclarationBlock().getScope(), varName) : varName;
+                    assignment = environment.findVar(varName, true, false, true, false).withRequired(false).createWriteNode(assignment);
+                    tagExpression(assignment, varNode);
                 }
             }
         }
@@ -1567,6 +1566,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         ensureHasSourceSection(assignment, varNode);
         return discardResult(assignment);
+    }
+
+    private static boolean hasVarSymbol(Scope scope, String varName) {
+        Symbol varSymbol = scope.getExistingSymbol(varName);
+        return varSymbol != null && (varSymbol.isVar() && !varSymbol.isParam());
     }
 
     /**

@@ -269,9 +269,9 @@ public final class Scope {
         }
         next: for (Map.Entry<VarNode, Scope> entry : hoistableBlockFunctionDeclarations) {
             VarNode functionDecl = entry.getKey();
-            Scope parentScope = entry.getValue().getParent();
+            Scope functionDeclScope = entry.getValue();
             String varName = functionDecl.getName().getName();
-            for (Scope current = parentScope; current != null; current = current.getParent()) {
+            for (Scope current = functionDeclScope.getParent(); current != null; current = current.getParent()) {
                 Symbol existing = current.getExistingSymbol(varName);
                 if (existing != null && ((existing.isBlockScoped() && !existing.isCatchParameter()) || existing.isParam())) {
                     // lexical declaration or parameter found, do not hoist
@@ -281,11 +281,11 @@ public final class Scope {
                     break;
                 }
             }
-            if (getExistingSymbol(varName) != null) {
-                // var already declared
-                continue;
+            // declare var (if not already declared) and hoist the function declaration
+            if (getExistingSymbol(varName) == null) {
+                putSymbol(new Symbol(varName, Symbol.IS_VAR | (isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
             }
-            putSymbol(new Symbol(varName, Symbol.IS_VAR | (isGlobalScope() ? Symbol.IS_GLOBAL : 0)));
+            functionDeclScope.getExistingSymbol(varName).setHoistedBlockFunctionDeclaration();
         }
     }
 
