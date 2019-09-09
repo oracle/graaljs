@@ -108,7 +108,7 @@ public final class GraalJSParserHelper {
         if (parseModule) {
             parsed = parser.parseModule(":module");
         } else if (eval) {
-            parsed = parser.parseEval(evalInGlobalScope);
+            parsed = parser.parseEval(!evalInGlobalScope);
         } else {
             parsed = parser.parse();
         }

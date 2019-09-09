@@ -42,7 +42,6 @@ package com.oracle.truffle.js.parser.env;
 
 import java.util.Arrays;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -177,7 +176,7 @@ public abstract class Environment {
             current = current.getParent();
         } while (current != null);
 
-        throw new NoSuchElementException(name);
+        return null;
     }
 
     enum WrapAccess {

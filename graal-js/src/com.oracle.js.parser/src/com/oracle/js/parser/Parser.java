@@ -229,8 +229,10 @@ public class Parser extends AbstractParser {
 
     private static final int REPARSE_IS_PROPERTY_ACCESSOR = 1 << 0;
     private static final int REPARSE_IS_METHOD = 1 << 1;
+    /** Parsing eval. */
     private static final int PARSE_EVAL = 1 << 2;
-    private static final int PARSE_NON_GLOBAL_EVAL = 1 << 3;
+    /** Parsing eval in a function (i.e. not script or module) context. */
+    private static final int PARSE_FUNCTION_CONTEXT_EVAL = 1 << 3;
 
     private static final String MESSAGE_INVALID_LVALUE = "invalid.lvalue";
     private static final String MESSAGE_EXPECTED_STMT = "expected.stmt";
@@ -458,8 +460,8 @@ public class Parser extends AbstractParser {
         return parseModule(moduleName, 0, source.getLength());
     }
 
-    public FunctionNode parseEval(boolean globalScope) {
-        return parse(PROGRAM_NAME, 0, source.getLength(), PARSE_EVAL | (globalScope ? 0 : PARSE_NON_GLOBAL_EVAL));
+    public FunctionNode parseEval(boolean functionContext) {
+        return parse(PROGRAM_NAME, 0, source.getLength(), PARSE_EVAL | (functionContext ? PARSE_FUNCTION_CONTEXT_EVAL : 0));
     }
 
     /**
@@ -1003,7 +1005,7 @@ public class Parser extends AbstractParser {
         // NOTE: In non-strict mode, the scope is preliminary: we may still encounter a "use strict"
         // directive and switch into strict mode (in which case we replace the scope).
         assert (parseFlags & PARSE_EVAL) != 0;
-        if ((isStrictMode || (parseFlags & PARSE_NON_GLOBAL_EVAL) != 0)) {
+        if ((isStrictMode || (parseFlags & PARSE_FUNCTION_CONTEXT_EVAL) != 0)) {
             return Scope.createFunctionBody(null);
         } else {
             return Scope.createGlobal();
@@ -3270,7 +3272,7 @@ public class Parser extends AbstractParser {
             case THIS:
                 final String name = type.getName();
                 next();
-                markThis(lc);
+                markThis();
                 return new IdentNode(primaryToken, finish, name).setIsThis();
             case IDENT:
                 final IdentNode ident = identifierReference(yield, await);
@@ -3969,7 +3971,7 @@ public class Parser extends AbstractParser {
                 final IdentNode ident = (IdentNode) lhs;
                 final String name = ident.getName();
                 if (EVAL_NAME.equals(name)) {
-                    markEval(lc);
+                    markEval();
                     eval = true;
                 } else if (SUPER.getName().equals(name)) {
                     assert ident.isDirectSuper();
@@ -4061,11 +4063,8 @@ public class Parser extends AbstractParser {
         if (ES6_NEW_TARGET && type == PERIOD && isES6()) {
             next();
             if (type == IDENT && "target".equals(getValueNoEscape())) {
-                if (lc.getCurrentFunction().isProgram()) {
-                    throw error(AbstractParser.message("new.target.in.function"), token);
-                }
                 next();
-                markNewTarget(lc);
+                markNewTarget();
                 return new IdentNode(newToken, finish, NEW_TARGET_NAME).setIsNewTarget();
             } else {
                 throw error(AbstractParser.message("expected.target"), token);
@@ -5559,15 +5558,16 @@ public class Parser extends AbstractParser {
         Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
         ParserContextFunctionNode current = iter.next();
         ParserContextFunctionNode parent = iter.next();
-        if (parent.getFlag(FunctionNode.HAS_EVAL) != 0) {
+        int flagsToPropagate = parent.getFlag(FunctionNode.HAS_EVAL | FunctionNode.HAS_ARROW_EVAL);
+        if (flagsToPropagate != 0) {
             // we might have flagged has-eval in the parent function during parsing the parameter
             // list; if the parameter list contains eval; must tag arrow function as has-eval.
             for (Statement st : parameterBlock.getStatements()) {
                 st.accept(new NodeVisitor<LexicalContext>(new LexicalContext()) {
                     @Override
                     public boolean enterCallNode(CallNode callNode) {
-                        if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).getName().equals(EVAL_NAME)) {
-                            current.setFlag(FunctionNode.HAS_EVAL);
+                        if (callNode.isEval()) {
+                            current.setFlag(flagsToPropagate);
                         }
                         return true;
                     }
@@ -6439,19 +6439,21 @@ public class Parser extends AbstractParser {
         return "'JavaScript Parsing'";
     }
 
-    private static void markEval(final ParserContext lc) {
+    private void markEval() {
         final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
         boolean flaggedCurrentFn = false;
         while (iter.hasNext()) {
             final ParserContextFunctionNode fn = iter.next();
             if (!flaggedCurrentFn) {
-                fn.setFlag(FunctionNode.HAS_EVAL);
                 flaggedCurrentFn = true;
+
+                fn.setFlag(FunctionNode.HAS_EVAL);
+
+                // possible use of this/new.target in the eval, e.g.:
+                // function fun(){ return (() => eval("this"))(); };
+                // function fun(){ return eval("() => this")(); };
                 if (fn.getKind() == FunctionNode.Kind.ARROW) {
-                    // possible use of this in an eval that's nested in an arrow function, e.g.:
-                    // function fun(){ return (() => eval("this"))(); };
-                    markThis(lc);
-                    markNewTarget(lc);
+                    lc.getCurrentNonArrowFunction().setFlag(FunctionNode.HAS_ARROW_EVAL);
                 }
             } else {
                 fn.setFlag(FunctionNode.HAS_NESTED_EVAL);
@@ -6489,7 +6491,7 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private static void markThis(final ParserContext lc) {
+    private void markThis() {
         final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
         while (iter.hasNext()) {
             final ParserContextFunctionNode fn = iter.next();
@@ -6500,12 +6502,17 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private static void markNewTarget(final ParserContext lc) {
+    private void markNewTarget() {
         final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
         while (iter.hasNext()) {
             final ParserContextFunctionNode fn = iter.next();
             if (fn.getKind() != FunctionNode.Kind.ARROW) {
-                if (!fn.isProgram()) {
+                if (fn.isProgram()) {
+                    // e.g.: `new.target` or `() => new.target` in script, module, or eval.
+                    if (fn.getBodyBlock().getScope().isGlobalScope() || fn.getBodyBlock().getScope().isModuleScope()) {
+                        throw error(AbstractParser.message("new.target.in.function"), token);
+                    }
+                } else {
                     fn.setFlag(FunctionNode.USES_NEW_TARGET);
                 }
                 break;

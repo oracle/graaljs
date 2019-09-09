@@ -308,7 +308,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         boolean isDerivedConstructor = functionNode.isSubclassConstructor();
 
         boolean isMethod = functionNode.isMethod();
-        boolean needsNewTarget = functionNode.usesNewTarget() || functionNode.hasDirectSuper();
+        boolean needsNewTarget = functionNode.needsNewTarget() || functionNode.hasDirectSuper();
         boolean isClassConstructor = functionNode.isClassConstructor();
         boolean isConstructor = !isArrowFunction && !isGeneratorFunction && !isAsyncFunction && ((!isMethod || context.getEcmaScriptVersion() == 5) || isClassConstructor);
         assert !isDerivedConstructor || isConstructor;
@@ -406,7 +406,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         JavaScriptNode functionExpression;
-        if (isArrowFunction && (functionNode.usesThis() || functionNode.hasEval())) {
+        if (isArrowFunction && functionNode.needsThis()) {
             JavaScriptNode thisNode = !currentFunction().isGlobal() ? environment.findThisVar().createReadNode() : factory.createAccessThis();
             functionExpression = factory.createFunctionExpressionLexicalThis(functionData, functionRoot, thisNode);
         } else {
@@ -894,7 +894,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         // reserve this slot if function uses this or has a direct eval that might use this
-        if ((functionNode.usesThis() || functionNode.hasEval()) &&
+        if (functionNode.needsThis() &&
                         !(functionNode.getKind() == FunctionNode.Kind.ARROW && currentFunction.getNonArrowParentFunction().isDerivedConstructor())) {
             currentFunction.reserveThisSlot();
         }
@@ -910,7 +910,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             currentFunction.reserveThisSlot();
             currentFunction.reserveSuperSlot();
         }
-        if (functionNode.usesNewTarget() || functionNode.hasDirectSuper()) {
+        if (functionNode.needsNewTarget() || functionNode.hasDirectSuper()) {
             currentFunction.reserveNewTargetSlot();
         }
 
@@ -1408,7 +1408,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (identNode.isSuper()) {
             result = enterIdentNodeSuper(identNode);
         } else if (identNode.isNewTarget()) {
-            result = environment.findNewTargetVar().createReadNode();
+            result = enterNewTarget(identNode);
         } else if (identNode.isImportMeta()) {
             result = factory.createImportMeta(getActiveScriptOrModule());
         } else {
@@ -1417,6 +1417,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             result = varRef.createReadNode();
         }
         return tagExpression(result, identNode);
+    }
+
+    private JavaScriptNode enterNewTarget(IdentNode identNode) {
+        VarRef newTargetVar = environment.findNewTargetVar();
+        if (newTargetVar == null) {
+            // While parsing eval code, we do not know if there is an outer non-arrow function.
+            throw Errors.createSyntaxError(error(com.oracle.js.parser.ECMAErrors.getMessage("parser.error.new.target.in.function"), identNode.getToken(), lc));
+        }
+        return newTargetVar.createReadNode();
     }
 
     private JavaScriptNode enterIdentNodeSuper(IdentNode identNode) {

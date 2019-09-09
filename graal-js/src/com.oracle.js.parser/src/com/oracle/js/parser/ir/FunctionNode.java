@@ -231,6 +231,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Flag indicating that this function has a non-simple parameter list. */
     public static final int HAS_NON_SIMPLE_PARAMETER_LIST = 1 << 26;
 
+    /** Flag indicating that this non-arrow function has an eval nested in an arrow function. */
+    public static final int HAS_ARROW_EVAL = 1 << 27;
+
     /**
      * Constructor
      *
@@ -676,6 +679,10 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         return getFlag(USES_NEW_TARGET);
     }
 
+    public boolean isArrow() {
+        return kind == Kind.ARROW;
+    }
+
     public boolean isModule() {
         return kind == Kind.MODULE;
     }
@@ -710,5 +717,17 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     public boolean hasApplyArgumentsCall() {
         return getFlag(HAS_APPLY_ARGUMENTS_CALL);
+    }
+
+    public boolean hasArrowEval() {
+        return getFlag(HAS_ARROW_EVAL);
+    }
+
+    public boolean needsThis() {
+        return usesThis() || (hasEval() || hasArrowEval());
+    }
+
+    public boolean needsNewTarget() {
+        return usesNewTarget() || (!isArrow() && !isProgram() && ((hasEval() || hasArrowEval())));
     }
 }

@@ -1921,9 +1921,6 @@
     },
     "comment" : "Segfaults on SVM, see GR-15064"
   }, {
-    "filePath" : "language/eval-code/direct/new.target-fn.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/eval-code/direct/super-prop-method.js",
     "status" : "FAIL"
   }, {
@@ -2109,9 +2106,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/function-code/eval-param-env-with-prop-initializer.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/global-code/new.target-arrow.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",

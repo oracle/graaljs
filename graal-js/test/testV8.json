@@ -585,9 +585,6 @@
     },
     "comment" : "fails due to byte order (LE required)\nfails atm on SPARC GR-1672"
   }, {
-    "filePath" : "mjsunit/es6/new-target.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/object-literals-super.js",
     "status" : "FAIL"
   }, {
