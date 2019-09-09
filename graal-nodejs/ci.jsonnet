@@ -87,6 +87,7 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8  + gateGraalImport                                                                          + common.gate + common.linux  + {name: 'nodejs-gate-graal-import-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + gateGraalTip                                                                             + common.gate + common.linux  + {name: 'nodejs-gate-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk11 + gateGraalTip                                                                             + common.gate + common.linux  + {name: 'nodejs-gate-graal-tip-jdk11-linux-amd64'},
+    graalNodeJs + common.jdk11 + gateGraalTip                                                                     + common.gate + common.linux_aarch64  + {name: 'nodejs-gate-graal-tip-jdk11-linux-aarch64'},
     graalNodeJs + common.jdk8  + gateGraalTip                                                                             + common.gate + common.darwin + {name: 'nodejs-gate-graal-tip-jdk8-darwin-amd64'},
     graalNodeJs + common.jdk11 + gateGraalTip                                                                             + common.gate + common.darwin + {name: 'nodejs-gate-graal-tip-jdk11-darwin-amd64'},
     graalNodeJs + common.jdk8  + gateSubstrateVmTip                                                                       + common.gate + common.linux  + {name: 'nodejs-gate-substratevm-tip-jdk8-linux-amd64'},

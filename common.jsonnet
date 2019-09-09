@@ -71,6 +71,9 @@
 
   linux_aarch64: common + {
     capabilities+: ['linux', 'aarch64'],
+    packages+: {
+      gcc: '==8.3.0',
+    }
   },
 
   darwin: common + {
