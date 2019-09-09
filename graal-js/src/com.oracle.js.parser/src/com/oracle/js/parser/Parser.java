@@ -116,7 +116,6 @@ import com.oracle.js.parser.ir.AccessNode;
 import com.oracle.js.parser.ir.BaseNode;
 import com.oracle.js.parser.ir.BinaryNode;
 import com.oracle.js.parser.ir.Block;
-import com.oracle.js.parser.ir.BlockExpression;
 import com.oracle.js.parser.ir.BlockStatement;
 import com.oracle.js.parser.ir.BreakNode;
 import com.oracle.js.parser.ir.CallNode;
@@ -1386,7 +1385,7 @@ public class Parser extends AbstractParser {
      *
      * @return Class expression node.
      */
-    private Expression classDeclaration(boolean yield, boolean await, boolean defaultExport) {
+    private ClassNode classDeclaration(boolean yield, boolean await, boolean defaultExport) {
         assert type == CLASS;
         int classLineNumber = line;
         long classToken = token;
@@ -1400,7 +1399,7 @@ public class Parser extends AbstractParser {
                 className = bindingIdentifier(yield, await, CLASS_NAME_CONTEXT);
             }
 
-            Expression classExpression = classTail(classLineNumber, classToken, className, yield, await);
+            ClassNode classExpression = classTail(classLineNumber, classToken, className, yield, await);
 
             if (!defaultExport) {
                 VarNode classVar = new VarNode(classLineNumber, Token.recast(classExpression.getToken(), LET), classExpression.getFinish(), className, classExpression, VarNode.IS_LET);
@@ -1489,7 +1488,7 @@ public class Parser extends AbstractParser {
      *      ;
      * </pre>
      */
-    private Expression classTail(int classLineNumber, long classToken, IdentNode className, boolean yield, boolean await) {
+    private ClassNode classTail(int classLineNumber, long classToken, IdentNode className, boolean yield, boolean await) {
         boolean oldStrictMode = isStrictMode;
         isStrictMode = true;
         try {
@@ -6290,7 +6289,7 @@ public class Parser extends AbstractParser {
                         break;
                     case CLASS:
                         assignmentExpression = classDeclaration(false, false, true);
-                        ident = getClassDeclarationName(assignmentExpression);
+                        ident = ((ClassNode) assignmentExpression).getIdent();
                         break;
                     default:
                         if (isAsync() && lookaheadIsAsyncFunction()) {
@@ -6337,9 +6336,9 @@ public class Parser extends AbstractParser {
                 }
                 break;
             case CLASS: {
-                Expression classDeclaration = classDeclaration(false, false, false);
+                ClassNode classDeclaration = classDeclaration(false, false, false);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration, false));
-                IdentNode classIdent = getClassDeclarationName(classDeclaration);
+                IdentNode classIdent = classDeclaration.getIdent();
                 module.addLocalExportEntry(ExportEntry.exportSpecifier(classIdent != null ? classIdent.getName() : ""));
                 break;
             }
@@ -6357,16 +6356,6 @@ public class Parser extends AbstractParser {
                     break;
                 }
                 throw error(AbstractParser.message("invalid.export"), token);
-        }
-    }
-
-    private static IdentNode getClassDeclarationName(Expression classDeclaration) {
-        if (classDeclaration instanceof ClassNode) {
-            return ((ClassNode) classDeclaration).getIdent();
-        } else {
-            Expression expression = ((ExpressionStatement) ((BlockExpression) classDeclaration).getBlock().getLastStatement()).getExpression();
-            assert expression instanceof IdentNode || (expression instanceof ClassNode && ((ClassNode) expression).getIdent() == null);
-            return expression instanceof IdentNode ? (IdentNode) expression : null;
         }
     }
 
