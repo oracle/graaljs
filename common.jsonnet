@@ -83,4 +83,18 @@
     },
     capabilities: ['darwin', 'amd64'],
   },
+
+  windows: common + {
+    packages+: {
+      "msvc": "==10.0",
+      "pip:ninja_syntax": "==1.7.2",
+    },
+    downloads+: {
+      NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
+    },
+    environment+: {
+      PATH: '$PATH;$NASM',
+    },
+    capabilities: ['windows', 'amd64'],
+  },
 }
