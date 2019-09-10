@@ -2,6 +2,14 @@
 
 setlocal enabledelayedexpansion
 
+echo %* | findstr = >nul && (
+  echo Warning: the '=' character in program arguments is not fully supported.
+  echo Make sure that command line arguments using it are wrapped in double quotes.
+  echo Example:
+  echo "--vm.Dfoo=bar"
+  echo.
+)
+
 set "node_exe=%~dp0node.exe"
 if not exist "%node_exe%" (
   echo Error: Cannot find '%NODE_EXE%'
@@ -11,41 +19,34 @@ if not exist "%node_exe%" (
 call :dirname "%node_exe%" bin_dir
 call :dirname "%bin_dir%" parent_bin_dir
 
-echo %* | findstr \"" >nul && echo Warning: the " character in program arguments is not fully supported.
+set "PATH=%PATH%;%bin_dir%"
 
-set "vm_args=--experimental-options --engine.Mode=latency"
-set "node_dir=--nodedir="%parent_bin_dir%""
+set "vm_args=--experimental-options "--engine.Mode=latency""
+set "node_dir="--nodedir=%parent_bin_dir%""
 
-rem This is the best I could come up with to parse command line arguments.
-rem Other, simpler approaches consider '=' a delimiter for splitting arguments.
-rem Know issues:
-rem 1. --vm.foo=bar works, but "--vm.foo=bar" does not
-rem    It considers '=' a delimiter, therefore --vm.foo and bar are considered 2 distinct arguments.
-rem    This does not throw an error but arguments are not properly parsed.
-rem 2. --vm.foo="bar" works, but --vm.foo="b a r" does not (spaces are delimiters)
-rem    This throws a syntax error.
-
-set "next_arg=%*"
-:loop
-for /f "tokens=1*" %%a in ("%next_arg%") do (
+for %%a in (%*) do (
+  rem Unquote the argument (`u_arg=%%~a`) before checking its prefix.
+  rem Pass the argument to the node executable as it was quoted by the user (`arg=%%a`)
   set "arg=%%a"
+  set "u_arg=%%~a"
+
   set "vm_arg=false"
 
   rem Unfortunately, parsing of `--vm`, `--jvm`, and `--native` arguments has to be done blind:
   rem Maybe some of those arguments where not really intended for the launcher but were application arguments
-  if "!arg:~0,4!"=="--vm" (
+  if "!u_arg:~0,4!"=="--vm" (
     set "vm_arg=true"
-  ) else if "!arg:~0,5!"=="--jvm" (
+  ) else  if "!u_arg:~0,5!"=="--jvm" (
     set "vm_arg=true"
-  ) else if "!arg:~0,8!"=="--native" (
+  ) else if "!u_arg:~0,8!"=="--native" (
     set "vm_arg=true"
   )
 
   if "!vm_arg!"=="true" (
     set "vm_args=!vm_args! !arg!"
-  ) else if "!arg:~0,10!"=="--nodedir=" (
-    set "node_dir="!arg!""
-  ) else if "!arg!"=="--nodedir" (
+  ) else if "!u_arg:~0,10!"=="--nodedir=" (
+    set "node_dir=!arg!"
+  ) else if "!u_arg!"=="--nodedir" (
     echo Error: "--nodedir PATH" is not supported. Please use "--nodedir=PATH".
     exit /b 2
   ) else (
@@ -55,15 +56,13 @@ for /f "tokens=1*" %%a in ("%next_arg%") do (
       set "prog_args=!arg!"
     )
   )
-
-  set "next_arg=%%~b"
 )
-if defined next_arg goto :loop
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
 "%node_exe%" %vm_args% "%parent_bin_dir%/npm/bin/npm-cli.js" %node_dir% %prog_args%
-goto :eof
+
+@goto :eof
 
 :dirname file output
   setlocal
