@@ -53,7 +53,10 @@ def _graal_nodejs_post_gate_runner(args, tasks):
             _setEnvVar('NODE_JVM_CLASSPATH', mx.distribution('graal-js:TRUFFLE_JS_TESTS').path)
             commonArgs = ['-ea', '-esa']
             unitTestDir = join('test', 'graal')
-            mx.run(['rm', '-rf', 'node_modules', 'build'], cwd=unitTestDir)
+            for dir_name in 'node_modules', 'build':
+                p = join(unitTestDir, dir_name)
+                if exists(p):
+                    mx.rmtree(p)
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs, cwd=unitTestDir)
 
@@ -65,13 +68,16 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                 npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir, '--build-from-source', 'microtime'], cwd=tmpdir)
                 node(['-e', 'console.log(require("microtime").now());'], cwd=tmpdir)
             finally:
-                mx.rmtree(tmpdir)
+                mx.rmtree(tmpdir, ignore_errors=True)
 
     with Task('JniProfilerTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.jniProfilerTests]) as t:
         if t:
             commonArgs = ['-ea', '-esa']
             unitTestDir = join(mx.project('com.oracle.truffle.trufflenode.jniboundaryprofiler').dir, 'tests')
-            mx.run(['rm', '-rf', 'node_modules', 'build'], cwd=unitTestDir)
+            for dir_name in 'node_modules', 'build':
+                p = join(unitTestDir, dir_name)
+                if exists(p):
+                    mx.rmtree(p)
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             node(['-profile-native-boundary', 'test.js'] + commonArgs, cwd=unitTestDir)
 
