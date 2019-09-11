@@ -56,10 +56,12 @@ abstract class ParserContextBaseNode implements ParserContextNode {
 
     private List<Statement> statements;
 
-    /**
-     * Constructor
-     */
     ParserContextBaseNode() {
+        this(0);
+    }
+
+    ParserContextBaseNode(int flags) {
+        this.flags = flags;
         this.statements = new ArrayList<>();
     }
 

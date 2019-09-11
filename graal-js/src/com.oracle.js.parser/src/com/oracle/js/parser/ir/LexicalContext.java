@@ -199,7 +199,7 @@ public class LexicalContext {
         final Iterator<FunctionNode> iter = getFunctions();
         while (iter.hasNext()) {
             final FunctionNode fn = iter.next();
-            if (fn.getKind() != FunctionNode.Kind.ARROW) {
+            if (!fn.isArrow()) {
                 return fn;
             }
         }

@@ -432,8 +432,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         comma();
 
         property("id");
-        final FunctionNode.Kind kind = functionNode.getKind();
-        if (functionNode.isAnonymous() || kind == FunctionNode.Kind.GETTER || kind == FunctionNode.Kind.SETTER) {
+        if (functionNode.isAnonymous() || functionNode.isGetter() || functionNode.isSetter()) {
             nullValue();
         } else {
             functionNode.getIdent().accept(this);

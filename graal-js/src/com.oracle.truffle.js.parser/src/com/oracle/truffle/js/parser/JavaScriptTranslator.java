@@ -120,7 +120,7 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     private JSModuleRecord translateModule(com.oracle.js.parser.ir.FunctionNode functionNode) {
-        if (functionNode.getKind() != com.oracle.js.parser.ir.FunctionNode.Kind.MODULE) {
+        if (!functionNode.isModule()) {
             throw new IllegalArgumentException("root function node is not a module");
         }
         JSFunctionExpressionNode functionExpression = (JSFunctionExpressionNode) transformFunction(functionNode);

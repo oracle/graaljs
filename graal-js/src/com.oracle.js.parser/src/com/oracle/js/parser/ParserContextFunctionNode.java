@@ -73,9 +73,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /** Line number for function declaration */
     private final int line;
 
-    /** Function node kind, see FunctionNode.Kind */
-    private final FunctionNode.Kind kind;
-
     private final Scope parentScope;
 
     /** List of parameter identifiers (for simple and rest parameters). */
@@ -109,16 +106,15 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param name Internal name of the function
      * @param namespace Function's namespace
      * @param line The source line of the function
-     * @param kind Function kind
      * @param parameters The parameters of the function
      * @param parentScope The parent scope
      */
-    ParserContextFunctionNode(final long token, final IdentNode ident, final String name, final Namespace namespace, final int line, final FunctionNode.Kind kind,
+    ParserContextFunctionNode(final long token, final IdentNode ident, final String name, final Namespace namespace, final int line, final int flags,
                     final List<IdentNode> parameters, final int length, Scope parentScope) {
+        super(flags);
         this.ident = ident;
         this.namespace = namespace;
         this.line = line;
-        this.kind = kind;
         this.name = name;
         this.parameters = parameters;
         this.token = token;
@@ -188,13 +184,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      */
     public int getLineNumber() {
         return line;
-    }
-
-    /**
-     * @return The kind if function
-     */
-    public FunctionNode.Kind getKind() {
-        return kind;
     }
 
     /**
@@ -350,6 +339,18 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public boolean isAsync() {
         return getFlag(FunctionNode.IS_ASYNC) != 0;
+    }
+
+    public boolean isArrow() {
+        return getFlag(FunctionNode.IS_ARROW) != 0;
+    }
+
+    public boolean isGenerator() {
+        return getFlag(FunctionNode.IS_GENERATOR) != 0;
+    }
+
+    public boolean isScriptOrModule() {
+        return getFlag(FunctionNode.IS_SCRIPT | FunctionNode.IS_MODULE) != 0;
     }
 
     public ParserContextBlockNode getParameterBlock() {

@@ -272,7 +272,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     protected final ScriptNode translateScript(FunctionNode functionNode) {
-        if (functionNode.getKind() != com.oracle.js.parser.ir.FunctionNode.Kind.SCRIPT) {
+        if (!functionNode.isScript()) {
             throw new IllegalArgumentException("root function node is not a script");
         }
         JSFunctionExpressionNode functionExpression = (JSFunctionExpressionNode) transformFunction(functionNode);
@@ -302,8 +302,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         boolean isStrict = functionNode.isStrict() || isParentStrict || (environment != null && environment.function() != null && environment.isStrictMode());
-        boolean isArrowFunction = functionNode.getKind() == FunctionNode.Kind.ARROW;
-        boolean isGeneratorFunction = functionNode.getKind() == FunctionNode.Kind.GENERATOR;
+        boolean isArrowFunction = functionNode.isArrow();
+        boolean isGeneratorFunction = functionNode.isGenerator();
         boolean isAsyncFunction = functionNode.isAsync();
         boolean isDerivedConstructor = functionNode.isSubclassConstructor();
 
@@ -755,7 +755,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode handleFunctionReturn(FunctionNode functionNode, JavaScriptNode body) {
-        assert (currentFunction().isGlobal() || currentFunction().isEval()) == (functionNode.getKind() == FunctionNode.Kind.SCRIPT || functionNode.getKind() == FunctionNode.Kind.MODULE);
+        assert (currentFunction().isGlobal() || currentFunction().isEval()) == (functionNode.isScript() || functionNode.isModule());
         if (currentFunction().returnsLastStatementResult()) {
             assert !currentFunction().hasReturn();
             return wrapGetCompletionValue(body);
@@ -811,22 +811,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private String getFunctionName(FunctionNode functionNode) {
-        if (context.getEcmaScriptVersion() < 6 && isGetterOrSetter(functionNode)) {
+        if (context.getEcmaScriptVersion() < 6 && (functionNode.isGetter() || functionNode.isSetter())) {
             // strip getter/setter name prefix in ES5 mode
             assert !functionNode.isAnonymous();
             String name = functionNode.getIdent().getName();
-            if ((functionNode.getKind() == com.oracle.js.parser.ir.FunctionNode.Kind.GETTER && name.startsWith("get ")) ||
-                            (functionNode.getKind() == com.oracle.js.parser.ir.FunctionNode.Kind.SETTER && name.startsWith("set "))) {
+            if ((functionNode.isGetter() && name.startsWith("get ")) || (functionNode.isSetter() && name.startsWith("set "))) {
                 name = name.substring(4);
             }
             return name;
         }
         return !functionNode.isAnonymous() ? functionNode.getIdent().getName() : "";
-    }
-
-    private static boolean isGetterOrSetter(FunctionNode functionNode) {
-        return functionNode.getKind() == com.oracle.js.parser.ir.FunctionNode.Kind.GETTER ||
-                        functionNode.getKind() == com.oracle.js.parser.ir.FunctionNode.Kind.SETTER;
     }
 
     private JavaScriptNode prepareParameters(JavaScriptNode body) {
@@ -882,7 +876,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             markTerminalReturnNodes(functionNode.getBody());
         }
 
-        if (functionNode.getKind() != FunctionNode.Kind.ARROW && functionNode.needsArguments()) {
+        if (!functionNode.isArrow() && functionNode.needsArguments()) {
             currentFunction.reserveArgumentsSlot();
 
             if (JSTruffleOptions.OptimizeApplyArguments && functionNode.getNumOfParams() == 0 && !functionNode.hasEval() && functionNode.hasApplyArgumentsCall() &&
@@ -894,18 +888,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         // reserve this slot if function uses this or has a direct eval that might use this
-        if (functionNode.needsThis() &&
-                        !(functionNode.getKind() == FunctionNode.Kind.ARROW && currentFunction.getNonArrowParentFunction().isDerivedConstructor())) {
+        if (functionNode.needsThis() && !(functionNode.isArrow() && currentFunction.getNonArrowParentFunction().isDerivedConstructor())) {
             currentFunction.reserveThisSlot();
         }
         if (functionNode.hasDirectSuper()) {
-            assert functionNode.getKind() != FunctionNode.Kind.ARROW;
+            assert !functionNode.isArrow();
             currentFunction.reserveThisSlot();
         }
         if (functionNode.usesSuper()) {
             // arrow functions need to access [[HomeObject]] from outer non-arrow scope
             // note: an arrow function using <super> also needs <this> access
-            assert functionNode.getKind() != FunctionNode.Kind.ARROW;
+            assert !functionNode.isArrow();
 
             currentFunction.reserveThisSlot();
             currentFunction.reserveSuperSlot();
@@ -957,7 +950,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
                             break;
-                        } else if (function.getKind() == FunctionNode.Kind.ARROW && isVarLexicallyScopedInArrowFunction(varName)) {
+                        } else if (function.isArrow() && isVarLexicallyScopedInArrowFunction(varName)) {
                             FunctionNode nonArrowFunction = lc.getCurrentNonArrowFunction();
                             // `this` is read from the arrow function object,
                             // unless `this` is supplied by a subclass constructor
@@ -968,7 +961,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             }
                             break;
                         } else if (!function.isProgram() && varName.equals(Environment.ARGUMENTS_NAME)) {
-                            assert function.getKind() != FunctionNode.Kind.ARROW;
+                            assert !function.isArrow();
                             assert local;
                             break;
                         } else if (function.hasEval() && !function.isProgram()) {
@@ -1056,7 +1049,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (nestedFunctionNode == functionNode) {
                     return true;
                 }
-                if (JSTruffleOptions.OptimizeApplyArguments && (nestedFunctionNode.getKind() == FunctionNode.Kind.ARROW || !currentFunction.isStrictMode())) {
+                if (JSTruffleOptions.OptimizeApplyArguments && (nestedFunctionNode.isArrow() || !currentFunction.isStrictMode())) {
                     // 1. arrow functions have lexical `arguments` binding;
                     // direct arguments access to outer frames currently not supported
                     // 2. if not in strict mode, nested functions might access mapped parameters;
@@ -1308,7 +1301,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private EnvironmentCloseable enterBlockEnvironment(Block block) {
         // Global lexical environment is shared by scripts (but not eval).
-        if (block.isFunctionBody() && lc.getCurrentFunction().getKind() == FunctionNode.Kind.SCRIPT && !currentFunction().isEval()) {
+        if (block.isFunctionBody() && lc.getCurrentFunction().isScript() && !currentFunction().isEval()) {
             GlobalEnvironment globalEnv = new GlobalEnvironment(environment, factory, context);
             setupGlobalEnvironment(globalEnv, block);
             return new EnvironmentCloseable(globalEnv);

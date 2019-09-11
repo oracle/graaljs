@@ -43,7 +43,6 @@ package com.oracle.js.parser;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Statement;
 
@@ -303,7 +302,7 @@ class ParserContext {
         final Iterator<ParserContextFunctionNode> iter = getFunctions();
         while (iter.hasNext()) {
             final ParserContextFunctionNode fn = iter.next();
-            if (fn.getKind() != FunctionNode.Kind.ARROW) {
+            if (!fn.isArrow()) {
                 return fn;
             }
         }
