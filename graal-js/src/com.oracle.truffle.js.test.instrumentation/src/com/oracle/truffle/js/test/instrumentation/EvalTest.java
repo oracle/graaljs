@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
@@ -147,7 +148,11 @@ public class EvalTest extends FineGrainedAccessTest {
                 }).exit();
 
                 // return bar
-                enter(ReadVariableTag.class).exit();
+                enter(ControlFlowBranchTag.class, (e4, v) -> {
+                    assertAttribute(e4, TYPE, ControlFlowBranchTag.Type.Return.name());
+                    enter(ReadVariableTag.class).exit();
+                    v.input(assertJSFunctionInput);
+                }).exitMaybeControlFlowException();
             }).exit();
 
             // foo(42) returns the function (bar)
@@ -168,7 +173,11 @@ public class EvalTest extends FineGrainedAccessTest {
             }).exit();
 
             // return a;
-            enter(ReadVariableTag.class).exit();
+            enter(ControlFlowBranchTag.class, (e4, v) -> {
+                assertAttribute(e4, TYPE, ControlFlowBranchTag.Type.Return.name());
+                enter(ReadVariableTag.class).exit();
+                v.input(31);
+            }).exitMaybeControlFlowException();
         }).exit();
     }
 

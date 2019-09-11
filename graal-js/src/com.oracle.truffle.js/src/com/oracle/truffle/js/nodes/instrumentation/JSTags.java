@@ -415,6 +415,7 @@ public final class JSTags {
      * <li><b>Continue</b> The <code>continue</code> statement.</li>
      * <li><b>Break</b> The <code>break</code> statement.</li>
      * <li><b>Throw</b> The <code>throw</code> statement.</li>
+     * <li><b>Return</b> The <code>return</code> statement.</li>
      * </ul>
      * </p>
      *
@@ -427,6 +428,7 @@ public final class JSTags {
             Continue,
             Break,
             Throw,
+            Return,
         }
 
         private ControlFlowBranchTag() {

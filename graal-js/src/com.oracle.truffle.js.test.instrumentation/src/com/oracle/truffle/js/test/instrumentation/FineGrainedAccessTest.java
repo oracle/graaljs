@@ -53,6 +53,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import com.oracle.truffle.js.nodes.control.ReturnException;
+import com.oracle.truffle.js.nodes.control.YieldException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.After;
@@ -210,6 +212,18 @@ public abstract class FineGrainedAccessTest {
             Event event = test.getNextEvent();
             assertTag(tag, event);
             assertEquals(Event.Kind.RETURN_EXCEPTIONAL, event.kind);
+        }
+
+        void exitMaybeControlFlowException() {
+            Event event = test.getNextEvent();
+            assertTag(tag, event);
+            if (event.kind == Event.Kind.RETURN) {
+                // OK
+            } else if (event.kind == Event.Kind.RETURN_EXCEPTIONAL) {
+                assert event.val instanceof YieldException || event.val instanceof ReturnException : event.val;
+            } else {
+                assert false;
+            }
         }
 
         void exit(Consumer<Event> verify) {
