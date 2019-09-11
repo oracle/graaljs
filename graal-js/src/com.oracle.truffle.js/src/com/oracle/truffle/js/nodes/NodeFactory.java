@@ -196,6 +196,7 @@ import com.oracle.truffle.js.nodes.unary.JSComplementNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryMinusNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryPlusNode;
+import com.oracle.truffle.js.nodes.unary.RequireConstructorNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -940,6 +941,10 @@ public class NodeFactory {
 
     public JSTargetableNode createSuperPropertyReference(JavaScriptNode delegate, JavaScriptNode target) {
         return SuperPropertyReferenceNode.create(delegate, target);
+    }
+
+    public JavaScriptNode createRequireConstructor(JavaScriptNode constructor) {
+        return RequireConstructorNode.create(constructor);
     }
 
     public JSTargetableNode createTargetableWrapper(JavaScriptNode delegate, JavaScriptNode target) {
