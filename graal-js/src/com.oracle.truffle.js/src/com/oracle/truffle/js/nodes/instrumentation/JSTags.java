@@ -380,6 +380,7 @@ public final class JSTags {
             ForIteration,
             DoWhileIteration,
             WhileIteration,
+            AsyncFunction,
         }
 
         private ControlFlowRootTag() {
