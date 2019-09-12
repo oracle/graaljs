@@ -178,7 +178,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final Object execute(VirtualFrame frame) {
         Object target = evaluateTarget(frame);
-        Object receiver = evaluateReceiver(frame, target);
+        Object receiver = evaluateReceiver(targetNode, frame, target);
         Object value = rhsNode.execute(frame);
         return executeEvaluated(target, value, receiver);
     }
@@ -186,7 +186,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final int executeInt(VirtualFrame frame) throws UnexpectedResultException {
         Object target = evaluateTarget(frame);
-        Object receiver = evaluateReceiver(frame, target);
+        Object receiver = evaluateReceiver(targetNode, frame, target);
         try {
             int value = rhsNode.executeInt(frame);
             return executeIntEvaluated(target, value, receiver);
@@ -199,7 +199,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
         Object target = evaluateTarget(frame);
-        Object receiver = evaluateReceiver(frame, target);
+        Object receiver = evaluateReceiver(targetNode, frame, target);
         try {
             double value = rhsNode.executeDouble(frame);
             return executeDoubleEvaluated(target, value, receiver);
@@ -212,7 +212,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final void executeVoid(VirtualFrame frame) {
         Object target = evaluateTarget(frame);
-        Object receiver = evaluateReceiver(frame, target);
+        Object receiver = evaluateReceiver(targetNode, frame, target);
         byte vs = valueState;
         if (vs == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -264,7 +264,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final Object executeWrite(VirtualFrame frame, Object value) {
         Object target = evaluateTarget(frame);
-        Object receiver = evaluateReceiver(frame, target);
+        Object receiver = evaluateReceiver(targetNode, frame, target);
         return executeEvaluated(target, value, receiver);
     }
 
@@ -277,14 +277,6 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final Object evaluateTarget(VirtualFrame frame) {
         return targetNode.execute(frame);
-    }
-
-    public final Object evaluateReceiver(VirtualFrame frame, Object target) {
-        if (!(targetNode instanceof SuperPropertyReferenceNode)) {
-            return target;
-        } else {
-            return ((SuperPropertyReferenceNode) targetNode).getThisValue().execute(frame);
-        }
     }
 
     @Override

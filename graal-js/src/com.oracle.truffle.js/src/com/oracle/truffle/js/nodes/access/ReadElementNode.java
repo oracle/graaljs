@@ -170,31 +170,38 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return executeWithTarget(frame, evaluateTarget(frame));
+        Object target = evaluateTarget(frame);
+        return executeWithTarget(frame, target, evaluateReceiver(targetNode, frame, target));
     }
 
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        return executeWithTargetInt(frame, evaluateTarget(frame));
+        Object target = evaluateTarget(frame);
+        return executeWithTargetInt(frame, target, evaluateReceiver(targetNode, frame, target));
     }
 
     @Override
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        return executeWithTargetDouble(frame, evaluateTarget(frame));
+        Object target = evaluateTarget(frame);
+        return executeWithTargetDouble(frame, target, evaluateReceiver(targetNode, frame, target));
     }
 
     @Override
     public Object executeWithTarget(VirtualFrame frame, Object target) {
+        return executeWithTarget(frame, target, target);
+    }
+
+    public Object executeWithTarget(VirtualFrame frame, Object target, Object receiver) {
         byte is = indexState;
         if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
-                return executeWithTargetAndIndex(target, (int) index);
+                return executeWithTargetAndIndex(target, (int) index, receiver);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndex(target, index);
+                return executeWithTargetAndIndex(target, index, receiver);
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -202,27 +209,27 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 index = getIndexNode().executeInt(frame);
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndex(target, e.getResult());
+                return executeWithTargetAndIndex(target, e.getResult(), receiver);
             }
             return executeWithTargetAndIndex(target, index);
         } else {
             assert is == INDEX_OBJECT;
             Object index = getIndexNode().execute(frame);
-            return executeWithTargetAndIndex(target, index);
+            return executeWithTargetAndIndex(target, index, receiver);
         }
     }
 
-    public int executeWithTargetInt(VirtualFrame frame, Object target) throws UnexpectedResultException {
+    public int executeWithTargetInt(VirtualFrame frame, Object target, Object receiver) throws UnexpectedResultException {
         byte is = indexState;
         if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
-                return executeWithTargetAndIndexInt(target, (int) index);
+                return executeWithTargetAndIndexInt(target, (int) index, receiver);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexInt(target, index);
+                return executeWithTargetAndIndexInt(target, index, receiver);
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -230,27 +237,27 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 index = getIndexNode().executeInt(frame);
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexInt(target, e.getResult());
+                return executeWithTargetAndIndexInt(target, e.getResult(), receiver);
             }
-            return executeWithTargetAndIndexInt(target, index);
+            return executeWithTargetAndIndexInt(target, index, receiver);
         } else {
             assert is == INDEX_OBJECT;
             Object index = getIndexNode().execute(frame);
-            return executeWithTargetAndIndexInt(target, index);
+            return executeWithTargetAndIndexInt(target, index, receiver);
         }
     }
 
-    public double executeWithTargetDouble(VirtualFrame frame, Object target) throws UnexpectedResultException {
+    public double executeWithTargetDouble(VirtualFrame frame, Object target, Object receiver) throws UnexpectedResultException {
         byte is = indexState;
         if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Object index = getIndexNode().execute(frame);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
-                return executeWithTargetAndIndexDouble(target, (int) index);
+                return executeWithTargetAndIndexDouble(target, (int) index, receiver);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexDouble(target, index);
+                return executeWithTargetAndIndexDouble(target, index, receiver);
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -258,42 +265,50 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 index = getIndexNode().executeInt(frame);
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexDouble(target, e.getResult());
+                return executeWithTargetAndIndexDouble(target, e.getResult(), receiver);
             }
-            return executeWithTargetAndIndexDouble(target, index);
+            return executeWithTargetAndIndexDouble(target, index, receiver);
         } else {
             assert is == INDEX_OBJECT;
             Object index = getIndexNode().execute(frame);
-            return executeWithTargetAndIndexDouble(target, index);
+            return executeWithTargetAndIndexDouble(target, index, receiver);
         }
     }
 
     public final Object executeWithTargetAndIndex(Object target, Object index) {
-        return getTypeCacheNode().executeWithTargetAndIndex(target, index, Undefined.instance);
+        return getTypeCacheNode().executeWithTargetAndIndex(target, index, target, Undefined.instance);
     }
 
     public final Object executeWithTargetAndIndex(Object target, int index) {
-        return getTypeCacheNode().executeWithTargetAndIndex(target, index, Undefined.instance);
+        return getTypeCacheNode().executeWithTargetAndIndex(target, index, target, Undefined.instance);
     }
 
-    public final int executeWithTargetAndIndexInt(Object target, Object index) throws UnexpectedResultException {
-        return getTypeCacheNode().executeWithTargetAndIndexInt(target, index, Undefined.instance);
+    public final Object executeWithTargetAndIndex(Object target, Object index, Object receiver) {
+        return getTypeCacheNode().executeWithTargetAndIndex(target, index, receiver, Undefined.instance);
     }
 
-    public final int executeWithTargetAndIndexInt(Object target, int index) throws UnexpectedResultException {
-        return getTypeCacheNode().executeWithTargetAndIndexInt(target, index, Undefined.instance);
+    public final Object executeWithTargetAndIndex(Object target, int index, Object receiver) {
+        return getTypeCacheNode().executeWithTargetAndIndex(target, index, receiver, Undefined.instance);
     }
 
-    public final double executeWithTargetAndIndexDouble(Object target, Object index) throws UnexpectedResultException {
-        return getTypeCacheNode().executeWithTargetAndIndexDouble(target, index, Undefined.instance);
+    public final int executeWithTargetAndIndexInt(Object target, Object index, Object receiver) throws UnexpectedResultException {
+        return getTypeCacheNode().executeWithTargetAndIndexInt(target, index, receiver, Undefined.instance);
     }
 
-    public final double executeWithTargetAndIndexDouble(Object target, int index) throws UnexpectedResultException {
-        return getTypeCacheNode().executeWithTargetAndIndexDouble(target, index, Undefined.instance);
+    public final int executeWithTargetAndIndexInt(Object target, int index, Object receiver) throws UnexpectedResultException {
+        return getTypeCacheNode().executeWithTargetAndIndexInt(target, index, receiver, Undefined.instance);
+    }
+
+    public final double executeWithTargetAndIndexDouble(Object target, Object index, Object receiver) throws UnexpectedResultException {
+        return getTypeCacheNode().executeWithTargetAndIndexDouble(target, index, receiver, Undefined.instance);
+    }
+
+    public final double executeWithTargetAndIndexDouble(Object target, int index, Object receiver) throws UnexpectedResultException {
+        return getTypeCacheNode().executeWithTargetAndIndexDouble(target, index, receiver, Undefined.instance);
     }
 
     public final Object executeWithTargetAndIndexOrDefault(Object target, Object index, Object defaultValue) {
-        return getTypeCacheNode().executeWithTargetAndIndex(target, index, defaultValue);
+        return getTypeCacheNode().executeWithTargetAndIndex(target, index, target, defaultValue);
     }
 
     private ReadElementTypeCacheNode getTypeCacheNode() {
@@ -317,26 +332,26 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             super(context);
         }
 
-        public abstract Object executeWithTargetAndIndex(Object target, Object index, Object defaultValue);
+        public abstract Object executeWithTargetAndIndex(Object target, Object index, Object receiver, Object defaultValue);
 
-        public Object executeWithTargetAndIndex(Object target, int index, Object defaultValue) {
-            return executeWithTargetAndIndex(target, (Object) index, defaultValue);
+        public Object executeWithTargetAndIndex(Object target, int index, Object receiver, Object defaultValue) {
+            return executeWithTargetAndIndex(target, (Object) index, receiver, defaultValue);
         }
 
-        public int executeWithTargetAndIndexInt(Object target, Object index, Object defaultValue) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(executeWithTargetAndIndex(target, index, defaultValue));
+        public int executeWithTargetAndIndexInt(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
+            return JSTypesGen.expectInteger(executeWithTargetAndIndex(target, index, receiver, defaultValue));
         }
 
-        public int executeWithTargetAndIndexInt(Object target, int index, Object defaultValue) throws UnexpectedResultException {
-            return executeWithTargetAndIndexInt(target, (Object) index, defaultValue);
+        public int executeWithTargetAndIndexInt(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
+            return executeWithTargetAndIndexInt(target, (Object) index, receiver, defaultValue);
         }
 
-        public double executeWithTargetAndIndexDouble(Object target, Object index, Object defaultValue) throws UnexpectedResultException {
-            return JSTypesGen.expectDouble(executeWithTargetAndIndex(target, index, defaultValue));
+        public double executeWithTargetAndIndexDouble(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
+            return JSTypesGen.expectDouble(executeWithTargetAndIndex(target, index, receiver, defaultValue));
         }
 
-        public double executeWithTargetAndIndexDouble(Object target, int index, Object defaultValue) throws UnexpectedResultException {
-            return executeWithTargetAndIndexDouble(target, (Object) index, defaultValue);
+        public double executeWithTargetAndIndexDouble(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
+            return executeWithTargetAndIndexDouble(target, (Object) index, receiver, defaultValue);
         }
     }
 
@@ -346,13 +361,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        public Object executeWithTargetAndIndex(Object target, Object index, Object defaultValue) {
+        public Object executeWithTargetAndIndex(Object target, Object index, Object receiver, Object defaultValue) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             CachedReadElementTypeCacheNode specialized = makeTypeCacheNode(target);
             checkForPolymorphicSpecialize();
             this.replace(specialized);
-            return specialized.executeWithTargetAndIndex(target, index, defaultValue);
+            return specialized.executeWithTargetAndIndex(target, index, receiver, defaultValue);
         }
 
         private void checkForPolymorphicSpecialize() {
@@ -396,77 +411,77 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        public Object executeWithTargetAndIndex(Object target, Object index, Object defaultValue) {
+        public Object executeWithTargetAndIndex(Object target, Object index, Object receiver, Object defaultValue) {
             if (guard(target)) {
-                return executeWithTargetAndIndexUnchecked(target, index, defaultValue);
+                return executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue);
             } else {
-                return getNext().executeWithTargetAndIndex(target, index, defaultValue);
+                return getNext().executeWithTargetAndIndex(target, index, receiver, defaultValue);
             }
         }
 
         @Override
-        public Object executeWithTargetAndIndex(Object target, int index, Object defaultValue) {
+        public Object executeWithTargetAndIndex(Object target, int index, Object receiver, Object defaultValue) {
             if (guard(target)) {
-                return executeWithTargetAndIndexUnchecked(target, index, defaultValue);
+                return executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue);
             } else {
-                return getNext().executeWithTargetAndIndex(target, index, defaultValue);
+                return getNext().executeWithTargetAndIndex(target, index, receiver, defaultValue);
             }
         }
 
-        protected abstract Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue);
+        protected abstract Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue);
 
-        protected abstract Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue);
-
-        @Override
-        public int executeWithTargetAndIndexInt(Object target, Object index, Object defaultValue) throws UnexpectedResultException {
-            if (guard(target)) {
-                return executeWithTargetAndIndexUncheckedInt(target, index, defaultValue);
-            } else {
-                return getNext().executeWithTargetAndIndexInt(target, index, defaultValue);
-            }
-        }
+        protected abstract Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue);
 
         @Override
-        public int executeWithTargetAndIndexInt(Object target, int index, Object defaultValue) throws UnexpectedResultException {
+        public int executeWithTargetAndIndexInt(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
             if (guard(target)) {
-                return executeWithTargetAndIndexUncheckedInt(target, index, defaultValue);
+                return executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue);
             } else {
-                return getNext().executeWithTargetAndIndexInt(target, index, defaultValue);
-            }
-        }
-
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index, Object defaultValue) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(executeWithTargetAndIndexUnchecked(target, index, defaultValue));
-        }
-
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, int index, Object defaultValue) throws UnexpectedResultException {
-            return executeWithTargetAndIndexUncheckedInt(target, (Object) index, defaultValue);
-        }
-
-        @Override
-        public double executeWithTargetAndIndexDouble(Object target, Object index, Object defaultValue) throws UnexpectedResultException {
-            if (guard(target)) {
-                return executeWithTargetAndIndexUncheckedDouble(target, index, defaultValue);
-            } else {
-                return getNext().executeWithTargetAndIndexDouble(target, index, defaultValue);
+                return getNext().executeWithTargetAndIndexInt(target, index, receiver, defaultValue);
             }
         }
 
         @Override
-        public double executeWithTargetAndIndexDouble(Object target, int index, Object defaultValue) throws UnexpectedResultException {
+        public int executeWithTargetAndIndexInt(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
             if (guard(target)) {
-                return executeWithTargetAndIndexUncheckedDouble(target, index, defaultValue);
+                return executeWithTargetAndIndexUncheckedInt(target, index, receiver, defaultValue);
             } else {
-                return getNext().executeWithTargetAndIndexDouble(target, index, defaultValue);
+                return getNext().executeWithTargetAndIndexInt(target, index, receiver, defaultValue);
             }
         }
 
-        protected double executeWithTargetAndIndexUncheckedDouble(Object target, Object index, Object defaultValue) throws UnexpectedResultException {
-            return JSTypesGen.expectDouble(executeWithTargetAndIndexUnchecked(target, index, defaultValue));
+        protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
+            return JSTypesGen.expectInteger(executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue));
         }
 
-        protected double executeWithTargetAndIndexUncheckedDouble(Object target, int index, Object defaultValue) throws UnexpectedResultException {
-            return executeWithTargetAndIndexUncheckedDouble(target, (Object) index, defaultValue);
+        protected int executeWithTargetAndIndexUncheckedInt(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
+            return executeWithTargetAndIndexUncheckedInt(target, (Object) index, receiver, defaultValue);
+        }
+
+        @Override
+        public double executeWithTargetAndIndexDouble(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
+            if (guard(target)) {
+                return executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue);
+            } else {
+                return getNext().executeWithTargetAndIndexDouble(target, index, receiver, defaultValue);
+            }
+        }
+
+        @Override
+        public double executeWithTargetAndIndexDouble(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
+            if (guard(target)) {
+                return executeWithTargetAndIndexUncheckedDouble(target, index, receiver, defaultValue);
+            } else {
+                return getNext().executeWithTargetAndIndexDouble(target, index, receiver, defaultValue);
+            }
+        }
+
+        protected double executeWithTargetAndIndexUncheckedDouble(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
+            return JSTypesGen.expectDouble(executeWithTargetAndIndexUnchecked(target, index, receiver, defaultValue));
+        }
+
+        protected double executeWithTargetAndIndexUncheckedDouble(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
+            return executeWithTargetAndIndexUncheckedDouble(target, (Object) index, receiver, defaultValue);
         }
 
         public abstract boolean guard(Object target);
@@ -497,7 +512,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue) {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
@@ -505,12 +520,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 Object objIndex = toArrayIndex(index);
 
                 if (arrayIndexProfile.profile(objIndex instanceof Long)) {
-                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndex(targetObject, array, (Long) objIndex, defaultValue, arrayCondition);
+                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndex(targetObject, array, (Long) objIndex, receiver, defaultValue, arrayCondition);
                 } else {
-                    return getProperty(targetObject, objIndex, defaultValue);
+                    return getProperty(targetObject, objIndex, receiver, defaultValue);
                 }
             } else {
-                return readNonArrayObjectIndex(targetObject, index, defaultValue);
+                return readNonArrayObjectIndex(targetObject, index, receiver, defaultValue);
             }
         }
 
@@ -530,28 +545,28 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return arrayReadElementNode;
         }
 
-        private Object readNonArrayObjectIndex(DynamicObject targetObject, Object index, Object defaultValue) {
-            return getNonArrayNode().execute(targetObject, index, defaultValue);
+        private Object readNonArrayObjectIndex(DynamicObject targetObject, Object index, Object receiver, Object defaultValue) {
+            return getNonArrayNode().execute(targetObject, index, receiver, defaultValue);
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue) {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
                 if (arrayIndexProfile.profile(index >= 0)) {
-                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndex(targetObject, array, index, defaultValue, arrayCondition);
+                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndex(targetObject, array, index, receiver, defaultValue, arrayCondition);
                 } else {
-                    return getProperty(targetObject, Boundaries.stringValueOf(index), defaultValue);
+                    return getProperty(targetObject, Boundaries.stringValueOf(index), receiver, defaultValue);
                 }
             } else {
-                return getNonArrayNode().getPropertyGeneric(targetObject, index, defaultValue);
+                return getNonArrayNode().getPropertyGeneric(targetObject, index, receiver, defaultValue);
             }
         }
 
         @Override
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index, Object defaultValue) throws UnexpectedResultException {
+        protected int executeWithTargetAndIndexUncheckedInt(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
@@ -559,34 +574,34 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 Object objIndex = toArrayIndex(index);
 
                 if (arrayIndexProfile.profile(objIndex instanceof Long)) {
-                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndexInt(targetObject, array, (Long) objIndex, defaultValue, arrayCondition);
+                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndexInt(targetObject, array, (Long) objIndex, receiver, defaultValue, arrayCondition);
                 } else {
-                    return JSTypesGen.expectInteger(getProperty(targetObject, objIndex, defaultValue));
+                    return JSTypesGen.expectInteger(getProperty(targetObject, objIndex, receiver, defaultValue));
                 }
             } else {
-                return JSTypesGen.expectInteger(readNonArrayObjectIndex(targetObject, index, defaultValue));
+                return JSTypesGen.expectInteger(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue));
             }
         }
 
         @Override
-        protected int executeWithTargetAndIndexUncheckedInt(Object target, int index, Object defaultValue) throws UnexpectedResultException {
+        protected int executeWithTargetAndIndexUncheckedInt(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
 
                 if (arrayIndexProfile.profile(index >= 0)) {
-                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndexInt(targetObject, array, index, defaultValue, arrayCondition);
+                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndexInt(targetObject, array, index, receiver, defaultValue, arrayCondition);
                 } else {
-                    return JSTypesGen.expectInteger(getProperty(targetObject, Boundaries.stringValueOf(index), defaultValue));
+                    return JSTypesGen.expectInteger(getProperty(targetObject, Boundaries.stringValueOf(index), receiver, defaultValue));
                 }
             } else {
-                return JSTypesGen.expectInteger(getNonArrayNode().getPropertyGeneric(targetObject, index, defaultValue));
+                return JSTypesGen.expectInteger(getNonArrayNode().getPropertyGeneric(targetObject, index, receiver, defaultValue));
             }
         }
 
         @Override
-        protected double executeWithTargetAndIndexUncheckedDouble(Object target, Object index, Object defaultValue) throws UnexpectedResultException {
+        protected double executeWithTargetAndIndexUncheckedDouble(Object target, Object index, Object receiver, Object defaultValue) throws UnexpectedResultException {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
@@ -594,29 +609,29 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 Object objIndex = toArrayIndex(index);
 
                 if (arrayIndexProfile.profile(objIndex instanceof Long)) {
-                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndexDouble(targetObject, array, (Long) objIndex, defaultValue, arrayCondition);
+                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndexDouble(targetObject, array, (Long) objIndex, receiver, defaultValue, arrayCondition);
                 } else {
-                    return JSTypesGen.expectDouble(getProperty(targetObject, objIndex, defaultValue));
+                    return JSTypesGen.expectDouble(getProperty(targetObject, objIndex, receiver, defaultValue));
                 }
             } else {
-                return JSTypesGen.expectDouble(readNonArrayObjectIndex(targetObject, index, defaultValue));
+                return JSTypesGen.expectDouble(readNonArrayObjectIndex(targetObject, index, receiver, defaultValue));
             }
         }
 
         @Override
-        protected double executeWithTargetAndIndexUncheckedDouble(Object target, int index, Object defaultValue) throws UnexpectedResultException {
+        protected double executeWithTargetAndIndexUncheckedDouble(Object target, int index, Object receiver, Object defaultValue) throws UnexpectedResultException {
             DynamicObject targetObject = (DynamicObject) target;
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
 
                 if (arrayIndexProfile.profile(index >= 0)) {
-                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndexDouble(targetObject, array, index, defaultValue, arrayCondition);
+                    return getArrayReadElementNode().executeWithTargetAndArrayAndIndexDouble(targetObject, array, index, receiver, defaultValue, arrayCondition);
                 } else {
-                    return JSTypesGen.expectDouble(getProperty(targetObject, Boundaries.stringValueOf(index), defaultValue));
+                    return JSTypesGen.expectDouble(getProperty(targetObject, Boundaries.stringValueOf(index), receiver, defaultValue));
                 }
             } else {
-                return JSTypesGen.expectDouble(getNonArrayNode().getPropertyGeneric(targetObject, index, defaultValue));
+                return JSTypesGen.expectDouble(getNonArrayNode().getPropertyGeneric(targetObject, index, receiver, defaultValue));
             }
         }
 
@@ -625,8 +640,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return isObjectNode.executeBoolean(target);
         }
 
-        private Object getProperty(DynamicObject targetObject, Object objIndex, Object defaultValue) {
-            return JSObject.getOrDefault(targetObject, objIndex, defaultValue, jsclassProfile);
+        private Object getProperty(DynamicObject targetObject, Object objIndex, Object receiver, Object defaultValue) {
+            return JSObject.getOrDefault(targetObject, objIndex, receiver, defaultValue, jsclassProfile);
         }
 
         private JSObjectReadElementNonArrayTypeCacheNode getNonArrayNode() {
@@ -650,12 +665,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             this.context = context;
         }
 
-        public Object execute(DynamicObject targetObject, Object index, Object defaultValue) {
+        public Object execute(DynamicObject targetObject, Object index, Object receiver, Object defaultValue) {
             if (propertyReferenceProfile.profile(
                             index instanceof PropertyReference && ((PropertyReference) index).getDepth() == 0 && ((PropertyReference) index).getShape() == targetObject.getShape())) {
                 return readPropertyReference(index, targetObject);
             } else {
-                return getPropertyGeneric(targetObject, index, defaultValue);
+                return getPropertyGeneric(targetObject, index, receiver, defaultValue);
             }
         }
 
@@ -670,16 +685,16 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        public Object getPropertyGeneric(DynamicObject targetObject, Object index, Object defaultValue) {
-            return getCachedProperty(targetObject, index, defaultValue);
+        public Object getPropertyGeneric(DynamicObject targetObject, Object index, Object receiver, Object defaultValue) {
+            return getCachedProperty(targetObject, index, receiver, defaultValue);
         }
 
-        private Object getCachedProperty(DynamicObject targetObject, Object index, Object defaultValue) {
+        private Object getCachedProperty(DynamicObject targetObject, Object index, Object receiver, Object defaultValue) {
             if (getPropertyCachedNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getPropertyCachedNode = insert(CachedGetPropertyNode.create(context));
             }
-            return getPropertyCachedNode.execute(targetObject, index, defaultValue);
+            return getPropertyCachedNode.execute(targetObject, index, receiver, defaultValue);
         }
     }
 
@@ -692,13 +707,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue) {
             toPropertyKey(index);
             return Undefined.instance;
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue) {
             return Undefined.instance;
         }
 
@@ -718,14 +733,16 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return new UninitArrayReadElementCacheNode(context);
         }
 
-        protected abstract Object executeWithTargetAndArrayAndIndex(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition);
+        protected abstract Object executeWithTargetAndArrayAndIndex(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition);
 
-        protected int executeWithTargetAndArrayAndIndexInt(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(executeWithTargetAndArrayAndIndex(target, array, index, defaultValue, arrayCondition));
+        protected int executeWithTargetAndArrayAndIndexInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
+                        throws UnexpectedResultException {
+            return JSTypesGen.expectInteger(executeWithTargetAndArrayAndIndex(target, array, index, receiver, defaultValue, arrayCondition));
         }
 
-        protected double executeWithTargetAndArrayAndIndexDouble(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) throws UnexpectedResultException {
-            return JSTypesGen.expectDouble(executeWithTargetAndArrayAndIndex(target, array, index, defaultValue, arrayCondition));
+        protected double executeWithTargetAndArrayAndIndexDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
+                        throws UnexpectedResultException {
+            return JSTypesGen.expectDouble(executeWithTargetAndArrayAndIndex(target, array, index, receiver, defaultValue, arrayCondition));
         }
     }
 
@@ -736,7 +753,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndex(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndex(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ArrayReadElementCacheNode selection = null;
             if (array instanceof ConstantEmptyArray) {
@@ -780,7 +797,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             } finally {
                 lock.unlock();
             }
-            return selection.executeWithTargetAndArrayAndIndex(target, array, index, defaultValue, arrayCondition);
+            return selection.executeWithTargetAndArrayAndIndex(target, array, index, receiver, defaultValue, arrayCondition);
         }
 
         private void purgeStaleCacheEntries(DynamicObject target) {
@@ -810,41 +827,44 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndex(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndex(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             if (guard(target, array)) {
-                return executeWithTargetAndArrayAndIndexUnchecked(target, array, index, defaultValue, arrayCondition);
+                return executeWithTargetAndArrayAndIndexUnchecked(target, array, index, receiver, defaultValue, arrayCondition);
             } else {
-                return getNext().executeWithTargetAndArrayAndIndex(target, array, index, defaultValue, arrayCondition);
+                return getNext().executeWithTargetAndArrayAndIndex(target, array, index, receiver, defaultValue, arrayCondition);
             }
         }
 
-        protected abstract Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition);
+        protected abstract Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition);
 
         @Override
-        protected int executeWithTargetAndArrayAndIndexInt(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) throws UnexpectedResultException {
-            if (guard(target, array)) {
-                return executeWithTargetAndArrayAndIndexUncheckedInt(target, array, index, defaultValue, arrayCondition);
-            } else {
-                return getNext().executeWithTargetAndArrayAndIndexInt(target, array, index, defaultValue, arrayCondition);
-            }
-        }
-
-        protected int executeWithTargetAndArrayAndIndexUncheckedInt(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) throws UnexpectedResultException {
-            return JSTypesGen.expectInteger(executeWithTargetAndArrayAndIndexUnchecked(target, array, index, defaultValue, arrayCondition));
-        }
-
-        @Override
-        protected double executeWithTargetAndArrayAndIndexDouble(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) throws UnexpectedResultException {
-            if (guard(target, array)) {
-                return executeWithTargetAndArrayAndIndexUncheckedDouble(target, array, index, defaultValue, arrayCondition);
-            } else {
-                return getNext().executeWithTargetAndArrayAndIndexDouble(target, array, index, defaultValue, arrayCondition);
-            }
-        }
-
-        protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition)
+        protected int executeWithTargetAndArrayAndIndexInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
                         throws UnexpectedResultException {
-            return JSTypesGen.expectDouble(executeWithTargetAndArrayAndIndexUnchecked(target, array, index, defaultValue, arrayCondition));
+            if (guard(target, array)) {
+                return executeWithTargetAndArrayAndIndexUncheckedInt(target, array, index, receiver, defaultValue, arrayCondition);
+            } else {
+                return getNext().executeWithTargetAndArrayAndIndexInt(target, array, index, receiver, defaultValue, arrayCondition);
+            }
+        }
+
+        protected int executeWithTargetAndArrayAndIndexUncheckedInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
+                        throws UnexpectedResultException {
+            return JSTypesGen.expectInteger(executeWithTargetAndArrayAndIndexUnchecked(target, array, index, receiver, defaultValue, arrayCondition));
+        }
+
+        @Override
+        protected double executeWithTargetAndArrayAndIndexDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
+                        throws UnexpectedResultException {
+            if (guard(target, array)) {
+                return executeWithTargetAndArrayAndIndexUncheckedDouble(target, array, index, receiver, defaultValue, arrayCondition);
+            } else {
+                return getNext().executeWithTargetAndArrayAndIndexDouble(target, array, index, receiver, defaultValue, arrayCondition);
+            }
+        }
+
+        protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
+                        throws UnexpectedResultException {
+            return JSTypesGen.expectDouble(executeWithTargetAndArrayAndIndexUnchecked(target, array, index, receiver, defaultValue, arrayCondition));
         }
 
         protected abstract boolean guard(Object target, ScriptArray array);
@@ -886,9 +906,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return arrayType;
         }
 
-        protected Object readOutOfBounds(DynamicObject target, long index, Object defaultValue) {
+        protected Object readOutOfBounds(DynamicObject target, long index, Object receiver, Object defaultValue) {
             if (needGetProperty.profile(needsSlowGet(target))) {
-                return JSObject.getOrDefault(target, index, defaultValue, outOfBoundsClassProfile);
+                return JSObject.getOrDefault(target, index, receiver, defaultValue, outOfBoundsClassProfile);
             } else {
                 return defaultValue;
             }
@@ -914,8 +934,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
-            return JSObject.getOrDefault(target, index, defaultValue, classProfile);
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
+            return JSObject.getOrDefault(target, index, receiver, defaultValue, classProfile);
         }
     }
 
@@ -926,12 +946,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             AbstractConstantArray constantArray = (AbstractConstantArray) cast(array);
             if (inBounds.profile(constantArray.hasElement(target, index, arrayCondition))) {
                 return constantArray.getElementInBounds(target, (int) index, arrayCondition);
             } else {
-                return readOutOfBounds(target, index, defaultValue);
+                return readOutOfBounds(target, index, receiver, defaultValue);
             }
         }
     }
@@ -943,8 +963,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
-            return readOutOfBounds(target, index, defaultValue);
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
+            return readOutOfBounds(target, index, receiver, defaultValue);
         }
     }
 
@@ -957,7 +977,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             ConstantObjectArray constantObjectArray = (ConstantObjectArray) cast(array);
             if (inBounds.profile(constantObjectArray.isInBoundsFast(target, index, arrayCondition))) {
                 Object value = ConstantObjectArray.getElementInBoundsDirect(target, (int) index, arrayCondition);
@@ -969,7 +989,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     }
                 }
             }
-            return readOutOfBounds(target, index, defaultValue);
+            return readOutOfBounds(target, index, receiver, defaultValue);
         }
     }
 
@@ -989,12 +1009,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) array;
             if (inBounds.profile(lazyRegexResultArray.hasElement(target, (int) index))) {
                 return LazyRegexResultArray.materializeGroup(getMaterializeResultNode(), target, (int) index, arrayCondition && array instanceof LazyRegexResultArray);
             } else {
-                return readOutOfBounds(target, index, defaultValue);
+                return readOutOfBounds(target, index, receiver, defaultValue);
             }
         }
     }
@@ -1006,33 +1026,34 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBounds.profile(writableArray.isInBoundsFast(target, index, arrayCondition))) {
                 return writableArray.getInBoundsFast(target, (int) index, arrayCondition);
             } else {
-                return readOutOfBounds(target, index, defaultValue);
+                return readOutOfBounds(target, index, receiver, defaultValue);
             }
         }
 
         @Override
-        protected int executeWithTargetAndArrayAndIndexUncheckedInt(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) throws UnexpectedResultException {
+        protected int executeWithTargetAndArrayAndIndexUncheckedInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
+                        throws UnexpectedResultException {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBounds.profile(writableArray.isInBoundsFast(target, index, arrayCondition))) {
                 return writableArray.getInBoundsFastInt(target, (int) index, arrayCondition);
             } else {
-                return JSTypesGen.expectInteger(readOutOfBounds(target, index, defaultValue));
+                return JSTypesGen.expectInteger(readOutOfBounds(target, index, receiver, defaultValue));
             }
         }
 
         @Override
-        protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition)
+        protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
                         throws UnexpectedResultException {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBounds.profile(writableArray.isInBoundsFast(target, index, arrayCondition))) {
                 return writableArray.getInBoundsFastDouble(target, (int) index, arrayCondition);
             } else {
-                return JSTypesGen.expectDouble(readOutOfBounds(target, index, defaultValue));
+                return JSTypesGen.expectDouble(readOutOfBounds(target, index, receiver, defaultValue));
             }
         }
     }
@@ -1045,7 +1066,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             HolesIntArray holesIntArray = (HolesIntArray) cast(array);
             if (inBounds.profile(holesIntArray.isInBoundsFast(target, index, arrayCondition))) {
                 int value = holesIntArray.getInBoundsFastInt(target, (int) index, arrayCondition);
@@ -1053,7 +1074,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return value;
                 }
             }
-            return readOutOfBounds(target, index, defaultValue);
+            return readOutOfBounds(target, index, receiver, defaultValue);
         }
     }
 
@@ -1065,7 +1086,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             HolesDoubleArray holesDoubleArray = (HolesDoubleArray) cast(array);
             if (inBounds.profile(holesDoubleArray.isInBoundsFast(target, index, arrayCondition))) {
                 double value = holesDoubleArray.getInBoundsFastDouble(target, (int) index, arrayCondition);
@@ -1073,7 +1094,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return value;
                 }
             }
-            return readOutOfBounds(target, index, defaultValue);
+            return readOutOfBounds(target, index, receiver, defaultValue);
         }
     }
 
@@ -1085,7 +1106,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             HolesJSObjectArray holesArray = (HolesJSObjectArray) cast(array);
             if (inBounds.profile(holesArray.isInBoundsFast(target, index, arrayCondition))) {
                 DynamicObject value = holesArray.getInBoundsFastJSObject(target, (int) index, arrayCondition);
@@ -1093,7 +1114,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return value;
                 }
             }
-            return readOutOfBounds(target, index, defaultValue);
+            return readOutOfBounds(target, index, receiver, defaultValue);
         }
     }
 
@@ -1105,7 +1126,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             HolesObjectArray holesArray = (HolesObjectArray) cast(array);
             if (inBounds.profile(holesArray.isInBoundsFast(target, index, arrayCondition))) {
                 Object value = holesArray.getInBoundsFastObject(target, (int) index, arrayCondition);
@@ -1113,7 +1134,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return value;
                 }
             }
-            return readOutOfBounds(target, index, defaultValue);
+            return readOutOfBounds(target, index, receiver, defaultValue);
         }
     }
 
@@ -1124,7 +1145,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             checkDetachedArrayBuffer(target);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
@@ -1135,7 +1156,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected int executeWithTargetAndArrayAndIndexUncheckedInt(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) throws UnexpectedResultException {
+        protected int executeWithTargetAndArrayAndIndexUncheckedInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
+                        throws UnexpectedResultException {
             checkDetachedArrayBuffer(target);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
@@ -1146,7 +1168,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition)
+        protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
@@ -1166,7 +1188,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             checkDetachedArrayBuffer(target);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
@@ -1182,7 +1204,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected int executeWithTargetAndArrayAndIndexUncheckedInt(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) throws UnexpectedResultException {
+        protected int executeWithTargetAndArrayAndIndexUncheckedInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
+                        throws UnexpectedResultException {
             checkDetachedArrayBuffer(target);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
@@ -1198,7 +1221,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition)
+        protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target);
             TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
@@ -1217,7 +1240,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             checkDetachedArrayBuffer(target);
             TypedArray.TypedFloatArray<?> typedArray = (TypedArray.TypedFloatArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
@@ -1228,7 +1251,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition)
+        protected double executeWithTargetAndArrayAndIndexUncheckedDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target);
             TypedArray.TypedFloatArray<?> typedArray = (TypedArray.TypedFloatArray<?>) cast(array);
@@ -1247,7 +1270,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object defaultValue, boolean arrayCondition) {
+        protected Object executeWithTargetAndArrayAndIndexUnchecked(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, boolean arrayCondition) {
             checkDetachedArrayBuffer(target);
             TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index, arrayCondition))) {
@@ -1288,7 +1311,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             Object convertedIndex = toArrayIndexNode.execute(index);
             if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
@@ -1297,16 +1320,16 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return String.valueOf(charSequence.charAt(intIndex));
                 }
             }
-            return JSObject.getOrDefault(JSString.create(context, charSequence), toPropertyKey(index), defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSString.create(context, charSequence), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             if (stringIndexInBounds.profile(index >= 0 && index < charSequence.length())) {
                 return String.valueOf(charSequence.charAt(index));
             } else {
-                return JSObject.getOrDefault(JSString.create(context, charSequence), index, defaultValue, jsclassProfile);
+                return JSObject.getOrDefault(JSString.create(context, charSequence), index, receiver, defaultValue, jsclassProfile);
             }
         }
 
@@ -1328,7 +1351,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue) {
             String charSequence = ((JSLazyString) target).toString(isFlatProfile);
             Object convertedIndex = toArrayIndexNode.execute(index);
             if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
@@ -1337,16 +1360,16 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return String.valueOf(charSequence.charAt(intIndex));
                 }
             }
-            return JSObject.getOrDefault(JSString.create(context, charSequence), toPropertyKey(index), defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSString.create(context, charSequence), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue) {
             String charSequence = ((JSLazyString) target).toString(isFlatProfile);
             if (stringIndexInBounds.profile(index >= 0 && index < charSequence.length())) {
                 return String.valueOf(charSequence.charAt(index));
             } else {
-                return JSObject.getOrDefault(JSString.create(context, charSequence), index, defaultValue, jsclassProfile);
+                return JSObject.getOrDefault(JSString.create(context, charSequence), index, receiver, defaultValue, jsclassProfile);
             }
         }
 
@@ -1365,15 +1388,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue) {
             Number charSequence = (Number) target;
-            return JSObject.getOrDefault(JSNumber.create(context, charSequence), toPropertyKey(index), defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSNumber.create(context, charSequence), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue) {
             Number charSequence = (Number) target;
-            return JSObject.getOrDefault(JSNumber.create(context, charSequence), index, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSNumber.create(context, charSequence), index, receiver, defaultValue, jsclassProfile);
         }
 
         @Override
@@ -1388,15 +1411,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue) {
             Boolean bool = (Boolean) target;
-            return JSObject.getOrDefault(JSBoolean.create(context, bool), toPropertyKey(index), defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSBoolean.create(context, bool), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue) {
             Boolean bool = (Boolean) target;
-            return JSObject.getOrDefault(JSBoolean.create(context, bool), index, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSBoolean.create(context, bool), index, receiver, defaultValue, jsclassProfile);
         }
 
         @Override
@@ -1412,15 +1435,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue) {
             Symbol symbol = (Symbol) target;
-            return JSObject.getOrDefault(JSSymbol.create(context, symbol), toPropertyKey(index), defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSSymbol.create(context, symbol), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue) {
             Symbol symbol = (Symbol) target;
-            return JSObject.getOrDefault(JSSymbol.create(context, symbol), index, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSSymbol.create(context, symbol), index, receiver, defaultValue, jsclassProfile);
         }
 
         @Override
@@ -1436,15 +1459,15 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue) {
             BigInt bigInt = (BigInt) target;
-            return JSObject.getOrDefault(JSBigInt.create(context, bigInt), toPropertyKey(index), defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSBigInt.create(context, bigInt), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue) {
             BigInt bigInt = (BigInt) target;
-            return JSObject.getOrDefault(JSBigInt.create(context, bigInt), index, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSBigInt.create(context, bigInt), index, receiver, defaultValue, jsclassProfile);
         }
 
         @Override
@@ -1474,7 +1497,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue) {
             TruffleObject truffleObject = targetClass.cast(target);
             if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
@@ -1584,8 +1607,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
-            return executeWithTargetAndIndexUnchecked(target, (Object) index, defaultValue);
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue) {
+            return executeWithTargetAndIndexUnchecked(target, (Object) index, receiver, defaultValue);
         }
 
         @Override

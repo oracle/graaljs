@@ -123,7 +123,7 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public Object execute(VirtualFrame frame) {
         Object targetValue = evaluateTarget(frame);
-        return executeWithTarget(targetValue, evaluateReceiver(frame, targetValue));
+        return executeWithTarget(targetValue, evaluateReceiver(target, frame, targetValue));
     }
 
     @Override
@@ -142,7 +142,7 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
         Object targetValue = evaluateTarget(frame);
-        return executeInt(targetValue, evaluateReceiver(frame, targetValue));
+        return executeInt(targetValue, evaluateReceiver(target, frame, targetValue));
     }
 
     public int executeInt(Object targetValue) throws UnexpectedResultException {
@@ -156,7 +156,7 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
         Object targetValue = evaluateTarget(frame);
-        return executeDouble(targetValue, evaluateReceiver(frame, targetValue));
+        return executeDouble(targetValue, evaluateReceiver(target, frame, targetValue));
     }
 
     public double executeDouble(Object targetValue) throws UnexpectedResultException {
@@ -170,14 +170,6 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public final Object evaluateTarget(VirtualFrame frame) {
         return target.execute(frame);
-    }
-
-    public final Object evaluateReceiver(VirtualFrame frame, Object targetValue) {
-        if (!(target instanceof SuperPropertyReferenceNode)) {
-            return targetValue;
-        } else {
-            return ((SuperPropertyReferenceNode) target).getThisValue().execute(frame);
-        }
     }
 
     @Override

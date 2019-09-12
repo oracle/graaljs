@@ -84,6 +84,14 @@ public abstract class JSTargetableNode extends JavaScriptNode {
         throw Errors.notImplemented("getTarget");
     }
 
+    public static Object evaluateReceiver(JavaScriptNode targetNode, VirtualFrame frame, Object targetValue) {
+        if (!(targetNode instanceof SuperPropertyReferenceNode)) {
+            return targetValue;
+        } else {
+            return ((SuperPropertyReferenceNode) targetNode).getThisValue().execute(frame);
+        }
+    }
+
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
         return new JSTargetableNodeWrapper(this, probe);

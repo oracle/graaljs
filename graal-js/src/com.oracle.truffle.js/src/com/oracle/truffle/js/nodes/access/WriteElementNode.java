@@ -232,21 +232,28 @@ public class WriteElementNode extends JSTargetableNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return executeWithTarget(frame, evaluateTarget(frame));
+        Object target = evaluateTarget(frame);
+        return executeWithTarget(frame, target, evaluateReceiver(targetNode, frame, target));
     }
 
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        return executeWithTargetInt(frame, evaluateTarget(frame));
+        Object target = evaluateTarget(frame);
+        return executeWithTargetInt(frame, target, evaluateReceiver(targetNode, frame, target));
     }
 
     @Override
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        return executeWithTargetDouble(frame, evaluateTarget(frame));
+        Object target = evaluateTarget(frame);
+        return executeWithTargetDouble(frame, target, evaluateReceiver(targetNode, frame, target));
     }
 
     @Override
     public Object executeWithTarget(VirtualFrame frame, Object target) {
+        return executeWithTarget(frame, target, target);
+    }
+
+    public Object executeWithTarget(VirtualFrame frame, Object target, Object receiver) {
         byte is = indexState;
         if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -254,10 +261,10 @@ public class WriteElementNode extends JSTargetableNode {
             requireObjectCoercible(target, index);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
-                return executeWithTargetAndIndex(frame, target, (int) index);
+                return executeWithTargetAndIndex(frame, target, (int) index, receiver);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(index));
+                return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(index), receiver);
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -266,19 +273,19 @@ public class WriteElementNode extends JSTargetableNode {
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
                 requireObjectCoercible(target, e.getResult());
-                return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(e.getResult()));
+                return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(e.getResult()), receiver);
             }
             requireObjectCoercible(target, index);
-            return executeWithTargetAndIndex(frame, target, index);
+            return executeWithTargetAndIndex(frame, target, index, receiver);
         } else {
             assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
             requireObjectCoercible(target, index);
-            return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(index));
+            return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(index), receiver);
         }
     }
 
-    public int executeWithTargetInt(VirtualFrame frame, Object target) throws UnexpectedResultException {
+    public int executeWithTargetInt(VirtualFrame frame, Object target, Object receiver) throws UnexpectedResultException {
         byte is = indexState;
         if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -286,10 +293,10 @@ public class WriteElementNode extends JSTargetableNode {
             requireObjectCoercible(target, index);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
-                return executeWithTargetAndIndexInt(frame, target, (int) index);
+                return executeWithTargetAndIndexInt(frame, target, (int) index, receiver);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(index));
+                return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(index), receiver);
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -298,19 +305,19 @@ public class WriteElementNode extends JSTargetableNode {
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
                 requireObjectCoercible(target, e.getResult());
-                return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(e.getResult()));
+                return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(e.getResult()), receiver);
             }
             requireObjectCoercible(target, index);
-            return executeWithTargetAndIndexInt(frame, target, index);
+            return executeWithTargetAndIndexInt(frame, target, index, receiver);
         } else {
             assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
             requireObjectCoercible(target, index);
-            return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(index));
+            return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(index), receiver);
         }
     }
 
-    public double executeWithTargetDouble(VirtualFrame frame, Object target) throws UnexpectedResultException {
+    public double executeWithTargetDouble(VirtualFrame frame, Object target, Object receiver) throws UnexpectedResultException {
         byte is = indexState;
         if (is == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -318,10 +325,10 @@ public class WriteElementNode extends JSTargetableNode {
             requireObjectCoercible(target, index);
             if (index instanceof Integer) {
                 indexState = INDEX_INT;
-                return executeWithTargetAndIndexDouble(frame, target, (int) index);
+                return executeWithTargetAndIndexDouble(frame, target, (int) index, receiver);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(index));
+                return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(index), receiver);
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -330,80 +337,88 @@ public class WriteElementNode extends JSTargetableNode {
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
                 requireObjectCoercible(target, e.getResult());
-                return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(e.getResult()));
+                return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(e.getResult()), receiver);
             }
             requireObjectCoercible(target, index);
-            return executeWithTargetAndIndexDouble(frame, target, index);
+            return executeWithTargetAndIndexDouble(frame, target, index, receiver);
         } else {
             assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
             requireObjectCoercible(target, index);
-            return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(index));
+            return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(index), receiver);
         }
     }
 
-    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index) {
+    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index, Object receiver) {
         Object value = valueNode.execute(frame);
-        executeWithTargetAndIndexAndValue(target, index, value);
+        executeWithTargetAndIndexAndValue(target, index, value, receiver);
         return value;
     }
 
-    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index) {
+    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index, Object receiver) {
         Object value = valueNode.execute(frame);
-        executeWithTargetAndIndexAndValue(target, index, value);
+        executeWithTargetAndIndexAndValue(target, index, value, receiver);
         return value;
     }
 
-    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
+    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index, Object receiver) throws UnexpectedResultException {
         try {
             int value = valueNode.executeInt(frame);
-            executeWithTargetAndIndexAndValue(target, index, value);
+            executeWithTargetAndIndexAndValue(target, index, value, receiver);
             return value;
         } catch (UnexpectedResultException e) {
-            executeWithTargetAndIndexAndValue(target, index, e.getResult());
+            executeWithTargetAndIndexAndValue(target, index, e.getResult(), receiver);
             throw e;
         }
     }
 
-    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
+    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index, Object receiver) throws UnexpectedResultException {
         try {
             int value = valueNode.executeInt(frame);
-            executeWithTargetAndIndexAndValue(target, index, (Object) value);
+            executeWithTargetAndIndexAndValue(target, index, (Object) value, receiver);
             return value;
         } catch (UnexpectedResultException e) {
-            executeWithTargetAndIndexAndValue(target, index, e.getResult());
+            executeWithTargetAndIndexAndValue(target, index, e.getResult(), receiver);
             throw e;
         }
     }
 
-    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
+    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index, Object receiver) throws UnexpectedResultException {
         try {
             double value = valueNode.executeDouble(frame);
-            executeWithTargetAndIndexAndValue(target, index, value);
+            executeWithTargetAndIndexAndValue(target, index, value, receiver);
             return value;
         } catch (UnexpectedResultException e) {
-            executeWithTargetAndIndexAndValue(target, index, e.getResult());
+            executeWithTargetAndIndexAndValue(target, index, e.getResult(), receiver);
             throw e;
         }
     }
 
-    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
+    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index, Object receiver) throws UnexpectedResultException {
         try {
             double value = valueNode.executeDouble(frame);
-            executeWithTargetAndIndexAndValue(target, index, (Object) value);
+            executeWithTargetAndIndexAndValue(target, index, (Object) value, receiver);
             return value;
         } catch (UnexpectedResultException e) {
-            executeWithTargetAndIndexAndValue(target, index, e.getResult());
+            executeWithTargetAndIndexAndValue(target, index, e.getResult(), receiver);
             throw e;
         }
     }
 
     public final void executeWithTargetAndIndexAndValue(Object target, Object index, Object value) {
-        getTypeCacheNode().executeWithTargetAndIndexAndValue(target, index, value);
+        getTypeCacheNode().executeWithTargetAndIndexAndValue(target, index, value, target);
     }
 
     public final void executeWithTargetAndIndexAndValue(Object target, int index, Object value) {
-        getTypeCacheNode().executeWithTargetAndIndexAndValue(target, index, value);
+        getTypeCacheNode().executeWithTargetAndIndexAndValue(target, index, value, target);
+    }
+
+    public final void executeWithTargetAndIndexAndValue(Object target, Object index, Object value, Object receiver) {
+        getTypeCacheNode().executeWithTargetAndIndexAndValue(target, index, value, receiver);
+    }
+
+    public final void executeWithTargetAndIndexAndValue(Object target, int index, Object value, Object receiver) {
+        getTypeCacheNode().executeWithTargetAndIndexAndValue(target, index, value, receiver);
     }
 
     protected abstract static class WriteElementCacheNode extends JavaScriptBaseNode {
@@ -423,10 +438,10 @@ public class WriteElementNode extends JSTargetableNode {
             super(context, isStrict, writeOwn);
         }
 
-        public abstract void executeWithTargetAndIndexAndValue(Object target, Object index, Object value);
+        public abstract void executeWithTargetAndIndexAndValue(Object target, Object index, Object value, Object receiver);
 
-        public void executeWithTargetAndIndexAndValue(Object target, int index, Object value) {
-            executeWithTargetAndIndexAndValue(target, (Object) index, value);
+        public void executeWithTargetAndIndexAndValue(Object target, int index, Object value, Object receiver) {
+            executeWithTargetAndIndexAndValue(target, (Object) index, value, receiver);
         }
     }
 
@@ -436,13 +451,13 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        public void executeWithTargetAndIndexAndValue(Object target, Object index, Object value) {
+        public void executeWithTargetAndIndexAndValue(Object target, Object index, Object value, Object receiver) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             CachedWriteElementTypeCacheNode specialized = makeTypeCacheNode(target);
             this.replace(specialized);
             checkForPolymorphicSpecialize();
-            specialized.executeWithTargetAndIndexAndValue(target, index, value);
+            specialized.executeWithTargetAndIndexAndValue(target, index, value, receiver);
         }
 
         private void checkForPolymorphicSpecialize() {
@@ -484,26 +499,26 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        public void executeWithTargetAndIndexAndValue(Object target, Object index, Object value) {
+        public void executeWithTargetAndIndexAndValue(Object target, Object index, Object value, Object receiver) {
             if (guard(target)) {
-                executeWithTargetAndIndexUnguarded(target, index, value);
+                executeWithTargetAndIndexUnguarded(target, index, value, receiver);
             } else {
-                getNext().executeWithTargetAndIndexAndValue(target, index, value);
+                getNext().executeWithTargetAndIndexAndValue(target, index, value, receiver);
             }
         }
 
         @Override
-        public void executeWithTargetAndIndexAndValue(Object target, int index, Object value) {
+        public void executeWithTargetAndIndexAndValue(Object target, int index, Object value, Object receiver) {
             if (guard(target)) {
-                executeWithTargetAndIndexUnguarded(target, index, value);
+                executeWithTargetAndIndexUnguarded(target, index, value, receiver);
             } else {
-                getNext().executeWithTargetAndIndexAndValue(target, index, value);
+                getNext().executeWithTargetAndIndexAndValue(target, index, value, receiver);
             }
         }
 
-        protected abstract void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value);
+        protected abstract void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver);
 
-        protected abstract void executeWithTargetAndIndexUnguarded(Object target, int index, Object value);
+        protected abstract void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver);
 
         public abstract boolean guard(Object target);
 
@@ -531,7 +546,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver) {
             DynamicObject targetObject = JSObject.castJSObject(target);
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
@@ -539,12 +554,15 @@ public class WriteElementNode extends JSTargetableNode {
                 Object objIndex = toArrayIndex(index);
 
                 if (intOrStringIndexProfile.profile(objIndex instanceof Long)) {
-                    getArrayWriteElementNode().executeWithTargetAndArrayAndIndexAndValue(targetObject, array, (Long) objIndex, value, arrayCondition);
+                    long longIndex = (Long) objIndex;
+                    if (!getArrayWriteElementNode().executeWithTargetAndArrayAndIndexAndValue(targetObject, array, longIndex, value, arrayCondition)) {
+                        setPropertyGenericEvaluatedIndex(targetObject, longIndex, value, receiver);
+                    }
                 } else {
-                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, objIndex, value);
+                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, objIndex, value, receiver);
                 }
             } else {
-                setPropertyGeneric(targetObject, index, value);
+                setPropertyGeneric(targetObject, index, value, receiver);
             }
         }
 
@@ -565,36 +583,42 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver) {
             DynamicObject targetObject = JSObject.castJSObject(target);
             boolean arrayCondition = isArrayNode.execute(targetObject);
             if (arrayProfile.profile(arrayCondition)) {
                 ScriptArray array = JSObject.getArray(targetObject, arrayCondition);
 
                 if (intOrStringIndexProfile.profile(index >= 0)) {
-                    getArrayWriteElementNode().executeWithTargetAndArrayAndIndexAndValue(targetObject, array, index, value, arrayCondition);
+                    if (!getArrayWriteElementNode().executeWithTargetAndArrayAndIndexAndValue(targetObject, array, index, value, arrayCondition)) {
+                        setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver);
+                    }
                 } else {
-                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Boundaries.stringValueOf(index), value);
+                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Boundaries.stringValueOf(index), value, receiver);
                 }
             } else {
-                setPropertyGeneric(targetObject, index, value);
+                setPropertyGeneric(targetObject, index, value, receiver);
             }
         }
 
-        private void setPropertyGenericEvaluatedStringOrSymbol(DynamicObject targetObject, Object key, Object value) {
-            JSObject.set(targetObject, key, value, isStrict, jsclassProfile);
+        private void setPropertyGenericEvaluatedIndex(DynamicObject targetObject, long index, Object value, Object receiver) {
+            JSObject.setWithReceiver(targetObject, index, value, receiver, isStrict, jsclassProfile);
         }
 
-        private void setPropertyGeneric(DynamicObject targetObject, Object index, Object value) {
-            setCachedProperty(targetObject, index, value);
+        private void setPropertyGenericEvaluatedStringOrSymbol(DynamicObject targetObject, Object key, Object value, Object receiver) {
+            JSObject.setWithReceiver(targetObject, key, value, receiver, isStrict, jsclassProfile);
         }
 
-        private void setCachedProperty(DynamicObject targetObject, Object index, Object value) {
+        private void setPropertyGeneric(DynamicObject targetObject, Object index, Object value, Object receiver) {
+            setCachedProperty(targetObject, index, value, receiver);
+        }
+
+        private void setCachedProperty(DynamicObject targetObject, Object index, Object value, Object receiver) {
             if (setPropertyCachedNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 setPropertyCachedNode = insert(CachedSetPropertyNode.create(context, isStrict, writeOwn));
             }
-            setPropertyCachedNode.execute(targetObject, index, value);
+            setPropertyCachedNode.execute(targetObject, index, value, receiver);
         }
 
         @Override
@@ -612,11 +636,11 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver) {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver) {
         }
 
         @Override
@@ -634,7 +658,7 @@ public class WriteElementNode extends JSTargetableNode {
             return new UninitArrayWriteElementCacheNode(context, isStrict, writeOwn, false);
         }
 
-        protected abstract void executeWithTargetAndArrayAndIndexAndValue(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition);
+        protected abstract boolean executeWithTargetAndArrayAndIndexAndValue(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition);
     }
 
     private static class UninitArrayWriteElementCacheNode extends ArrayWriteElementCacheNode {
@@ -646,7 +670,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValue(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValue(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ArrayWriteElementCacheNode selection;
             if (!JSSlowArray.isJSSlowArray(target) && !JSSlowArgumentsObject.isJSSlowArgumentsObject(target)) {
@@ -663,7 +687,7 @@ public class WriteElementNode extends JSTargetableNode {
             } finally {
                 lock.unlock();
             }
-            selection.executeWithTargetAndArrayAndIndexAndValue(target, array, index, value, false);
+            return selection.executeWithTargetAndArrayAndIndexAndValue(target, array, index, value, false);
         }
 
         private void checkForPolymorphicSpecialize() {
@@ -749,15 +773,15 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValue(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValue(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             if (guard(target, array)) {
-                executeWithTargetAndArrayAndIndexAndValueUnguarded(target, array, index, value, arrayCondition);
+                return executeWithTargetAndArrayAndIndexAndValueUnguarded(target, array, index, value, arrayCondition);
             } else {
-                arrayCacheNext.executeWithTargetAndArrayAndIndexAndValue(target, array, index, value, arrayCondition);
+                return arrayCacheNext.executeWithTargetAndArrayAndIndexAndValue(target, array, index, value, arrayCondition);
             }
         }
 
-        protected abstract void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition);
+        protected abstract boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition);
 
         protected abstract boolean guard(Object target, ScriptArray array);
 
@@ -802,13 +826,13 @@ public class WriteElementNode extends JSTargetableNode {
             super(context, isStrict, arrayType, writeOwn, arrayCacheNext);
         }
 
-        protected final void setArrayAndWrite(ScriptArray newArray, DynamicObject target, long index, Object value, boolean arrayCondition) {
+        protected final boolean setArrayAndWrite(ScriptArray newArray, DynamicObject target, long index, Object value, boolean arrayCondition) {
             arraySetArrayType(target, newArray);
             if (recursiveWrite == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.recursiveWrite = insert(ArrayWriteElementCacheNode.create(context, isStrict, writeOwn));
             }
-            recursiveWrite.executeWithTargetAndArrayAndIndexAndValue(target, newArray, index, value, arrayCondition);
+            return recursiveWrite.executeWithTargetAndArrayAndIndexAndValue(target, newArray, index, value, arrayCondition);
         }
 
         protected final boolean nonHolesArrayNeedsSlowSet(DynamicObject target, AbstractWritableArray arrayType, long index, boolean arrayCondition) {
@@ -837,17 +861,14 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     private static class ExactArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
-        protected final JSClassProfile classProfile = JSClassProfile.create();
 
         ExactArrayWriteElementCacheNode(JSContext context, boolean isStrict, ScriptArray arrayType, boolean writeOwn, ArrayWriteElementCacheNode arrayCacheNext) {
             super(context, isStrict, arrayType, writeOwn, arrayCacheNext);
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
-            // target.setArray(arrayType.cast(array).setElement(index, value,
-            // isStrict));
-            JSObject.set(target, index, value, isStrict, classProfile);
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+            return false;
         }
     }
 
@@ -862,13 +883,14 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             LazyRegexResultArray lazyRegexResultArray = (LazyRegexResultArray) cast(array);
             ScriptArray newArray = lazyRegexResultArray.createWritable(materializeResultNode, target, index, value, arrayCondition);
             if (inBoundsProfile.profile(index >= 0 && index < 0x7fff_ffff)) {
-                setArrayAndWrite(newArray, target, index, value, arrayCondition);
+                return setArrayAndWrite(newArray, target, index, value, arrayCondition);
             } else {
                 arraySetArrayType(target, SparseArray.makeSparseArray(target, newArray).setElement(target, index, value, isStrict, arrayCondition));
+                return true;
             }
         }
     }
@@ -886,7 +908,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             AbstractConstantArray constantArray = (AbstractConstantArray) cast(array);
             if (inBoundsProfile.profile(index >= 0 && index < 0x7fff_ffff)) {
                 ScriptArray newArray;
@@ -903,28 +925,29 @@ public class WriteElementNode extends JSTargetableNode {
                     inBoundsObjectBranch.enter();
                     newArray = constantArray.createWriteableObject(target, index, value, arrayCondition, createWritableProfile);
                 }
-                setArrayAndWrite(newArray, target, index, value, arrayCondition);
+                return setArrayAndWrite(newArray, target, index, value, arrayCondition);
             } else {
                 arraySetArrayType(target, SparseArray.makeSparseArray(target, array).setElement(target, index, value, isStrict, arrayCondition));
+                return true;
             }
         }
     }
 
     private static class WritableArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
         private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
-        protected final JSClassProfile classProfile = JSClassProfile.create();
 
         WritableArrayWriteElementCacheNode(JSContext context, boolean isStrict, ScriptArray arrayType, boolean writeOwn, ArrayWriteElementCacheNode arrayCacheNext) {
             super(context, isStrict, arrayType, writeOwn, arrayCacheNext);
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             AbstractWritableArray writableArray = (AbstractWritableArray) cast(array);
             if (inBoundsProfile.profile(writableArray.isInBoundsFast(target, index, arrayCondition))) {
                 arraySetArrayType(target, writableArray.setElement(target, index, value, isStrict, arrayCondition));
+                return true;
             } else {
-                JSObject.set(target, index, value, isStrict, classProfile);
+                return false;
             }
         }
     }
@@ -946,44 +969,46 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             AbstractIntArray intArray = (AbstractIntArray) cast(array);
             if (value instanceof Integer) {
                 intValueBranch.enter();
-                executeWithTargetAndArrayAndIndexAndIntValueInner(target, intArray, index, (int) value, arrayCondition);
+                return executeWithIntValueInner(target, intArray, index, (int) value, arrayCondition);
             } else if (value instanceof Double) {
                 toDoubleBranch.enter();
                 double doubleValue = (double) value;
-                setArrayAndWrite(intArray.toDouble(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition);
+                return setArrayAndWrite(intArray.toDouble(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition);
             } else {
                 toObjectBranch.enter();
-                setArrayAndWrite(intArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
+                return setArrayAndWrite(intArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
             }
         }
 
-        private void executeWithTargetAndArrayAndIndexAndIntValueInner(DynamicObject target, AbstractIntArray intArray, long index, int intValue, boolean arrayCondition) {
+        private boolean executeWithIntValueInner(DynamicObject target, AbstractIntArray intArray, long index, int intValue, boolean arrayCondition) {
             assert !(intArray instanceof HolesIntArray);
             if (nonHolesArrayNeedsSlowSet(target, intArray, index, arrayCondition)) {
-                JSObject.set(target, index, (Object) intValue, isStrict);
-                return;
+                return false;
             }
             int iIndex = (int) index;
             if (inBoundsFastCondition.profile(intArray.isInBoundsFast(target, index, arrayCondition) && !mightTransferToNonContiguous(intArray, index))) {
                 intArray.setInBoundsFast(target, iIndex, intValue, arrayCondition);
+                return true;
             } else if (inBoundsCondition.profile(intArray.isInBounds(target, iIndex, arrayCondition) && !mightTransferToNonContiguous(intArray, index))) {
                 intArray.setInBounds(target, iIndex, intValue, arrayCondition, profile);
+                return true;
             } else {
                 if (supportedNonZeroCondition.profile(intArray.isSupported(target, index, arrayCondition) && !mightTransferToNonContiguous(intArray, index))) {
                     intArray.setSupported(target, iIndex, intValue, arrayCondition, profile);
+                    return true;
                 } else if (supportedZeroCondition.profile(mightTransferToNonContiguous(intArray, index) && intArray.isSupported(target, index, arrayCondition))) {
-                    setArrayAndWrite(intArray.toNonContiguous(target, iIndex, intValue, arrayCondition, profile), target, index, intValue, arrayCondition);
+                    return setArrayAndWrite(intArray.toNonContiguous(target, iIndex, intValue, arrayCondition, profile), target, index, intValue, arrayCondition);
                 } else if (supportedContiguousCondition.profile(!(intArray instanceof AbstractContiguousIntArray) && intArray.isSupportedContiguous(target, index, arrayCondition))) {
-                    setArrayAndWrite(intArray.toContiguous(target, index, intValue, arrayCondition), target, index, intValue, arrayCondition);
+                    return setArrayAndWrite(intArray.toContiguous(target, index, intValue, arrayCondition), target, index, intValue, arrayCondition);
                 } else if (supportedHolesCondition.profile(intArray.isSupportedHoles(target, index, arrayCondition))) {
-                    setArrayAndWrite(intArray.toHoles(target, index, intValue, arrayCondition), target, index, intValue, arrayCondition);
+                    return setArrayAndWrite(intArray.toHoles(target, index, intValue, arrayCondition), target, index, intValue, arrayCondition);
                 } else {
                     assert intArray.isSparse(target, index, arrayCondition);
-                    setArrayAndWrite(intArray.toSparse(target, index, intValue), target, index, intValue, arrayCondition);
+                    return setArrayAndWrite(intArray.toSparse(target, index, intValue), target, index, intValue, arrayCondition);
                 }
             }
         }
@@ -1009,7 +1034,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             AbstractDoubleArray doubleArray = (AbstractDoubleArray) cast(array);
             double doubleValue;
             if (value instanceof Double) {
@@ -1020,34 +1045,34 @@ public class WriteElementNode extends JSTargetableNode {
                 doubleValue = (int) value;
             } else {
                 toObjectBranch.enter();
-                setArrayAndWrite(doubleArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
-                return;
+                return setArrayAndWrite(doubleArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
             }
-            executeWithTargetAndArrayAndIndexAndDoubleValueInner(target, doubleArray, index, doubleValue, arrayCondition);
+            return executeWithDoubleValueInner(target, doubleArray, index, doubleValue, arrayCondition);
         }
 
-        private void executeWithTargetAndArrayAndIndexAndDoubleValueInner(DynamicObject target, AbstractDoubleArray doubleArray, long index, double doubleValue,
-                        boolean arrayCondition) {
+        private boolean executeWithDoubleValueInner(DynamicObject target, AbstractDoubleArray doubleArray, long index, double doubleValue, boolean arrayCondition) {
             assert !(doubleArray instanceof HolesDoubleArray);
             if (nonHolesArrayNeedsSlowSet(target, doubleArray, index, arrayCondition)) {
-                JSObject.set(target, index, (Object) doubleValue, isStrict);
-                return;
+                return false;
             }
             int iIndex = (int) index;
             if (inBoundsFastCondition.profile(doubleArray.isInBoundsFast(target, index, arrayCondition))) {
                 doubleArray.setInBoundsFast(target, iIndex, doubleValue, arrayCondition);
+                return true;
             } else if (inBoundsCondition.profile(doubleArray.isInBounds(target, iIndex, arrayCondition))) {
                 doubleArray.setInBounds(target, iIndex, doubleValue, arrayCondition, profile);
+                return true;
             } else {
                 if (supportedCondition.profile(doubleArray.isSupported(target, index, arrayCondition))) {
                     doubleArray.setSupported(target, iIndex, doubleValue, arrayCondition, profile);
+                    return true;
                 } else if (supportedContiguousCondition.profile(!(doubleArray instanceof AbstractContiguousDoubleArray) && doubleArray.isSupportedContiguous(target, index, arrayCondition))) {
-                    setArrayAndWrite(doubleArray.toContiguous(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition);
+                    return setArrayAndWrite(doubleArray.toContiguous(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition);
                 } else if (supportedHolesCondition.profile(doubleArray.isSupportedHoles(target, index, arrayCondition))) {
-                    setArrayAndWrite(doubleArray.toHoles(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition);
+                    return setArrayAndWrite(doubleArray.toHoles(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition);
                 } else {
                     assert doubleArray.isSparse(target, index, arrayCondition);
-                    setArrayAndWrite(doubleArray.toSparse(target, index, doubleValue), target, index, doubleValue, arrayCondition);
+                    return setArrayAndWrite(doubleArray.toSparse(target, index, doubleValue), target, index, doubleValue, arrayCondition);
                 }
             }
         }
@@ -1066,32 +1091,30 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             AbstractObjectArray objectArray = (AbstractObjectArray) cast(array);
-            executeWithTargetAndArrayAndIndexAndValueInner(target, objectArray, index, value, arrayCondition);
-        }
-
-        private void executeWithTargetAndArrayAndIndexAndValueInner(DynamicObject target, AbstractObjectArray objectArray, long index, Object value, boolean arrayCondition) {
             assert !(objectArray instanceof HolesObjectArray);
             if (nonHolesArrayNeedsSlowSet(target, objectArray, index, arrayCondition)) {
-                JSObject.set(target, index, value, isStrict);
-                return;
+                return false;
             }
             int iIndex = (int) index;
             if (inBoundsFastCondition.profile(objectArray.isInBoundsFast(target, index, arrayCondition))) {
                 objectArray.setInBoundsFast(target, iIndex, value, arrayCondition);
+                return true;
             } else if (inBoundsCondition.profile(objectArray.isInBounds(target, iIndex, arrayCondition))) {
                 objectArray.setInBounds(target, iIndex, value, arrayCondition, profile);
+                return true;
             } else if (supportedCondition.profile(objectArray.isSupported(target, index, arrayCondition))) {
                 objectArray.setSupported(target, iIndex, value, arrayCondition);
+                return true;
             } else if (supportedContiguousCondition.profile(!(objectArray instanceof AbstractContiguousObjectArray) && objectArray.isSupportedContiguous(target, index, arrayCondition))) {
-                setArrayAndWrite(objectArray.toContiguous(target, index, value, arrayCondition), target, index, value, arrayCondition);
+                return setArrayAndWrite(objectArray.toContiguous(target, index, value, arrayCondition), target, index, value, arrayCondition);
             } else if (supportedHolesCondition.profile(objectArray.isSupportedHoles(target, index, arrayCondition))) {
-                setArrayAndWrite(objectArray.toHoles(target, index, value, arrayCondition), target, index, value, arrayCondition);
+                return setArrayAndWrite(objectArray.toHoles(target, index, value, arrayCondition), target, index, value, arrayCondition);
             } else {
                 assert objectArray.isSparse(target, index, arrayCondition) : objectArray.getClass() + " " + objectArray.firstElementIndex(target) + "-" + objectArray.lastElementIndex(target) + " / " +
                                 index;
-                setArrayAndWrite(objectArray.toSparse(target, index, value), target, index, value, arrayCondition);
+                return setArrayAndWrite(objectArray.toSparse(target, index, value), target, index, value, arrayCondition);
             }
         }
     }
@@ -1110,37 +1133,38 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             AbstractJSObjectArray jsobjectArray = (AbstractJSObjectArray) cast(array);
             if (objectType.profile(JSObject.isDynamicObject(value))) {
                 DynamicObject jsobjectValue = (DynamicObject) value;
-                executeWithTargetAndArrayAndIndexAndJSObjectValueInner(target, jsobjectArray, index, jsobjectValue, arrayCondition);
+                return executeWithJSObjectValueInner(target, jsobjectArray, index, jsobjectValue, arrayCondition);
             } else {
-                setArrayAndWrite(jsobjectArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
+                return setArrayAndWrite(jsobjectArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
             }
         }
 
-        private void executeWithTargetAndArrayAndIndexAndJSObjectValueInner(DynamicObject target, AbstractJSObjectArray jsobjectArray, long index, DynamicObject jsobjectValue,
-                        boolean arrayCondition) {
+        private boolean executeWithJSObjectValueInner(DynamicObject target, AbstractJSObjectArray jsobjectArray, long index, DynamicObject jsobjectValue, boolean arrayCondition) {
             assert !(jsobjectArray instanceof HolesJSObjectArray);
             int iIndex = (int) index;
             if (nonHolesArrayNeedsSlowSet(target, jsobjectArray, index, arrayCondition)) {
-                JSObject.set(target, index, jsobjectValue, isStrict);
-                return;
+                return false;
             }
             if (inBoundsFastCondition.profile(jsobjectArray.isInBoundsFast(target, index, arrayCondition))) {
                 jsobjectArray.setInBoundsFast(target, iIndex, jsobjectValue, arrayCondition);
+                return true;
             } else if (inBoundsCondition.profile(jsobjectArray.isInBounds(target, iIndex, arrayCondition))) {
                 jsobjectArray.setInBounds(target, iIndex, jsobjectValue, arrayCondition, profile);
+                return true;
             } else if (supportedCondition.profile(jsobjectArray.isSupported(target, index, arrayCondition))) {
                 jsobjectArray.setSupported(target, iIndex, jsobjectValue, arrayCondition, profile);
+                return true;
             } else if (supportedContiguousCondition.profile(!(jsobjectArray instanceof AbstractContiguousJSObjectArray) && jsobjectArray.isSupportedContiguous(target, index, arrayCondition))) {
-                setArrayAndWrite(jsobjectArray.toContiguous(target, index, jsobjectValue, arrayCondition), target, index, jsobjectValue, arrayCondition);
+                return setArrayAndWrite(jsobjectArray.toContiguous(target, index, jsobjectValue, arrayCondition), target, index, jsobjectValue, arrayCondition);
             } else if (supportedHolesCondition.profile(jsobjectArray.isSupportedHoles(target, index, arrayCondition))) {
-                setArrayAndWrite(jsobjectArray.toHoles(target, index, jsobjectValue, arrayCondition), target, index, jsobjectValue, arrayCondition);
+                return setArrayAndWrite(jsobjectArray.toHoles(target, index, jsobjectValue, arrayCondition), target, index, jsobjectValue, arrayCondition);
             } else {
                 assert jsobjectArray.isSparse(target, index, arrayCondition);
-                setArrayAndWrite(jsobjectArray.toSparse(target, index, jsobjectValue), target, index, jsobjectValue, arrayCondition);
+                return setArrayAndWrite(jsobjectArray.toSparse(target, index, jsobjectValue), target, index, jsobjectValue, arrayCondition);
             }
         }
     }
@@ -1163,26 +1187,25 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             HolesIntArray holesIntArray = (HolesIntArray) cast(array);
             if (value instanceof Integer) {
                 intValueBranch.enter();
                 int intValue = (int) value;
-                executeWithTargetAndArrayAndIndexAndIntValueInner(target, holesIntArray, index, intValue, arrayCondition);
+                return executeWithIntValueInner(target, holesIntArray, index, intValue, arrayCondition);
             } else if (value instanceof Double) {
                 toDoubleBranch.enter();
                 double doubleValue = (double) value;
-                setArrayAndWrite(holesIntArray.toDouble(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition);
+                return setArrayAndWrite(holesIntArray.toDouble(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition);
             } else {
                 toObjectBranch.enter();
-                setArrayAndWrite(holesIntArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
+                return setArrayAndWrite(holesIntArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
             }
         }
 
-        private void executeWithTargetAndArrayAndIndexAndIntValueInner(DynamicObject target, HolesIntArray holesIntArray, long index, int intValue, boolean arrayCondition) {
+        private boolean executeWithIntValueInner(DynamicObject target, HolesIntArray holesIntArray, long index, int intValue, boolean arrayCondition) {
             if (holesArrayNeedsSlowSet(target, holesIntArray, index, arrayCondition)) {
-                JSObject.set(target, index, (Object) intValue, isStrict);
-                return;
+                return false;
             }
             int iIndex = (int) index;
             boolean containsHoles = containsHolesProfile.profile(containsHoles(target, holesIntArray, index, arrayCondition));
@@ -1192,15 +1215,18 @@ public class WriteElementNode extends JSTargetableNode {
                 } else {
                     holesIntArray.setInBoundsFastNonHole(target, iIndex, intValue, arrayCondition);
                 }
+                return true;
             } else if (containsHoles && inBoundsCondition.profile(holesIntArray.isInBounds(target, iIndex, arrayCondition) && !HolesIntArray.isHoleValue(intValue))) {
                 holesIntArray.setInBounds(target, iIndex, intValue, arrayCondition, profile);
+                return true;
             } else if (containsHoles && supportedContainsHolesCondition.profile(holesIntArray.isSupported(target, index, arrayCondition) && !HolesIntArray.isHoleValue(intValue))) {
                 holesIntArray.setSupported(target, iIndex, intValue, arrayCondition, profile);
+                return true;
             } else if (!containsHoles && supportedNotContainsHolesCondition.profile(holesIntArray.isSupported(target, index, arrayCondition))) {
-                setArrayAndWrite(holesIntArray.toNonHoles(target, index, intValue, arrayCondition), target, index, intValue, arrayCondition);
+                return setArrayAndWrite(holesIntArray.toNonHoles(target, index, intValue, arrayCondition), target, index, intValue, arrayCondition);
             } else {
                 assert holesIntArray.isSparse(target, index, arrayCondition);
-                setArrayAndWrite(holesIntArray.toSparse(target, index, intValue), target, index, intValue, arrayCondition);
+                return setArrayAndWrite(holesIntArray.toSparse(target, index, intValue), target, index, intValue, arrayCondition);
             }
         }
 
@@ -1227,7 +1253,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             HolesDoubleArray holesDoubleArray = (HolesDoubleArray) cast(array);
             double doubleValue;
             if (value instanceof Double) {
@@ -1238,18 +1264,15 @@ public class WriteElementNode extends JSTargetableNode {
                 doubleValue = (int) value;
             } else {
                 toObjectBranch.enter();
-                setArrayAndWrite(holesDoubleArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
-                return;
+                return setArrayAndWrite(holesDoubleArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
             }
 
-            executeWithTargetAndArrayAndIndexAndIntValueInner(target, holesDoubleArray, index, doubleValue, arrayCondition);
+            return executeWithDoubleValueInner(target, holesDoubleArray, index, doubleValue, arrayCondition);
         }
 
-        private void executeWithTargetAndArrayAndIndexAndIntValueInner(DynamicObject target, HolesDoubleArray holesDoubleArray, long index, double doubleValue,
-                        boolean arrayCondition) {
+        private boolean executeWithDoubleValueInner(DynamicObject target, HolesDoubleArray holesDoubleArray, long index, double doubleValue, boolean arrayCondition) {
             if (holesArrayNeedsSlowSet(target, holesDoubleArray, index, arrayCondition)) {
-                JSObject.set(target, index, (Object) doubleValue, isStrict);
-                return;
+                return false;
             }
             int iIndex = (int) index;
             boolean containsHoles = containsHolesProfile.profile(containsHoles(target, holesDoubleArray, index, arrayCondition));
@@ -1259,15 +1282,18 @@ public class WriteElementNode extends JSTargetableNode {
                 } else {
                     holesDoubleArray.setInBoundsFastNonHole(target, iIndex, doubleValue, arrayCondition);
                 }
+                return true;
             } else if (containsHoles && inBoundsCondition.profile(holesDoubleArray.isInBounds(target, iIndex, arrayCondition) && !HolesDoubleArray.isHoleValue(doubleValue))) {
                 holesDoubleArray.setInBounds(target, iIndex, doubleValue, arrayCondition, profile);
+                return true;
             } else if (containsHoles && supportedContainsHolesCondition.profile(holesDoubleArray.isSupported(target, index, arrayCondition) && !HolesDoubleArray.isHoleValue(doubleValue))) {
                 holesDoubleArray.setSupported(target, iIndex, doubleValue, arrayCondition, profile);
+                return true;
             } else if (!containsHoles && supportedNotContainsHolesCondition.profile(holesDoubleArray.isSupported(target, index, arrayCondition))) {
-                setArrayAndWrite(holesDoubleArray.toNonHoles(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition);
+                return setArrayAndWrite(holesDoubleArray.toNonHoles(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition);
             } else {
                 assert holesDoubleArray.isSparse(target, index, arrayCondition);
-                setArrayAndWrite(holesDoubleArray.toSparse(target, index, doubleValue), target, index, doubleValue, arrayCondition);
+                return setArrayAndWrite(holesDoubleArray.toSparse(target, index, doubleValue), target, index, doubleValue, arrayCondition);
             }
         }
 
@@ -1293,20 +1319,18 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             HolesJSObjectArray holesArray = (HolesJSObjectArray) cast(array);
             if (objectType.profile(JSObject.isDynamicObject(value))) {
-                executeWithTargetAndArrayAndIndexAndJSObjectValueInner(target, holesArray, index, (DynamicObject) value, arrayCondition);
+                return executeWithJSObjectValueInner(target, holesArray, index, (DynamicObject) value, arrayCondition);
             } else {
-                setArrayAndWrite(holesArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
+                return setArrayAndWrite(holesArray.toObject(target, index, value, arrayCondition), target, index, value, arrayCondition);
             }
         }
 
-        private void executeWithTargetAndArrayAndIndexAndJSObjectValueInner(DynamicObject target, HolesJSObjectArray jsobjectArray, long index, DynamicObject value,
-                        boolean arrayCondition) {
+        private boolean executeWithJSObjectValueInner(DynamicObject target, HolesJSObjectArray jsobjectArray, long index, DynamicObject value, boolean arrayCondition) {
             if (holesArrayNeedsSlowSet(target, jsobjectArray, index, arrayCondition)) {
-                JSObject.set(target, index, value, isStrict);
-                return;
+                return false;
             }
             boolean containsHoles = containsHolesProfile.profile(containsHoles(target, jsobjectArray, index, arrayCondition));
             if (containsHoles && inBoundsFastCondition.profile(jsobjectArray.isInBoundsFast(target, index, arrayCondition))) {
@@ -1316,17 +1340,20 @@ public class WriteElementNode extends JSTargetableNode {
                 } else {
                     jsobjectArray.setInBoundsFastNonHole(target, (int) index, value, arrayCondition);
                 }
+                return true;
             } else if (containsHoles && inBoundsCondition.profile(jsobjectArray.isInBounds(target, (int) index, arrayCondition))) {
                 assert !HolesJSObjectArray.isHoleValue(value);
                 jsobjectArray.setInBounds(target, (int) index, value, arrayCondition, profile);
+                return true;
             } else if (containsHoles && supportedContainsHolesCondition.profile(jsobjectArray.isSupported(target, index, arrayCondition))) {
                 assert !HolesJSObjectArray.isHoleValue(value);
                 jsobjectArray.setSupported(target, (int) index, value, arrayCondition, profile);
+                return true;
             } else if (!containsHoles && supportedNotContainsHolesCondition.profile(jsobjectArray.isSupported(target, index, arrayCondition))) {
-                setArrayAndWrite(jsobjectArray.toNonHoles(target, index, value, arrayCondition), target, index, value, arrayCondition);
+                return setArrayAndWrite(jsobjectArray.toNonHoles(target, index, value, arrayCondition), target, index, value, arrayCondition);
             } else {
                 assert jsobjectArray.isSparse(target, index, arrayCondition);
-                setArrayAndWrite(jsobjectArray.toSparse(target, index, value), target, index, value, arrayCondition);
+                return setArrayAndWrite(jsobjectArray.toSparse(target, index, value), target, index, value, arrayCondition);
             }
         }
 
@@ -1348,14 +1375,10 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
-            executeWithTargetAndArrayAndIndexAndValueInner(target, (HolesObjectArray) array, index, value, arrayCondition);
-        }
-
-        private void executeWithTargetAndArrayAndIndexAndValueInner(DynamicObject target, HolesObjectArray objectArray, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+            HolesObjectArray objectArray = (HolesObjectArray) array;
             if (holesArrayNeedsSlowSet(target, objectArray, index, arrayCondition)) {
-                JSObject.set(target, index, value, isStrict);
-                return;
+                return false;
             }
             if (inBoundsFastCondition.profile(objectArray.isInBoundsFast(target, index, arrayCondition))) {
                 assert !HolesObjectArray.isHoleValue(value);
@@ -1364,15 +1387,18 @@ public class WriteElementNode extends JSTargetableNode {
                 } else {
                     objectArray.setInBoundsFastNonHole(target, (int) index, value, arrayCondition);
                 }
+                return true;
             } else if (inBoundsCondition.profile(objectArray.isInBounds(target, (int) index, arrayCondition))) {
                 assert !HolesObjectArray.isHoleValue(value);
                 objectArray.setInBounds(target, (int) index, value, arrayCondition, profile);
+                return true;
             } else if (supportedCondition.profile(objectArray.isSupported(target, index, arrayCondition))) {
                 assert !HolesObjectArray.isHoleValue(value);
                 objectArray.setSupported(target, (int) index, value, arrayCondition);
+                return true;
             } else {
                 assert objectArray.isSparse(target, index, arrayCondition);
-                setArrayAndWrite(objectArray.toSparse(target, index, value), target, index, value, arrayCondition);
+                return setArrayAndWrite(objectArray.toSparse(target, index, value), target, index, value, arrayCondition);
             }
         }
     }
@@ -1385,7 +1411,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected final void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected final boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             TypedIntArray<?> typedArray = (TypedIntArray<?>) cast(array);
             int iValue = toInt(value); // could throw
             checkDetachedArrayBuffer(target);
@@ -1394,6 +1420,7 @@ public class WriteElementNode extends JSTargetableNode {
             } else {
                 // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
             }
+            return true;
         }
 
         protected abstract int toInt(Object value);
@@ -1424,13 +1451,14 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected final void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected final boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             TypedBigIntArray<?> typedArray = (TypedBigIntArray<?>) cast(array);
             BigInt biValue = toBigIntNode.executeBigInteger(value); // could throw
             checkDetachedArrayBuffer(target);
             if (inBoundsProfile.profile(typedArray.hasElement(target, index, arrayCondition))) {
                 typedArray.setBigInt(target, (int) index, biValue, arrayCondition);
             }
+            return true;
         }
     }
 
@@ -1497,7 +1525,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
+        protected boolean executeWithTargetAndArrayAndIndexAndValueUnguarded(DynamicObject target, ScriptArray array, long index, Object value, boolean arrayCondition) {
             TypedFloatArray<?> typedArray = (TypedFloatArray<?>) cast(array);
             double dValue = toDouble(value); // could throw
             checkDetachedArrayBuffer(target);
@@ -1506,6 +1534,7 @@ public class WriteElementNode extends JSTargetableNode {
             } else {
                 // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
             }
+            return true;
         }
 
         private double toDouble(Object value) {
@@ -1542,7 +1571,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             if (index instanceof Integer) {
                 intIndexBranch.enter();
@@ -1560,7 +1589,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             if (isImmutable.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
                 // cannot set characters of immutable strings
@@ -1588,13 +1617,13 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver) {
             Number number = (Number) target;
             JSObject.setWithReceiver(JSNumber.create(context, number), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver) {
             Number number = (Number) target;
             JSObject.setWithReceiver(JSNumber.create(context, number), index, value, target, isStrict, classProfile);
         }
@@ -1611,13 +1640,13 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver) {
             Boolean bool = (Boolean) target;
             JSObject.setWithReceiver(JSBoolean.create(context, bool), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver) {
             Boolean bool = (Boolean) target;
             JSObject.setWithReceiver(JSBoolean.create(context, bool), index, value, target, isStrict, classProfile);
         }
@@ -1634,21 +1663,21 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver) {
             if (isStrict) {
                 throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             }
             Symbol symbol = (Symbol) target;
-            JSObject.set(JSSymbol.create(context, symbol), toPropertyKey(index), value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSSymbol.create(context, symbol), toPropertyKey(index), value, receiver, isStrict, classProfile);
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver) {
             if (isStrict) {
                 throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             }
             Symbol symbol = (Symbol) target;
-            JSObject.set(JSSymbol.create(context, symbol), index, value, isStrict, classProfile);
+            JSObject.setWithReceiver(JSSymbol.create(context, symbol), index, value, receiver, isStrict, classProfile);
         }
 
         @Override
@@ -1663,13 +1692,13 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver) {
             BigInt bigInt = (BigInt) target;
             JSObject.setWithReceiver(JSBigInt.create(context, bigInt), toPropertyKey(index), value, target, isStrict, classProfile);
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver) {
             BigInt bigInt = (BigInt) target;
             JSObject.setWithReceiver(JSBigInt.create(context, bigInt), index, value, target, isStrict, classProfile);
         }
@@ -1698,7 +1727,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver) {
             TruffleObject truffleObject = targetClass.cast(target);
             if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this);
@@ -1733,8 +1762,8 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value) {
-            executeWithTargetAndIndexUnguarded(target, (Object) index, value);
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver) {
+            executeWithTargetAndIndexUnguarded(target, (Object) index, value, receiver);
         }
 
         @Override
