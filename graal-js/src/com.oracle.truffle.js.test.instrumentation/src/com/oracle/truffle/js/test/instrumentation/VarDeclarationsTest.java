@@ -82,6 +82,20 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
     }
 
     @Test
+    public void constDeclareVar() {
+        evalWithTags("(function() { const b = 42; })();", new Class<?>[]{DeclareTag.class, WriteVariableTag.class});
+
+        enter(DeclareTag.class, (e, decl) -> {
+            assertAttribute(e, NAME, "b");
+            assertAttribute(e, TYPE, "const");
+        }).exit();
+        enter(WriteVariableTag.class, (e1, w1) -> {
+            assertAttribute(e1, NAME, "b");
+            w1.input(42);
+        }).exit();
+    }
+
+    @Test
     public void letConstBlock() {
         evalWithTag("(function() { const c = 1; for(var i = 0; i<c; i++) { let b = i; } })();", DeclareTag.class);
 
@@ -104,14 +118,14 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
     @Test
     public void classDeclareVar() {
         evalWithTags("class Foo{}", new Class<?>[]{DeclareTag.class, WriteVariableTag.class});
+        enter(DeclareTag.class, (e2) -> {
+            assertAttribute(e2, NAME, "Foo");
+            assertAttribute(e2, TYPE, "const");
+        }).exit();
         enter(WriteVariableTag.class, (e1, w1) -> {
-            enter(DeclareTag.class, (e2) -> {
-                assertAttribute(e2, NAME, "Foo");
-                assertAttribute(e2, TYPE, "const");
-            }).exit();
+            assertAttribute(e1, NAME, "Foo");
             w1.input(assertJSFunctionInput);
-        }).exit(assertJSFunctionReturn);
-
+        }).exit();
     }
 
     @Test

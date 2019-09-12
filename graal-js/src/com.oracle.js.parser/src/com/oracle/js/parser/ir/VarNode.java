@@ -189,9 +189,12 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
      */
     public int getSymbolFlags() {
         if (isLet()) {
-            return Symbol.IS_VAR | Symbol.IS_LET;
+            if (getName().isCatchParameter()) {
+                return Symbol.IS_LET | Symbol.IS_CATCH_PARAMETER | Symbol.HAS_BEEN_DECLARED;
+            }
+            return Symbol.IS_LET;
         } else if (isConst()) {
-            return Symbol.IS_VAR | Symbol.IS_CONST;
+            return Symbol.IS_CONST;
         }
         return Symbol.IS_VAR;
     }
@@ -290,7 +293,7 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
 
     /**
      * Returns true if this is a HoistableDeclaration (i.e., FunctionDeclaration,
-     * GeneratorDeclaration, or AsyncFunctionDeclaration).
+     * GeneratorDeclaration, AsyncFunctionDeclaration, or AsyncGeneratorDeclaration).
      *
      * @return true if this is a HoistableDeclaration
      */

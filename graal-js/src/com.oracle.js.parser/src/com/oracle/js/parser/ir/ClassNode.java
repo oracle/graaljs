@@ -50,11 +50,12 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 /**
  * IR representation for class definitions.
  */
-public class ClassNode extends Expression {
+public class ClassNode extends LexicalContextExpression implements LexicalContextScope {
     private final IdentNode ident;
     private final Expression classHeritage;
     private final PropertyNode constructor;
     private final List<PropertyNode> classElements;
+    private final Scope scope;
 
     /**
      * Constructor.
@@ -62,12 +63,14 @@ public class ClassNode extends Expression {
      * @param token token
      * @param finish finish
      */
-    public ClassNode(final long token, final int finish, final IdentNode ident, final Expression classHeritage, final PropertyNode constructor, final List<PropertyNode> classElements) {
+    public ClassNode(final long token, final int finish, final IdentNode ident, final Expression classHeritage, final PropertyNode constructor, final List<PropertyNode> classElements,
+                    final Scope scope) {
         super(token, finish);
         this.ident = ident;
         this.classHeritage = classHeritage;
         this.constructor = constructor;
         this.classElements = classElements;
+        this.scope = scope;
     }
 
     private ClassNode(final ClassNode classNode, final IdentNode ident, final Expression classHeritage, final PropertyNode constructor, final List<PropertyNode> classElements) {
@@ -76,6 +79,7 @@ public class ClassNode extends Expression {
         this.classHeritage = classHeritage;
         this.constructor = constructor;
         this.classElements = classElements;
+        this.scope = classNode.scope;
     }
 
     /**
@@ -135,7 +139,7 @@ public class ClassNode extends Expression {
     }
 
     @Override
-    public Node accept(final NodeVisitor<? extends LexicalContext> visitor) {
+    public Node accept(final LexicalContext lc, final NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterClassNode(this)) {
             IdentNode newIdent = ident == null ? null : (IdentNode) ident.accept(visitor);
             Expression newClassHeritage = classHeritage == null ? null : (Expression) classHeritage.accept(visitor);
@@ -148,8 +152,13 @@ public class ClassNode extends Expression {
     }
 
     @Override
-    public <R> R accept(TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
+    public <R> R accept(final LexicalContext lc, TranslatorNodeVisitor<? extends LexicalContext, R> visitor) {
         return visitor.enterClassNode(this);
+    }
+
+    @Override
+    public Scope getScope() {
+        return scope;
     }
 
     @Override

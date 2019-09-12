@@ -62,6 +62,8 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     private static final int REST_PARAMETER    = 1 << 8;
     private static final int CATCH_PARAMETER   = 1 << 9;
     private static final int IMPORT_META       = 1 << 10;
+    private static final int ARGUMENTS         = 1 << 11;
+    private static final int APPLY_ARGUMENTS   = 1 << 12;
     //@formatter:on
 
     /** Identifier. */
@@ -275,5 +277,21 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     public boolean isMetaProperty() {
         return isNewTarget() || isImportMeta();
+    }
+
+    public IdentNode setIsArguments() {
+        return new IdentNode(this, name, flags | ARGUMENTS);
+    }
+
+    public boolean isArguments() {
+        return (flags & ARGUMENTS) != 0;
+    }
+
+    public IdentNode setIsApplyArguments() {
+        return new IdentNode(this, name, flags | APPLY_ARGUMENTS);
+    }
+
+    public boolean isApplyArguments() {
+        return (flags & APPLY_ARGUMENTS) != 0;
     }
 }

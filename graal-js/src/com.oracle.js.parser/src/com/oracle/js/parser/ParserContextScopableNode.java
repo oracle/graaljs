@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,97 +40,11 @@
  */
 package com.oracle.js.parser;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.oracle.js.parser.ir.Statement;
+import com.oracle.js.parser.ir.Scope;
 
 /**
- * Base class for parser context nodes
+ * An interface that is implemented by ParserContextNodes that have a {@link Scope}.
  */
-abstract class ParserContextBaseNode implements ParserContextNode {
-    /**
-     * Flags for this node
-     */
-    protected int flags;
-
-    private List<Statement> statements;
-
-    ParserContextBaseNode() {
-        this(0);
-    }
-
-    ParserContextBaseNode(int flags) {
-        this.flags = flags;
-        this.statements = new ArrayList<>();
-    }
-
-    /**
-     * @return The flags for this node
-     */
-    @Override
-    public int getFlags() {
-        return flags;
-    }
-
-    /**
-     * Returns a single flag
-     *
-     * @param flag
-     * @return A single flag
-     */
-    protected int getFlag(final int flag) {
-        return (flags & flag);
-    }
-
-    /**
-     * @param flag
-     * @return the new flags
-     */
-    @Override
-    public int setFlag(final int flag) {
-        flags |= flag;
-        return flags;
-    }
-
-    public int clearFlag(final int flag) {
-        flags &= ~flag;
-        return flags;
-    }
-
-    /**
-     * @return The list of statements that belongs to this node
-     */
-    @Override
-    public List<Statement> getStatements() {
-        return statements;
-    }
-
-    /**
-     * @param statements
-     */
-    @Override
-    public void setStatements(final List<Statement> statements) {
-        this.statements = statements;
-    }
-
-    /**
-     * Adds a Statement at the end of the Statementlist
-     *
-     * @param statement The statement to add
-     */
-    @Override
-    public void appendStatement(final Statement statement) {
-        this.statements.add(statement);
-    }
-
-    /**
-     * Adds a statement at the begining of the statementlist
-     *
-     * @param statement The statement to add
-     */
-    @Override
-    public void prependStatement(final Statement statement) {
-        this.statements.add(0, statement);
-    }
+interface ParserContextScopableNode extends ParserContextNode {
+    Scope getScope();
 }

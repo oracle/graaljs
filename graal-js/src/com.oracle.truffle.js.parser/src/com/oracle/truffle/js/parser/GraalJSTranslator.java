@@ -73,12 +73,14 @@ import com.oracle.js.parser.ir.IndexNode;
 import com.oracle.js.parser.ir.JoinPredecessorExpression;
 import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.LexicalContextNode;
+import com.oracle.js.parser.ir.LexicalContextScope;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
 import com.oracle.js.parser.ir.RuntimeNode;
+import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Statement;
 import com.oracle.js.parser.ir.Symbol;
 import com.oracle.js.parser.ir.TernaryNode;
@@ -166,7 +168,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -271,7 +272,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     protected final ScriptNode translateScript(FunctionNode functionNode) {
-        if (functionNode.getKind() != com.oracle.js.parser.ir.FunctionNode.Kind.SCRIPT) {
+        if (!functionNode.isScript()) {
             throw new IllegalArgumentException("root function node is not a script");
         }
         JSFunctionExpressionNode functionExpression = (JSFunctionExpressionNode) transformFunction(functionNode);
@@ -301,19 +302,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         boolean isStrict = functionNode.isStrict() || isParentStrict || (environment != null && environment.function() != null && environment.isStrictMode());
-        boolean isArrowFunction = functionNode.getKind() == FunctionNode.Kind.ARROW;
-        boolean isGeneratorFunction = functionNode.getKind() == FunctionNode.Kind.GENERATOR;
+        boolean isArrowFunction = functionNode.isArrow();
+        boolean isGeneratorFunction = functionNode.isGenerator();
         boolean isAsyncFunction = functionNode.isAsync();
         boolean isDerivedConstructor = functionNode.isSubclassConstructor();
 
         boolean isMethod = functionNode.isMethod();
-        boolean needsNewTarget = functionNode.usesNewTarget() || functionNode.hasDirectSuper();
+        boolean needsNewTarget = functionNode.needsNewTarget() || functionNode.hasDirectSuper();
         boolean isClassConstructor = functionNode.isClassConstructor();
         boolean isConstructor = !isArrowFunction && !isGeneratorFunction && !isAsyncFunction && ((!isMethod || context.getEcmaScriptVersion() == 5) || isClassConstructor);
         assert !isDerivedConstructor || isConstructor;
         boolean strictFunctionProperties = isStrict || isArrowFunction || isMethod || isGeneratorFunction;
         boolean isBuiltin = false;
-        JSParserOptions parserOptions = context.getParserOptions();
 
         boolean isGlobal;
         boolean isEval = false;
@@ -375,13 +375,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 } else if (functionNode.isModule()) {
                     assert currentFunction.isGlobal();
                     declarations = setupModuleEnvironment(functionNode);
-                    globalVarPrePass(functionNode, parserOptions);
                     verifyModuleLocalExports(functionNode.getBody());
                 } else {
                     assert currentFunction.isGlobal();
                     declarations = collectGlobalVars(functionNode, isEval);
                 }
-                assert functionNode.isAnalyzed();
 
                 if (functionNode.isProgram()) {
                     functionNeedsParentFramePass(functionNode);
@@ -408,7 +406,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         JavaScriptNode functionExpression;
-        if (isArrowFunction && (functionNode.usesThis() || functionNode.hasEval())) {
+        if (isArrowFunction && functionNode.needsThis()) {
             JavaScriptNode thisNode = !currentFunction().isGlobal() ? environment.findThisVar().createReadNode() : factory.createAccessThis();
             functionExpression = factory.createFunctionExpressionLexicalThis(functionData, functionRoot, thisNode);
         } else {
@@ -757,7 +755,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode handleFunctionReturn(FunctionNode functionNode, JavaScriptNode body) {
-        assert (currentFunction().isGlobal() || currentFunction().isEval()) == (functionNode.getKind() == FunctionNode.Kind.SCRIPT || functionNode.getKind() == FunctionNode.Kind.MODULE);
+        assert (currentFunction().isGlobal() || currentFunction().isEval()) == (functionNode.isScript() || functionNode.isModule());
         if (currentFunction().returnsLastStatementResult()) {
             assert !currentFunction().hasReturn();
             return wrapGetCompletionValue(body);
@@ -813,22 +811,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private String getFunctionName(FunctionNode functionNode) {
-        if (context.getEcmaScriptVersion() < 6 && isGetterOrSetter(functionNode)) {
+        if (context.getEcmaScriptVersion() < 6 && (functionNode.isGetter() || functionNode.isSetter())) {
             // strip getter/setter name prefix in ES5 mode
             assert !functionNode.isAnonymous();
             String name = functionNode.getIdent().getName();
-            if ((functionNode.getKind() == com.oracle.js.parser.ir.FunctionNode.Kind.GETTER && name.startsWith("get ")) ||
-                            (functionNode.getKind() == com.oracle.js.parser.ir.FunctionNode.Kind.SETTER && name.startsWith("set "))) {
+            if ((functionNode.isGetter() && name.startsWith("get ")) || (functionNode.isSetter() && name.startsWith("set "))) {
                 name = name.substring(4);
             }
             return name;
         }
         return !functionNode.isAnonymous() ? functionNode.getIdent().getName() : "";
-    }
-
-    private static boolean isGetterOrSetter(FunctionNode functionNode) {
-        return functionNode.getKind() == com.oracle.js.parser.ir.FunctionNode.Kind.GETTER ||
-                        functionNode.getKind() == com.oracle.js.parser.ir.FunctionNode.Kind.SETTER;
     }
 
     private JavaScriptNode prepareParameters(JavaScriptNode body) {
@@ -884,10 +876,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             markTerminalReturnNodes(functionNode.getBody());
         }
 
-        if (functionNode.getKind() != FunctionNode.Kind.ARROW && functionNode.needsArguments()) {
+        if (!functionNode.isArrow() && functionNode.needsArguments()) {
             currentFunction.reserveArgumentsSlot();
 
-            if (JSTruffleOptions.OptimizeApplyArguments && functionNode.getNumOfParams() == 0 && !functionNode.hasEval() && checkDirectArgumentsAccess(functionNode, currentFunction)) {
+            if (JSTruffleOptions.OptimizeApplyArguments && functionNode.getNumOfParams() == 0 && !functionNode.hasEval() && functionNode.hasApplyArgumentsCall() &&
+                            checkDirectArgumentsAccess(functionNode, currentFunction)) {
                 currentFunction.setDirectArgumentsAccess(true);
             } else {
                 currentFunction.declareVar(Environment.ARGUMENTS_NAME);
@@ -895,23 +888,22 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         // reserve this slot if function uses this or has a direct eval that might use this
-        if ((functionNode.usesThis() || functionNode.hasEval()) &&
-                        !(functionNode.getKind() == FunctionNode.Kind.ARROW && currentFunction.getNonArrowParentFunction().isDerivedConstructor())) {
+        if (functionNode.needsThis() && !(functionNode.isArrow() && currentFunction.getNonArrowParentFunction().isDerivedConstructor())) {
             currentFunction.reserveThisSlot();
         }
         if (functionNode.hasDirectSuper()) {
-            assert functionNode.getKind() != FunctionNode.Kind.ARROW;
+            assert !functionNode.isArrow();
             currentFunction.reserveThisSlot();
         }
         if (functionNode.usesSuper()) {
             // arrow functions need to access [[HomeObject]] from outer non-arrow scope
             // note: an arrow function using <super> also needs <this> access
-            assert functionNode.getKind() != FunctionNode.Kind.ARROW;
+            assert !functionNode.isArrow();
 
             currentFunction.reserveThisSlot();
             currentFunction.reserveSuperSlot();
         }
-        if (functionNode.usesNewTarget() || functionNode.hasDirectSuper()) {
+        if (functionNode.needsNewTarget() || functionNode.hasDirectSuper()) {
             currentFunction.reserveNewTargetSlot();
         }
 
@@ -921,82 +913,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         return Collections.emptyList();
-    }
-
-    static void functionVarDeclarationPass(FunctionNode rootFunctionNode, JSParserOptions options) {
-        com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext> visitor = new com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext>(new LexicalContext()) {
-            @Override
-            public boolean enterVarNode(VarNode varNode) {
-                String varName = varNode.getName().getName();
-                detectVarNameConflict(lc, varNode, options);
-                if (varNode.isBlockScoped()) {
-                    enterVarNodeBlockScope(varNode, varName);
-                } else {
-                    enterVarNodeDefault(varName);
-                }
-                return true;
-            }
-
-            private void enterVarNodeBlockScope(VarNode varNode, String varName) {
-                Symbol symbol = new Symbol(varName, getBlockScopedSymbolFlags(varNode));
-                lc.getCurrentBlock().putSymbol(lc, symbol);
-
-                if (varNode.isFunctionDeclaration() && options.isAnnexB()) {
-                    // B.3.3.1 Changes to FunctionDeclarationInstantiation
-                    FunctionNode fn = lc.getCurrentFunction();
-                    if (!fn.isStrict() && !varName.equals(Environment.ARGUMENTS_NAME) && fn.getBody().getExistingSymbol(varName) == null) {
-                        if (!isVarAlreadyDeclaredLexically(lc, varName, options, true)) {
-                            assert !lc.getCurrentBlock().isFunctionBody() && !lc.getCurrentBlock().isParameterBlock();
-                            fn.getVarDeclarationBlock().putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE));
-                        }
-                    }
-                }
-            }
-
-            private void enterVarNodeDefault(String varName) {
-                Block currentBlock = lc.getCurrentBlock();
-                Block bodyBlock = lc.getCurrentFunction().getVarDeclarationBlock();
-                if (currentBlock.isParameterBlock()) {
-                    // for duplicate checks record its declaration in the body block, too
-                    assert currentBlock != bodyBlock;
-                    bodyBlock.putSymbol(lc, new Symbol(varName, Symbol.IS_VAR));
-                } else {
-                    if (currentBlock != bodyBlock) {
-                        // for duplicate checks record its declaration here
-                        currentBlock.putSymbol(lc, new Symbol(varName, Symbol.IS_VAR));
-                    }
-
-                    Block parameterBlock = lc.getCurrentFunction().getBody();
-                    if (!parameterBlock.isParameterBlock() || parameterBlock.getExistingSymbol(varName) == null) {
-                        // declare in var declaration scope if not a parameter
-                        bodyBlock.putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE));
-                    } else {
-                        assert parameterBlock.getExistingSymbol(varName) != null;
-                        // variable is already declared in parameter block
-                        bodyBlock.putSymbol(lc, new Symbol(varName, Symbol.IS_VAR | Symbol.IS_VAR_DECLARED_HERE | Symbol.IS_VAR_REDECLARED_HERE));
-                    }
-                }
-            }
-
-            @Override
-            public boolean enterFunctionNode(FunctionNode functionNode) {
-                assert !functionNode.isAnalyzed() : functionNode;
-                declareParameterSymbols(functionNode);
-                functionNode.setAnalyzed(true);
-                return true;
-            }
-
-            private void declareParameterSymbols(FunctionNode functionNode) {
-                List<IdentNode> parameters = functionNode.getParameters();
-                for (int i = 0; i < parameters.size(); i++) {
-                    IdentNode parameter = parameters.get(i);
-                    Symbol symbol = new Symbol(parameter.getName(), Symbol.IS_PARAM);
-                    functionNode.getBody().putSymbol(lc, symbol);
-                }
-            }
-        };
-
-        rootFunctionNode.accept(visitor);
     }
 
     private static void functionNeedsParentFramePass(FunctionNode rootFunctionNode) {
@@ -1019,8 +935,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 FunctionNode lastFunction = null;
                 for (Iterator<LexicalContextNode> iterator = lc.getAllNodes(); iterator.hasNext();) {
                     LexicalContextNode node = iterator.next();
-                    if (node instanceof Block) {
-                        Symbol foundSymbol = ((Block) node).getExistingSymbol(varName);
+                    if (node instanceof LexicalContextScope) {
+                        Symbol foundSymbol = ((LexicalContextScope) node).getScope().getExistingSymbol(varName);
                         if (foundSymbol != null && !(foundSymbol.isGlobal() || foundSymbol.isImportBinding())) {
                             if (!local) {
                                 markUsesAncestorScopeUntil(lastFunction, true);
@@ -1034,7 +950,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
                             break;
-                        } else if (function.getKind() == FunctionNode.Kind.ARROW && isVarLexicallyScopedInArrowFunction(varName)) {
+                        } else if (function.isArrow() && isVarLexicallyScopedInArrowFunction(varName)) {
                             FunctionNode nonArrowFunction = lc.getCurrentNonArrowFunction();
                             // `this` is read from the arrow function object,
                             // unless `this` is supplied by a subclass constructor
@@ -1045,7 +961,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             }
                             break;
                         } else if (!function.isProgram() && varName.equals(Environment.ARGUMENTS_NAME)) {
-                            assert function.getKind() != FunctionNode.Kind.ARROW;
+                            assert !function.isArrow();
                             assert local;
                             break;
                         } else if (function.hasEval() && !function.isProgram()) {
@@ -1109,19 +1025,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 super(lc);
             }
 
-            private boolean isArguments(IdentNode identNode) {
-                return !identNode.isPropertyName() && identNode.getName().equals(Environment.ARGUMENTS_NAME);
-            }
-
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
                 if (JSTruffleOptions.OptimizeApplyArguments) {
-                    if (isArguments(identNode) && functionNode.needsArguments() && !currentFunction.isDirectEval()) {
+                    if (identNode.isArguments() && !identNode.isPropertyName() && functionNode.needsArguments() && !currentFunction.isDirectEval() && !identNode.isApplyArguments()) {
                         // function.apply(_, arguments);
-                        LexicalContextNode callNode = lc.getAllNodes().next();
-                        if (!(callNode instanceof CallNode && isApply((CallNode) callNode) && ((CallNode) callNode).getArgs().size() == 2 && ((CallNode) callNode).getArgs().get(1) == identNode)) {
-                            directArgumentsAccess = false;
-                        }
+                        directArgumentsAccess = false;
                     } else {
                         checkParameterUse(identNode);
                     }
@@ -1140,7 +1049,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (nestedFunctionNode == functionNode) {
                     return true;
                 }
-                if (JSTruffleOptions.OptimizeApplyArguments && (nestedFunctionNode.getKind() == FunctionNode.Kind.ARROW || !currentFunction.isStrictMode())) {
+                if (JSTruffleOptions.OptimizeApplyArguments && (nestedFunctionNode.isArrow() || !currentFunction.isStrictMode())) {
                     // 1. arrow functions have lexical `arguments` binding;
                     // direct arguments access to outer frames currently not supported
                     // 2. if not in strict mode, nested functions might access mapped parameters;
@@ -1176,81 +1085,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    static void earlyVariableDeclarationPass(FunctionNode functionNode, JSParserOptions options, boolean eval, boolean evalInGlobalScope) {
-        assert !functionNode.isAnalyzed();
-        if (functionNode.isModule()) {
-            // we must resolve module imports first to know all imported bindings
-            return;
-        }
-        // 1. strict eval code always has its own scope
-        // 2. non-strict indirect eval is in global scope
-        // 3. non-strict direct eval is in global scope if the caller is
-        boolean globalScope = functionNode.isProgram() && (!eval || (evalInGlobalScope && !functionNode.isStrict()));
-        if (globalScope) {
-            globalVarPrePass(functionNode, options);
-        } else {
-            functionVarDeclarationPass(functionNode, options);
-        }
-        assert functionNode.isAnalyzed();
-    }
-
-    private static void globalVarPrePass(FunctionNode functionNode, JSParserOptions options) {
-        assert !functionNode.isAnalyzed();
-        functionNode.accept(new com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext>(new LexicalContext()) {
-            @Override
-            public boolean enterVarNode(VarNode varNode) {
-                String varName = varNode.getName().getName();
-                detectVarNameConflict(lc, varNode, options);
-                Block currentBlock = lc.getCurrentBlock();
-                if (varNode.isBlockScoped()) {
-                    enterVarNodeBlockScope(varNode, varName, currentBlock);
-                } else {
-                    enterVarNodeDefault(varNode, varName, currentBlock);
-                }
-                return true;
-            }
-
-            private void enterVarNodeBlockScope(VarNode varNode, String varName, Block currentBlock) {
-                Symbol symbol = new Symbol(varName, getBlockScopedSymbolFlags(varNode));
-                currentBlock.putSymbol(lc, symbol);
-
-                if (varNode.isFunctionDeclaration() && options.isAnnexB()) {
-                    // B.3.3.2 Changes to GlobalDeclarationInstantiation
-                    if (!functionNode.isStrict() && functionNode.getBody().getExistingSymbol(varName) == null) {
-                        if (!isVarAlreadyDeclaredLexically(lc, varName, options, true)) {
-                            functionNode.getBody().putSymbol(lc, new Symbol(varName, Symbol.IS_GLOBAL | Symbol.IS_FUNCTION_DECLARATION));
-                        }
-                    }
-                }
-            }
-
-            private void enterVarNodeDefault(VarNode varNode, String varName, Block currentBlock) {
-                int symbolKind = functionNode.isModule() ? Symbol.IS_VAR : Symbol.IS_GLOBAL;
-                Block bodyBlock = functionNode.getBody();
-                if (currentBlock != bodyBlock) {
-                    // for duplicate checks record its declaration here
-                    currentBlock.putSymbol(lc, new Symbol(varName, symbolKind));
-                    // but actually declare it in function body scope
-                }
-                bodyBlock.putSymbol(lc, new Symbol(varName, symbolKind | Symbol.IS_VAR_DECLARED_HERE | (varNode.isHoistableDeclaration() ? Symbol.IS_FUNCTION_DECLARATION : 0)));
-            }
-
-            @Override
-            public boolean enterFunctionNode(FunctionNode nestedFunctionNode) {
-                if (nestedFunctionNode == functionNode) {
-                    return true;
-                }
-                functionVarDeclarationPass(nestedFunctionNode, options);
-                return false;
-            }
-        });
-
-        assert !functionNode.usesSuper();
-        assert !functionNode.hasDirectSuper();
-
-        functionNode.setAnalyzed(true);
-    }
-
     private List<JavaScriptNode> collectGlobalVars(FunctionNode functionNode, boolean configurable) {
         int symbolCount = functionNode.getBody().getSymbolCount();
         if (symbolCount == 0) {
@@ -1258,8 +1092,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         final List<DeclareGlobalNode> declarations = new ArrayList<>(symbolCount);
         for (Symbol symbol : functionNode.getBody().getSymbols()) {
-            if (symbol.isGlobal()) {
-                if (symbol.isFunctionDeclaration() && symbol.isVarDeclaredHere()) {
+            if (symbol.isGlobal() && symbol.isVar()) {
+                if (symbol.isHoistableDeclaration()) {
                     declarations.add(factory.createDeclareGlobalFunction(symbol.getName(), configurable, null));
                 } else {
                     declarations.add(factory.createDeclareGlobalVariable(symbol.getName(), configurable));
@@ -1272,51 +1106,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         final List<JavaScriptNode> nodes = new ArrayList<>(2);
         nodes.add(factory.createGlobalDeclarationInstantiation(context, declarations));
         return nodes;
-    }
-
-    static void detectVarNameConflict(LexicalContext lexcon, VarNode varNode, JSParserOptions options) {
-        assert lexcon.getCurrentFunction() != null;
-        boolean alreadyDeclared = false;
-        String varName = varNode.getName().getName();
-        if (varNode.isBlockScoped()) {
-            Block currentBlock = lexcon.getCurrentBlock();
-            if (currentBlock.getExistingSymbol(varName) != null) {
-                alreadyDeclared = true;
-            } else {
-                Block parentBlock = lexcon.getParentBlock();
-                if (parentBlock != null && (parentBlock.isCatchBlock() || parentBlock.isParameterBlock())) {
-                    if (parentBlock.getExistingSymbol(varName) != null) {
-                        alreadyDeclared = true;
-                    }
-                }
-            }
-        } else {
-            alreadyDeclared = isVarAlreadyDeclaredLexically(lexcon, varName, options, false);
-        }
-        if (alreadyDeclared) {
-            throw Errors.createSyntaxError(error("Variable \"" + varName + "\" has already been declared", varNode.getToken(), lexcon));
-        }
-    }
-
-    private static boolean isVarAlreadyDeclaredLexically(LexicalContext lexcon, String varName, JSParserOptions options, boolean skipCurrentBlock) {
-        Iterator<Block> iterator = lexcon.getBlocks();
-        if (skipCurrentBlock) {
-            iterator.next();
-        }
-        while (iterator.hasNext()) {
-            Block block = iterator.next();
-            Symbol existingSymbol = block.getExistingSymbol(varName);
-            if (existingSymbol != null && existingSymbol.isBlockScoped()) {
-                if (existingSymbol.isCatchParameter() && !lexcon.getCurrentBlock().isForOfBlock() && options.isAnnexB()) {
-                    continue; // B.3.5 VariableStatements in Catch Blocks
-                }
-                return true;
-            }
-            if (block.isFunctionBody()) {
-                break;
-            }
-        }
-        return false;
     }
 
     @SuppressWarnings("unused")
@@ -1424,7 +1213,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      * Initialize block-scoped symbols with a <i>dead</i> marker value.
      */
     private List<JavaScriptNode> createTemporalDeadZoneInit(Block block) {
-        if (!block.hasBlockScopedOrRedeclaredSymbols() || environment instanceof GlobalEnvironment) {
+        if (!block.getScope().hasBlockScopedOrRedeclaredSymbols() || environment instanceof GlobalEnvironment) {
             return Collections.emptyList();
         }
 
@@ -1456,7 +1245,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         assert currentFunction().isCallerContextEval();
         ArrayList<JavaScriptNode> blockWithInit = new ArrayList<>();
         for (Symbol symbol : block.getSymbols()) {
-            if (symbol.isVarDeclaredHere() && !environment.getVariableEnvironment().hasLocalVar(symbol.getName())) {
+            if (symbol.isVar() && !environment.getVariableEnvironment().hasLocalVar(symbol.getName())) {
                 blockWithInit.add(createDynamicScopeBinding(symbol.getName(), true));
             }
         }
@@ -1512,26 +1301,30 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private EnvironmentCloseable enterBlockEnvironment(Block block) {
         // Global lexical environment is shared by scripts (but not eval).
-        if (block.isFunctionBody() && lc.getCurrentFunction().getKind() == FunctionNode.Kind.SCRIPT && !currentFunction().isEval()) {
+        if (block.isFunctionBody() && lc.getCurrentFunction().isScript() && !currentFunction().isEval()) {
             GlobalEnvironment globalEnv = new GlobalEnvironment(environment, factory, context);
             setupGlobalEnvironment(globalEnv, block);
             return new EnvironmentCloseable(globalEnv);
         }
 
-        if (block.hasDeclarations() || JSTruffleOptions.ManyBlockScopes) {
+        return enterBlockEnvironment(block.getScope());
+    }
+
+    private EnvironmentCloseable enterBlockEnvironment(Scope scope) {
+        if (scope != null && (scope.hasDeclarations() || JSTruffleOptions.ManyBlockScopes)) {
             /*
              * The function environment is filled with top-level vars from the function body, unless
              * the function has parameter expressions, then the function body gets a separate scope
              * and we populate the env with parameter vars (cf. FunctionDeclarationInstantiation).
              */
-            if (block.isParameterBlock() || (block.isFunctionBody() && block == lc.getCurrentFunction().getBody())) {
+            if (scope.isFunctionTopScope()) {
                 assert environment instanceof FunctionEnvironment;
                 boolean onlyBlockScoped = currentFunction().isCallerContextEval();
-                environment.addFrameSlotsFromSymbols(block.getSymbols(), onlyBlockScoped);
+                environment.addFrameSlotsFromSymbols(scope.getSymbols(), onlyBlockScoped);
                 return new EnvironmentCloseable(environment);
             } else {
                 BlockEnvironment blockEnv = new BlockEnvironment(environment, factory, context);
-                blockEnv.addFrameSlotsFromSymbols(block.getSymbols());
+                blockEnv.addFrameSlotsFromSymbols(scope.getSymbols());
                 return new EnvironmentCloseable(blockEnv);
             }
         } else {
@@ -1551,7 +1344,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
             if (symbol.isBlockScoped()) {
                 globalEnv.addLexicalDeclaration(symbol.getName(), symbol.isConst());
-            } else if (symbol.isGlobal() && symbol.isVarDeclaredHere()) {
+            } else if (symbol.isGlobal() && symbol.isVar()) {
                 globalEnv.addVarDeclaration(symbol.getName());
             }
         }
@@ -1608,7 +1401,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (identNode.isSuper()) {
             result = enterIdentNodeSuper(identNode);
         } else if (identNode.isNewTarget()) {
-            result = environment.findNewTargetVar().createReadNode();
+            result = enterNewTarget(identNode);
         } else if (identNode.isImportMeta()) {
             result = factory.createImportMeta(getActiveScriptOrModule());
         } else {
@@ -1617,6 +1410,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             result = varRef.createReadNode();
         }
         return tagExpression(result, identNode);
+    }
+
+    private JavaScriptNode enterNewTarget(IdentNode identNode) {
+        VarRef newTargetVar = environment.findNewTargetVar();
+        if (newTargetVar == null) {
+            // While parsing eval code, we do not know if there is an outer non-arrow function.
+            throw Errors.createSyntaxError(error(com.oracle.js.parser.ECMAErrors.getMessage("parser.error.new.target.in.function"), identNode.getToken(), lc));
+        }
+        return newTargetVar.createReadNode();
     }
 
     private JavaScriptNode enterIdentNodeSuper(IdentNode identNode) {
@@ -1648,25 +1450,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return accessThisNode;
     }
 
-    private Symbol findBlockScopedSymbolInFunction(String varName) {
-        for (Iterator<LexicalContextNode> iterator = lc.getAllNodes(); iterator.hasNext();) {
-            LexicalContextNode node = iterator.next();
-            if (node instanceof Block) {
-                Symbol existingSymbol = ((Block) node).getExistingSymbol(varName);
-                if (existingSymbol != null) {
-                    if (existingSymbol.isBlockScoped()) {
-                        return existingSymbol;
-                    } else {
-                        break;
-                    }
-                }
-            } else if (node instanceof FunctionNode) {
-                break;
-            }
-        }
-        return null;
-    }
-
     private VarRef findScopeVar(String name, boolean skipWith) {
         return environment.findVar(name, skipWith);
     }
@@ -1674,7 +1457,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private VarRef findScopeVarCheckTDZ(String name, boolean initializationAssignment) {
         VarRef varRef = findScopeVar(name, false);
         if (varRef.isFunctionLocal()) {
-            Symbol symbol = findBlockScopedSymbolInFunction(varRef.getName());
+            Symbol symbol = lc.getCurrentScope().findBlockScopedSymbolInFunction(varRef.getName());
             if (symbol == null) {
                 // variable is not block-scoped
                 return varRef;
@@ -1734,27 +1517,25 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         Symbol symbol = null;
         if (varNode.isBlockScoped()) {
-            symbol = lc.getCurrentBlock().getExistingSymbol(varName);
+            symbol = lc.getCurrentScope().getExistingSymbol(varName);
             assert symbol != null : varName;
         }
 
-        try {
-            if (varNode.isAssignment()) {
-                return createVarAssignNode(varNode, varName);
-            } else if (varNode.isBlockScoped() && (!varNode.isDestructuring() || lc.inUnprotectedSwitchContext()) && !symbol.hasBeenDeclared()) {
-                return findScopeVar(varName, false).createWriteNode(factory.createConstantUndefined());
-            }
-            return factory.createEmpty();
-        } finally {
-            if (varNode.isBlockScoped()) {
-                if (lc.inUnprotectedSwitchContext()) {
-                    // mark as declared in switch block; always needs dynamic TDZ check
-                    symbol.setDeclaredInSwitchBlock();
-                } else if (!varNode.isDestructuring()) {
-                    symbol.setHasBeenDeclared();
-                }
-            }
+        JavaScriptNode assignment;
+        if (varNode.isAssignment()) {
+            assignment = createVarAssignNode(varNode, varName);
+        } else if (varNode.isBlockScoped() && (!varNode.isDestructuring() || symbol.isDeclaredInSwitchBlock()) && !symbol.hasBeenDeclared()) {
+            assignment = findScopeVar(varName, false).createWriteNode(factory.createConstantUndefined());
+        } else {
+            assignment = factory.createEmpty();
         }
+        // mark block-scoped symbols as declared, except:
+        // (a) symbols declared in a switch case always need the dynamic TDZ check
+        // (b) destructuring: the symbol does not come alive until the destructuring assignment
+        if (varNode.isBlockScoped() && (!symbol.isDeclaredInSwitchBlock() && !varNode.isDestructuring())) {
+            symbol.setHasBeenDeclared();
+        }
+        return assignment;
     }
 
     private JavaScriptNode createVarAssignNode(VarNode varNode, String varName) {
@@ -1766,12 +1547,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             // B.3.3 Block-Level Function Declarations Web Legacy Compatibility Semantics
             FunctionNode fn = lc.getCurrentFunction();
             if (!fn.isStrict() && !varName.equals(Environment.ARGUMENTS_NAME)) {
-                Symbol symbol = fn.getBody().getExistingSymbol(varName);
-                if (symbol != null && (symbol.isVar() || symbol.isGlobal())) {
-                    if (!isVarAlreadyDeclaredLexically(lc, varName, context.getParserOptions(), true)) {
-                        assignment = environment.findVar(varName, true, false, true, false).withRequired(false).createWriteNode(assignment);
-                        tagExpression(assignment, varNode);
-                    }
+                Symbol symbol = lc.getCurrentScope().getExistingSymbol(varName);
+                if (symbol.isHoistedBlockFunctionDeclaration()) {
+                    assert hasVarSymbol(fn.getVarDeclarationBlock().getScope(), varName) : varName;
+                    assignment = environment.findVar(varName, true, false, true, false).withRequired(false).createWriteNode(assignment);
+                    tagExpression(assignment, varNode);
                 }
             }
         }
@@ -1786,6 +1566,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         ensureHasSourceSection(assignment, varNode);
         return discardResult(assignment);
+    }
+
+    private static boolean hasVarSymbol(Scope scope, String varName) {
+        Symbol varSymbol = scope.getExistingSymbol(varName);
+        return varSymbol != null && (varSymbol.isVar() && !varSymbol.isParam());
     }
 
     /**
@@ -2317,7 +2102,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode call;
         if (callNode.isEval() && args.length >= 1) {
             call = createCallEvalNode(function, args);
-        } else if (currentFunction().isDirectArgumentsAccess() && isCallApplyArguments(callNode)) {
+        } else if (callNode.isApplyArguments() && currentFunction().isDirectArgumentsAccess()) {
             call = createCallApplyArgumentsNode(function, args);
         } else if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).isDirectSuper()) {
             args = insertNewTargetArg(args);
@@ -2367,11 +2152,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode createCallApplyArgumentsNode(JavaScriptNode function, JavaScriptNode[] args) {
         return factory.createCallApplyArguments(context, (JSFunctionCallNode) createCallDefaultNode(function, args));
-    }
-
-    private static boolean isCallApplyArguments(CallNode callNode) {
-        return isApply(callNode) && callNode.getArgs().size() == 2 && callNode.getArgs().get(1) instanceof IdentNode &&
-                        ((IdentNode) callNode.getArgs().get(1)).getName().equals(Environment.ARGUMENTS_NAME);
     }
 
     private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
@@ -2833,11 +2613,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterObjectNode(ObjectNode objectNode) {
-        ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(objectNode.getElements(), false);
+        ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(objectNode.getElements(), false, null);
         return tagExpression(factory.createObjectLiteral(context, members), objectNode);
     }
 
-    private ArrayList<ObjectLiteralMemberNode> transformPropertyDefinitionList(List<PropertyNode> properties, boolean isClass) {
+    private ArrayList<ObjectLiteralMemberNode> transformPropertyDefinitionList(List<PropertyNode> properties, boolean isClass, Symbol classNameSymbol) {
         ArrayList<ObjectLiteralMemberNode> members = new ArrayList<>(properties.size());
         for (int i = 0; i < properties.size(); i++) {
             PropertyNode property = properties.get(i);
@@ -2845,7 +2625,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             final ObjectLiteralMemberNode member;
             if (property.getValue() != null) {
-                member = enterObjectPropertyNode(property, keyName, isClass);
+                member = enterObjectPropertyNode(property, keyName, isClass, classNameSymbol);
             } else if (property.isRest()) {
                 member = factory.createSpreadObjectMember(property.isStatic(), transform(((UnaryNode) property.getKey()).getExpression()));
             } else {
@@ -2879,8 +2659,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return function;
     }
 
-    private ObjectLiteralMemberNode enterObjectPropertyNode(PropertyNode property, String keyName, boolean isClass) {
+    private ObjectLiteralMemberNode enterObjectPropertyNode(PropertyNode property, String keyName, boolean isClass, Symbol classNameSymbol) {
+        // TDZ: class name symbol cannot be used as a key but may be used as a value.
+        if (classNameSymbol != null) {
+            classNameSymbol.setHasBeenDeclared(true);
+        }
         JavaScriptNode value = transform(property.getValue());
+        if (classNameSymbol != null) {
+            classNameSymbol.setHasBeenDeclared(false);
+        }
+
         if (property.getValue() instanceof FunctionNode && ((FunctionNode) property.getValue()).usesSuper()) {
             assert ((FunctionNode) property.getValue()).isMethod();
             value = factory.createMakeMethod(context, value);
@@ -3228,21 +3016,28 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterClassNode(ClassNode classNode) {
-        JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
-        JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
+        try (EnvironmentCloseable blockEnv = enterBlockEnvironment(classNode.getScope())) {
+            JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
+            JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
 
-        String className = null;
-        if (classNode.getIdent() != null) {
-            className = classNode.getIdent().getName();
-            lc.getCurrentBlock().getExistingSymbol(className).setHasBeenDeclared();
+            String className = null;
+            Symbol classNameSymbol = null;
+            if (classNode.getIdent() != null) {
+                className = classNode.getIdent().getName();
+                classNameSymbol = classNode.getScope().getExistingSymbol(className);
+            }
+
+            ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
+
+            JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
+                            members.toArray(ObjectLiteralMemberNode.EMPTY), className);
+            tagExpression(classDefinition, classNode);
+
+            if (className != null) {
+                classDefinition = ensureHasSourceSection(findScopeVar(className, true).createWriteNode(classDefinition), classNode);
+            }
+            return ensureHasSourceSection(blockEnv.wrapBlockScope(classDefinition), classNode);
         }
-
-        ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true);
-
-        JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                        members.toArray(ObjectLiteralMemberNode.EMPTY), className);
-
-        return tagExpression(classDefinition, classNode);
     }
 
     @Override

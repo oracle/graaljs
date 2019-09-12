@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
@@ -55,8 +56,8 @@ public final class JSFrameUtil {
 
     private static final String THIS_SLOT_ID = "<this>";
     private static final Class<? extends MaterializedFrame> MATERIALIZED_FRAME_CLASS = NULL_MATERIALIZED_FRAME.getClass();
-    private static final int IS_LET = 1 << 4;
-    private static final int IS_CONST = 1 << 5;
+    private static final int IS_LET = Symbol.IS_LET;
+    private static final int IS_CONST = Symbol.IS_CONST;
     private static final int HAS_TDZ = IS_LET | IS_CONST;
 
     private JSFrameUtil() {

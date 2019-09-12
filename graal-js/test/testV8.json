@@ -517,12 +517,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "mjsunit/es6/block-conflicts-sloppy.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/block-conflicts.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/block-const-assign-sloppy.js",
     "status" : "FAIL"
   }, {
@@ -536,9 +530,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/block-let-semantics-sloppy.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/block-scope-class.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/block-sloppy-function.js",
@@ -574,10 +565,6 @@
     "filePath" : "mjsunit/es6/destructuring.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/for-each-in-catch.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/es6/function-name.js",
     "status" : "FAIL"
   }, {
@@ -597,9 +584,6 @@
       "BIG_ENDIAN" : "SKIP"
     },
     "comment" : "fails due to byte order (LE required)\nfails atm on SPARC GR-1672"
-  }, {
-    "filePath" : "mjsunit/es6/new-target.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/object-literals-super.js",
     "status" : "FAIL"
@@ -770,10 +754,6 @@
   }, {
     "filePath" : "mjsunit/eval-stack-trace.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/for-of-in-catch-duplicate-decl.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "mjsunit/function-caller.js",
     "status" : "FAIL",
@@ -1701,9 +1681,6 @@
     "filePath" : "mjsunit/regress/regress-crbug-658528.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-669540.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-669850.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1718,10 +1695,6 @@
     "filePath" : "mjsunit/regress/regress-crbug-687063.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-688567.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-691323.js",
     "status" : "FAIL",
