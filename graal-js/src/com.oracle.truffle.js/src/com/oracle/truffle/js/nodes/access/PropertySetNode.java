@@ -108,6 +108,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     private final boolean declaration;
     private final byte attributeFlags;
     private boolean propertyAssumptionCheckEnabled;
+    private boolean superProperty;
 
     public static PropertySetNode create(Object key, boolean isGlobal, JSContext context, boolean isStrict) {
         final boolean setOwnProperty = false;
@@ -1314,6 +1315,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 return new ReferenceErrorPropertySetNode(shapeCheck);
             } else if (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) {
                 return new ArrayBufferViewNonIntegerIndexSetNode(shapeCheck);
+            } else if (superProperty) {
+                // define the property on the receiver; currently not handled, rewrite to generic
+                return createGenericPropertyNode();
             } else if (JSShape.isExtensible(cacheShape)) {
                 return createDefinePropertyNode(key, shapeCheck, value, context, getAttributeFlags(), isDeclaration());
             } else {
@@ -1383,5 +1387,10 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     @Override
     protected void setPropertyAssumptionCheckEnabled(boolean value) {
         this.propertyAssumptionCheckEnabled = value;
+    }
+
+    void setSuperProperty() {
+        CompilerAsserts.neverPartOfCompilation();
+        this.superProperty = true;
     }
 }

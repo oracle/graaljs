@@ -1248,7 +1248,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
         }
 
-        if (cachedCount >= JSTruffleOptions.PropertyCacheLimit) {
+        if (cachedCount >= JSTruffleOptions.PropertyCacheLimit || (specialized != null && specialized.isGeneric())) {
             return rewriteToGeneric(currentHead, "cache limit reached");
         }
 

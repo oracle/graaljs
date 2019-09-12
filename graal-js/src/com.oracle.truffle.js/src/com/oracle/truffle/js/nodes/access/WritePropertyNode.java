@@ -72,6 +72,9 @@ public class WritePropertyNode extends JSTargetableWriteNode {
         this.targetNode = target;
         this.rhsNode = rhs;
         this.cache = PropertySetNode.create(propertyKey, isGlobal, context, isStrict);
+        if (target instanceof SuperPropertyReferenceNode) {
+            this.cache.setSuperProperty();
+        }
     }
 
     public static WritePropertyNode create(JavaScriptNode target, Object propertyKey, JavaScriptNode rhs, JSContext ctx, boolean isStrict) {
