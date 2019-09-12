@@ -169,7 +169,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def clean(self, forBuild=False):
         if not forBuild:
             if _currentOs == 'windows':
-                mx.run([join('.', 'vcbuild.bat'),
+                mx.run([join(_suite.dir, 'vcbuild.bat'),
                         'clean',
                         'java-home', _java_home()
                     ], cwd=_suite.dir)
@@ -407,7 +407,7 @@ def makeInNodeEnvironment(args):
     argGroups = setupNodeEnvironment(args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(argGroups[1]))
     if _currentOs == 'windows':
-        _mxrun([join('.', 'vcbuild.bat'),
+        _mxrun([join(_suite.dir, 'vcbuild.bat'),
                 'noprojgen',
                 'nobuild',
                 'java-home', _java_home()
