@@ -2852,10 +2852,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected boolean includes(Object thisObj, Object searchElement, Object fromIndex,
+        protected boolean includes(Object thisValue, Object searchElement, Object fromIndex,
                         @Cached("createSameValueZero()") JSIdenticalNode identicalNode) {
-            TruffleObject thisJSObj = toObject(thisObj);
-            long len = getLength(thisJSObj);
+            TruffleObject thisObj = toObject(thisValue);
+            long len = getLength(thisObj);
             if (len == 0) {
                 return false;
             }
