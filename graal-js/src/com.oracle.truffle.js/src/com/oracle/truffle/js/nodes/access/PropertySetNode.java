@@ -1302,10 +1302,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             DynamicObject thisJSObj = (DynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
             AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, true);
-            ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
             if (JSAdapter.isJSAdapter(store)) {
+                ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
                 return new JSAdapterPropertySetNode(receiverCheck);
             } else if (JSProxy.isProxy(store) && JSRuntime.isPropertyKey(key) && (!isStrict() || !isGlobal() || JSObject.hasOwnProperty(thisJSObj, key))) {
+                ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
                 return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
             } else if (!JSRuntime.isObject(thisJSObj)) {
                 return new TypeErrorPropertySetNode(shapeCheck);

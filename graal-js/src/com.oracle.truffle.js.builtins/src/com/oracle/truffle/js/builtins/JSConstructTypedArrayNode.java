@@ -54,7 +54,6 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.JSConstructTypedArrayNodeGen.IntegerIndexedObjectCreateNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
@@ -151,7 +150,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     protected final ReadElementNode createReadNode() {
-        return NodeFactory.getInstance(getContext()).createReadElementNode(getContext(), null, null);
+        return ReadElementNode.create(getContext());
     }
 
     private void checkDetachedBuffer(DynamicObject buffer) {

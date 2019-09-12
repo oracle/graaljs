@@ -102,7 +102,6 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
@@ -642,7 +641,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private ReadElementNode getOrCreateReadNode() {
             if (readNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                readNode = insert(NodeFactory.getInstance(getContext()).createReadElementNode(getContext(), null, null));
+                readNode = insert(ReadElementNode.create(getContext()));
             }
             return readNode;
         }
@@ -663,8 +662,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private WriteElementNode getOrCreateWriteNode() {
             if (writeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                NodeFactory factory = NodeFactory.getInstance(getContext());
-                writeNode = insert(factory.createWriteElementNode(getContext(), THROW_ERROR));
+                writeNode = insert(WriteElementNode.create(getContext(), THROW_ERROR));
             }
             return writeNode;
         }
@@ -686,8 +684,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private WriteElementNode getOrCreateWriteOwnNode() {
             if (writeOwnNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                NodeFactory factory = NodeFactory.getInstance(getContext());
-                writeOwnNode = insert(factory.createWriteElementNode(getContext(), THROW_ERROR, true));
+                writeOwnNode = insert(WriteElementNode.create(getContext(), THROW_ERROR, true));
             }
             return writeOwnNode;
         }
@@ -904,7 +901,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         public abstract Object execute(TruffleObject target, Object value);
 
         protected final WritePropertyNode createWritePropertyNode() {
-            return NodeFactory.getInstance(context).createWriteProperty(null, JSArray.LENGTH, null, context, THROW_ERROR);
+            return WritePropertyNode.create(null, JSArray.LENGTH, null, context, THROW_ERROR);
         }
 
         protected static boolean isArray(DynamicObject object) {
@@ -990,7 +987,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected MaybeResultNode makeMaybeResultNode() {
             return new ForEachIndexCallNode.MaybeResultNode() {
 
-                @Child private WriteElementNode writeOwnNode = NodeFactory.getInstance(getContext()).createWriteElementNode(getContext(), true, true);
+                @Child private WriteElementNode writeOwnNode = WriteElementNode.create(getContext(), true, true);
 
                 @Override
                 public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
@@ -1212,7 +1209,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public JSArrayToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.joinPropertyNode = NodeFactory.getInstance(getContext()).createProperty(getContext(), null, "join");
+            this.joinPropertyNode = PropertyNode.createProperty(getContext(), null, "join");
         }
 
         private Object getJoinProperty(TruffleObject target) {
@@ -2038,7 +2035,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected MaybeResultNode makeMaybeResultNode() {
             return new ForEachIndexCallNode.MaybeResultNode() {
                 @Child private JSToBooleanNode toBooleanNode = JSToBooleanNode.create();
-                @Child private WriteElementNode writeOwnNode = NodeFactory.getInstance(getContext()).createWriteElementNode(getContext(), true, true);
+                @Child private WriteElementNode writeOwnNode = WriteElementNode.create(getContext(), true, true);
 
                 @Override
                 public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
@@ -2129,7 +2126,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Override
         protected MaybeResultNode makeMaybeResultNode() {
             return new ForEachIndexCallNode.MaybeResultNode() {
-                @Child private WriteElementNode writeOwnNode = NodeFactory.getInstance(getContext()).createWriteElementNode(getContext(), true, true);
+                @Child private WriteElementNode writeOwnNode = WriteElementNode.create(getContext(), true, true);
 
                 @Override
                 public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
@@ -2244,7 +2241,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
                 protected final BranchProfile errorBranch = BranchProfile.create();
 
-                @Child private WriteElementNode writeOwnNode = NodeFactory.getInstance(context).createWriteElementNode(context, true, true);
+                @Child private WriteElementNode writeOwnNode = WriteElementNode.create(context, true, true);
                 @Child private DirectCallNode innerFlattenCall;
 
                 @Override

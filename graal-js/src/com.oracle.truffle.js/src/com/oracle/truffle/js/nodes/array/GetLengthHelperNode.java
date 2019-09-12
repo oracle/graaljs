@@ -50,7 +50,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
@@ -111,8 +110,7 @@ abstract class GetLengthHelperNode extends JavaScriptBaseNode {
     }
 
     protected PropertyNode createLengthProperty() {
-        return NodeFactory.getInstance(context).createProperty(context, null, JSArray.LENGTH);
-
+        return PropertyNode.createProperty(context, null, JSArray.LENGTH);
     }
 
     private double toUInt32Double(Object target) {

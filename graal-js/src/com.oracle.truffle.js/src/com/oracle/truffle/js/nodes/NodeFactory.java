@@ -647,14 +647,6 @@ public class NodeFactory {
         return CompoundWriteElementNode.create(targetNode, indexNode, valueNode, writeIndex, context, isStrict);
     }
 
-    public WriteElementNode createWriteElementNode(JSContext context, boolean throwError) {
-        return WriteElementNode.create(context, throwError);
-    }
-
-    public WriteElementNode createWriteElementNode(JSContext context, boolean isStrict, boolean writeOwn) {
-        return WriteElementNode.create(context, isStrict, writeOwn);
-    }
-
     // ##### Property nodes
 
     public JavaScriptNode createReadProperty(JSContext context, JavaScriptNode base, String propertyName) {
