@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.unary;
 
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -63,7 +64,7 @@ public abstract class RequireConstructorNode extends JavaScriptNode {
         return constructor;
     }
 
-    @Specialization(guards = "!isConstructor")
+    @Fallback
     final Object typeError(@SuppressWarnings("unused") Object constructor, @SuppressWarnings("unused") boolean isConstructor) {
         throw Errors.createTypeError("Super constructor is not a constructor", this);
     }
