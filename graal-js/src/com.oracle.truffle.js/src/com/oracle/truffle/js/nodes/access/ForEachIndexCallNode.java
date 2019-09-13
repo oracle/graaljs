@@ -105,7 +105,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     @Child private CallbackNode callbackNode;
     @Child protected MaybeResultNode maybeResultNode;
 
-    @Child private ReadElementNode.ArrayReadElementCacheNode readElementNode;
+    @Child private ReadElementNode.ReadElementArrayDispatchNode readElementNode;
     @Child private JSArrayFirstElementIndexNode firstElementIndexNode;
     @Child private JSArrayLastElementIndexNode lastElementIndexNode;
     @Child private JSHasPropertyNode hasPropertyNode;
@@ -117,7 +117,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         this.callbackNode = callbackArgumentsNode;
         this.maybeResultNode = maybeResultNode;
         this.context = context;
-        this.readElementNode = ReadElementNode.ArrayReadElementCacheNode.create(context);
+        this.readElementNode = ReadElementNode.ReadElementArrayDispatchNode.create();
     }
 
     public static ForEachIndexCallNode create(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode, boolean forward) {
@@ -188,7 +188,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     }
 
     protected final Object readElementInBounds(DynamicObject target, long index, boolean arrayCondition) {
-        return readElementNode.executeWithTargetAndArrayAndIndex(target, JSObject.getArray(target, arrayCondition), index, target, Undefined.instance, arrayCondition);
+        return readElementNode.executeArrayGet(target, JSObject.getArray(target, arrayCondition), index, target, Undefined.instance, arrayCondition, context);
     }
 
     protected final boolean hasProperty(TruffleObject target, long index) {
