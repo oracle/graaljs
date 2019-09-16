@@ -45,6 +45,8 @@ import org.junit.Test;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
@@ -209,6 +211,16 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
         enter(ReadVariableTag.class, (e, r) -> {
             assertAttribute(e, NAME, "this");
         }).exit();
+    }
+
+    @Test
+    public void classDeclaration() {
+        evalWithTags("class Klass {}", new Class[]{ReadVariableTag.class,
+                        ReadPropertyTag.class,
+                        ReadElementTag.class});
+
+        // No read events are generated for a class declaration.
+        // Test asserts that event queue is empty.
     }
 
 }
