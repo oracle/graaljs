@@ -21,6 +21,8 @@
     'node_use_openssl%': 'true',
     'node_shared_openssl%': 'false',
     'node_v8_options%': '',
+    'node_target_type%': 'executable',
+    'node_production%': 'false',
     'node_core_target_name%': 'node',
     'node_lib_target_name%': 'libnode',
     'node_intermediate_lib_type%': 'static_library',
@@ -129,6 +131,8 @@
       'lib/internal/fs/sync_write_stream.js',
       'lib/internal/fs/utils.js',
       'lib/internal/fs/watchers.js',
+      'lib/internal/graal/buffer.js',
+      'lib/internal/graal/debug.js',
       'lib/internal/http.js',
       'lib/internal/idna.js',
       'lib/internal/inspector_async_hook.js',
@@ -427,7 +431,7 @@
             },
           },
          }],
-        ['want_separate_host_toolset==0', {
+        ['want_separate_host_toolset==211', {
           'dependencies': [
             'mkcodecache',
           ],
@@ -488,7 +492,10 @@
 
       'include_dirs': [
         'src',
-        '<(SHARED_INTERMEDIATE_DIR)' # for node_natives.h
+        '<(SHARED_INTERMEDIATE_DIR)', # for node_natives.h
+        'deps/v8/include/',
+        'deps/v8/', # include/v8_platform.h
+        'deps/v8/src/graal/',
       ],
       'dependencies': [ 'deps/histogram/histogram.gyp:histogram' ],
 
@@ -668,6 +675,25 @@
         # node.gyp is added by default, common.gypi is added for change detection
         'common.gypi',
       ],
+      'conditions': [
+        # Production build
+        [ 'node_production=="true"', {
+          'defines': [ 'NDEBUG' ],
+        }],
+        [ 'OS=="mac"', {
+          'conditions': [
+            # --force_flat_namespace is not applicable for the dynamic library
+            [ 'node_target_type=="executable"', {
+              'xcode_settings': {
+                'OTHER_LDFLAGS': [
+                  '-force_flat_namespace',
+                  '-headerpad_max_install_names',
+                ],
+              },
+            }],
+          ],
+        }],
+     ],
 
       'variables': {
         'openssl_system_ca_path%': '',
@@ -910,20 +936,6 @@
       'target_name': 'node_etw',
       'type': 'none',
       'conditions': [
-        [ 'node_use_etw=="true"', {
-          'actions': [
-            {
-              'action_name': 'node_etw',
-              'inputs': [ 'src/res/node_etw_provider.man' ],
-              'outputs': [
-                'tools/msvs/genfiles/node_etw_provider.rc',
-                'tools/msvs/genfiles/node_etw_provider.h',
-                'tools/msvs/genfiles/node_etw_providerTEMP.BIN',
-              ],
-              'action': [ 'mc <@(_inputs) -h tools/msvs/genfiles -r tools/msvs/genfiles' ]
-            }
-          ]
-        } ]
       ]
     }, # node_etw
     {
@@ -1031,7 +1043,10 @@
                     '-C', '-G', '-s', 'src/v8ustack.d', '-o', '<@(_outputs)',
                   ]
                 } ],
-              ]
+                [ 'target_arch=="sparcv9"', {
+                  'action': []
+                } ],
+              ],
             },
           ]
         } ],
@@ -1173,7 +1188,7 @@
     #    node_lib -> node_lib_base & generate_code_cache
     {
       'target_name': 'mkcodecache',
-      'type': 'executable',
+      'type': 'none',
 
       'dependencies': [
         '<(node_lib_target_name)',

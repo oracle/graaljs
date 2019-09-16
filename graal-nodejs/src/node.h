@@ -553,7 +553,7 @@ extern "C" NODE_EXTERN void node_module_register(void* mod);
   extern "C" {                                                        \
     static node::node_module _module =                                \
     {                                                                 \
-      NODE_MODULE_VERSION,                                            \
+      -NODE_MODULE_VERSION,                                            \
       flags,                                                          \
       NULL,  /* NOLINT (readability/null_usage) */                    \
       __FILE__,                                                       \
@@ -572,7 +572,7 @@ extern "C" NODE_EXTERN void node_module_register(void* mod);
   extern "C" {                                                        \
     static node::node_module _module =                                \
     {                                                                 \
-      NODE_MODULE_VERSION,                                            \
+      -NODE_MODULE_VERSION,                                            \
       flags,                                                          \
       NULL,  /* NOLINT (readability/null_usage) */                    \
       __FILE__,                                                       \
@@ -811,6 +811,11 @@ class NODE_EXTERN AsyncResource {
   v8::Persistent<v8::Object> resource_;
   async_context async_context_;
 };
+
+// GRAAL EXTENSIONS
+
+long GraalArgumentsPreprocessing(int argc, char *argv[]);
+
 
 }  // namespace node
 

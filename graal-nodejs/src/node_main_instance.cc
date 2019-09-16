@@ -88,7 +88,6 @@ NodeMainInstance::~NodeMainInstance() {
   if (!owns_isolate_) {
     return;
   }
-  isolate_->Dispose();
   platform_->UnregisterIsolate(isolate_);
 }
 
@@ -158,6 +157,7 @@ int NodeMainInstance::Run() {
   __lsan_do_leak_check();
 #endif
 
+  isolate_->Dispose(true, exit_code);
   return exit_code;
 }
 

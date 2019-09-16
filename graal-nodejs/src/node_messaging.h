@@ -164,6 +164,7 @@ class MessagePort : public HandleWrap {
   static void Stop(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Drain(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void ReceiveMessage(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void MessageData(const v8::FunctionCallbackInfo<v8::Value>& args);
 
   /* static */
   static void MoveToContext(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -207,6 +208,11 @@ class MessagePort : public HandleWrap {
   std::unique_ptr<MessagePortData> data_ = nullptr;
   bool receiving_messages_ = false;
   uv_async_t async_;
+
+  // Used by Graal.js to keep track of messages that have been added to the
+  // `sibling_`'s queue. In this way, messages containing Java references
+  // can be garbage collected when they have not been encoded.
+  bool message_was_enqueued_ = false;
 
   friend class MessagePortData;
 };

@@ -13,9 +13,9 @@ const {
   ERR_INVALID_CALLBACK
 } = require('internal/errors').codes;
 
-const { hasInspector } = internalBinding('config');
-if (!hasInspector)
-  throw new ERR_INSPECTOR_NOT_AVAILABLE();
+//const { hasInspector } = internalBinding('config');
+//if (!hasInspector)
+//  throw new ERR_INSPECTOR_NOT_AVAILABLE();
 
 const EventEmitter = require('events');
 const { validateString } = require('internal/validators');
@@ -132,3 +132,6 @@ module.exports = {
   console: require('internal/util/inspector').consoleFromVM,
   Session
 };
+
+// Use the mockup provided by 'inspect' instrument
+module.exports = arguments[arguments.length - 1];

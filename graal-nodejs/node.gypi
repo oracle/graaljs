@@ -253,7 +253,7 @@
     [ '(OS=="freebsd" or OS=="linux") and node_shared=="false"'
         ' and force_load=="true"', {
       'ldflags': [
-        '-Wl,-z,noexecstack',
+        '-Wl,-z,noexecstack,--allow-multiple-definition',
         '-Wl,--whole-archive <(v8_base)',
         '-Wl,--no-whole-archive',
       ]

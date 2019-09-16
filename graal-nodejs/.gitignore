@@ -22,6 +22,7 @@
 !.travis.yml
 !.eslintrc.yaml
 !.cpplint
+!.checkstyle_checks.xml
 
 # === Rules for root dir ===
 /core
@@ -37,6 +38,15 @@
 /*.swp
 /out
 /*.txt
+/mxbuild
+/nbproject/private
+/mx.graal-nodejs/eclipse-launches
+/mx.graal-nodejs/com.oracle.truffle.trufflenode/build.xml
+/mx.graal-nodejs/com.oracle.truffle.trufflenode.jdk8/build.xml
+/mx.graal-nodejs/com.oracle.truffle.trufflenode.jdk11/build.xml
+/mx.graal-nodejs/com.oracle.truffle.trufflenode.jniboundaryprofiler/build.xml
+/mx.graal-nodejs/**/nbproject
+/eclipseformat.backup.zip
 
 # === Rules for artifacts of `./configure` ===
 /icu_config.gypi
@@ -86,6 +96,9 @@ _UpgradeReport_Files/
 /*.host.mk
 /deps/openssl/openssl.target.mk
 /deps/zlib/zlib.target.mk
+*.jar
+/mx.graal-nodejs/com.oracle.truffle.trufflenode.jniboundaryprofiler/tests/build
+/test/graal/build
 
 # === Rules for release artifacts ===
 /*.tar.*
@@ -97,6 +110,7 @@ _UpgradeReport_Files/
 /node_modules
 /tools/doc/node_modules
 /tools/clang-format/node_modules
+/test/graal/node_modules
 
 # === Rules for test artifacts ===
 /*.tap

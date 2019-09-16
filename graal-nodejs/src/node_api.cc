@@ -671,10 +671,16 @@ napi_status napi_make_callback(napi_env env,
     node_async_context = &empty_context;
   }
 
+  v8::Local<v8::Value>* args = new v8::Local<v8::Value>[argc];
+  for (size_t i = 0; i < argc; i++) {
+    args[i] = v8impl::V8LocalValueFromJsValue(argv[i]);
+  }
+
   v8::MaybeLocal<v8::Value> callback_result = node::MakeCallback(
       env->isolate, v8recv, v8func, argc,
-      reinterpret_cast<v8::Local<v8::Value>*>(const_cast<napi_value*>(argv)),
+      args,
       *node_async_context);
+  delete[] args;
 
   if (try_catch.HasCaught()) {
     return napi_set_last_error(env, napi_pending_exception);

@@ -63,6 +63,7 @@ set cctest=
 set openssl_no_asm=
 set doc=
 set extra_msbuild_args=
+set java_home=
 
 :next-arg
 if "%1"=="" goto args-done
@@ -140,6 +141,7 @@ if /i "%1"=="cctest"        set cctest=1&goto arg-ok
 if /i "%1"=="openssl-no-asm"   set openssl_no_asm=1&goto arg-ok
 if /i "%1"=="doc"           set doc=1&goto arg-ok
 if /i "%1"=="binlog"        set extra_msbuild_args=/binaryLogger:%config%\node.binlog&goto arg-ok
+if /i "%1"=="java-home"     set "java_home=%2"&goto arg-ok-2
 
 echo Error: invalid command line option `%1`.
 exit /b 1
@@ -152,7 +154,11 @@ goto next-arg
 
 :args-done
 
-if "%*"=="lint" (
+:: Remove possible quotes from command line arguments (parameters) before checking if they match "lint"
+set "parameters=%*"
+set "parameters_without_quotes=%parameters:"=%"
+
+if "%parameters_without_quotes%"=="lint" (
   goto lint-cpp
 )
 
@@ -193,6 +199,7 @@ if defined i18n_arg         set configure_flags=%configure_flags% --with-intl=%i
 if defined config_flags     set configure_flags=%configure_flags% %config_flags%
 if defined target_arch      set configure_flags=%configure_flags% --dest-cpu=%target_arch%
 if defined openssl_no_asm   set configure_flags=%configure_flags% --openssl-no-asm
+if defined java_home        set configure_flags=%configure_flags% --java-home=%java_home% --without-dtrace
 if defined DEBUG_HELPER     set configure_flags=%configure_flags% --verbose
 if "%target_arch%"=="x86" if "%PROCESSOR_ARCHITECTURE%"=="AMD64" set configure_flags=%configure_flags% --no-cross-compiling
 
@@ -548,7 +555,7 @@ for /d %%F in (test\addons\??_*) do (
   rd /s /q %%F
 )
 :: generate
-"%node_exe%" tools\doc\addon-verify.js
+rem "%node_exe%" tools\doc\addon-verify.js
 if %errorlevel% neq 0 exit /b %errorlevel%
 :: building addons
 setlocal

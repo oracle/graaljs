@@ -657,10 +657,10 @@ PerProcessOptionsParser::PerProcessOptionsParser(
   AddOption("--completion-bash",
             "print source-able bash completion script",
             &PerProcessOptions::print_bash_completion);
-  AddOption("--help",
-            "print node command line options",
-            &PerProcessOptions::print_help);
-  AddAlias("-h", "--help");
+//  AddOption("--help",
+//            "print node command line options",
+//            &PerProcessOptions::print_help);
+//  AddAlias("-h", "--help");
   AddOption(
       "--version", "print Node.js version", &PerProcessOptions::print_version);
   AddAlias("-v", "--version");
@@ -724,6 +724,9 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             kAllowedInEnvironment);
 #endif
 #endif
+
+  AddOption("--jvm", "", V8Option{}, kAllowedInEnvironment);
+  AddOption("--native", "", V8Option{}, kAllowedInEnvironment);
 
   Insert(iop, &PerProcessOptions::get_per_isolate_options);
 }

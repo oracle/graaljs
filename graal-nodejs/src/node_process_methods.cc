@@ -423,7 +423,11 @@ static void ReallyExit(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   WaitForInspectorDisconnect(env);
   int code = args[0]->Int32Value(env->context()).FromMaybe(0);
-  env->Exit(code);
+  if (env->is_main_thread()) {
+      args.GetIsolate()->Dispose(true, code);
+  } else {
+      env->Exit(code);
+  }
 }
 
 static void InitializeProcessMethods(Local<Object> target,

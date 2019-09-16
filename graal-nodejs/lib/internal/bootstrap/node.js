@@ -43,6 +43,19 @@ const { deprecate } = require('internal/util');
 
 setupProcessObject();
 
+// graal-node.js patch start
+if (process._breakFirstLine) {
+  process.binding('inspector').callAndPauseOnStart = function(fn, self, ...args) {
+    NativeModule.require('internal/graal/debug').setBreakPoint(fn, 0, 0, undefined, true);
+    return fn.apply(self, args);
+  }
+}
+
+if (typeof Packages !== 'undefined') {
+  Packages[Symbol.toStringTag] = 'Packages'; // breaking isRhino check of acorn package
+}
+// graal-node.js patch end
+
 setupGlobalProxy();
 setupBuffer();
 

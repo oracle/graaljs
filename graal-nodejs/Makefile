@@ -18,6 +18,11 @@ GCOV ?= gcov
 PWD = $(CURDIR)
 BUILD_WITH ?= make
 
+ifeq "$(OSTYPE)" "sunos"
+  CC=gcc
+  CXX=g++
+endif
+
 ifdef JOBS
 	PARALLEL_ARGS = -j $(JOBS)
 else
@@ -98,11 +103,11 @@ help: ## Print help for targets with comments.
 # See comments on the build-addons target for some more info
 ifeq ($(BUILD_WITH), make)
 $(NODE_EXE): config.gypi out/Makefile
-	$(MAKE) -C out BUILDTYPE=Release V=$(V)
+	$(MAKE) -C out BUILDTYPE=Release V=$(V) CC=$(CC) CXX=$(CXX)
 	if [ ! -r $@ -o ! -L $@ ]; then ln -fs out/Release/$(NODE_EXE) $@; fi
 
 $(NODE_G_EXE): config.gypi out/Makefile
-	$(MAKE) -C out BUILDTYPE=Debug V=$(V)
+	$(MAKE) -C out BUILDTYPE=Debug V=$(V) CC=$(CC) CXX=$(CXX)
 	if [ ! -r $@ -o ! -L $@ ]; then ln -fs out/Debug/$(NODE_EXE) $@; fi
 else
 ifeq ($(BUILD_WITH), ninja)
