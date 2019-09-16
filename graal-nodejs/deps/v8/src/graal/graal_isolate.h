@@ -203,6 +203,7 @@ enum GraalAccessMethod {
     isolate_enable_import_module_dynamically,
     isolate_enter,
     isolate_exit,
+    isolate_enqueue_microtask,
     template_set,
     template_set_accessor_property,
     object_template_new,
@@ -379,6 +380,7 @@ public:
     void Enter();
     void Exit();
     void HandleEmptyCallResult();
+    void EnqueueMicrotask(v8::Local<v8::Function> microtask);
 
     enum GCCallbackType {
         kIsolateGCCallbackType = 0,

@@ -2681,6 +2681,10 @@ public final class GraalJSAccess {
         }
     }
 
+    public void isolateEnqueueMicrotask(Object microtask) {
+        agent.enqueuePromiseJob((DynamicObject) microtask);
+    }
+
     public Object correctReturnValue(Object value) {
         if (value == INT_PLACEHOLDER) {
             resetSharedBuffer();

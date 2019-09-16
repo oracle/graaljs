@@ -41,6 +41,7 @@
 
 #include "callbacks.h"
 #include "graal_boolean.h"
+#include "graal_function.h"
 #include "graal_isolate.h"
 #include "graal_missing_primitive.h"
 #include "graal_number.h"
@@ -687,6 +688,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_import_module_dynamically, "isolateEnableImportModuleDynamically", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enter, "isolateEnter", "(J)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_exit, "isolateExit", "(J)J")
+    ACCESS_METHOD(GraalAccessMethod::isolate_enqueue_microtask, "isolateEnqueueMicrotask", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "()Ljava/lang/Object;")
@@ -1424,4 +1426,10 @@ void GraalIsolate::ReportAPIFailure(const char* location, const char* message) {
     } else {
         fatal_error_handler_(location, message);
     }
+}
+
+void GraalIsolate::EnqueueMicrotask(v8::Local<v8::Function> microtask) {
+    GraalFunction* graal_microtask = reinterpret_cast<GraalFunction*> (*microtask);
+    jobject java_microtask = graal_microtask->GetJavaObject();
+    JNI_CALL_VOID(this, GraalAccessMethod::isolate_enqueue_microtask, java_microtask);
 }

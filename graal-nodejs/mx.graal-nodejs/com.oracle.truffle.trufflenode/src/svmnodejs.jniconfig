@@ -87,6 +87,7 @@
       { "name": "isolateEnableImportModuleDynamically" },
       { "name": "isolateEnablePromiseHook" },
       { "name": "isolateEnablePromiseRejectCallback" },
+      { "name": "isolateEnqueueMicrotask" },
       { "name": "isolateEnter" },
       { "name": "isolateEnterPolyglotEngine" },
       { "name": "isolateExit" },

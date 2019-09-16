@@ -3029,7 +3029,7 @@ namespace v8 {
     }
 
     void Isolate::EnqueueMicrotask(Local<Function> microtask) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->EnqueueMicrotask(microtask);
     }
 
     bool Isolate::GetHeapCodeAndMetadataStatistics(HeapCodeStatistics* object_statistics) {
