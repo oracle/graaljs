@@ -585,7 +585,7 @@ public class WriteElementNode extends JSTargetableNode {
         private void setCachedProperty(DynamicObject targetObject, Object index, Object value, Object receiver, WriteElementNode root) {
             if (setPropertyCachedNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                setPropertyCachedNode = insert(CachedSetPropertyNode.create(root.context, root.isStrict, root.writeOwn));
+                setPropertyCachedNode = insert(CachedSetPropertyNode.create(root.context, root.isStrict, root.writeOwn, root.isSuperProperty()));
             }
             setPropertyCachedNode.execute(targetObject, index, value, receiver);
         }
@@ -1815,6 +1815,10 @@ public class WriteElementNode extends JSTargetableNode {
 
     public boolean writeOwn() {
         return writeOwn;
+    }
+
+    boolean isSuperProperty() {
+        return targetNode instanceof SuperPropertyReferenceNode;
     }
 
     @Override

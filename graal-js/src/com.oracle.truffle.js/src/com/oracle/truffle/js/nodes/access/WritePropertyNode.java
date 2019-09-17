@@ -56,6 +56,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
 public class WritePropertyNode extends JSTargetableWriteNode {
 
@@ -71,10 +72,8 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     protected WritePropertyNode(JavaScriptNode target, JavaScriptNode rhs, Object propertyKey, boolean isGlobal, JSContext context, boolean isStrict) {
         this.targetNode = target;
         this.rhsNode = rhs;
-        this.cache = PropertySetNode.create(propertyKey, isGlobal, context, isStrict);
-        if (target instanceof SuperPropertyReferenceNode) {
-            this.cache.setSuperProperty();
-        }
+        boolean superProperty = target instanceof SuperPropertyReferenceNode;
+        this.cache = PropertySetNode.createImpl(propertyKey, isGlobal, context, isStrict, false, JSAttributes.getDefault(), false, superProperty);
     }
 
     public static WritePropertyNode create(JavaScriptNode target, Object propertyKey, JavaScriptNode rhs, JSContext ctx, boolean isStrict) {

@@ -65,17 +65,19 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     protected final JSContext context;
     protected final boolean strict;
     protected final boolean setOwn;
+    protected final boolean superProperty;
 
-    CachedSetPropertyNode(JSContext context, boolean strict, boolean setOwn) {
+    CachedSetPropertyNode(JSContext context, boolean strict, boolean setOwn, boolean superProperty) {
         this.context = context;
         this.strict = strict;
         this.setOwn = setOwn;
+        this.superProperty = superProperty;
     }
 
     public abstract void execute(DynamicObject target, Object propertyKey, Object value, Object receiver);
 
-    static CachedSetPropertyNode create(JSContext context, boolean strict, boolean setOwn) {
-        return CachedSetPropertyNodeGen.create(context, strict, setOwn);
+    static CachedSetPropertyNode create(JSContext context, boolean strict, boolean setOwn, boolean superProperty) {
+        return CachedSetPropertyNodeGen.create(context, strict, setOwn, superProperty);
     }
 
     @SuppressWarnings("unused")
@@ -142,6 +144,6 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     }
 
     PropertySetNode createSet(Object key) {
-        return PropertySetNode.createImpl(key, false, context, strict, setOwn, JSAttributes.getDefault());
+        return PropertySetNode.createImpl(key, false, context, strict, setOwn, JSAttributes.getDefault(), false, superProperty);
     }
 }
