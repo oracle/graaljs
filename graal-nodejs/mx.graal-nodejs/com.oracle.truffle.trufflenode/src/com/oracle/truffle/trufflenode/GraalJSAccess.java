@@ -82,6 +82,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -2915,8 +2916,12 @@ public final class GraalJSAccess {
         JSContext jsContext = ((JSRealm) context).getContext();
         NodeFactory factory = NodeFactory.getInstance(jsContext);
         String moduleName = (String) name;
-        URI uri = URI.create(moduleName);
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, (String) sourceCode, moduleName).uri(uri).build();
+        Source.LiteralBuilder builder = Source.newBuilder(JavaScriptLanguage.ID, (String) sourceCode, moduleName);
+        try {
+            builder = builder.uri(new URI(moduleName));
+        } catch (URISyntaxException usex) {
+        }
+        Source source = builder.build();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
         return JavaScriptTranslator.translateModule(factory, jsContext, source, getModuleLoader());
     }
