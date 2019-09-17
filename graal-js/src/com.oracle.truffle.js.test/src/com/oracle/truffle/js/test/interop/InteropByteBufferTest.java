@@ -48,6 +48,7 @@ import java.nio.ByteBuffer;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class InteropByteBufferTest {
 
@@ -117,6 +118,44 @@ public class InteropByteBufferTest {
             assertEquals(jsBuffer.getArrayElement(0).asByte(), buffer.get());
             assertEquals(jsBuffer.getArrayElement(1).asByte(), buffer.get());
             assertEquals(jsBuffer.getArrayElement(2).asByte(), buffer.get());
+        }
+    }
+
+    @Test
+    public void testJavaInteropDirect() {
+        try (Context cx = Context.newBuilder("js").allowHostAccess(true).build()) {
+            Value buffer = cx.eval("js", "const ByteBuffer = Java.type('java.nio.ByteBuffer');" +
+                            "const bb = ByteBuffer.allocateDirect(3);" +
+                            "const ab = new ArrayBuffer(bb);" +
+                            "const ia = new Int8Array(ab);" +
+                            "ia[0] = 41;" +
+                            "ia[1] = 42;" +
+                            "ia[2] = 43;" +
+                            "bb;");
+            ByteBuffer jBuffer = buffer.as(ByteBuffer.class);
+            assertTrue(jBuffer.isDirect());
+            assertEquals(jBuffer.get(0), 41);
+            assertEquals(jBuffer.get(1), 42);
+            assertEquals(jBuffer.get(2), 43);
+        }
+    }
+
+    @Test
+    public void testJavaInteropHeap() {
+        try (Context cx = Context.newBuilder("js").allowHostAccess(true).build()) {
+            Value buffer = cx.eval("js", "const ByteBuffer = Java.type('java.nio.ByteBuffer');" +
+                            "const bb = ByteBuffer.allocate(3);" +
+                            "const ab = new ArrayBuffer(bb);" +
+                            "const ia = new Int8Array(ab);" +
+                            "ia[0] = 41;" +
+                            "ia[1] = 42;" +
+                            "ia[2] = 43;" +
+                            "bb;");
+            ByteBuffer jBuffer = buffer.as(ByteBuffer.class);
+            assertTrue(!jBuffer.isDirect());
+            assertEquals(jBuffer.get(0), 41);
+            assertEquals(jBuffer.get(1), 42);
+            assertEquals(jBuffer.get(2), 43);
         }
     }
 }
