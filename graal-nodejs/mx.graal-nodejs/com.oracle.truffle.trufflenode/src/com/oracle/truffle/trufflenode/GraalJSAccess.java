@@ -2637,6 +2637,7 @@ public final class GraalJSAccess {
     }
 
     private void exit(int status) {
+        evaluator.close();
         System.exit(status);
     }
 
