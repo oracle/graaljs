@@ -58,6 +58,7 @@ public:
     void SetSecurityToken(v8::Local<v8::Value> token);
     void UseDefaultSecurityToken();
     v8::Local<v8::Value> GetSecurityToken();
+    v8::Local<v8::Object> GetExtrasBindingObject();
 
     inline v8::Isolate* GetIsolate() {
         return reinterpret_cast<v8::Isolate*> (Isolate());

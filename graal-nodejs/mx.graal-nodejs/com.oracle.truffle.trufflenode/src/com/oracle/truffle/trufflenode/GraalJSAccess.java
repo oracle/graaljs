@@ -2396,6 +2396,44 @@ public final class GraalJSAccess {
         return (securityToken == null) ? Undefined.instance : securityToken;
     }
 
+    public Object contextGetExtrasBindingObject(Object context) {
+        RealmData contextData = getRealmEmbedderData(context);
+        DynamicObject extras = contextData.getExtrasBindingObject();
+        if (extras == null) {
+            extras = initializeExtrasBindingObject((JSRealm) context);
+            contextData.setExtrasBindingObject(extras);
+        }
+        return extras;
+    }
+
+    private DynamicObject initializeExtrasBindingObject(JSRealm realm) {
+        DynamicObject extras = JSUserObject.create(realm.getContext(), realm);
+
+        // isTraceCategoryEnabled
+        JavaScriptRootNode isEnabledRootNode = new JavaScriptRootNode() {
+            @Override
+            public Object execute(VirtualFrame vf) {
+                return false; // tracing is not supported
+            }
+        };
+        JSFunctionData isEnabledFunctionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(isEnabledRootNode), 0, "isTraceCategoryEnabled");
+        DynamicObject isEnabledFunction = JSFunction.create(realm, isEnabledFunctionData);
+        JSObject.set(extras, "isTraceCategoryEnabled", isEnabledFunction);
+
+        // trace
+        JavaScriptRootNode traceRootNode = new JavaScriptRootNode() {
+            @Override
+            public Object execute(VirtualFrame vf) {
+                return Undefined.instance; // tracing is not supported
+            }
+        };
+        JSFunctionData traceFunctionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(traceRootNode), 0, "trace");
+        DynamicObject traceFunction = JSFunction.create(realm, traceFunctionData);
+        JSObject.set(extras, "trace", traceFunction);
+
+        return extras;
+    }
+
     public void contextSetPointerInEmbedderData(Object context, int index, long pointer) {
         contextSetEmbedderData(context, index, pointer);
     }

@@ -2685,8 +2685,7 @@ namespace v8 {
     }
 
     Local<Object> Context::GetExtrasBindingObject() {
-        TRACE
-        return Global();
+        return reinterpret_cast<GraalContext*> (this)->GetExtrasBindingObject();
     }
 
     void Isolate::DiscardThreadSpecificMetadata() {

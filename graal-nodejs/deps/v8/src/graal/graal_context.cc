@@ -110,3 +110,9 @@ v8::Local<v8::Value> GraalContext::GetSecurityToken() {
 void GraalContext::UseDefaultSecurityToken() {
     SetSecurityToken(Global());
 }
+
+v8::Local<v8::Object> GraalContext::GetExtrasBindingObject() {
+    JNI_CALL(jobject, java_extras, Isolate(), GraalAccessMethod::context_get_extras_binding_object, Object, GetJavaObject());
+    GraalObject* graal_extras = new GraalObject(Isolate(), java_extras);
+    return reinterpret_cast<v8::Object*> (graal_extras);
+}

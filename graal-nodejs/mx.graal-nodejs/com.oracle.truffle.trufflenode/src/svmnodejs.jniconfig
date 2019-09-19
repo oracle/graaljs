@@ -28,6 +28,7 @@
       { "name": "booleanObjectValueOf" },
       { "name": "clearWeak" },
       { "name": "contextGetEmbedderData" },
+      { "name": "contextGetExtrasBindingObject" },
       { "name": "contextGetPointerInEmbedderData" },
       { "name": "contextGetSecurityToken" },
       { "name": "contextGlobal" },

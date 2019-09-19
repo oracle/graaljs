@@ -248,6 +248,7 @@ enum GraalAccessMethod {
     context_get_pointer_in_embedder_data,
     context_set_embedder_data,
     context_get_embedder_data,
+    context_get_extras_binding_object,
     try_catch_exception,
     try_catch_has_terminated,
     message_get_script_resource_name,
