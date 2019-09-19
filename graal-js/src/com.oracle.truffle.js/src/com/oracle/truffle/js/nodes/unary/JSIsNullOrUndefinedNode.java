@@ -85,6 +85,8 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
         this.isLeft = isLeft;
     }
 
+    public abstract boolean executeBoolean(Object input);
+
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == BinaryOperationTag.class) {
@@ -193,6 +195,10 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
         JavaScriptNode constant = isLeft ? left : right;
         boolean isUndefined = constant instanceof JSConstantUndefinedNode;
         return JSIsNullOrUndefinedNodeGen.create(operand, isUndefined, isLeft);
+    }
+
+    public static JSIsNullOrUndefinedNode create() {
+        return JSIsNullOrUndefinedNodeGen.create(null, true, true);
     }
 
     private static boolean isNullOrUndefined(JavaScriptNode node) {

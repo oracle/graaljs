@@ -132,6 +132,7 @@ import com.oracle.truffle.js.nodes.binary.JSLessOrEqualNode;
 import com.oracle.truffle.js.nodes.binary.JSLessThanNode;
 import com.oracle.truffle.js.nodes.binary.JSModuloNode;
 import com.oracle.truffle.js.nodes.binary.JSMultiplyNode;
+import com.oracle.truffle.js.nodes.binary.JSNullishCoalescingNode;
 import com.oracle.truffle.js.nodes.binary.JSOrNode;
 import com.oracle.truffle.js.nodes.binary.JSRightShiftNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
@@ -240,6 +241,7 @@ public class NodeFactory {
         INSTANCEOF,
         IN,
         DUAL,
+        NULLISH_COALESCING
     }
 
     public enum UnaryOperation {
@@ -327,6 +329,8 @@ public class NodeFactory {
                 return JSAndNode.create(left, right);
             case LOGICAL_OR:
                 return JSOrNode.create(left, right);
+            case NULLISH_COALESCING:
+                return JSNullishCoalescingNode.create(left, right);
             case BITWISE_AND:
                 return JSBitwiseAndNode.create(left, right);
             case BITWISE_OR:
