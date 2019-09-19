@@ -3152,8 +3152,8 @@ namespace v8 {
     }
 
     Isolate* Message::GetIsolate() const {
-        TRACE
-        return nullptr;
+        GraalIsolate* graal_isolate = reinterpret_cast<const GraalMessage*> (this)->Isolate();
+        return reinterpret_cast<Isolate*> (graal_isolate);
     }
 
     bool v8::internal::ShouldThrowOnError(v8::internal::Isolate* isolate) {
