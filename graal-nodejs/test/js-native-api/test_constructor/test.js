@@ -3,7 +3,7 @@ const common = require('../../common');
 const assert = require('assert');
 
 const getterOnlyErrorRE =
-  /^TypeError: Cannot set property .* of #<.*> which has only a getter$/;
+  /^TypeError: Cannot set property .* of .* which has only a getter$/;
 
 // Testing api calls for a constructor that defines properties
 const TestConstructor = require(`./build/${common.buildType}/test_constructor`);
