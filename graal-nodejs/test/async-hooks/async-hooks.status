@@ -6,6 +6,10 @@ prefix async-hooks
 
 [true] # This section applies to all platforms
 
+# graal-nodejs has process.<anonymous> instead of process._fatalException
+# in the stack-trace checked by ActivityCollector._getActivity()
+test-timers.setInterval: FAIL
+
 [$system==win32]
 # https://github.com/nodejs/node/issues/21425
 test-statwatcher: PASS,FLAKY
