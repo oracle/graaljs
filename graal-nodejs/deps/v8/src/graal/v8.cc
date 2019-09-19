@@ -3074,8 +3074,14 @@ namespace v8 {
     }
 
     size_t ArrayBufferView::CopyContents(void* dest, size_t byte_length) {
-        TRACE
-        return 0;
+        size_t offset = ByteOffset();
+        ArrayBuffer::Contents contents = Buffer()->GetContents();
+        size_t content_length = contents.ByteLength() - offset;
+        if (content_length < byte_length) {
+            byte_length = content_length;
+        }
+        memcpy(dest, reinterpret_cast<char*> (contents.Data()) + offset, byte_length);
+        return byte_length;
     }
 
     Local<Array> Array::New(Isolate* isolate, Local<Value>* elements, size_t length) {
