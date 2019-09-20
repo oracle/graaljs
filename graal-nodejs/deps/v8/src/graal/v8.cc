@@ -3068,8 +3068,7 @@ namespace v8 {
     }
 
     double Date::ValueOf() const {
-        TRACE
-        return 0;
+        return reinterpret_cast<const GraalDate*> (this)->ValueOf();
     }
 
     size_t ArrayBufferView::CopyContents(void* dest, size_t byte_length) {
