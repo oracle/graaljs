@@ -71,7 +71,7 @@ public interface Evaluator {
      *
      * @param lastNode the node invoking the eval or {@code null}
      */
-    Object evaluate(JSRealm realm, Node lastNode, Source source, Object currEnv, MaterializedFrame frame, Object thisObj);
+    Object evaluate(JSRealm realm, Node lastNode, Source source, MaterializedFrame frame, Object thisObj, Object currScope, Object currEnv);
 
     Object parseJSON(JSContext context, String jsonString);
 

@@ -307,7 +307,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         boolean isArrowFunction = functionNode.isArrow();
         boolean isGeneratorFunction = functionNode.isGenerator();
         boolean isAsyncFunction = functionNode.isAsync();
-        boolean isDerivedConstructor = functionNode.isSubclassConstructor();
+        boolean isDerivedConstructor = functionNode.isDerivedConstructor();
 
         boolean isMethod = functionNode.isMethod();
         boolean needsNewTarget = functionNode.needsNewTarget() || functionNode.hasDirectSuper();
@@ -904,7 +904,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assert !functionNode.isArrow();
             currentFunction.reserveThisSlot();
         }
-        if (functionNode.usesSuper()) {
+        if (functionNode.needsSuper()) {
             // arrow functions need to access [[HomeObject]] from outer non-arrow scope
             // note: an arrow function using <super> also needs <this> access
             assert !functionNode.isArrow();
@@ -963,7 +963,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             FunctionNode nonArrowFunction = lc.getCurrentNonArrowFunction();
                             // `this` is read from the arrow function object,
                             // unless `this` is supplied by a subclass constructor
-                            if (!varName.equals(Environment.THIS_NAME) || nonArrowFunction.isSubclassConstructor()) {
+                            if (!varName.equals(Environment.THIS_NAME) || nonArrowFunction.isDerivedConstructor()) {
                                 if (!nonArrowFunction.isProgram()) {
                                     markUsesAncestorScopeUntil(nonArrowFunction, false);
                                 }
@@ -2158,7 +2158,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         for (FunctionEnvironment func = currentFunction(); func.getParentFunction() != null; func = func.getParentFunction()) {
             func.setNeedsParentFrame(true);
         }
-        return EvalNode.create(context, environment, function, args, createThisNode());
+        return EvalNode.create(context, function, args, createThisNode(), lc.getCurrentScope(), environment);
     }
 
     private JavaScriptNode createCallApplyArgumentsNode(JavaScriptNode function, JavaScriptNode[] args) {
@@ -2666,7 +2666,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return null;
         }
         JavaScriptNode function = transform(accessorFunction);
-        if (accessorFunction.usesSuper()) {
+        if (accessorFunction.needsSuper()) {
             assert accessorFunction.isMethod();
             function = factory.createMakeMethod(context, function);
         }
@@ -2683,7 +2683,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             classNameSymbol.setHasBeenDeclared(false);
         }
 
-        if (property.getValue() instanceof FunctionNode && ((FunctionNode) property.getValue()).usesSuper()) {
+        if (property.getValue() instanceof FunctionNode && ((FunctionNode) property.getValue()).needsSuper()) {
             assert ((FunctionNode) property.getValue()).isMethod();
             value = factory.createMakeMethod(context, value);
         }

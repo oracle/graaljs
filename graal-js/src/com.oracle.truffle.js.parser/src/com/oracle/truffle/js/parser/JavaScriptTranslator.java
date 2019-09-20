@@ -50,6 +50,7 @@ import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.js.parser.ir.Module.ImportEntry;
+import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -80,21 +81,22 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     }
 
     public static ScriptNode translateScript(NodeFactory factory, JSContext context, Source source, boolean isParentStrict) {
-        return translateScript(factory, context, null, source, isParentStrict, false, false);
+        return translateScript(factory, context, null, source, isParentStrict, false, false, null);
     }
 
-    public static ScriptNode translateEvalScript(NodeFactory factory, JSContext context, Environment env, Source source, boolean isParentStrict) {
+    public static ScriptNode translateEvalScript(NodeFactory factory, JSContext context, Environment env, Source source, boolean isParentStrict, Scope scope) {
         boolean evalInGlobalScope = env == null || env.getParent() == null || (env.getParent().function() != null && env.getParent().function().isGlobal());
-        return translateScript(factory, context, env, source, isParentStrict, true, evalInGlobalScope);
+        return translateScript(factory, context, env, source, isParentStrict, true, evalInGlobalScope, scope);
     }
 
     public static ScriptNode translateInlineScript(NodeFactory factory, JSContext context, Environment env, Source source, boolean isParentStrict) {
         boolean evalInGlobalScope = env.getParent() == null;
-        return translateScript(factory, context, env, source, isParentStrict, true, evalInGlobalScope);
+        return translateScript(factory, context, env, source, isParentStrict, true, evalInGlobalScope, null);
     }
 
-    private static ScriptNode translateScript(NodeFactory nodeFactory, JSContext context, Environment env, Source source, boolean isParentStrict, boolean isEval, boolean evalInGlobalScope) {
-        FunctionNode parserFunctionNode = GraalJSParserHelper.parseScript(context, source, context.getParserOptions().putStrict(isParentStrict), isEval, evalInGlobalScope);
+    private static ScriptNode translateScript(NodeFactory nodeFactory, JSContext context, Environment env, Source source, boolean isParentStrict, boolean isEval, boolean evalInGlobalScope,
+                    Scope scope) {
+        FunctionNode parserFunctionNode = GraalJSParserHelper.parseScript(context, source, context.getParserOptions().putStrict(isParentStrict), isEval, evalInGlobalScope, scope);
         Source src = source;
         String explicitURL = parserFunctionNode.getSource().getExplicitURL();
         if (explicitURL != null) {

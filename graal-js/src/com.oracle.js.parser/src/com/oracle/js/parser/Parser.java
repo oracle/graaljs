@@ -336,7 +336,7 @@ public class Parser extends AbstractParser {
      * @return function node resulting from successful parse
      */
     public FunctionNode parse() {
-        return parse(PROGRAM_NAME, 0, source.getLength(), 0);
+        return parse(PROGRAM_NAME, 0, source.getLength(), 0, null);
     }
 
     /**
@@ -402,14 +402,14 @@ public class Parser extends AbstractParser {
      *
      * @return function node resulting from successful parse
      */
-    public FunctionNode parse(final String scriptName, final int startPos, final int len, final int reparseFlags) {
+    public FunctionNode parse(final String scriptName, final int startPos, final int len, final int reparseFlags, Scope parentScope) {
         long startTime = PROFILE_PARSING ? System.nanoTime() : 0L;
         try {
             prepareLexer(startPos, len);
 
             scanFirstToken();
 
-            return program(scriptName, reparseFlags);
+            return program(scriptName, reparseFlags, parentScope);
         } catch (final Exception e) {
             handleParseException(e);
 
@@ -459,8 +459,13 @@ public class Parser extends AbstractParser {
         return parseModule(moduleName, 0, source.getLength());
     }
 
-    public FunctionNode parseEval(boolean functionContext) {
-        return parse(PROGRAM_NAME, 0, source.getLength(), PARSE_EVAL | (functionContext ? PARSE_FUNCTION_CONTEXT_EVAL : 0));
+    /**
+     * Parse eval code.
+     *
+     * @param parentScope optional caller context scope (direct eval)
+     */
+    public FunctionNode parseEval(boolean functionContext, Scope parentScope) {
+        return parse(PROGRAM_NAME, 0, source.getLength(), PARSE_EVAL | (functionContext ? PARSE_FUNCTION_CONTEXT_EVAL : 0), parentScope);
     }
 
     /**
@@ -506,8 +511,9 @@ public class Parser extends AbstractParser {
             final ParserContextFunctionNode function = createParserContextFunctionNode(ident, functionToken, functionFlags, functionLine, Collections.<IdentNode> emptyList(), 0);
             function.clearFlag(FunctionNode.IS_PROGRAM);
 
+            assert lc.getCurrentScope() == null;
             lc.push(function);
-            final ParserContextBlockNode body = newBlock(Scope.createFunctionBody(lc.getCurrentScope()));
+            final ParserContextBlockNode body = newBlock(function.createBodyScope());
             function.setBodyBlock(body);
             functionDeclarations = new ArrayList<>();
             try {
@@ -652,7 +658,7 @@ public class Parser extends AbstractParser {
         assert body.isFunctionBody() || (body.isParameterBlock() && ((BlockStatement) body.getLastStatement()).getBlock().isFunctionBody());
 
         if (function.getBodyBlock() != null) {
-            Scope varScope = function.getBodyBlock().getScope();
+            Scope varScope = function.getBodyScope();
             VarNode varNode = varScope.verifyHoistedVarDeclarations();
             if (varNode != null) {
                 throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", varNode.getName().getName()), varNode.getToken());
@@ -971,7 +977,7 @@ public class Parser extends AbstractParser {
      *      SourceElements?
      * </pre>
      */
-    private FunctionNode program(final String scriptName, final int parseFlags) {
+    private FunctionNode program(final String scriptName, final int parseFlags, final Scope parentScope) {
         // Make a pseudo-token for the script holding its start and length.
         int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
@@ -985,7 +991,7 @@ public class Parser extends AbstractParser {
                         functionLine,
                         Collections.<IdentNode> emptyList(), 0);
         lc.push(script);
-        final Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags) : Scope.createGlobal();
+        final Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
         final ParserContextBlockNode body = newBlock(topScope);
         script.setBodyBlock(body);
         functionDeclarations = new ArrayList<>();
@@ -1006,7 +1012,7 @@ public class Parser extends AbstractParser {
         return createFunctionNode(script, functionToken, ident, functionLine, programBody);
     }
 
-    private Scope createEvalScope(final int parseFlags) {
+    private Scope createEvalScope(final int parseFlags, Scope parentScope) {
         // 1. strict eval code always has its own scope
         // 2. non-strict indirect eval is in global scope
         // 3. non-strict direct eval is in global scope if the caller is
@@ -1014,7 +1020,7 @@ public class Parser extends AbstractParser {
         // directive and switch into strict mode (in which case we replace the scope).
         assert (parseFlags & PARSE_EVAL) != 0;
         if ((isStrictMode || (parseFlags & PARSE_FUNCTION_CONTEXT_EVAL) != 0)) {
-            return Scope.createFunctionBody(null);
+            return Scope.createEval(parentScope);
         } else {
             return Scope.createGlobal();
         }
@@ -1151,7 +1157,9 @@ public class Parser extends AbstractParser {
         ParserContextBlockNode body = lc.getCurrentBlock();
         assert body.getScope().getSymbolCount() == 0;
         if (body.getScope().isGlobalScope()) {
-            body.setScope(Scope.createFunctionBody(null));
+            Scope evalScope = Scope.createEval(null);
+            body.setScope(evalScope);
+            assert lc.getCurrentFunction().getBodyScope() == evalScope;
         }
     }
 
@@ -1500,6 +1508,9 @@ public class Parser extends AbstractParser {
     private ClassNode classTail(int classLineNumber, long classToken, IdentNode className, boolean yield, boolean await) {
         boolean oldStrictMode = isStrictMode;
         isStrictMode = true;
+        Scope scope = Scope.createClass(lc.getCurrentScope());
+        ParserContextClassNode classNode = new ParserContextClassNode(token, scope);
+        lc.push(classNode);
         try {
             Expression classHeritage = null;
             if (type == EXTENDS) {
@@ -1598,13 +1609,13 @@ public class Parser extends AbstractParser {
                                 ctor.getLength(), ctor.getNumOfParams(), ctor.getParameters(), flags, ctor.getBody(), ctor.getEndParserState(), ctor.getModule()));
             }
 
-            Scope scope = Scope.createBlock(lc.getCurrentScope());
             if (className != null) {
                 scope.putSymbol(new Symbol(className.getName(), Symbol.IS_CONST));
             }
             scope.close();
             return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, scope);
         } finally {
+            lc.pop(classNode);
             isStrictMode = oldStrictMode;
         }
     }
@@ -1625,17 +1636,17 @@ public class Parser extends AbstractParser {
             statements = Collections.emptyList();
             parameters = Collections.emptyList();
         }
-
-        Scope scope = Scope.createFunctionBody(lc.getCurrentScope());
-        scope.close();
-        Block body = new Block(classToken, ctorFinish, Block.IS_BODY, scope, statements);
         final IdentNode ctorName = className != null ? className : new IdentNode(identToken, ctorFinish, CONSTRUCTOR_NAME);
         int functionFlags = FunctionNode.IS_METHOD | FunctionNode.IS_CLASS_CONSTRUCTOR;
         ParserContextFunctionNode function = createParserContextFunctionNode(ctorName, classToken, functionFlags, classLineNumber, parameters, 0);
         function.setLastToken(lastToken);
 
+        Scope scope = function.createBodyScope();
+        scope.close();
+        Block body = new Block(classToken, ctorFinish, Block.IS_BODY, scope, statements);
+
         if (subclass) {
-            function.setFlag(FunctionNode.IS_SUBCLASS_CONSTRUCTOR);
+            function.setFlag(FunctionNode.IS_DERIVED_CONSTRUCTOR);
             function.setFlag(FunctionNode.HAS_DIRECT_SUPER);
         }
         if (className == null) {
@@ -1667,7 +1678,7 @@ public class Parser extends AbstractParser {
                 if (!isStatic && !generator && name.equals(CONSTRUCTOR_NAME)) {
                     flags |= FunctionNode.IS_CLASS_CONSTRUCTOR;
                     if (subclass) {
-                        flags |= FunctionNode.IS_SUBCLASS_CONSTRUCTOR;
+                        flags |= FunctionNode.IS_DERIVED_CONSTRUCTOR;
                     }
                 }
                 verifyAllowedMethodName(propertyName, isStatic, computed, generator, false);
@@ -1817,17 +1828,7 @@ public class Parser extends AbstractParser {
      */
     private void verifyStrictIdent(final IdentNode ident, final String contextString, final boolean bindingIdentifier) {
         if (isStrictMode) {
-            if (bindingIdentifier) {
-                switch (ident.getName()) {
-                    case EVAL_NAME:
-                    case ARGUMENTS_NAME:
-                        throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
-                    default:
-                        break;
-                }
-            }
-
-            if (isFutureStrictName(ident)) {
+            if (!isValidStrictIdent(ident, bindingIdentifier)) {
                 throw error(AbstractParser.message("strict.name", ident.getName(), contextString), ident.getToken());
             }
         }
@@ -1835,6 +1836,23 @@ public class Parser extends AbstractParser {
 
     private void verifyStrictIdent(final IdentNode ident, final String contextString) {
         verifyStrictIdent(ident, contextString, true);
+    }
+
+    static boolean isValidStrictIdent(final IdentNode ident, final boolean bindingIdentifier) {
+        if (bindingIdentifier) {
+            switch (ident.getName()) {
+                case EVAL_NAME:
+                case ARGUMENTS_NAME:
+                    return false;
+                default:
+                    break;
+            }
+        }
+
+        if (isFutureStrictName(ident)) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -2048,7 +2066,7 @@ public class Parser extends AbstractParser {
                 // B.3.3.1 Changes to FunctionDeclarationInstantiation
                 // B.3.3.2 Changes to GlobalDeclarationInstantiation
                 ParserContextFunctionNode function = lc.getCurrentFunction();
-                Scope varScope = function.getBodyBlock().getScope();
+                Scope varScope = function.getBodyScope();
                 if (!function.isStrict() && scope != varScope && (varScope.isGlobalScope() || !name.equals(ARGUMENTS_NAME))) {
                     assert !scope.isFunctionBodyScope() && !scope.isFunctionParameterScope();
                     // If we already find a conflicting declaration, we can skip this step.
@@ -2060,7 +2078,7 @@ public class Parser extends AbstractParser {
         } else {
             // var declarations are added to the function body scope (a.k.a. VariableEnvironment).
             ParserContextFunctionNode function = lc.getCurrentFunction();
-            Scope varScope = function.getBodyBlock().getScope();
+            Scope varScope = function.getBodyScope();
             assert varScope.isFunctionBodyScope();
             int symbolFlags = varNode.getSymbolFlags() |
                             (varNode.isHoistableDeclaration() ? Symbol.IS_HOISTABLE_DECLARATION : 0) |
@@ -2083,6 +2101,7 @@ public class Parser extends AbstractParser {
              * declaration scope is finalized.
              */
             if (scope != varScope) {
+                assert scope.isBlockScope();
                 varScope.recordHoistedVarDeclaration(varNode, scope);
             }
         }
@@ -3793,6 +3812,7 @@ public class Parser extends AbstractParser {
         final boolean computed = type == LBRACKET;
         final Expression propertyName = propertyName(yield, await);
         final IdentNode setterName = createMethodNameIdent(propertyName, "set ");
+
         expect(LPAREN);
 
         int functionFlags = FunctionNode.IS_SETTER | FunctionNode.IS_METHOD |
@@ -3802,21 +3822,17 @@ public class Parser extends AbstractParser {
 
         Block functionBody;
         try {
-            if (!env.syntaxExtensions || type != RPAREN) {
-                formalParameter(yield, await);
-            } // else Nashorn allows no-argument setters
-            expect(RPAREN);
-
-            final ParserContextBlockNode parameterBlock = functionNode.getParameterBlock();
-            if (parameterBlock != null) {
-                lc.push(parameterBlock);
-            }
+            final ParserContextBlockNode parameterBlock = functionNode.createParameterBlock();
+            lc.push(parameterBlock);
             try {
+                if (!env.syntaxExtensions || type != RPAREN) {
+                    formalParameter(yield, await);
+                } // else Nashorn allows no-argument setters
+                expect(RPAREN);
+
                 functionBody = functionBody(functionNode);
             } finally {
-                if (parameterBlock != null) {
-                    lc.pop(parameterBlock);
-                }
+                restoreBlock(parameterBlock);
             }
             if (parameterBlock != null) {
                 functionBody = wrapParameterBlock(parameterBlock, functionBody);
@@ -3838,6 +3854,8 @@ public class Parser extends AbstractParser {
     private PropertyFunction propertyMethodFunction(Expression key, final long methodToken, final int methodLine, final boolean generator, final int flags, boolean computed, boolean async) {
         final IdentNode methodNameNode = createMethodNameIdent(key, "");
 
+        expect(LPAREN);
+
         int functionFlags = flags |
                         (computed ? FunctionNode.IS_ANONYMOUS : 0) |
                         (generator ? FunctionNode.IS_GENERATOR : 0) |
@@ -3846,21 +3864,16 @@ public class Parser extends AbstractParser {
         lc.push(functionNode);
 
         try {
-            expect(LPAREN);
-            formalParameterList(generator, async);
-            expect(RPAREN);
-
-            final ParserContextBlockNode parameterBlock = functionNode.getParameterBlock();
-            if (parameterBlock != null) {
-                lc.push(parameterBlock);
-            }
+            ParserContextBlockNode parameterBlock = functionNode.createParameterBlock();
+            lc.push(parameterBlock);
             Block functionBody;
             try {
+                formalParameterList(generator, async);
+                expect(RPAREN);
+
                 functionBody = functionBody(functionNode);
             } finally {
-                if (parameterBlock != null) {
-                    lc.pop(parameterBlock);
-                }
+                restoreBlock(parameterBlock);
             }
 
             verifyParameterList(functionNode);
@@ -4156,8 +4169,8 @@ public class Parser extends AbstractParser {
 
             case SUPER:
                 if (ES6_CLASS && isES6()) {
-                    ParserContextFunctionNode currentFunction = lc.getCurrentNonArrowFunction();
-                    if (currentFunction.isMethod()) {
+                    Scope scope = lc.getCurrentScope();
+                    if (scope.inMethod()) {
                         long identToken = Token.recast(token, IDENT);
                         next();
                         lhs = new IdentNode(identToken, finish, SUPER.getName()).setIsSuper();
@@ -4165,11 +4178,14 @@ public class Parser extends AbstractParser {
                         switch (type) {
                             case LBRACKET:
                             case PERIOD:
-                                currentFunction.setFlag(FunctionNode.USES_SUPER);
+                                ParserContextFunctionNode currentFunction = lc.getCurrentNonArrowFunction();
+                                if (currentFunction.isMethod()) {
+                                    currentFunction.setFlag(FunctionNode.USES_SUPER);
+                                }
                                 isSuper = true;
                                 break;
                             case LPAREN:
-                                if (currentFunction.isSubclassConstructor()) {
+                                if (scope.inDerivedConstructor()) {
                                     lhs = ((IdentNode) lhs).setIsDirectSuper();
                                     break;
                                 } else {
@@ -4465,6 +4481,8 @@ public class Parser extends AbstractParser {
             isAnonymous = true;
         }
 
+        expect(LPAREN);
+
         int functionFlags = (generator ? FunctionNode.IS_GENERATOR : 0) |
                         (async ? FunctionNode.IS_ASYNC : 0) |
                         (isAnonymous ? FunctionNode.IS_ANONYMOUS : 0);
@@ -4479,20 +4497,15 @@ public class Parser extends AbstractParser {
         hideDefaultName();
 
         try {
-            expect(LPAREN);
-            formalParameterList(generator, async);
-            expect(RPAREN);
-
-            final ParserContextBlockNode parameterBlock = functionNode.getParameterBlock();
-            if (parameterBlock != null) {
-                lc.push(parameterBlock);
-            }
+            final ParserContextBlockNode parameterBlock = functionNode.createParameterBlock();
+            lc.push(parameterBlock);
             try {
+                formalParameterList(generator, async);
+                expect(RPAREN);
+
                 functionBody = functionBody(functionNode);
             } finally {
-                if (parameterBlock != null) {
-                    lc.pop(parameterBlock);
-                }
+                restoreBlock(parameterBlock);
             }
             if (parameterBlock != null) {
                 functionBody = wrapParameterBlock(parameterBlock, functionBody);
@@ -4578,6 +4591,13 @@ public class Parser extends AbstractParser {
                     parameters.set(i, new IdentNode(parameterToken, Token.descPosition(parameterToken), functionNode.uniqueName(parameterName)));
                 }
                 parametersSet.add(parameterName);
+            }
+        }
+
+        IdentNode invalidStrictIdent = functionNode.getInvalidStrictParamIdent();
+        if (invalidStrictIdent != null) {
+            if (functionNode.isStrict()) {
+                throw error(AbstractParser.message("strict.name", invalidStrictIdent.getName(), FUNCTION_PARAMETER_CONTEXT), invalidStrictIdent.getToken());
             }
         }
     }
@@ -4804,7 +4824,7 @@ public class Parser extends AbstractParser {
         final boolean parseBody;
         Object endParserState = null;
         // Create a new function block.
-        ParserContextBlockNode body = newBlock(Scope.createFunctionBody(lc.getCurrentScope()));
+        ParserContextBlockNode body = newBlock(functionNode.createBodyScope());
         functionNode.setBodyBlock(body);
         try {
             final int functionId = functionNode.getId();
@@ -5499,19 +5519,14 @@ public class Parser extends AbstractParser {
 
         lc.push(functionNode);
         try {
-            convertArrowFunctionParameterList(paramListExpr, functionNode);
-
-            final ParserContextBlockNode parameterBlock = functionNode.getParameterBlock();
-            if (parameterBlock != null) {
-                lc.push(parameterBlock);
-            }
+            final ParserContextBlockNode parameterBlock = functionNode.createParameterBlock();
+            lc.push(parameterBlock);
             Block functionBody;
             try {
+                convertArrowFunctionParameterList(paramListExpr, functionNode);
                 functionBody = functionBody(functionNode);
             } finally {
-                if (parameterBlock != null) {
-                    lc.pop(parameterBlock);
-                }
+                restoreBlock(parameterBlock);
             }
 
             verifyParameterList(functionNode);
@@ -5944,7 +5959,8 @@ public class Parser extends AbstractParser {
         lc.push(script);
 
         final ParserContextModuleNode module = new ParserContextModuleNode(moduleName);
-        final ParserContextBlockNode body = newBlock(Scope.createModule());
+        Scope moduleScope = Scope.createModule();
+        final ParserContextBlockNode body = newBlock(moduleScope);
         script.setBodyBlock(body);
         functionDeclarations = new ArrayList<>();
 
@@ -6427,15 +6443,6 @@ public class Parser extends AbstractParser {
             } else {
                 fn.setFlag(FunctionNode.HAS_NESTED_EVAL);
             }
-            final ParserContextBlockNode body = fn.getBodyBlock();
-            /*
-             * NOTE: it is crucial to mark the body of the outer function as needing scope even when
-             * we skip parsing a nested function. functionBody() contains code to compensate for the
-             * lack of invoking this method when the parser skips a nested function.
-             */
-            if (body != null) { // may be null while parsing the parameter list
-                body.setFlag(Block.NEEDS_SCOPE);
-            }
             fn.setFlag(FunctionNode.HAS_SCOPE_BLOCK);
         }
     }
@@ -6453,7 +6460,7 @@ public class Parser extends AbstractParser {
         while (iter.hasNext()) {
             final ParserContextFunctionNode fn = iter.next();
             if (!fn.isArrow()) {
-                assert fn.isSubclassConstructor();
+                assert fn.isDerivedConstructor();
                 fn.setFlag(FunctionNode.HAS_DIRECT_SUPER);
                 break;
             }
@@ -6478,7 +6485,7 @@ public class Parser extends AbstractParser {
             if (!fn.isArrow()) {
                 if (fn.isProgram()) {
                     // e.g.: `new.target` or `() => new.target` in script, module, or eval.
-                    if (fn.getBodyBlock().getScope().isGlobalScope() || fn.getBodyBlock().getScope().isModuleScope()) {
+                    if (fn.getBodyScope().isGlobalScope() || fn.getBodyScope().isModuleScope()) {
                         throw error(AbstractParser.message("new.target.in.function"), token);
                     }
                 } else {

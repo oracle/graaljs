@@ -79,6 +79,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private List<IdentNode> parameters;
     /** Optional parameter initialization block (replaces parameter list). */
     private ParserContextBlockNode parameterBlock;
+    /** Function body (i.e. var declaration) scope. */
     /** Function body block. */
     private ParserContextBlockNode bodyBlock;
 
@@ -95,7 +96,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private int parameterCount;
     private HashSet<String> parameterBoundNames;
     private IdentNode duplicateParameterBinding;
+    private IdentNode invalidStrictParamIdent;
     private boolean simpleParameterList = true;
+    private boolean hasParameterExpressions;
     private boolean containsDefaultParameter;
 
     private Module module;
@@ -254,8 +257,8 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         return getFlag(FunctionNode.IS_CLASS_CONSTRUCTOR) != 0;
     }
 
-    public boolean isSubclassConstructor() {
-        return getFlag(FunctionNode.IS_SUBCLASS_CONSTRUCTOR) != 0;
+    public boolean isDerivedConstructor() {
+        return getFlag(FunctionNode.IS_DERIVED_CONSTRUCTOR) != 0;
     }
 
     public int getLength() {
@@ -271,7 +274,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      */
     public void addParameter(IdentNode param) {
         addParameterBinding(param);
-        if (parameterBlock != null) {
+        if (hasParameterExpressions()) {
             addParameterInit(param, getParameterCount());
         } else {
             if (parameters == null) {
@@ -280,6 +283,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             parameters.add(param);
         }
         recordParameter(false, param.isRestParameter(), false);
+    }
+
+    public boolean hasParameterExpressions() {
+        return hasParameterExpressions;
     }
 
     /**
@@ -304,6 +311,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         setFlag(FunctionNode.HAS_NON_SIMPLE_PARAMETER_LIST);
     }
 
+    public boolean isSimpleParameterList() {
+        return simpleParameterList;
+    }
+
     private boolean addParameterBinding(IdentNode bindingIdentifier) {
         if (Parser.isArguments(bindingIdentifier)) {
             setFlag(FunctionNode.DEFINES_ARGUMENTS);
@@ -314,9 +325,16 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         }
         if (parameterBoundNames.add(bindingIdentifier.getName())) {
             declareParameter(bindingIdentifier.getName());
+            if (!Parser.isValidStrictIdent(bindingIdentifier, true)) {
+                if (invalidStrictParamIdent == null) {
+                    invalidStrictParamIdent = bindingIdentifier;
+                }
+            }
             return true;
         } else {
-            duplicateParameterBinding = bindingIdentifier;
+            if (duplicateParameterBinding == null) {
+                duplicateParameterBinding = bindingIdentifier;
+            }
             return false;
         }
     }
@@ -325,8 +343,8 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         return duplicateParameterBinding;
     }
 
-    public boolean isSimpleParameterList() {
-        return simpleParameterList;
+    public IdentNode getInvalidStrictParamIdent() {
+        return invalidStrictParamIdent;
     }
 
     public Module getModule() {
@@ -377,15 +395,16 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     private void ensureParameterBlock() {
-        if (parameterBlock == null) {
+        if (!hasParameterExpressions()) {
+            hasParameterExpressions = true;
             initParameterBlock();
         }
     }
 
     private void initParameterBlock() {
-        assert bodyBlock == null; // parameter block must be created before body block
-        parameterBlock = new ParserContextBlockNode(token, Scope.createParameter(parentScope));
-        parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK);
+        if (parameterBlock == null) {
+            createParameterBlock();
+        }
 
         if (parameters != null) {
             for (int i = 0; i < parameters.size(); i++) {
@@ -394,6 +413,13 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             }
         }
         parameters = Collections.emptyList();
+    }
+
+    public ParserContextBlockNode createParameterBlock() {
+        assert bodyBlock == null; // parameter block must be created before body block
+        parameterBlock = new ParserContextBlockNode(token, Scope.createParameter(parentScope, getFlags()));
+        parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK | Block.IS_SYNTHETIC);
+        return parameterBlock;
     }
 
     private void addParameterInit(IdentNode param, int index) {
@@ -410,18 +436,18 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     private void declareParameter(String parameterName) {
-        if (parameterBlock != null) {
+        if (hasParameterExpressions()) {
             // Parameters have a temporal dead zone (unless the parameter list is simple).
             parameterBlock.getScope().putSymbol(new Symbol(parameterName, Symbol.IS_LET | Symbol.IS_PARAM));
         }
     }
 
     private void finalizeParameters() {
-        if (parameterBlock == null) {
+        if (!hasParameterExpressions()) {
             if (parameters != null) {
                 for (int i = 0; i < parameters.size(); i++) {
                     IdentNode parameter = parameters.get(i);
-                    bodyBlock.getScope().putSymbol(new Symbol(parameter.getName(), Symbol.IS_VAR | Symbol.IS_PARAM));
+                    getBodyScope().putSymbol(new Symbol(parameter.getName(), Symbol.IS_VAR | Symbol.IS_PARAM));
                 }
             }
         } else {
@@ -437,6 +463,22 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         assert this.bodyBlock == null;
         this.bodyBlock = bodyBlock;
         finalizeParameters();
+    }
+
+    public void setParameterBlock(ParserContextBlockNode parameterBlock) {
+        assert this.parameterBlock == null;
+        this.parameterBlock = parameterBlock;
+    }
+
+    public Scope createBodyScope() {
+        assert bodyBlock == null;
+        // We only need the parameter scope if the parameter list contains expressions.
+        Scope parent = hasParameterExpressions() ? parameterBlock.getScope() : parentScope;
+        return Scope.createFunctionBody(parent, getFlags());
+    }
+
+    public Scope getBodyScope() {
+        return bodyBlock.getScope();
     }
 
     private static int calculateLength(final List<IdentNode> parameters) {

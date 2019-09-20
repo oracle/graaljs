@@ -208,7 +208,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     public static final int IS_CLASS_CONSTRUCTOR = 1 << 21;
 
     /** Is this the constructor of a subclass (i.e., a class with an extends declaration)? */
-    public static final int IS_SUBCLASS_CONSTRUCTOR = 1 << 22;
+    public static final int IS_DERIVED_CONSTRUCTOR = 1 << 22;
 
     /** Does this function use new.target? */
     public static final int USES_NEW_TARGET = 1 << 23;
@@ -654,8 +654,8 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         return getFlag(IS_CLASS_CONSTRUCTOR);
     }
 
-    public boolean isSubclassConstructor() {
-        return getFlag(IS_SUBCLASS_CONSTRUCTOR);
+    public boolean isDerivedConstructor() {
+        return getFlag(IS_DERIVED_CONSTRUCTOR);
     }
 
     public boolean usesNewTarget() {
@@ -731,6 +731,10 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     public boolean needsNewTarget() {
-        return usesNewTarget() || (!isArrow() && !isProgram() && ((hasEval() || hasArrowEval())));
+        return usesNewTarget() || (!isArrow() && !isProgram() && (hasEval() || hasArrowEval()));
+    }
+
+    public boolean needsSuper() {
+        return usesSuper() || (isMethod() && (hasEval() || hasArrowEval()));
     }
 }
