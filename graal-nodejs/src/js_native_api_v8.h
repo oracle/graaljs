@@ -163,7 +163,7 @@ static_assert(sizeof(v8::Local<v8::Value>) == sizeof(napi_value),
 
 inline napi_value JsValueFromV8LocalValue(v8::Local<v8::Value> local) {
   if (local.IsEmpty()) {
-    local = v8::Undefined(v8::Isolate::GetCurrent());
+    return nullptr;
   }
   GraalHandleContent* graal_handle = reinterpret_cast<GraalHandleContent*> (*local);
   return reinterpret_cast<napi_value> (graal_handle->ToNewLocalJavaObject());
@@ -171,7 +171,7 @@ inline napi_value JsValueFromV8LocalValue(v8::Local<v8::Value> local) {
 
 inline v8::Local<v8::Value> V8LocalValueFromJsValue(napi_value v) {
   if (v == nullptr) {
-    return v8::Undefined(v8::Isolate::GetCurrent());
+    return v8::Local<v8::Value>();
   }
   GraalValue* graal_value = GraalValue::FromJavaObject(CurrentIsolate(), reinterpret_cast<jobject> (v), true);
   return reinterpret_cast<v8::Value*> (graal_value);
