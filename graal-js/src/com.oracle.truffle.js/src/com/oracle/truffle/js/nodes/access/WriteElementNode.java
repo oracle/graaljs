@@ -992,20 +992,22 @@ public class WriteElementNode extends JSTargetableNode {
             } else if (inBoundsCondition.profile(intArray.isInBounds(target, iIndex, arrayCondition) && !mightTransferToNonContiguous(intArray, index))) {
                 intArray.setInBounds(target, iIndex, intValue, arrayCondition, profile);
                 return true;
+            } else if (supportedNonZeroCondition.profile(intArray.isSupported(target, index, arrayCondition) && !mightTransferToNonContiguous(intArray, index))) {
+                intArray.setSupported(target, iIndex, intValue, arrayCondition, profile);
+                return true;
             } else {
-                if (supportedNonZeroCondition.profile(intArray.isSupported(target, index, arrayCondition) && !mightTransferToNonContiguous(intArray, index))) {
-                    intArray.setSupported(target, iIndex, intValue, arrayCondition, profile);
-                    return true;
-                } else if (supportedZeroCondition.profile(mightTransferToNonContiguous(intArray, index) && intArray.isSupported(target, index, arrayCondition))) {
-                    return setArrayAndWrite(intArray.toNonContiguous(target, iIndex, intValue, arrayCondition, profile), target, index, intValue, arrayCondition, root);
+                ScriptArray toArrayType;
+                if (supportedZeroCondition.profile(mightTransferToNonContiguous(intArray, index) && intArray.isSupported(target, index, arrayCondition))) {
+                    toArrayType = intArray.toNonContiguous(target, iIndex, intValue, arrayCondition, profile);
                 } else if (supportedContiguousCondition.profile(!(intArray instanceof AbstractContiguousIntArray) && intArray.isSupportedContiguous(target, index, arrayCondition))) {
-                    return setArrayAndWrite(intArray.toContiguous(target, index, intValue, arrayCondition), target, index, intValue, arrayCondition, root);
+                    toArrayType = intArray.toContiguous(target, index, intValue, arrayCondition);
                 } else if (supportedHolesCondition.profile(intArray.isSupportedHoles(target, index, arrayCondition))) {
-                    return setArrayAndWrite(intArray.toHoles(target, index, intValue, arrayCondition), target, index, intValue, arrayCondition, root);
+                    toArrayType = intArray.toHoles(target, index, intValue, arrayCondition);
                 } else {
                     assert intArray.isSparse(target, index, arrayCondition);
-                    return setArrayAndWrite(intArray.toSparse(target, index, intValue), target, index, intValue, arrayCondition, root);
+                    toArrayType = intArray.toSparse(target, index, intValue);
                 }
+                return setArrayAndWrite(toArrayType, target, index, intValue, arrayCondition, root);
             }
         }
 
@@ -1058,18 +1060,20 @@ public class WriteElementNode extends JSTargetableNode {
             } else if (inBoundsCondition.profile(doubleArray.isInBounds(target, iIndex, arrayCondition))) {
                 doubleArray.setInBounds(target, iIndex, doubleValue, arrayCondition, profile);
                 return true;
+            } else if (supportedCondition.profile(doubleArray.isSupported(target, index, arrayCondition))) {
+                doubleArray.setSupported(target, iIndex, doubleValue, arrayCondition, profile);
+                return true;
             } else {
-                if (supportedCondition.profile(doubleArray.isSupported(target, index, arrayCondition))) {
-                    doubleArray.setSupported(target, iIndex, doubleValue, arrayCondition, profile);
-                    return true;
-                } else if (supportedContiguousCondition.profile(!(doubleArray instanceof AbstractContiguousDoubleArray) && doubleArray.isSupportedContiguous(target, index, arrayCondition))) {
-                    return setArrayAndWrite(doubleArray.toContiguous(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition, root);
+                ScriptArray toArrayType;
+                if (supportedContiguousCondition.profile(!(doubleArray instanceof AbstractContiguousDoubleArray) && doubleArray.isSupportedContiguous(target, index, arrayCondition))) {
+                    toArrayType = doubleArray.toContiguous(target, index, doubleValue, arrayCondition);
                 } else if (supportedHolesCondition.profile(doubleArray.isSupportedHoles(target, index, arrayCondition))) {
-                    return setArrayAndWrite(doubleArray.toHoles(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition, root);
+                    toArrayType = doubleArray.toHoles(target, index, doubleValue, arrayCondition);
                 } else {
                     assert doubleArray.isSparse(target, index, arrayCondition);
-                    return setArrayAndWrite(doubleArray.toSparse(target, index, doubleValue), target, index, doubleValue, arrayCondition, root);
+                    toArrayType = doubleArray.toSparse(target, index, doubleValue);
                 }
+                return setArrayAndWrite(toArrayType, target, index, doubleValue, arrayCondition, root);
             }
         }
     }
@@ -1103,14 +1107,17 @@ public class WriteElementNode extends JSTargetableNode {
             } else if (supportedCondition.profile(objectArray.isSupported(target, index, arrayCondition))) {
                 objectArray.setSupported(target, iIndex, value, arrayCondition);
                 return true;
-            } else if (supportedContiguousCondition.profile(!(objectArray instanceof AbstractContiguousObjectArray) && objectArray.isSupportedContiguous(target, index, arrayCondition))) {
-                return setArrayAndWrite(objectArray.toContiguous(target, index, value, arrayCondition), target, index, value, arrayCondition, root);
-            } else if (supportedHolesCondition.profile(objectArray.isSupportedHoles(target, index, arrayCondition))) {
-                return setArrayAndWrite(objectArray.toHoles(target, index, value, arrayCondition), target, index, value, arrayCondition, root);
             } else {
-                assert objectArray.isSparse(target, index, arrayCondition) : objectArray.getClass() + " " + objectArray.firstElementIndex(target) + "-" + objectArray.lastElementIndex(target) + " / " +
-                                index;
-                return setArrayAndWrite(objectArray.toSparse(target, index, value), target, index, value, arrayCondition, root);
+                ScriptArray toArrayType;
+                if (supportedContiguousCondition.profile(!(objectArray instanceof AbstractContiguousObjectArray) && objectArray.isSupportedContiguous(target, index, arrayCondition))) {
+                    toArrayType = objectArray.toContiguous(target, index, value, arrayCondition);
+                } else if (supportedHolesCondition.profile(objectArray.isSupportedHoles(target, index, arrayCondition))) {
+                    toArrayType = objectArray.toHoles(target, index, value, arrayCondition);
+                } else {
+                    assert objectArray.isSparse(target, index, arrayCondition);
+                    toArrayType = objectArray.toSparse(target, index, value);
+                }
+                return setArrayAndWrite(toArrayType, target, index, value, arrayCondition, root);
             }
         }
     }
@@ -1155,13 +1162,17 @@ public class WriteElementNode extends JSTargetableNode {
             } else if (supportedCondition.profile(jsobjectArray.isSupported(target, index, arrayCondition))) {
                 jsobjectArray.setSupported(target, iIndex, jsobjectValue, arrayCondition, profile);
                 return true;
-            } else if (supportedContiguousCondition.profile(!(jsobjectArray instanceof AbstractContiguousJSObjectArray) && jsobjectArray.isSupportedContiguous(target, index, arrayCondition))) {
-                return setArrayAndWrite(jsobjectArray.toContiguous(target, index, jsobjectValue, arrayCondition), target, index, jsobjectValue, arrayCondition, root);
-            } else if (supportedHolesCondition.profile(jsobjectArray.isSupportedHoles(target, index, arrayCondition))) {
-                return setArrayAndWrite(jsobjectArray.toHoles(target, index, jsobjectValue, arrayCondition), target, index, jsobjectValue, arrayCondition, root);
             } else {
-                assert jsobjectArray.isSparse(target, index, arrayCondition);
-                return setArrayAndWrite(jsobjectArray.toSparse(target, index, jsobjectValue), target, index, jsobjectValue, arrayCondition, root);
+                ScriptArray toArrayType;
+                if (supportedContiguousCondition.profile(!(jsobjectArray instanceof AbstractContiguousJSObjectArray) && jsobjectArray.isSupportedContiguous(target, index, arrayCondition))) {
+                    toArrayType = jsobjectArray.toContiguous(target, index, jsobjectValue, arrayCondition);
+                } else if (supportedHolesCondition.profile(jsobjectArray.isSupportedHoles(target, index, arrayCondition))) {
+                    toArrayType = jsobjectArray.toHoles(target, index, jsobjectValue, arrayCondition);
+                } else {
+                    assert jsobjectArray.isSparse(target, index, arrayCondition);
+                    toArrayType = jsobjectArray.toSparse(target, index, jsobjectValue);
+                }
+                return setArrayAndWrite(toArrayType, target, index, jsobjectValue, arrayCondition, root);
             }
         }
     }
@@ -1219,11 +1230,15 @@ public class WriteElementNode extends JSTargetableNode {
             } else if (containsHoles && supportedContainsHolesCondition.profile(holesIntArray.isSupported(target, index, arrayCondition) && !HolesIntArray.isHoleValue(intValue))) {
                 holesIntArray.setSupported(target, iIndex, intValue, arrayCondition, profile);
                 return true;
-            } else if (!containsHoles && supportedNotContainsHolesCondition.profile(holesIntArray.isSupported(target, index, arrayCondition))) {
-                return setArrayAndWrite(holesIntArray.toNonHoles(target, index, intValue, arrayCondition), target, index, intValue, arrayCondition, root);
             } else {
-                assert holesIntArray.isSparse(target, index, arrayCondition);
-                return setArrayAndWrite(holesIntArray.toSparse(target, index, intValue), target, index, intValue, arrayCondition, root);
+                ScriptArray toArrayType;
+                if (!containsHoles && supportedNotContainsHolesCondition.profile(holesIntArray.isSupported(target, index, arrayCondition))) {
+                    toArrayType = holesIntArray.toNonHoles(target, index, intValue, arrayCondition);
+                } else {
+                    assert holesIntArray.isSparse(target, index, arrayCondition);
+                    toArrayType = holesIntArray.toSparse(target, index, intValue);
+                }
+                return setArrayAndWrite(toArrayType, target, index, intValue, arrayCondition, root);
             }
         }
 
@@ -1286,11 +1301,15 @@ public class WriteElementNode extends JSTargetableNode {
             } else if (containsHoles && supportedContainsHolesCondition.profile(holesDoubleArray.isSupported(target, index, arrayCondition) && !HolesDoubleArray.isHoleValue(doubleValue))) {
                 holesDoubleArray.setSupported(target, iIndex, doubleValue, arrayCondition, profile);
                 return true;
-            } else if (!containsHoles && supportedNotContainsHolesCondition.profile(holesDoubleArray.isSupported(target, index, arrayCondition))) {
-                return setArrayAndWrite(holesDoubleArray.toNonHoles(target, index, doubleValue, arrayCondition), target, index, doubleValue, arrayCondition, root);
             } else {
-                assert holesDoubleArray.isSparse(target, index, arrayCondition);
-                return setArrayAndWrite(holesDoubleArray.toSparse(target, index, doubleValue), target, index, doubleValue, arrayCondition, root);
+                ScriptArray toArrayType;
+                if (!containsHoles && supportedNotContainsHolesCondition.profile(holesDoubleArray.isSupported(target, index, arrayCondition))) {
+                    toArrayType = holesDoubleArray.toNonHoles(target, index, doubleValue, arrayCondition);
+                } else {
+                    assert holesDoubleArray.isSparse(target, index, arrayCondition);
+                    toArrayType = holesDoubleArray.toSparse(target, index, doubleValue);
+                }
+                return setArrayAndWrite(toArrayType, target, index, doubleValue, arrayCondition, root);
             }
         }
 
@@ -1346,11 +1365,15 @@ public class WriteElementNode extends JSTargetableNode {
                 assert !HolesJSObjectArray.isHoleValue(value);
                 jsobjectArray.setSupported(target, (int) index, value, arrayCondition, profile);
                 return true;
-            } else if (!containsHoles && supportedNotContainsHolesCondition.profile(jsobjectArray.isSupported(target, index, arrayCondition))) {
-                return setArrayAndWrite(jsobjectArray.toNonHoles(target, index, value, arrayCondition), target, index, value, arrayCondition, root);
             } else {
-                assert jsobjectArray.isSparse(target, index, arrayCondition);
-                return setArrayAndWrite(jsobjectArray.toSparse(target, index, value), target, index, value, arrayCondition, root);
+                ScriptArray toArrayType;
+                if (!containsHoles && supportedNotContainsHolesCondition.profile(jsobjectArray.isSupported(target, index, arrayCondition))) {
+                    toArrayType = jsobjectArray.toNonHoles(target, index, value, arrayCondition);
+                } else {
+                    assert jsobjectArray.isSparse(target, index, arrayCondition);
+                    toArrayType = jsobjectArray.toSparse(target, index, value);
+                }
+                return setArrayAndWrite(toArrayType, target, index, value, arrayCondition, root);
             }
         }
 
