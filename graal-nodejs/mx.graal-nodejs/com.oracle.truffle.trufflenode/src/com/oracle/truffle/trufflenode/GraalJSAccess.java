@@ -1438,8 +1438,8 @@ public final class GraalJSAccess {
         templateSet(templateObj, name, new Pair<>(getter, setter), attributes);
     }
 
-    public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature, boolean isConstructor) {
-        FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature, isConstructor);
+    public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature, int length, boolean isConstructor) {
+        FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature, length, isConstructor);
         template.getInstanceTemplate().setParentFunctionTemplate(template);
         return template;
     }
@@ -1503,7 +1503,7 @@ public final class GraalJSAccess {
 
     private DynamicObject functionTemplateCreateCallback(JSContext context, JSRealm realm, FunctionTemplate template) {
         CompilerAsserts.neverPartOfCompilation("do not create function template in compiled code");
-        JSFunctionData functionData = JSFunctionData.create(context, 0, template.getClassName(), template.getPrototypeTemplate() != null, false, false, false);
+        JSFunctionData functionData = JSFunctionData.create(context, template.getLength(), template.getClassName(), template.getPrototypeTemplate() != null, false, false, false);
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, false, false));
         CallTarget newCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, false));
         CallTarget newTargetCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, true));
@@ -1705,7 +1705,7 @@ public final class GraalJSAccess {
 
     public void objectTemplateSetCallAsFunctionHandler(Object templateObj, int id, long functionPointer, Object additionalData) {
         ObjectTemplate template = (ObjectTemplate) templateObj;
-        FunctionTemplate functionHandler = (FunctionTemplate) functionTemplateNew(id, functionPointer, additionalData, null, true);
+        FunctionTemplate functionHandler = (FunctionTemplate) functionTemplateNew(id, functionPointer, additionalData, null, 0, true);
         template.setFunctionHandler(functionHandler);
     }
 

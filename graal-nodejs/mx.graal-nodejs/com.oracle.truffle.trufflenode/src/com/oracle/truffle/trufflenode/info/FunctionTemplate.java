@@ -58,11 +58,12 @@ public final class FunctionTemplate {
     private long functionPointer;
     private Object additionalData;
     private final FunctionTemplate signature;
+    private final int length;
     private FunctionTemplate parent;
     private String className = "";
     private DynamicObject functionObj;
 
-    public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, boolean isConstructor) {
+    public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, int length, boolean isConstructor) {
         functionObjectTemplate = new ObjectTemplate();
         instanceTemplate = new ObjectTemplate();
         prototypeTemplate = isConstructor ? new ObjectTemplate() : null;
@@ -70,6 +71,7 @@ public final class FunctionTemplate {
         this.functionPointer = functionPointer;
         this.additionalData = additionalData;
         this.signature = signature;
+        this.length = length;
     }
 
     public ObjectTemplate getFunctionObjectTemplate() {
@@ -114,6 +116,10 @@ public final class FunctionTemplate {
 
     public FunctionTemplate getSignature() {
         return signature;
+    }
+
+    public int getLength() {
+        return length;
     }
 
     public String getClassName() {
