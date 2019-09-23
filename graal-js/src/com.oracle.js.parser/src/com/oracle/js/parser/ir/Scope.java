@@ -191,12 +191,12 @@ public final class Scope {
     /**
      * Add or overwrite an existing symbol in the block
      */
-    public void putSymbol(final Symbol symbol) {
+    public Symbol putSymbol(final Symbol symbol) {
         assert !closed : "scope is closed";
         Symbol existing = symbols.put(symbol.getName(), symbol);
         if (existing != null) {
             assert (existing.getFlags() & Symbol.KINDMASK) == (symbol.getFlags() & Symbol.KINDMASK) : symbol;
-            return;
+            return existing;
         }
         if (!symbol.isImportBinding()) {
             if (symbol.isBlockScoped() || symbol.isVarRedeclaredHere()) {
@@ -206,6 +206,7 @@ public final class Scope {
                 declaredNames++;
             }
         }
+        return null;
     }
 
     public boolean hasBlockScopedOrRedeclaredSymbols() {

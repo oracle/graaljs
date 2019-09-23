@@ -5283,6 +5283,8 @@ public class Parser extends AbstractParser {
                 // Real processing/verification of the parameters of the arrow function
                 // is performed later through convertArrowFunctionParameterList().
                 lc.push(functionNode);
+                ParserContextBlockNode parameterBlock = functionNode.createParameterBlock();
+                lc.push(parameterBlock);
                 try {
                     formalParameterList(false, false);
                     expectDontAdvance(RPAREN);
@@ -5290,6 +5292,7 @@ public class Parser extends AbstractParser {
                     expectDontAdvance(ARROW);
                     return new ExpressionList(primaryToken, finish, Collections.singletonList(functionNode.getParameters().get(0)));
                 } finally {
+                    restoreBlock(parameterBlock);
                     lc.pop(functionNode);
                 }
             }

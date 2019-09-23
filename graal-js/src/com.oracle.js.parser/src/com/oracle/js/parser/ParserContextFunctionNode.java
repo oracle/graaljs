@@ -42,7 +42,6 @@ package com.oracle.js.parser;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 
 import com.oracle.js.parser.ir.Block;
@@ -94,7 +93,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     private int length;
     private int parameterCount;
-    private HashSet<String> parameterBoundNames;
     private IdentNode duplicateParameterBinding;
     private boolean simpleParameterList = true;
     private boolean hasParameterExpressions;
@@ -319,11 +317,11 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             setFlag(FunctionNode.DEFINES_ARGUMENTS);
         }
 
-        if (parameterBoundNames == null) {
-            parameterBoundNames = new HashSet<>();
-        }
-        if (parameterBoundNames.add(bindingIdentifier.getName())) {
-            declareParameter(bindingIdentifier.getName());
+        // Parameters have a temporal dead zone if the parameter list contains expressions.
+        boolean tdz = hasParameterExpressions();
+        Symbol paramSymbol = new Symbol(bindingIdentifier.getName(), Symbol.IS_LET | Symbol.IS_PARAM);
+        if (getParameterScope().putSymbol(paramSymbol) == null) {
+            // declareParameter(bindingIdentifier.getName());
             return true;
         } else {
             if (duplicateParameterBinding == null) {
@@ -428,7 +426,9 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private void declareParameter(String parameterName) {
         if (hasParameterExpressions()) {
             // Parameters have a temporal dead zone (unless the parameter list is simple).
-            parameterBlock.getScope().putSymbol(new Symbol(parameterName, Symbol.IS_LET | Symbol.IS_PARAM));
+            // parameterBlock.getScope().putSymbol(new Symbol(parameterName, Symbol.IS_LET |
+            // Symbol.IS_PARAM));
+            assert parameterBlock.getScope().hasSymbol(parameterName);
         }
     }
 
@@ -442,6 +442,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             }
         } else {
             parameterBlock.getScope().close();
+            parameters = Collections.emptyList();
         }
     }
 
@@ -469,6 +470,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public Scope getBodyScope() {
         return bodyBlock.getScope();
+    }
+
+    public Scope getParameterScope() {
+        return parameterBlock.getScope();
     }
 
     private static int calculateLength(final List<IdentNode> parameters) {
