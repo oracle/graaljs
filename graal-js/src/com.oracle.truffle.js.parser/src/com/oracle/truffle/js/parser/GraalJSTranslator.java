@@ -93,6 +93,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.Source;
@@ -2226,6 +2227,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         Expression assignmentDest = binaryNode.getAssignmentDest();
         JavaScriptNode assignedValue = transform(binaryNode.getAssignmentSource());
         JavaScriptNode assignment = transformAssignment(binaryNode, assignmentDest, assignedValue, binaryNode.isTokenType(TokenType.ASSIGN_INIT));
+        assert assignedValue.hasTag(StandardTags.ExpressionTag.class) || !assignedValue.isInstrumentable() : "ExpressionTag expected but not found for: " + assignedValue;
         return tagExpression(assignment, binaryNode);
     }
 
@@ -3031,12 +3033,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
                             members.toArray(ObjectLiteralMemberNode.EMPTY), className);
-            tagExpression(classDefinition, classNode);
-
             if (className != null) {
                 classDefinition = ensureHasSourceSection(findScopeVar(className, true).createWriteNode(classDefinition), classNode);
             }
-            return ensureHasSourceSection(blockEnv.wrapBlockScope(classDefinition), classNode);
+            return tagExpression(blockEnv.wrapBlockScope(classDefinition), classNode);
         }
     }
 

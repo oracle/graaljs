@@ -223,4 +223,15 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
         // Test asserts that event queue is empty.
     }
 
+    @Test
+    public void classDeclareExpression() {
+        evalWithTag("foo = class Foo {};", WritePropertyTag.class);
+
+        enter(WritePropertyTag.class, (e, write) -> {
+            assertAttribute(e, KEY, "foo");
+            write.input(assertGlobalObjectInput);
+            write.input(assertJSFunctionInput);
+        }).exit();
+    }
+
 }
