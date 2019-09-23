@@ -62,6 +62,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -1185,7 +1186,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         } finally {
             lock.unlock();
         }
-        assert res.isGeneric() || res.accepts(thisObj) && res.acceptsValue(value);
+        if (!(res.isGeneric() || (res.accepts(thisObj) && res.acceptsValue(value)))) {
+            throw Errors.shouldNotReachHere();
+        }
         return res;
     }
 
@@ -1248,7 +1251,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
         }
 
-        if (cachedCount >= JSTruffleOptions.PropertyCacheLimit) {
+        if (cachedCount >= JSTruffleOptions.PropertyCacheLimit || (specialized != null && specialized.isGeneric())) {
             return rewriteToGeneric(currentHead, "cache limit reached");
         }
 

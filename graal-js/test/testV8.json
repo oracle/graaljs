@@ -544,9 +544,6 @@
     "filePath" : "mjsunit/es6/classes-subclass-builtins.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/classes-super.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/classes.js",
     "status" : "FAIL"
   }, {
@@ -619,9 +616,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/regress/regress-4097.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/regress/regress-4522.js",
@@ -1310,9 +1304,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
-    "filePath" : "mjsunit/regress/regress-4967.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-4970.js",
     "status" : "FAIL"
   }, {
@@ -1387,10 +1378,6 @@
     "filePath" : "mjsunit/regress/regress-6209.js",
     "status" : "SKIP",
     "comment" : "Explicitly calls v8AllocateHeapNumber."
-  }, {
-    "filePath" : "mjsunit/regress/regress-6248.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/regress/regress-6288.js",
     "status" : "FAIL"
@@ -1697,10 +1684,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-691323.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-696622.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {

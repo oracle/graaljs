@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,62 +38,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.nodes.unary;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 
-@GenerateWrapper
-public abstract class JSTargetableNode extends JavaScriptNode {
+/**
+ * Wrapper node that throws a TypeError if the argument is not a constructor.
+ */
+public abstract class RequireConstructorNode extends JavaScriptNode {
 
-    public abstract Object executeWithTarget(VirtualFrame frame, Object target);
+    @Child @Executed JavaScriptNode argumentNode;
+    @Child @Executed(with = "argumentNode") IsConstructorNode isConstructorNode;
 
-    /* Used evaluateTarget instead of executeTarget to avoid confusion of the DSL. */
-    public Object evaluateTarget(VirtualFrame frame) {
-        return getTarget().execute(frame);
+    protected RequireConstructorNode(JavaScriptNode argumentNode) {
+        this.argumentNode = argumentNode;
+        this.isConstructorNode = IsConstructorNode.create();
     }
 
-    public int executeIntWithTarget(VirtualFrame frame, Object target) throws UnexpectedResultException {
-        Object o = executeWithTarget(frame, target);
-        if (o instanceof Integer) {
-            return (int) o;
-        } else {
-            throw new UnexpectedResultException(o);
-        }
+    @Specialization(guards = "isConstructor")
+    static Object constructor(Object constructor, @SuppressWarnings("unused") boolean isConstructor) {
+        return constructor;
     }
 
-    public double executeDoubleWithTarget(VirtualFrame frame, Object target) throws UnexpectedResultException {
-        Object o = executeWithTarget(frame, target);
-        if (o instanceof Double) {
-            return (double) o;
-        } else if (o instanceof Integer) {
-            return (int) o;
-        } else {
-            throw new UnexpectedResultException(o);
-        }
+    @Fallback
+    final Object typeError(@SuppressWarnings("unused") Object constructor, @SuppressWarnings("unused") boolean isConstructor) {
+        throw Errors.createTypeError("Super constructor is not a constructor", this);
     }
 
-    public JavaScriptNode getTarget() {
-        if (this instanceof WrapperNode) {
-            return ((JSTargetableNode) ((WrapperNode) this).getDelegateNode()).getTarget();
-        }
-        throw Errors.notImplemented("getTarget");
-    }
-
-    public static Object evaluateReceiver(JavaScriptNode targetNode, VirtualFrame frame, Object targetValue) {
-        if (!(targetNode instanceof SuperPropertyReferenceNode)) {
-            return targetValue;
-        } else {
-            return ((SuperPropertyReferenceNode) targetNode).getThisValue().execute(frame);
-        }
+    public static JavaScriptNode create(JavaScriptNode argument) {
+        return RequireConstructorNodeGen.create(argument);
     }
 
     @Override
-    public WrapperNode createWrapper(ProbeNode probe) {
-        return new JSTargetableNodeWrapper(this, probe);
+    protected JavaScriptNode copyUninitialized() {
+        return create(cloneUninitialized(argumentNode));
     }
 }

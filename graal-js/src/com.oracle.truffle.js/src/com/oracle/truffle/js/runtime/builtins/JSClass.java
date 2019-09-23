@@ -515,7 +515,7 @@ public abstract class JSClass extends ObjectType {
         ensureHasMembers(target);
         Object result;
         if (readNode == null) {
-            result = JSObject.getOrDefault(target, key, null, JSClassProfile.getUncached());
+            result = JSObject.getOrDefault(target, key, target, null, JSClassProfile.getUncached());
         } else {
             result = readNode.executeWithTargetAndIndexOrDefault(target, key, null);
         }
@@ -616,7 +616,7 @@ public abstract class JSClass extends ObjectType {
         }
         Object result;
         if (readNode == null) {
-            result = JSObject.getOrDefault(target, index, null, JSClassProfile.getUncached());
+            result = JSObject.getOrDefault(target, index, target, null, JSClassProfile.getUncached());
         } else {
             result = readNode.executeWithTargetAndIndexOrDefault(target, index, null);
         }

@@ -65,7 +65,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
-    public abstract Object execute(DynamicObject target, Object propertyKey, Object defaultValue);
+    public abstract Object execute(DynamicObject target, Object propertyKey, Object receiver, Object defaultValue);
 
     static CachedGetPropertyNode create(JSContext context) {
         return CachedGetPropertyNodeGen.create(context);
@@ -73,36 +73,36 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(cachedKey, key)"}, limit = "MAX_DEPTH")
-    Object doCachedKey(DynamicObject target, Object key, Object defaultValue,
+    Object doCachedKey(DynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Cached("cachedPropertyKey(key)") Object cachedKey,
                     @Cached("create(cachedKey, context)") PropertyGetNode propertyNode) {
-        return propertyNode.getValueOrDefault(target, defaultValue);
+        return propertyNode.getValueOrDefault(target, receiver, defaultValue);
     }
 
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
-    Object doIntIndex(DynamicObject target, int index, Object defaultValue,
+    Object doIntIndex(DynamicObject target, int index, Object receiver, Object defaultValue,
                     @Cached("create()") JSClassProfile jsclassProfile) {
-        return JSObject.getOrDefault(target, index, defaultValue, jsclassProfile);
+        return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile);
     }
 
     @Specialization(guards = {"toArrayIndexNode.isArrayIndex(key)", "!isJSProxy(target)"}, replaces = {"doIntIndex"})
-    Object doArrayIndex(DynamicObject target, Object key, Object defaultValue,
+    Object doArrayIndex(DynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("createNoToPropertyKey()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         requireObjectCoercibleNode.executeVoid(target);
         long index = (long) toArrayIndexNode.execute(key);
-        return JSObject.getOrDefault(target, index, defaultValue, jsclassProfile);
+        return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile);
     }
 
     @Specialization(guards = {"isJSProxy(target)"})
-    protected Object doProxy(DynamicObject target, Object index, @SuppressWarnings("unused") Object defaultValue,
+    protected Object doProxy(DynamicObject target, Object index, Object receiver, @SuppressWarnings("unused") Object defaultValue,
                     @Cached("create(context)") JSProxyPropertyGetNode proxyGet) {
-        return proxyGet.executeWithReceiver(target, target, index);
+        return proxyGet.executeWithReceiver(target, receiver, index);
     }
 
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
-    Object doGeneric(DynamicObject target, Object key, Object defaultValue,
+    Object doGeneric(DynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile getType,
@@ -110,10 +110,10 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         requireObjectCoercibleNode.executeVoid(target);
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(arrayIndex instanceof Long)) {
-            return JSObject.getOrDefault(target, (long) arrayIndex, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(target, (long) arrayIndex, receiver, defaultValue, jsclassProfile);
         } else {
             assert JSRuntime.isPropertyKey(arrayIndex);
-            return JSObject.getOrDefault(target, arrayIndex, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(target, arrayIndex, receiver, defaultValue, jsclassProfile);
         }
     }
 

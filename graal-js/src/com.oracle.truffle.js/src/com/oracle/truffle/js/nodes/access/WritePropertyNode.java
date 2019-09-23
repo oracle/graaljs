@@ -56,6 +56,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
 public class WritePropertyNode extends JSTargetableWriteNode {
 
@@ -71,7 +72,8 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     protected WritePropertyNode(JavaScriptNode target, JavaScriptNode rhs, Object propertyKey, boolean isGlobal, JSContext context, boolean isStrict) {
         this.targetNode = target;
         this.rhsNode = rhs;
-        this.cache = PropertySetNode.create(propertyKey, isGlobal, context, isStrict);
+        boolean superProperty = target instanceof SuperPropertyReferenceNode;
+        this.cache = PropertySetNode.createImpl(propertyKey, isGlobal, context, isStrict, false, JSAttributes.getDefault(), false, superProperty);
     }
 
     public static WritePropertyNode create(JavaScriptNode target, Object propertyKey, JavaScriptNode rhs, JSContext ctx, boolean isStrict) {
@@ -178,7 +180,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final Object execute(VirtualFrame frame) {
         Object target = evaluateTarget(frame);
-        Object receiver = evaluateReceiver(frame, target);
+        Object receiver = evaluateReceiver(targetNode, frame, target);
         Object value = rhsNode.execute(frame);
         return executeEvaluated(target, value, receiver);
     }
@@ -186,7 +188,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final int executeInt(VirtualFrame frame) throws UnexpectedResultException {
         Object target = evaluateTarget(frame);
-        Object receiver = evaluateReceiver(frame, target);
+        Object receiver = evaluateReceiver(targetNode, frame, target);
         try {
             int value = rhsNode.executeInt(frame);
             return executeIntEvaluated(target, value, receiver);
@@ -199,7 +201,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
         Object target = evaluateTarget(frame);
-        Object receiver = evaluateReceiver(frame, target);
+        Object receiver = evaluateReceiver(targetNode, frame, target);
         try {
             double value = rhsNode.executeDouble(frame);
             return executeDoubleEvaluated(target, value, receiver);
@@ -212,7 +214,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final void executeVoid(VirtualFrame frame) {
         Object target = evaluateTarget(frame);
-        Object receiver = evaluateReceiver(frame, target);
+        Object receiver = evaluateReceiver(targetNode, frame, target);
         byte vs = valueState;
         if (vs == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -264,7 +266,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final Object executeWrite(VirtualFrame frame, Object value) {
         Object target = evaluateTarget(frame);
-        Object receiver = evaluateReceiver(frame, target);
+        Object receiver = evaluateReceiver(targetNode, frame, target);
         return executeEvaluated(target, value, receiver);
     }
 
@@ -277,14 +279,6 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     public final Object evaluateTarget(VirtualFrame frame) {
         return targetNode.execute(frame);
-    }
-
-    public final Object evaluateReceiver(VirtualFrame frame, Object target) {
-        if (!(targetNode instanceof SuperPropertyReferenceNode)) {
-            return target;
-        } else {
-            return ((SuperPropertyReferenceNode) targetNode).getThisValue().execute(frame);
-        }
     }
 
     @Override
