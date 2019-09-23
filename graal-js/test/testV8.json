@@ -600,9 +600,6 @@
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/regress/regress-4522.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/regress/regress-576662.js",
     "status" : "FAIL"
   }, {
