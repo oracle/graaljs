@@ -1838,7 +1838,7 @@ public class Parser extends AbstractParser {
         verifyStrictIdent(ident, contextString, true);
     }
 
-    static boolean isValidStrictIdent(final IdentNode ident, final boolean bindingIdentifier) {
+    private static boolean isValidStrictIdent(final IdentNode ident, final boolean bindingIdentifier) {
         if (bindingIdentifier) {
             switch (ident.getName()) {
                 case EVAL_NAME:
@@ -4591,13 +4591,6 @@ public class Parser extends AbstractParser {
                     parameters.set(i, new IdentNode(parameterToken, Token.descPosition(parameterToken), functionNode.uniqueName(parameterName)));
                 }
                 parametersSet.add(parameterName);
-            }
-        }
-
-        IdentNode invalidStrictIdent = functionNode.getInvalidStrictParamIdent();
-        if (invalidStrictIdent != null) {
-            if (functionNode.isStrict()) {
-                throw error(AbstractParser.message("strict.name", invalidStrictIdent.getName(), FUNCTION_PARAMETER_CONTEXT), invalidStrictIdent.getToken());
             }
         }
     }

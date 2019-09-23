@@ -96,7 +96,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private int parameterCount;
     private HashSet<String> parameterBoundNames;
     private IdentNode duplicateParameterBinding;
-    private IdentNode invalidStrictParamIdent;
     private boolean simpleParameterList = true;
     private boolean hasParameterExpressions;
     private boolean containsDefaultParameter;
@@ -325,11 +324,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         }
         if (parameterBoundNames.add(bindingIdentifier.getName())) {
             declareParameter(bindingIdentifier.getName());
-            if (!Parser.isValidStrictIdent(bindingIdentifier, true)) {
-                if (invalidStrictParamIdent == null) {
-                    invalidStrictParamIdent = bindingIdentifier;
-                }
-            }
             return true;
         } else {
             if (duplicateParameterBinding == null) {
@@ -341,10 +335,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public IdentNode getDuplicateParameterBinding() {
         return duplicateParameterBinding;
-    }
-
-    public IdentNode getInvalidStrictParamIdent() {
-        return invalidStrictParamIdent;
     }
 
     public Module getModule() {
