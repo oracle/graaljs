@@ -1293,8 +1293,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             Object convertedIndex = toArrayIndexNode.execute(index);
             if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
                 int intIndex = ((Long) convertedIndex).intValue();
-                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < charSequence.length())) {
-                    return String.valueOf(charSequence.charAt(intIndex));
+                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < JSRuntime.length(charSequence))) {
+                    // charAt needs boundary, SVM thinks it could be any type
+                    return String.valueOf(JSRuntime.charAt(charSequence, intIndex));
                 }
             }
             return JSObject.getOrDefault(JSString.create(context, charSequence), toPropertyKey(index), defaultValue, jsclassProfile);
@@ -1303,8 +1304,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
-            if (stringIndexInBounds.profile(index >= 0 && index < charSequence.length())) {
-                return String.valueOf(charSequence.charAt(index));
+            if (stringIndexInBounds.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
+                return String.valueOf(JSRuntime.charAt(charSequence, index));
             } else {
                 return JSObject.getOrDefault(JSString.create(context, charSequence), index, defaultValue, jsclassProfile);
             }
@@ -1328,25 +1329,25 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
-            String charSequence = ((JSLazyString) target).toString(isFlatProfile);
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
+            String str = ((JSLazyString) target).toString(isFlatProfile);
             Object convertedIndex = toArrayIndexNode.execute(index);
             if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
                 int intIndex = ((Long) convertedIndex).intValue();
-                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < charSequence.length())) {
-                    return String.valueOf(charSequence.charAt(intIndex));
+                if (stringIndexInBounds.profile(intIndex >= 0 && intIndex < str.length())) {
+                    return String.valueOf(str.charAt(intIndex));
                 }
             }
-            return JSObject.getOrDefault(JSString.create(context, charSequence), toPropertyKey(index), defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSString.create(root.context, str), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
-            String charSequence = ((JSLazyString) target).toString(isFlatProfile);
-            if (stringIndexInBounds.profile(index >= 0 && index < charSequence.length())) {
-                return String.valueOf(charSequence.charAt(index));
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
+            String str = ((JSLazyString) target).toString(isFlatProfile);
+            if (stringIndexInBounds.profile(index >= 0 && index < str.length())) {
+                return String.valueOf(str.charAt(index));
             } else {
-                return JSObject.getOrDefault(JSString.create(context, charSequence), index, defaultValue, jsclassProfile);
+                return JSObject.getOrDefault(JSString.create(root.context, str), index, receiver, defaultValue, jsclassProfile);
             }
         }
 
