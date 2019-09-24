@@ -69,6 +69,7 @@ import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_NODE_SOURCE_
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_NODE_TAGS_FIXUP;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_RETURN;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_SOURCE_SECTION;
+import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
@@ -351,10 +352,10 @@ public class JSNodeEncoder {
         if (patchPositions.containsKey(name)) {
             int pos = patchPositions.get(name);
             ByteBuffer bb = encoder.getBuffer().duplicate().order(ByteOrder.LITTLE_ENDIAN);
-            bb.position(pos);
+            asBaseBuffer(bb).position(pos);
             assert bb.getInt() == -1;
             Recording.logv(" -- %d: %d %s", pos, mark, name);
-            bb.position(pos);
+            asBaseBuffer(bb).position(pos);
             bb.putInt(mark);
         } else {
             Recording.logv("nothing to patch: %s (%d)", name, mark);

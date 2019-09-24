@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
+import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -147,7 +149,7 @@ public class JSForeignAccessFactory {
         private static Object extractByteBuffer(Object target, DynamicObject arrayBuffer) {
             int byteOffset = JSArrayBufferView.getByteOffset((DynamicObject) target, true, JSObject.getJSContext(arrayBuffer));
             ByteBuffer buffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
-            Object byteBuffer = ((ByteBuffer) buffer.duplicate().position(byteOffset)).slice().order(ByteOrder.nativeOrder());
+            Object byteBuffer = ((ByteBuffer) asBaseBuffer(buffer.duplicate()).position(byteOffset)).slice().order(ByteOrder.nativeOrder());
             JSContext context = JSObject.getJSContext((DynamicObject) target);
             return JSArray.createConstant(context, new Object[]{byteBuffer});
         }
