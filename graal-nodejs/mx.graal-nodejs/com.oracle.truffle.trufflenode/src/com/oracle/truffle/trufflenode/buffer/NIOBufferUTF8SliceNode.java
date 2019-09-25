@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.trufflenode.buffer;
 
+import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
+
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -133,8 +135,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
             outOfBoundsFail();
         }
         ByteBuffer data = sliceBuffer(rawBuffer, byteOffset);
-        data.position(start);
-        data.limit(end);
+        asBaseBuffer(data).position(start).limit(end);
         return doDecode(data);
     }
 

@@ -65,6 +65,8 @@
 
 package com.oracle.truffle.js.runtime.builtins;
 
+import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
+
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharsetDecoder;
@@ -160,7 +162,7 @@ public class JSURLDecoder {
         ByteBuffer bb = ByteBuffer.wrap(octetsB);
         CharBuffer cb = CharBuffer.wrap(new char[2]);
         decoder.reset();
-        cb.rewind();
+        asBaseBuffer(cb).rewind();
         CoderResult coderResult = decoder.decode(bb, cb, true);
         if (coderResult.isError()) {
             throw invalidEncodingError();

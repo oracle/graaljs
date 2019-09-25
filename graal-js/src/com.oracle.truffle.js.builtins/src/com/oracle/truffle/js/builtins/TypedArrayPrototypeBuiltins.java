@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
+import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -449,8 +450,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 // same element type => bulk copy
                 int sourceByteLength = sourceLength * sourceElementSize;
                 if (isDirectProf.profile(targetType.isDirect())) {
-                    ((ByteBuffer) ((ByteBuffer) targetBackingBuffer).duplicate().position(targetByteIndex)).put(
-                                    ((ByteBuffer) ((ByteBuffer) sourceBackingBuffer).duplicate().position(sourceByteIndex).limit(sourceByteIndex + sourceByteLength)).slice());
+                    ((ByteBuffer) asBaseBuffer(((ByteBuffer) targetBackingBuffer).duplicate()).position(targetByteIndex)).put(
+                                    ((ByteBuffer) asBaseBuffer(((ByteBuffer) sourceBackingBuffer).duplicate()).position(sourceByteIndex).limit(sourceByteIndex + sourceByteLength)).slice());
                 } else {
                     System.arraycopy(sourceBackingBuffer, sourceByteIndex, targetBackingBuffer, targetByteIndex, sourceByteLength);
                 }
@@ -490,7 +491,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 clonedArrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), srcByteLength);
                 ByteBuffer clonedBackingBuffer = JSArrayBuffer.getDirectByteBuffer(clonedArrayBuffer);
                 ByteBuffer sourceBackingBuffer = JSArrayBuffer.getDirectByteBuffer(sourceBuffer);
-                clonedBackingBuffer.duplicate().put(((ByteBuffer) sourceBackingBuffer.duplicate().position(srcByteOffset).limit(srcByteOffset + srcByteLength)).slice());
+                clonedBackingBuffer.duplicate().put(((ByteBuffer) asBaseBuffer(sourceBackingBuffer.duplicate()).position(srcByteOffset).limit(srcByteOffset + srcByteLength)).slice());
             } else {
                 clonedArrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), srcByteLength);
                 byte[] clonedBackingBuffer = JSArrayBuffer.getByteArray(clonedArrayBuffer);

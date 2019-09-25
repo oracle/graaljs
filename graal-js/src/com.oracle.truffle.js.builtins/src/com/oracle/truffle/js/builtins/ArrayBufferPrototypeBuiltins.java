@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
+
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -133,7 +135,8 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lamb
 
         @TruffleBoundary
         protected static void sliceDirectIntl(ByteBuffer byteBuffer, int clampedBegin, int clampedEnd, ByteBuffer resBuffer) {
-            ByteBuffer slice = ((ByteBuffer) byteBuffer.duplicate().position(clampedBegin).limit(clampedEnd));
+            ByteBuffer slice = byteBuffer.duplicate();
+            asBaseBuffer(slice).position(clampedBegin).limit(clampedEnd);
             assert resBuffer.position() == 0;
             resBuffer.duplicate().put(slice);
         }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.trufflenode;
 
+import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
@@ -343,7 +344,7 @@ public final class GraalJSAccess {
     }
 
     public void resetSharedBuffer() {
-        sharedBuffer.clear();
+        asBaseBuffer(sharedBuffer).clear();
     }
 
     public ByteBuffer getSharedBuffer() {
@@ -772,7 +773,7 @@ public final class GraalJSAccess {
         }
         Object flatten = valueFlatten(value);
         resetSharedBuffer();
-        sharedBuffer.position(4);
+        asBaseBuffer(sharedBuffer).position(4);
         sharedBuffer.putInt(0, valueType(flatten, true));
         return flatten;
     }
@@ -780,7 +781,7 @@ public final class GraalJSAccess {
     public Object objectGetIndex(Object object, int index) {
         Object value = valueFlatten(JSObject.get((DynamicObject) object, index));
         resetSharedBuffer();
-        sharedBuffer.position(4);
+        asBaseBuffer(sharedBuffer).position(4);
         sharedBuffer.putInt(0, valueType(value, true));
         return value;
     }
@@ -1286,7 +1287,7 @@ public final class GraalJSAccess {
         Object value = JSRuntime.call(function, receiver, arguments);
         Object flatten = valueFlatten(value);
         resetSharedBuffer();
-        sharedBuffer.position(4);
+        asBaseBuffer(sharedBuffer).position(4);
         sharedBuffer.putInt(0, valueType(flatten, true));
         return flatten;
     }
