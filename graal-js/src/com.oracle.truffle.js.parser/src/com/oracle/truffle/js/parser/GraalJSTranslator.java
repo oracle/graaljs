@@ -134,6 +134,7 @@ import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.nodes.control.DiscardResultNode;
 import com.oracle.truffle.js.nodes.control.EmptyNode;
+import com.oracle.truffle.js.nodes.control.GeneratorExprBlockNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.control.ResumableNode;
 import com.oracle.truffle.js.nodes.control.ReturnNode;
@@ -694,6 +695,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             genBlock = returnsResult ? factory.createGeneratorExprBlock(chunks, readState, writeState) : factory.createGeneratorVoidBlock(chunks, readState, writeState);
         }
         JavaScriptNode.transferSourceSectionAndTags(blockNode, genBlock);
+        if (genBlock instanceof GeneratorExprBlockNode && !genBlock.hasSourceSection()) {
+            tagHiddenExpression(genBlock);
+        }
         return genBlock;
     }
 
@@ -727,6 +731,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (child instanceof JavaScriptNode) {
             String identifier = ":generatorexpr:" + environment.getFunctionFrameDescriptor().getSize();
             LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
+            tagHiddenExpression(readState);
             JavaScriptNode writeState = factory.createLazyWriteFrameSlot(identifier, (JavaScriptNode) child);
             if (NodeUtil.isReplacementSafe(parent, child, readState)) {
                 environment.getFunctionFrameDescriptor().addFrameSlot(identifier);

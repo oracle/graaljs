@@ -68,4 +68,82 @@ public class AwaitTest extends FineGrainedAccessTest {
             b.input(43);
         }).exit();
     }
+
+    @Test
+    public void testAwaitAsInput() {
+        String src = "(async () => { return await 42 + await 43; })();";
+        evalWithTags(src, new Class[]{JSTags.ControlFlowBranchTag.class, JSTags.BinaryOperationTag.class});
+
+        // return (suspend 1)
+        enter(JSTags.ControlFlowBranchTag.class, (e0, b0) -> {
+            assertAttribute(e0, TYPE, JSTags.ControlFlowBranchTag.Type.Return.name());
+            // await 42 (suspend)
+            enter(JSTags.ControlFlowBranchTag.class, (e, b) -> {
+                assertAttribute(e, TYPE, JSTags.ControlFlowBranchTag.Type.Await.name());
+                b.input(42);
+                b.input(assertJSPromiseInput);
+            }).exitExceptional();
+
+        }).exitExceptional();
+
+        // return (suspend 2)
+        enter(JSTags.ControlFlowBranchTag.class, (e0, b0) -> {
+            assertAttribute(e0, TYPE, JSTags.ControlFlowBranchTag.Type.Return.name());
+            // await 42
+            enter(JSTags.ControlFlowBranchTag.class, (e, b) -> {
+                assertAttribute(e, TYPE, JSTags.ControlFlowBranchTag.Type.Await.name());
+                b.input(42);
+            }).exit();
+            // await 43 (suspend)
+            enter(JSTags.ControlFlowBranchTag.class, (e1, b1) -> {
+                assertAttribute(e1, TYPE, JSTags.ControlFlowBranchTag.Type.Await.name());
+                b1.input(43);
+                b1.input(assertJSPromiseInput);
+            }).exitExceptional();
+        }).exitExceptional();
+
+        // return
+        enter(JSTags.ControlFlowBranchTag.class, (e0, b0) -> {
+            assertAttribute(e0, TYPE, JSTags.ControlFlowBranchTag.Type.Return.name());
+            // await 43
+            enter(JSTags.ControlFlowBranchTag.class, (e, b) -> {
+                assertAttribute(e, TYPE, JSTags.ControlFlowBranchTag.Type.Await.name());
+                b.input(43);
+            }).exit();
+            // await 42
+            enter(JSTags.BinaryOperationTag.class, (e1, b1) -> {
+                b1.input(42);
+                b1.input(43);
+            }).exit();
+            b0.input(85);
+        }).exit();
+    }
+
+    @Test
+    public void generatorWrapperAsInput() {
+        String src = "(async () => { let val = await 42;})();";
+        evalWithTags(src, new Class[]{JSTags.WriteVariableTag.class, JSTags.ControlFlowBranchTag.class});
+
+        // write (suspend)
+        enter(JSTags.WriteVariableTag.class, (e0, b0) -> {
+            assertAttribute(e0, NAME, "val");
+            // await (suspend)
+            enter(JSTags.ControlFlowBranchTag.class, (e, b) -> {
+                assertAttribute(e, TYPE, JSTags.ControlFlowBranchTag.Type.Await.name());
+                b.input(42);
+                b.input(assertJSPromiseInput);
+            }).exitExceptional();
+        }).exitExceptional();
+
+        // write
+        enter(JSTags.WriteVariableTag.class, (e0, b0) -> {
+            assertAttribute(e0, NAME, "val");
+            // await
+            enter(JSTags.ControlFlowBranchTag.class, (e, b) -> {
+                assertAttribute(e, TYPE, JSTags.ControlFlowBranchTag.Type.Await.name());
+                b.input(42);
+            }).exit();
+            b0.input(42);
+        }).exit();
+    }
 }

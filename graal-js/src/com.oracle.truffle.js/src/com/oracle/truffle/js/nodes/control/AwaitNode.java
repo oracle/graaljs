@@ -204,6 +204,11 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("type", JSTags.ControlFlowBranchTag.Type.Await.name());
+    }
+
+    @Override
     public Object resume(VirtualFrame frame) {
         int index = getStateAsInt(frame);
         if (index == 0) {
