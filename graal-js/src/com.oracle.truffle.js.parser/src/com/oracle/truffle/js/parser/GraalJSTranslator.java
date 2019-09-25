@@ -2200,6 +2200,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             case SHR:
             case AND:
             case OR:
+            case NULLISHCOALESC:
             case INSTANCEOF:
             case IN:
             case COMMARIGHT:
@@ -2287,6 +2288,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return BinaryOperation.LOGICAL_AND;
             case OR:
                 return BinaryOperation.LOGICAL_OR;
+            case NULLISHCOALESC:
+                return BinaryOperation.NULLISH_COALESCING;
             case INSTANCEOF:
                 return BinaryOperation.INSTANCEOF;
             case IN:

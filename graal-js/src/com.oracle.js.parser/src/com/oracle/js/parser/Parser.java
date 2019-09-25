@@ -918,14 +918,26 @@ public class Parser extends AbstractParser {
         });
     }
 
-    private static Expression newBinaryExpression(final long op, final Expression lhs, final Expression rhs) {
+    private Expression newBinaryExpression(final long op, final Expression lhs, final Expression rhs) {
         final TokenType opType = Token.descType(op);
 
         // Build up node.
         if (BinaryNode.isLogical(opType)) {
+            if (forbiddenNullishCoalescingUsage(opType, lhs, rhs)) {
+                throw error(String.format("nullish coalescing operator cannot immediately contain, or be contained within, an && or || operation"));
+            }
             return new BinaryNode(op, new JoinPredecessorExpression(lhs), new JoinPredecessorExpression(rhs));
         }
         return new BinaryNode(op, lhs, rhs);
+    }
+
+    private static boolean forbiddenNullishCoalescingUsage(TokenType opType, Expression lhs, Expression rhs) {
+        if (opType == TokenType.NULLISHCOALESC) {
+            return lhs.isTokenType(TokenType.AND) || lhs.isTokenType(TokenType.OR) || rhs.isTokenType(TokenType.AND) || rhs.isTokenType(TokenType.OR);
+        } else {
+            assert opType == TokenType.AND || opType == TokenType.OR;
+            return lhs.isTokenType(TokenType.NULLISHCOALESC) || rhs.isTokenType(TokenType.NULLISHCOALESC);
+        }
     }
 
     /**
@@ -5384,7 +5396,7 @@ public class Parser extends AbstractParser {
     }
 
     private boolean checkOperator(final boolean in) {
-        return type.isOperator(in) && (type != TokenType.EXP || isES6());
+        return type.isOperator(in) && (type != TokenType.EXP || isES6()) && (type != TokenType.NULLISHCOALESC || isES2020());
     }
 
     private Expression assignmentExpression(boolean in) {
@@ -5555,10 +5567,10 @@ public class Parser extends AbstractParser {
         } else if (exprList.getExpressions().size() == 1) {
             return exprList.getExpressions().get(0);
         } else {
-            long token = Token.recast(exprList.getToken(), COMMARIGHT);
+            long recastToken = Token.recast(exprList.getToken(), COMMARIGHT);
             Expression result = null;
             for (Expression expression : exprList.getExpressions()) {
-                result = result == null ? expression : newBinaryExpression(token, result, expression);
+                result = result == null ? expression : new BinaryNode(recastToken, result, expression);
             }
             return result;
         }
