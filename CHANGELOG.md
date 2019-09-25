@@ -4,7 +4,8 @@ This changelog summarizes major changes between GraalVM versions of the GraalVM 
 The main focus is on user-observable behavior of the engine.
 
 ## Version 19.3.0
-* Implemented [Promise.allSettled](https://github.com/tc39/proposal-promise-allSettled) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
+* Implemented the [Promise.allSettled](https://github.com/tc39/proposal-promise-allSettled) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
+* Implemented the [nullish coalescing](https://github.com/tc39/proposal-nullish-coalescing) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
 * Updated ICU4J library to version 64.2.
 * Updated ASM library to version 7.1.
 * Updated Node.js to version 10.16.3.
