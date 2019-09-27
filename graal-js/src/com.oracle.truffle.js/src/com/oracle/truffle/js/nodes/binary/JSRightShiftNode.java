@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -51,7 +50,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -72,15 +70,6 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
             return JSRightShiftConstantNode.create(left, right);
         }
         return JSRightShiftNodeGen.create(left, right);
-    }
-
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == BinaryOperationTag.class) {
-            return true;
-        } else {
-            return super.hasTag(tag);
-        }
     }
 
     public abstract Object execute(Object a, Object b);
