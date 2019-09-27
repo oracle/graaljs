@@ -93,6 +93,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.Source;
@@ -627,8 +628,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (!extracted.isEmpty()) { // only if there's actually something to rescue
                 extracted.add((JavaScriptNode) parent);
                 // insert block node wrapper
-                JavaScriptNode exprBlock = factory.createExprBlock(extracted.toArray(EMPTY_NODE_ARRAY));
-                return wrapResumableNode(exprBlock);
+                JavaScriptNode exprBlock = wrapResumableNode(factory.createExprBlock(extracted.toArray(EMPTY_NODE_ARRAY)));
+                tagHiddenExpression(exprBlock);
+                return exprBlock;
             } else {
                 // nothing to do
                 return parent;
@@ -725,9 +727,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (skipOverToChildren(child)) {
             extractChildrenTo(child, extracted);
         } else if (child instanceof JavaScriptNode) {
+            JavaScriptNode jschild = (JavaScriptNode) child;
             String identifier = ":generatorexpr:" + environment.getFunctionFrameDescriptor().getSize();
             LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
-            JavaScriptNode writeState = factory.createLazyWriteFrameSlot(identifier, (JavaScriptNode) child);
+            if (jschild.hasTag(StandardTags.ExpressionTag.class) ||
+                            (jschild instanceof GeneratorWrapperNode && ((GeneratorWrapperNode) jschild).getResumableNode().hasTag(StandardTags.ExpressionTag.class))) {
+                tagHiddenExpression(readState);
+            }
+            JavaScriptNode writeState = factory.createLazyWriteFrameSlot(identifier, jschild);
             if (NodeUtil.isReplacementSafe(parent, child, readState)) {
                 environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
                 extracted.add(writeState);

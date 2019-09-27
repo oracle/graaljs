@@ -78,6 +78,12 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
         if (tag == JSTags.ControlFlowBranchTag.class) {
             return true;
         }
+        if (tag == JSTags.InputNodeTag.class) {
+            Node child = childNode instanceof WrapperNode ? ((WrapperNode) childNode).getDelegateNode() : childNode;
+            if (child instanceof AwaitNode) {
+                return true;
+            }
+        }
         return super.hasTag(tag);
     }
 
@@ -133,6 +139,10 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
 
     public void setState(VirtualFrame frame, Object resumeState) {
         writeStateNode.executeWrite(frame, resumeState);
+    }
+
+    public JavaScriptNode getResumableNode() {
+        return childNode;
     }
 
     @Override
