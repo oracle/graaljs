@@ -2872,6 +2872,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     } else {
                         // fall through to default case, execute test only for potential side effect
                         if (isPotentiallySideEffecting(test)) {
+                            test = factory.createIf(test, null, null);
+                            ensureHasSourceSection(test, caseNode);
                             curNode = curNode == null ? discardResult(test) : createBlock(test, curNode);
                         }
                     }
