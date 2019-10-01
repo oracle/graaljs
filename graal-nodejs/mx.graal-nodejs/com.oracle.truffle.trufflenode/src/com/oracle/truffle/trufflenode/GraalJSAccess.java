@@ -3134,6 +3134,11 @@ public final class GraalJSAccess {
         JSMap.getInternalMap(object).put(JSSet.normalize(key), value);
     }
 
+    public Object setNew(Object context) {
+        JSContext jsContext = ((JSRealm) context).getContext();
+        return JSSet.create(jsContext);
+    }
+
     public long bigIntInt64Value(Object value) {
         BigInteger bigInt = ((BigInt) value).bigIntegerValue();
         resetSharedBuffer();

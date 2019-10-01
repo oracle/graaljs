@@ -811,6 +811,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::value_deserializer_get_wire_format_version, "valueDeserializerGetWireFormatVersion", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::map_new, "mapNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::map_set, "mapSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::set_new, "setNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::big_int_int64_value, "bigIntInt64Value", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::big_int_uint64_value, "bigIntUint64Value", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::big_int_new, "bigIntNew", "(J)Ljava/lang/Object;")

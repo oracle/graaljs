@@ -176,6 +176,7 @@
       { "name": "scriptOrModuleGetHostDefinedOptions" },
       { "name": "scriptOrModuleGetResourceName" },
       { "name": "scriptRun" },
+      { "name": "setNew" },
       { "name": "sharedArrayBufferExternalize" },
       { "name": "sharedArrayBufferGetContents" },
       { "name": "sharedArrayBufferIsExternal" },

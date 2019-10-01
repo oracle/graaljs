@@ -61,6 +61,7 @@
 #include "object_template.cc"
 #include "persistent.cc"
 #include "script.cc"
+#include "set.cc"
 #include "stacktrace.cc"
 #include "string.cc"
 #include "try_catch.cc"

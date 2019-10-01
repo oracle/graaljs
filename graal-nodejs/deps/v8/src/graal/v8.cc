@@ -60,6 +60,7 @@
 #include "graal_proxy.h"
 #include "graal_regexp.h"
 #include "graal_script.h"
+#include "graal_set.h"
 #include "graal_stack_frame.h"
 #include "graal_stack_trace.h"
 #include "graal_string.h"
@@ -3091,8 +3092,7 @@ namespace v8 {
     }
 
     Local<Set> Set::New(Isolate* isolate) {
-        TRACE
-        return nullptr;
+        return GraalSet::New(isolate);
     }
 
     MaybeLocal<Set> Set::Add(Local<Context> context, Local<Value> key) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,18 +39,15 @@
  * SOFTWARE.
  */
 
-#ifndef GRAAL_SET_H_
-#define GRAAL_SET_H_
+var assert = require('assert');
+var module = require('./_unit');
 
-#include "graal_object.h"
-
-class GraalSet : public GraalObject {
-public:
-    GraalSet(GraalIsolate* isolate, jobject java_set);
-    bool IsSet() const override;
-    static v8::Local<v8::Set> New(v8::Isolate* isolate);
-protected:
-    GraalHandleContent* CopyImpl(jobject java_object_copy) override;
-};
-
-#endif /* GRAAL_SET_H_ */
+describe('Set', function () {
+    describe('New', function () {
+        it('should create an empty instance of Set', function () {
+            var set = module.Set_New();
+            assert.strictEqual(set instanceof Set, true);
+            assert.strictEqual(set.size, 0);
+        });
+    });
+});
