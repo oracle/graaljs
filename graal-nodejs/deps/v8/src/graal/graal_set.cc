@@ -60,3 +60,10 @@ v8::Local<v8::Set> GraalSet::New(v8::Isolate* isolate) {
     GraalSet* graal_set = new GraalSet(graal_isolate, java_set);
     return reinterpret_cast<v8::Set*> (graal_set);
 }
+
+v8::MaybeLocal<v8::Set> GraalSet::Add(v8::Local<v8::Context> context, v8::Local<v8::Value> key) {
+    GraalValue* graal_key = reinterpret_cast<GraalValue*> (*key);
+    jobject java_key = graal_key->GetJavaObject();
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::set_add, GetJavaObject(), java_key);
+    return v8::Local<v8::Set>(reinterpret_cast<v8::Set*> (this));
+}

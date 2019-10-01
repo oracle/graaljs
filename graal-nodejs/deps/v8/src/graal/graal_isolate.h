@@ -334,6 +334,7 @@ enum GraalAccessMethod {
     map_new,
     map_set,
     set_new,
+    set_add,
     shared_array_buffer_new,
     shared_array_buffer_is_external,
     shared_array_buffer_get_contents,

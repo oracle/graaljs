@@ -3096,8 +3096,7 @@ namespace v8 {
     }
 
     MaybeLocal<Set> Set::Add(Local<Context> context, Local<Value> key) {
-        TRACE
-        return Local<Set>();
+        return reinterpret_cast<GraalSet*> (this)->Add(context, key);
     }
 
     bool TryCatch::CanContinue() const {

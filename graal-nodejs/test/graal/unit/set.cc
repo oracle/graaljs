@@ -48,4 +48,12 @@ EXPORT_TO_JS(New) {
     args.GetReturnValue().Set(set);
 }
 
+// Set::Add
+
+EXPORT_TO_JS(Add) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    args[0].As<Set>()->Add(context, args[1]);
+}
+
 #undef SUITE

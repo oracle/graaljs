@@ -3139,6 +3139,11 @@ public final class GraalJSAccess {
         return JSSet.create(jsContext);
     }
 
+    public void setAdd(Object set, Object key) {
+        DynamicObject object = (DynamicObject) set;
+        JSSet.getInternalSet(object).put(JSSet.normalize(key), new Object());
+    }
+
     public long bigIntInt64Value(Object value) {
         BigInteger bigInt = ((BigInt) value).bigIntegerValue();
         resetSharedBuffer();

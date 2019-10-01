@@ -49,6 +49,7 @@ public:
     GraalSet(GraalIsolate* isolate, jobject java_set);
     bool IsSet() const override;
     static v8::Local<v8::Set> New(v8::Isolate* isolate);
+    v8::MaybeLocal<v8::Set> Add(v8::Local<v8::Context> context, v8::Local<v8::Value> key);
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };

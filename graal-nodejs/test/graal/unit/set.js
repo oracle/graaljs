@@ -50,4 +50,13 @@ describe('Set', function () {
             assert.strictEqual(set.size, 0);
         });
     });
+    describe('Add', function () {
+        it('should add an element into Set', function () {
+            var set = new Set();
+            var key = {};
+            module.Set_Add(set, key);
+            assert.strictEqual(set.size, 1);
+            assert.strictEqual(set.has(key), true);
+        });
+    });
 });
