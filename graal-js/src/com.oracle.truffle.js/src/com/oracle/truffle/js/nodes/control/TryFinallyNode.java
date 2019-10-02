@@ -46,6 +46,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -139,14 +140,9 @@ public class TryFinallyNode extends StatementNode implements ResumableNode {
                 throw e;
             }
             if (state != null) {
-                rethrow((Throwable) state);
+                JSRuntime.rethrow((Throwable) state);
             }
             return EMPTY;
         }
-    }
-
-    @SuppressWarnings({"unchecked"})
-    static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
-        throw (E) ex;
     }
 }
