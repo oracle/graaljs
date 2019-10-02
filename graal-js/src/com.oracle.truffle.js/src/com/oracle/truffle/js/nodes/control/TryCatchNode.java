@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -190,7 +191,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         if (conditionExpression == null || executeConditionAsBoolean(catchFrame, conditionExpression)) {
             return catchBlock.execute(catchFrame);
         } else {
-            throw ((RuntimeException) ex);
+            throw JSRuntime.rethrow(ex);
         }
     }
 
