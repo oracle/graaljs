@@ -249,6 +249,9 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
 
         public Object execute(Throwable ex) {
             if (isJSError.profile(ex instanceof JSException)) {
+                // fill in any missing stack trace elements
+                TruffleStackTrace.fillIn(ex);
+
                 return doJSException((JSException) ex);
             } else if (isJSException.profile(ex instanceof GraalJSException)) {
                 return ((GraalJSException) ex).getErrorObject();
@@ -270,9 +273,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
 
         private Object doJSException(JSException exception) {
-            // fill in any missing stack trace elements
-            TruffleStackTrace.fillIn(exception);
-
             DynamicObject errorObj = exception.getErrorObject();
             // not thread safe, but should be alright in this case
             if (errorObj == null) {
