@@ -92,6 +92,8 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk11 + gateGraalTip                                                                             + common.gate + common.darwin + {name: 'nodejs-gate-graal-tip-jdk11-darwin-amd64'},
     graalNodeJs + common.jdk8  + gateSubstrateVmTip                                                                       + common.gate + common.linux  + {name: 'nodejs-gate-substratevm-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + gateSubstrateVmTip                                                                       + common.gate + common.darwin + {name: 'nodejs-gate-substratevm-tip-jdk8-darwin-amd64'},
+    graalNodeJs + common.jdk11 + gateSubstrateVmTip                                                                       + common.gate + common.linux  + {name: 'nodejs-gate-substratevm-tip-jdk11-linux-amd64'},
+    graalNodeJs + common.jdk11 + gateSubstrateVmTip                                                                       + common.gate + common.darwin + {name: 'nodejs-gate-substratevm-tip-jdk11-darwin-amd64'},
     graalNodeJs + common.jdk8  + testNodeGraalTip + buildAddons + {environment+: {SUITE: 'addons', PART: '-r0,1'}}        + common.gate + common.linux  + {name: 'nodejs-gate-addons-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + testNodeGraalTip + buildNAPI   + {environment+: {SUITE: 'addons-napi', PART: '-r0,1'}}   + common.gate + common.linux  + {name: 'nodejs-gate-addons-napi-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + testNodeGraalTip               + {environment+: {SUITE: 'async-hooks', PART: '-r0,1'}}   + common.gate + common.linux  + {name: 'nodejs-gate-async-hooks-graal-tip-jdk8-linux-amd64'},
