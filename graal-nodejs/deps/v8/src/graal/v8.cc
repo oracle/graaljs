@@ -1495,13 +1495,15 @@ namespace v8 {
             env->ExceptionClear();
 
             JNI_CALL(jobject, exception_object, graal_isolate, GraalAccessMethod::try_catch_exception, Object, java_context, java_exception);
-            GraalValue* graal_exception = GraalValue::FromJavaObject(graal_isolate, exception_object);
 
             // Restore the original pending exception (unless we managed
             // to generate a new one from the call above already)
-            if (!env->ExceptionCheck()) {
+            if (env->ExceptionCheck()) {
+                exception_object = env->ExceptionOccurred();
+            } else {
                 env->Throw(java_exception);
             }
+            GraalValue* graal_exception = GraalValue::FromJavaObject(graal_isolate, exception_object);
             return reinterpret_cast<Value*> (graal_exception);
         } else {
             return Local<Value>();
@@ -2202,7 +2204,7 @@ namespace v8 {
         const GraalMessage* graal_message = reinterpret_cast<const GraalMessage*> (this);
         Isolate* isolate = reinterpret_cast<Isolate*> (graal_message->Isolate());
         Local<Integer> zero = Integer::New(isolate, 0);
-        return ScriptOrigin(Local<Value>(), zero, zero);
+        return ScriptOrigin(String::NewFromUtf8(isolate, "unknown"), zero, zero);
     }
 
     class DefaultArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
