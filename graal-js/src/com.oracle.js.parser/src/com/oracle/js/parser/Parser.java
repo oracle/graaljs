@@ -2996,7 +2996,7 @@ public class Parser extends AbstractParser {
 
                 // Get CASE body.
                 List<Statement> statements = caseStatementList();
-                final CaseNode caseNode = new CaseNode(caseToken, finish, caseExpression, statements);
+                final CaseNode caseNode = new CaseNode(caseToken, caseExpression.getFinish(), caseExpression, statements);
 
                 if (caseExpression == null) {
                     assert defaultCaseIndex == -1;
