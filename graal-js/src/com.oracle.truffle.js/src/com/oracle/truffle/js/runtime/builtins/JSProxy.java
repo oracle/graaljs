@@ -49,7 +49,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -842,12 +841,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             throw Errors.createTypeErrorNotAnObject(result);
         }
         return result;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return JSForeignAccessFactoryForeign.ACCESS;
     }
 
     @Override
