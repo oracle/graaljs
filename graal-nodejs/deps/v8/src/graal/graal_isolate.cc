@@ -488,9 +488,9 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
     GraalIsolate* isolate;
     if (placement == nullptr) {
-        isolate = new GraalIsolate(jvm, env);
+        isolate = new GraalIsolate(jvm, env, params);
     } else {
-        isolate = new(placement) GraalIsolate(jvm, env);
+        isolate = new(placement) GraalIsolate(jvm, env, params);
     }
 
     isolate->main_ = spawn_jvm;
@@ -503,7 +503,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
 #undef access
 
-GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(),
+GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams const& params) : function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(),
     message_listener_(nullptr), function_template_count_(0), promise_hook_(nullptr), promise_reject_callback_(nullptr), import_meta_initializer(nullptr), import_module_dynamically(nullptr) {
 
 #ifdef __POSIX__
@@ -891,6 +891,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
 
     sending_message_ = false;
     abort_on_uncaught_exception_callback_ = nullptr;
+    array_buffer_allocator_ = params.array_buffer_allocator;
     try_catch_count_ = 0;
     stack_check_enabled_ = false;
     error_to_ignore_ = nullptr;
@@ -1435,4 +1436,8 @@ void GraalIsolate::EnqueueMicrotask(v8::Local<v8::Function> microtask) {
     GraalFunction* graal_microtask = reinterpret_cast<GraalFunction*> (*microtask);
     jobject java_microtask = graal_microtask->GetJavaObject();
     JNI_CALL_VOID(this, GraalAccessMethod::isolate_enqueue_microtask, java_microtask);
+}
+
+v8::ArrayBuffer::Allocator* GraalIsolate::GetArrayBufferAllocator() {
+    return array_buffer_allocator_;
 }

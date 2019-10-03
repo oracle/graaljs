@@ -353,7 +353,7 @@ enum class GraalAccessField {
 
 class GraalIsolate {
 public:
-    GraalIsolate(JavaVM* jvm, JNIEnv* env);
+    GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams const& params);
     v8::Local<v8::Value> ThrowException(v8::Local<v8::Value> exception);
     bool AddMessageListener(v8::MessageCallback callback, v8::Local<v8::Value> data);
     void NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
@@ -589,6 +589,7 @@ public:
 
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
     void Externalize(jobject java_buffer);
+    v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
 
     static void SetFlags(int argc, char** argv) {
         if (GraalIsolate::argv != nullptr) {
@@ -659,6 +660,7 @@ private:
     v8::MessageCallback message_listener_;
     bool sending_message_;
     v8::Isolate::AbortOnUncaughtExceptionCallback abort_on_uncaught_exception_callback_;
+    v8::ArrayBuffer::Allocator* array_buffer_allocator_;
     int try_catch_count_;
     int function_template_count_;
     bool stack_check_enabled_;

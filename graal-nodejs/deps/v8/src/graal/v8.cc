@@ -3054,8 +3054,7 @@ namespace v8 {
     }
 
     ArrayBuffer::Allocator* Isolate::GetArrayBufferAllocator() {
-        TRACE
-        return new DefaultArrayBufferAllocator(); // PENDING do not create a new instance
+        return reinterpret_cast<GraalIsolate*> (this)->GetArrayBufferAllocator();
     }
 
     void Isolate::SetPrepareStackTraceCallback(PrepareStackTraceCallback callback) {
