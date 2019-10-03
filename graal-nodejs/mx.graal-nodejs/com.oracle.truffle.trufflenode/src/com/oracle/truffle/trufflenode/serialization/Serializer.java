@@ -229,7 +229,7 @@ public class Serializer {
             String message = (callable ? "[object Function]" : "[object Object]") + " could not be cloned.";
             NativeAccess.throwDataCloneError(delegate, message);
         } else if (JSFunction.isJSFunction(object)) {
-            NativeAccess.throwDataCloneError(delegate, JSRuntime.safeToString(object) + " could not be cloned");
+            NativeAccess.throwDataCloneError(delegate, JSRuntime.safeToString(object) + " could not be cloned.");
         } else if (JSObject.isJSObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
             if (GraalJSAccess.internalFieldCount(dynamicObject) == 0) {
