@@ -43,6 +43,7 @@ const expectedModules = new Set([
   'NativeModule internal/errors',
   'NativeModule internal/fixed_queue',
   'NativeModule internal/fs/utils',
+  'NativeModule internal/graal/buffer',
   'NativeModule internal/idna',
   'NativeModule internal/linkedlist',
   'NativeModule internal/modules/cjs/helpers',
