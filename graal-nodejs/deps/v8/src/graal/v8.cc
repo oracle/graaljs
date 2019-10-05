@@ -1923,12 +1923,14 @@ namespace v8 {
             return false;
         }
         const char* names[] = {
+            "read_only_space",
             "new_space",
             "old_space",
             "code_space",
             "map_space",
             "large_object_space",
-            "read_only_space"
+            "code_large_object_space",
+            "new_large_object_space"
         };
         space_statistics->space_name_ = names[index];
         space_statistics->space_size_ = 0;
@@ -1939,7 +1941,7 @@ namespace v8 {
     }
 
     size_t Isolate::NumberOfHeapSpaces() {
-        return 6;
+        return 8;
     }
 
     Local<AccessorSignature> AccessorSignature::New(Isolate* isolate, Local<FunctionTemplate> receiver) {
