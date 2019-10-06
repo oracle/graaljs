@@ -2500,12 +2500,16 @@ public final class GraalJSAccess {
         JSHashMap.Cursor cursor = (JSHashMap.Cursor) dynamicObject.get(JSRuntime.ITERATOR_NEXT_INDEX);
         if (cursor != null) {
             Object kindObject = dynamicObject.get(JSMap.MAP_ITERATION_KIND_ID);
-            int kind = kindObject == null ? JSRuntime.ITERATION_KIND_KEY : ((Number) kindObject).intValue();
+            boolean isSet = (kindObject == null);
+            if (isSet) {
+                kindObject = dynamicObject.get(JSSet.SET_ITERATION_KIND_ID);
+            }
+            int kind = ((Number) kindObject).intValue();
             cursor = cursor.copy();
             List<Object> entries = new ArrayList<>();
             while (cursor.advance()) {
                 Object key = cursor.getKey();
-                Object value = cursor.getValue();
+                Object value = isSet ? key : cursor.getValue();
                 if (kind == JSRuntime.ITERATION_KIND_KEY) {
                     entries.add(key);
                 } else if (kind == JSRuntime.ITERATION_KIND_VALUE) {
@@ -2522,6 +2526,8 @@ public final class GraalJSAccess {
         }
         if (JSWeakMap.isJSWeakMap(object) || JSWeakSet.isJSWeakSet(object)) {
             // Implementation of these collections does not allow to preview entries
+            resetSharedBuffer();
+            sharedBuffer.putInt(0);
             return JSArray.createConstantEmptyArray(context);
         }
         return null;
