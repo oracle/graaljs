@@ -894,7 +894,7 @@ public final class GraalJSAccess {
     }
 
     public String objectGetConstructorName(Object object) {
-        String name = "";
+        String name = "Object";
         if (object instanceof DynamicObject) {
             DynamicObject dynamicObject = (DynamicObject) object;
             Object constructor = JSObject.get(dynamicObject, JSObject.CONSTRUCTOR);
