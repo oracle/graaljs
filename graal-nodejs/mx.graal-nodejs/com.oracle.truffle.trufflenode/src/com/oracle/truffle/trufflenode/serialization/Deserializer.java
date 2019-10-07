@@ -70,6 +70,8 @@ import com.oracle.truffle.trufflenode.NativeAccess;
 import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
 import com.oracle.truffle.trufflenode.threading.SharedMemMessagingManager;
 
+import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
+
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -495,7 +497,7 @@ public class Deserializer {
 
     public int readBytes(int length) {
         int position = buffer.position();
-        buffer.position(position + length);
+        asBaseBuffer(buffer).position(position + length);
         return position;
     }
 

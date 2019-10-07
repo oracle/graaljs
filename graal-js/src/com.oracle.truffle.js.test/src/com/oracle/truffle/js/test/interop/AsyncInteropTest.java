@@ -41,38 +41,208 @@
 package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
 
 public class AsyncInteropTest {
 
+    /**
+     * A Java object with a method called 'then' can be used as thenable.
+     */
+    @Test
+    public void testJavaThenable() {
+        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
+        TestOutput out = new TestOutput();
+        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+            Thenable then2 = (resolve, reject) -> resolve.executeVoid(42);
+            Thenable then1 = (resolve, reject) -> resolve.executeVoid(then2);
+            context.getBindings(ID).putMember("myJavaThenable", then1);
+            Value asyncFn = context.eval(ID, "" +
+                            "(async function () {" +
+                            "  let x = await myJavaThenable;" +
+                            "  console.log(x);" +
+                            "})");
+            asyncFn.executeVoid();
+        }
+        assertEquals("42\n", out.toString());
+    }
+
+    /**
+     * Java functions can be used as functions in `then`.
+     */
+    @Test
+    public void testPromiseJavaThen() {
+        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
+        TestOutput out = new TestOutput();
+        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+            Value asyncFn = context.eval(ID, "" +
+                            "(async function () {" +
+                            "  return await 42;" +
+                            "})");
+            Value jsPromise = asyncFn.execute();
+            Consumer<Object> then = (value) -> out.write("Resolved from Java: " + value);
+            Consumer<Object> catchy = (value) -> out.write("Promise failed!" + value);
+            jsPromise.invokeMember("then", then).invokeMember("catch", catchy);
+        }
+        assertEquals("Resolved from Java: 42", out.toString());
+    }
+
+    /**
+     * Java functions can be used as functions in `catch`.
+     */
+    @Test
+    public void testPromiseJavaCatch() {
+        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
+        TestOutput out = new TestOutput();
+        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+            Value asyncFn = context.eval(ID, "" +
+                            "(async function () {" +
+                            "  throw 42;" +
+                            "})");
+            Value promise = asyncFn.execute();
+            Consumer<Object> then = (value) -> out.write("Resolved from Java: " + value);
+            Consumer<Object> catchy = (value) -> out.write("Promise failed: " + value);
+            promise.invokeMember("then", then).invokeMember("catch", catchy);
+        }
+        assertEquals("Promise failed: 42", out.toString());
+    }
+
+    /**
+     * Wait on a Java Completable future and resume JS execution when it completes.
+     */
+    @Test
+    public void testJavaCompletableFutureToPromise() {
+        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
+        TestOutput out = new TestOutput();
+        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+            CompletableFuture<String> javaFuture = new CompletableFuture<>();
+            // Wrap Java future in a JS Promise
+            Value jsPromise = wrapPromise(context, javaFuture);
+            context.getBindings(ID).putMember("myJsPromise", jsPromise);
+            Value asyncFn = context.eval(ID, "" +
+                            "(async function () {" +
+                            "  console.log('pausing...');" +
+                            "  var foo = await myJsPromise;" +
+                            "  console.log('resumed with value ' + foo);" +
+                            "})");
+            assertEquals("", out.toString());
+            asyncFn.execute();
+            assertEquals("pausing...\n", out.toString());
+            javaFuture.complete("from Java");
+            assertEquals("pausing...\nresumed with value from Java\n", out.toString());
+        }
+    }
+
+    /**
+     * Chain JS and Java reactions.
+     */
+    @Test
+    public void testChainReactions() {
+        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
+        TestOutput out = new TestOutput();
+        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+            Function<Integer, Integer> incJava = i -> i + 1;
+            Consumer<Object> print = (value) -> out.write("Final result: " + value);
+            context.getBindings(ID).putMember("incJava", incJava);
+            Value jsPromise = context.eval(ID, "var incJs = (x) => x + 1;" +
+                            "async function foo(val) {" +
+                            "  return val + 1;" +
+                            "};" +
+                            "foo(41).then(incJava).then(incJs);");
+            assertEquals("", out.toString());
+            jsPromise.invokeMember("then", incJava).invokeMember("then", print);
+            assertEquals("Final result: 45", out.toString());
+        }
+    }
+
+    /**
+     * Chain CompletableFutures and JS functions.
+     */
+    @Test
+    public void testChainCompletableFuturePromises() throws ExecutionException, InterruptedException {
+        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
+        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+            CompletableFuture<String> javaFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException e) {
+                    assert false;
+                }
+                return "Java";
+            });
+            Value jsFunction = context.eval("js", "(function jsFunction(v) { return v + 'JS'; })");
+            String result = javaFuture.thenCompose(asChainable(jsFunction)).get();
+            assertEquals("JavaJS", result);
+        }
+    }
+
+    private static Function<String, CompletionStage<String>> asChainable(Value jsFunction) {
+        assert jsFunction.canExecute();
+        return v -> {
+            CompletableFuture<String> future = new CompletableFuture<>();
+            try {
+                future.complete(jsFunction.execute(v).asString());
+            } catch (Throwable t) {
+                future.completeExceptionally(t);
+            }
+            return future;
+        };
+    }
+
+    private static Value wrapPromise(Context context, CompletableFuture<String> javaFuture) {
+        Value global = context.getBindings("js");
+        Value promiseConstructor = global.getMember("Promise");
+        return promiseConstructor.newInstance((ProxyExecutable) arguments -> {
+            Value resolve = arguments[0];
+            Value reject = arguments[1];
+            javaFuture.whenComplete((result, ex) -> {
+                if (result != null) {
+                    resolve.execute(result);
+                } else {
+                    reject.execute(ex);
+                }
+            });
+            // return value of function(resolve,reject) is ignored by `new Promise()`.
+            return null;
+        });
+    }
+
     public interface Thenable {
         void then(Value onResolve, Value onReject);
     }
 
-    @Test
-    public void testJavaThenable() {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
-            Thenable then2 = (resolve, reject) -> resolve.executeVoid(42);
-            Thenable then1 = (resolve, reject) -> resolve.executeVoid(then2);
-            context.getBindings(ID).putMember("myThenable", then1);
-            Value asyncFn = context.eval(ID, "" +
-                            "(async function () {\n" +
-                            "  let x = await myThenable;\n" +
-                            "  console.log(x);\n" +
-                            "})");
-            asyncFn.executeVoid();
+    private static class TestOutput extends ByteArrayOutputStream {
+
+        void write(String text) {
+            try {
+                this.write(text.getBytes());
+            } catch (IOException e) {
+                assert false;
+            }
         }
-        assertEquals("42\n", new String(out.toByteArray(), StandardCharsets.UTF_8));
+
+        @Override
+        public synchronized String toString() {
+            return new String(this.toByteArray(), StandardCharsets.UTF_8);
+        }
     }
 }

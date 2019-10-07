@@ -45,6 +45,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
@@ -337,6 +338,24 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
             assertPropertyRead("concat");
             call0.input(assertJSFunctionInput);
         }).exit();
+    }
+
+    @Test
+    public void nestedPropertyReadBuggy() {
+        String src = "let foo = {bar: ()=>foo}; foo.bar(foo.bar).bar();";
+        evalWithTag(src, ReadPropertyTag.class);
+        assertPropertyRead("bar");
+        assertPropertyRead("bar");
+        assertPropertyRead("bar");
+    }
+
+    @Test
+    public void nestedPropertyReadOK() {
+        String src = "let foo = {bar: ()=>foo}; foo.bar(foo.bar).bar();";
+        evalWithTags(src, new Class<?>[]{ReadPropertyTag.class, DeclareTag.class});
+        assertPropertyRead("bar");
+        assertPropertyRead("bar");
+        assertPropertyRead("bar");
     }
 
     private void assertPropertyRead(String key) {

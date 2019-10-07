@@ -4,18 +4,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
-    "filePath" : "annexB/language/function-code/function-redeclaration-block.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "annexB/language/function-code/function-redeclaration-switch.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "annexB/language/statements/try/catch-redeclared-for-of-var.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
     "filePath" : "built-ins/Array/prototype/unshift/length-near-integer-limit.js",
     "status" : "SKIP",
     "comment" : "Long-running test: we iterate to ~2^53."
@@ -1933,21 +1921,6 @@
     },
     "comment" : "Segfaults on SVM, see GR-15064"
   }, {
-    "filePath" : "language/block-scope/syntax/redeclaration/inner-block-var-name-redeclaration-attempt-with-class.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/block-scope/syntax/redeclaration/inner-block-var-name-redeclaration-attempt-with-const.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/block-scope/syntax/redeclaration/inner-block-var-name-redeclaration-attempt-with-let.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/eval-code/direct/new.target-fn.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/eval-code/direct/super-prop-method.js",
     "status" : "FAIL"
   }, {
@@ -2005,9 +1978,6 @@
     "filePath" : "language/expressions/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-meth.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/delete/super-property.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/dynamic-import/usage-from-eval.js",
     "status" : "FAIL",
@@ -2079,43 +2049,13 @@
     "filePath" : "language/expressions/object/scope-setter-body-lex-distinc.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/super/call-proto-not-ctor.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-dot-cls-ref-strict.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/super/prop-dot-cls-val-from-eval.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-dot-obj-ref-non-strict.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-dot-obj-ref-strict.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/super/prop-dot-obj-val-from-eval.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/super/prop-expr-cls-ref-strict.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-expr-cls-ref-this.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-expr-cls-this-uninit.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/expressions/super/prop-expr-cls-val-from-eval.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-expr-obj-ref-non-strict.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-expr-obj-ref-strict.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/super/prop-expr-obj-ref-this.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/super/prop-expr-obj-val-from-eval.js",
@@ -2135,12 +2075,6 @@
     "filePath" : "language/function-code/eval-param-env-with-prop-initializer.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/global-code/new.target-arrow.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "language/import/dup-bound-names.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
     "status" : "FAIL",
     "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode."
@@ -2156,14 +2090,6 @@
     "filePath" : "language/statements/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-meth.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/statements/class/subclass/class-definition-null-proto-super.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/class/super/in-constructor-superproperty-evaluation.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
   }, {
     "filePath" : "language/statements/for-in/head-const-bound-names-fordecl-tdz.js",
     "status" : "FAIL"

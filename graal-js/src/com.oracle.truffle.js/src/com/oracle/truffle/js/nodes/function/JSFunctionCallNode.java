@@ -535,7 +535,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     return this;
                 } else {
                     JavaScriptNode materializedTargetNode = JSInputGeneratingNodeWrapper.create(JSConstantUndefinedNode.createUndefined());
-                    JavaScriptNode call = createCall(functionNode, materializedTargetNode, getArgumentNodes(), isNew(flags), isNewTarget(flags));
+                    JavaScriptNode call = createCall(functionNode, materializedTargetNode, cloneUninitialized(getArgumentNodes()), isNew(flags), isNewTarget(flags));
                     transferSourceSectionAndTags(this, call);
                     return call;
                 }
@@ -732,7 +732,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             if (materializedTags.contains(FunctionCallTag.class) || materializedTags.contains(ReadPropertyTag.class) ||
                             materializedTags.contains(ReadElementTag.class)) {
                 materializeInstrumentableArguments();
-                InvokeNode invoke = (InvokeNode) createInvoke(null, getArgumentNodes(), isNew(flags), isNewTarget(flags));
+                InvokeNode invoke = (InvokeNode) createInvoke(null, cloneUninitialized(getArgumentNodes()), isNew(flags), isNewTarget(flags));
                 JSTargetableNode functionTargetNodeDelegate = getFunctionTargetDelegate();
                 JavaScriptNode target = functionTargetNodeDelegate.getTarget();
                 invoke.targetNode = !target.isInstrumentable() ? JSInputGeneratingNodeWrapper.create(target) : (JavaScriptNode) target.materializeInstrumentableNodes(materializedTags);

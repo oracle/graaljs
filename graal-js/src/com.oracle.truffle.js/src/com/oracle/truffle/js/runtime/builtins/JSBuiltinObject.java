@@ -49,8 +49,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -300,11 +300,17 @@ public abstract class JSBuiltinObject extends JSClass {
             return true;
         }
 
-        if (!JSObject.isExtensible(thisObj)) {
+        DynamicObject receiverObj = (DynamicObject) receiver;
+        if (!JSObject.isExtensible(receiverObj)) {
             if (isStrict) {
-                throw Errors.createTypeErrorNotExtensible(thisObj, name);
+                throw Errors.createTypeErrorNotExtensible(receiverObj, name);
             }
             return true;
+        }
+
+        // OrdinarySet: if property does not exist, set it on the receiver
+        if (receiverObj != thisObj) {
+            return JSObject.defineOwnProperty(receiverObj, name, PropertyDescriptor.createDataDefault(value), isStrict);
         }
 
         if (JSTruffleOptions.DictionaryObject) {
@@ -320,7 +326,8 @@ public abstract class JSBuiltinObject extends JSClass {
         }
 
         // add it here
-        JSObjectUtil.putDataProperty(JSObject.getJSContext(thisObj), thisObj, name, value, JSAttributes.getDefault());
+        JSContext context = JSObject.getJSContext(thisObj);
+        JSObjectUtil.putDataProperty(context, thisObj, name, value, JSAttributes.getDefault());
         return true;
     }
 
@@ -513,12 +520,6 @@ public abstract class JSBuiltinObject extends JSClass {
 
     protected static DynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {
         return JSFunction.create(realm, JSFunctionData.createCallOnly(realm.getContext(), realm.getContext().getSpeciesGetterFunctionCallTarget(), 0, "get [Symbol.species]"));
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public final com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return JSForeignAccessFactoryForeign.ACCESS;
     }
 
     @Override

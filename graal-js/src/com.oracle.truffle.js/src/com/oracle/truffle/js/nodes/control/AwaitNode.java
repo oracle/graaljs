@@ -45,15 +45,20 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
+import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSMaterializedInvokeTargetableNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
@@ -70,6 +75,8 @@ import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import java.util.Set;
+
 public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
     @Child protected JavaScriptNode expression;
@@ -83,6 +90,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     @Child private PropertySetNode setAsyncContextNode;
     @Child private PropertySetNode setAsyncTargetNode;
     @Child private PropertySetNode setAsyncGeneratorNode;
+    @Child private JSTargetableNode materializedInputNode;
     protected final JSContext context;
     private final ConditionProfile asyncTypeProf = ConditionProfile.createBinaryProfile();
     private final ConditionProfile resumptionTypeProf = ConditionProfile.createBinaryProfile();
@@ -92,6 +100,10 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     static final HiddenKey ASYNC_GENERATOR = new HiddenKey("AsyncGenerator");
 
     protected AwaitNode(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode) {
+        this(context, expression, readAsyncContextNode, readAsyncResultNode, null);
+    }
+
+    private AwaitNode(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode, JSTargetableNode materializedInputNode) {
         this.context = context;
         this.expression = expression;
         this.readAsyncResultNode = readAsyncResultNode;
@@ -107,16 +119,40 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         } else {
             this.callPromiseResolveNode = JSFunctionCallNode.createCall();
         }
+        this.materializedInputNode = materializedInputNode;
     }
 
     public static AwaitNode create(JSContext context, JavaScriptNode expression, JSReadFrameSlotNode readAsyncContextNode, JSReadFrameSlotNode readAsyncResultNode) {
-        return new AwaitNode(context, expression, readAsyncContextNode, readAsyncResultNode);
+        return new AwaitNode(context, expression, readAsyncContextNode, readAsyncResultNode, null);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         Object value = expression.execute(frame);
         return suspendAwait(frame, value);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSTags.ControlFlowBranchTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializationNeeded() && materializedTags.contains(JSTags.ControlFlowBranchTag.class)) {
+            JSTargetableNode materializedInput = JSMaterializedInvokeTargetableNode.EchoTargetValueNode.create();
+            AwaitNode materialized = new AwaitNode(context, expression, readAsyncContextNode, readAsyncResultNode, materializedInput);
+            transferSourceSection(this, materialized);
+            return materialized;
+        }
+        return this;
+    }
+
+    private boolean materializationNeeded() {
+        return this.materializedInputNode == null && getClass() == AwaitNode.class;
     }
 
     protected final Object suspendAwait(VirtualFrame frame, Object value) {
@@ -136,6 +172,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
         PromiseCapabilityRecord throwawayCapability = newThrowawayCapability();
 
         context.notifyPromiseHook(-1 /* parent info */, promise);
+        if (materializedInputNode != null) {
+            materializedInputNode.executeWithTarget(frame, promise);
+        }
         performPromiseThenNode.execute(promise, onFulfilled, onRejected, throwawayCapability);
         throw YieldException.AWAIT_NULL; // value is ignored
     }
@@ -165,6 +204,11 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     }
 
     @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("type", JSTags.ControlFlowBranchTag.Type.Await.name());
+    }
+
+    @Override
     public Object resume(VirtualFrame frame) {
         int index = getStateAsInt(frame);
         if (index == 0) {
@@ -180,6 +224,9 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
     protected Object resumeAwait(VirtualFrame frame) {
         // We have been restored at this point. The frame contains the resumption state.
         Completion result = (Completion) readAsyncResultNode.execute(frame);
+        if (materializedInputNode != null) {
+            materializedInputNode.executeWithTarget(frame, result.getValue());
+        }
         if (resumptionTypeProf.profile(result.isNormal())) {
             return result.getValue();
         } else {

@@ -177,17 +177,6 @@ public class LexicalContext {
     }
 
     /**
-     * Get the parent block for the current lexical context block
-     *
-     * @return parent block
-     */
-    public Block getParentBlock() {
-        final Iterator<Block> iter = new NodeIterator<>(Block.class, getCurrentFunction());
-        iter.next();
-        return iter.hasNext() ? iter.next() : null;
-    }
-
-    /**
      * @return the innermost block in the context.
      */
     public Block getCurrentBlock() {
@@ -206,34 +195,23 @@ public class LexicalContext {
         return null;
     }
 
-    /**
-     * Checks whether the current context is inside a switch statement without explicit blocks
-     * (curly braces).
-     *
-     * @return {@code true} if in unprotected switch statement.
-     */
-    public boolean inUnprotectedSwitchContext() {
-        for (int i = sp - 1; i > 0; i--) {
-            final LexicalContextNode next = stack[i];
-            if (next instanceof Block) {
-                break;
-            }
-            if (next instanceof SwitchNode) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public FunctionNode getCurrentNonArrowFunction() {
         final Iterator<FunctionNode> iter = getFunctions();
         while (iter.hasNext()) {
             final FunctionNode fn = iter.next();
-            if (fn.getKind() != FunctionNode.Kind.ARROW) {
+            if (!fn.isArrow()) {
                 return fn;
             }
         }
         return null;
+    }
+
+    /**
+     * Returns the innermost scope in the context.
+     */
+    public Scope getCurrentScope() {
+        NodeIterator<LexicalContextScope> iterator = new NodeIterator<>(LexicalContextScope.class);
+        return iterator.hasNext() ? iterator.next().getScope() : null;
     }
 
     @Override

@@ -1596,7 +1596,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
         }
 
-        @Specialization(guards = "!isByteBuffer(length)")
+        protected boolean isHostByteBuffer(Object buffer) {
+            return getContext().getRealm().getEnv().isHostObject(buffer);
+        }
+
+        @Specialization(guards = {"!isByteBuffer(length)", "!isHostByteBuffer(length)"})
         protected DynamicObject constructFromLength(DynamicObject newTarget, Object length,
                         @Cached("create()") JSToIndexNode toIndexNode) {
             long byteLength = toIndexNode.executeLong(length);
@@ -1627,10 +1631,22 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return arrayBuffer;
         }
 
-        @Specialization(guards = "isByteBuffer(buffer)")
-        protected DynamicObject constructFromByteBuffer(DynamicObject newTarget, Object buffer) {
-            ByteBuffer byteBuffer = (ByteBuffer) buffer;
-            return swapPrototype(JSArrayBuffer.createArrayBuffer(getContext(), byteBuffer.array()), newTarget);
+        @Specialization(guards = "isHostByteBuffer(buffer)")
+        protected DynamicObject constructFromHostByteBuffer(DynamicObject newTarget, Object buffer,
+                        @Cached("create()") BranchProfile errorBranch,
+                        @Cached("createBinaryProfile()") ConditionProfile isDirect) {
+            Object maybeBuffer = getContext().getRealm().getEnv().asHostObject(buffer);
+            if (maybeBuffer instanceof ByteBuffer) {
+                ByteBuffer byteBuffer = (ByteBuffer) maybeBuffer;
+                if (isDirect.profile(byteBuffer.isDirect())) {
+                    return swapPrototype(JSArrayBuffer.createDirectArrayBuffer(getContext(), byteBuffer), newTarget);
+                } else {
+                    return swapPrototype(JSArrayBuffer.createArrayBuffer(getContext(), byteBuffer.array()), newTarget);
+                }
+            } else {
+                errorBranch.enter();
+                throw Errors.createTypeError("Unsupported input data type");
+            }
         }
 
         @Override

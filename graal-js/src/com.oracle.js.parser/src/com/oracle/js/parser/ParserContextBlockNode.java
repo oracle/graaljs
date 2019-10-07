@@ -40,20 +40,25 @@
  */
 package com.oracle.js.parser;
 
+import com.oracle.js.parser.ir.Scope;
+
 /**
  * A ParserContextNode that represents a block that is currently being parsed
  */
-class ParserContextBlockNode extends ParserContextBaseNode implements ParserContextBreakableNode {
+class ParserContextBlockNode extends ParserContextBaseNode implements ParserContextBreakableNode, ParserContextScopableNode {
 
     private final long token;
+    private Scope scope;
 
     /**
      * Constructs a ParserContextBlockNode
      *
      * @param token The first token of the block
+     * @param scope The block's scope.
      */
-    ParserContextBlockNode(final long token) {
+    ParserContextBlockNode(final long token, Scope scope) {
         this.token = token;
+        this.scope = scope;
     }
 
     @Override
@@ -68,6 +73,15 @@ class ParserContextBlockNode extends ParserContextBaseNode implements ParserCont
      */
     public long getToken() {
         return token;
+    }
+
+    @Override
+    public Scope getScope() {
+        return scope;
+    }
+
+    public void setScope(Scope scope) {
+        this.scope = scope;
     }
 
 }

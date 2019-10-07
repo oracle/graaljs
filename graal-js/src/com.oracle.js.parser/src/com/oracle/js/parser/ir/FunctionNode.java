@@ -55,24 +55,6 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
  */
 public final class FunctionNode extends LexicalContextExpression implements Flags<FunctionNode> {
 
-    /** Function kinds */
-    public enum Kind {
-        /** a normal function - nothing special */
-        NORMAL,
-        /** a script function */
-        SCRIPT,
-        /** a getter function */
-        GETTER,
-        /** a setter function */
-        SETTER,
-        /** an arrow function */
-        ARROW,
-        /** a generator function */
-        GENERATOR,
-        /** a module function */
-        MODULE,
-    }
-
     /** Source of entity. */
     private final Source source;
 
@@ -90,9 +72,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /** Internal function name. */
     private final String name;
-
-    /** Function kind. */
-    private final Kind kind;
 
     /** List of parameters. */
     private final List<IdentNode> parameters;
@@ -117,7 +96,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     private final Module module;
 
-    private boolean analyzed;
     private boolean usesAncestorScope;
 
     /** Is anonymous function flag. */
@@ -131,6 +109,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /** Does the function use the "arguments" identifier ? */
     public static final int USES_ARGUMENTS = 1 << 3;
+
+    /** Is it a statement? */
+    public static final int IS_STATEMENT = 1 << 4;
 
     /**
      * Does the function call eval? If it does, then all variables in this function might be get/set
@@ -166,11 +147,14 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      */
     public static final int USES_ANCESTOR_SCOPE = 1 << 9;
 
-    /** Does this function have nested declarations? */
-    public static final int HAS_FUNCTION_DECLARATIONS = 1 << 10;
+    /** A script function */
+    public static final int IS_SCRIPT = 1 << 10;
 
-    /** Are we vararg, but do we just pass the arguments along to apply or call */
-    public static final int HAS_APPLY_TO_CALL_SPECIALIZATION = 1 << 12;
+    /** A getter function */
+    public static final int IS_GETTER = 1 << 11;
+
+    /** A setter function */
+    public static final int IS_SETTER = 1 << 12;
 
     /**
      * Is this function the top-level program?
@@ -203,6 +187,12 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      */
     public static final int NEEDS_PARENT_SCOPE = USES_ANCESTOR_SCOPE | HAS_DEEP_EVAL | IS_PROGRAM;
 
+    /** An arrow function */
+    public static final int IS_ARROW = 1 << 16;
+
+    /** A module function */
+    public static final int IS_MODULE = 1 << 17;
+
     /**
      * Does this function contain a super call? (cf. ES6 14.3.5 Static Semantics: HasDirectSuper)
      */
@@ -223,14 +213,23 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Does this function use new.target? */
     public static final int USES_NEW_TARGET = 1 << 23;
 
-    /** Is it a statement? */
-    public static final int IS_STATEMENT = 1 << 24;
+    /** A generator function */
+    public static final int IS_GENERATOR = 1 << 24;
 
     /** Is it an async function? */
     public static final int IS_ASYNC = 1 << 25;
 
     /** Flag indicating that this function has a non-simple parameter list. */
     public static final int HAS_NON_SIMPLE_PARAMETER_LIST = 1 << 26;
+
+    /** Flag indicating that this non-arrow function has an eval nested in an arrow function. */
+    public static final int HAS_ARROW_EVAL = 1 << 27;
+
+    /** Does this function have nested declarations? */
+    public static final int HAS_FUNCTION_DECLARATIONS = 1 << 28;
+
+    /** Does this function contain a {@code fn.apply(_, arguments)} call? */
+    public static final int HAS_APPLY_ARGUMENTS_CALL = 1 << 29;
 
     /**
      * Constructor
@@ -244,7 +243,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      * @param ident the identifier
      * @param name the name of the function
      * @param parameters parameter list
-     * @param kind kind of function as in {@link FunctionNode.Kind}
      * @param flags initial flags
      * @param body body of the function
      * @param endParserState The parser state at the end of the parsing.
@@ -261,7 +259,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
                     final int length,
                     final int numOfParams,
                     final List<IdentNode> parameters,
-                    final FunctionNode.Kind kind,
                     final int flags,
                     final Block body,
                     final Object endParserState,
@@ -272,7 +269,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.lineNumber = lineNumber;
         this.ident = ident;
         this.name = name;
-        this.kind = kind;
         this.length = length;
         this.numOfParams = numOfParams;
         this.parameters = parameters;
@@ -306,7 +302,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
         // the fields below never change - they are final and assigned in constructor
         this.ident = functionNode.ident;
-        this.kind = functionNode.kind;
         this.firstToken = functionNode.firstToken;
         this.length = functionNode.length;
         this.numOfParams = functionNode.numOfParams;
@@ -553,16 +548,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     }
 
     /**
-     * Return the kind of this function
-     *
-     * @see FunctionNode.Kind
-     * @return the kind
-     */
-    public Kind getKind() {
-        return kind;
-    }
-
-    /**
      * Return the last token for this function's code
      *
      * @return last token
@@ -677,8 +662,28 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         return getFlag(USES_NEW_TARGET);
     }
 
+    public boolean isScript() {
+        return getFlag(IS_SCRIPT);
+    }
+
+    public boolean isGetter() {
+        return getFlag(IS_GETTER);
+    }
+
+    public boolean isSetter() {
+        return getFlag(IS_SETTER);
+    }
+
+    public boolean isArrow() {
+        return getFlag(IS_ARROW);
+    }
+
+    public boolean isGenerator() {
+        return getFlag(IS_GENERATOR);
+    }
+
     public boolean isModule() {
-        return kind == Kind.MODULE;
+        return getFlag(IS_MODULE);
     }
 
     public Module getModule() {
@@ -697,14 +702,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         return !getFlag(HAS_NON_SIMPLE_PARAMETER_LIST);
     }
 
-    public boolean isAnalyzed() {
-        return analyzed;
-    }
-
-    public void setAnalyzed(boolean analyzed) {
-        this.analyzed = analyzed;
-    }
-
     public boolean usesAncestorScope() {
         return usesAncestorScope;
     }
@@ -713,7 +710,27 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         this.usesAncestorScope = usesAncestorScope;
     }
 
+    public boolean isNormal() {
+        return !getFlag(IS_SCRIPT | IS_MODULE | IS_GETTER | IS_SETTER | IS_METHOD | IS_ARROW | IS_GENERATOR | IS_ASYNC);
+    }
+
     boolean isFunctionDeclaration() {
-        return isDeclared() && kind == FunctionNode.Kind.NORMAL && !isAsync();
+        return isDeclared() && isNormal();
+    }
+
+    public boolean hasApplyArgumentsCall() {
+        return getFlag(HAS_APPLY_ARGUMENTS_CALL);
+    }
+
+    public boolean hasArrowEval() {
+        return getFlag(HAS_ARROW_EVAL);
+    }
+
+    public boolean needsThis() {
+        return usesThis() || (hasEval() || hasArrowEval());
+    }
+
+    public boolean needsNewTarget() {
+        return usesNewTarget() || (!isArrow() && !isProgram() && ((hasEval() || hasArrowEval())));
     }
 }

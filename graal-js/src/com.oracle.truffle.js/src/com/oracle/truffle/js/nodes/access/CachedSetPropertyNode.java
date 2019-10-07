@@ -65,74 +65,76 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     protected final JSContext context;
     protected final boolean strict;
     protected final boolean setOwn;
+    protected final boolean superProperty;
 
-    CachedSetPropertyNode(JSContext context, boolean strict, boolean setOwn) {
+    CachedSetPropertyNode(JSContext context, boolean strict, boolean setOwn, boolean superProperty) {
         this.context = context;
         this.strict = strict;
         this.setOwn = setOwn;
+        this.superProperty = superProperty;
     }
 
-    public abstract void execute(DynamicObject target, Object propertyKey, Object value);
+    public abstract void execute(DynamicObject target, Object propertyKey, Object value, Object receiver);
 
-    static CachedSetPropertyNode create(JSContext context, boolean strict, boolean setOwn) {
-        return CachedSetPropertyNodeGen.create(context, strict, setOwn);
+    static CachedSetPropertyNode create(JSContext context, boolean strict, boolean setOwn, boolean superProperty) {
+        return CachedSetPropertyNodeGen.create(context, strict, setOwn, superProperty);
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedKey != null", "!isArrayIndex(cachedKey)", "propertyKeyEquals(cachedKey, key)"}, limit = "MAX_DEPTH")
-    void doCachedKey(DynamicObject target, Object key, Object value,
+    void doCachedKey(DynamicObject target, Object key, Object value, Object receiver,
                     @Cached("cachedPropertyKey(key)") Object cachedKey,
                     @Cached("createSet(cachedKey)") PropertySetNode propertyNode) {
-        propertyNode.setValue(target, value);
+        propertyNode.setValue(target, value, receiver);
     }
 
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
-    void doIntIndex(DynamicObject target, int index, Object value,
+    void doIntIndex(DynamicObject target, int index, Object value, Object receiver,
                     @Cached("create()") JSClassProfile jsclassProfile) {
-        doArrayIndexLong(target, index, value, jsclassProfile.getJSClass(target));
+        doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
     }
 
     @Specialization(guards = {"toArrayIndexNode.isArrayIndex(key)", "!isJSProxy(target)"}, replaces = {"doIntIndex"})
-    void doArrayIndex(DynamicObject target, Object key, Object value,
+    void doArrayIndex(DynamicObject target, Object key, Object value, Object receiver,
                     @Cached("createNoToPropertyKey()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         long index = (long) toArrayIndexNode.execute(key);
-        doArrayIndexLong(target, index, value, jsclassProfile.getJSClass(target));
+        doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
     }
 
-    private void doArrayIndexLong(DynamicObject target, long index, Object value, JSClass jsclass) {
+    private void doArrayIndexLong(DynamicObject target, long index, Object value, Object receiver, JSClass jsclass) {
         if (setOwn) {
             createDataPropertyOrThrow(target, Boundaries.stringValueOf(index), value);
         } else {
-            jsclass.set(target, index, value, target, strict);
+            jsclass.set(target, index, value, receiver, strict);
         }
     }
 
     @Specialization(guards = {"isJSProxy(target)"})
-    void doProxy(DynamicObject target, Object index, Object value,
+    void doProxy(DynamicObject target, Object index, Object value, Object receiver,
                     @Cached("create(context, strict)") JSProxyPropertySetNode proxySet) {
         if (setOwn) {
             createDataPropertyOrThrow(target, proxySet.toPropertyKey(index), value);
         } else {
-            proxySet.executeWithReceiverAndValue(target, target, value, index);
+            proxySet.executeWithReceiverAndValue(target, receiver, value, index);
         }
     }
 
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
-    void doGeneric(DynamicObject target, Object key, Object value,
+    void doGeneric(DynamicObject target, Object key, Object value, Object receiver,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile getType,
                     @Cached("create()") JSClassProfile jsclassProfile) {
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(arrayIndex instanceof Long)) {
             long index = (long) arrayIndex;
-            doArrayIndexLong(target, index, value, jsclassProfile.getJSClass(target));
+            doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
         } else {
             assert JSRuntime.isPropertyKey(arrayIndex);
             if (setOwn) {
                 createDataPropertyOrThrow(target, arrayIndex, value);
             } else {
-                JSObject.set(target, arrayIndex, value, strict, jsclassProfile);
+                JSObject.setWithReceiver(target, arrayIndex, value, receiver, strict, jsclassProfile);
             }
         }
     }
@@ -142,6 +144,6 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     }
 
     PropertySetNode createSet(Object key) {
-        return PropertySetNode.createImpl(key, false, context, strict, setOwn, JSAttributes.getDefault());
+        return PropertySetNode.createImpl(key, false, context, strict, setOwn, JSAttributes.getDefault(), false, superProperty);
     }
 }

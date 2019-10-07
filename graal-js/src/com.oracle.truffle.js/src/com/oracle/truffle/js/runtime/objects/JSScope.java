@@ -85,6 +85,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.truffleinterop.InteropList;
 
@@ -359,7 +360,8 @@ public abstract class JSScope {
         protected JSFunctionScope(Node node, MaterializedFrame frame) {
             super(node, getFunctionFrame(frame));
             this.rootNode = findRootNode(node);
-            assert frame == null || rootNode == null || frame.getFrameDescriptor() == rootNode.getFrameDescriptor();
+            assert frame == null || rootNode == null || (rootNode instanceof JavaScriptRootNode && ((JavaScriptRootNode) rootNode).isResumption()) ||
+                            frame.getFrameDescriptor() == rootNode.getFrameDescriptor();
         }
 
         private static MaterializedFrame getFunctionFrame(MaterializedFrame frame) {

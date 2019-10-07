@@ -612,7 +612,7 @@ describe('Value - *Value()', function () {
             assert.strictEqual(module.Value_NumberValuePendingException(true), 1);
         });
     });
-    describe('BooleanValue', function () {
+    describe('BooleanValue()', function () {
         it('should return false for undefined', function () {
             assert.strictEqual(module.Value_BooleanValue(undefined), false);
         });
@@ -655,7 +655,7 @@ describe('Value - *Value()', function () {
             assert.strictEqual(module.Value_BooleanValueContext(true), true);
         });
         it('should return false for false', function () {
-            assert.strictEqual(module.Value_BooleanValue(false), false);
+            assert.strictEqual(module.Value_BooleanValueContext(false), false);
         });
         it('should return false for {}', function () {
             assert.strictEqual(isNaN(module.Value_BooleanValueContext({})), false);

@@ -193,7 +193,11 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
      * <code>executeWithTarget()</code>.
      *
      */
-    private static class EchoTargetValueNode extends JSTargetableNode {
+    public static class EchoTargetValueNode extends JSTargetableNode {
+
+        public static JSTargetableNode create() {
+            return new EchoTargetValueNode();
+        }
 
         @Override
         public Object executeWithTarget(VirtualFrame frame, Object target) {

@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -67,7 +66,7 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
     public abstract Object execute(TruffleObject target, Object value);
 
     protected final WritePropertyNode createWritePropertyNode() {
-        return NodeFactory.getInstance(context).createWriteProperty(null, JSArray.LENGTH, null, context, isStrict);
+        return WritePropertyNode.create(null, JSArray.LENGTH, null, context, isStrict);
     }
 
     protected static boolean isArray(TruffleObject object) {

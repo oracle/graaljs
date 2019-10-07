@@ -66,11 +66,13 @@ public final class SuperPropertyReferenceNode extends JSTargetableNode implement
 
     @Override
     public Object executeWithTarget(VirtualFrame frame, Object target) {
-        return baseValueNode.execute(frame);
+        return execute(frame);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
+        // GetThisBinding() must be evaluated first: may throw a ReferenceError.
+        thisValueNode.executeVoid(frame);
         return baseValueNode.execute(frame);
     }
 

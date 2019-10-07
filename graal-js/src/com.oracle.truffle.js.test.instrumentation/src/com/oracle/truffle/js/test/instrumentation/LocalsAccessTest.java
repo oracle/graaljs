@@ -42,8 +42,11 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
@@ -136,7 +139,11 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
                 var.input(42);
             }).exit();
             // return statement
-            enter(ReadVariableTag.class).exit();
+            enter(ControlFlowBranchTag.class, (e4, v) -> {
+                assertAttribute(e4, TYPE, ControlFlowBranchTag.Type.Return.name());
+                enter(ReadVariableTag.class).exit();
+                v.input(42);
+            }).exitMaybeControlFlowException();
         }).exit();
     }
 
@@ -162,7 +169,12 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
                 var.input(42);
             }).exit();
             // return statement
-            enter(ReadVariableTag.class).exit();
+            enter(ControlFlowBranchTag.class, (e4, v) -> {
+                assertAttribute(e4, TYPE, ControlFlowBranchTag.Type.Return.name());
+                enter(ReadVariableTag.class).exit();
+                v.input(42);
+            }).exitMaybeControlFlowException();
+
         }).exit(assertReturnValue(42));
     }
 
@@ -199,6 +211,16 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
         enter(ReadVariableTag.class, (e, r) -> {
             assertAttribute(e, NAME, "this");
         }).exit();
+    }
+
+    @Test
+    public void classDeclaration() {
+        evalWithTags("class Klass {}", new Class[]{ReadVariableTag.class,
+                        ReadPropertyTag.class,
+                        ReadElementTag.class});
+
+        // No read events are generated for a class declaration.
+        // Test asserts that event queue is empty.
     }
 
 }

@@ -1,5 +1,5 @@
 {
-  local labsjdk8 = {name: 'oraclejdk', version: '8u221-jvmci-19.3-b01', platformspecific: true},
+  local labsjdk8 = {name: 'oraclejdk', version: '8u221-jvmci-19.3-b02', platformspecific: true},
 
   local oraclejdk11 = {name : 'oraclejdk', version : "11.0.3+12", platformspecific: true},
 
@@ -49,7 +49,7 @@
     packages+: {
       'apache/ab': '==2.3',
       binutils: '==2.23.2',
-      gcc: '==4.9.2',
+      gcc: '==8.3.0',
       git: '>=1.8.3',
       maven: '==3.3.9',
       valgrind: '>=3.9.0',
@@ -71,6 +71,9 @@
 
   linux_aarch64: common + {
     capabilities+: ['linux', 'aarch64'],
+    packages+: {
+      gcc: '==8.3.0',
+    }
   },
 
   darwin: common + {

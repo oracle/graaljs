@@ -49,7 +49,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.nodes.interop.JSForeignAccessFactoryForeign;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -374,12 +373,6 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     @Override
     public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
         throw typeError();
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return JSForeignAccessFactoryForeign.ACCESS;
     }
 
     @Override

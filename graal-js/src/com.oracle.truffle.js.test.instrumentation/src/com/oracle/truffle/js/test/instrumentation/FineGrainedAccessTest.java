@@ -53,6 +53,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import com.oracle.truffle.js.nodes.control.ReturnException;
+import com.oracle.truffle.js.nodes.control.YieldException;
+import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.After;
@@ -212,6 +215,18 @@ public abstract class FineGrainedAccessTest {
             assertEquals(Event.Kind.RETURN_EXCEPTIONAL, event.kind);
         }
 
+        void exitMaybeControlFlowException() {
+            Event event = test.getNextEvent();
+            assertTag(tag, event);
+            if (event.kind == Event.Kind.RETURN) {
+                // OK
+            } else if (event.kind == Event.Kind.RETURN_EXCEPTIONAL) {
+                assert event.val instanceof YieldException || event.val instanceof ReturnException : event.val;
+            } else {
+                assert false;
+            }
+        }
+
         void exit(Consumer<Event> verify) {
             Event event = test.getNextEvent();
             assertTag(tag, event);
@@ -316,7 +331,7 @@ public abstract class FineGrainedAccessTest {
                         }
                         stack.pop();
                         int expectedEvents = inputEvents.pop();
-                        if (!c.hasTag(ControlFlowRootTag.class)) {
+                        if (!c.hasTag(ControlFlowRootTag.class) && !c.hasTag(JSTags.ControlFlowBranchTag.class)) {
                             /*
                              * Iterations may detect more input events than expected, other event
                              * types should not.
@@ -440,6 +455,13 @@ public abstract class FineGrainedAccessTest {
         assertTrue(!JSFunction.isJSFunction(e.val));
         assertTrue(!JSArray.isJSArray(e.val));
         assertTrue(JSObject.isJSObject(e.val));
+    };
+
+    protected static final Consumer<Event> assertJSPromiseInput = (e) -> {
+        assertTrue(!JSFunction.isJSFunction(e.val));
+        assertTrue(!JSArray.isJSArray(e.val));
+        assertTrue(JSObject.isJSObject(e.val));
+        assertTrue(JSPromise.isJSPromise(e.val));
     };
 
     protected static final Consumer<Event> assertTruffleObject = (e) -> {

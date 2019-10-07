@@ -132,6 +132,7 @@ import com.oracle.truffle.js.nodes.binary.JSLessOrEqualNode;
 import com.oracle.truffle.js.nodes.binary.JSLessThanNode;
 import com.oracle.truffle.js.nodes.binary.JSModuloNode;
 import com.oracle.truffle.js.nodes.binary.JSMultiplyNode;
+import com.oracle.truffle.js.nodes.binary.JSNullishCoalescingNode;
 import com.oracle.truffle.js.nodes.binary.JSOrNode;
 import com.oracle.truffle.js.nodes.binary.JSRightShiftNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
@@ -196,6 +197,7 @@ import com.oracle.truffle.js.nodes.unary.JSComplementNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryMinusNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryPlusNode;
+import com.oracle.truffle.js.nodes.unary.RequireConstructorNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -240,6 +242,7 @@ public class NodeFactory {
         INSTANCEOF,
         IN,
         DUAL,
+        NULLISH_COALESCING
     }
 
     public enum UnaryOperation {
@@ -327,6 +330,8 @@ public class NodeFactory {
                 return JSAndNode.create(left, right);
             case LOGICAL_OR:
                 return JSOrNode.create(left, right);
+            case NULLISH_COALESCING:
+                return JSNullishCoalescingNode.create(left, right);
             case BITWISE_AND:
                 return JSBitwiseAndNode.create(left, right);
             case BITWISE_OR:
@@ -646,14 +651,6 @@ public class NodeFactory {
         return CompoundWriteElementNode.create(targetNode, indexNode, valueNode, writeIndex, context, isStrict);
     }
 
-    public WriteElementNode createWriteElementNode(JSContext context, boolean throwError) {
-        return WriteElementNode.create(context, throwError);
-    }
-
-    public WriteElementNode createWriteElementNode(JSContext context, boolean isStrict, boolean writeOwn) {
-        return WriteElementNode.create(context, isStrict, writeOwn);
-    }
-
     // ##### Property nodes
 
     public JavaScriptNode createReadProperty(JSContext context, JavaScriptNode base, String propertyName) {
@@ -834,8 +831,8 @@ public class NodeFactory {
         return AsyncGeneratorYieldNode.createYieldStar(context, expression, asyncContextNode, asyncResultNode, returnNode, readTemp, writeTemp);
     }
 
-    public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult) {
-        return AsyncFunctionBodyNode.create(context, body, asyncContext, asyncResult);
+    public JavaScriptNode createAsyncFunctionBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult, String functionName) {
+        return AsyncFunctionBodyNode.create(context, body, asyncContext, asyncResult, functionName);
     }
 
     public JavaScriptNode createGeneratorBody(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode writeYieldValue, JSReadFrameSlotNode readYieldResult) {
@@ -940,6 +937,10 @@ public class NodeFactory {
 
     public JSTargetableNode createSuperPropertyReference(JavaScriptNode delegate, JavaScriptNode target) {
         return SuperPropertyReferenceNode.create(delegate, target);
+    }
+
+    public JavaScriptNode createRequireConstructor(JavaScriptNode constructor) {
+        return RequireConstructorNode.create(constructor);
     }
 
     public JSTargetableNode createTargetableWrapper(JavaScriptNode delegate, JavaScriptNode target) {

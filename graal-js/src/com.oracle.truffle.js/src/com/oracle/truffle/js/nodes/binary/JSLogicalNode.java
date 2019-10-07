@@ -73,11 +73,14 @@ public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNod
         return negate ? !value : value;
     }
 
+    protected boolean useLeftValue(Object leftValue) {
+        return toBoolean(leftValue);
+    }
+
     @Override
     public final Object execute(VirtualFrame frame) {
         Object leftValue = getLeft().execute(frame);
-        boolean leftAsBoolean = toBoolean(leftValue);
-        if (canShortCircuit.profile(leftAsBoolean)) {
+        if (canShortCircuit.profile(useLeftValue(leftValue))) {
             return leftValue;
         } else {
             return getRight().execute(frame);
@@ -89,8 +92,7 @@ public abstract class JSLogicalNode extends JSBinaryNode implements ResumableNod
         int state = getStateAsIntAndReset(frame);
         if (state == RESUME_UNEXECUTED) {
             Object leftValue = getLeft().execute(frame);
-            boolean leftAsBoolean = toBoolean(leftValue);
-            if (canShortCircuit.profile(leftAsBoolean)) {
+            if (canShortCircuit.profile(useLeftValue(leftValue))) {
                 return leftValue;
             } else {
                 try {

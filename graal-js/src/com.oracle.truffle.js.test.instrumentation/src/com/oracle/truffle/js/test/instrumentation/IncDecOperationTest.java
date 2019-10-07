@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
@@ -194,9 +195,13 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
                 p3.input(exprReturns);
             }).exit();
             // return x;
-            enter(ReadVariableTag.class, (e6, p6) -> {
-                assertAttribute(e6, NAME, "x");
-            }).exit(assertReturnValue(exprReturns));
+            enter(ControlFlowBranchTag.class, (e4, v) -> {
+                assertAttribute(e4, TYPE, ControlFlowBranchTag.Type.Return.name());
+                enter(ReadVariableTag.class, (e6, p6) -> {
+                    assertAttribute(e6, NAME, "x");
+                }).exit(assertReturnValue(exprReturns));
+                v.input(exprReturns);
+            }).exitMaybeControlFlowException();
         }).exit();
     }
 

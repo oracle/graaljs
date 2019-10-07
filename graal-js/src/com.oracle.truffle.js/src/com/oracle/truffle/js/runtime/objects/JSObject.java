@@ -506,24 +506,15 @@ public final class JSObject {
         return jsclassProfile.getJSClass(obj).get(obj, index);
     }
 
-    public static Object getOrDefault(DynamicObject obj, Object key, Object defaultValue, JSClassProfile jsclassProfile) {
+    public static Object getOrDefault(DynamicObject obj, Object key, Object receiver, Object defaultValue, JSClassProfile jsclassProfile) {
         assert JSRuntime.isPropertyKey(key);
-        Object result = jsclassProfile.getJSClass(obj).getHelper(obj, obj, key);
+        Object result = jsclassProfile.getJSClass(obj).getHelper(obj, receiver, key);
         return result == null ? defaultValue : result;
     }
 
-    public static Object getOrDefault(DynamicObject obj, long index, Object defaultValue, JSClassProfile jsclassProfile) {
-        Object result = jsclassProfile.getJSClass(obj).getHelper(obj, obj, index);
+    public static Object getOrDefault(DynamicObject obj, long index, Object receiver, Object defaultValue, JSClassProfile jsclassProfile) {
+        Object result = jsclassProfile.getJSClass(obj).getHelper(obj, receiver, index);
         return result == null ? defaultValue : result;
-    }
-
-    public static void set(DynamicObject obj, Object key, Object value, boolean isStrict, JSClassProfile jsclassProfile) {
-        assert JSRuntime.isPropertyKey(key);
-        jsclassProfile.getJSClass(obj).set(obj, key, value, obj, isStrict);
-    }
-
-    public static void set(DynamicObject obj, long index, Object value, boolean isStrict, JSClassProfile jsclassProfile) {
-        jsclassProfile.getJSClass(obj).set(obj, index, value, obj, isStrict);
     }
 
     @TruffleBoundary

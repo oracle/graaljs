@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -190,7 +191,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         if (conditionExpression == null || executeConditionAsBoolean(catchFrame, conditionExpression)) {
             return catchBlock.execute(catchFrame);
         } else {
-            throw ((RuntimeException) ex);
+            throw JSRuntime.rethrow(ex);
         }
     }
 
@@ -249,6 +250,9 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
 
         public Object execute(Throwable ex) {
             if (isJSError.profile(ex instanceof JSException)) {
+                // fill in any missing stack trace elements
+                TruffleStackTrace.fillIn(ex);
+
                 return doJSException((JSException) ex);
             } else if (isJSException.profile(ex instanceof GraalJSException)) {
                 return ((GraalJSException) ex).getErrorObject();
@@ -270,9 +274,6 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
         }
 
         private Object doJSException(JSException exception) {
-            // fill in any missing stack trace elements
-            TruffleStackTrace.fillIn(exception);
-
             DynamicObject errorObj = exception.getErrorObject();
             // not thread safe, but should be alright in this case
             if (errorObj == null) {

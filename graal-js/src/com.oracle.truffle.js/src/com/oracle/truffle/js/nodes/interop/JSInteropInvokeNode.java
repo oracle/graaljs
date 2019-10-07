@@ -101,7 +101,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
                     @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
         Object function;
         if (readNode == null) {
-            function = JSObject.getOrDefault(receiver, name, null, JSClassProfile.getUncached());
+            function = JSObject.getOrDefault(receiver, name, receiver, null, JSClassProfile.getUncached());
         } else {
             function = readNode.executeWithTargetAndIndexOrDefault(receiver, name, null);
         }

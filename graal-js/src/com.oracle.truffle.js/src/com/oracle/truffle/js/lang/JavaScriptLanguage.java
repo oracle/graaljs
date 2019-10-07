@@ -280,8 +280,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
             @TruffleBoundary
             private Object executeImpl(JSRealm realm, Object[] arguments) {
-                // (GR-2039) only works for simple expressions at the moment. needs parser support.
                 StringBuilder code = new StringBuilder();
+                code.append("'use strict';");
                 code.append("(function");
                 code.append(" (");
                 assert !argumentNames.isEmpty();
@@ -291,9 +291,8 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     code.append(argumentNames.get(i));
                 }
                 code.append(") {\n");
-                code.append("return ");
-                code.append(source.getCharacters());
-                code.append("\n})");
+                code.append("return eval(").append(JSRuntime.quote(source.getCharacters().toString())).append(");\n");
+                code.append("})");
                 Source wrappedSource = Source.newBuilder(ID, code.toString(), Evaluator.FUNCTION_SOURCE_NAME).build();
                 Object function = parseInContext(wrappedSource, realm.getContext()).run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));

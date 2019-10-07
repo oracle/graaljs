@@ -64,7 +64,7 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
      */
     public BinaryNode(final long token, final Expression lhs, final Expression rhs) {
         super(token, Math.min(lhs.getStart(), rhs.getStart()), Math.max(rhs.getFinish(), lhs.getFinish()));
-        assert !(isTokenType(TokenType.AND) || isTokenType(TokenType.OR)) || lhs instanceof JoinPredecessorExpression;
+        assert !isLogical() || lhs instanceof JoinPredecessorExpression;
         this.lhs = lhs;
         this.rhs = rhs;
     }
@@ -134,6 +134,7 @@ public final class BinaryNode extends Expression implements Assignment<Expressio
         switch (tokenType) {
             case AND:
             case OR:
+            case NULLISHCOALESC:
                 return true;
             default:
                 return false;

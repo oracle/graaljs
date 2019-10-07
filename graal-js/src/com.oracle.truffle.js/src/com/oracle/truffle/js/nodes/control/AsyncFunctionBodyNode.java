@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -67,9 +69,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async functions in JavaScript.")
-    private static final class AsyncFunctionRootNode extends JavaScriptRootNode {
+    public static final class AsyncFunctionRootNode extends JavaScriptRootNode {
 
         private final JSContext context;
+        private final String functionName;
         @Child private JavaScriptNode functionBody;
         @Child private JSWriteFrameSlotNode writeAsyncResult;
         @Child private JSFunctionCallNode callResolveNode;
@@ -77,12 +80,13 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
         private final ValueProfile typeProfile = ValueProfile.createClassProfile();
 
-        AsyncFunctionRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, SourceSection functionSourceSection) {
+        AsyncFunctionRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, SourceSection functionSourceSection, String functionName) {
             super(context.getLanguage(), functionSourceSection, null);
             this.context = context;
             this.functionBody = body;
             this.writeAsyncResult = asyncResult;
             this.callResolveNode = JSFunctionCallNode.createCall();
+            this.functionName = functionName;
         }
 
         @Override
@@ -121,6 +125,14 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         public boolean isResumption() {
             return true;
         }
+
+        @Override
+        public String getName() {
+            if (functionName != null && !"".equals(functionName)) {
+                return functionName;
+            }
+            return ":async";
+        }
     }
 
     private final JSContext context;
@@ -128,30 +140,47 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     @Child private JSWriteFrameSlotNode writeAsyncContext;
     @Child private JSWriteFrameSlotNode writeAsyncResult;
     @Child private NewPromiseCapabilityNode newPromiseCapability;
+    private final String functionName;
 
     @CompilationFinal private CallTarget resumptionTarget;
     @Child private DirectCallNode asyncCallNode;
 
-    public AsyncFunctionBodyNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult) {
+    public AsyncFunctionBodyNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult, String functionName) {
         this.context = context;
         this.functionBody = body;
         this.writeAsyncContext = asyncContext;
         this.writeAsyncResult = asyncResult;
         this.newPromiseCapability = NewPromiseCapabilityNode.create(context);
+        this.functionName = functionName;
+        transferSourceSection(body, this);
     }
 
-    public static JavaScriptNode create(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncVar, JSWriteFrameSlotNode asyncResult) {
-        return new AsyncFunctionBodyNode(context, body, asyncVar, asyncResult);
+    public static JavaScriptNode create(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncVar, JSWriteFrameSlotNode asyncResult, String functionName) {
+        return new AsyncFunctionBodyNode(context, body, asyncVar, asyncResult, functionName);
     }
 
     private JSContext getContext() {
         return context;
     }
 
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == JSTags.ControlFlowRootTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor("type", JSTags.ControlFlowRootTag.Type.AsyncFunction.name());
+    }
+
     private void initializeAsyncCallTarget() {
         CompilerAsserts.neverPartOfCompilation();
         atomic(() -> {
-            AsyncFunctionRootNode asyncRootNode = new AsyncFunctionRootNode(getContext(), functionBody, writeAsyncResult, getRootNode().getSourceSection());
+            AsyncFunctionRootNode asyncRootNode = new AsyncFunctionRootNode(getContext(), functionBody, writeAsyncResult, getRootNode().getSourceSection(), functionName);
             this.resumptionTarget = Truffle.getRuntime().createCallTarget(asyncRootNode);
             this.asyncCallNode = insert(DirectCallNode.create(resumptionTarget));
             // these children have been transferred to the async root node and are now disowned
@@ -194,10 +223,11 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized() {
         if (resumptionTarget == null) {
-            return create(getContext(), cloneUninitialized(functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(writeAsyncResult));
+            return create(getContext(), cloneUninitialized(functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(writeAsyncResult), functionName);
         } else {
             AsyncFunctionRootNode asyncFunctionRoot = (AsyncFunctionRootNode) ((RootCallTarget) resumptionTarget).getRootNode();
-            return create(getContext(), cloneUninitialized(asyncFunctionRoot.functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(asyncFunctionRoot.writeAsyncResult));
+            return create(getContext(), cloneUninitialized(asyncFunctionRoot.functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(asyncFunctionRoot.writeAsyncResult),
+                            functionName);
         }
     }
 

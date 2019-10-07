@@ -54,7 +54,6 @@ import com.oracle.js.parser.Token;
 import com.oracle.js.parser.TokenType;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.FunctionNode;
-import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
@@ -62,9 +61,9 @@ import com.oracle.truffle.js.parser.internal.ir.debug.JSONWriter;
 import com.oracle.truffle.js.parser.json.JSONParser;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
-import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
 
@@ -81,16 +80,15 @@ public final class GraalJSParserHelper {
     }
 
     public static FunctionNode parseScript(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions, boolean eval, boolean evalInGlobalScope) {
-        FunctionNode parsed = parseSource(context, truffleSource, parserOptions, false, eval);
-        GraalJSTranslator.earlyVariableDeclarationPass(parsed, parserOptions, eval, evalInGlobalScope);
-        return parsed;
+        return parseSource(context, truffleSource, parserOptions, false, eval, evalInGlobalScope);
     }
 
     public static FunctionNode parseModule(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions) {
-        return parseSource(context, truffleSource, parserOptions, true, false);
+        return parseSource(context, truffleSource, parserOptions, true, false, false);
     }
 
-    private static FunctionNode parseSource(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions, boolean parseModule, boolean eval) {
+    private static FunctionNode parseSource(JSContext context, com.oracle.truffle.api.source.Source truffleSource, JSParserOptions parserOptions,
+                    boolean parseModule, boolean eval, boolean evalInGlobalScope) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         CharSequence code = truffleSource.getCharacters();
         com.oracle.js.parser.Source source = com.oracle.js.parser.Source.sourceFor(truffleSource.getName(), code, eval);
@@ -105,7 +103,16 @@ public final class GraalJSParserHelper {
         errors.setLimit(0);
 
         Parser parser = createParser(context, env, source, errors, parserOptions);
-        FunctionNode parsed = parseModule ? parser.parseModule(":module") : parser.parse();
+
+        FunctionNode parsed;
+        if (parseModule) {
+            parsed = parser.parseModule(":module");
+        } else if (eval) {
+            parsed = parser.parseEval(!evalInGlobalScope);
+        } else {
+            parsed = parser.parse();
+        }
+
         if (errors.hasErrors()) {
             throwErrors(truffleSource, errors);
         }
@@ -126,14 +133,6 @@ public final class GraalJSParserHelper {
         if (errors.hasErrors()) {
             throwErrors(truffleSource, errors);
         }
-
-        expression.accept(new com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext>(new LexicalContext()) {
-            @Override
-            public boolean enterFunctionNode(FunctionNode functionNode) {
-                GraalJSTranslator.functionVarDeclarationPass(functionNode, parserOptions);
-                return false;
-            }
-        });
 
         return expression;
     }
@@ -172,6 +171,7 @@ public final class GraalJSParserHelper {
         builder.shebang(parserOptions.isShebang());
         builder.constAsVar(parserOptions.isConstAsVar());
         builder.allowBigInt(parserOptions.isAllowBigInt());
+        builder.annexB(parserOptions.isAnnexB());
         if (parserOptions.isFunctionStatementError()) {
             builder.functionStatementBehavior(FunctionStatementBehavior.ERROR);
         } else {

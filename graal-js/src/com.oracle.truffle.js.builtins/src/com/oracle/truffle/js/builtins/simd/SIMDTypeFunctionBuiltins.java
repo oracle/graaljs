@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins.simd;
 
+import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -500,7 +502,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 assert JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer) : JSObject.getJSClass(arrayBuffer);
                 ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
                 block = new byte[JSArrayBuffer.getDirectByteLength(arrayBuffer)];
-                ((ByteBuffer) byteBuffer.duplicate().clear()).get(block);
+                ((ByteBuffer) asBaseBuffer(byteBuffer.duplicate()).clear()).get(block);
             }
 
             long indx = getToLengthNode().executeLong(index);
@@ -563,7 +565,7 @@ public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
                 assert JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer) : JSObject.getJSClass(arrayBuffer);
                 ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
                 block = new byte[JSArrayBuffer.getDirectByteLength(arrayBuffer)];
-                ((ByteBuffer) byteBuffer.duplicate().clear()).get(block);
+                ((ByteBuffer) asBaseBuffer(byteBuffer.duplicate()).clear()).get(block);
             }
 
             long indx = getToLengthNode().executeLong(index);

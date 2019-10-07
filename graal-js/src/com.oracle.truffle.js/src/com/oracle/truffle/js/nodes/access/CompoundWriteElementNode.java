@@ -65,39 +65,39 @@ public class CompoundWriteElementNode extends WriteElementNode {
     }
 
     @Override
-    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index) {
+    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index, Object receiver) {
         requireObjectCoercible(target, index);
-        return super.executeWithTargetAndIndex(frame, target, writeIndex(frame, toArrayIndexNode().execute(index)));
+        return super.executeWithTargetAndIndex(frame, target, writeIndex(frame, toArrayIndexNode().execute(index)), receiver);
     }
 
     @Override
-    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index) {
+    protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index, Object receiver) {
         requireObjectCoercible(target, index);
-        return super.executeWithTargetAndIndex(frame, target, writeIndex(frame, index));
+        return super.executeWithTargetAndIndex(frame, target, writeIndex(frame, index), receiver);
     }
 
     @Override
-    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
+    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index, Object receiver) throws UnexpectedResultException {
         requireObjectCoercible(target, index);
-        return super.executeWithTargetAndIndexInt(frame, target, writeIndex(frame, toArrayIndexNode().execute(index)));
+        return super.executeWithTargetAndIndexInt(frame, target, writeIndex(frame, toArrayIndexNode().execute(index)), receiver);
     }
 
     @Override
-    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
+    protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index, Object receiver) throws UnexpectedResultException {
         requireObjectCoercible(target, index);
-        return super.executeWithTargetAndIndexInt(frame, target, writeIndex(frame, index));
+        return super.executeWithTargetAndIndexInt(frame, target, writeIndex(frame, index), receiver);
     }
 
     @Override
-    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index) throws UnexpectedResultException {
+    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index, Object receiver) throws UnexpectedResultException {
         requireObjectCoercible(target, index);
-        return super.executeWithTargetAndIndexDouble(frame, target, writeIndex(frame, toArrayIndexNode().execute(index)));
+        return super.executeWithTargetAndIndexDouble(frame, target, writeIndex(frame, toArrayIndexNode().execute(index)), receiver);
     }
 
     @Override
-    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index) throws UnexpectedResultException {
+    protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index, Object receiver) throws UnexpectedResultException {
         requireObjectCoercible(target, index);
-        return super.executeWithTargetAndIndexDouble(frame, target, writeIndex(frame, index));
+        return super.executeWithTargetAndIndexDouble(frame, target, writeIndex(frame, index), receiver);
     }
 
     private Object writeIndex(VirtualFrame frame, Object index) {

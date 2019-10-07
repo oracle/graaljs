@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.trufflenode.buffer;
 
+import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
@@ -95,8 +97,7 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
     }
 
     protected static ByteBuffer sliceBuffer(ByteBuffer rawBuffer, int byteOffset) {
-        ByteBuffer data = ((ByteBuffer) rawBuffer.duplicate().position(byteOffset)).slice().order(ByteOrder.nativeOrder());
-        return data;
+        return ((ByteBuffer) asBaseBuffer(rawBuffer.duplicate()).position(byteOffset)).slice().order(ByteOrder.nativeOrder());
     }
 
     @TruffleBoundary
