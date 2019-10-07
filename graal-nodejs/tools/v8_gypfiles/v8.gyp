@@ -554,7 +554,9 @@
       'target_name': 'v8_nosnapshot',
       'type': 'static_library',
       'dependencies': [],
-      'sources': [],
+      'sources': [
+        './extras-libraries.cc',
+      ],
       'conditions': []
     },  # v8_nosnapshot
     {
