@@ -144,7 +144,7 @@ public abstract class JSScope {
     }
 
     protected final Scope toScope(MaterializedFrame frame) {
-        return Scope.newBuilder(getName(), getVariables(frame)).node(getNode()).arguments(getArguments(frame)).receiver(THIS_NAME, getThis(frame)).build();
+        return Scope.newBuilder(getName(), getVariables(frame)).node(getNode()).arguments(getArguments(frame)).receiver(THIS_NAME, getThis(frame)).rootInstance(getFunctionObject()).build();
     }
 
     protected abstract String getName();
@@ -156,6 +156,14 @@ public abstract class JSScope {
     protected abstract Object getArguments(Frame frame);
 
     protected abstract Object getThis(Frame frame);
+
+    protected final Object getFunctionObject() {
+        if (mFrame == null) {
+            return null;
+        }
+        Object[] args = mFrame.getArguments();
+        return JSArguments.getFunctionObject(args);
+    }
 
     protected abstract JSScope findParent();
 
