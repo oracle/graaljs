@@ -2886,7 +2886,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     ensureHasSourceSection(pass, caseNode);
                     curNode = factory.createIf(test, pass, curNode);
                 }
-                ensureHasSourceSection(curNode, caseNode);
+                ensureHasSourceSection(curNode, caseNode.getTest());
             }
         }
         return curNode == null ? factory.createEmpty() : curNode;

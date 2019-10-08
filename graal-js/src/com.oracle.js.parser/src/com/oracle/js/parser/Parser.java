@@ -1920,6 +1920,7 @@ public class Parser extends AbstractParser {
      */
     private ForVariableDeclarationListResult variableDeclarationList(final TokenType varType, final boolean isStatement, final int sourceOrder) {
         // VAR tested in caller.
+        int varStart = Token.descPosition(token);
         assert varType == VAR || varType == LET || varType == CONST;
         next();
 
@@ -1999,7 +2000,7 @@ public class Parser extends AbstractParser {
                     }
                     forResult.addBinding(binding);
                 }
-                final VarNode var = new VarNode(varLine, varToken, sourceOrder, finish, ident.setIsDeclaredHere(), init, varFlags);
+                final VarNode var = new VarNode(varLine, varToken, sourceOrder, varStart, finish, ident.setIsDeclaredHere(), init, varFlags);
                 appendStatement(var);
                 declareVar(scope, var);
             } else {
@@ -2996,7 +2997,7 @@ public class Parser extends AbstractParser {
 
                 // Get CASE body.
                 List<Statement> statements = caseStatementList();
-                final CaseNode caseNode = new CaseNode(caseToken, caseExpression.getFinish(), caseExpression, statements);
+                final CaseNode caseNode = new CaseNode(caseToken, finish, caseExpression, statements);
 
                 if (caseExpression == null) {
                     assert defaultCaseIndex == -1;

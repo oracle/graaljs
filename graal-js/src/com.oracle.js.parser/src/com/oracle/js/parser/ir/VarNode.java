@@ -135,6 +135,26 @@ public final class VarNode extends Statement implements Assignment<IdentNode> {
         this.flags = flags;
     }
 
+    /**
+     * Constructor
+     *
+     * @param lineNumber line number
+     * @param token token
+     * @param sourceOrder source order
+     * @param start start
+     * @param finish finish
+     * @param name name of variable
+     * @param init init node or null if just a declaration
+     * @param flags flags
+     */
+    public VarNode(final int lineNumber, final long token, final int sourceOrder, final int start, final int finish, final IdentNode name, final Expression init, final int flags) {
+        super(lineNumber, token, start, finish);
+        this.sourceOrder = sourceOrder;
+        this.name = init == null ? name : name.setIsInitializedHere();
+        this.init = init;
+        this.flags = flags;
+    }
+
     @Override
     public int getSourceOrder() {
         return sourceOrder == -1 ? super.getSourceOrder() : sourceOrder;

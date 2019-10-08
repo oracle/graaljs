@@ -63,6 +63,19 @@ public abstract class Statement extends Node implements Terminal {
     }
 
     /**
+     * Constructor
+     *
+     * @param lineNumber line number
+     * @param token token
+     * @param start start
+     * @param finish finish
+     */
+    public Statement(final int lineNumber, final long token, final int start, final int finish) {
+        super(token, start, finish);
+        this.lineNumber = lineNumber;
+    }
+
+    /**
      * Copy constructor
      *
      * @param node source node
