@@ -1329,7 +1329,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object defaultValue) {
             String str = ((JSLazyString) target).toString(isFlatProfile);
             Object convertedIndex = toArrayIndexNode.execute(index);
             if (arrayIndexProfile.profile(convertedIndex instanceof Long)) {
@@ -1338,16 +1338,16 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return String.valueOf(str.charAt(intIndex));
                 }
             }
-            return JSObject.getOrDefault(JSString.create(root.context, str), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSString.create(context, str), toPropertyKey(index), defaultValue, jsclassProfile);
         }
 
         @Override
-        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object defaultValue) {
             String str = ((JSLazyString) target).toString(isFlatProfile);
             if (stringIndexInBounds.profile(index >= 0 && index < str.length())) {
                 return String.valueOf(str.charAt(index));
             } else {
-                return JSObject.getOrDefault(JSString.create(root.context, str), index, receiver, defaultValue, jsclassProfile);
+                return JSObject.getOrDefault(JSString.create(context, str), index, defaultValue, jsclassProfile);
             }
         }
 
