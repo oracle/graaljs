@@ -106,7 +106,7 @@ const constants = Object.defineProperties({}, {
 Buffer.poolSize = 8 * 1024;
 let poolSize, poolOffset, allocPool;
 
-//graalBuffer.install(Buffer.prototype);
+graalBuffer.install(Buffer.prototype);
 
 // A toggle used to access the zero fill setting of the array buffer allocator
 // in C++.

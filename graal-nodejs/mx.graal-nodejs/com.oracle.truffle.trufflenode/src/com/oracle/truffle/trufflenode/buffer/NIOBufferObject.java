@@ -46,7 +46,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinLookup;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -81,8 +80,7 @@ public final class NIOBufferObject extends JSBuiltinObject {
     }
 
     @TruffleBoundary
-    public static Object createInitFunction(ScriptNode scriptNode) {
-        JSContext context = scriptNode.getContext();
+    public static Object createInitFunction(JSContext context) {
         JSRealm realm = context.getRealm();
 
         // This JS function will be executed at node.js bootstrap time to register

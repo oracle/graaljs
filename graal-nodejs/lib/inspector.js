@@ -134,4 +134,4 @@ module.exports = {
 };
 
 // Use the mockup provided by 'inspect' instrument
-module.exports = arguments[arguments.length - 1];
+module.exports = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;

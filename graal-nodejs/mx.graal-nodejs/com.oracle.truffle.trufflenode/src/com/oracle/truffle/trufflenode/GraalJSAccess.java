@@ -1710,13 +1710,23 @@ public final class GraalJSAccess {
         template.setFunctionHandler(functionHandler);
     }
 
-    public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] extensions, Object hostDefinedOptions) {
+    public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] exts, Object hostDefinedOptions) {
         if (VERBOSE) {
             System.err.println("FUNCTION IN CONTEXT: " + sourceName);
         }
         JSRealm realm = (JSRealm) context;
         JSContext jsContext = realm.getContext();
         Evaluator nodeEvaluator = jsContext.getEvaluator();
+        Object extraArgument = getExtraArgumentOfInternalScript(sourceName, jsContext);
+        Object[] extensions;
+        if (extraArgument == null) {
+            extensions = exts;
+        } else {
+            assert exts.length == 0;
+            DynamicObject graalExtension = JSUserObject.create(jsContext);
+            JSObject.set(graalExtension, "graalExtension", extraArgument);
+            extensions = new Object[]{graalExtension};
+        }
 
         StringBuilder params = new StringBuilder();
         for (int i = 0; i < arguments.length; i++) {
@@ -1817,28 +1827,33 @@ public final class GraalJSAccess {
         return JSFunction.create(realm, functionData);
     }
 
-    @TruffleBoundary
-    private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node) {
-        Object[] userArgs = JSArguments.extractUserArguments(args);
-        String moduleName = node.getRootNode().getSourceSection().getSource().getName();
-        Object extraArgument;
+    private Object getExtraArgumentOfInternalScript(String moduleName, JSContext context) {
+        Object extraArgument = null;
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
-            extraArgument = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(node) : Undefined.instance;
+            extraArgument = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(context) : Undefined.instance;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
-            JSContext context = node.getContext();
             CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(this));
             JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
             DynamicObject setBreakPoint = JSFunction.create(context.getRealm(), setBreakPointData);
             extraArgument = setBreakPoint;
         } else if ("internal/worker.js".equals(moduleName)) {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
-            extraArgument = SharedMemMessagingBindings.createInitFunction(this, node);
+            extraArgument = SharedMemMessagingBindings.createInitFunction(this, context);
         } else if ("inspector.js".equals(moduleName)) {
             TruffleObject inspector = lookupInstrument("inspect", TruffleObject.class);
             extraArgument = (inspector == null) ? Undefined.instance : inspector;
-        } else {
+        }
+        return extraArgument;
+    }
+
+    @TruffleBoundary
+    private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node) {
+        Object[] userArgs = JSArguments.extractUserArguments(args);
+        String moduleName = node.getRootNode().getSourceSection().getSource().getName();
+        Object extraArgument = getExtraArgumentOfInternalScript(moduleName, node.getContext());
+        if (extraArgument == null) {
             return userArgs;
         }
         Object[] extendedArgs = new Object[userArgs.length + 1];
