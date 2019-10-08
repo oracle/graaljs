@@ -245,7 +245,8 @@ void Parse(
     args, exec_args, v8_args, options, required_env_settings, errors);
 }
 #else
-const EnvironmentOptionsParser _eop_instance{};
+const DebugOptionsParser _dop_instance{};
+const EnvironmentOptionsParser _eop_instance{_dop_instance};
 #endif  // HAVE_INSPECTOR
 const PerIsolateOptionsParser _piop_instance{_eop_instance};
 const PerProcessOptionsParser _ppop_instance{_piop_instance};

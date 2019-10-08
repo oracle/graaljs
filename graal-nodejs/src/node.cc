@@ -691,17 +691,21 @@ int ProcessGlobalArgs(std::vector<std::string>* args,
     env_opts->abort_on_uncaught_exception = true;
   }
 
-  std::string prefix;
-  auto prefix_test = [&prefix](std::string opt){
-    // equals to prefix or starts with prefix=
-    return (opt.rfind(prefix, 0) == 0) && (opt.length() == prefix.length() || opt[prefix.length()] == '=');
+  const DebugOptions& debug_options = env_opts->debug_options();
+  auto full_option = [&debug_options](std::string option){
+      option += debug_options.host_port.host();
+      option += ":";
+      option += std::to_string(debug_options.host_port.port());
+      return option;
   };
-  if ((prefix = "--inspect-brk", std::find_if(v8_args.begin(), v8_args.end(), prefix_test) != v8_args.end())
-          || (prefix = "--debug-brk", std::find_if(v8_args.begin(), v8_args.end(), prefix_test) != v8_args.end())) {
-    const_cast<DebugOptions&> (env_opts->debug_options()).break_first_line = true;
+  if (debug_options.inspector_enabled) {
+      v8_args.push_back(full_option("--inspect="));
   }
-  if (prefix = "--inspect-brk-node", std::find_if(v8_args.begin(), v8_args.end(), prefix_test) != v8_args.end()) {
-    const_cast<DebugOptions&> (env_opts->debug_options()).break_node_first_line = true;
+  if (debug_options.break_first_line) {
+      v8_args.push_back(full_option("--inspect-brk="));
+  }
+  if (debug_options.break_node_first_line) {
+      v8_args.push_back(full_option("--inspect-brk-node="));
   }
 
   if (env_opts->experimental_modules || env_opts->experimental_vm_modules) {
