@@ -1,7 +1,7 @@
 {
   local labsjdk8 = {name: 'oraclejdk', version: '8u221-jvmci-19.3-b02', platformspecific: true},
 
-  local oraclejdk11 = {name : 'oraclejdk', version : "11.0.3+12", platformspecific: true},
+  local labsjdk_ce_11 = {name : 'labsjdk', version : 'ce-11.0.5+9-jvmci-19.3-b03', platformspecific: true},
 
   jdk8: {
     downloads+: {
@@ -13,7 +13,7 @@
   jdk11: {
     downloads+: {
       EXTRA_JAVA_HOMES: labsjdk8,
-      JAVA_HOME: oraclejdk11,
+      JAVA_HOME: labsjdk_ce_11,
     },
   },
 
