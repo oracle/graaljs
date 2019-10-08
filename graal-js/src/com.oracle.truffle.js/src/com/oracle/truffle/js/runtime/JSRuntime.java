@@ -1284,6 +1284,25 @@ public final class JSRuntime {
         return lengthIntl(cs);
     }
 
+    @TruffleBoundary
+    private static int lengthIntl(CharSequence cs) {
+        return cs.length();
+    }
+
+    public static char charAt(CharSequence cs, int index) {
+        if (cs instanceof String) {
+            return ((String) cs).charAt(index);
+        } else if (cs instanceof JSLazyString) {
+            return ((JSLazyString) cs).charAt(index);
+        }
+        return charAtIntl(cs, index);
+    }
+
+    @TruffleBoundary
+    private static char charAtIntl(CharSequence cs, int index) {
+        return cs.charAt(index);
+    }
+
     public static String javaToString(Object obj) {
         if (obj instanceof String) {
             return (String) obj;
@@ -1293,11 +1312,6 @@ public final class JSRuntime {
             return ((PropertyReference) obj).toString();
         }
         return Boundaries.javaToString(obj);
-    }
-
-    @TruffleBoundary
-    private static int lengthIntl(CharSequence cs) {
-        return cs.length();
     }
 
     // avoiding a virtual call for equals(), not fail on SVM.
