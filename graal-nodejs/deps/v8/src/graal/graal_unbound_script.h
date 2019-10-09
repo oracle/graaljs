@@ -45,7 +45,7 @@
 #include "graal_handle_content.h"
 #include "include/v8.h"
 
-class GraalUnboundScript : GraalHandleContent {
+class GraalUnboundScript : public GraalHandleContent {
 public:
     GraalUnboundScript(GraalIsolate* isolate, jobject java_script);
     static v8::Local<v8::UnboundScript> Compile(v8::Local<v8::String> source, v8::Local<v8::String> file_name, v8::Local<v8::PrimitiveArray> options);

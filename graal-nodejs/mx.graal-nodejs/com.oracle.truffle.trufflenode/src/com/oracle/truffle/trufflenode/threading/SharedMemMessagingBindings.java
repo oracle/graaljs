@@ -49,7 +49,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.JSBuiltinLookup;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -107,8 +106,7 @@ public final class SharedMemMessagingBindings extends JSBuiltinObject {
     }
 
     @TruffleBoundary
-    public static Object createInitFunction(GraalJSAccess graalJSAccess, ScriptNode scriptNode) {
-        JSContext context = scriptNode.getContext();
+    public static Object createInitFunction(GraalJSAccess graalJSAccess, JSContext context) {
         JSRealm realm = context.getRealm();
 
         // This JS function will be executed at node.js bootstrap time

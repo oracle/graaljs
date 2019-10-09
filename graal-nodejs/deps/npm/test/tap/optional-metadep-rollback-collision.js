@@ -10,10 +10,10 @@ var test = require('tap').test
 
 var common = require('../common-tap.js')
 
-var pkg = path.resolve(__dirname, 'optional-metadep-rollback-collision')
+var pkg = common.pkg
 var deps = path.resolve(pkg, 'deps')
 var opdep = path.resolve(pkg, 'node_modules', 'opdep')
-var cache = path.resolve(pkg, 'cache')
+var cache = common.cache
 var createServer = require('http').createServer
 var mr = require('npm-registry-mock')
 var serverPort = 27991

@@ -22,12 +22,13 @@
 #include "string_bytes.h"
 
 #include "base64.h"
-#include "node_internals.h"
-#include "node_errors.h"
+#include "env-inl.h"
 #include "node_buffer.h"
+#include "node_errors.h"
+#include "util.h"
 
-#include <limits.h>
-#include <string.h>  // memcpy
+#include <climits>
+#include <cstring>  // memcpy
 
 #include <algorithm>
 #include <vector>

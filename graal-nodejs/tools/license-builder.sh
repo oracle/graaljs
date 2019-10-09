@@ -29,7 +29,8 @@ fi
 
 
 # Dependencies bundled in distributions
-addlicense "Acorn" "deps/acorn" "$(cat ${rootdir}/deps/acorn/LICENSE)"
+addlicense "Acorn" "deps/acorn" "$(cat ${rootdir}/deps/acorn/acorn/LICENSE)"
+addlicense "Acorn plugins" "deps/acorn-plugins" "$(cat ${rootdir}/deps/acorn-plugins/acorn-class-fields/LICENSE)"
 addlicense "c-ares" "deps/cares" "$(tail -n +3 ${rootdir}/deps/cares/LICENSE.md)"
 addlicense "HTTP Parser" "deps/http_parser" "$(cat deps/http_parser/LICENSE-MIT)"
 if [ -f "${rootdir}/deps/icu/LICENSE" ]; then
@@ -58,6 +59,7 @@ else
 fi
 
 addlicense "libuv" "deps/uv" "$(cat ${rootdir}/deps/uv/LICENSE)"
+addlicense "llhttp" "deps/llhttp" "$(cat deps/llhttp/LICENSE-MIT)"
 addlicense "OpenSSL" "deps/openssl" \
            "$(sed -e '/^ \*\/$/,$d' -e '/^ [^*].*$/d' -e '/\/\*.*$/d' -e '/^$/d' -e 's/^[/ ]\* *//' ${rootdir}/deps/openssl/openssl/LICENSE)"
 addlicense "Punycode.js" "lib/punycode.js" \
@@ -74,15 +76,15 @@ addlicense "npm" "deps/npm" "$(cat ${rootdir}/deps/npm/LICENSE)"
 # Build tools
 addlicense "GYP" "tools/gyp" "$(cat ${rootdir}/tools/gyp/LICENSE)"
 addlicense "inspector_protocol" "tools/inspector_protocol" "$(cat ${rootdir}/tools/inspector_protocol/LICENSE)"
-addlicense "jinja2" "tools/jinja2" "$(cat ${rootdir}/tools/jinja2/LICENSE)"
-addlicense "markupsafe" "tools/markupsafe" "$(cat ${rootdir}/tools/markupsafe/LICENSE)"
+addlicense "jinja2" "tools/inspector_protocol/jinja2" "$(cat ${rootdir}/tools/inspector_protocol/jinja2/LICENSE)"
+addlicense "markupsafe" "tools/inspector_protocol/markupsafe" "$(cat ${rootdir}/tools/inspector_protocol/markupsafe/LICENSE)"
 
 # Testing tools
 addlicense "cpplint.py" "tools/cpplint.py" \
            "$(sed -e '/^$/,$d' -e 's/^#$//' -e 's/^# //' ${rootdir}/tools/cpplint.py | tail -n +3)"
 addlicense "ESLint" "tools/node_modules/eslint" "$(cat ${rootdir}/tools/node_modules/eslint/LICENSE)"
 addlicense "babel-eslint" "tools/node_modules/babel-eslint" "$(cat ${rootdir}/tools/node_modules/babel-eslint/LICENSE)"
-addlicense "gtest" "deps/gtest" "$(cat ${rootdir}/deps/gtest/LICENSE)"
+addlicense "gtest" "test/cctest/gtest" "$(cat ${rootdir}/test/cctest/gtest/LICENSE)"
 
 # nghttp2
 addlicense "nghttp2" "deps/nghttp2" "$(cat ${rootdir}/deps/nghttp2/COPYING)"
@@ -93,7 +95,18 @@ addlicense "node-inspect" "deps/node-inspect" "$(cat ${rootdir}/deps/node-inspec
 # large_pages
 addlicense "large_pages" "src/large_pages" "$(sed -e '/SPDX-License-Identifier/,$d' -e 's/^\/\///' ${rootdir}/src/large_pages/node_large_page.h)"
 
+# deep_freeze
+addlicense "caja" "lib/internal/freeze_intrinsics.js" "$(sed -e '/SPDX-License-Identifier/,$d' -e 's/^\/\///' ${rootdir}/lib/internal/freeze_intrinsics.js)"
+
 # brotli
 addlicense "brotli" "deps/brotli" "$(cat ${rootdir}/deps/brotli/LICENSE)"
+
+addlicense "HdrHistogram" "deps/histogram" "$(cat ${rootdir}/deps/histogram/LICENSE.txt)"
+
+addlicense "node-heapdump" "src/heap_utils.cc" \
+           "$(curl -sL https://raw.githubusercontent.com/bnoordhuis/node-heapdump/0ca52441e46241ffbea56a389e2856ec01c48c97/LICENSE)"
+
+addlicense "rimraf" "lib/internal/fs/rimraf.js" \
+           "$(curl -sL https://raw.githubusercontent.com/isaacs/rimraf/0e365ac4e4d64a25aa2a3cc026348f13410210e1/LICENSE)"
 
 mv $tmplicense $licensefile

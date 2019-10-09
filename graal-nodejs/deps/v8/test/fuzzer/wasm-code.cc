@@ -5,9 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "src/isolate.h"
-#include "src/objects-inl.h"
-#include "src/objects.h"
+#include "src/execution/isolate.h"
+#include "src/objects/objects-inl.h"
+#include "src/objects/objects.h"
 #include "src/wasm/wasm-interpreter.h"
 #include "src/wasm/wasm-module-builder.h"
 #include "test/common/wasm/test-signatures.h"
@@ -20,14 +20,14 @@ namespace fuzzer {
 
 class WasmCodeFuzzer : public WasmExecutionFuzzer {
   bool GenerateModule(
-      Isolate* isolate, Zone* zone, const uint8_t* data, size_t size,
+      Isolate* isolate, Zone* zone, Vector<const uint8_t> data,
       ZoneBuffer& buffer, int32_t& num_args,
       std::unique_ptr<WasmValue[]>& interpreter_args,
       std::unique_ptr<Handle<Object>[]>& compiler_args) override {
     TestSignatures sigs;
     WasmModuleBuilder builder(zone);
     WasmFunctionBuilder* f = builder.AddFunction(sigs.i_iii());
-    f->EmitCode(data, static_cast<uint32_t>(size));
+    f->EmitCode(data.begin(), static_cast<uint32_t>(data.size()));
     uint8_t end_opcode = kExprEnd;
     f->EmitCode(&end_opcode, 1);
     builder.AddExport(CStrVector("main"), f);
@@ -46,7 +46,8 @@ class WasmCodeFuzzer : public WasmExecutionFuzzer {
 };
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  return WasmCodeFuzzer().FuzzWasmModule(data, size);
+  WasmCodeFuzzer().FuzzWasmModule({data, size});
+  return 0;
 }
 
 }  // namespace fuzzer

@@ -30,23 +30,21 @@
 #include <stdlib.h>
 
 #include "include/v8-profiler.h"
-#include "src/api.h"
-#include "src/code-stubs.h"
-#include "src/disassembler.h"
-#include "src/isolate.h"
-#include "src/log.h"
-#include "src/objects-inl.h"
-#include "src/v8.h"
-#include "src/vm-state-inl.h"
+#include "src/api/api-inl.h"
+#include "src/diagnostics/disassembler.h"
+#include "src/execution/isolate.h"
+#include "src/execution/vm-state-inl.h"
+#include "src/init/v8.h"
+#include "src/objects/objects-inl.h"
 #include "test/cctest/cctest.h"
 #include "test/cctest/trace-extension.h"
 
 namespace v8 {
 namespace internal {
 
-static bool IsAddressWithinFuncCode(JSFunction* function, void* addr) {
-  i::AbstractCode* code = function->abstract_code();
-  return code->contains(reinterpret_cast<Address>(addr));
+static bool IsAddressWithinFuncCode(JSFunction function, void* addr) {
+  i::AbstractCode code = function.abstract_code();
+  return code.contains(reinterpret_cast<Address>(addr));
 }
 
 static bool IsAddressWithinFuncCode(v8::Local<v8::Context> context,
@@ -54,7 +52,7 @@ static bool IsAddressWithinFuncCode(v8::Local<v8::Context> context,
   v8::Local<v8::Value> func =
       context->Global()->Get(context, v8_str(func_name)).ToLocalChecked();
   CHECK(func->IsFunction());
-  JSFunction* js_func = JSFunction::cast(*v8::Utils::OpenHandle(*func));
+  JSFunction js_func = JSFunction::cast(*v8::Utils::OpenHandle(*func));
   return IsAddressWithinFuncCode(js_func, addr);
 }
 
@@ -85,10 +83,15 @@ static void construct_call(const v8::FunctionCallbackInfo<v8::Value>& args) {
       .FromJust();
 #elif defined(V8_HOST_ARCH_64_BIT)
   Address fp = calling_frame->fp();
-  int32_t low_bits = static_cast<int32_t>(fp & 0xFFFFFFFF);
-  int32_t high_bits = static_cast<int32_t>(fp >> 32);
-  args.This()->Set(context, v8_str("low_bits"), v8_num(low_bits)).FromJust();
-  args.This()->Set(context, v8_str("high_bits"), v8_num(high_bits)).FromJust();
+  uint64_t kSmiValueMask =
+      (static_cast<uintptr_t>(1) << (kSmiValueSize - 1)) - 1;
+  int32_t low_bits = static_cast<int32_t>(fp & kSmiValueMask);
+  fp >>= kSmiValueSize - 1;
+  int32_t high_bits = static_cast<int32_t>(fp & kSmiValueMask);
+  fp >>= kSmiValueSize - 1;
+  CHECK_EQ(fp, 0);  // Ensure all the bits are successfully encoded.
+  args.This()->Set(context, v8_str("low_bits"), v8_int(low_bits)).FromJust();
+  args.This()->Set(context, v8_str("high_bits"), v8_int(high_bits)).FromJust();
 #else
 #error Host architecture is neither 32-bit nor 64-bit.
 #endif
@@ -127,7 +130,7 @@ static void CreateTraceCallerFunction(v8::Local<v8::Context> context,
   CreateFramePointerGrabberConstructor(context, "FPGrabber");
 
   // Compile the script.
-  CompileRun(trace_call_buf.start());
+  CompileRun(trace_call_buf.begin());
 }
 
 
@@ -143,7 +146,7 @@ TEST(CFromJSStackTrace) {
   i::TraceExtension::InitTraceEnv(&sample);
 
   v8::HandleScope scope(CcTest::isolate());
-  v8::Local<v8::Context> context = CcTest::NewContext(TRACE_EXTENSION);
+  v8::Local<v8::Context> context = CcTest::NewContext({TRACE_EXTENSION_ID});
   v8::Context::Scope context_scope(context);
 
   // Create global function JSFuncDoTrace which calls
@@ -192,7 +195,7 @@ TEST(PureJSStackTrace) {
   i::TraceExtension::InitTraceEnv(&sample);
 
   v8::HandleScope scope(CcTest::isolate());
-  v8::Local<v8::Context> context = CcTest::NewContext(TRACE_EXTENSION);
+  v8::Local<v8::Context> context = CcTest::NewContext({TRACE_EXTENSION_ID});
   v8::Context::Scope context_scope(context);
 
   // Create global function JSFuncDoTrace which calls
@@ -262,7 +265,7 @@ TEST(PureCStackTrace) {
   TickSample sample;
   i::TraceExtension::InitTraceEnv(&sample);
   v8::HandleScope scope(CcTest::isolate());
-  v8::Local<v8::Context> context = CcTest::NewContext(TRACE_EXTENSION);
+  v8::Local<v8::Context> context = CcTest::NewContext({TRACE_EXTENSION_ID});
   v8::Context::Scope context_scope(context);
   // Check that sampler doesn't crash
   CHECK_EQ(10, CFunc(10));
@@ -271,7 +274,7 @@ TEST(PureCStackTrace) {
 
 TEST(JsEntrySp) {
   v8::HandleScope scope(CcTest::isolate());
-  v8::Local<v8::Context> context = CcTest::NewContext(TRACE_EXTENSION);
+  v8::Local<v8::Context> context = CcTest::NewContext({TRACE_EXTENSION_ID});
   v8::Context::Scope context_scope(context);
   CHECK(!i::TraceExtension::GetJsEntrySp());
   CompileRun("a = 1; b = a + 1;");

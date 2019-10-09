@@ -65,8 +65,33 @@ for (var constructor of typedArrayConstructors) {
 
   // Detached Operation
   var array = new constructor([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-  %ArrayBufferNeuter(array.buffer);
+  %ArrayBufferDetach(array.buffer);
   assertThrows(() => array.sort(), TypeError);
+}
+
+// Check that TypedArray.p.sort is stable.
+for (let constructor of typedArrayConstructors) {
+  // Sort an array [0..kSize-1] modulo 4. If the sort is stable, the array
+  // will be partitioned into 4 parts, where each part has only increasing
+  // elements.
+  const kSize = 128;
+  const kModulo = 4;
+  const kRunSize = kSize / kModulo;
+
+  const template = Array.from({ length: kSize }, (_, i) => i);
+  const array = new constructor(template);
+
+  const compare = (a, b) => (b % kModulo) - (a % kModulo);
+  array.sort(compare);
+
+  function assertIncreasing(from) {
+    for (let i = from + 1; i < from + kRunSize; ++i) {
+      assertTrue(array[i - 1] < array[i]);
+      assertEquals(array[i - 1] % kModulo, array[i] % kModulo);
+    }
+  }
+
+  for (let i = 0; i < kModulo; ++i) assertIncreasing(i * kRunSize);
 }
 
 // The following creates a test for each typed element kind, where the array
@@ -97,6 +122,7 @@ let constructorsWithArrays = [
     ctor: Float64Array,
     array: [2 ** 53, 2 ** 53 - 1, 1, 0, -1, -(2 ** 53 - 1), -(2 ** 53)]
   },
+  {ctor: Uint8ClampedArray, array: [255, 254, 4, 3, 2, 1, 0]},
   {
     ctor: BigUint64Array,
     array: [2n ** 64n - 1n, 2n ** 64n - 2n, 4n, 3n, 2n, 1n, 0n]

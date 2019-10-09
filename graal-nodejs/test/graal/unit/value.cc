@@ -275,31 +275,31 @@ EXPORT_TO_JS(IsName) {
 
 EXPORT_TO_JS(IsNativeErrorForRangeError) {
     Isolate* isolate = args.GetIsolate();
-    bool result = Exception::RangeError(String::NewFromUtf8(isolate, "range error"))->IsNativeError();
+    bool result = Exception::RangeError(String::NewFromUtf8(isolate, "range error", v8::NewStringType::kNormal).ToLocalChecked())->IsNativeError();
     args.GetReturnValue().Set(result);
 }
 
 EXPORT_TO_JS(IsNativeErrorForReferenceError) {
     Isolate* isolate = args.GetIsolate();
-    bool result = Exception::ReferenceError(String::NewFromUtf8(isolate, "reference error"))->IsNativeError();
+    bool result = Exception::ReferenceError(String::NewFromUtf8(isolate, "reference error", v8::NewStringType::kNormal).ToLocalChecked())->IsNativeError();
     args.GetReturnValue().Set(result);
 }
 
 EXPORT_TO_JS(IsNativeErrorForSyntaxError) {
     Isolate* isolate = args.GetIsolate();
-    bool result = Exception::SyntaxError(String::NewFromUtf8(isolate, "syntax error"))->IsNativeError();
+    bool result = Exception::SyntaxError(String::NewFromUtf8(isolate, "syntax error", v8::NewStringType::kNormal).ToLocalChecked())->IsNativeError();
     args.GetReturnValue().Set(result);
 }
 
 EXPORT_TO_JS(IsNativeErrorForTypeError) {
     Isolate* isolate = args.GetIsolate();
-    bool result = Exception::RangeError(String::NewFromUtf8(isolate, "type error"))->IsNativeError();
+    bool result = Exception::RangeError(String::NewFromUtf8(isolate, "type error", v8::NewStringType::kNormal).ToLocalChecked())->IsNativeError();
     args.GetReturnValue().Set(result);
 }
 
 EXPORT_TO_JS(IsNativeErrorForError) {
     Isolate* isolate = args.GetIsolate();
-    bool result = Exception::Error(String::NewFromUtf8(isolate, "error"))->IsNativeError();
+    bool result = Exception::Error(String::NewFromUtf8(isolate, "error", v8::NewStringType::kNormal).ToLocalChecked())->IsNativeError();
     args.GetReturnValue().Set(result);
 }
 
@@ -310,7 +310,9 @@ EXPORT_TO_JS(IsNativeError) {
 // Value::Equals
 
 EXPORT_TO_JS(Equals) {
-    args.GetReturnValue().Set(args[0]->Equals(args[1]));
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    args.GetReturnValue().Set(args[0]->Equals(context, args[1]).FromJust());
 }
 
 // Value::StrictEquals
@@ -323,11 +325,6 @@ EXPORT_TO_JS(StrictEquals) {
 
 EXPORT_TO_JS(IntegerValue) {
     Isolate* isolate = args.GetIsolate();
-    args.GetReturnValue().Set(BigInt::New(isolate, args[0]->IntegerValue()));
-}
-
-EXPORT_TO_JS(IntegerValueContext) {
-    Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     TryCatch tryCatch(isolate);
     Maybe<int64_t> result = args[0]->IntegerValue(context);
@@ -336,7 +333,7 @@ EXPORT_TO_JS(IntegerValueContext) {
     }
 }
 
-EXPORT_TO_JS(IntegerValueContextPendingException) {
+EXPORT_TO_JS(IntegerValuePendingException) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     TryCatch tryCatch(isolate);
@@ -348,7 +345,8 @@ EXPORT_TO_JS(IntegerValueContextPendingException) {
 }
 
 EXPORT_TO_JS(BooleanValue) {
-    args.GetReturnValue().Set(args[0]->BooleanValue());
+    Isolate* isolate = args.GetIsolate();
+    args.GetReturnValue().Set(args[0]->BooleanValue(isolate));
 }
 
 EXPORT_TO_JS(BooleanValueContext) {
@@ -362,10 +360,6 @@ EXPORT_TO_JS(BooleanValueContext) {
 }
 
 EXPORT_TO_JS(NumberValue) {
-    args.GetReturnValue().Set(args[0]->NumberValue());
-}
-
-EXPORT_TO_JS(NumberValueContext) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     TryCatch tryCatch(isolate);
@@ -375,7 +369,7 @@ EXPORT_TO_JS(NumberValueContext) {
     }
 }
 
-EXPORT_TO_JS(NumberValueContextPendingException) {
+EXPORT_TO_JS(NumberValuePendingException) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     TryCatch tryCatch(isolate);
@@ -387,10 +381,6 @@ EXPORT_TO_JS(NumberValueContextPendingException) {
 }
 
 EXPORT_TO_JS(Int32Value) {
-    args.GetReturnValue().Set(args[0]->Int32Value());
-}
-
-EXPORT_TO_JS(Int32ValueContext) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     TryCatch tryCatch(isolate);
@@ -400,7 +390,7 @@ EXPORT_TO_JS(Int32ValueContext) {
     }
 }
 
-EXPORT_TO_JS(Int32ValueContextPendingException) {
+EXPORT_TO_JS(Int32ValuePendingException) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     TryCatch tryCatch(isolate);
@@ -412,10 +402,6 @@ EXPORT_TO_JS(Int32ValueContextPendingException) {
 }
 
 EXPORT_TO_JS(Uint32Value) {
-    args.GetReturnValue().Set(args[0]->Uint32Value());
-}
-
-EXPORT_TO_JS(Uint32ValueContext) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     TryCatch tryCatch(isolate);
@@ -425,7 +411,7 @@ EXPORT_TO_JS(Uint32ValueContext) {
     }
 }
 
-EXPORT_TO_JS(Uint32ValueContextPendingException) {
+EXPORT_TO_JS(Uint32ValuePendingException) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     TryCatch tryCatch(isolate);
@@ -439,25 +425,32 @@ EXPORT_TO_JS(Uint32ValueContextPendingException) {
 // Value::To*
 
 EXPORT_TO_JS(ToBoolean) {
-    args.GetReturnValue().Set(args[0]->ToBoolean());
+    Isolate* isolate = args.GetIsolate();
+    args.GetReturnValue().Set(args[0]->ToBoolean(isolate));
 }
 
 EXPORT_TO_JS(ToNumber) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     MaybeLocal<Number> number = args[0]->ToNumber(context);
-    if (number.IsEmpty()) {
-        return;
+    if (!number.IsEmpty()) {
+        args.GetReturnValue().Set(number.ToLocalChecked());
     }
-    args.GetReturnValue().Set(number.ToLocalChecked());
 }
 
 EXPORT_TO_JS(ToString) {
-    args.GetReturnValue().Set(args[0]->ToString());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    MaybeLocal<String> string = args[0]->ToString(context);
+    if (!string.IsEmpty()) {
+        args.GetReturnValue().Set(string.ToLocalChecked());
+    }
 }
 
 EXPORT_TO_JS(ToInteger) {
-    args.GetReturnValue().Set(args[0]->ToInteger());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    args.GetReturnValue().Set(args[0]->ToInteger(context).ToLocalChecked());
 }
 
 EXPORT_TO_JS(ToUint32) {
@@ -476,15 +469,18 @@ EXPORT_TO_JS(ToArrayIndex) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     MaybeLocal<Uint32> result = args[0]->ToArrayIndex(context);
-    if (result.IsEmpty()) {
-        args.GetReturnValue().SetUndefined();
-    } else {
+    if (!result.IsEmpty()) {
         args.GetReturnValue().Set(result.ToLocalChecked());
     }
 }
 
 EXPORT_TO_JS(ToObject) {
-    args.GetReturnValue().Set(args[0]->ToObject());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    MaybeLocal<Object> object = args[0]->ToObject(context);
+    if (!object.IsEmpty()) {
+        args.GetReturnValue().Set(object.ToLocalChecked());
+    }
 }
 
 #undef SUITE

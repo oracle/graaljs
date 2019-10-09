@@ -172,11 +172,14 @@ $ make install
 To build with [CMake](https://cmake.org/):
 
 ```bash
-$ mkdir -p out/cmake ; cd out/cmake ; cmake -DBUILD_TESTING=ON ../..
-$ make all test
-# Or manually:
-$ ./uv_run_tests    # shared library build
-$ ./uv_run_tests_a  # static library build
+$ mkdir -p out/cmake ; cd out/cmake   # create build directory
+$ cmake ../.. -DBUILD_TESTING=ON      # generate project with test
+$ cmake --build .                     # build
+$ ctest -C Debug --output-on-failure  # run tests
+
+# Or manually run tests:
+$ ./out/cmake/uv_run_tests    # shared library build
+$ ./out/cmake/uv_run_tests_a  # static library build
 ```
 
 To build with GYP, first run:
@@ -384,7 +387,7 @@ $ gdb --args out/Debug/run-tests TEST_NAME
 Use the `--trace-children=yes` parameter:
 
 ```bash
-$ valgrind --trace-children=yes -v --tool=memcheck --leak-check=full --track-origins=yes --leak-resolution=high --show-reachable=yes --log-file=memcheck.log out/Debug/run-tests TEST_NAME
+$ valgrind --trace-children=yes -v --tool=memcheck --leak-check=full --track-origins=yes --leak-resolution=high --show-reachable=yes --log-file=memcheck-%p.log out/Debug/run-tests TEST_NAME
 ```
 
 ### Running benchmarks

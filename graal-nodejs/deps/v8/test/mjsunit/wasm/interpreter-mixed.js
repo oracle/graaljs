@@ -4,7 +4,6 @@
 
 // Flags: --allow-natives-syntax
 
-load('test/mjsunit/wasm/wasm-constants.js');
 load('test/mjsunit/wasm/wasm-module-builder.js');
 
 // =============================================================================
@@ -26,11 +25,11 @@ function checkStack(stack, expected_lines) {
   }
 }
 
-(function testGrowMemoryBetweenInterpretedAndCompiled() {
+(function testMemoryGrowBetweenInterpretedAndCompiled() {
   // grow_memory can be called from interpreted or compiled code, and changes
   // should be reflected in either execution.
   var builder = new WasmModuleBuilder();
-  var grow_body = [kExprGetLocal, 0, kExprGrowMemory, kMemoryZero];
+  var grow_body = [kExprGetLocal, 0, kExprMemoryGrow, kMemoryZero];
   var load_body = [kExprGetLocal, 0, kExprI32LoadMem, 0, 0];
   var store_body = [kExprGetLocal, 0, kExprGetLocal, 1, kExprI32StoreMem, 0, 0];
   builder.addFunction('grow_memory', kSig_i_i).addBody(grow_body).exportFunc();
@@ -192,4 +191,28 @@ function redirectToInterpreter(
       ]);
     }
   }
+})();
+
+(function testInterpreterPreservedOnTierUp() {
+  print(arguments.callee.name);
+  var builder = new WasmModuleBuilder();
+  var fun_body = [kExprI32Const, 23];
+  var fun = builder.addFunction('fun', kSig_i_v).addBody(fun_body).exportFunc();
+  var instance = builder.instantiate();
+  var exp = instance.exports;
+
+  // Initially the interpreter is not being called.
+  var initial_interpreted = %WasmNumInterpretedCalls(instance);
+  assertEquals(23, exp.fun());
+  assertEquals(initial_interpreted + 0, %WasmNumInterpretedCalls(instance));
+
+  // Redirection will cause the interpreter to be called.
+  %RedirectToWasmInterpreter(instance, fun.index);
+  assertEquals(23, exp.fun());
+  assertEquals(initial_interpreted + 1, %WasmNumInterpretedCalls(instance));
+
+  // Requesting a tier-up still ensure the interpreter is being called.
+  %WasmTierUpFunction(instance, fun.index);
+  assertEquals(23, exp.fun());
+  assertEquals(initial_interpreted + 2, %WasmNumInterpretedCalls(instance));
 })();

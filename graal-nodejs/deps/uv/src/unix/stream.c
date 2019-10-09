@@ -1000,12 +1000,12 @@ uv_handle_type uv__handle_type(int fd) {
 
 static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
   stream->flags |= UV_HANDLE_READ_EOF;
+  stream->flags &= ~UV_HANDLE_READING;
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
   if (!uv__io_active(&stream->io_watcher, POLLOUT))
     uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
   stream->read_cb(stream, UV_EOF, buf);
-  stream->flags &= ~UV_HANDLE_READING;
 }
 
 
@@ -1541,7 +1541,7 @@ int uv_try_write(uv_stream_t* stream,
   }
 
   if (written == 0 && req_size != 0)
-    return UV_EAGAIN;
+    return req.error < 0 ? req.error : UV_EAGAIN;
   else
     return written;
 }

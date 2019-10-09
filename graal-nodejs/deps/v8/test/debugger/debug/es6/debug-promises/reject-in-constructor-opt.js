@@ -39,23 +39,26 @@ function bar(a,b) {
   throw new Error("uncaught"); // EXCEPTION
 }
 
-foo();
-%RunMicrotasks();
+%PrepareFunctionForOptimization(foo);
 
 foo();
-%RunMicrotasks();
+%PerformMicrotaskCheckpoint();
+
+foo();
+%PerformMicrotaskCheckpoint();
 
 %OptimizeFunctionOnNextCall(foo);
 
 // bar likely gets inlined into foo.
 foo();
-%RunMicrotasks();
+%PerformMicrotaskCheckpoint();
 
 %NeverOptimizeFunction(bar);
+%PrepareFunctionForOptimization(foo);
 %OptimizeFunctionOnNextCall(foo);
 
 // bar does not get inlined into foo.
 foo();
-%RunMicrotasks();
+%PerformMicrotaskCheckpoint();
 
 assertEquals(0, expected_events);

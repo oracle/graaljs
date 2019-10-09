@@ -8,7 +8,7 @@ var Dir = Tacks.Dir
 var common = require('../common-tap.js')
 var mr = require('npm-registry-mock')
 
-var testdir = path.join(__dirname, path.basename(__filename, '.js'))
+var testdir = common.pkg
 var bugdir = path.join(testdir, 'modules', 'bug')
 
 // This is an absolutely minimal version of the optimist included with
@@ -44,7 +44,6 @@ var optimist = Dir({
 
 var fixture = new Tacks(
   Dir({
-    cache: Dir({}),
     global: Dir({
       lib: Dir({
         node_modules: Dir({
@@ -126,7 +125,7 @@ test('shared-linked', function (t) {
     })
   }
   var config = [
-    '--cache', path.join(testdir, 'cache'),
+    '--cache', common.cache,
     '--registry', common.registry,
     '--unicode', 'false'
   ]

@@ -453,7 +453,7 @@ int GraalString::Write(uint16_t* buffer, int start, int length, int options) con
 namespace v8 {
     namespace internal {
 
-        class Heap {
+        class ExternalString {
             static void DisposeExternalString(v8::String::ExternalStringResourceBase* external_string) {
                 external_string->Dispose();
             }
@@ -463,7 +463,7 @@ namespace v8 {
 }
 
 void GraalString::ExternalResourceDeallocator(const v8::WeakCallbackInfo<void>& data) {
-    v8::internal::Heap::DisposeExternalString(reinterpret_cast<v8::String::ExternalStringResourceBase*> (data.GetParameter()));
+    v8::internal::ExternalString::DisposeExternalString(reinterpret_cast<v8::String::ExternalStringResourceBase*> (data.GetParameter()));
 }
 
 v8::Local<v8::String> GraalString::NewExternal(v8::Isolate* isolate, v8::String::ExternalOneByteStringResource* resource) {

@@ -180,6 +180,17 @@ Data types
             char machine[256];
         } uv_utsname_t;
 
+.. c:type:: uv_env_item_t
+
+    Data type for environment variable storage.
+
+    ::
+
+    typedef struct uv_env_item_s {
+        char* name;
+        char* value;
+    } uv_env_item_t;
+
 
 API
 ---
@@ -461,6 +472,19 @@ API
 
     Gets memory information (in bytes).
 
+.. c:function:: uint64_t uv_get_constrained_memory(void)
+
+    Gets the amount of memory available to the process (in bytes) based on
+    limits imposed by the OS. If there is no such constraint, or the constraint
+    is unknown, `0` is returned. Note that it is not unusual for this value to
+    be less than or greater than :c:func:`uv_get_total_memory`.
+
+    .. note::
+        This function currently only returns a non-zero value on Linux, based
+        on cgroups if it is present.
+
+    .. versionadded:: 1.29.0
+
 .. c:function:: uint64_t uv_hrtime(void)
 
     Returns the current high-resolution real time. This is expressed in
@@ -509,6 +533,23 @@ API
         stability guarantees.
 
     .. versionadded:: 1.8.0
+
+.. c:function:: int uv_os_environ(uv_env_item_t** envitems, int* count)
+
+    Retrieves all environment variables. This function will allocate memory
+    which must be freed by calling :c:func:`uv_os_free_environ`.
+
+    .. warning::
+        This function is not thread safe.
+
+    .. versionadded:: 1.31.0
+
+.. c:function:: void uv_os_free_environ(uv_env_item_t* envitems, int count);
+
+    Frees the memory allocated for the environment variables by
+    :c:func:`uv_os_environ`.
+
+    .. versionadded:: 1.31.0
 
 .. c:function:: int uv_os_getenv(const char* name, char* buffer, size_t* size)
 

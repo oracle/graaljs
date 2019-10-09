@@ -4,7 +4,6 @@
 
 // Flags: --allow-natives-syntax
 
-load('test/mjsunit/wasm/wasm-constants.js');
 load('test/mjsunit/wasm/wasm-module-builder.js');
 
 // The number of locals must be greater than the constant defined here:
@@ -49,18 +48,18 @@ let m1 = new WebAssembly.Module(m1_bytes);
 // Serialize the module and postMessage it to another thread.
 let serialized_m1 = %SerializeWasmModule(m1);
 
-let workerScript =
-  `onmessage = function(msg) {
-    let {serialized_m1, m1_bytes} = msg;
+let worker_onmessage = function(msg) {
+  let {serialized_m1, m1_bytes} = msg;
 
-    let m1_clone = %DeserializeWasmModule(serialized_m1, m1_bytes);
-    let imports = {mod: {get: () => 3, call: () => {}}};
-    let i2 = new WebAssembly.Instance(m1_clone, imports);
-    i2.exports.main();
-    postMessage('done');
-  }`;
+  let m1_clone = %DeserializeWasmModule(serialized_m1, m1_bytes);
+  let imports = {mod: {get: () => 3, call: () => {}}};
+  let i2 = new WebAssembly.Instance(m1_clone, imports);
+  i2.exports.main();
+  postMessage('done');
+}
+let workerScript = "onmessage = " + worker_onmessage.toString();
 
-let worker = new Worker(workerScript);
+let worker = new Worker(workerScript, {type: 'string'});
 worker.postMessage({serialized_m1, m1_bytes});
 
 // Wait for worker to finish.

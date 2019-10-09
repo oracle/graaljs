@@ -157,7 +157,7 @@ enum GraalAccessMethod {
     array_buffer_view_byte_offset,
     array_buffer_is_external,
     array_buffer_externalize,
-    array_buffer_neuter,
+    array_buffer_detach,
     typed_array_length,
     uint8_array_new,
     uint8_clamped_array_new,
@@ -203,12 +203,12 @@ enum GraalAccessMethod {
     isolate_enable_import_module_dynamically,
     isolate_enter,
     isolate_exit,
+    isolate_enqueue_microtask,
     template_set,
     template_set_accessor_property,
     object_template_new,
     object_template_new_instance,
     object_template_set_accessor,
-    object_template_set_named_property_handler,
     object_template_set_handler,
     object_template_set_call_as_function_handler,
     function_new_instance,
@@ -248,6 +248,7 @@ enum GraalAccessMethod {
     context_get_pointer_in_embedder_data,
     context_set_embedder_data,
     context_get_embedder_data,
+    context_get_extras_binding_object,
     try_catch_exception,
     try_catch_has_terminated,
     message_get_script_resource_name,
@@ -332,6 +333,8 @@ enum GraalAccessMethod {
     big_int_to_words_array,
     map_new,
     map_set,
+    set_new,
+    set_add,
     shared_array_buffer_new,
     shared_array_buffer_is_external,
     shared_array_buffer_get_contents,
@@ -350,7 +353,7 @@ enum class GraalAccessField {
 
 class GraalIsolate {
 public:
-    GraalIsolate(JavaVM* jvm, JNIEnv* env);
+    GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams const& params);
     v8::Local<v8::Value> ThrowException(v8::Local<v8::Value> exception);
     bool AddMessageListener(v8::MessageCallback callback, v8::Local<v8::Value> data);
     void NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
@@ -366,7 +369,7 @@ public:
     void WriteInt64ToSharedBuffer(int64_t number);
     void WriteDoubleToSharedBuffer(double number);
     void InternalErrorCheck();
-    static v8::Isolate* New(v8::Isolate::CreateParams const& params);
+    static v8::Isolate* New(v8::Isolate::CreateParams const& params, v8::Isolate* placement = nullptr);
     void SetPromiseHook(v8::PromiseHook promise_hook);
     void NotifyPromiseHook(v8::PromiseHookType, v8::Local<v8::Promise> promise, v8::Local<v8::Value> parent);
     void SetPromiseRejectCallback(v8::PromiseRejectCallback callback);
@@ -380,6 +383,7 @@ public:
     void Enter();
     void Exit();
     void HandleEmptyCallResult();
+    void EnqueueMicrotask(v8::Local<v8::Function> microtask);
 
     enum GCCallbackType {
         kIsolateGCCallbackType = 0,
@@ -585,6 +589,7 @@ public:
 
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
     void Externalize(jobject java_buffer);
+    v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
 
     static void SetFlags(int argc, char** argv) {
         if (GraalIsolate::argv != nullptr) {
@@ -655,6 +660,7 @@ private:
     v8::MessageCallback message_listener_;
     bool sending_message_;
     v8::Isolate::AbortOnUncaughtExceptionCallback abort_on_uncaught_exception_callback_;
+    v8::ArrayBuffer::Allocator* array_buffer_allocator_;
     int try_catch_count_;
     int function_template_count_;
     bool stack_check_enabled_;

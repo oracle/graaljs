@@ -46,9 +46,10 @@
 void Arguments_Function(const FunctionCallbackInfo<Value>& args) {
     bool constructCall = args.IsConstructCall();
     Isolate* isolate = args.GetIsolate();
-    args[0].As<Object>()->Set(String::NewFromUtf8(isolate, "isConstructCall"), constructCall ? True(isolate) : False(isolate));
-    args[0].As<Object>()->Set(String::NewFromUtf8(isolate, "thisValue"), args.This());
-    args[0].As<Object>()->Set(String::NewFromUtf8(isolate, "holderValue"), args.Holder());
+    Local<Context> context = isolate->GetCurrentContext();
+    args[0].As<Object>()->Set(context, String::NewFromUtf8(isolate, "isConstructCall", v8::NewStringType::kNormal).ToLocalChecked(), constructCall ? True(isolate) : False(isolate));
+    args[0].As<Object>()->Set(context, String::NewFromUtf8(isolate, "thisValue", v8::NewStringType::kNormal).ToLocalChecked(), args.This());
+    args[0].As<Object>()->Set(context, String::NewFromUtf8(isolate, "holderValue", v8::NewStringType::kNormal).ToLocalChecked(), args.Holder());
     args.GetReturnValue().Set(args.This());
 }
 
@@ -61,7 +62,9 @@ void Arguments_Function(const FunctionCallbackInfo<Value>& args) {
 // fields of Arguments can be read from a generic function
 
 EXPORT_TO_JS(FunctionWithArguments) {
-    Local<Function> func = FunctionTemplate::New(args.GetIsolate(), Arguments_Function)->GetFunction();
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<Function> func = FunctionTemplate::New(isolate, Arguments_Function)->GetFunction(context).ToLocalChecked();
     args.GetReturnValue().Set(func);
 }
 

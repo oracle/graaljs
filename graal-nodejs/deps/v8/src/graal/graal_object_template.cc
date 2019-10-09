@@ -100,24 +100,6 @@ void GraalObjectTemplate::SetAccessor(
     JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_template_set_accessor, GetJavaObject(), java_name, java_getter, java_setter, java_data, java_signature, java_attrs);
 }
 
-void GraalObjectTemplate::SetNamedPropertyHandler(v8::NamedPropertyGetterCallback getter,
-        v8::NamedPropertySetterCallback setter,
-        v8::NamedPropertyQueryCallback query,
-        v8::NamedPropertyDeleterCallback deleter,
-        v8::NamedPropertyEnumeratorCallback enumerator,
-        v8::Local<v8::Value> data) {
-    jobject java_data = data.IsEmpty() ? NULL : reinterpret_cast<GraalValue*> (*data)->GetJavaObject();
-    JNI_CALL_VOID(Isolate(),
-            GraalAccessMethod::object_template_set_named_property_handler,
-            GetJavaObject(),
-            (jlong) getter,
-            (jlong) setter,
-            (jlong) query,
-            (jlong) deleter,
-            (jlong) enumerator,
-            java_data);
-}
-
 void GraalObjectTemplate::SetHandler(const v8::NamedPropertyHandlerConfiguration& configuration) {
     jobject java_data = configuration.data.IsEmpty() ? NULL : reinterpret_cast<GraalValue*> (*configuration.data)->GetJavaObject();
     JNI_CALL_VOID(Isolate(),

@@ -4,18 +4,12 @@
  */
 'use strict';
 
+const { isRequireCall, isString } = require('./rules-utils.js');
+
 //------------------------------------------------------------------------------
 // Rule Definition
 //------------------------------------------------------------------------------
 
-
-function isString(node) {
-  return node && node.type === 'Literal' && typeof node.value === 'string';
-}
-
-function isRequireCall(node) {
-  return node.callee.type === 'Identifier' && node.callee.name === 'require';
-}
 
 function isTopLevel(node) {
   do {
@@ -36,7 +30,7 @@ module.exports = (context) => {
   }
 
   function getRequiredModuleNameFromCall(node) {
-    // node has arguments and first argument is string
+    // Node has arguments and first argument is string
     if (node.arguments.length && isString(node.arguments[0])) {
       return node.arguments[0].value.trim();
     }

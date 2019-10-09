@@ -10,8 +10,8 @@ const mkdirp = require('mkdirp')
 const rimraf = require('rimraf')
 const requireInject = require('require-inject')
 
-const pkg = path.resolve(__dirname, 'version-no-git')
-const cache = path.resolve(pkg, 'cache')
+const pkg = common.pkg
+const cache = common.cache
 const gitDir = path.resolve(pkg, '.git')
 
 test('npm version does not alter the line endings in package.json (LF)', function (t) {

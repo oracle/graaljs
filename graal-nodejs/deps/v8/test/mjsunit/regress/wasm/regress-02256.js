@@ -264,7 +264,6 @@ var __v_11 = this;
 var __v_12 = {};
 var __v_13 = {};
 try {
-    load("test/mjsunit/wasm/wasm-constants.js");
     load("test/mjsunit/wasm/wasm-module-__v_1.js");
     __v_2 = 0x10000;
 } catch (e) {
@@ -274,7 +273,7 @@ try {
 function __f_16() {
     var __v_1 = new WasmModuleBuilder();
     __v_1.addFunction("grow_memory", kSig_i_i)
-        .addBody([kExprGetLocal, 0, kExprGrowMemory])
+        .addBody([kExprGetLocal, 0, kExprMemoryGrow])
         .exportFunc();
     __v_1.addFunction("load", kSig_i_i)
         .addBody([kExprGetLocal, 0, kExprI32LoadMem, 0, 0])

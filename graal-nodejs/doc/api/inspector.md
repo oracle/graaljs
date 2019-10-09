@@ -52,7 +52,19 @@ parameter usage.
 
 Return the URL of the active inspector, or `undefined` if there is none.
 
+## inspector.waitForDebugger()
+<!-- YAML
+added: v12.7.0
+-->
+
+Blocks until a client (existing or connected later) has sent
+`Runtime.runIfWaitingForDebugger` command.
+
+An exception will be thrown if there is no active inspector.
+
 ## Class: inspector.Session
+
+* Extends: {EventEmitter}
 
 The `inspector.Session` is used for dispatching messages to the V8 inspector
 back-end and receiving message responses and notifications.
@@ -65,8 +77,6 @@ added: v8.0.0
 Create a new instance of the `inspector.Session` class. The inspector session
 needs to be connected through [`session.connect()`][] before the messages
 can be dispatched to the inspector backend.
-
-`inspector.Session` is an [`EventEmitter`][] with the following events:
 
 ### Event: 'inspectorNotification'
 <!-- YAML
@@ -169,11 +179,11 @@ session.connect();
 
 session.post('Profiler.enable', () => {
   session.post('Profiler.start', () => {
-    // invoke business logic under measurement here...
+    // Invoke business logic under measurement here...
 
     // some time later...
     session.post('Profiler.stop', (err, { profile }) => {
-      // write profile to disk, upload, etc.
+      // Write profile to disk, upload, etc.
       if (!err) {
         fs.writeFileSync('./profile.cpuprofile', JSON.stringify(profile));
       }
@@ -207,7 +217,6 @@ session.post('HeapProfiler.takeHeapSnapshot', null, (err, r) => {
 ```
 
 [`'Debugger.paused'`]: https://chromedevtools.github.io/devtools-protocol/v8/Debugger#event-paused
-[`EventEmitter`]: events.html#events_class_eventemitter
 [`session.connect()`]: #inspector_session_connect
 [CPU Profiler]: https://chromedevtools.github.io/devtools-protocol/v8/Profiler
 [Chrome DevTools Protocol Viewer]: https://chromedevtools.github.io/devtools-protocol/v8/

@@ -65,6 +65,11 @@ module.exports = optionator({
             description: "Specify parser options"
         },
         {
+            option: "resolve-plugins-relative-to",
+            type: "path::String",
+            description: "A folder where plugins should be resolved from, CWD by default"
+        },
+        {
             heading: "Specifying rules and plugins"
         },
         {
@@ -187,7 +192,7 @@ module.exports = optionator({
         {
             option: "report-unused-disable-directives",
             type: "Boolean",
-            default: false,
+            default: void 0,
             description: "Adds reported errors for unused eslint-disable directives"
         },
         {

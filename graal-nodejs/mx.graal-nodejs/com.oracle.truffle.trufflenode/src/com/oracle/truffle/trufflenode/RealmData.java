@@ -55,6 +55,7 @@ public final class RealmData {
     private DynamicObject nativeUtf8Write;
     private DynamicObject nativeUtf8Slice;
     private DynamicObject resolverFactory;
+    private DynamicObject extrasBindingObject;
 
     public RealmData() {
     }
@@ -98,4 +99,13 @@ public final class RealmData {
     public DynamicObject getResolverFactory() {
         return resolverFactory;
     }
+
+    public void setExtrasBindingObject(DynamicObject extrasBindingObject) {
+        this.extrasBindingObject = extrasBindingObject;
+    }
+
+    public DynamicObject getExtrasBindingObject() {
+        return extrasBindingObject;
+    }
+
 }

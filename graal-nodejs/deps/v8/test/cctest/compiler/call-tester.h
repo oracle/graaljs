@@ -5,9 +5,9 @@
 #ifndef V8_CCTEST_COMPILER_CALL_TESTER_H_
 #define V8_CCTEST_COMPILER_CALL_TESTER_H_
 
-#include "src/handles.h"
+#include "src/execution/simulator.h"
+#include "src/handles/handles.h"
 #include "src/objects/code.h"
-#include "src/simulator.h"
 #include "test/cctest/compiler/c-signature.h"
 
 namespace v8 {
@@ -21,7 +21,7 @@ class CallHelper {
       : csig_(csig), isolate_(isolate) {
     USE(isolate_);
   }
-  virtual ~CallHelper() {}
+  virtual ~CallHelper() = default;
 
   template <typename... Params>
   R Call(Params... args) {
@@ -40,13 +40,22 @@ class CallHelper {
   Isolate* isolate_;
 };
 
+template <>
+template <typename... Params>
+Object CallHelper<Object>::Call(Params... args) {
+  CSignature::VerifyParams<Params...>(csig_);
+  Address entry = Generate();
+  auto fn = GeneratedCode<Address, Params...>::FromAddress(isolate_, entry);
+  return Object(fn.Call(args...));
+}
+
 // A call helper that calls the given code object assuming C calling convention.
 template <typename T>
 class CodeRunner : public CallHelper<T> {
  public:
   CodeRunner(Isolate* isolate, Handle<Code> code, MachineSignature* csig)
       : CallHelper<T>(isolate, csig), code_(code) {}
-  virtual ~CodeRunner() {}
+  ~CodeRunner() override = default;
 
   Address Generate() override { return code_->entry(); }
 

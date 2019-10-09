@@ -52,7 +52,7 @@ public:
     size_t ByteLength() const;
     bool IsArrayBuffer() const;
     bool IsExternal() const;
-    void Neuter();
+    void Detach();
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, size_t byte_length);
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, void* data, size_t byte_length, v8::ArrayBufferCreationMode mode);
 protected:

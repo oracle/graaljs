@@ -53,7 +53,7 @@ using namespace v8;
 
 void Fail(const char* message) {
     Isolate* isolate = Isolate::GetCurrent();
-    Local<Value> ex = Exception::TypeError(String::NewFromUtf8(isolate, message));
+    Local<Value> ex = Exception::TypeError(String::NewFromUtf8(isolate, message, v8::NewStringType::kNormal).ToLocalChecked());
     isolate->ThrowException(ex);
 }
 

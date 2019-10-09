@@ -52,7 +52,7 @@ EXPORT_TO_JS(Length) {
 // String::Concat
 
 EXPORT_TO_JS(Concat) {
-    args.GetReturnValue().Set(String::Concat(args[0].As<String>(), args[1].As<String>()));
+    args.GetReturnValue().Set(String::Concat(args.GetIsolate(), args[0].As<String>(), args[1].As<String>()));
 }
 
 // String::IsExternal
@@ -78,7 +78,7 @@ EXPORT_TO_JS(IsOneByte) {
 // String::Utf8Length
 
 EXPORT_TO_JS(Utf8Length) {
-    args.GetReturnValue().Set(args[0].As<String>()->Utf8Length());
+    args.GetReturnValue().Set(args[0].As<String>()->Utf8Length(args.GetIsolate()));
 }
 
 // String::Utf8Value
@@ -98,9 +98,10 @@ EXPORT_TO_JS(Utf8ValueEmpty) {
 // String::Write
 
 EXPORT_TO_JS(CheckWrite) {
+    Isolate* isolate = args.GetIsolate();
     Local<String> str = args[0].As<String>();
     uint16_t buffer[20];
-    int writtenBytes = str->Write(buffer);
+    int writtenBytes = str->Write(isolate, buffer);
     if (writtenBytes != 12) {
         Fail("length not as expected");
     }
@@ -116,9 +117,10 @@ EXPORT_TO_JS(CheckWrite) {
 // String::WriteOneByte
 
 EXPORT_TO_JS(CheckWriteOneByte) {
+    Isolate* isolate = args.GetIsolate();
     Local<String> str = args[0].As<String>();
     char buffer[20];
-    int writtenBytes = str->WriteOneByte((uint8_t*) buffer);
+    int writtenBytes = str->WriteOneByte(isolate, (uint8_t*) buffer);
     if (writtenBytes != 12) {
         Fail("length not as expected");
     }
@@ -131,9 +133,10 @@ EXPORT_TO_JS(CheckWriteOneByte) {
 // String::WriteUtf8
 
 EXPORT_TO_JS(CheckWriteUtf8) {
+    Isolate* isolate = args.GetIsolate();
     Local<String> str = args[0].As<String>();
     char buffer[20];
-    int writtenBytes = str->WriteUtf8(buffer);
+    int writtenBytes = str->WriteUtf8(isolate, buffer);
     if (writtenBytes != 13) { //only WriteUtf8 counts the NULL terminator
         Fail("length not as expected");
     }

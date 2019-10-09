@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "src/compiler/instruction-codes.h"
-#include "src/compiler/instruction.h"
-#include "src/compiler/jump-threading.h"
-#include "src/source-position.h"
+#include "src/codegen/source-position.h"
+#include "src/compiler/backend/instruction-codes.h"
+#include "src/compiler/backend/instruction.h"
+#include "src/compiler/backend/jump-threading.h"
 #include "test/cctest/cctest.h"
 
 namespace v8 {
@@ -77,6 +77,10 @@ class TestCode : public HandleAndZoneScope {
   }
   void End() {
     Start();
+    int end = static_cast<int>(sequence_.instructions().size());
+    if (current_->code_start() == end) {  // Empty block.  Insert a nop.
+      sequence_.AddInstruction(Instruction::New(main_zone(), kArchNop));
+    }
     sequence_.EndBlock(current_->rpo_number());
     current_ = nullptr;
     rpo_number_ = RpoNumber::FromInt(rpo_number_.ToInt() + 1);
@@ -609,11 +613,12 @@ TEST(FwPermuted_diamond) { RunAllPermutations<4>(RunPermutedDiamond); }
 
 
 void ApplyForwarding(TestCode& code, int size, int* forward) {
+  code.sequence_.RecomputeAssemblyOrderForTesting();
   ZoneVector<RpoNumber> vector(code.main_zone());
   for (int i = 0; i < size; i++) {
     vector.push_back(RpoNumber::FromInt(forward[i]));
   }
-  JumpThreading::ApplyForwarding(vector, &code.sequence_);
+  JumpThreading::ApplyForwarding(code.main_zone(), vector, &code.sequence_);
 }
 
 

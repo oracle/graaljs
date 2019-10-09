@@ -4,13 +4,13 @@
 
 #include <functional>
 
-#include "src/codegen.h"
+#include "src/base/overflowing-math.h"
 #include "src/compiler/js-operator.h"
 #include "src/compiler/node-properties.h"
 #include "src/compiler/operator-properties.h"
 #include "src/compiler/simplified-operator.h"
-#include "src/objects-inl.h"
-#include "test/cctest/types-fuzz.h"
+#include "src/objects/objects-inl.h"
+#include "test/common/types-fuzz.h"
 #include "test/unittests/compiler/graph-unittest.h"
 
 namespace v8 {
@@ -22,7 +22,8 @@ class TyperTest : public TypedGraphTest {
  public:
   TyperTest()
       : TypedGraphTest(3),
-        operation_typer_(isolate(), zone()),
+        broker_(isolate(), zone()),
+        operation_typer_(&broker_, zone()),
         types_(zone(), isolate(), random_number_generator()),
         javascript_(zone()),
         simplified_(zone()) {
@@ -55,6 +56,7 @@ class TyperTest : public TypedGraphTest {
 
   const int kRepetitions = 50;
 
+  JSHeapBroker broker_;
   OperationTyper operation_typer_;
   Types types_;
   JSOperatorBuilder javascript_;
@@ -174,7 +176,8 @@ class TyperTest : public TypedGraphTest {
             for (int x2 = rmin; x2 < rmin + width; x2++) {
               double result_value = opfun(x1, x2);
               Type result_type = Type::NewConstant(
-                  isolate()->factory()->NewNumber(result_value), zone());
+                  &broker_, isolate()->factory()->NewNumber(result_value),
+                  zone());
               EXPECT_TRUE(result_type.Is(expected_type));
             }
           }
@@ -195,19 +198,21 @@ class TyperTest : public TypedGraphTest {
         double x2 = RandomInt(r2.AsRange());
         double result_value = opfun(x1, x2);
         Type result_type = Type::NewConstant(
-            isolate()->factory()->NewNumber(result_value), zone());
+            &broker_, isolate()->factory()->NewNumber(result_value), zone());
         EXPECT_TRUE(result_type.Is(expected_type));
       }
     }
     // Test extreme cases.
     double x1 = +1e-308;
     double x2 = -1e-308;
-    Type r1 = Type::NewConstant(isolate()->factory()->NewNumber(x1), zone());
-    Type r2 = Type::NewConstant(isolate()->factory()->NewNumber(x2), zone());
+    Type r1 = Type::NewConstant(&broker_, isolate()->factory()->NewNumber(x1),
+                                zone());
+    Type r2 = Type::NewConstant(&broker_, isolate()->factory()->NewNumber(x2),
+                                zone());
     Type expected_type = TypeBinaryOp(op, r1, r2);
     double result_value = opfun(x1, x2);
     Type result_type = Type::NewConstant(
-        isolate()->factory()->NewNumber(result_value), zone());
+        &broker_, isolate()->factory()->NewNumber(result_value), zone());
     EXPECT_TRUE(result_type.Is(expected_type));
   }
 
@@ -222,6 +227,7 @@ class TyperTest : public TypedGraphTest {
         double x2 = RandomInt(r2.AsRange());
         bool result_value = opfun(x1, x2);
         Type result_type = Type::NewConstant(
+            &broker_,
             result_value ? isolate()->factory()->true_value()
                          : isolate()->factory()->false_value(),
             zone());
@@ -241,14 +247,14 @@ class TyperTest : public TypedGraphTest {
         int32_t x2 = static_cast<int32_t>(RandomInt(r2.AsRange()));
         double result_value = opfun(x1, x2);
         Type result_type = Type::NewConstant(
-            isolate()->factory()->NewNumber(result_value), zone());
+            &broker_, isolate()->factory()->NewNumber(result_value), zone());
         EXPECT_TRUE(result_type.Is(expected_type));
       }
     }
   }
 
-  typedef std::function<Type(Type)> UnaryTyper;
-  typedef std::function<Type(Type, Type)> BinaryTyper;
+  using UnaryTyper = std::function<Type(Type)>;
+  using BinaryTyper = std::function<Type(Type, Type)>;
 
   void TestUnaryMonotonicity(UnaryTyper typer, Type upper1 = Type::Any()) {
     Type type1 = Type::Intersect(types_.Fuzz(), upper1, zone());
@@ -297,11 +303,14 @@ class TyperTest : public TypedGraphTest {
 
 namespace {
 
-int32_t shift_left(int32_t x, int32_t y) { return x << (y & 0x1F); }
+int32_t shift_left(int32_t x, int32_t y) {
+  return static_cast<uint32_t>(x) << (y & 0x1F);
+}
 int32_t shift_right(int32_t x, int32_t y) { return x >> (y & 0x1F); }
 int32_t bit_or(int32_t x, int32_t y) { return x | y; }
 int32_t bit_and(int32_t x, int32_t y) { return x & y; }
 int32_t bit_xor(int32_t x, int32_t y) { return x ^ y; }
+double divide_double_double(double x, double y) { return base::Divide(x, y); }
 double modulo_double_double(double x, double y) { return Modulo(x, y); }
 
 }  // namespace
@@ -326,7 +335,7 @@ TEST_F(TyperTest, TypeJSMultiply) {
 }
 
 TEST_F(TyperTest, TypeJSDivide) {
-  TestBinaryArithOp(javascript_.Divide(), std::divides<double>());
+  TestBinaryArithOp(javascript_.Divide(), divide_double_double);
 }
 
 TEST_F(TyperTest, TypeJSModulus) {
@@ -425,7 +434,6 @@ TEST_F(TyperTest, TypeJSStrictEqual) {
   TEST_F(TyperTest, Monotonicity_##name) {     \
     TestUnaryMonotonicity(javascript_.name()); \
   }
-TEST_MONOTONICITY(ToInteger)
 TEST_MONOTONICITY(ToLength)
 TEST_MONOTONICITY(ToName)
 TEST_MONOTONICITY(ToNumber)
@@ -500,7 +508,7 @@ TEST_MONOTONICITY(ToBoolean)
     TestBinaryMonotonicity(simplified_.name(), Type::Number(), \
                            Type::Number());                    \
   }
-SIMPLIFIED_NUMBER_BINOP_LIST(TEST_MONOTONICITY);
+SIMPLIFIED_NUMBER_BINOP_LIST(TEST_MONOTONICITY)
 #undef TEST_MONOTONICITY
 
 // SIMPLIFIED BINOPs without hint, without input restriction

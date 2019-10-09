@@ -11,12 +11,6 @@ for (let i = 0; i < kArraySize; ++i) {
 
 let array_to_sort = [];
 
-function assert(condition, message) {
-  if (!condition) {
-    throw Error(message);
-  }
-}
-
 function AssertPackedSmiElements() {
   assert(%HasFastPackedElements(array_to_sort) &&
          %HasSmiElements(array_to_sort),
@@ -74,11 +68,8 @@ function CreatePackedObjectArray() {
 }
 
 function CreateHoleySmiArray() {
-  array_to_sort = new Array(kArraySize);
-  for (let i = 0; i < kArraySize; ++i) {
-    array_to_sort[i] = template_array[i];
-  }
-
+  array_to_sort = Array.from(template_array);
+  delete array_to_sort[0];
   AssertHoleySmiElements();
 }
 
@@ -102,7 +93,9 @@ function CreateHoleyObjectArray() {
 
 function CreateDictionaryArray() {
   array_to_sort = Array.from(template_array);
-  array_to_sort[%MaxSmi()] = 42;
+  Object.defineProperty(array_to_sort, kArraySize - 2,
+    { get: () => this.foo,
+      set: (v) => this.foo = v });
 
   AssertDictionaryElements();
 }
@@ -126,3 +119,23 @@ function cmp_smaller(a, b) {
 }
 
 function cmp_greater(a, b) { return cmp_smaller(b, a); }
+
+// The counter is used in some benchmarks to trigger actions during sorting.
+// To keep benchmarks deterministic, the counter needs to be reset for each
+// iteration.
+let counter = 0;
+
+// Sorting benchmarks need to execute setup and tearDown for each iteration.
+// Otherwise the benchmarks would mainly measure sorting already sorted arrays
+// which, depending on the strategy, is either the worst- or best case.
+function createSortSuite(name, reference, run, setup, tearDown = () => {}) {
+  let run_fn = () => {
+    counter = 0;
+
+    setup();
+    run();
+    tearDown();
+  };
+
+  return createSuite(name, reference, run_fn);
+}

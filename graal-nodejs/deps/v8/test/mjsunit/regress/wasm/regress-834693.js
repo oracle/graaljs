@@ -4,7 +4,6 @@
 
 // flags: --wasm-lazy-compilation
 
-load("test/mjsunit/wasm/wasm-constants.js");
 load("test/mjsunit/wasm/wasm-module-builder.js");
 
 var module = new WasmModuleBuilder();
@@ -13,7 +12,7 @@ module.addFunction("main", kSig_v_v)
   .addBody([
     kExprI32Const, 20,
     kExprI32Const, 29,
-    kExprGrowMemory, kMemoryZero,
+    kExprMemoryGrow, kMemoryZero,
     kExprI32StoreMem, 0, 0xFF, 0xFF, 0x7A])
   .exportAs("main");
 var instance = module.instantiate();

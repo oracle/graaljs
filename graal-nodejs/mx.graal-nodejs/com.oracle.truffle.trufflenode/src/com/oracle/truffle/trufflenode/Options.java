@@ -121,6 +121,8 @@ public final class Options {
                         "es-staging",
                         "expose-debug-as",
                         "expose-natives-as",
+                        "gc-global",
+                        "gc-interval",
                         "harmony",
                         "harmony-bigint",
                         "harmony-default-parameters",

@@ -50,8 +50,10 @@ EXPORT_TO_JS(Length) {
 // Array::New
 
 EXPORT_TO_JS(New) {
-    int len = args[0]->ToInteger()->Value();
-    args.GetReturnValue().Set(Array::New(args.GetIsolate(), len));
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    int len = args[0]->ToInteger(context).ToLocalChecked()->Value();
+    args.GetReturnValue().Set(Array::New(isolate, len));
 }
 
 #undef SUITE

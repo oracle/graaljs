@@ -669,7 +669,7 @@ void GraalNotifyPromiseRejectionTracker(JNIEnv* env, jclass nativeAccess, jobjec
     v8::Local<v8::Promise> v8_promise = reinterpret_cast<v8::Promise*> (graal_promise);
     v8::PromiseRejectEvent event = static_cast<v8::PromiseRejectEvent> (operation);
     v8::Local<v8::Value> v8_value = reinterpret_cast<v8::Value*> (graal_value);
-    graal_isolate->NotifyPromiseRejectCallback(v8::PromiseRejectMessage(v8_promise, event, v8_value, v8::Local<v8::StackTrace>()));
+    graal_isolate->NotifyPromiseRejectCallback(v8::PromiseRejectMessage(v8_promise, event, v8_value));
 }
 
 void GraalNotifyImportMetaInitializer(JNIEnv* env, jclass nativeAccess, jobject java_import_meta, jobject java_module) {

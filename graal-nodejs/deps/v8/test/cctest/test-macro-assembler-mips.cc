@@ -28,120 +28,83 @@
 #include <stdlib.h>
 #include <iostream>  // NOLINT(readability/streams)
 
-#include "src/api.h"
+#include "src/api/api-inl.h"
 #include "src/base/utils/random-number-generator.h"
-#include "src/macro-assembler.h"
-#include "src/mips/macro-assembler-mips.h"
-#include "src/objects-inl.h"
-#include "src/simulator.h"
-#include "src/v8.h"
+#include "src/codegen/macro-assembler.h"
+#include "src/execution/simulator.h"
+#include "src/init/v8.h"
+#include "src/objects/heap-number.h"
+#include "src/objects/js-array-inl.h"
+#include "src/objects/objects-inl.h"
+#include "src/utils/ostreams.h"
 #include "test/cctest/cctest.h"
 
 namespace v8 {
 namespace internal {
 
 // TODO(mips): Refine these signatures per test case.
-using F1 = Object*(int x, int p1, int p2, int p3, int p4);
-using F3 = Object*(void* p, int p1, int p2, int p3, int p4);
-using F4 = Object*(void* p0, void* p1, int p2, int p3, int p4);
+using F1 = void*(int x, int p1, int p2, int p3, int p4);
+using F3 = void*(void* p, int p1, int p2, int p3, int p4);
+using F4 = void*(void* p0, void* p1, int p2, int p3, int p4);
 
 #define __ masm->
 
 TEST(BYTESWAP) {
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
-  HandleScope handles(isolate);
+  HandleScope scope(isolate);
 
   struct T {
-    int32_t r1;
-    int32_t r2;
-    int32_t r3;
-    int32_t r4;
-    int32_t r5;
-    int32_t t1;
-    int32_t t2;
-    int32_t t3;
-    int32_t t4;
-    int32_t t5;
-    int32_t p1;
-    int32_t p2;
-    int32_t p3;
-    int32_t p4;
-    int32_t p5;
+    uint32_t s4;
+    uint32_t s2;
+    uint32_t u2;
   };
-  T t;
 
-  MacroAssembler assembler(isolate, nullptr, 0,
-                           v8::internal::CodeObjectRequired::kYes);
+  T t;
+  uint32_t test_values[] = {0x5612FFCD, 0x9D327ACC, 0x781A15C3, 0xFCDE,    0x9F,
+                            0xC81A15C3, 0x80000000, 0xFFFFFFFF, 0x00008000};
+
+  MacroAssembler assembler(isolate, v8::internal::CodeObjectRequired::kYes);
+
   MacroAssembler* masm = &assembler;
 
-  __ lw(a2, MemOperand(a0, offsetof(T, r1)));
-  __ ByteSwapSigned(a1, a2, 4);
-  __ sw(a2, MemOperand(a0, offsetof(T, p1)));
-  __ sw(a1, MemOperand(a0, offsetof(T, t1)));
-  __ ByteSwapSigned(a2, a2, 4);
-  __ sw(a2, MemOperand(a0, offsetof(T, r1)));
+  __ lw(a1, MemOperand(a0, offsetof(T, s4)));
+  __ nop();
+  __ ByteSwapSigned(a1, a1, 4);
+  __ sw(a1, MemOperand(a0, offsetof(T, s4)));
 
-  __ lw(a2, MemOperand(a0, offsetof(T, r2)));
-  __ ByteSwapSigned(a1, a2, 2);
-  __ sw(a2, MemOperand(a0, offsetof(T, p2)));
-  __ sw(a1, MemOperand(a0, offsetof(T, t2)));
-  __ ByteSwapSigned(a2, a2, 2);
-  __ sw(a2, MemOperand(a0, offsetof(T, r2)));
+  __ lw(a1, MemOperand(a0, offsetof(T, s2)));
+  __ nop();
+  __ ByteSwapSigned(a1, a1, 2);
+  __ sw(a1, MemOperand(a0, offsetof(T, s2)));
 
-  __ lw(a2, MemOperand(a0, offsetof(T, r3)));
-  __ ByteSwapSigned(a1, a2, 1);
-  __ sw(a2, MemOperand(a0, offsetof(T, p3)));
-  __ sw(a1, MemOperand(a0, offsetof(T, t3)));
-  __ ByteSwapSigned(a2, a2, 1);
-  __ sw(a2, MemOperand(a0, offsetof(T, r3)));
-
-  __ lw(a2, MemOperand(a0, offsetof(T, r4)));
-  __ ByteSwapUnsigned(a1, a2, 1);
-  __ sw(a2, MemOperand(a0, offsetof(T, p4)));
-  __ sw(a1, MemOperand(a0, offsetof(T, t4)));
-  __ ByteSwapUnsigned(a2, a2, 1);
-  __ sw(a2, MemOperand(a0, offsetof(T, r4)));
-
-  __ lw(a2, MemOperand(a0, offsetof(T, r5)));
-  __ ByteSwapUnsigned(a1, a2, 2);
-  __ sw(a2, MemOperand(a0, offsetof(T, p5)));
-  __ sw(a1, MemOperand(a0, offsetof(T, t5)));
-  __ ByteSwapUnsigned(a2, a2, 2);
-  __ sw(a2, MemOperand(a0, offsetof(T, r5)));
+  __ lw(a1, MemOperand(a0, offsetof(T, u2)));
+  __ nop();
+  __ ByteSwapUnsigned(a1, a1, 2);
+  __ sw(a1, MemOperand(a0, offsetof(T, u2)));
 
   __ jr(ra);
   __ nop();
 
   CodeDesc desc;
   masm->GetCode(isolate, &desc);
-  Handle<Code> code =
-      isolate->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+  Handle<Code> code = Factory::CodeBuilder(isolate, desc, Code::STUB).Build();
   auto f = GeneratedCode<F3>::FromCode(*code);
-  t.r1 = 0x781A15C3;
-  t.r2 = 0x2CDE;
-  t.r3 = 0x9F;
-  t.r4 = 0x9F;
-  t.r5 = 0x2CDE;
-  f.Call(&t, 0, 0, 0, 0);
 
-  CHECK_EQ(static_cast<int32_t>(0xC3151A78), t.r1);
-  CHECK_EQ(static_cast<int32_t>(0xDE2C0000), t.r2);
-  CHECK_EQ(static_cast<int32_t>(0x9FFFFFFF), t.r3);
-  CHECK_EQ(static_cast<int32_t>(0x9F000000), t.r4);
-  CHECK_EQ(static_cast<int32_t>(0xDE2C0000), t.r5);
+  for (size_t i = 0; i < arraysize(test_values); i++) {
+    int16_t in_s2 = static_cast<int16_t>(test_values[i]);
+    uint16_t in_u2 = static_cast<uint16_t>(test_values[i]);
 
-  CHECK_EQ(t.t1, t.r1);
-  CHECK_EQ(t.t2, t.r2);
-  CHECK_EQ(t.t3, t.r3);
-  CHECK_EQ(t.t4, t.r4);
-  CHECK_EQ(t.t5, t.r5);
+    t.s4 = test_values[i];
+    t.s2 = static_cast<uint64_t>(in_s2);
+    t.u2 = static_cast<uint64_t>(in_u2);
 
-  CHECK_EQ(static_cast<int32_t>(0x781A15C3), t.p1);
-  CHECK_EQ(static_cast<int32_t>(0x2CDE), t.p2);
-  CHECK_EQ(static_cast<int32_t>(0x9F), t.p3);
-  CHECK_EQ(static_cast<int32_t>(0x9F), t.p4);
-  CHECK_EQ(static_cast<int32_t>(0x2CDE), t.p5);
+    f.Call(&t, 0, 0, 0, 0);
+
+    CHECK_EQ(ByteReverse(test_values[i]), t.s4);
+    CHECK_EQ(ByteReverse<int16_t>(in_s2), static_cast<int16_t>(t.s2));
+    CHECK_EQ(ByteReverse<uint16_t>(in_u2), static_cast<uint16_t>(t.u2));
+  }
 }
 
 static void TestNaN(const char *code) {
@@ -149,7 +112,7 @@ static void TestNaN(const char *code) {
   // tests checks the case where a x86 NaN value is serialized into the
   // snapshot on the simulator during cross compilation.
   v8::HandleScope scope(CcTest::isolate());
-  v8::Local<v8::Context> context = CcTest::NewContext(PRINT_EXTENSION);
+  v8::Local<v8::Context> context = CcTest::NewContext({PRINT_EXTENSION_ID});
   v8::Context::Scope context_scope(context);
 
   v8::Local<v8::Script> script =
@@ -157,9 +120,9 @@ static void TestNaN(const char *code) {
   v8::Local<v8::Object> result =
       v8::Local<v8::Object>::Cast(script->Run(context).ToLocalChecked());
   i::Handle<i::JSReceiver> o = v8::Utils::OpenHandle(*result);
-  i::Handle<i::JSArray> array1(reinterpret_cast<i::JSArray*>(*o));
-  i::FixedDoubleArray* a = i::FixedDoubleArray::cast(array1->elements());
-  double value = a->get_scalar(0);
+  i::Handle<i::JSArray> array1(i::JSArray::cast(*o), o->GetIsolate());
+  i::FixedDoubleArray a = i::FixedDoubleArray::cast(array1->elements());
+  double value = a.get_scalar(0);
   CHECK(std::isnan(value) &&
         bit_cast<uint64_t>(value) ==
             bit_cast<uint64_t>(std::numeric_limits<double>::quiet_NaN()));
@@ -194,8 +157,7 @@ TEST(jump_tables4) {
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
-  MacroAssembler assembler(isolate, nullptr, 0,
-                           v8::internal::CodeObjectRequired::kYes);
+  MacroAssembler assembler(isolate, v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assembler;
 
   const int kNumCases = 512;
@@ -235,8 +197,7 @@ TEST(jump_tables4) {
 
   CodeDesc desc;
   masm->GetCode(isolate, &desc);
-  Handle<Code> code =
-      isolate->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+  Handle<Code> code = Factory::CodeBuilder(isolate, desc, Code::STUB).Build();
 #ifdef OBJECT_PRINT
   code->Print(std::cout);
 #endif
@@ -257,8 +218,7 @@ TEST(jump_tables5) {
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
-  MacroAssembler assembler(isolate, nullptr, 0,
-                           v8::internal::CodeObjectRequired::kYes);
+  MacroAssembler assembler(isolate, v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assembler;
 
   const int kNumCases = 512;
@@ -271,8 +231,6 @@ TEST(jump_tables5) {
 
   {
     __ BlockTrampolinePoolFor(kNumCases + 6 + 1);
-    PredictableCodeSizeScope predictable(
-        masm, kNumCases * kPointerSize + ((6 + 1) * Assembler::kInstrSize));
 
     __ addiupc(at, 6 + 1);
     __ Lsa(at, at, a0, 2);
@@ -301,8 +259,7 @@ TEST(jump_tables5) {
 
   CodeDesc desc;
   masm->GetCode(isolate, &desc);
-  Handle<Code> code =
-      isolate->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+  Handle<Code> code = Factory::CodeBuilder(isolate, desc, Code::STUB).Build();
 #ifdef OBJECT_PRINT
   code->Print(std::cout);
 #endif
@@ -324,13 +281,11 @@ TEST(jump_tables6) {
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
-  MacroAssembler assembler(isolate, nullptr, 0,
-                           v8::internal::CodeObjectRequired::kYes);
+  MacroAssembler assembler(isolate, v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assembler;
 
   const int kSwitchTableCases = 40;
 
-  const int kInstrSize = Assembler::kInstrSize;
   const int kMaxBranchOffset = Assembler::kMaxBranchOffset;
   const int kTrampolineSlotsSize = Assembler::kTrampolineSlotsSize;
   const int kSwitchTablePrologueSize = MacroAssembler::kSwitchTablePrologueSize;
@@ -391,8 +346,7 @@ TEST(jump_tables6) {
 
   CodeDesc desc;
   masm->GetCode(isolate, &desc);
-  Handle<Code> code =
-      isolate->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+  Handle<Code> code = Factory::CodeBuilder(isolate, desc, Code::STUB).Build();
 #ifdef OBJECT_PRINT
   code->Print(std::cout);
 #endif
@@ -407,8 +361,7 @@ TEST(jump_tables6) {
 static uint32_t run_lsa(uint32_t rt, uint32_t rs, int8_t sa) {
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
-  MacroAssembler assembler(isolate, nullptr, 0,
-                           v8::internal::CodeObjectRequired::kYes);
+  MacroAssembler assembler(isolate, v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assembler;
 
   __ Lsa(v0, a0, a1, sa);
@@ -417,8 +370,7 @@ static uint32_t run_lsa(uint32_t rt, uint32_t rs, int8_t sa) {
 
   CodeDesc desc;
   assembler.GetCode(isolate, &desc);
-  Handle<Code> code =
-      isolate->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+  Handle<Code> code = Factory::CodeBuilder(isolate, desc, Code::STUB).Build();
 
   auto f = GeneratedCode<F1>::FromCode(*code);
 
@@ -530,12 +482,11 @@ static const std::vector<int32_t> cvt_trunc_int32_test_values() {
 
 template <typename RET_TYPE, typename IN_TYPE, typename Func>
 RET_TYPE run_Cvt(IN_TYPE x, Func GenerateConvertInstructionFunc) {
-  typedef RET_TYPE(F_CVT)(IN_TYPE x0, int x1, int x2, int x3, int x4);
+  using F_CVT = RET_TYPE(IN_TYPE x0, int x1, int x2, int x3, int x4);
 
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
-  MacroAssembler assm(isolate, nullptr, 0,
-                      v8::internal::CodeObjectRequired::kYes);
+  MacroAssembler assm(isolate, v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assm;
 
   __ mtc1(a0, f4);
@@ -546,8 +497,7 @@ RET_TYPE run_Cvt(IN_TYPE x, Func GenerateConvertInstructionFunc) {
 
   CodeDesc desc;
   assm.GetCode(isolate, &desc);
-  Handle<Code> code =
-      isolate->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+  Handle<Code> code = Factory::CodeBuilder(isolate, desc, Code::STUB).Build();
 
   auto f = GeneratedCode<F_CVT>::FromCode(*code);
 
@@ -617,8 +567,7 @@ TEST(OverflowInstructions) {
       int32_t jj = *j;
       int32_t expected_add, expected_sub, expected_mul;
       bool expected_add_ovf, expected_sub_ovf, expected_mul_ovf;
-      MacroAssembler assembler(isolate, nullptr, 0,
-                               v8::internal::CodeObjectRequired::kYes);
+      MacroAssembler assembler(isolate, v8::internal::CodeObjectRequired::kYes);
       MacroAssembler* masm = &assembler;
 
       __ lw(t0, MemOperand(a0, offsetof(T, lhs)));
@@ -660,7 +609,7 @@ TEST(OverflowInstructions) {
       CodeDesc desc;
       masm->GetCode(isolate, &desc);
       Handle<Code> code =
-          isolate->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+          Factory::CodeBuilder(isolate, desc, Code::STUB).Build();
       auto f = GeneratedCode<F3>::FromCode(*code);
       t.lhs = ii;
       t.rhs = jj;
@@ -695,8 +644,7 @@ TEST(min_max_nan) {
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
-  MacroAssembler assembler(isolate, nullptr, 0,
-                           v8::internal::CodeObjectRequired::kYes);
+  MacroAssembler assembler(isolate, v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assembler;
 
   struct TestFloat {
@@ -740,7 +688,7 @@ TEST(min_max_nan) {
 
   auto handle_dnan = [masm](FPURegister dst, Label* nan, Label* back) {
     __ bind(nan);
-    __ LoadRoot(t8, Heap::kNanValueRootIndex);
+    __ LoadRoot(t8, RootIndex::kNanValue);
     __ Ldc1(dst, FieldMemOperand(t8, HeapNumber::kValueOffset));
     __ Branch(back);
   };
@@ -783,8 +731,7 @@ TEST(min_max_nan) {
 
   CodeDesc desc;
   masm->GetCode(isolate, &desc);
-  Handle<Code> code =
-      isolate->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+  Handle<Code> code = Factory::CodeBuilder(isolate, desc, Code::STUB).Build();
   auto f = GeneratedCode<F3>::FromCode(*code);
   for (int i = 0; i < kTableLength; i++) {
     test.a = inputsa[i];
@@ -804,12 +751,11 @@ TEST(min_max_nan) {
 template <typename IN_TYPE, typename Func>
 bool run_Unaligned(char* memory_buffer, int32_t in_offset, int32_t out_offset,
                    IN_TYPE value, Func GenerateUnalignedInstructionFunc) {
-  typedef int32_t(F_CVT)(char* x0, int x1, int x2, int x3, int x4);
+  using F_CVT = int32_t(char* x0, int x1, int x2, int x3, int x4);
 
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
-  MacroAssembler assm(isolate, nullptr, 0,
-                      v8::internal::CodeObjectRequired::kYes);
+  MacroAssembler assm(isolate, v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assm;
   IN_TYPE res;
 
@@ -819,8 +765,7 @@ bool run_Unaligned(char* memory_buffer, int32_t in_offset, int32_t out_offset,
 
   CodeDesc desc;
   assm.GetCode(isolate, &desc);
-  Handle<Code> code =
-      isolate->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+  Handle<Code> code = Factory::CodeBuilder(isolate, desc, Code::STUB).Build();
 
   auto f = GeneratedCode<F_CVT>::FromCode(*code);
 
@@ -1053,12 +998,11 @@ static const std::vector<uint32_t> sltu_test_values() {
 
 template <typename Func>
 bool run_Sltu(uint32_t rs, uint32_t rd, Func GenerateSltuInstructionFunc) {
-  typedef int32_t(F_CVT)(uint32_t x0, uint32_t x1, int x2, int x3, int x4);
+  using F_CVT = int32_t(uint32_t x0, uint32_t x1, int x2, int x3, int x4);
 
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
-  MacroAssembler assm(isolate, nullptr, 0,
-                      v8::internal::CodeObjectRequired::kYes);
+  MacroAssembler assm(isolate, v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assm;
 
   GenerateSltuInstructionFunc(masm, rd);
@@ -1067,8 +1011,7 @@ bool run_Sltu(uint32_t rs, uint32_t rd, Func GenerateSltuInstructionFunc) {
 
   CodeDesc desc;
   assm.GetCode(isolate, &desc);
-  Handle<Code> code =
-      isolate->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+  Handle<Code> code = Factory::CodeBuilder(isolate, desc, Code::STUB).Build();
 
   auto f = GeneratedCode<F_CVT>::FromCode(*code);
   int32_t res = reinterpret_cast<int32_t>(f.Call(rs, rd, 0, 0, 0));
@@ -1162,9 +1105,9 @@ static GeneratedCode<F4> GenerateMacroFloat32MinMax(MacroAssembler* masm) {
   CodeDesc desc;
   masm->GetCode(masm->isolate(), &desc);
   Handle<Code> code =
-      masm->isolate()->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+      Factory::CodeBuilder(masm->isolate(), desc, Code::STUB).Build();
 #ifdef DEBUG
-  OFStream os(stdout);
+  StdoutStream os;
   code->Print(os);
 #endif
   return GeneratedCode<F4>::FromCode(*code);
@@ -1176,8 +1119,7 @@ TEST(macro_float_minmax_f32) {
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
 
-  MacroAssembler assembler(isolate, nullptr, 0,
-                           v8::internal::CodeObjectRequired::kYes);
+  MacroAssembler assembler(isolate, v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assembler;
 
   struct Inputs {
@@ -1304,9 +1246,9 @@ static GeneratedCode<F4> GenerateMacroFloat64MinMax(MacroAssembler* masm) {
   CodeDesc desc;
   masm->GetCode(masm->isolate(), &desc);
   Handle<Code> code =
-      masm->isolate()->factory()->NewCode(desc, Code::STUB, Handle<Code>());
+      Factory::CodeBuilder(masm->isolate(), desc, Code::STUB).Build();
 #ifdef DEBUG
-  OFStream os(stdout);
+  StdoutStream os;
   code->Print(os);
 #endif
   return GeneratedCode<F4>::FromCode(*code);
@@ -1318,8 +1260,7 @@ TEST(macro_float_minmax_f64) {
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
 
-  MacroAssembler assembler(isolate, nullptr, 0,
-                           v8::internal::CodeObjectRequired::kYes);
+  MacroAssembler assembler(isolate, v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assembler;
 
   struct Inputs {

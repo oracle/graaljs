@@ -39,6 +39,7 @@
  * SOFTWARE.
  */
 
+#include "graal_isolate.h"
 #include "graal_set.h"
 
 GraalSet::GraalSet(GraalIsolate* isolate, jobject java_set) : GraalObject(isolate, java_set) {
@@ -50,4 +51,19 @@ GraalHandleContent* GraalSet::CopyImpl(jobject java_object_copy) {
 
 bool GraalSet::IsSet() const {
     return true;
+}
+
+v8::Local<v8::Set> GraalSet::New(v8::Isolate* isolate) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    jobject java_context = graal_isolate->CurrentJavaContext();
+    JNI_CALL(jobject, java_set, graal_isolate, GraalAccessMethod::set_new, Object, java_context);
+    GraalSet* graal_set = new GraalSet(graal_isolate, java_set);
+    return reinterpret_cast<v8::Set*> (graal_set);
+}
+
+v8::MaybeLocal<v8::Set> GraalSet::Add(v8::Local<v8::Context> context, v8::Local<v8::Value> key) {
+    GraalValue* graal_key = reinterpret_cast<GraalValue*> (*key);
+    jobject java_key = graal_key->GetJavaObject();
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::set_add, GetJavaObject(), java_key);
+    return v8::Local<v8::Set>(reinterpret_cast<v8::Set*> (this));
 }

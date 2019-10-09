@@ -3,7 +3,13 @@
 // found in the LICENSE file.
 
 // Flags: --allow-natives-syntax --no-always-opt --opt
+// Flags: --no-stress-flush-bytecode --turbo-inlining
 // Files: test/mjsunit/code-coverage-utils.js
+
+if (isNeverOptimizeLiteMode()) {
+  print("Warning: skipping test that requires optimization in Lite mode.");
+  testRunner.quit(0);
+}
 
 %DebugToggleBlockCoverage(true);
 
@@ -16,9 +22,8 @@ f(); f(); %OptimizeFunctionOnNextCall(f); // 0100
 f(); f(); f(); f(); f(); f();             // 0150
 `,
 [{"start":0,"end":199,"count":1},
- {"start":0,"end":33,"count":4},   // TODO(jgruber): Invocation count is off.
- {"start":25,"end":31,"count":16},
- {"start":50,"end":76,"count":2}]  // TODO(jgruber): Invocation count is off.
+ {"start":0,"end":33,"count":16},
+ {"start":50,"end":76,"count":8}]
 );
 
 // This test is tricky: it requires a non-toplevel, optimized function.
@@ -38,8 +43,8 @@ TestCoverage("Partial coverage collection",
   f(false);                               // 0350
 }();                                      // 0400
 `,
-[{"start":52,"end":153,"count":0},
- {"start":121,"end":137,"count":1}]
+[{"start":52,"end":153,"count":1},
+ {"start":111,"end":121,"count":0}]
 );
 
 %DebugToggleBlockCoverage(false);

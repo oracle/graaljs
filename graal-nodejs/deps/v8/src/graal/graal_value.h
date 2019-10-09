@@ -117,7 +117,7 @@ public:
     v8::Local<v8::Uint32> ToUint32(v8::Isolate* isolate) const;
     v8::Local<v8::Number> ToNumber(v8::Isolate* isolate) const;
     v8::Local<v8::Uint32> ToArrayIndex() const;
-    bool Equals(v8::Local<v8::Value> that) const;
+    v8::Maybe<bool> Equals(v8::Local<v8::Value> that) const;
     bool StrictEquals(v8::Local<v8::Value> that) const;
     bool InstanceOf(v8::Local<v8::Object> object);
 };

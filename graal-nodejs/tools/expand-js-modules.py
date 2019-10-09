@@ -43,6 +43,7 @@
 # and for wrapping the modules in the (function (exports, ...) {...}) header
 # as is done by NativeModule in lib/internal/bootstrap_node.js.
 
+import codecs
 import errno
 import js2c
 import os
@@ -59,15 +60,15 @@ def EnsureDirExists(dirpath):
             raise
 
 def ProcessModules(sources, outdir):
-    macro_lines = []
+    macro_files = []
     modules = []
     for s in sources:
         if s.endswith('macros.py'):
-            macro_lines.extend(js2c.ReadLines(s))
+            macro_files.append(s)
         else:
             modules.append(s)
 
-    (consts, macros) = js2c.ReadMacros(macro_lines)
+    (consts, macros) = js2c.ReadMacros(macro_files)
 
     for m in modules:
         contents = js2c.ReadFile(m)
@@ -80,7 +81,7 @@ def ProcessModules(sources, outdir):
 
         outpath = os.path.join(outdir, m)
         EnsureDirExists(os.path.split(outpath)[0])
-        with open(outpath, 'w') as outfile:
+        with codecs.open(outpath, 'w', 'utf-8') as outfile:
             outfile.write(contents)
 
 def main():

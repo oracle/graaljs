@@ -49,7 +49,7 @@ class GraalIsolate;
 class GraalDate : public GraalObject {
 public:
     GraalDate(GraalIsolate* isolate, double time, jobject java_date);
-    static v8::Local<v8::Value> New(v8::Isolate* isolate, double time);
+    static v8::MaybeLocal<v8::Value> New(v8::Local<v8::Context> context, double time);
     double ValueOf() const;
     bool IsDate() const;
 protected:

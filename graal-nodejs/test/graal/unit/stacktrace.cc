@@ -75,7 +75,7 @@ EXPORT_TO_JS(GetFrameCount) {
 
 EXPORT_TO_JS(CanGetFrame) {
     Local<StackTrace> trace = createStackTrace(args);
-    Local<StackFrame> frame = trace->GetFrame(0);
+    Local<StackFrame> frame = trace->GetFrame(args.GetIsolate(), 0);
     args.GetReturnValue().Set(!frame.IsEmpty());
 }
 
@@ -83,7 +83,7 @@ EXPORT_TO_JS(CanGetFrame) {
 
 EXPORT_TO_JS(FrameGetColumn) {
     Local<StackTrace> trace = createStackTrace(args);
-    Local<StackFrame> frame = trace->GetFrame(0);
+    Local<StackFrame> frame = trace->GetFrame(args.GetIsolate(), 0);
     args.GetReturnValue().Set(frame->GetColumn());
 }
 
@@ -91,7 +91,7 @@ EXPORT_TO_JS(FrameGetColumn) {
 
 EXPORT_TO_JS(FrameGetLineNumber) {
     Local<StackTrace> trace = createStackTrace(args);
-    Local<StackFrame> frame = trace->GetFrame(0);
+    Local<StackFrame> frame = trace->GetFrame(args.GetIsolate(), 0);
     args.GetReturnValue().Set(frame->GetLineNumber());
 }
 
@@ -99,7 +99,7 @@ EXPORT_TO_JS(FrameGetLineNumber) {
 
 EXPORT_TO_JS(FrameGetFunctionName) {
     Local<StackTrace> trace = createStackTrace(args);
-    Local<StackFrame> frame = trace->GetFrame(0);
+    Local<StackFrame> frame = trace->GetFrame(args.GetIsolate(), 0);
     args.GetReturnValue().Set(frame->GetFunctionName());
 }
 
@@ -107,7 +107,7 @@ EXPORT_TO_JS(FrameGetFunctionName) {
 
 EXPORT_TO_JS(FrameGetScriptName) {
     Local<StackTrace> trace = createStackTrace(args);
-    Local<StackFrame> frame = trace->GetFrame(0);
+    Local<StackFrame> frame = trace->GetFrame(args.GetIsolate(), 0);
     args.GetReturnValue().Set(frame->GetScriptName());
 }
 
@@ -115,7 +115,7 @@ EXPORT_TO_JS(FrameGetScriptName) {
 
 EXPORT_TO_JS(FrameGetScriptId) {
     Local<StackTrace> trace = createStackTrace(args);
-    Local<StackFrame> frame = trace->GetFrame(0);
+    Local<StackFrame> frame = trace->GetFrame(args.GetIsolate(), 0);
     int id = frame->GetScriptId();
     args.GetReturnValue().Set(id);
 }
@@ -130,7 +130,7 @@ EXPORT_TO_JS(FrameIsEval) {
     //    printf("frame %d is eval %d\n",i,frm->IsEval());
     //}
 
-    Local<StackFrame> frame = trace->GetFrame(0);
+    Local<StackFrame> frame = trace->GetFrame(args.GetIsolate(), 0);
     args.GetReturnValue().Set(frame->IsEval());
 }
 

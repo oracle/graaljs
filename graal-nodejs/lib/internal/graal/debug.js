@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-const setBreakPoint = arguments[arguments.length - 1];
+const setBreakPoint = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;
 
 module.exports = {
 	setBreakPoint: setBreakPoint

@@ -9,6 +9,9 @@
 
 "use strict";
 
+// to use V8's code cache to speed up instantiation time
+require("v8-compile-cache");
+
 //------------------------------------------------------------------------------
 // Helpers
 //------------------------------------------------------------------------------
@@ -45,7 +48,7 @@ process.once("uncaughtException", err => {
         const pkg = require("../package.json");
 
         console.error("\nOops! Something went wrong! :(");
-        console.error(`\nESLint: ${pkg.version}.\n${template(err.messageData || {})}`);
+        console.error(`\nESLint: ${pkg.version}.\n\n${template(err.messageData || {})}`);
     } else {
 
         console.error(err.stack);
@@ -65,7 +68,7 @@ if (useStdIn) {
 
     process.exitCode = cli.execute(process.argv, fs.readFileSync(STDIN_FILE_DESCRIPTOR, "utf8"));
 } else if (init) {
-    const configInit = require("../lib/config/config-initializer");
+    const configInit = require("../lib/init/config-initializer");
 
     configInit.initializeConfig().then(() => {
         process.exitCode = 0;

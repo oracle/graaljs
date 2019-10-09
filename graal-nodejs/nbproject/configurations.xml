@@ -1258,11 +1258,6 @@
             tool="1"
             flavor2="0">
       </item>
-      <item path="deps/v8/src/graal/graal_primitive_array.h"
-            ex="false"
-            tool="3"
-            flavor2="0">
-      </item>
       <item path="deps/v8/src/graal/graal_promise.cc" ex="false" tool="1" flavor2="8">
         <ccTool flags="2">
         </ccTool>

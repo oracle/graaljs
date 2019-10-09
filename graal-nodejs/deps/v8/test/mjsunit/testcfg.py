@@ -35,11 +35,17 @@ from testrunner.local import testsuite
 from testrunner.objects import testcase
 from testrunner.outproc import base as outproc
 
+try:
+  basestring       # Python 2
+except NameError:  # Python 3
+  basestring = str
+
 FILES_PATTERN = re.compile(r"//\s+Files:(.*)")
 ENV_PATTERN = re.compile(r"//\s+Environment Variables:(.*)")
 SELF_SCRIPT_PATTERN = re.compile(r"//\s+Env: TEST_FILE_NAME")
 MODULE_PATTERN = re.compile(r"^// MODULE$", flags=re.MULTILINE)
 NO_HARNESS_PATTERN = re.compile(r"^// NO HARNESS$", flags=re.MULTILINE)
+
 
 # Flags known to misbehave when combining arbitrary mjsunit tests. Can also
 # be compiled regular expressions.
@@ -55,24 +61,19 @@ COMBINE_TESTS_FLAGS_BLACKLIST = [
   '--wasm-lazy-compilation',
 ]
 
+
+class TestLoader(testsuite.JSTestLoader):
+  @property
+  def excluded_files(self):
+    return {
+      "mjsunit.js",
+      "mjsunit_numfuzz.js",
+    }
+
+
 class TestSuite(testsuite.TestSuite):
-  def ListTests(self):
-    tests = []
-    for dirname, dirs, files in os.walk(self.root, followlinks=True):
-      for dotted in [x for x in dirs if x.startswith('.')]:
-        dirs.remove(dotted)
-      dirs.sort()
-      files.sort()
-      for filename in files:
-        if (filename.endswith(".js") and
-            filename != "mjsunit.js" and
-            filename != "mjsunit_suppressions.js"):
-          fullpath = os.path.join(dirname, filename)
-          relpath = fullpath[len(self.root) + 1 : -3]
-          testname = relpath.replace(os.path.sep, "/")
-          test = self._create_test(testname)
-          tests.append(test)
-    return tests
+  def _test_loader_class(self):
+    return TestLoader
 
   def _test_combiner_class(self):
     return TestCombiner
@@ -80,11 +81,8 @@ class TestSuite(testsuite.TestSuite):
   def _test_class(self):
     return TestCase
 
-  def _suppressed_test_class(self):
-    return SuppressedTestCase
 
-
-class TestCase(testcase.TestCase):
+class TestCase(testcase.D8TestCase):
   def __init__(self, *args, **kwargs):
     super(TestCase, self).__init__(*args, **kwargs)
 
@@ -112,6 +110,9 @@ class TestCase(testcase.TestCase):
       mjsunit_files = []
     else:
       mjsunit_files = [os.path.join(self.suite.root, "mjsunit.js")]
+
+    if self.suite.framework_name == 'num_fuzzer':
+      mjsunit_files.append(os.path.join(self.suite.root, "mjsunit_numfuzz.js"))
 
     files_suffix = []
     if MODULE_PATTERN.search(source):
@@ -187,7 +188,7 @@ class TestCombiner(testsuite.TestCombiner):
     return CombinedTest
 
 
-class CombinedTest(testcase.TestCase):
+class CombinedTest(testcase.D8TestCase):
   """Behaves like normal mjsunit tests except:
     1. Expected outcome is always PASS
     2. Instead of one file there is a try-catch wrapper with all combined tests
@@ -202,7 +203,7 @@ class CombinedTest(testcase.TestCase):
     self._statusfile_outcomes = outproc.OUTCOMES_PASS_OR_TIMEOUT
     self.expected_outcomes = outproc.OUTCOMES_PASS_OR_TIMEOUT
 
-  def _get_shell_with_flags(self):
+  def _get_shell_flags(self):
     """In addition to standard set of shell flags it appends:
       --disable-abortjs: %AbortJS can abort the test even inside
         trycatch-wrapper, so we disable it.
@@ -212,15 +213,13 @@ class CombinedTest(testcase.TestCase):
       --quiet-load: suppress any stdout from load() function used by
         trycatch-wrapper.
     """
-    shell = 'd8'
-    shell_flags = [
+    return [
       '--test',
       '--disable-abortjs',
       '--es-staging',
       '--omit-quit',
       '--quiet-load',
     ]
-    return shell, shell_flags
 
   def _get_cmd_params(self):
     return (
@@ -281,28 +280,6 @@ class CombinedTest(testcase.TestCase):
     # Combine flags from all status file entries.
     return self._get_combined_flags(
         test._get_statusfile_flags() for test in self._tests)
-
-
-class SuppressedTestCase(TestCase):
-  """The same as a standard mjsunit test case with all asserts as no-ops."""
-  def __init__(self, *args, **kwargs):
-    super(SuppressedTestCase, self).__init__(*args, **kwargs)
-    self._mjsunit_files.append(
-        os.path.join(self.suite.root, "mjsunit_suppressions.js"))
-
-  def _prepare_outcomes(self, *args, **kwargs):
-    super(SuppressedTestCase, self)._prepare_outcomes(*args, **kwargs)
-    # Skip tests expected to fail. We suppress all asserts anyways, but some
-    # tests are expected to fail with type errors or even dchecks, and we
-    # can't differentiate that.
-    if statusfile.FAIL in self._statusfile_outcomes:
-      self._statusfile_outcomes = [statusfile.SKIP]
-
-  def _get_extra_flags(self, *args, **kwargs):
-    return (
-        super(SuppressedTestCase, self)._get_extra_flags(*args, **kwargs) +
-        ['--disable-abortjs']
-    )
 
 
 def GetSuite(*args, **kwargs):

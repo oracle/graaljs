@@ -4,13 +4,13 @@
 
 #include <cctype>
 
-#include "src/compilation-dependencies.h"
+#include "src/compiler/compilation-dependencies.h"
 #include "src/compiler/js-call-reducer.h"
 #include "src/compiler/js-graph.h"
 #include "src/compiler/simplified-operator.h"
-#include "src/feedback-vector.h"
+#include "src/execution/isolate.h"
 #include "src/heap/factory.h"
-#include "src/isolate.h"
+#include "src/objects/feedback-vector.h"
 #include "test/unittests/compiler/graph-unittest.h"
 #include "test/unittests/compiler/node-test-utils.h"
 
@@ -21,8 +21,10 @@ namespace compiler {
 class JSCallReducerTest : public TypedGraphTest {
  public:
   JSCallReducerTest()
-      : TypedGraphTest(3), javascript_(zone()), deps_(isolate(), zone()) {}
-  ~JSCallReducerTest() override {}
+      : TypedGraphTest(3), javascript_(zone()), deps_(broker(), zone()) {
+    broker()->SerializeStandardObjects();
+  }
+  ~JSCallReducerTest() override = default;
 
  protected:
   Reduction Reduce(Node* node) {
@@ -33,31 +35,17 @@ class JSCallReducerTest : public TypedGraphTest {
     // TODO(titzer): mock the GraphReducer here for better unit testing.
     GraphReducer graph_reducer(zone(), graph());
 
-    JSCallReducer reducer(&graph_reducer, &jsgraph, JSCallReducer::kNoFlags,
-                          native_context(), &deps_);
+    JSCallReducer reducer(&graph_reducer, &jsgraph, broker(),
+                          JSCallReducer::kNoFlags, &deps_);
     return reducer.Reduce(node);
   }
 
   JSOperatorBuilder* javascript() { return &javascript_; }
 
-  static void SetUpTestCase() {
-    old_flag_lazy_ = i::FLAG_lazy_deserialization;
-    old_flag_lazy_handler_ = i::FLAG_lazy_handler_deserialization;
-    i::FLAG_lazy_deserialization = false;
-    i::FLAG_lazy_handler_deserialization = false;
-    TypedGraphTest::SetUpTestCase();
-  }
-
-  static void TearDownTestCase() {
-    TypedGraphTest::TearDownTestCase();
-    i::FLAG_lazy_deserialization = old_flag_lazy_;
-    i::FLAG_lazy_handler_deserialization = old_flag_lazy_handler_;
-  }
-
   Node* GlobalFunction(const char* name) {
     Handle<JSFunction> f = Handle<JSFunction>::cast(
         Object::GetProperty(
-            isolate()->global_object(),
+            isolate(), isolate()->global_object(),
             isolate()->factory()->NewStringFromAsciiChecked(name))
             .ToHandleChecked());
     return HeapConstant(f);
@@ -66,12 +54,13 @@ class JSCallReducerTest : public TypedGraphTest {
   Node* MathFunction(const std::string& name) {
     Handle<Object> m =
         JSObject::GetProperty(
-            isolate()->global_object(),
+            isolate(), isolate()->global_object(),
             isolate()->factory()->NewStringFromAsciiChecked("Math"))
             .ToHandleChecked();
     Handle<JSFunction> f = Handle<JSFunction>::cast(
         Object::GetProperty(
-            m, isolate()->factory()->NewStringFromAsciiChecked(name.c_str()))
+            isolate(), m,
+            isolate()->factory()->NewStringFromAsciiChecked(name.c_str()))
             .ToHandleChecked());
     return HeapConstant(f);
   }
@@ -79,12 +68,12 @@ class JSCallReducerTest : public TypedGraphTest {
   Node* StringFunction(const char* name) {
     Handle<Object> m =
         JSObject::GetProperty(
-            isolate()->global_object(),
+            isolate(), isolate()->global_object(),
             isolate()->factory()->NewStringFromAsciiChecked("String"))
             .ToHandleChecked();
     Handle<JSFunction> f = Handle<JSFunction>::cast(
         Object::GetProperty(
-            m, isolate()->factory()->NewStringFromAsciiChecked(name))
+            isolate(), m, isolate()->factory()->NewStringFromAsciiChecked(name))
             .ToHandleChecked());
     return HeapConstant(f);
   }
@@ -92,12 +81,12 @@ class JSCallReducerTest : public TypedGraphTest {
   Node* NumberFunction(const char* name) {
     Handle<Object> m =
         JSObject::GetProperty(
-            isolate()->global_object(),
+            isolate(), isolate()->global_object(),
             isolate()->factory()->NewStringFromAsciiChecked("Number"))
             .ToHandleChecked();
     Handle<JSFunction> f = Handle<JSFunction>::cast(
         Object::GetProperty(
-            m, isolate()->factory()->NewStringFromAsciiChecked(name))
+            isolate(), m, isolate()->factory()->NewStringFromAsciiChecked(name))
             .ToHandleChecked());
     return HeapConstant(f);
   }
@@ -119,8 +108,11 @@ class JSCallReducerTest : public TypedGraphTest {
     // Set the raw feedback metadata to circumvent checks that we are not
     // overwriting existing metadata.
     shared->set_raw_outer_scope_info_or_feedback_metadata(*metadata);
-    Handle<FeedbackVector> vector = FeedbackVector::New(isolate(), shared);
-    VectorSlotPair feedback(vector, FeedbackSlot(0));
+    Handle<ClosureFeedbackCellArray> closure_feedback_cell_array =
+        ClosureFeedbackCellArray::New(isolate(), shared);
+    Handle<FeedbackVector> vector =
+        FeedbackVector::New(isolate(), shared, closure_feedback_cell_array);
+    VectorSlotPair feedback(vector, FeedbackSlot(0), UNINITIALIZED);
     return javascript()->Call(arity, CallFrequency(), feedback,
                               ConvertReceiverMode::kAny,
                               SpeculationMode::kAllowSpeculation);
@@ -129,13 +121,11 @@ class JSCallReducerTest : public TypedGraphTest {
  private:
   JSOperatorBuilder javascript_;
   CompilationDependencies deps_;
-
-  static bool old_flag_lazy_;
-  static bool old_flag_lazy_handler_;
 };
 
 TEST_F(JSCallReducerTest, PromiseConstructorNoArgs) {
-  Node* promise = HeapConstant(handle(native_context()->promise_function()));
+  Node* promise =
+      HeapConstant(handle(native_context()->promise_function(), isolate()));
   Node* effect = graph()->start();
   Node* control = graph()->start();
   Node* context = UndefinedConstant();
@@ -151,8 +141,10 @@ TEST_F(JSCallReducerTest, PromiseConstructorNoArgs) {
 }
 
 TEST_F(JSCallReducerTest, PromiseConstructorSubclass) {
-  Node* promise = HeapConstant(handle(native_context()->promise_function()));
-  Node* new_target = HeapConstant(handle(native_context()->array_function()));
+  Node* promise =
+      HeapConstant(handle(native_context()->promise_function(), isolate()));
+  Node* new_target =
+      HeapConstant(handle(native_context()->array_function(), isolate()));
   Node* effect = graph()->start();
   Node* control = graph()->start();
   Node* context = UndefinedConstant();
@@ -169,7 +161,8 @@ TEST_F(JSCallReducerTest, PromiseConstructorSubclass) {
 }
 
 TEST_F(JSCallReducerTest, PromiseConstructorBasic) {
-  Node* promise = HeapConstant(handle(native_context()->promise_function()));
+  Node* promise =
+      HeapConstant(handle(native_context()->promise_function(), isolate()));
   Node* effect = graph()->start();
   Node* control = graph()->start();
   Node* context = UndefinedConstant();
@@ -192,7 +185,8 @@ TEST_F(JSCallReducerTest, PromiseConstructorBasic) {
 // Exactly the same as PromiseConstructorBasic which expects a reduction,
 // except that we invalidate the protector cell.
 TEST_F(JSCallReducerTest, PromiseConstructorWithHook) {
-  Node* promise = HeapConstant(handle(native_context()->promise_function()));
+  Node* promise =
+      HeapConstant(handle(native_context()->promise_function(), isolate()));
   Node* effect = graph()->start();
   Node* control = graph()->start();
   Node* context = UndefinedConstant();
@@ -209,9 +203,6 @@ TEST_F(JSCallReducerTest, PromiseConstructorWithHook) {
 
   ASSERT_FALSE(r.Changed());
 }
-
-bool JSCallReducerTest::old_flag_lazy_;
-bool JSCallReducerTest::old_flag_lazy_handler_;
 
 // -----------------------------------------------------------------------------
 // Math unaries

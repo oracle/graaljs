@@ -8,12 +8,12 @@
 #include "src/compiler/js-operator.h"
 #include "src/compiler/node-matchers.h"
 #include "src/compiler/node-properties.h"
+#include "src/compiler/simplified-operator.h"
 #include "src/heap/factory.h"
-#include "src/objects-inl.h"
-#include "src/property.h"
+#include "src/objects/objects-inl.h"
+#include "src/objects/property.h"
 #include "test/cctest/cctest.h"
 #include "test/cctest/compiler/function-tester.h"
-#include "test/cctest/compiler/graph-builder-tester.h"
 
 namespace v8 {
 namespace internal {
@@ -22,7 +22,8 @@ namespace compiler {
 class ContextSpecializationTester : public HandleAndZoneScope {
  public:
   explicit ContextSpecializationTester(Maybe<OuterContext> context)
-      : graph_(new (main_zone()) Graph(main_zone())),
+      : canonical_(main_isolate()),
+        graph_(new (main_zone()) Graph(main_zone())),
         common_(main_zone()),
         javascript_(main_zone()),
         machine_(main_zone()),
@@ -30,7 +31,9 @@ class ContextSpecializationTester : public HandleAndZoneScope {
         jsgraph_(main_isolate(), graph(), common(), &javascript_, &simplified_,
                  &machine_),
         reducer_(main_zone(), graph()),
-        spec_(&reducer_, jsgraph(), context, MaybeHandle<JSFunction>()) {}
+        js_heap_broker_(main_isolate(), main_zone()),
+        spec_(&reducer_, jsgraph(), &js_heap_broker_, context,
+              MaybeHandle<JSFunction>()) {}
 
   JSContextSpecialization* spec() { return &spec_; }
   Factory* factory() { return main_isolate()->factory(); }
@@ -48,6 +51,7 @@ class ContextSpecializationTester : public HandleAndZoneScope {
                                         size_t expected_new_depth);
 
  private:
+  CanonicalHandleScope canonical_;
   Graph* graph_;
   CommonOperatorBuilder common_;
   JSOperatorBuilder javascript_;
@@ -55,6 +59,7 @@ class ContextSpecializationTester : public HandleAndZoneScope {
   SimplifiedOperatorBuilder simplified_;
   JSGraph jsgraph_;
   GraphReducer reducer_;
+  JSHeapBroker js_heap_broker_;
   JSContextSpecialization spec_;
 };
 
@@ -77,7 +82,7 @@ void ContextSpecializationTester::CheckContextInputAndDepthChanges(
   Node* new_context = NodeProperties::GetContextInput(r.replacement());
   CHECK_EQ(IrOpcode::kHeapConstant, new_context->opcode());
   HeapObjectMatcher match(new_context);
-  CHECK_EQ(*match.Value(), *expected_new_context_object);
+  CHECK_EQ(Context::cast(*match.Value()), *expected_new_context_object);
 
   ContextAccess new_access = ContextAccessOf(r.replacement()->op());
   CHECK_EQ(new_access.depth(), expected_new_depth);
@@ -148,7 +153,7 @@ TEST(ReduceJSLoadContext0) {
     Node* new_context_input = NodeProperties::GetContextInput(r.replacement());
     CHECK_EQ(IrOpcode::kHeapConstant, new_context_input->opcode());
     HeapObjectMatcher match(new_context_input);
-    CHECK_EQ(*native, *match.Value());
+    CHECK_EQ(*native, Context::cast(*match.Value()));
     ContextAccess access = ContextAccessOf(r.replacement()->op());
     CHECK_EQ(Context::GLOBAL_EVAL_FUN_INDEX, static_cast<int>(access.index()));
     CHECK_EQ(0, static_cast<int>(access.depth()));
@@ -178,7 +183,7 @@ TEST(ReduceJSLoadContext1) {
 
   Node* start = t.graph()->NewNode(t.common()->Start(0));
   t.graph()->SetStart(start);
-  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()));
+  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()), t.main_isolate());
   const i::compiler::Operator* create_function_context =
       t.javascript()->CreateFunctionContext(empty, 42, FUNCTION_SCOPE);
 
@@ -248,7 +253,7 @@ TEST(ReduceJSLoadContext2) {
 
   Node* start = t.graph()->NewNode(t.common()->Start(0));
   t.graph()->SetStart(start);
-  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()));
+  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()), t.main_isolate());
   const i::compiler::Operator* create_function_context =
       t.javascript()->CreateFunctionContext(empty, 42, FUNCTION_SCOPE);
 
@@ -339,7 +344,8 @@ TEST(ReduceJSLoadContext3) {
 
   Node* start = t.graph()->NewNode(t.common()->Start(2));
   t.graph()->SetStart(start);
-  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()));
+  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()),
+                          handle_zone_scope.main_isolate());
   const i::compiler::Operator* create_function_context =
       t.javascript()->CreateFunctionContext(empty, 42, FUNCTION_SCOPE);
 
@@ -452,7 +458,7 @@ TEST(ReduceJSStoreContext0) {
     Node* new_context_input = NodeProperties::GetContextInput(r.replacement());
     CHECK_EQ(IrOpcode::kHeapConstant, new_context_input->opcode());
     HeapObjectMatcher match(new_context_input);
-    CHECK_EQ(*native, *match.Value());
+    CHECK_EQ(*native, Context::cast(*match.Value()));
     ContextAccess access = ContextAccessOf(r.replacement()->op());
     CHECK_EQ(Context::GLOBAL_EVAL_FUN_INDEX, static_cast<int>(access.index()));
     CHECK_EQ(0, static_cast<int>(access.depth()));
@@ -465,7 +471,7 @@ TEST(ReduceJSStoreContext1) {
 
   Node* start = t.graph()->NewNode(t.common()->Start(0));
   t.graph()->SetStart(start);
-  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()));
+  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()), t.main_isolate());
   const i::compiler::Operator* create_function_context =
       t.javascript()->CreateFunctionContext(empty, 42, FUNCTION_SCOPE);
 
@@ -509,7 +515,7 @@ TEST(ReduceJSStoreContext2) {
 
   Node* start = t.graph()->NewNode(t.common()->Start(0));
   t.graph()->SetStart(start);
-  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()));
+  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()), t.main_isolate());
   const i::compiler::Operator* create_function_context =
       t.javascript()->CreateFunctionContext(empty, 42, FUNCTION_SCOPE);
 
@@ -574,7 +580,8 @@ TEST(ReduceJSStoreContext3) {
 
   Node* start = t.graph()->NewNode(t.common()->Start(2));
   t.graph()->SetStart(start);
-  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()));
+  Handle<ScopeInfo> empty(ScopeInfo::Empty(t.main_isolate()),
+                          handle_zone_scope.main_isolate());
   const i::compiler::Operator* create_function_context =
       t.javascript()->CreateFunctionContext(empty, 42, FUNCTION_SCOPE);
 

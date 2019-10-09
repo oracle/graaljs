@@ -9,6 +9,7 @@
     return "abc".concat();
   }
 
+  %PrepareFunctionForOptimization(f);
   assertEquals("abc", f());
   assertEquals("abc", f());
   %OptimizeFunctionOnNextCall(f);
@@ -20,6 +21,7 @@
     return "abc".concat(a);
   }
 
+  %PrepareFunctionForOptimization(f);
   assertEquals("abcde", f("de"));
   assertEquals("abcde", f("de"));
   %OptimizeFunctionOnNextCall(f);
@@ -30,6 +32,8 @@
   function f(a) {
     return "abc".concat(a);
   }
+
+  %PrepareFunctionForOptimization(f);
   assertEquals("abcde", f("de"));
   assertEquals("abcde", f("de"));
   %OptimizeFunctionOnNextCall(f);
@@ -41,14 +45,11 @@
     return "abc".concat(a);
   }
 
+  %PrepareFunctionForOptimization(f);
   assertEquals("abcde", f("de"));
   assertEquals("abcde", f("de"));
   %OptimizeFunctionOnNextCall(f);
-  var s = "x".repeat((1 << 28) - 16);
-  try {
-    s = "x".repeat((1 << 30) - 1 - 24);
-  } catch (e) {
-  }
+  var s = "x".repeat(%StringMaxLength());
   assertThrows(() => f(s), RangeError);
 })();
 
@@ -58,6 +59,7 @@
     return "ab".concat("c");
   }
 
+  %PrepareFunctionForOptimization(f);
   assertEquals("abc", f());
   assertEquals("abc", f());
   %OptimizeFunctionOnNextCall(f);
@@ -69,6 +71,7 @@
     return "ab".concat("c", a);
   }
 
+  %PrepareFunctionForOptimization(f);
   assertEquals("abcde", f("de"));
   assertEquals("abcde", f("de"));
   %OptimizeFunctionOnNextCall(f);
@@ -79,6 +82,8 @@
   function f(a) {
     return "ab".concat("c", a);
   }
+
+  %PrepareFunctionForOptimization(f);
   assertEquals("abcde", f("de"));
   assertEquals("abcde", f("de"));
   %OptimizeFunctionOnNextCall(f);
@@ -90,13 +95,10 @@
     return "ab".concat("c", a);
   }
 
+  %PrepareFunctionForOptimization(f);
   assertEquals("abcde", f("de"));
   assertEquals("abcde", f("de"));
   %OptimizeFunctionOnNextCall(f);
-  var s = "x".repeat((1 << 28) - 16);
-  try {
-    s = "x".repeat((1 << 30) - 1 - 24);
-  } catch (e) {
-  }
+  var s = "x".repeat(%StringMaxLength());
   assertThrows(() => f(s), RangeError);
 })();

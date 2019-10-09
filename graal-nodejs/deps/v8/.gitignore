@@ -23,6 +23,7 @@
 *~
 .#*
 .*.sw?
+.ccls-cache
 .cpplint-cache
 .cproject
 .d8_history
@@ -32,10 +33,12 @@
 .project
 .pydevproject
 .settings
+.torquelint-cache
 .vscode
 /_*
 /build
 /buildtools
+/check-header-includes
 /hydrogen.cfg
 /obj
 /out
@@ -50,7 +53,7 @@
 /test/mozilla/data
 /test/test262/data
 /test/test262/harness
-/test/wasm-js
+/test/wasm-js/data
 /test/wasm-spec-tests/tests
 /test/wasm-spec-tests/tests.tar.gz
 /third_party/*
@@ -68,10 +71,10 @@
 !/third_party/googletest/src/googletest/include/gtest
 /third_party/googletest/src/googletest/include/gtest/*
 !/third_party/googletest/src/googletest/include/gtest/gtest_prod.h
+!/third_party/v8
 /tools/clang
 /tools/gcmole/gcmole-tools
 /tools/gcmole/gcmole-tools.tar.gz
-/tools/gyp
 /tools/jsfunfuzz/jsfunfuzz
 /tools/jsfunfuzz/jsfunfuzz.tar.gz
 /tools/luci-go
@@ -91,7 +94,6 @@ GTAGS
 TAGS
 bsuite
 compile_commands.json
-d8
 !/test/mjsunit/d8
 d8_g
 gccauses
@@ -105,5 +107,10 @@ turbo*.dot
 turbo*.json
 v8.ignition_dispatches_table.json
 /Default/
+node_modules
+tools/turbolizer/build
+tools/turbolizer/.rpt2_cache
+tools/turbolizer/deploy
+
 !/third_party/jinja2
 !/third_party/markupsafe

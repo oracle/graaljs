@@ -82,6 +82,6 @@ bool GraalArrayBuffer::IsExternal() const {
     return result;
 }
 
-void GraalArrayBuffer::Neuter() {
-    JNI_CALL_VOID(Isolate(), GraalAccessMethod::array_buffer_neuter, GetJavaObject());
+void GraalArrayBuffer::Detach() {
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::array_buffer_detach, GetJavaObject());
 }

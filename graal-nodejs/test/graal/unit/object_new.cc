@@ -58,7 +58,7 @@ EXPORT_TO_JS(RegExp) {
 EXPORT_TO_JS(Date) {
     Isolate* isolate = args.GetIsolate();
     Local<Number> number = args[0].As<Number>();
-    Local<Value> date = Date::New(isolate, number->Value());
+    Local<Value> date = Date::New(isolate->GetCurrentContext(), number->Value()).ToLocalChecked();
     args.GetReturnValue().Set(date);
 }
 
@@ -84,8 +84,9 @@ EXPORT_TO_JS(BooleanObject) {
 // StringObject::New
 
 EXPORT_TO_JS(StringObject) {
+    Isolate* isolate = args.GetIsolate();
     Local<String> value = args[0].As<String>();
-    Local<Value> stringObj = StringObject::New(value);
+    Local<Value> stringObj = StringObject::New(isolate, value);
     args.GetReturnValue().Set(stringObj);
 }
 

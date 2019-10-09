@@ -9,10 +9,10 @@
 #include <algorithm>
 
 #include "include/v8.h"
-#include "src/isolate.h"
-#include "src/objects-inl.h"
-#include "src/objects.h"
-#include "src/ostreams.h"
+#include "src/execution/isolate.h"
+#include "src/utils/ostreams.h"
+#include "src/objects/objects-inl.h"
+#include "src/objects/objects.h"
 #include "src/wasm/wasm-interpreter.h"
 #include "src/wasm/wasm-module-builder.h"
 #include "src/wasm/wasm-module.h"
@@ -20,8 +20,6 @@
 #include "test/common/wasm/wasm-module-runner.h"
 #include "test/fuzzer/fuzzer-support.h"
 #include "test/fuzzer/wasm-fuzzer-common.h"
-
-typedef uint8_t byte;
 
 namespace v8 {
 namespace internal {
@@ -34,50 +32,45 @@ constexpr int kMaxFunctions = 4;
 constexpr int kMaxGlobals = 64;
 
 class DataRange {
-  const uint8_t* data_;
-  size_t size_;
+  Vector<const uint8_t> data_;
 
  public:
-  DataRange(const uint8_t* data, size_t size) : data_(data), size_(size) {}
+  explicit DataRange(Vector<const uint8_t> data) : data_(data) {}
 
   // Don't accidentally pass DataRange by value. This will reuse bytes and might
   // lead to OOM because the end might not be reached.
   // Define move constructor and move assignment, disallow copy constructor and
   // copy assignment (below).
-  DataRange(DataRange&& other) : DataRange(other.data_, other.size_) {
-    other.data_ = nullptr;
-    other.size_ = 0;
+  DataRange(DataRange&& other) V8_NOEXCEPT : DataRange(other.data_) {
+    other.data_ = {};
   }
-  DataRange& operator=(DataRange&& other) {
+  DataRange& operator=(DataRange&& other) V8_NOEXCEPT {
     data_ = other.data_;
-    size_ = other.size_;
-    other.data_ = nullptr;
-    other.size_ = 0;
+    other.data_ = {};
     return *this;
   }
 
-  size_t size() const { return size_; }
+  size_t size() const { return data_.size(); }
 
   DataRange split() {
-    uint16_t num_bytes = get<uint16_t>() % std::max(size_t{1}, size_);
-    DataRange split(data_, num_bytes);
+    uint16_t num_bytes = get<uint16_t>() % std::max(size_t{1}, data_.size());
+    DataRange split(data_.SubVector(0, num_bytes));
     data_ += num_bytes;
-    size_ -= num_bytes;
     return split;
   }
 
-  template <typename T>
+  template <typename T, size_t max_bytes = sizeof(T)>
   T get() {
+    STATIC_ASSERT(max_bytes <= sizeof(T));
     // We want to support the case where we have less than sizeof(T) bytes
     // remaining in the slice. For example, if we emit an i32 constant, it's
     // okay if we don't have a full four bytes available, we'll just use what
     // we have. We aren't concerned about endianness because we are generating
     // arbitrary expressions.
-    const size_t num_bytes = std::min(sizeof(T), size_);
+    const size_t num_bytes = std::min(max_bytes, data_.size());
     T result = T();
-    memcpy(&result, data_, num_bytes);
+    memcpy(&result, data_.begin(), num_bytes);
     data_ += num_bytes;
-    size_ -= num_bytes;
     return result;
   }
 
@@ -348,6 +341,16 @@ class WasmGenerator {
     local_op<wanted_type>(data, kExprTeeLocal);
   }
 
+  template <size_t num_bytes>
+  void i32_const(DataRange& data) {
+    builder_->EmitI32Const(data.get<int32_t, num_bytes>());
+  }
+
+  template <size_t num_bytes>
+  void i64_const(DataRange& data) {
+    builder_->EmitI64Const(data.get<int64_t, num_bytes>());
+  }
+
   Var GetRandomGlobal(DataRange& data, bool ensure_mutable) {
     uint32_t index;
     if (ensure_mutable) {
@@ -386,11 +389,21 @@ class WasmGenerator {
     global_op<wanted_type>(data);
   }
 
+  template <ValueType select_type>
+  void select_with_type(DataRange& data) {
+    static_assert(select_type != kWasmStmt, "illegal type for select");
+    Generate<select_type, select_type, kWasmI32>(data);
+    // num_types is always 1.
+    uint8_t num_types = 1;
+    builder_->EmitWithU8U8(kExprSelectWithType, num_types,
+                           ValueTypes::ValueTypeCodeFor(select_type));
+  }
+
   void set_global(DataRange& data) { global_op<kWasmStmt>(data); }
 
-  template <ValueType T1, ValueType T2>
+  template <ValueType... Types>
   void sequence(DataRange& data) {
-    Generate<T1, T2>(data);
+    Generate<Types...>(data);
   }
 
   void current_memory(DataRange& data) {
@@ -480,6 +493,9 @@ void WasmGenerator::Generate<kWasmStmt>(DataRange& data) {
 
   constexpr generate_fn alternates[] = {
       &WasmGenerator::sequence<kWasmStmt, kWasmStmt>,
+      &WasmGenerator::sequence<kWasmStmt, kWasmStmt, kWasmStmt, kWasmStmt>,
+      &WasmGenerator::sequence<kWasmStmt, kWasmStmt, kWasmStmt, kWasmStmt,
+                               kWasmStmt, kWasmStmt, kWasmStmt, kWasmStmt>,
       &WasmGenerator::block<kWasmStmt>,
       &WasmGenerator::loop<kWasmStmt>,
       &WasmGenerator::if_<kWasmStmt, kIf>,
@@ -510,13 +526,20 @@ void WasmGenerator::Generate<kWasmStmt>(DataRange& data) {
 template <>
 void WasmGenerator::Generate<kWasmI32>(DataRange& data) {
   GeneratorRecursionScope rec_scope(this);
-  if (recursion_limit_reached() || data.size() <= sizeof(uint32_t)) {
+  if (recursion_limit_reached() || data.size() <= 1) {
     builder_->EmitI32Const(data.get<uint32_t>());
     return;
   }
 
   constexpr generate_fn alternates[] = {
+      &WasmGenerator::i32_const<1>,
+      &WasmGenerator::i32_const<2>,
+      &WasmGenerator::i32_const<3>,
+      &WasmGenerator::i32_const<4>,
+
+      &WasmGenerator::sequence<kWasmI32, kWasmStmt>,
       &WasmGenerator::sequence<kWasmStmt, kWasmI32>,
+      &WasmGenerator::sequence<kWasmStmt, kWasmI32, kWasmStmt>,
 
       &WasmGenerator::op<kExprI32Eqz, kWasmI32>,
       &WasmGenerator::op<kExprI32Eq, kWasmI32, kWasmI32>,
@@ -590,6 +613,8 @@ void WasmGenerator::Generate<kWasmI32>(DataRange& data) {
       &WasmGenerator::get_local<kWasmI32>,
       &WasmGenerator::tee_local<kWasmI32>,
       &WasmGenerator::get_global<kWasmI32>,
+      &WasmGenerator::op<kExprSelect, kWasmI32, kWasmI32, kWasmI32>,
+      &WasmGenerator::select_with_type<kWasmI32>,
 
       &WasmGenerator::call<kWasmI32>};
 
@@ -599,13 +624,24 @@ void WasmGenerator::Generate<kWasmI32>(DataRange& data) {
 template <>
 void WasmGenerator::Generate<kWasmI64>(DataRange& data) {
   GeneratorRecursionScope rec_scope(this);
-  if (recursion_limit_reached() || data.size() <= sizeof(uint64_t)) {
+  if (recursion_limit_reached() || data.size() <= 1) {
     builder_->EmitI64Const(data.get<int64_t>());
     return;
   }
 
   constexpr generate_fn alternates[] = {
+      &WasmGenerator::i64_const<1>,
+      &WasmGenerator::i64_const<2>,
+      &WasmGenerator::i64_const<3>,
+      &WasmGenerator::i64_const<4>,
+      &WasmGenerator::i64_const<5>,
+      &WasmGenerator::i64_const<6>,
+      &WasmGenerator::i64_const<7>,
+      &WasmGenerator::i64_const<8>,
+
+      &WasmGenerator::sequence<kWasmI64, kWasmStmt>,
       &WasmGenerator::sequence<kWasmStmt, kWasmI64>,
+      &WasmGenerator::sequence<kWasmStmt, kWasmI64, kWasmStmt>,
 
       &WasmGenerator::op<kExprI64Add, kWasmI64, kWasmI64>,
       &WasmGenerator::op<kExprI64Sub, kWasmI64, kWasmI64>,
@@ -645,6 +681,8 @@ void WasmGenerator::Generate<kWasmI64>(DataRange& data) {
       &WasmGenerator::get_local<kWasmI64>,
       &WasmGenerator::tee_local<kWasmI64>,
       &WasmGenerator::get_global<kWasmI64>,
+      &WasmGenerator::op<kExprSelect, kWasmI64, kWasmI64, kWasmI32>,
+      &WasmGenerator::select_with_type<kWasmI64>,
 
       &WasmGenerator::call<kWasmI64>};
 
@@ -660,7 +698,9 @@ void WasmGenerator::Generate<kWasmF32>(DataRange& data) {
   }
 
   constexpr generate_fn alternates[] = {
+      &WasmGenerator::sequence<kWasmF32, kWasmStmt>,
       &WasmGenerator::sequence<kWasmStmt, kWasmF32>,
+      &WasmGenerator::sequence<kWasmStmt, kWasmF32, kWasmStmt>,
 
       &WasmGenerator::op<kExprF32Add, kWasmF32, kWasmF32>,
       &WasmGenerator::op<kExprF32Sub, kWasmF32, kWasmF32>,
@@ -676,6 +716,8 @@ void WasmGenerator::Generate<kWasmF32>(DataRange& data) {
       &WasmGenerator::get_local<kWasmF32>,
       &WasmGenerator::tee_local<kWasmF32>,
       &WasmGenerator::get_global<kWasmF32>,
+      &WasmGenerator::op<kExprSelect, kWasmF32, kWasmF32, kWasmI32>,
+      &WasmGenerator::select_with_type<kWasmF32>,
 
       &WasmGenerator::call<kWasmF32>};
 
@@ -691,7 +733,9 @@ void WasmGenerator::Generate<kWasmF64>(DataRange& data) {
   }
 
   constexpr generate_fn alternates[] = {
+      &WasmGenerator::sequence<kWasmF64, kWasmStmt>,
       &WasmGenerator::sequence<kWasmStmt, kWasmF64>,
+      &WasmGenerator::sequence<kWasmStmt, kWasmF64, kWasmStmt>,
 
       &WasmGenerator::op<kExprF64Add, kWasmF64, kWasmF64>,
       &WasmGenerator::op<kExprF64Sub, kWasmF64, kWasmF64>,
@@ -707,6 +751,8 @@ void WasmGenerator::Generate<kWasmF64>(DataRange& data) {
       &WasmGenerator::get_local<kWasmF64>,
       &WasmGenerator::tee_local<kWasmF64>,
       &WasmGenerator::get_global<kWasmF64>,
+      &WasmGenerator::op<kExprSelect, kWasmF64, kWasmF64, kWasmI32>,
+      &WasmGenerator::select_with_type<kWasmF64>,
 
       &WasmGenerator::call<kWasmF64>};
 
@@ -715,7 +761,7 @@ void WasmGenerator::Generate<kWasmF64>(DataRange& data) {
 
 void WasmGenerator::grow_memory(DataRange& data) {
   Generate<kWasmI32>(data);
-  builder_->EmitWithU8(kExprGrowMemory, 0);
+  builder_->EmitWithU8(kExprMemoryGrow, 0);
 }
 
 void WasmGenerator::Generate(ValueType type, DataRange& data) {
@@ -751,7 +797,7 @@ FunctionSig* GenerateSig(Zone* zone, DataRange& data) {
 
 class WasmCompileFuzzer : public WasmExecutionFuzzer {
   bool GenerateModule(
-      Isolate* isolate, Zone* zone, const uint8_t* data, size_t size,
+      Isolate* isolate, Zone* zone, Vector<const uint8_t> data,
       ZoneBuffer& buffer, int32_t& num_args,
       std::unique_ptr<WasmValue[]>& interpreter_args,
       std::unique_ptr<Handle<Object>[]>& compiler_args) override {
@@ -759,7 +805,7 @@ class WasmCompileFuzzer : public WasmExecutionFuzzer {
 
     WasmModuleBuilder builder(zone);
 
-    DataRange range(data, static_cast<uint32_t>(size));
+    DataRange range(data);
     std::vector<FunctionSig*> function_signatures;
     function_signatures.push_back(sigs.i_iii());
 
@@ -819,7 +865,8 @@ class WasmCompileFuzzer : public WasmExecutionFuzzer {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   constexpr bool require_valid = true;
-  return WasmCompileFuzzer().FuzzWasmModule(data, size, require_valid);
+  WasmCompileFuzzer().FuzzWasmModule({data, size}, require_valid);
+  return 0;
 }
 
 }  // namespace fuzzer

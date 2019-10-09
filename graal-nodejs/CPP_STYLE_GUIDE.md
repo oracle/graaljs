@@ -29,7 +29,6 @@
   * [Avoid throwing JavaScript errors in C++ methods](#avoid-throwing-javascript-errors-in-c)
     * [Avoid throwing JavaScript errors in nested C++ methods](#avoid-throwing-javascript-errors-in-nested-c-methods)
 
-
 ## Guides and References
 
 The Node.js C++ codebase strives to be consistent in its use of language
@@ -186,6 +185,7 @@ class FancyContainer {
  ...
 }
 ```
+
 ## Memory Management
 
 ### Memory allocation
@@ -326,7 +326,7 @@ When there is a need to throw errors from a C++ binding method, try to
 return the data necessary for constructing the errors to JavaScript,
 then construct and throw the errors [using `lib/internal/errors.js`][errors].
 
-Note that in general, type-checks on arguments should be done in JavaScript
+In general, type-checks on arguments should be done in JavaScript
 before the arguments are passed into C++. Then in the C++ binding, simply using
 `CHECK` assertions to guard against invalid arguments should be enough.
 
@@ -384,7 +384,6 @@ side effects.
 
 Node.js is built [without C++ exception handling][], so code using `throw` or
 even `try` and `catch` **will** break.
-
 
 [C++ Core Guidelines]: http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 [Google C++ Style Guide]: https://google.github.io/styleguide/cppguide.html

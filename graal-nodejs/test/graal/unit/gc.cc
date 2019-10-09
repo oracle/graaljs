@@ -45,7 +45,8 @@
 
 void GC_InvokeGC(Isolate* isolate) {
     Local<Context> context = isolate->GetCurrentContext();
-    Script::Compile(context, String::NewFromUtf8(isolate, "gc()")).ToLocalChecked()->Run(context);
+    Local<String> gc = String::NewFromUtf8(isolate, "gc()", v8::NewStringType::kNormal).ToLocalChecked();
+    Script::Compile(context, gc).ToLocalChecked()->Run(context);
 }
 
 static int callback1_invocations;

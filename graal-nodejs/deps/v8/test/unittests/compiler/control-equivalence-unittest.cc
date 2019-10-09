@@ -3,11 +3,11 @@
 // found in the LICENSE file.
 
 #include "src/compiler/control-equivalence.h"
-#include "src/bit-vector.h"
 #include "src/compiler/compiler-source-position-table.h"
 #include "src/compiler/graph-visualizer.h"
 #include "src/compiler/node-origin-table.h"
 #include "src/compiler/node-properties.h"
+#include "src/utils/bit-vector.h"
 #include "src/zone/zone-containers.h"
 #include "test/unittests/compiler/graph-unittest.h"
 
@@ -31,10 +31,9 @@ class ControlEquivalenceTest : public GraphTest {
   void ComputeEquivalence(Node* node) {
     graph()->SetEnd(graph()->NewNode(common()->End(1), node));
     if (FLAG_trace_turbo) {
-      OFStream os(stdout);
       SourcePositionTable table(graph());
       NodeOriginTable table2(graph());
-      os << AsJSON(*graph(), &table, &table2);
+      StdoutStream{} << AsJSON(*graph(), &table, &table2);
     }
     ControlEquivalence equivalence(zone(), graph());
     equivalence.Run(node);

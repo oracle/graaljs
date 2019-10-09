@@ -5,7 +5,6 @@
 #ifndef WASM_ATOMICOP_UTILS_H
 #define WASM_ATOMICOP_UTILS_H
 
-#include "src/objects-inl.h"
 #include "test/cctest/cctest.h"
 #include "test/cctest/compiler/value-helper.h"
 #include "test/cctest/wasm/wasm-run-utils.h"
@@ -14,10 +13,18 @@ namespace v8 {
 namespace internal {
 namespace wasm {
 
-typedef uint64_t (*Uint64BinOp)(uint64_t, uint64_t);
-typedef uint32_t (*Uint32BinOp)(uint32_t, uint32_t);
-typedef uint16_t (*Uint16BinOp)(uint16_t, uint16_t);
-typedef uint8_t (*Uint8BinOp)(uint8_t, uint8_t);
+#define OPERATION_LIST(V) \
+  V(Add)                  \
+  V(Sub)                  \
+  V(And)                  \
+  V(Or)                   \
+  V(Xor)                  \
+  V(Exchange)
+
+using Uint64BinOp = uint64_t (*)(uint64_t, uint64_t);
+using Uint32BinOp = uint32_t (*)(uint32_t, uint32_t);
+using Uint16BinOp = uint16_t (*)(uint16_t, uint16_t);
+using Uint8BinOp = uint8_t (*)(uint8_t, uint8_t);
 
 template <typename T>
 T Add(T a, T b) {

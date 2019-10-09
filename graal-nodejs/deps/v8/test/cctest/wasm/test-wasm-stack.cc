@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "src/api.h"
-#include "src/assembler-inl.h"
+#include "src/api/api-inl.h"
+#include "src/codegen/assembler-inl.h"
 #include "test/cctest/cctest.h"
 #include "test/cctest/compiler/value-helper.h"
 #include "test/cctest/wasm/wasm-run-utils.h"
@@ -20,22 +20,21 @@ using v8::Utils;
 
 namespace {
 
-#define CHECK_CSTREQ(exp, found)                                           \
-  do {                                                                     \
-    const char* exp_ = (exp);                                              \
-    const char* found_ = (found);                                          \
-    DCHECK_NOT_NULL(exp);                                                  \
-    if (V8_UNLIKELY(found_ == nullptr || strcmp(exp_, found_) != 0)) {     \
-      V8_Fatal(__FILE__, __LINE__,                                         \
-               "Check failed: (%s) != (%s) ('%s' vs '%s').", #exp, #found, \
-               exp_, found_ ? found_ : "<null>");                          \
-    }                                                                      \
-  } while (0)
+#define CHECK_CSTREQ(exp, found)                                              \
+  do {                                                                        \
+    const char* exp_ = (exp);                                                 \
+    const char* found_ = (found);                                             \
+    DCHECK_NOT_NULL(exp);                                                     \
+    if (V8_UNLIKELY(found_ == nullptr || strcmp(exp_, found_) != 0)) {        \
+      FATAL("Check failed: (%s) != (%s) ('%s' vs '%s').", #exp, #found, exp_, \
+            found_ ? found_ : "<null>");                                      \
+    }                                                                         \
+  } while (false)
 
 void PrintStackTrace(v8::Isolate* isolate, v8::Local<v8::StackTrace> stack) {
   printf("Stack Trace (length %d):\n", stack->GetFrameCount());
   for (int i = 0, e = stack->GetFrameCount(); i != e; ++i) {
-    v8::Local<v8::StackFrame> frame = stack->GetFrame(i);
+    v8::Local<v8::StackFrame> frame = stack->GetFrame(isolate, i);
     v8::Local<v8::String> script = frame->GetScriptName();
     v8::Local<v8::String> func = frame->GetFunctionName();
     printf(
@@ -68,7 +67,7 @@ void CheckExceptionInfos(v8::internal::Isolate* i_isolate, Handle<Object> exc,
   CHECK_EQ(N, stack->GetFrameCount());
 
   for (int frameNr = 0; frameNr < N; ++frameNr) {
-    v8::Local<v8::StackFrame> frame = stack->GetFrame(frameNr);
+    v8::Local<v8::StackFrame> frame = stack->GetFrame(v8_isolate, frameNr);
     v8::String::Utf8Value funName(v8_isolate, frame->GetFunctionName());
     CHECK_CSTREQ(excInfos[frameNr].func_name, *funName);
     // Line and column are 1-based in v8::StackFrame, just as in ExceptionInfo.
@@ -86,10 +85,10 @@ void CheckComputeLocation(v8::internal::Isolate* i_isolate, Handle<Object> exc,
   printf("loc start: %d, end: %d\n", loc.start_pos(), loc.end_pos());
   Handle<JSMessageObject> message = i_isolate->CreateMessage(exc, nullptr);
   printf("msg start: %d, end: %d, line: %d, col: %d\n",
-         message->start_position(), message->end_position(),
+         message->GetStartPosition(), message->GetEndPosition(),
          message->GetLineNumber(), message->GetColumnNumber());
-  CHECK_EQ(loc.start_pos(), message->start_position());
-  CHECK_EQ(loc.end_pos(), message->end_position());
+  CHECK_EQ(loc.start_pos(), message->GetStartPosition());
+  CHECK_EQ(loc.end_pos(), message->GetEndPosition());
   // In the message, the line is 1-based, but the column is 0-based.
   CHECK_EQ(topLocation.line_nr, message->GetLineNumber());
   CHECK_LE(1, topLocation.column);
@@ -111,7 +110,7 @@ WASM_EXEC_TEST(CollectDetailedWasmStack_ExplicitThrowFromJs) {
           *v8::Local<v8::Function>::Cast(CompileRun(source))));
   ManuallyImportedJSFunction import = {sigs.v_v(), js_function};
   uint32_t js_throwing_index = 0;
-  WasmRunner<void> r(execution_mode, &import);
+  WasmRunner<void> r(execution_tier, &import);
 
   // Add a nop such that we don't always get position 1.
   BUILD(r, WASM_NOP, WASM_CALL_FUNCTION0(js_throwing_index));
@@ -130,7 +129,7 @@ WASM_EXEC_TEST(CollectDetailedWasmStack_ExplicitThrowFromJs) {
   Isolate* isolate = js_wasm_wrapper->GetIsolate();
   isolate->SetCaptureStackTraceForUncaughtExceptions(true, 10,
                                                      v8::StackTrace::kOverview);
-  Handle<Object> global(isolate->context()->global_object(), isolate);
+  Handle<Object> global(isolate->context().global_object(), isolate);
   MaybeHandle<Object> maybe_exc;
   Handle<Object> args[] = {js_wasm_wrapper};
   MaybeHandle<Object> returnObjMaybe =
@@ -157,7 +156,8 @@ WASM_EXEC_TEST(CollectDetailedWasmStack_WasmError) {
     int unreachable_pos = 1 << (8 * pos_shift);
     TestSignatures sigs;
     // Create a WasmRunner with stack checks and traps enabled.
-    WasmRunner<int> r(execution_mode, 0, "main", kRuntimeExceptionSupport);
+    WasmRunner<int> r(execution_tier, nullptr, "main",
+                      kRuntimeExceptionSupport);
 
     std::vector<byte> code(unreachable_pos + 1, kExprNop);
     code[unreachable_pos] = kExprUnreachable;
@@ -178,7 +178,7 @@ WASM_EXEC_TEST(CollectDetailedWasmStack_WasmError) {
     Isolate* isolate = js_wasm_wrapper->GetIsolate();
     isolate->SetCaptureStackTraceForUncaughtExceptions(
         true, 10, v8::StackTrace::kOverview);
-    Handle<Object> global(isolate->context()->global_object(), isolate);
+    Handle<Object> global(isolate->context().global_object(), isolate);
     MaybeHandle<Object> maybe_exc;
     Handle<Object> args[] = {js_wasm_wrapper};
     MaybeHandle<Object> maybe_return_obj =

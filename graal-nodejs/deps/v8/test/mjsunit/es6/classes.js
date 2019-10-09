@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --allow-natives-syntax --harmony-do-expressions
+// Flags: --allow-natives-syntax
 
 (function TestBasics() {
   var C = class C {}
@@ -23,10 +23,41 @@
   assertEquals('D2', D2.name);
 
   var E = class {}
-  assertEquals('E', E.name);  // Should be 'E'.
+  assertEquals('E', E.name);
 
   var F = class { constructor() {} };
-  assertEquals('F', F.name);  // Should be 'F'.
+  assertEquals('F', F.name);
+
+  var literal = { E: class {} };
+  assertEquals('E', literal.E.name);
+
+  literal = { E: class F {} };
+  assertEquals('F', literal.E.name);
+
+  literal = { __proto__: class {} };
+  assertEquals('', literal.__proto__.name);
+  assertEquals(
+      undefined, Object.getOwnPropertyDescriptor(literal.__proto__, 'name'));
+
+  literal = { __proto__: class F {} };
+  assertEquals('F', literal.__proto__.name);
+  assertNotEquals(
+      undefined, Object.getOwnPropertyDescriptor(literal.__proto__, 'name'));
+
+  class G {};
+  literal = { __proto__: G };
+  assertEquals('G', literal.__proto__.name);
+
+  var H = class { static name() { return 'A'; } };
+  literal = { __proto__ : H };
+  assertEquals('A', literal.__proto__.name());
+
+  literal = {
+    __proto__: class {
+      static name() { return 'A'; }
+    }
+  };
+  assertEquals('A', literal.__proto__.name());
 })();
 
 
@@ -697,6 +728,9 @@ function assertAccessorDescriptor(object, name) {
   function invoke_constructor() { A() }
   function call_constructor() { A.call() }
   function apply_constructor() { A.apply() }
+  %PrepareFunctionForOptimization(invoke_constructor);
+  %PrepareFunctionForOptimization(call_constructor);
+  %PrepareFunctionForOptimization(apply_constructor);
 
   for (var i=0; i<3; i++) {
     assertThrows(invoke_constructor);
@@ -1038,31 +1072,6 @@ function testClassRestrictedProperties(C) {
 
 (function testReturnFromClassLiteral() {
 
-  function usingDoExpressionInBody() {
-    let x = 42;
-    let dummy = function() {x};
-    try {
-      class C {
-        dummy() {C}
-        [do {return}]() {}
-      };
-    } finally {
-      return x;
-    }
-  }
-  assertEquals(42, usingDoExpressionInBody());
-
-  function usingDoExpressionInExtends() {
-    let x = 42;
-    let dummy = function() {x};
-    try {
-      class C extends (do {return}) { dummy() {C} };
-    } finally {
-      return x;
-    }
-  }
-  assertEquals(42, usingDoExpressionInExtends());
-
   function usingYieldInBody() {
     function* foo() {
       class C {
@@ -1100,6 +1109,7 @@ function testClassRestrictedProperties(C) {
       " return new clazz(i); })";
 
   let fn = eval(evalString);
+  %PrepareFunctionForOptimization(fn);
   assertEquals(fn(1).value, 1);
   assertEquals(fn(2).value, 2);
   assertEquals(fn(3).value, 3);
@@ -1132,6 +1142,7 @@ function testClassRestrictedProperties(C) {
 
   let fn = eval(evalString);
 
+  %PrepareFunctionForOptimization(fn);
   assertEquals(fn(1).value, 1);
   assertEquals(fn(2).value, 2);
   assertEquals(fn(3).value, 3);
@@ -1168,6 +1179,7 @@ function testClassRestrictedProperties(C) {
       " return (new clazz(i)); })";
 
   let fn = eval(evalString);
+  %PrepareFunctionForOptimization(fn);
   assertEquals(fn(1).value, 1);
   assertEquals(fn(2).value, 2);
   assertEquals(fn(3).value, 3);
@@ -1185,4 +1197,96 @@ function testClassRestrictedProperties(C) {
     instance[key] = value;
     assertEquals(instance[key], value);
   }
+})();
+
+var b = 'b';
+
+(function TestOverwritingInstanceAccessors() {
+  var C, desc;
+  C = class {
+    [b]() { return 'B'; };
+    get b() { return 'get B'; };
+  };
+  desc = Object.getOwnPropertyDescriptor(C.prototype, 'b');
+  assertFalse(desc.enumerable);
+  assertTrue(desc.configurable);
+  assertEquals('get B', desc.get());
+  assertEquals(undefined, desc.set);
+
+  C = class {
+    [b]() { return 'B'; };
+    set b(v) { return 'set B'; };
+  };
+  desc = Object.getOwnPropertyDescriptor(C.prototype, 'b');
+  assertFalse(desc.enumerable);
+  assertTrue(desc.configurable);
+  assertEquals(undefined, desc.get);
+  assertEquals('set B', desc.set());
+
+  C = class {
+    set b(v) { return 'get B'; };
+    [b]() { return 'B'; };
+    get b() { return 'get B'; };
+  };
+  desc = Object.getOwnPropertyDescriptor(C.prototype, 'b');
+  assertFalse(desc.enumerable);
+  assertTrue(desc.configurable);
+  assertEquals('get B', desc.get());
+  assertEquals(undefined, desc.set);
+
+  C = class {
+    get b() { return 'get B'; };
+    [b]() { return 'B'; };
+    set b(v) { return 'set B'; };
+  };
+  desc = Object.getOwnPropertyDescriptor(C.prototype, 'b');
+  assertFalse(desc.enumerable);
+  assertTrue(desc.configurable);
+  assertEquals(undefined, desc.get);
+  assertEquals('set B', desc.set());
+})();
+
+(function TestOverwritingStaticAccessors() {
+  var C, desc;
+  C = class {
+    static [b]() { return 'B'; };
+    static get b() { return 'get B'; };
+  };
+  desc = Object.getOwnPropertyDescriptor(C, 'b');
+  assertFalse(desc.enumerable);
+  assertTrue(desc.configurable);
+  assertEquals('get B', desc.get());
+  assertEquals(undefined, desc.set);
+
+  C = class {
+    static [b]() { return 'B'; };
+    static set b(v) { return 'set B'; };
+  };
+  desc = Object.getOwnPropertyDescriptor(C, 'b');
+  assertFalse(desc.enumerable);
+  assertTrue(desc.configurable);
+  assertEquals(undefined, desc.get);
+  assertEquals('set B', desc.set());
+
+  C = class {
+    static set b(v) { return 'get B'; };
+    static [b]() { return 'B'; };
+    static get b() { return 'get B'; };
+  };
+  desc = Object.getOwnPropertyDescriptor(C, 'b');
+  assertFalse(desc.enumerable);
+  assertTrue(desc.configurable);
+  assertEquals('get B', desc.get());
+  assertEquals(undefined, desc.set);
+
+  C = class {
+    static get b() { return 'get B'; };
+    static [b]() { return 'B'; };
+    static set b(v) { return 'set B'; };
+  };
+  desc = Object.getOwnPropertyDescriptor(C, 'b');
+  assertFalse(desc.enumerable);
+  assertTrue(desc.configurable);
+  assertEquals(undefined, desc.get);
+  assertEquals('set B', desc.set());
 })();

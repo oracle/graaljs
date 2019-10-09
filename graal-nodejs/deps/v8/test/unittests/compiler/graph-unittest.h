@@ -10,6 +10,7 @@
 #include "src/compiler/graph.h"
 #include "src/compiler/node-origin-table.h"
 #include "src/compiler/typer.h"
+#include "src/handles/handles.h"
 #include "test/unittests/test-utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
@@ -17,16 +18,13 @@ namespace v8 {
 namespace internal {
 
 // Forward declarations.
-template <class T>
-class Handle;
 class HeapObject;
 
 namespace compiler {
 
 using ::testing::Matcher;
 
-class GraphTest : public virtual TestWithNativeContext,
-                  public virtual TestWithIsolateAndZone {
+class GraphTest : public TestWithNativeContextAndZone {
  public:
   explicit GraphTest(int num_parameters = 1);
   ~GraphTest() override;
@@ -35,6 +33,7 @@ class GraphTest : public virtual TestWithNativeContext,
   Node* end() { return graph()->end(); }
 
   Node* Parameter(int32_t index = 0);
+  Node* Parameter(Type type, int32_t index = 0);
   Node* Float32Constant(volatile float value);
   Node* Float64Constant(volatile double value);
   Node* Int32Constant(int32_t value);
@@ -62,10 +61,13 @@ class GraphTest : public virtual TestWithNativeContext,
   Graph* graph() { return &graph_; }
   SourcePositionTable* source_positions() { return &source_positions_; }
   NodeOriginTable* node_origins() { return &node_origins_; }
+  JSHeapBroker* broker() { return &broker_; }
 
  private:
+  CanonicalHandleScope canonical_;
   CommonOperatorBuilder common_;
   Graph graph_;
+  JSHeapBroker broker_;
   SourcePositionTable source_positions_;
   NodeOriginTable node_origins_;
 };
@@ -77,9 +79,6 @@ class TypedGraphTest : public GraphTest {
   ~TypedGraphTest() override;
 
  protected:
-  Node* Parameter(int32_t index = 0) { return GraphTest::Parameter(index); }
-  Node* Parameter(Type type, int32_t index = 0);
-
   Typer* typer() { return &typer_; }
 
  private:

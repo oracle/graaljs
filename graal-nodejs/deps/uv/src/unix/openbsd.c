@@ -136,6 +136,11 @@ uint64_t uv_get_total_memory(void) {
 }
 
 
+uint64_t uv_get_constrained_memory(void) {
+  return 0;  /* Memory constraints are unknown. */
+}
+
+
 int uv_resident_set_memory(size_t* rss) {
   struct kinfo_proc kinfo;
   size_t page_size = getpagesize();
@@ -188,7 +193,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   if (sysctl(which, 2, &model, &size, NULL, 0))
     return UV__ERR(errno);
 
-  which[1] = HW_NCPU;
+  which[1] = HW_NCPUONLINE;
   size = sizeof(numcpus);
   if (sysctl(which, 2, &numcpus, &size, NULL, 0))
     return UV__ERR(errno);

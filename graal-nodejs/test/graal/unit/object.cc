@@ -49,14 +49,17 @@ int simpleSetterCallCount = 0;
 void SimpleAccessorGetter(Local<Name> property, const PropertyCallbackInfo<Value>& info) {
     Isolate* isolate = info.GetIsolate();
     simpleGetterCallCount++;
-    info.GetReturnValue().Set(String::Concat(String::NewFromUtf8(isolate, "accessor getter called: "), property.As<String>()));
+    Local<String> prefix = String::NewFromUtf8(isolate, "accessor getter called: ", v8::NewStringType::kNormal).ToLocalChecked();
+    info.GetReturnValue().Set(String::Concat(isolate, prefix, property.As<String>()));
 }
 
 void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const PropertyCallbackInfo<void>& info) {
     Isolate* isolate = info.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     simpleSetterCallCount++;
     Local<Object> obj = info.This();
-    obj->Set(String::NewFromUtf8(isolate, "mySetValue"), value);
+    Local<String> key = String::NewFromUtf8(isolate, "mySetValue", v8::NewStringType::kNormal).ToLocalChecked();
+    obj->Set(context, key, value);
 }
 
 #endif
@@ -65,46 +68,56 @@ void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const Proper
 // Object::GetOwnPropertyNames
 
 EXPORT_TO_JS(GetOwnPropertyNames) {
-    args.GetReturnValue().Set(args[0].As<Object>()->GetOwnPropertyNames());
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    args.GetReturnValue().Set(args[0].As<Object>()->GetOwnPropertyNames(context).ToLocalChecked());
 }
 
 // Object::GetPropertyNames
 
 EXPORT_TO_JS(GetPropertyNames) {
-    args.GetReturnValue().Set(args[0].As<Object>()->GetPropertyNames());
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    args.GetReturnValue().Set(args[0].As<Object>()->GetPropertyNames(context).ToLocalChecked());
 }
 
 // Object::Get
 
 EXPORT_TO_JS(GetByName) {
-    args.GetReturnValue().Set(args[0].As<Object>()->Get(args[1]));
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    MaybeLocal<Value> result = args[0].As<Object>()->Get(context, args[1]);
+    if (!result.IsEmpty()) {
+        args.GetReturnValue().Set(result.ToLocalChecked());
+    }
 }
 
 EXPORT_TO_JS(GetByIndex) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
     uint32_t index = args[1].As<Integer>()->Value();
-    args.GetReturnValue().Set(args[0].As<Object>()->Get(index));
+    args.GetReturnValue().Set(args[0].As<Object>()->Get(context, index).ToLocalChecked());
 }
 
 // Object::Set
 
 EXPORT_TO_JS(SetByName) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
     Local<Object> obj = args[0].As<Object>();
     Local<Value> key = args[1];
     Local<Value> value = args[2];
-    args.GetReturnValue().Set(obj->Set(key, value));
+    args.GetReturnValue().Set(obj->Set(context, key, value).FromJust());
 }
 
 EXPORT_TO_JS(SetByIndex) {
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
     Local<Object> obj = args[0].As<Object>();
     uint32_t index = args[1].As<Integer>()->Value();
     Local<Value> value = args[2];
-    args.GetReturnValue().Set(obj->Set(index, value));
+    args.GetReturnValue().Set(obj->Set(context, index, value).FromJust());
 }
 
 // Object::Has
 
 EXPORT_TO_JS(HasByName) {
-    args.GetReturnValue().Set(args[0].As<Object>()->Has(args[1]));
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    args.GetReturnValue().Set(args[0].As<Object>()->Has(context, args[1]).FromJust());
 }
 
 // Object::HasOwnProperty
@@ -116,20 +129,22 @@ EXPORT_TO_JS(HasOwnProperty) {
 // Object::HasRealNamedProperty
 
 EXPORT_TO_JS(HasRealNamedProperty) {
-    args.GetReturnValue().Set(args[0].As<Object>()->HasRealNamedProperty(args[1].As<String>()));
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    args.GetReturnValue().Set(args[0].As<Object>()->HasRealNamedProperty(context, args[1].As<String>()).FromJust());
 }
 
 // Object::HasRealIndexedProperty
 
 EXPORT_TO_JS(HasRealIndexedProperty) {
     Local<Context> context = args.GetIsolate()->GetCurrentContext();
-    args.GetReturnValue().Set(args[0].As<Object>()->HasRealIndexedProperty(args[1]->ToUint32(context).ToLocalChecked()->Value()));
+    args.GetReturnValue().Set(args[0].As<Object>()->HasRealIndexedProperty(context, args[1]->ToUint32(context).ToLocalChecked()->Value()).FromJust());
 }
 
 // Object::Delete
 
 EXPORT_TO_JS(DeleteByName) {
-    args.GetReturnValue().Set(args[0].As<Object>()->Delete(args[1]));
+    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    args.GetReturnValue().Set(args[0].As<Object>()->Delete(context, args[1]).FromJust());
 }
 
 // Object::InternalFieldCount

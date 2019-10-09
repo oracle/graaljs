@@ -3,7 +3,7 @@
 require('../common');
 const ArrayStream = require('../common/arraystream');
 const assert = require('assert');
-const { stripVTControlCharacters } = require('internal/readline');
+const { stripVTControlCharacters } = require('internal/readline/utils');
 const repl = require('repl');
 
 // Flags: --expose-internals --experimental-repl-await
@@ -162,7 +162,7 @@ async function ctrlCTest() {
     'await timeout(100000)\r',
     'Thrown:',
     'Error [ERR_SCRIPT_EXECUTION_INTERRUPTED]: ' +
-      'Script execution was interrupted by `SIGINT`.',
+      'Script execution was interrupted by `SIGINT`',
     PROMPT
   ]);
 }

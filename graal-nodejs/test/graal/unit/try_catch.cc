@@ -45,8 +45,9 @@
 
 void TryCatch_InvokeCallback(const FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Local<Value> callback = args[0];
-    Local<Function>::Cast(callback)->Call(Object::New(isolate), 0, nullptr);
+    Local<Function>::Cast(callback)->Call(context, Object::New(isolate), 0, nullptr);
 }
 
 void TryCatch_ReThrowNestedHelper(const FunctionCallbackInfo<Value>& args, int depth) {

@@ -58,12 +58,6 @@ public:
             v8::AccessControl settings,
             v8::PropertyAttribute attribute,
             v8::Local<v8::AccessorSignature> signature);
-    void SetNamedPropertyHandler(v8::NamedPropertyGetterCallback getter,
-            v8::NamedPropertySetterCallback setter,
-            v8::NamedPropertyQueryCallback query,
-            v8::NamedPropertyDeleterCallback deleter,
-            v8::NamedPropertyEnumeratorCallback enumerator,
-            v8::Local<v8::Value> data);
     void SetHandler(const v8::NamedPropertyHandlerConfiguration& configuration);
     void SetHandler(const v8::IndexedPropertyHandlerConfiguration& configuration);
     void SetCallAsFunctionHandler(v8::FunctionCallback callback, v8::Local<v8::Value> data);

@@ -28,6 +28,9 @@
  * default, we will try to read at least one of these files
  */
 #  define DEVRANDOM "/dev/urandom", "/dev/random", "/dev/hwrng", "/dev/srandom"
+#  ifdef __linux
+#   define DEVRANDOM_WAIT "/dev/random"
+#  endif
 # endif
 # if !defined(OPENSSL_NO_EGD) && !defined(DEVRANDOM_EGD)
 /*

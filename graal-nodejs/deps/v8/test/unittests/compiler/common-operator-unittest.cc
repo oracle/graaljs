@@ -106,10 +106,8 @@ TEST_P(CommonSharedOperatorTest, Properties) {
   EXPECT_EQ(sop.properties, op->properties());
 }
 
-
-INSTANTIATE_TEST_CASE_P(CommonOperatorTest, CommonSharedOperatorTest,
-                        ::testing::ValuesIn(kSharedOperators));
-
+INSTANTIATE_TEST_SUITE_P(CommonOperatorTest, CommonSharedOperatorTest,
+                         ::testing::ValuesIn(kSharedOperators));
 
 // -----------------------------------------------------------------------------
 // Other operators.
@@ -120,7 +118,7 @@ namespace {
 class CommonOperatorTest : public TestWithZone {
  public:
   CommonOperatorTest() : common_(zone()) {}
-  ~CommonOperatorTest() override {}
+  ~CommonOperatorTest() override = default;
 
   CommonOperatorBuilder* common() { return &common_; }
 

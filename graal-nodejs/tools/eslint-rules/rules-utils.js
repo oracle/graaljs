@@ -3,6 +3,15 @@
  */
 'use strict';
 
+function isRequireCall(node) {
+  return node.callee.type === 'Identifier' && node.callee.name === 'require';
+}
+module.exports.isRequireCall = isRequireCall;
+
+module.exports.isString = function(node) {
+  return node && node.type === 'Literal' && typeof node.value === 'string';
+};
+
 module.exports.isDefiningError = function(node) {
   return node.expression &&
          node.expression.type === 'CallExpression' &&
@@ -16,7 +25,7 @@ module.exports.isDefiningError = function(node) {
  * require calls.
  */
 module.exports.isRequired = function(node, modules) {
-  return node.callee.name === 'require' && node.arguments.length !== 0 &&
+  return isRequireCall(node) && node.arguments.length !== 0 &&
     modules.includes(node.arguments[0].value);
 };
 
@@ -24,9 +33,9 @@ module.exports.isRequired = function(node, modules) {
 * Return true if common module is required
 * in AST Node under inspection
 */
-var commonModuleRegExp = new RegExp(/^(\.\.\/)*common(\.js)?$/);
+const commonModuleRegExp = new RegExp(/^(\.\.\/)*common(\.js)?$/);
 module.exports.isCommonModule = function(node) {
-  return node.callee.name === 'require' &&
+  return isRequireCall(node) &&
          node.arguments.length !== 0 &&
          commonModuleRegExp.test(node.arguments[0].value);
 };
@@ -63,13 +72,13 @@ module.exports.usesCommonProperty = function(node, properties) {
  * and the block also has a call to skip.
  */
 module.exports.inSkipBlock = function(node) {
-  var hasSkipBlock = false;
+  let hasSkipBlock = false;
   if (node.test &&
       node.test.type === 'UnaryExpression' &&
       node.test.operator === '!') {
     const consequent = node.consequent;
     if (consequent.body) {
-      consequent.body.some(function(expressionStatement) {
+      consequent.body.some((expressionStatement) => {
         if (hasSkip(expressionStatement.expression)) {
           return hasSkipBlock = true;
         }

@@ -50,7 +50,7 @@ GraalFunctionCallbackInfo::GraalFunctionCallbackInfo(
         void** implicit_args,
         GraalValue** values,
         int length) : v8::FunctionCallbackInfo<v8::Value>(
-                reinterpret_cast<v8::internal::Object**> (implicit_args),
-                reinterpret_cast<v8::internal::Object**> (values),
+                reinterpret_cast<v8::internal::Address*> (implicit_args),
+                reinterpret_cast<v8::internal::Address*> (values),
                 length) {
 }

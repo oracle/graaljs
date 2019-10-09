@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "src/v8.h"
+#include "src/init/v8.h"
 
 #include "src/heap/spaces.h"
 #include "test/cctest/cctest.h"
@@ -23,7 +23,7 @@ class MockPlatformForUnmapper : public TestPlatform {
     // Now that it's completely constructed, make this the current platform.
     i::V8::SetPlatformForTesting(this);
   }
-  virtual ~MockPlatformForUnmapper() {
+  ~MockPlatformForUnmapper() override {
     delete task_;
     i::V8::SetPlatformForTesting(old_platform_);
     for (auto& task : worker_tasks_) {
@@ -44,10 +44,6 @@ class MockPlatformForUnmapper : public TestPlatform {
 
   int NumberOfWorkerThreads() override {
     return old_platform_->NumberOfWorkerThreads();
-  }
-
-  size_t NumberOfAvailableBackgroundThreads() override {
-    return old_platform_->NumberOfAvailableBackgroundThreads();
   }
 
  private:

@@ -111,7 +111,6 @@ function shrinkwrapDeps (deps, top, tree, seen) {
     var pkginfo = deps[moduleName(child)] = {}
     var requested = getRequested(child) || child.package._requested || {}
     var linked = child.isLink || child.isInLink
-    var linkedFromHere = linked && path.relative(top.realpath, child.realpath)[0] !== '.'
     pkginfo.version = childVersion(top, child, requested)
     if (requested.type === 'git' && child.package._from) {
       pkginfo.from = child.package._from
@@ -122,7 +121,7 @@ function shrinkwrapDeps (deps, top, tree, seen) {
       if (isRegistry(requested)) {
         pkginfo.resolved = child.package._resolved
       }
-      // no integrity for git deps as integirty hashes are based on the
+      // no integrity for git deps as integrity hashes are based on the
       // tarball and we can't (yet) create consistent tarballs from a stable
       // source.
       if (requested.type !== 'git') {
@@ -142,7 +141,7 @@ function shrinkwrapDeps (deps, top, tree, seen) {
       })
     }
     // iterate into children on non-links and links contained within the top level package
-    if (child.children.length && (!child.isLink || linkedFromHere)) {
+    if (child.children.length) {
       pkginfo.dependencies = {}
       shrinkwrapDeps(pkginfo.dependencies, top, child, seen)
     }

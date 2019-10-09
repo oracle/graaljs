@@ -39,6 +39,7 @@
  * SOFTWARE.
  */
 
+#include "graal_context.h"
 #include "graal_date.h"
 #include "graal_isolate.h"
 
@@ -49,12 +50,14 @@ GraalHandleContent* GraalDate::CopyImpl(jobject java_object_copy) {
     return new GraalDate(Isolate(), time_, java_object_copy);
 }
 
-v8::Local<v8::Value> GraalDate::New(v8::Isolate* isolate, double time) {
-    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-    jobject java_context = graal_isolate->CurrentJavaContext();
-    JNI_CALL(jobject, java_date, isolate, GraalAccessMethod::date_new, Object, java_context, (jdouble) time);
+v8::MaybeLocal<v8::Value> GraalDate::New(v8::Local<v8::Context> context, double time) {
+    GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
+    GraalIsolate* graal_isolate = graal_context->Isolate();
+    jobject java_context = graal_context->GetJavaObject();
+    JNI_CALL(jobject, java_date, graal_isolate, GraalAccessMethod::date_new, Object, java_context, (jdouble) time);
     GraalDate* graal_date = new GraalDate(graal_isolate, time, java_date);
-    return reinterpret_cast<v8::Value*> (graal_date);
+    v8::Local<v8::Value> v8_date = reinterpret_cast<v8::Value*> (graal_date);
+    return v8_date;
 }
 
 double GraalDate::ValueOf() const {

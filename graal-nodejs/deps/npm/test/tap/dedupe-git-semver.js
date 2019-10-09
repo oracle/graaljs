@@ -36,9 +36,10 @@ const npm = requireInject.installGlobally('../../lib/npm.js', {
   }
 })
 
-const basedir = path.join(__dirname, path.basename(__filename, '.js'))
+const common = require('../common-tap.js')
+const basedir = common.pkg
 const testdir = path.join(basedir, 'testdir')
-const cachedir = path.join(basedir, 'cache')
+const cachedir = common.cache
 const tmpdir = path.join(basedir, 'tmp')
 
 const cwd = process.cwd()

@@ -130,14 +130,15 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     @Override
     public Object execute(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
-        DynamicObject thisObject = (DynamicObject) arguments[0];
+        Object thisObject = arguments[0];
         JSRealm realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
         if (isNew) {
-            objectTemplateInstantiate(frame, thisObject, realm);
+            DynamicObject thisDynamicObject = (DynamicObject) thisObject;
+            objectTemplateInstantiate(frame, thisDynamicObject, realm);
             if (hasPropertyHandler) {
-                thisObject = graalAccess.propertyHandlerInstantiate(context, realm, instanceTemplate, thisObject, false);
+                thisObject = graalAccess.propertyHandlerInstantiate(context, realm, instanceTemplate, thisDynamicObject, false);
             }
-            setConstructorTemplate(thisObject);
+            setConstructorTemplate(thisDynamicObject);
         } else if (signature != null) {
             checkConstructorTemplate(thisObject);
         }
@@ -234,8 +235,8 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         }
     }
 
-    private void checkConstructorTemplate(DynamicObject thisObject) {
-        FunctionTemplate constructorTemplate = (FunctionTemplate) getConstructorTemplate(thisObject);
+    private void checkConstructorTemplate(Object thisObject) {
+        FunctionTemplate constructorTemplate = thisObject instanceof DynamicObject ? (FunctionTemplate) getConstructorTemplate((DynamicObject) thisObject) : null;
         while (constructorTemplate != signature && constructorTemplate != null) {
             constructorTemplate = constructorTemplate.getParent();
         }

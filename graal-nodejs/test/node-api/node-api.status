@@ -6,4 +6,7 @@ prefix node-api
 
 [true] # This section applies to all platforms
 
+# gc-based test that uses gc-related options of V8 unsupported by graal-nodejs
+test_make_callback/test-async-hooks-gcable: SKIP
+
 [$system==win32]

@@ -4,8 +4,8 @@
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/make-project/1">
             <name>node</name>
-            <c-extensions>c</c-extensions>
-            <cpp-extensions>cc,cpp</cpp-extensions>
+            <c-extensions/>
+            <cpp-extensions>cc</cpp-extensions>
             <header-extensions>h</header-extensions>
             <sourceEncoding>UTF-8</sourceEncoding>
             <make-dep-projects/>

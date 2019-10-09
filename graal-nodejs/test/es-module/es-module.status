@@ -8,5 +8,12 @@ prefix es-module
 
 ### Graal.js-specific ###
 
+# Different error message expected:
+# 'Unexpected token export' versus 'Expected an operand but found export'
+test-esm-cjs-load-error-note         : FAIL
+
 # Invalid host defined options for a dynamic import in eval
-test-esm-dynamic-import                          : FAIL
+test-esm-dynamic-import              : FAIL
+
+# WebAssembly is not supported
+test-esm-wasm                        : FAIL

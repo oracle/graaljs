@@ -7,16 +7,17 @@
 #include "include/libplatform/libplatform.h"
 #include "include/v8.h"
 
-#include "src/frames.h"
-#include "src/heap/heap.h"
+#include "src/execution/frames.h"
+#include "src/execution/isolate.h"
+#include "src/heap/heap-inl.h"
+#include "src/heap/read-only-heap.h"
 #include "src/heap/spaces.h"
-#include "src/isolate.h"
-#include "src/objects-inl.h"
+#include "src/objects/objects-inl.h"
 
 namespace v8 {
 
 static const char* kHeader =
-    "# Copyright 2017 the V8 project authors. All rights reserved.\n"
+    "# Copyright 2019 the V8 project authors. All rights reserved.\n"
     "# Use of this source code is governed by a BSD-style license that can\n"
     "# be found in the LICENSE file.\n"
     "\n"
@@ -28,8 +29,7 @@ static const char* kHeader =
 // Non-snapshot builds allocate objects to different places.
 // Debug builds emit debug code, affecting code object sizes.
 // Embedded builtins cause objects to be allocated in different locations.
-#if !defined(V8_EMBEDDED_BUILTINS) && defined(V8_USE_SNAPSHOT) && \
-    !defined(DEBUG)
+#if defined(V8_EMBEDDED_BUILTINS) && defined(V8_USE_SNAPSHOT) && !defined(DEBUG)
 static const char* kBuild = "shipping";
 #else
 static const char* kBuild = "non-shipping";
@@ -42,28 +42,60 @@ class MockArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
   void Free(void* p, size_t) override {}
 };
 
-#define ROOT_LIST_CASE(type, name, camel_name) \
-  if (n == NULL && o == space->heap()->name()) n = #camel_name;
-#define STRUCT_LIST_CASE(upper_name, camel_name, name) \
-  if (n == NULL && o == space->heap()->name##_map()) n = #camel_name "Map";
-static void DumpMaps(i::PagedSpace* space) {
-  i::HeapObjectIterator it(space);
-  for (i::Object* o = it.Next(); o != NULL; o = it.Next()) {
-    if (!o->IsMap()) continue;
-    i::Map* m = i::Map::cast(o);
-    const char* n = NULL;
-    intptr_t p = reinterpret_cast<intptr_t>(m) & 0x7FFFF;
-    int t = m->instance_type();
-    ROOT_LIST(ROOT_LIST_CASE)
-    STRUCT_LIST(STRUCT_LIST_CASE)
-    if (n == NULL) continue;
-    const char* sname = AllocationSpaceName(space->identity());
-    i::PrintF("  (\"%s\", 0x%05" V8PRIxPTR "): (%d, \"%s\"),\n", sname, p, t,
-              n);
-  }
+static void DumpKnownMap(i::Heap* heap, const char* space_name,
+                         i::HeapObject object) {
+#define RO_ROOT_LIST_CASE(type, name, CamelName) \
+  if (root_name == nullptr && object == roots.name()) root_name = #CamelName;
+#define MUTABLE_ROOT_LIST_CASE(type, name, CamelName) \
+  if (root_name == nullptr && object == heap->name()) root_name = #CamelName;
+
+  i::ReadOnlyRoots roots(heap);
+  const char* root_name = nullptr;
+  i::Map map = i::Map::cast(object);
+  intptr_t root_ptr =
+      static_cast<intptr_t>(map.ptr()) & (i::Page::kPageSize - 1);
+
+  READ_ONLY_ROOT_LIST(RO_ROOT_LIST_CASE)
+  MUTABLE_ROOT_LIST(MUTABLE_ROOT_LIST_CASE)
+
+  if (root_name == nullptr) return;
+  i::PrintF("  (\"%s\", 0x%05" V8PRIxPTR "): (%d, \"%s\"),\n", space_name,
+            root_ptr, map.instance_type(), root_name);
+
+#undef MUTABLE_ROOT_LIST_CASE
+#undef RO_ROOT_LIST_CASE
 }
-#undef STRUCT_LIST_CASE
+
+static void DumpKnownObject(i::Heap* heap, const char* space_name,
+                            i::HeapObject object) {
+#define RO_ROOT_LIST_CASE(type, name, CamelName)        \
+  if (root_name == nullptr && object == roots.name()) { \
+    root_name = #CamelName;                             \
+    root_index = i::RootIndex::k##CamelName;            \
+  }
+#define ROOT_LIST_CASE(type, name, CamelName)           \
+  if (root_name == nullptr && object == heap->name()) { \
+    root_name = #CamelName;                             \
+    root_index = i::RootIndex::k##CamelName;            \
+  }
+
+  i::ReadOnlyRoots roots(heap);
+  const char* root_name = nullptr;
+  i::RootIndex root_index = i::RootIndex::kFirstSmiRoot;
+  intptr_t root_ptr = object.ptr() & (i::Page::kPageSize - 1);
+
+  STRONG_READ_ONLY_ROOT_LIST(RO_ROOT_LIST_CASE)
+  MUTABLE_ROOT_LIST(ROOT_LIST_CASE)
+
+  if (root_name == nullptr) return;
+  if (!i::RootsTable::IsImmortalImmovable(root_index)) return;
+
+  i::PrintF("  (\"%s\", 0x%05" V8PRIxPTR "): \"%s\",\n", space_name, root_ptr,
+            root_name);
+
 #undef ROOT_LIST_CASE
+#undef RO_ROOT_LIST_CASE
+}
 
 static int DumpHeapConstants(const char* argv0) {
   // Start up V8.
@@ -85,42 +117,50 @@ static int DumpHeapConstants(const char* argv0) {
     i::PrintF("}\n");
 #undef DUMP_TYPE
 
-    // Dump the KNOWN_MAP table to the console.
-    i::PrintF("\n# List of known V8 maps.\n");
-    i::PrintF("KNOWN_MAPS = {\n");
-    DumpMaps(heap->read_only_space());
-    DumpMaps(heap->map_space());
-    i::PrintF("}\n");
-
-    // Dump the KNOWN_OBJECTS table to the console.
-    i::PrintF("\n# List of known V8 objects.\n");
-#define ROOT_LIST_CASE(type, name, camel_name) \
-  if (n == NULL && o == heap->name()) {        \
-    n = #camel_name;                           \
-    i = i::Heap::k##camel_name##RootIndex;     \
-  }
-    i::PagedSpaces spit(heap, i::PagedSpaces::SpacesSpecifier::kAllPagedSpaces);
-    i::PrintF("KNOWN_OBJECTS = {\n");
-    for (i::PagedSpace* s = spit.next(); s != NULL; s = spit.next()) {
-      i::HeapObjectIterator it(s);
-      // Code objects are generally platform-dependent.
-      if (s->identity() == i::CODE_SPACE || s->identity() == i::MAP_SPACE)
-        continue;
-      const char* sname = AllocationSpaceName(s->identity());
-      for (i::Object* o = it.Next(); o != NULL; o = it.Next()) {
-        // Skip maps in RO_SPACE since they will be reported elsewhere.
-        if (o->IsMap()) continue;
-        const char* n = NULL;
-        i::Heap::RootListIndex i = i::Heap::kStrongRootListLength;
-        intptr_t p = reinterpret_cast<intptr_t>(o) & 0x7FFFF;
-        ROOT_LIST(ROOT_LIST_CASE)
-        if (n == NULL) continue;
-        if (!i::Heap::RootIsImmortalImmovable(i)) continue;
-        i::PrintF("  (\"%s\", 0x%05" V8PRIxPTR "): \"%s\",\n", sname, p, n);
+    {
+      // Dump the KNOWN_MAP table to the console.
+      i::PrintF("\n# List of known V8 maps.\n");
+      i::PrintF("KNOWN_MAPS = {\n");
+      i::ReadOnlyHeapIterator ro_iterator(heap->read_only_heap());
+      for (i::HeapObject object = ro_iterator.Next(); !object.is_null();
+           object = ro_iterator.Next()) {
+        if (!object.IsMap()) continue;
+        DumpKnownMap(heap, i::Heap::GetSpaceName(i::RO_SPACE), object);
       }
+      i::HeapObjectIterator iterator(heap->map_space());
+      for (i::HeapObject object = iterator.Next(); !object.is_null();
+           object = iterator.Next()) {
+        if (!object.IsMap()) continue;
+        DumpKnownMap(heap, i::Heap::GetSpaceName(i::MAP_SPACE), object);
+      }
+      i::PrintF("}\n");
     }
-    i::PrintF("}\n");
-#undef ROOT_LIST_CASE
+
+    {
+      // Dump the KNOWN_OBJECTS table to the console.
+      i::PrintF("\n# List of known V8 objects.\n");
+      i::PrintF("KNOWN_OBJECTS = {\n");
+      i::ReadOnlyHeapIterator ro_iterator(heap->read_only_heap());
+      for (i::HeapObject object = ro_iterator.Next(); !object.is_null();
+           object = ro_iterator.Next()) {
+        // Skip read-only heap maps, they will be reported elsewhere.
+        if (object.IsMap()) continue;
+        DumpKnownObject(heap, i::Heap::GetSpaceName(i::RO_SPACE), object);
+      }
+
+      i::PagedSpaces spit(heap);
+      for (i::PagedSpace* s = spit.next(); s != nullptr; s = spit.next()) {
+        i::HeapObjectIterator it(s);
+        // Code objects are generally platform-dependent.
+        if (s->identity() == i::CODE_SPACE || s->identity() == i::MAP_SPACE)
+          continue;
+        const char* sname = s->name();
+        for (i::HeapObject o = it.Next(); !o.is_null(); o = it.Next()) {
+          DumpKnownObject(heap, sname, o);
+        }
+      }
+      i::PrintF("}\n");
+    }
 
     // Dump frame markers
     i::PrintF("\n# List of known V8 Frame Markers.\n");

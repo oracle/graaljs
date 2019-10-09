@@ -53,7 +53,7 @@ public:
     v8::Local<v8::String> GetSourceLine() const;
     int GetStartColumn() const;
     int GetEndColumn() const;
-    int GetLineNumber() const;
+    v8::Maybe<int> GetLineNumber() const;
     v8::Local<v8::String> Get() const;
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy);

@@ -10,8 +10,8 @@ var path = require('path')
 
 var common = require('../common-tap')
 
-var pkg = join(__dirname, 'prepublish_package')
-var cachedir = join(pkg, 'cache')
+var pkg = common.pkg
+var cachedir = common.cache
 var tmpdir = join(pkg, 'tmp')
 
 var env = {

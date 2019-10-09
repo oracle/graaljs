@@ -126,13 +126,6 @@ test(function() {
   [].join(o);
 }, "Cannot convert object to primitive value", TypeError);
 
-// kCircularStructure
-test(function() {
-  var o = {};
-  o.o = o;
-  JSON.stringify(o);
-}, "Converting circular structure to JSON", TypeError);
-
 // kConstructorNotFunction
 test(function() {
   Map();
@@ -171,15 +164,15 @@ test(function() {
 for (constructor of typedArrayConstructors) {
   test(() => {
     const ta = new constructor([1]);
-    %ArrayBufferNeuter(ta.buffer);
+    %ArrayBufferDetach(ta.buffer);
     ta.find(() => {});
-  }, "Cannot perform %TypedArray%.prototype.find on a detached ArrayBuffer", TypeError);
+  }, "Cannot perform %TypedArray%.prototype.find on a neutered ArrayBuffer", TypeError);
 
   test(() => {
     const ta = new constructor([1]);
-    %ArrayBufferNeuter(ta.buffer);
+    %ArrayBufferDetach(ta.buffer);
     ta.findIndex(() => {});
-  }, "Cannot perform %TypedArray%.prototype.findIndex on a detached ArrayBuffer", TypeError);
+  }, "Cannot perform %TypedArray%.prototype.findIndex on a neutered ArrayBuffer", TypeError);
 }
 
 // kFirstArgumentNotRegExp
@@ -568,6 +561,10 @@ test(function() {
 
 test(function() {
   "a".repeat(1 << 30);
+}, "Invalid string length", RangeError);
+
+test(function() {
+  new Array(1 << 30).join();
 }, "Invalid string length", RangeError);
 
 // kNormalizationForm

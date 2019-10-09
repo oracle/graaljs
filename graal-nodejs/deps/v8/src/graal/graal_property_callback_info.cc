@@ -61,7 +61,7 @@ GraalPropertyCallbackInfo<T>::GraalPropertyCallbackInfo(
         GraalIsolate* isolate,
         GraalValue* graal_this,
         GraalValue* graal_data,
-        GraalValue* graal_holder) : v8::PropertyCallbackInfo<T>(reinterpret_cast<v8::internal::Object**>(values_)) {
+        GraalValue* graal_holder) : v8::PropertyCallbackInfo<T>(reinterpret_cast<v8::internal::Address*>(values_)) {
     graal_this->ReferenceAdded();
     graal_data->ReferenceAdded();
     graal_holder->ReferenceAdded();

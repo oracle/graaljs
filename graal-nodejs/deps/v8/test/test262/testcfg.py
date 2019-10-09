@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# for py2/py3 compatibility
+from __future__ import print_function
 
 import imp
 import itertools
@@ -42,21 +44,22 @@ from testrunner.outproc import test262
 
 # TODO(littledan): move the flag mapping into the status file
 FEATURE_FLAGS = {
-  'BigInt': '--harmony-bigint',
-  'regexp-named-groups': '--harmony-regexp-named-captures',
-  'regexp-unicode-property-escapes': '--harmony-regexp-property',
-  'Promise.prototype.finally': '--harmony-promise-finally',
-  'class-fields-public': '--harmony-public-fields',
-  'optional-catch-binding': '--harmony-optional-catch-binding',
-  'class-fields-private': '--harmony-private-fields',
-  'Array.prototype.flatten': '--harmony-array-flatten',
-  'Array.prototype.flatMap': '--harmony-array-flatten',
-  'String.prototype.matchAll': '--harmony-string-matchall',
-  'Symbol.matchAll': '--harmony-string-matchall',
   'numeric-separator-literal': '--harmony-numeric-separator',
+  'Intl.DateTimeFormat-datetimestyle': '--harmony-intl-datetime-style',
+  'Intl.DateTimeFormat-formatRange': '--harmony-intl-date-format-range',
+  'Intl.NumberFormat-unified': '--harmony-intl-numberformat-unified',
+  'Intl.Segmenter': '--harmony-intl-segmenter',
+  'Symbol.prototype.description': '--harmony-symbol-description',
+  'globalThis': '--harmony-global',
+  'export-star-as-namespace-from-module': '--harmony-namespace-exports',
+  'Object.fromEntries': '--harmony-object-from-entries',
+  'hashbang': '--harmony-hashbang',
+  'BigInt': '--harmony-intl-bigint',
+  'Promise.allSettled': '--harmony-promise-all-settled',
 }
 
-SKIPPED_FEATURES = set([])
+SKIPPED_FEATURES = set(['class-methods-private',
+                        'class-static-methods-private'])
 
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
@@ -68,9 +71,6 @@ TEST_262_HARNESS_PATH = ["data", "harness"]
 TEST_262_TOOLS_PATH = ["harness", "src"]
 TEST_262_LOCAL_TESTS_PATH = ["local-tests", "test"]
 
-TEST_262_RELPATH_REGEXP = re.compile(
-    r'.*[\\/]test[\\/]test262[\\/][^\\/]+[\\/]test[\\/](.*)\.js')
-
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              *TEST_262_TOOLS_PATH))
 
@@ -79,29 +79,57 @@ class VariantsGenerator(testsuite.VariantsGenerator):
   def gen(self, test):
     flags_set = self._get_flags_set(test)
     test_record = test.test_record
-    for n, variant in enumerate(self._get_variants(test)):
-      flags = flags_set[variant][0]
-      if 'noStrict' in test_record:
-        yield (variant, flags, str(n))
-      elif 'onlyStrict' in test_record:
-        yield (variant, flags + ['--use-strict'], 'strict-%d' % n)
-      else:
-        yield (variant, flags, str(n))
-        yield (variant, flags + ['--use-strict'], 'strict-%d' % n)
+
+    # Add a reverse test ensuring that FAIL_PHASE_ONLY is only used for tests
+    # that actually fail to throw an exception at wrong phase.
+    phase_variants = ['']
+    if test.fail_phase_only:
+      phase_variants.append('-fail-phase-reverse')
+
+    for phase_var in phase_variants:
+      for n, variant in enumerate(self._get_variants(test)):
+        flags = flags_set[variant][0]
+        if 'noStrict' in test_record:
+          yield (variant, flags, str(n) + phase_var)
+        elif 'onlyStrict' in test_record:
+          yield (variant, flags + ['--use-strict'], 'strict-%d' % n + phase_var)
+        else:
+          yield (variant, flags, str(n))
+          yield (variant, flags + ['--use-strict'], 'strict-%d' % n + phase_var)
+
+
+class TestLoader(testsuite.JSTestLoader):
+  @property
+  def test_dirs(self):
+    return [
+      self.test_root,
+      os.path.join(self.suite.root, *TEST_262_LOCAL_TESTS_PATH),
+    ]
+
+  @property
+  def excluded_suffixes(self):
+    return {"_FIXTURE.js"}
+
+  @property
+  def excluded_dirs(self):
+    return {"intl402"} if self.test_config.noi18n else set()
+
+  def _should_filter_by_test(self, test):
+    features = test.test_record.get("features", [])
+    return SKIPPED_FEATURES.intersection(features)
 
 
 class TestSuite(testsuite.TestSuite):
-  # Match the (...) in '/path/to/v8/test/test262/subdir/test/(...).js'
-  # In practice, subdir is data or local-tests
-
   def __init__(self, *args, **kwargs):
     super(TestSuite, self).__init__(*args, **kwargs)
-    self.testroot = os.path.join(self.root, *TEST_262_SUITE_PATH)
+    self.test_root = os.path.join(self.root, *TEST_262_SUITE_PATH)
+    # TODO: this makes the TestLoader mutable, refactor it.
+    self._test_loader.test_root = self.test_root
     self.harnesspath = os.path.join(self.root, *TEST_262_HARNESS_PATH)
     self.harness = [os.path.join(self.harnesspath, f)
                     for f in TEST_262_HARNESS_FILES]
     self.harness += [os.path.join(self.root, "harness-adapt.js")]
-    self.localtestroot = os.path.join(self.root, *TEST_262_LOCAL_TESTS_PATH)
+    self.local_test_root = os.path.join(self.root, *TEST_262_LOCAL_TESTS_PATH)
     self.parse_test_record = self._load_parse_test_record()
 
   def _load_parse_test_record(self):
@@ -119,28 +147,8 @@ class TestSuite(testsuite.TestSuite):
       if f:
         f.close()
 
-  def ListTests(self):
-    testnames = set()
-    for dirname, dirs, files in itertools.chain(os.walk(self.testroot),
-                                                os.walk(self.localtestroot)):
-      for dotted in [x for x in dirs if x.startswith(".")]:
-        dirs.remove(dotted)
-      if self.test_config.noi18n and "intl402" in dirs:
-        dirs.remove("intl402")
-      dirs.sort()
-      files.sort()
-      for filename in files:
-        if not filename.endswith(".js"):
-          continue
-        if filename.endswith("_FIXTURE.js"):
-          continue
-        fullpath = os.path.join(dirname, filename)
-        relpath = re.match(TEST_262_RELPATH_REGEXP, fullpath).group(1)
-        testnames.add(relpath.replace(os.path.sep, "/"))
-    cases = map(self._create_test, testnames)
-    return [case for case in cases if len(
-                SKIPPED_FEATURES.intersection(
-                    case.test_record.get("features", []))) == 0]
+  def _test_loader_class(self):
+    return TestLoader
 
   def _test_class(self):
     return TestCase
@@ -149,7 +157,7 @@ class TestSuite(testsuite.TestSuite):
     return VariantsGenerator
 
 
-class TestCase(testcase.TestCase):
+class TestCase(testcase.D8TestCase):
   def __init__(self, *args, **kwargs):
     super(TestCase, self).__init__(*args, **kwargs)
 
@@ -161,11 +169,38 @@ class TestCase(testcase.TestCase):
           .get('type', None)
     )
 
+    # We disallow combining FAIL_PHASE_ONLY with any other fail outcome types.
+    # Outcome parsing logic in the base class converts all outcomes specified in
+    # the status file into either FAIL, CRASH or PASS, thus we do not need to
+    # handle FAIL_OK, FAIL_SLOPPY and various other outcomes.
+    if self.fail_phase_only:
+      assert (
+          statusfile.FAIL not in self.expected_outcomes and
+          statusfile.CRASH not in self.expected_outcomes), self.name
+
+  @property
+  def fail_phase_only(self):
+    # The FAIL_PHASE_ONLY is defined in tools/testrunner/local/statusfile.py and
+    # can be used in status files to mark tests that throw an exception at wrong
+    # phase, e.g. SyntaxError is thrown at execution phase instead of parsing
+    # phase. See https://crbug.com/v8/8467 for more details.
+    return statusfile.FAIL_PHASE_ONLY in self._statusfile_outcomes
+
+  @property
+  def _fail_phase_reverse(self):
+    return 'fail-phase-reverse' in self.procid
+
+  def __needs_harness_agent(self):
+    tokens = self.path.split(os.path.sep)
+    return tokens[:2] == ["built-ins", "Atomics"]
+
   def _get_files_params(self):
     return (
         list(self.suite.harness) +
         ([os.path.join(self.suite.root, "harness-agent.js")]
-         if self.path.startswith('built-ins/Atomics') else []) +
+         if self.__needs_harness_agent() else []) +
+        ([os.path.join(self.suite.root, "harness-adapt-donotevaluate.js")]
+         if self.fail_phase_only and not self._fail_phase_reverse else []) +
         self._get_includes() +
         (["--module"] if "module" in self.test_record else []) +
         [self._get_source_path()]
@@ -178,7 +213,8 @@ class TestCase(testcase.TestCase):
          if "detachArrayBuffer.js" in self.test_record.get("includes", [])
          else []) +
         [flag for (feature, flag) in FEATURE_FLAGS.items()
-          if feature in self.test_record.get("features", [])]
+          if feature in self.test_record.get("features", [])] +
+        ["--no-arguments"]  # disable top-level arguments in d8
     )
 
   def _get_includes(self):
@@ -193,16 +229,21 @@ class TestCase(testcase.TestCase):
 
   def _get_source_path(self):
     filename = self.path + self._get_suffix()
-    path = os.path.join(self.suite.localtestroot, filename)
+    path = os.path.join(self.suite.local_test_root, filename)
     if os.path.exists(path):
       return path
-    return os.path.join(self.suite.testroot, filename)
+    return os.path.join(self.suite.test_root, filename)
 
   @property
   def output_proc(self):
     if self._expected_exception is not None:
       return test262.ExceptionOutProc(self.expected_outcomes,
-                                      self._expected_exception)
+                                      self._expected_exception,
+                                      self._fail_phase_reverse)
+    else:
+      # We only support fail phase reverse on tests that expect an exception.
+      assert not self._fail_phase_reverse
+
     if self.expected_outcomes == outproc.OUTCOMES_PASS:
       return test262.PASS_NO_EXCEPTION
     return test262.NoExceptionOutProc(self.expected_outcomes)

@@ -69,7 +69,7 @@ EXPORT_TO_JS(Dispose) {
 // V8::GetVersion
 
 EXPORT_TO_JS(GetVersion) {
-    args.GetReturnValue().Set(String::NewFromUtf8(args.GetIsolate(), V8::GetVersion()));
+    args.GetReturnValue().Set(String::NewFromUtf8(args.GetIsolate(), V8::GetVersion(), v8::NewStringType::kNormal).ToLocalChecked());
 }
 
 // V8::SetEntropySource
@@ -84,18 +84,14 @@ EXPORT_TO_JS(SetEntropySource) {
 EXPORT_TO_JS(ResourceConstraints) {
     ResourceConstraints* rc = new ResourceConstraints();
 
-    rc->set_max_semi_space_size(1234);
+    rc->set_max_semi_space_size_in_kb(1234);
     rc->set_max_old_space_size(2345);
-    rc->set_max_executable_size(3456);
 
-    if (rc->max_semi_space_size() != 1234) {
-        Fail("get max_semi_space_size");
+    if (rc->max_semi_space_size_in_kb() != 1234) {
+        Fail("get max_semi_space_size_in_kb");
     }
     if (rc->max_old_space_size() != 2345) {
         Fail("get max_old_space_size");
-    }
-    if (rc->max_executable_size() != 3456) {
-        Fail("get max_executable_size");
     }
 
     delete rc;

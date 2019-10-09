@@ -107,7 +107,7 @@ EXPORT_TO_JS(UseDefaultSecurityToken) {
 EXPORT_TO_JS(New) {
     Isolate* isolate = args.GetIsolate();
     Local<ObjectTemplate> templ = ObjectTemplate::New(isolate);
-    Local<String> key = String::NewFromUtf8(isolate, "foo");
+    Local<String> key = String::NewFromUtf8(isolate, "foo", v8::NewStringType::kNormal).ToLocalChecked();
     int secret = 42;
     templ->Set(key, Integer::New(isolate, secret));
     Local<Context> context = Context::New(isolate, nullptr, templ, Local<Value>());
@@ -115,7 +115,7 @@ EXPORT_TO_JS(New) {
     context->Enter();
 
     Local<Object> global = context->Global();
-    Local<Value> value = global->Get(key);
+    Local<Value> value = global->Get(context, key).ToLocalChecked();
     bool result = value->IsNumber() && value.As<Number>()->Value() == secret;
 
     context->Exit();

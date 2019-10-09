@@ -51,8 +51,10 @@ void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const Proper
 // ObjectTemplate::NewInstance
 
 EXPORT_TO_JS(NewInstance) {
-    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(args.GetIsolate());
-    args.GetReturnValue().Set(objectTemplate->NewInstance());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
+    args.GetReturnValue().Set(objectTemplate->NewInstance(context).ToLocalChecked());
 }
 
 // ObjectTemplate::InternalFieldCount
@@ -87,23 +89,27 @@ EXPORT_TO_JS(SetAndCheckInternalFieldCount) {
 // Template::Set
 
 EXPORT_TO_JS(Set) {
-    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(args.GetIsolate());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
 
     Local<String> name = args[0].As<String>(); //TODO should be Local<Name>
     Local<Data> value = args[1];
 
     objectTemplate->Set(name, value); //TODO also set PropertyAttributes
 
-    args.GetReturnValue().Set(objectTemplate->NewInstance());
+    args.GetReturnValue().Set(objectTemplate->NewInstance(context).ToLocalChecked());
 }
 
 // Template::SetAccessor
 
 EXPORT_TO_JS(CreateWithAccessor) {
-    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(args.GetIsolate());
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
     Local<String> name = args[0].As<String>(); //TODO should be Local<Name>
     objectTemplate->SetAccessor(name, SimpleAccessorGetter, SimpleAccessorSetter);
-    args.GetReturnValue().Set(objectTemplate->NewInstance());
+    args.GetReturnValue().Set(objectTemplate->NewInstance(context).ToLocalChecked());
 }
 
 #undef SUITE

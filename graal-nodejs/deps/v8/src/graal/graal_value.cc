@@ -450,11 +450,11 @@ v8::Local<v8::Uint32> GraalValue::ToArrayIndex() const {
     return reinterpret_cast<v8::Uint32*> (graal_index);
 }
 
-bool GraalValue::Equals(v8::Local<v8::Value> that) const {
+v8::Maybe<bool> GraalValue::Equals(v8::Local<v8::Value> that) const {
     GraalValue* graal_that = reinterpret_cast<GraalValue*> (*that);
     jobject java_that = graal_that->GetJavaObject();
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::value_equals, Boolean, GetJavaObject(), java_that);
-    return result;
+    return v8::Just((bool) result);
 }
 
 bool GraalValue::StrictEquals(v8::Local<v8::Value> that) const {

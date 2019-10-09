@@ -9,7 +9,7 @@
 // Requirements
 //------------------------------------------------------------------------------
 
-const astUtils = require("../util/ast-utils");
+const astUtils = require("./utils/ast-utils");
 
 /**
  * Checks whether or not a given variable is a function name.
@@ -68,6 +68,8 @@ module.exports = {
     },
 
     create(context) {
+
+        const sourceCode = context.getSourceCode();
 
         /**
          * Returns the config option for the given node.
@@ -130,6 +132,7 @@ module.exports = {
             context.report({
                 node,
                 messageId: "unnamed",
+                loc: astUtils.getFunctionHeadLoc(node, sourceCode),
                 data: { name: astUtils.getFunctionNameWithKind(node) }
             });
         }
@@ -143,6 +146,7 @@ module.exports = {
             context.report({
                 node,
                 messageId: "named",
+                loc: astUtils.getFunctionHeadLoc(node, sourceCode),
                 data: { name: astUtils.getFunctionNameWithKind(node) }
             });
         }

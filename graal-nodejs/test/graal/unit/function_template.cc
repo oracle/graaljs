@@ -60,8 +60,9 @@ void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const Proper
 
 EXPORT_TO_JS(HasInstanceIsInstance) {
     Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
-    Local<Function> function = functionTemplate->GetFunction();
+    Local<Function> function = functionTemplate->GetFunction(context).ToLocalChecked();
     Local<Object> instance = function->NewInstance(isolate->GetCurrentContext()).ToLocalChecked();
     bool result = functionTemplate->HasInstance(instance);
     args.GetReturnValue().Set(result);
@@ -77,22 +78,25 @@ EXPORT_TO_JS(HasInstanceIsNotInstance) {
 
 EXPORT_TO_JS(HasInstanceSamePrototype) {
     Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
-    Local<Function> function = functionTemplate->GetFunction();
-    Local<Value> prototype = function->Get(String::NewFromUtf8(isolate, "prototype"));
+    Local<Function> function = functionTemplate->GetFunction(context).ToLocalChecked();
+    Local<String> prototypeKey = String::NewFromUtf8(isolate, "prototype", v8::NewStringType::kNormal).ToLocalChecked();
+    Local<Value> prototype = function->Get(context, prototypeKey).ToLocalChecked();
     Local<Object> instance = Object::New(isolate);
-    instance->SetPrototype(isolate->GetCurrentContext(), prototype);
+    instance->SetPrototype(context, prototype);
     bool result = functionTemplate->HasInstance(instance);
     args.GetReturnValue().Set(result);
 }
 
 EXPORT_TO_JS(HasInstanceInherits) {
     Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Local<FunctionTemplate> parentTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
     Local<FunctionTemplate> childTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Child);
     childTemplate->Inherit(parentTemplate);
-    Local<Function> function = childTemplate->GetFunction();
-    Local<Object> instance = function->NewInstance(isolate->GetCurrentContext()).ToLocalChecked();
+    Local<Function> function = childTemplate->GetFunction(context).ToLocalChecked();
+    Local<Object> instance = function->NewInstance(context).ToLocalChecked();
     bool result = parentTemplate->HasInstance(instance) && childTemplate->HasInstance(instance);
     args.GetReturnValue().Set(result);
 }
@@ -110,8 +114,9 @@ EXPORT_TO_JS(SetClassName) {
 
 EXPORT_TO_JS(GetFunction) {
     Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
-    args.GetReturnValue().Set(functionTemplate->GetFunction());
+    args.GetReturnValue().Set(functionTemplate->GetFunction(context).ToLocalChecked());
 }
 
 // FunctionTemplate::InstanceTemplate
@@ -155,6 +160,7 @@ EXPORT_TO_JS(CheckSetHiddenPrototype) {
 
 EXPORT_TO_JS(SetOnInstanceTemplate) {
     Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
     Local<ObjectTemplate> instanceTemplate = functionTemplate->InstanceTemplate();
 
@@ -163,8 +169,8 @@ EXPORT_TO_JS(SetOnInstanceTemplate) {
 
     instanceTemplate->Set(name, value); //TODO also set PropertyAttributes
 
-    Local<Function> function = functionTemplate->GetFunction();
-    Local<Object> instance = function->NewInstance(isolate->GetCurrentContext()).ToLocalChecked();
+    Local<Function> function = functionTemplate->GetFunction(context).ToLocalChecked();
+    Local<Object> instance = function->NewInstance(context).ToLocalChecked();
 
     args.GetReturnValue().Set(instance);
 }
@@ -173,13 +179,14 @@ EXPORT_TO_JS(SetOnInstanceTemplate) {
 
 EXPORT_TO_JS(CreateWithAccessor) {
     Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
     Local<ObjectTemplate> instanceTemplate = functionTemplate->InstanceTemplate();
 
     Local<String> name = args[0].As<String>(); //TODO should be Local<Name>
     instanceTemplate->SetAccessor(name, SimpleAccessorGetter, SimpleAccessorSetter);
-    Local<Function> function = functionTemplate->GetFunction();
-    Local<Object> instance = function->NewInstance(isolate->GetCurrentContext()).ToLocalChecked();
+    Local<Function> function = functionTemplate->GetFunction(context).ToLocalChecked();
+    Local<Object> instance = function->NewInstance(context).ToLocalChecked();
     args.GetReturnValue().Set(instance);
 }
 

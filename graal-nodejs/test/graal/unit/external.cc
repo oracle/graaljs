@@ -51,12 +51,13 @@ char externalBuffer[20] = "test_12345";
 
 EXPORT_TO_JS(New) {
     Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     void* buf = (void*) externalBuffer;
     Local<External> ext = External::New(isolate, buf);
 
     Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
     objectTemplate->SetInternalFieldCount(1);
-    Local<Object> obj = objectTemplate->NewInstance();
+    Local<Object> obj = objectTemplate->NewInstance(context).ToLocalChecked();
 
     obj->SetInternalField(0, ext);
     return args.GetReturnValue().Set(obj);

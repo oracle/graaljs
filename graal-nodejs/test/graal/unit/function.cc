@@ -70,6 +70,8 @@ EXPORT_TO_JS(SetName) {
 // Function::Call
 
 EXPORT_TO_JS(Call) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Local<Function> func = args[0].As<Function>();
     Local<Object> recv = args[1].As<Object>();
     int argc = args[2].As<Integer>()->Value();
@@ -78,7 +80,7 @@ EXPORT_TO_JS(Call) {
     for (int i = 0; i < argc; i++) {
         argv[i] = args[i + 3];
     }
-    args.GetReturnValue().Set(func->Call(recv, argc, argv));
+    args.GetReturnValue().Set(func->Call(context, recv, argc, argv).ToLocalChecked());
     delete[] argv;
 }
 
