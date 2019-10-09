@@ -8,7 +8,7 @@ The main focus is on user-observable behavior of the engine.
 * Implemented the [nullish coalescing](https://github.com/tc39/proposal-nullish-coalescing) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
 * Updated ICU4J library to version 64.2.
 * Updated ASM library to version 7.1.
-* Updated Node.js to version 10.16.3.
+* Updated Node.js to version 12.10.0.
 
 ## Version 19.2.0
 * Added support for date and time interop.
