@@ -3068,7 +3068,12 @@ namespace v8 {
     }
 
     void V8::MoveGlobalReference(internal::Address** from, internal::Address** to) {
-        TRACE
+        *to = *from;
+    }
+
+    internal::Address* V8::CopyGlobalReference(internal::Address* from) {
+        reinterpret_cast<GraalHandleContent*> (from)->ReferenceAdded();
+        return from;
     }
 
     double Date::ValueOf() const {
