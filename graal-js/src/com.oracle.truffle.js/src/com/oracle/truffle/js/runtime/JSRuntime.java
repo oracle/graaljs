@@ -107,6 +107,7 @@ public final class JSRuntime {
     public static final long MIN_SAFE_INTEGER_LONG = (long) MIN_SAFE_INTEGER;
     public static final long INVALID_INTEGER_INDEX = -1;
     public static final int MAX_INTEGER_INDEX_DIGITS = 16;
+    public static final int MAX_SAFE_INTEGER_DIGITS = 16;
     public static final int MAX_SAFE_INTEGER_IN_FLOAT = 1 << 24;
     public static final int MIN_SAFE_INTEGER_IN_FLOAT = -MAX_SAFE_INTEGER_IN_FLOAT;
     public static final long MAX_BIG_INT_EXPONENT = Integer.MAX_VALUE;
@@ -2191,30 +2192,35 @@ public final class JSRuntime {
      * result and intermediate values fit into a long. Returned types are int or double.
      */
     @TruffleBoundary
-    public static Object parseRawFitsLong(String string, int radix) {
+    public static Number parseRawFitsLong(String string, int radix) {
         return parseRawFitsLong(string, radix, string.length());
     }
 
     @TruffleBoundary
-    public static Object parseRawFitsLong(String string, int radix, int len) {
-        char firstChar = string.charAt(0);
+    public static Number parseRawFitsLong(String string, int radix, int len) {
+        return parseRawFitsLong(string, radix, 0, len);
+    }
 
-        int pos = 0;
+    @TruffleBoundary
+    public static Number parseRawFitsLong(String string, int radix, int startPos, int endPos) {
+        assert startPos < endPos;
+        int pos = startPos;
         boolean negate = false;
 
+        char firstChar = string.charAt(pos);
         if (firstChar == '-') {
-            pos = 1;
+            pos++;
             negate = true;
         } else if (firstChar == '+') {
-            pos = 1;
+            pos++;
         }
-        if (pos == len) {
+        if (pos == endPos) {
             return Double.NaN;
         }
 
         int firstPos = pos;
         long value = 0;
-        while (pos < len) {
+        while (pos < endPos) {
             char c = string.charAt(pos);
             int cval = JSRuntime.valueInRadix(c, radix);
             if (cval < 0) {
@@ -2228,7 +2234,7 @@ public final class JSRuntime {
             value += cval;
             pos++;
         }
-        if (value == 0 && negate && string.charAt(1) == '0') {
+        if (value == 0 && negate && string.charAt(startPos + 1) == '0') {
             return -0.0;
         }
 
@@ -2252,24 +2258,29 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static double parseRawDontFitLong(String string, int radix, int len) {
-        char firstChar = string.charAt(0);
+        return parseRawDontFitLong(string, radix, 0, len);
+    }
 
-        int pos = 0;
+    @TruffleBoundary
+    public static double parseRawDontFitLong(String string, int radix, int startPos, int endPos) {
+        assert startPos < endPos;
+        int pos = startPos;
         boolean negate = false;
 
+        char firstChar = string.charAt(pos);
         if (firstChar == '-') {
-            pos = 1;
+            pos++;
             negate = true;
         } else if (firstChar == '+') {
-            pos = 1;
+            pos++;
         }
-        if (pos == len) {
+        if (pos == endPos) {
             return Double.NaN;
         }
 
         int firstPos = pos;
         double value = 0;
-        while (pos < len) {
+        while (pos < endPos) {
             char c = string.charAt(pos);
             int cval = JSRuntime.valueInRadix(c, radix);
             if (cval < 0) {
@@ -2283,7 +2294,7 @@ public final class JSRuntime {
             value += cval;
             pos++;
         }
-        if (value == 0 && negate && string.charAt(1) == '0') {
+        if (value == 0 && negate && string.charAt(startPos + 1) == '0') {
             return -0.0;
         }
 
