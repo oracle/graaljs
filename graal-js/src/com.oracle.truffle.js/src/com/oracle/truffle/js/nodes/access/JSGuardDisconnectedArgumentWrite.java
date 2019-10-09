@@ -41,13 +41,14 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
@@ -88,10 +89,10 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     }
 
     @Specialization(guards = "!isArgumentsDisconnected(argumentsArray)")
-    public Object doObject(DynamicObject argumentsArray, Object value, @Cached("create()") BranchProfile unconnectedBranch) {
+    public Object doObject(DynamicObject argumentsArray, Object value,
+                    @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsObject.isJSArgumentsObject(argumentsArray);
-        if (index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray)) {
-            unconnectedBranch.enter();
+        if (unconnected.profile(index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray))) {
             JSArgumentsObject.disconnectIndex(argumentsArray, index, value);
         } else {
             writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, index, value);
@@ -100,11 +101,13 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
     }
 
     @Specialization(guards = "isArgumentsDisconnected(argumentsArray)")
-    public Object doObjectDisconnected(DynamicObject argumentsArray, Object value) {
+    public Object doObjectDisconnected(DynamicObject argumentsArray, Object value,
+                    @Cached("createBinaryProfile()") ConditionProfile wasDisconnected,
+                    @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsObject.isJSArgumentsObject(argumentsArray);
-        if (JSArgumentsObject.wasIndexDisconnected(argumentsArray, index)) {
+        if (wasDisconnected.profile(JSArgumentsObject.wasIndexDisconnected(argumentsArray, index))) {
             JSArgumentsObject.setDisconnectedIndexValue(argumentsArray, index, value);
-        } else if (index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray)) {
+        } else if (unconnected.profile(index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray))) {
             JSArgumentsObject.disconnectIndex(argumentsArray, index, value);
         } else {
             writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, index, value);
