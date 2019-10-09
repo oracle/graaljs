@@ -10184,6 +10184,9 @@ void ReturnValue<T>::Set(const Global<S>& handle) {
   } else {
     *value_ = reinterpret_cast<internal::Address>(*handle);
   }
+  if (*value_) {
+    reinterpret_cast<GraalHandleContent*> (*value_)->ReferenceAdded();
+  }
 }
 
 template <typename T>
