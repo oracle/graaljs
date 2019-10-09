@@ -9,6 +9,6 @@
   },
   "scripts": {
     "install": "node-gyp rebuild",
-    "test": "node --expose-gc --experimental-worker index.js"
+    "test": "node --expose-gc index.js"
   }
 }

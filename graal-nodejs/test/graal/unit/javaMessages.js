@@ -50,7 +50,7 @@ const {
 } = require('worker_threads')
 
 
-describe.skip('Java interop messages', function() {
+describe('Java interop messages', function() {
     this.timeout(10000);
     if (typeof Java !== 'object') {
         // no interop
@@ -76,7 +76,7 @@ describe.skip('Java interop messages', function() {
                 assert(m === 1);
                 const val = atomic.incrementAndGet();
                 assert(val === 2);
-                w.terminate(done);
+                w.terminate().then(()=>{done()});
             });
             w.postMessage(atomic);
         }
@@ -102,7 +102,7 @@ describe.skip('Java interop messages', function() {
                 assert(m === ++received);
                 var atomic = new A(m);
                 if (m === 10) {
-                    w.terminate(done);
+                    w.terminate().then(()=>{done()});
                 } else {
                     w.postMessage(atomic);
                 }
@@ -131,7 +131,7 @@ describe.skip('Java interop messages', function() {
                 assert(m === ++received);
                 var atomic = new A(m);
                 if (m === 10) {
-                    w.terminate(done);
+                    w.terminate().then(()=>{done()});
                 } else {
                     w.postMessage({
                         counter: atomic
@@ -170,7 +170,7 @@ describe.skip('Java interop messages', function() {
                         for (var i = 0; i < workersNum; i++) {
                             assert(map.get(42 + i) === true);
                         }
-                        w.terminate(done);
+                        w.terminate().then(()=>{done()});
                     } else {
                         w.terminate();
                     }
@@ -197,7 +197,7 @@ describe.skip('Java interop messages', function() {
             w.on('message', (m) => {
                 const val = m.incrementAndGet();
                 assert(val === 42);
-                w.terminate(done);
+                w.terminate().then(()=>{done()});
             });
             w.postMessage(41);
         }
@@ -217,7 +217,7 @@ describe.skip('Java interop messages', function() {
             w.on('message', (m) => {
                 const val = m.point.x + m.point.y;
                 assert(val === 42);
-                w.terminate(done);
+                w.terminate().then(()=>{done()});
             });
         }
     });
@@ -278,7 +278,7 @@ describe.skip('Java interop messages', function() {
                 assert(m.a1.get() === 2);
                 assert(m.a2.get() === 3);
                 assert(m.a3.a3.get() === 4);
-                w.terminate(done);
+                w.terminate().then(()=>{done()});
             });
             w.postMessage({a1:a1, a2:a2, a3:{a3:a3}});
         }
@@ -304,7 +304,7 @@ describe.skip('Java interop messages', function() {
             w.on('message', (point) => {
                 const val = point.x + point.y;
                 assert(val >= 0 && val < 200);
-                w.terminate(done);
+                w.terminate().then(()=>{done()});
             });
         }
     });
@@ -331,7 +331,7 @@ describe.skip('Java interop messages', function() {
             const asyncJavaEvents = new javaAsyncNotifier();
             asyncJavaEvents.worker.on('message', (n) => {
                 assert(n >= 42);
-                asyncJavaEvents.worker.terminate(done);
+                asyncJavaEvents.worker.terminate().then(()=>{done()});
             });
             // pass the queue to Java, to give a way to notify us back when data is available
             new JavaAsyncClass(asyncJavaEvents.queue).doAsynchronousWork();
