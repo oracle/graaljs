@@ -1,4 +1,3 @@
-from __future__ import print_function
 # Copyright 2008 the V8 project authors. All rights reserved.
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -26,13 +25,27 @@ from __future__ import print_function
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import test
 import os
-from os.path import join, exists, basename, isdir
+from os.path import join, exists, basename, dirname, isdir
 import re
+import sys
 import utils
 
+try:
+  reduce           # Python 2
+except NameError:  # Python 3
+  from functools import reduce
+
+try:
+  xrange          # Python 2
+except NameError:
+  xrange = range  # Python 3
+
 FLAGS_PATTERN = re.compile(r"//\s+Flags:(.*)")
+PTY_HELPER = join(dirname(__file__), 'pty_helper.py')
 
 class TTYTestCase(test.TestCase):
 
@@ -51,7 +64,7 @@ class TTYTestCase(test.TestCase):
     else: return str.startswith('==') or str.startswith('**')
 
   def IsFailureOutput(self, output):
-    f = file(self.expected)
+    f = open(self.expected)
     # Convert output lines to regexps that we can match
     env = { 'basename': basename(self.file) }
     patterns = [ ]
@@ -106,16 +119,18 @@ class TTYTestCase(test.TestCase):
           + open(self.expected).read())
 
   def RunCommand(self, command, env):
-    input = None
+    fd = None
     if self.input is not None and exists(self.input):
-      input = open(self.input).read()
+      fd = os.open(self.input, os.O_RDONLY)
     full_command = self.context.processor(command)
+    full_command = [sys.executable, PTY_HELPER] + full_command
     output = test.Execute(full_command,
                      self.context,
                      self.context.GetTimeout(self.mode),
                      env,
-                     faketty=True,
-                     input=input)
+                     stdin=fd)
+    if fd is not None:
+      os.close(fd)
     return test.TestOutput(self,
                       full_command,
                       output,

@@ -168,7 +168,7 @@ process.on('exit', function() {
   assert.equal(response, 1, 'http request "response" callback was not called');
 });
 
-const server = http.createServer(function(req, res) {
+const server = http.createServer((req, res) => {
   request++;
   res.end();
 }).listen(0, function() {
@@ -176,7 +176,7 @@ const server = http.createServer(function(req, res) {
     agent: null,
     port: this.address().port
   };
-  http.get(options, function(res) {
+  http.get(options, (res) => {
     response++;
     res.resume();
     server.close();
@@ -191,14 +191,14 @@ This test could be greatly simplified by using `common.mustCall` like this:
 const common = require('../common');
 const http = require('http');
 
-const server = http.createServer(common.mustCall(function(req, res) {
+const server = http.createServer(common.mustCall((req, res) => {
   res.end();
 })).listen(0, function() {
   const options = {
     agent: null,
     port: this.address().port
   };
-  http.get(options, common.mustCall(function(res) {
+  http.get(options, common.mustCall((res) => {
     res.resume();
     server.close();
   }));
@@ -280,6 +280,34 @@ assert.throws(
   /^Error: Wrong value$/ // Instead of something like /Wrong value/
 );
 ```
+
+### Console output
+
+Output written by tests to stdout or stderr, such as with `console.log()` or
+`console.error()`, can be useful when writing tests, as well as for debugging
+them during later maintenance. The output will be suppressed by the test runner
+(`./tools/test.py`) unless the test fails, but will always be displayed when
+running tests directly with `node`. For failing tests, the test runner will
+include the output along with the failed test assertion in the test report.
+
+Some output can help debugging by giving context to test failures. For example,
+when troubleshooting tests that timeout in CI. With no log statements, we have
+no idea where the test got hung up.
+
+There have been cases where tests fail without `console.log()`, and then pass
+when its added, so be cautious about its use, particularly in tests of the I/O
+and streaming APIs.
+
+Excessive use of console output is discouraged as it can overwhelm the display,
+including the Jenkins console and test report displays. Be particularly
+cautious of output in loops, or other contexts where output may be repeated many
+times in the case of failure.
+
+In some tests, it can be unclear whether a `console.log()` statement is required
+as part of the test (message tests, tests that check output from child
+processes, etc.), or is there as a debug aide. If there is any chance of
+confusion, use comments to make the purpose clear.
+
 
 ### ES.Next features
 

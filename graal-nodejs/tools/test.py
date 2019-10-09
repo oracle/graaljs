@@ -28,6 +28,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+from __future__ import print_function
 import imp
 import logging
 import optparse
@@ -43,17 +44,36 @@ import utils
 import multiprocessing
 import errno
 import copy
-import ast
 
 from os.path import join, dirname, abspath, basename, isdir, exists
 from datetime import datetime
-from Queue import Queue, Empty
+try:
+    from queue import Queue, Empty  # Python 3
+except ImportError:
+    from Queue import Queue, Empty  # Python 2
+
+try:
+    cmp             # Python 2
+except NameError:
+    def cmp(x, y):  # Python 3
+        return (x > y) - (x < y)
+
+try:
+  reduce            # Python 2
+except NameError:   # Python 3
+  from functools import reduce
+
+try:
+  xrange            # Python 2
+except NameError:
+  xrange = range    # Python 3
 
 logger = logging.getLogger('testrunner')
 skip_regex = re.compile(r'# SKIP\S*\s+(.*)', re.IGNORECASE)
 
 VERBOSE = False
 
+os.umask(0o022)
 os.environ['NODE_OPTIONS'] = ''
 
 # ---------------------------------------------
@@ -87,11 +107,11 @@ class ProgressIndicator(object):
       negative_marker = '[negative] '
     else:
       negative_marker = ''
-    print "=== %(label)s %(negative)s===" % {
+    print("=== %(label)s %(negative)s===" % {
       'label': test.GetLabel(),
       'negative': negative_marker
-    }
-    print "Path: %s" % "/".join(test.path)
+    })
+    print("Path: %s" % "/".join(test.path))
 
   def Run(self, tasks):
     self.Starting()
@@ -109,9 +129,9 @@ class ProgressIndicator(object):
       for thread in threads:
         # Use a timeout so that signals (ctrl-c) will be processed.
         thread.join(timeout=10000000)
-    except (KeyboardInterrupt, SystemExit), e:
+    except (KeyboardInterrupt, SystemExit) as e:
       self.shutdown_event.set()
-    except Exception, e:
+    except Exception as e:
       # If there's an exception we schedule an interruption for any
       # remaining threads.
       self.shutdown_event.set()
@@ -148,7 +168,7 @@ class ProgressIndicator(object):
             output = case.Run()
             output.diagnostic.append('ECONNREFUSED received, test retried')
         case.duration = (datetime.now() - start)
-      except IOError, e:
+      except IOError as e:
         return
       if self.shutdown_event.is_set():
         return
@@ -182,40 +202,40 @@ def EscapeCommand(command):
 class SimpleProgressIndicator(ProgressIndicator):
 
   def Starting(self):
-    print 'Running %i tests' % len(self.cases)
+    print('Running %i tests' % len(self.cases))
 
   def Done(self):
-    print
+    print()
     for failed in self.failed:
       self.PrintFailureHeader(failed.test)
       if failed.output.stderr:
-        print "--- stderr ---"
-        print failed.output.stderr.strip()
+        print("--- stderr ---")
+        print(failed.output.stderr.strip())
       if failed.output.stdout:
-        print "--- stdout ---"
-        print failed.output.stdout.strip()
-      print "Command: %s" % EscapeCommand(failed.command)
+        print("--- stdout ---")
+        print(failed.output.stdout.strip())
+      print("Command: %s" % EscapeCommand(failed.command))
       if failed.HasCrashed():
-        print "--- %s ---" % PrintCrashed(failed.output.exit_code)
+        print("--- %s ---" % PrintCrashed(failed.output.exit_code))
       if failed.HasTimedOut():
-        print "--- TIMEOUT ---"
+        print("--- TIMEOUT ---")
     if len(self.failed) == 0:
-      print "==="
-      print "=== All tests succeeded"
-      print "==="
+      print("===")
+      print("=== All tests succeeded")
+      print("===")
     else:
-      print
-      print "==="
-      print "=== %i tests failed" % len(self.failed)
+      print()
+      print("===")
+      print("=== %i tests failed" % len(self.failed))
       if self.crashed > 0:
-        print "=== %i tests CRASHED" % self.crashed
-      print "==="
+        print("=== %i tests CRASHED" % self.crashed)
+      print("===")
 
 
 class VerboseProgressIndicator(SimpleProgressIndicator):
 
   def AboutToRun(self, case):
-    print 'Starting %s...' % case.GetLabel()
+    print('Starting %s...' % case.GetLabel())
     sys.stdout.flush()
 
   def HasRun(self, output):
@@ -226,7 +246,7 @@ class VerboseProgressIndicator(SimpleProgressIndicator):
         outcome = 'FAIL'
     else:
       outcome = 'pass'
-    print 'Done running %s: %s' % (output.test.GetLabel(), outcome)
+    print('Done running %s: %s' % (output.test.GetLabel(), outcome))
 
 
 class DotsProgressIndicator(SimpleProgressIndicator):
@@ -362,9 +382,9 @@ class DeoptsCheckProgressIndicator(SimpleProgressIndicator):
          ("because:" in line or "reason:" in line):
         if not printed_file:
           printed_file = True
-          print '==== %s ====' % command
+          print('==== %s ====' % command)
           self.failed.append(output)
-        print '  %s' % line
+        print('  %s' % line)
 
   def Done(self):
     pass
@@ -382,7 +402,7 @@ class CompactProgressIndicator(ProgressIndicator):
     pass
 
   def Done(self):
-    self.PrintProgress('Done')
+    self.PrintProgress('Done\n')
 
   def AboutToRun(self, case):
     self.PrintProgress(case.GetLabel())
@@ -393,15 +413,15 @@ class CompactProgressIndicator(ProgressIndicator):
       self.PrintFailureHeader(output.test)
       stdout = output.output.stdout.strip()
       if len(stdout):
-        print self.templates['stdout'] % stdout
+        print(self.templates['stdout'] % stdout)
       stderr = output.output.stderr.strip()
       if len(stderr):
-        print self.templates['stderr'] % stderr
-      print "Command: %s" % EscapeCommand(output.command)
+        print(self.templates['stderr'] % stderr)
+      print("Command: %s" % EscapeCommand(output.command))
       if output.HasCrashed():
-        print "--- %s ---" % PrintCrashed(output.output.exit_code)
+        print("--- %s ---" % PrintCrashed(output.output.exit_code))
       if output.HasTimedOut():
-        print "--- TIMEOUT ---"
+        print("--- TIMEOUT ---")
 
   def Truncate(self, str, length):
     if length and (len(str) > (length - 3)):
@@ -422,7 +442,7 @@ class CompactProgressIndicator(ProgressIndicator):
     }
     status = self.Truncate(status, 78)
     self.last_status_length = len(status)
-    print status,
+    print(status, end='')
     sys.stdout.flush()
 
 
@@ -437,7 +457,7 @@ class ColorProgressIndicator(CompactProgressIndicator):
     super(ColorProgressIndicator, self).__init__(cases, flaky_tests_mode, templates)
 
   def ClearLine(self, last_line_length):
-    print "\033[1K\r",
+    print("\033[1K\r", end='')
 
 
 class MonochromeProgressIndicator(CompactProgressIndicator):
@@ -453,7 +473,7 @@ class MonochromeProgressIndicator(CompactProgressIndicator):
     super(MonochromeProgressIndicator, self).__init__(cases, flaky_tests_mode, templates)
 
   def ClearLine(self, last_line_length):
-    print ("\r" + (" " * last_line_length) + "\r"),
+    print(("\r" + (" " * last_line_length) + "\r"), end='')
 
 
 PROGRESS_INDICATORS = {
@@ -599,7 +619,7 @@ def Win32SetErrorMode(mode):
   prev_error_mode = SEM_INVALID_VALUE
   try:
     import ctypes
-    prev_error_mode = ctypes.windll.kernel32.SetErrorMode(mode);
+    prev_error_mode = ctypes.windll.kernel32.SetErrorMode(mode)
   except ImportError:
     pass
   return prev_error_mode
@@ -616,27 +636,22 @@ def KillTimedOutProcess(context, pid):
 
 
 def RunProcess(context, timeout, args, **rest):
-  if context.verbose: print "#", " ".join(args)
+  if context.verbose: print("#", " ".join(args))
   popen_args = args
-  prev_error_mode = SEM_INVALID_VALUE;
+  prev_error_mode = SEM_INVALID_VALUE
   if utils.IsWindows():
     if context.suppress_dialogs:
       # Try to change the error mode to avoid dialogs on fatal errors. Don't
       # touch any existing error mode flags by merging the existing error mode.
       # See http://blogs.msdn.com/oldnewthing/archive/2004/07/27/198410.aspx.
-      error_mode = SEM_NOGPFAULTERRORBOX;
-      prev_error_mode = Win32SetErrorMode(error_mode);
-      Win32SetErrorMode(error_mode | prev_error_mode);
-
-  faketty = rest.pop('faketty', False)
-  pty_out = rest.pop('pty_out')
+      error_mode = SEM_NOGPFAULTERRORBOX
+      prev_error_mode = Win32SetErrorMode(error_mode)
+      Win32SetErrorMode(error_mode | prev_error_mode)
 
   process = subprocess.Popen(
     args = popen_args,
     **rest
   )
-  if faketty:
-    os.close(rest['stdout'])
   if utils.IsWindows() and context.suppress_dialogs and prev_error_mode != SEM_INVALID_VALUE:
     Win32SetErrorMode(prev_error_mode)
   # Compute the end time - if the process crosses this limit we
@@ -648,28 +663,6 @@ def RunProcess(context, timeout, args, **rest):
   # loop and keep track of whether or not it times out.
   exit_code = None
   sleep_time = INITIAL_SLEEP_TIME
-  output = ''
-  if faketty:
-    while True:
-      if time.time() >= end_time:
-        # Kill the process and wait for it to exit.
-        KillTimedOutProcess(context, process.pid)
-        exit_code = process.wait()
-        timed_out = True
-        break
-
-      # source: http://stackoverflow.com/a/12471855/1903116
-      # related: http://stackoverflow.com/q/11165521/1903116
-      try:
-        data = os.read(pty_out, 9999)
-      except OSError as e:
-        if e.errno != errno.EIO:
-          raise
-        break # EIO means EOF on some systems
-      else:
-        if not data: # EOF
-          break
-        output += data
 
   while exit_code is None:
     if (not end_time is None) and (time.time() >= end_time):
@@ -683,7 +676,7 @@ def RunProcess(context, timeout, args, **rest):
       sleep_time = sleep_time * SLEEP_TIME_FACTOR
       if sleep_time > MAX_SLEEP_TIME:
         sleep_time = MAX_SLEEP_TIME
-  return (process, exit_code, timed_out, output)
+  return (process, exit_code, timed_out)
 
 
 def PrintError(str):
@@ -695,7 +688,7 @@ def CheckedUnlink(name):
   while True:
     try:
       os.unlink(name)
-    except OSError, e:
+    except OSError as e:
       # On Windows unlink() fails if another process (typically a virus scanner
       # or the indexing service) has the file open. Those processes keep a
       # file open for a short time only, so yield and try again; it'll succeed.
@@ -705,29 +698,12 @@ def CheckedUnlink(name):
       PrintError("os.unlink() " + str(e))
     break
 
-def Execute(args, context, timeout=None, env={}, faketty=False, disable_core_files=False, input=None):
-  if faketty:
-    import pty
-    (out_master, fd_out) = pty.openpty()
-    fd_in = fd_err = fd_out
-    pty_out = out_master
+def Execute(args, context, timeout=None, env=None, disable_core_files=False, stdin=None):
+  (fd_out, outname) = tempfile.mkstemp()
+  (fd_err, errname) = tempfile.mkstemp()
 
-    if input is not None:
-      # Before writing input data, disable echo so the input doesn't show
-      # up as part of the output.
-      import termios
-      attr = termios.tcgetattr(fd_in)
-      attr[3] = attr[3] & ~termios.ECHO
-      termios.tcsetattr(fd_in, termios.TCSADRAIN, attr)
-
-      os.write(pty_out, input)
-      os.write(pty_out, '\x04') # End-of-file marker (Ctrl+D)
-  else:
-    (fd_out, outname) = tempfile.mkstemp()
-    (fd_err, errname) = tempfile.mkstemp()
-    fd_in = 0
-    pty_out = None
-
+  if env is None:
+    env = {}
   env_copy = os.environ.copy()
 
   # Remove NODE_PATH
@@ -746,28 +722,22 @@ def Execute(args, context, timeout=None, env={}, faketty=False, disable_core_fil
       resource.setrlimit(resource.RLIMIT_CORE, (0,0))
     preexec_fn = disableCoreFiles
 
-  (process, exit_code, timed_out, output) = RunProcess(
+  (process, exit_code, timed_out) = RunProcess(
     context,
     timeout,
     args = args,
-    stdin = fd_in,
+    stdin = stdin,
     stdout = fd_out,
     stderr = fd_err,
     env = env_copy,
-    faketty = faketty,
-    pty_out = pty_out,
     preexec_fn = preexec_fn
   )
-  if faketty:
-    os.close(out_master)
-    errors = ''
-  else:
-    os.close(fd_out)
-    os.close(fd_err)
-    output = file(outname).read()
-    errors = file(errname).read()
-    CheckedUnlink(outname)
-    CheckedUnlink(errname)
+  os.close(fd_out)
+  os.close(fd_err)
+  output = open(outname).read()
+  errors = open(errname).read()
+  CheckedUnlink(outname)
+  CheckedUnlink(errname)
 
   return CommandOutput(exit_code, timed_out, output, errors)
 
@@ -892,12 +862,12 @@ TIMEOUT_SCALEFACTOR = {
 
 class Context(object):
 
-  def __init__(self, workspace, buildspace, verbose, vm, args, expect_fail,
+  def __init__(self, workspace, verbose, vm, args, expect_fail,
                timeout, processor, suppress_dialogs,
                store_unexpected_output, repeat, abort_on_timeout):
     self.workspace = workspace
-    self.buildspace = buildspace
     self.verbose = verbose
+    self.vm = vm
     self.node_args = args
     self.expect_fail = expect_fail
     self.timeout = timeout
@@ -910,6 +880,8 @@ class Context(object):
     self.node_has_crypto = True
 
   def GetVm(self, arch, mode):
+    if self.vm is not None:
+      return self.vm
     if arch == 'none':
       name = 'out/Debug/node' if mode == 'debug' else 'out/Release/node'
     else:
@@ -1181,15 +1153,15 @@ def ParseCondition(expr):
   """Parses a logical expression into an Expression object"""
   tokens = Tokenizer(expr).Tokenize()
   if not tokens:
-    print "Malformed expression: '%s'" % expr
+    print("Malformed expression: '%s'" % expr)
     return None
   scan = Scanner(tokens)
   ast = ParseLogicalExpression(scan)
   if not ast:
-    print "Malformed expression: '%s'" % expr
+    print("Malformed expression: '%s'" % expr)
     return None
   if scan.HasMore():
-    print "Malformed expression: '%s'" % expr
+    print("Malformed expression: '%s'" % expr)
     return None
   return ast
 
@@ -1352,7 +1324,7 @@ def BuildOptions():
         dest="suppress_dialogs", default=True, action="store_true")
   result.add_option("--no-suppress-dialogs", help="Display Windows dialogs for crashing tests",
         dest="suppress_dialogs", action="store_false")
-  result.add_option("--shell", help="Path to V8 shell", default="shell")
+  result.add_option("--shell", help="Path to node executable", default=None)
   result.add_option("--store-unexpected-output",
       help="Store the temporary JS files from tests that fails",
       dest="store_unexpected_output", default=True, action="store_true")
@@ -1387,19 +1359,19 @@ def ProcessOptions(options):
   if options.run == [""]:
     options.run = None
   elif len(options.run) != 2:
-    print "The run argument must be two comma-separated integers."
+    print("The run argument must be two comma-separated integers.")
     return False
   else:
     try:
       options.run = map(int, options.run)
     except ValueError:
-      print "Could not parse the integers from the run argument."
+      print("Could not parse the integers from the run argument.")
       return False
     if options.run[0] < 0 or options.run[1] < 0:
-      print "The run argument cannot have negative integers."
+      print("The run argument cannot have negative integers.")
       return False
     if options.run[0] >= options.run[1]:
-      print "The test group to run (n) must be smaller than number of groups (m)."
+      print("The test group to run (n) must be smaller than number of groups (m).")
       return False
   if options.J:
     # inherit JOBS from environment if provided. some virtualised systems
@@ -1407,7 +1379,7 @@ def ProcessOptions(options):
     cores = os.environ.get('JOBS')
     options.j = int(cores) if cores is not None else multiprocessing.cpu_count()
   if options.flaky_tests not in [RUN, SKIP, DONTCARE]:
-    print "Unknown flaky-tests mode %s" % options.flaky_tests
+    print("Unknown flaky-tests mode %s" % options.flaky_tests)
     return False
   return True
 
@@ -1573,14 +1545,11 @@ def Main():
     options.node_args.append('--experimental-worker')
     options.node_args.append(run_worker)
 
-  shell = abspath(options.shell)
-  buildspace = dirname(shell)
-
   processor = GetSpecialCommandProcessor(options.special_command)
+
   context = Context(workspace,
-                    buildspace,
                     VERBOSE,
-                    shell,
+                    options.shell,
                     options.node_args,
                     options.expect_fail,
                     options.timeout,
@@ -1606,13 +1575,13 @@ def Main():
       for mode in options.mode:
         vm = context.GetVm(arch, mode)
         if not exists(vm):
-          print "Can't find shell executable: '%s'" % vm
+          print("Can't find shell executable: '%s'" % vm)
           continue
         archEngineContext = Execute([vm, "-p", "process.arch"], context)
         vmArch = archEngineContext.stdout.rstrip()
         if archEngineContext.exit_code is not 0 or vmArch == "undefined":
-          print "Can't determine the arch of: '%s'" % vm
-          print archEngineContext.stderr.rstrip()
+          print("Can't determine the arch of: '%s'" % vm)
+          print(archEngineContext.stderr.rstrip())
           continue
         env = {
           'mode': mode,
@@ -1649,15 +1618,15 @@ def Main():
       if key in visited:
         continue
       visited.add(key)
-      print "--- begin source: %s ---" % test.GetLabel()
+      print("--- begin source: %s ---" % test.GetLabel())
       source = test.GetSource().strip()
-      print source
-      print "--- end source: %s ---" % test.GetLabel()
+      print(source)
+      print("--- end source: %s ---" % test.GetLabel())
     return 0
 
   if options.warn_unused:
     for rule in globally_unused_rules:
-      print "Rule for '%s' was not used." % '/'.join([str(s) for s in rule.path])
+      print("Rule for '%s' was not used." % '/'.join([str(s) for s in rule.path]))
 
   tempdir = os.environ.get('NODE_TEST_DIR') or options.temp_dir
   if tempdir:
@@ -1666,7 +1635,7 @@ def Main():
       os.makedirs(tempdir)
     except OSError as exception:
       if exception.errno != errno.EEXIST:
-        print "Could not create the temporary directory", options.temp_dir
+        print("Could not create the temporary directory", options.temp_dir)
         sys.exit(1)
 
   def should_keep(case):
@@ -1700,7 +1669,7 @@ def Main():
                                len(cases_to_run),
                                options.run[1]) ]
   if len(cases_to_run) == 0:
-    print "No tests to run."
+    print("No tests to run.")
     return 1
   else:
     try:
@@ -1711,13 +1680,13 @@ def Main():
         result = 1
       duration = time.time() - start
     except KeyboardInterrupt:
-      print "Interrupted"
+      print("Interrupted")
       return 1
 
   if options.time:
     # Write the times to stderr to make it easy to separate from the
     # test output.
-    print
+    print()
     sys.stderr.write("--- Total time: %s ---\n" % FormatTime(duration))
     timed_tests = [ t for t in cases_to_run if not t.duration is None ]
     timed_tests.sort(lambda a, b: a.CompareTime(b))

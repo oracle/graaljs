@@ -172,6 +172,7 @@
       { "name": "scriptCompile" },
       { "name": "scriptCompilerCompileFunctionInContext" },
       { "name": "scriptGetUnboundScript" },
+      { "name": "scriptOrModuleGetHostDefinedOptions" },
       { "name": "scriptOrModuleGetResourceName" },
       { "name": "scriptRun" },
       { "name": "sharedArrayBufferExternalize" },

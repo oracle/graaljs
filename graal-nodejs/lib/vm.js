@@ -27,12 +27,13 @@ const {
   isContext: _isContext,
   compileFunction: _compileFunction
 } = process.binding('contextify');
-
+const { callbackMap } = internalBinding('module_wrap');
 const {
   ERR_INVALID_ARG_TYPE,
-  ERR_OUT_OF_RANGE
+  ERR_OUT_OF_RANGE,
+  ERR_VM_MODULE_NOT_MODULE,
 } = require('internal/errors').codes;
-const { isUint8Array } = require('internal/util/types');
+const { isModuleNamespaceObject, isArrayBufferView } = require('util').types;
 const { validateUint32 } = require('internal/validators');
 const kParsingContext = Symbol('script parsing context');
 
@@ -44,8 +45,7 @@ class Script extends ContextifyScript {
     code = `${code}`;
     if (typeof options === 'string') {
       options = { filename: options };
-    }
-    if (typeof options !== 'object' || options === null) {
+    } else if (typeof options !== 'object' || options === null) {
       throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
     }
 
@@ -55,7 +55,8 @@ class Script extends ContextifyScript {
       columnOffset = 0,
       cachedData,
       produceCachedData = false,
-      [kParsingContext]: parsingContext
+      importModuleDynamically,
+      [kParsingContext]: parsingContext,
     } = options;
 
     if (typeof filename !== 'string') {
@@ -63,9 +64,12 @@ class Script extends ContextifyScript {
     }
     validateInteger(lineOffset, 'options.lineOffset');
     validateInteger(columnOffset, 'options.columnOffset');
-    if (cachedData !== undefined && !isUint8Array(cachedData)) {
-      throw new ERR_INVALID_ARG_TYPE('options.cachedData',
-                                     ['Buffer', 'Uint8Array'], cachedData);
+    if (cachedData !== undefined && !isArrayBufferView(cachedData)) {
+      throw new ERR_INVALID_ARG_TYPE(
+        'options.cachedData',
+        ['Buffer', 'TypedArray', 'DataView'],
+        cachedData
+      );
     }
     if (typeof produceCachedData !== 'boolean') {
       throw new ERR_INVALID_ARG_TYPE('options.produceCachedData', 'boolean',
@@ -75,7 +79,7 @@ class Script extends ContextifyScript {
     // Calling `ReThrow()` on a native TryCatch does not generate a new
     // abort-on-uncaught-exception check. A dummy try/catch in JS land
     // protects against that.
-    try {
+    try { // eslint-disable-line no-useless-catch
       super(code,
             filename,
             lineOffset,
@@ -85,6 +89,28 @@ class Script extends ContextifyScript {
             parsingContext);
     } catch (e) {
       throw e; /* node-do-not-add-exception-line */
+    }
+
+    if (importModuleDynamically !== undefined) {
+      if (typeof importModuleDynamically !== 'function') {
+        throw new ERR_INVALID_ARG_TYPE('options.importModuleDynamically',
+                                       'function',
+                                       importModuleDynamically);
+      }
+      const { wrapMap, linkingStatusMap } =
+        require('internal/vm/source_text_module');
+      callbackMap.set(this, { importModuleDynamically: async (...args) => {
+        const m = await importModuleDynamically(...args);
+        if (isModuleNamespaceObject(m)) {
+          return m;
+        }
+        if (!m || !wrapMap.has(m))
+          throw new ERR_VM_MODULE_NOT_MODULE();
+        const childLinkingStatus = linkingStatusMap.get(m);
+        if (childLinkingStatus === 'errored')
+          throw m.error;
+        return m.namespace;
+      } });
     }
   }
 
@@ -333,10 +359,10 @@ function compileFunction(code, params, options = {}) {
   }
   validateUint32(columnOffset, 'options.columnOffset');
   validateUint32(lineOffset, 'options.lineOffset');
-  if (cachedData !== undefined && !isUint8Array(cachedData)) {
+  if (cachedData !== undefined && !isArrayBufferView(cachedData)) {
     throw new ERR_INVALID_ARG_TYPE(
       'options.cachedData',
-      'Uint8Array',
+      ['Buffer', 'TypedArray', 'DataView'],
       cachedData
     );
   }

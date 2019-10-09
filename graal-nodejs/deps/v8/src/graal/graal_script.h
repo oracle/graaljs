@@ -48,7 +48,7 @@
 class GraalScript : GraalHandleContent {
 public:
     GraalScript(GraalIsolate* isolate, jobject java_script);
-    static v8::Local<v8::Script> Compile(v8::Local<v8::String> source, v8::Local<v8::String> file_name);
+    static v8::Local<v8::Script> Compile(v8::Local<v8::String> source, v8::ScriptOrigin* origin);
     v8::Local<v8::Value> Run();
     v8::Local<v8::UnboundScript> GetUnboundScript();
 protected:

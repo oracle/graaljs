@@ -302,6 +302,7 @@ enum GraalAccessMethod {
     module_get_identity_hash,
     module_get_exception,
     script_or_module_get_resource_name,
+    script_or_module_get_host_defined_options,
     value_serializer_new,
     value_serializer_release,
     value_serializer_size,

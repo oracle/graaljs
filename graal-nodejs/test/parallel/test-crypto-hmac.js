@@ -21,6 +21,16 @@ common.expectsError(
     message: 'The "hmac" argument must be of type string. Received type object'
   });
 
+// This used to segfault. See: https://github.com/nodejs/node/issues/9819
+common.expectsError(
+  () => crypto.createHmac('sha256', 'key').digest({
+    toString: () => { throw new Error('boom'); },
+  }),
+  {
+    type: Error,
+    message: 'boom'
+  });
+
 common.expectsError(
   () => crypto.createHmac('sha1', null),
   {
@@ -452,4 +462,10 @@ common.expectsError(
     assert.deepStrictEqual(h.digest('latin1'), expected);
     assert.deepStrictEqual(h.digest('latin1'), '');
   }
+}
+
+{
+  assert.throws(
+    () => crypto.createHmac('sha7', 'key'),
+    /Unknown message digest/);
 }

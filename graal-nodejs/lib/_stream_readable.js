@@ -46,6 +46,7 @@ let createReadableStreamAsyncIterator;
 
 util.inherits(Readable, Stream);
 
+const { errorOrDestroy } = destroyImpl;
 const kProxyEvents = ['error', 'close', 'destroy', 'pause', 'resume'];
 
 function prependListener(emitter, event, fn) {
@@ -117,6 +118,9 @@ function ReadableState(options, stream, isDuplex) {
 
   // Should close be emitted on destroy. Defaults to true.
   this.emitClose = options.emitClose !== false;
+
+  // Should .destroy() be called after 'end' (and potentially 'finish')
+  this.autoDestroy = !!options.autoDestroy;
 
   // has it been destroyed
   this.destroyed = false;
@@ -236,7 +240,7 @@ function readableAddChunk(stream, chunk, encoding, addToFront, skipChunkCheck) {
     if (!skipChunkCheck)
       er = chunkInvalid(state, chunk);
     if (er) {
-      stream.emit('error', er);
+      errorOrDestroy(stream, er);
     } else if (state.objectMode || chunk && chunk.length > 0) {
       if (typeof chunk !== 'string' &&
           !state.objectMode &&
@@ -246,11 +250,11 @@ function readableAddChunk(stream, chunk, encoding, addToFront, skipChunkCheck) {
 
       if (addToFront) {
         if (state.endEmitted)
-          stream.emit('error', new ERR_STREAM_UNSHIFT_AFTER_END_EVENT());
+          errorOrDestroy(stream, new ERR_STREAM_UNSHIFT_AFTER_END_EVENT());
         else
           addChunk(stream, state, chunk, true);
       } else if (state.ended) {
-        stream.emit('error', new ERR_STREAM_PUSH_AFTER_EOF());
+        errorOrDestroy(stream, new ERR_STREAM_PUSH_AFTER_EOF());
       } else if (state.destroyed) {
         return false;
       } else {
@@ -317,9 +321,22 @@ Readable.prototype.isPaused = function() {
 Readable.prototype.setEncoding = function(enc) {
   if (!StringDecoder)
     StringDecoder = require('string_decoder').StringDecoder;
-  this._readableState.decoder = new StringDecoder(enc);
-  // if setEncoding(null), decoder.encoding equals utf8
+  const decoder = new StringDecoder(enc);
+  this._readableState.decoder = decoder;
+  // If setEncoding(null), decoder.encoding equals utf8
   this._readableState.encoding = this._readableState.decoder.encoding;
+
+  // Iterate over current buffer to convert already stored Buffers:
+  let p = this._readableState.buffer.head;
+  let content = '';
+  while (p !== null) {
+    content += decoder.write(p.data);
+    p = p.next;
+  }
+  this._readableState.buffer.clear();
+  if (content !== '')
+    this._readableState.buffer.push(content);
+  this._readableState.length = content.length;
   return this;
 };
 
@@ -465,7 +482,7 @@ Readable.prototype.read = function(n) {
     ret = null;
 
   if (ret === null) {
-    state.needReadable = true;
+    state.needReadable = state.length <= state.highWaterMark;
     n = 0;
   } else {
     state.length -= n;
@@ -490,6 +507,7 @@ Readable.prototype.read = function(n) {
 };
 
 function onEofChunk(stream, state) {
+  debug('onEofChunk');
   if (state.ended) return;
   if (state.decoder) {
     var chunk = state.decoder.end();
@@ -520,6 +538,7 @@ function onEofChunk(stream, state) {
 // a nextTick recursion warning, but that's not so bad.
 function emitReadable(stream) {
   var state = stream._readableState;
+  debug('emitReadable', state.needReadable, state.emittedReadable);
   state.needReadable = false;
   if (!state.emittedReadable) {
     debug('emitReadable', state.flowing);
@@ -533,6 +552,7 @@ function emitReadable_(stream) {
   debug('emitReadable_', state.destroyed, state.length, state.ended);
   if (!state.destroyed && (state.length || state.ended)) {
     stream.emit('readable');
+    state.emittedReadable = false;
   }
 
   // The stream needs another readable event if
@@ -563,16 +583,38 @@ function maybeReadMore(stream, state) {
 }
 
 function maybeReadMore_(stream, state) {
-  var len = state.length;
+  // Attempt to read more data if we should.
+  //
+  // The conditions for reading more data are (one of):
+  // - Not enough data buffered (state.length < state.highWaterMark). The loop
+  //   is responsible for filling the buffer with enough data if such data
+  //   is available. If highWaterMark is 0 and we are not in the flowing mode
+  //   we should _not_ attempt to buffer any extra data. We'll get more data
+  //   when the stream consumer calls read() instead.
+  // - No data in the buffer, and the stream is in flowing mode. In this mode
+  //   the loop below is responsible for ensuring read() is called. Failing to
+  //   call read here would abort the flow and there's no other mechanism for
+  //   continuing the flow if the stream consumer has just subscribed to the
+  //   'data' event.
+  //
+  // In addition to the above conditions to keep reading data, the following
+  // conditions prevent the data from being read:
+  // - The stream has ended (state.ended).
+  // - There is already a pending 'read' operation (state.reading). This is a
+  //   case where the the stream has called the implementation defined _read()
+  //   method, but they are processing the call asynchronously and have _not_
+  //   called push() with new data. In this case we skip performing more
+  //   read()s. The execution ends in this method again after the _read() ends
+  //   up calling push() with more data.
   while (!state.reading && !state.ended &&
-         state.length < state.highWaterMark) {
+         (state.length < state.highWaterMark ||
+          (state.flowing && state.length === 0))) {
+    const len = state.length;
     debug('maybeReadMore read 0');
     stream.read(0);
     if (len === state.length)
       // didn't get any data, stop spinning.
       break;
-    else
-      len = state.length;
   }
   state.readingMore = false;
 }
@@ -582,7 +624,7 @@ function maybeReadMore_(stream, state) {
 // for virtual (non-string, non-buffer) streams, "length" is somewhat
 // arbitrary, and perhaps not very meaningful.
 Readable.prototype._read = function(n) {
-  this.emit('error', new ERR_METHOD_NOT_IMPLEMENTED('_read()'));
+  errorOrDestroy(this, new ERR_METHOD_NOT_IMPLEMENTED('_read()'));
 };
 
 Readable.prototype.pipe = function(dest, pipeOpts) {
@@ -688,7 +730,7 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
     unpipe();
     dest.removeListener('error', onerror);
     if (EE.listenerCount(dest, 'error') === 0)
-      dest.emit('error', er);
+      errorOrDestroy(dest, er);
   }
 
   // Make sure our error handler is attached before userland ones.
@@ -1101,5 +1143,14 @@ function endReadableNT(state, stream) {
     state.endEmitted = true;
     stream.readable = false;
     stream.emit('end');
+
+    if (state.autoDestroy) {
+      // In case of duplex streams we need a way to detect
+      // if the writable side is ready for autoDestroy as well
+      const wState = stream._writableState;
+      if (!wState || (wState.autoDestroy && wState.finished)) {
+        stream.destroy();
+      }
+    }
   }
 }

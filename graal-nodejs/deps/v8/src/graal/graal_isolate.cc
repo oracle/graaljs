@@ -728,10 +728,10 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::function_template_has_instance, "functionTemplateHasInstance", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::function_template_set_call_handler, "functionTemplateSetCallHandler", "(Ljava/lang/Object;JLjava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::function_template_inherit, "functionTemplateInherit", "(Ljava/lang/Object;Ljava/lang/Object;)V")
-    ACCESS_METHOD(GraalAccessMethod::script_compile, "scriptCompile", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::script_compile, "scriptCompile", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::script_run, "scriptRun", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::script_get_unbound_script, "scriptGetUnboundScript", "(Ljava/lang/Object;)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::unbound_script_compile, "unboundScriptCompile", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::unbound_script_compile, "unboundScriptCompile", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::unbound_script_bind_to_context, "unboundScriptBindToContext", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::unbound_script_get_id, "unboundScriptGetId", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::unbound_script_get_content, "unboundScriptGetContent", "(Ljava/lang/Object;)Ljava/lang/String;")
@@ -784,7 +784,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::promise_resolver_new, "promiseResolverNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_resolver_reject, "promiseResolverReject", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::promise_resolver_resolve, "promiseResolverResolve", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
-    ACCESS_METHOD(GraalAccessMethod::module_compile, "moduleCompile", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::module_compile, "moduleCompile", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_instantiate, "moduleInstantiate", "(Ljava/lang/Object;Ljava/lang/Object;J)V")
     ACCESS_METHOD(GraalAccessMethod::module_evaluate, "moduleEvaluate", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_get_status, "moduleGetStatus", "(Ljava/lang/Object;)I")
@@ -794,6 +794,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::module_get_identity_hash, "moduleGetIdentityHash", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::module_get_exception, "moduleGetException", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::script_or_module_get_resource_name, "scriptOrModuleGetResourceName", "(Ljava/lang/Object;)Ljava/lang/String;")
+    ACCESS_METHOD(GraalAccessMethod::script_or_module_get_host_defined_options, "scriptOrModuleGetHostDefinedOptions", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_new, "valueSerializerNew", "(J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_release, "valueSerializerRelease", "(Ljava/lang/Object;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::value_serializer_size, "valueSerializerSize", "(Ljava/lang/Object;)I")
@@ -827,7 +828,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env) : function_template_data(),
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_is_external, "sharedArrayBufferIsExternal", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_get_contents, "sharedArrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_externalize, "sharedArrayBufferExternalize", "(Ljava/lang/Object;J)V")
-    ACCESS_METHOD(GraalAccessMethod::script_compiler_compile_function_in_context, "scriptCompilerCompileFunctionInContext", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;[Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::script_compiler_compile_function_in_context, "scriptCompilerCompileFunctionInContext", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;[Ljava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiPointerSize;
     slot[v8::internal::Internals::kExternalMemoryOffset / v8::internal::kApiPointerSize] = (void*) 0;

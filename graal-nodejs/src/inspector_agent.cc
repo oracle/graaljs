@@ -39,6 +39,8 @@ using v8::Local;
 using v8::Message;
 using v8::Object;
 using v8::String;
+using v8::Task;
+using v8::TaskRunner;
 using v8::Value;
 
 using v8_inspector::StringBuffer;
@@ -49,7 +51,7 @@ using v8_inspector::V8InspectorClient;
 static uv_sem_t start_io_thread_semaphore;
 static uv_async_t start_io_thread_async;
 
-class StartIoTask : public v8::Task {
+class StartIoTask : public Task {
  public:
   explicit StartIoTask(Agent* agent) : agent(agent) {}
 
@@ -109,7 +111,9 @@ static int StartDebugSignalHandler() {
   sigset_t sigmask;
   // Mask all signals.
   sigfillset(&sigmask);
-  CHECK_EQ(0, pthread_sigmask(SIG_SETMASK, &sigmask, &sigmask));
+  sigset_t savemask;
+  CHECK_EQ(0, pthread_sigmask(SIG_SETMASK, &sigmask, &savemask));
+  sigmask = savemask;
   pthread_t thread;
   const int err = pthread_create(&thread, &attr,
                                  StartIoThreadMain, nullptr);
@@ -225,15 +229,19 @@ class ChannelImpl final : public v8_inspector::V8Inspector::Channel,
   }
 
   std::string dispatchProtocolMessage(const StringView& message) {
-    std::unique_ptr<protocol::DictionaryValue> parsed;
+    std::string raw_message = protocol::StringUtil::StringViewToUtf8(message);
+    std::unique_ptr<protocol::DictionaryValue> value =
+        protocol::DictionaryValue::cast(protocol::StringUtil::parseMessage(
+            raw_message, false));
+    int call_id;
     std::string method;
-    node_dispatcher_->getCommandName(
-        protocol::StringUtil::StringViewToUtf8(message), &method, &parsed);
+    node_dispatcher_->parseCommand(value.get(), &call_id, &method);
     if (v8_inspector::V8InspectorSession::canDispatchMethod(
             Utf8ToStringView(method)->string())) {
       session_->dispatchProtocolMessage(message);
     } else {
-      node_dispatcher_->dispatch(std::move(parsed));
+      node_dispatcher_->dispatch(call_id, method, std::move(value),
+                                 raw_message);
     }
     return method;
   }
@@ -273,11 +281,17 @@ class ChannelImpl final : public v8_inspector::V8Inspector::Channel,
 
   void sendProtocolResponse(int callId,
                             std::unique_ptr<Serializable> message) override {
-    sendMessageToFrontend(message->serialize());
+    sendMessageToFrontend(message->serializeToJSON());
   }
   void sendProtocolNotification(
       std::unique_ptr<Serializable> message) override {
-    sendMessageToFrontend(message->serialize());
+    sendMessageToFrontend(message->serializeToJSON());
+  }
+
+  void fallThrough(int callId,
+                   const std::string& method,
+                   const std::string& message) override {
+    DCHECK(false);
   }
 
   std::unique_ptr<protocol::TracingAgent> tracing_agent_;
@@ -501,6 +515,7 @@ class NodeInspectorClient : public V8InspectorClient {
   void installAdditionalCommandLineAPI(Local<Context> context,
                                        Local<Object> target) override {
     Local<Object> console_api = env_->inspector_console_api_object();
+    CHECK(!console_api.IsEmpty());
 
     Local<Array> properties =
         console_api->GetOwnPropertyNames(context).ToLocalChecked();
@@ -852,7 +867,9 @@ void Agent::RequestIoThreadStart() {
   uv_async_send(&start_io_thread_async);
   Isolate* isolate = parent_env_->isolate();
   v8::Platform* platform = parent_env_->isolate_data()->platform();
-  platform->CallOnForegroundThread(isolate, new StartIoTask(this));
+  std::shared_ptr<TaskRunner> taskrunner =
+    platform->GetForegroundTaskRunner(isolate);
+  taskrunner->PostTask(std::make_unique<StartIoTask>(this));
   isolate->RequestInterrupt(StartIoInterrupt, this);
   uv_async_send(&start_io_thread_async);
 }

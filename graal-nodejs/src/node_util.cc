@@ -1,22 +1,31 @@
 #include "node_internals.h"
 #include "node_watchdog.h"
+#include "base_object-inl.h"
 
 namespace node {
 namespace util {
 
 using v8::ALL_PROPERTIES;
 using v8::Array;
+using v8::Boolean;
 using v8::Context;
 using v8::FunctionCallbackInfo;
+using v8::FunctionTemplate;
+using v8::IndexFilter;
 using v8::Integer;
+using v8::Isolate;
+using v8::KeyCollectionMode;
 using v8::Local;
+using v8::NewStringType;
 using v8::Object;
 using v8::ONLY_CONFIGURABLE;
 using v8::ONLY_ENUMERABLE;
 using v8::ONLY_WRITABLE;
 using v8::Private;
 using v8::Promise;
+using v8::PropertyFilter;
 using v8::Proxy;
+using v8::ReadOnly;
 using v8::SKIP_STRINGS;
 using v8::SKIP_SYMBOLS;
 using v8::String;
@@ -35,13 +44,13 @@ static void GetOwnNonIndexProperties(
 
   Local<Array> properties;
 
-  v8::PropertyFilter filter =
-    static_cast<v8::PropertyFilter>(args[1].As<Uint32>()->Value());
+  PropertyFilter filter =
+    static_cast<PropertyFilter>(args[1].As<Uint32>()->Value());
 
   if (!object->GetPropertyNames(
-        context, v8::KeyCollectionMode::kOwnOnly,
+        context, KeyCollectionMode::kOwnOnly,
         filter,
-        v8::IndexFilter::kSkipIndices)
+        IndexFilter::kSkipIndices)
           .ToLocal(&properties)) {
     return;
   }
@@ -94,7 +103,7 @@ static void PreviewEntries(const FunctionCallbackInfo<Value>& args) {
     return args.GetReturnValue().Set(entries);
   Local<Array> ret = Array::New(env->isolate(), 2);
   ret->Set(env->context(), 0, entries).FromJust();
-  ret->Set(env->context(), 1, v8::Boolean::New(env->isolate(), is_key_value))
+  ret->Set(env->context(), 1, Boolean::New(env->isolate(), is_key_value))
       .FromJust();
   return args.GetReturnValue().Set(ret);
 }
@@ -169,8 +178,39 @@ void SafeGetenv(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue()
       .Set(String::NewFromUtf8(
             args.GetIsolate(), text.c_str(),
-            v8::NewStringType::kNormal).ToLocalChecked());
+            NewStringType::kNormal).ToLocalChecked());
 }
+
+class WeakReference : public BaseObject {
+ public:
+  WeakReference(Environment* env, Local<Object> object, Local<Object> target)
+    : BaseObject(env, object) {
+    MakeWeak();
+    target_.Reset(env->isolate(), target);
+    target_.SetWeak();
+  }
+
+  static void New(const FunctionCallbackInfo<Value>& args) {
+    Environment* env = Environment::GetCurrent(args);
+    CHECK(args.IsConstructCall());
+    CHECK(args[0]->IsObject());
+    new WeakReference(env, args.This(), args[0].As<Object>());
+  }
+
+  static void Get(const FunctionCallbackInfo<Value>& args) {
+    WeakReference* weak_ref = Unwrap<WeakReference>(args.Holder());
+    Isolate* isolate = args.GetIsolate();
+    if (!weak_ref->target_.IsEmpty())
+      args.GetReturnValue().Set(weak_ref->target_.Get(isolate));
+  }
+
+  SET_MEMORY_INFO_NAME(WeakReference)
+  SET_SELF_SIZE(WeakReference)
+  SET_NO_MEMORY_INFO()
+
+ private:
+  Persistent<Object> target_;
+};
 
 void Initialize(Local<Object> target,
                 Local<Value> unused,
@@ -191,7 +231,7 @@ void Initialize(Local<Object> target,
     env->context(),
     OneByteString(env->isolate(), "pushValToArrayMax"),
     Integer::NewFromUnsigned(env->isolate(), NODE_PUSH_VAL_TO_ARRAY_MAX),
-    v8::ReadOnly).FromJust();
+    ReadOnly).FromJust();
 
 #define V(name)                                                               \
   target->Set(context,                                                        \
@@ -229,6 +269,16 @@ void Initialize(Local<Object> target,
   target->Set(context,
               FIXED_ONE_BYTE_STRING(env->isolate(), "propertyFilter"),
               constants).FromJust();
+
+  Local<String> weak_ref_string =
+      FIXED_ONE_BYTE_STRING(env->isolate(), "WeakReference");
+  Local<FunctionTemplate> weak_ref =
+      env->NewFunctionTemplate(WeakReference::New);
+  weak_ref->InstanceTemplate()->SetInternalFieldCount(1);
+  weak_ref->SetClassName(weak_ref_string);
+  env->SetProtoMethod(weak_ref, "get", WeakReference::Get);
+  target->Set(context, weak_ref_string,
+              weak_ref->GetFunction(context).ToLocalChecked()).FromJust();
 }
 
 }  // namespace util

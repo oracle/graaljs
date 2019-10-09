@@ -30,7 +30,8 @@
 
 /* FIXME we shouldn't need to branch in this file */
 #if defined(__unix__) || defined(__POSIX__) || \
-    defined(__APPLE__) || defined(_AIX) || defined(__MVS__)
+    defined(__APPLE__) || defined(__sun) || \
+    defined(_AIX) || defined(__MVS__)
 #include <unistd.h> /* unlink, rmdir, etc. */
 #else
 # include <winioctl.h>
@@ -154,7 +155,7 @@ int uv_test_getiovmax(void) {
 static unsigned REPARSE_TAG = 0x9913;
 static GUID REPARSE_GUID = {
   0x1bf6205f, 0x46ae, 0x4527,
-  0xb1, 0x0c, 0xc5, 0x09, 0xb7, 0x55, 0x22, 0x80 };
+  { 0xb1, 0x0c, 0xc5, 0x09, 0xb7, 0x55, 0x22, 0x80 }};
 #endif
 
 static void check_permission(const char* filename, unsigned int mode) {
@@ -1248,6 +1249,16 @@ TEST_IMPL(fs_fstat) {
 #endif
 #endif
 
+#if defined(__linux__)
+  /* If statx() is supported, the birth time should be equal to the change time
+   * because we just created the file. On older kernels, it's set to zero.
+   */
+  ASSERT(s->st_birthtim.tv_sec == 0 ||
+         s->st_birthtim.tv_sec == t.st_ctim.tv_sec);
+  ASSERT(s->st_birthtim.tv_nsec == 0 ||
+         s->st_birthtim.tv_nsec == t.st_ctim.tv_nsec);
+#endif
+
   uv_fs_req_cleanup(&req);
 
   /* Now do the uv_fs_fstat call asynchronously */
@@ -2331,9 +2342,6 @@ TEST_IMPL(fs_stat_root) {
 
 
 TEST_IMPL(fs_futime) {
-#if defined(_AIX) && !defined(_AIX71)
-  RETURN_SKIP("futime is not implemented for AIX versions below 7.1");
-#else
   utime_check_t checkme;
   const char* path = "test_file";
   double atime;
@@ -2341,6 +2349,9 @@ TEST_IMPL(fs_futime) {
   uv_file file;
   uv_fs_t req;
   int r;
+#if defined(_AIX) && !defined(_AIX71)
+  RETURN_SKIP("futime is not implemented for AIX versions below 7.1");
+#endif
 
   /* Setup. */
   loop = uv_default_loop();
@@ -2402,7 +2413,6 @@ TEST_IMPL(fs_futime) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
-#endif
 }
 
 
@@ -3037,6 +3047,60 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
   return 0;
 }
 
+TEST_IMPL(fs_read_dir) {
+  int r;
+  char buf[2];
+  loop = uv_default_loop();
+
+  /* Setup */
+  rmdir("test_dir");
+  r = uv_fs_mkdir(loop, &mkdir_req, "test_dir", 0755, mkdir_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(mkdir_cb_count == 1);
+  /* Setup Done Here */
+
+  /* Get a file descriptor for the directory */
+  r = uv_fs_open(loop,
+                 &open_req1,
+                 "test_dir",
+                 UV_FS_O_RDONLY | UV_FS_O_DIRECTORY,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r >= 0);
+  uv_fs_req_cleanup(&open_req1);
+
+  /* Try to read data from the directory */
+  iov = uv_buf_init(buf, sizeof(buf));
+  r = uv_fs_read(NULL, &read_req, open_req1.result, &iov, 1, 0, NULL);
+#if defined(__FreeBSD__)   || \
+    defined(__OpenBSD__)   || \
+    defined(__NetBSD__)    || \
+    defined(__DragonFly__) || \
+    defined(_AIX)          || \
+    defined(__sun)         || \
+    defined(__MVS__)
+  /*
+   * As of now, these operating systems support reading from a directory,
+   * that too depends on the filesystem this temporary test directory is
+   * created on. That is why this assertion is a bit lenient.
+   */
+  ASSERT((r >= 0) || (r == UV_EISDIR));
+#else
+  ASSERT(r == UV_EISDIR);
+#endif
+  uv_fs_req_cleanup(&read_req);
+
+  r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&close_req);
+
+  /* Cleanup */
+  rmdir("test_dir");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
 
 #ifdef _WIN32
 
@@ -3538,6 +3602,53 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
   ASSERT(r == 0);
   ASSERT(close_req.result == 0);
   uv_fs_req_cleanup(&close_req);
+
+  /* Cleanup */
+  unlink("test_file");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif
+
+#ifdef _WIN32
+TEST_IMPL(fs_file_flag_no_buffering) {
+  int r;
+
+  /* Setup. */
+  unlink("test_file");
+
+  ASSERT(UV_FS_O_APPEND > 0);
+  ASSERT(UV_FS_O_CREAT > 0);
+  ASSERT(UV_FS_O_DIRECT > 0);
+  ASSERT(UV_FS_O_RDWR > 0);
+
+  /* FILE_APPEND_DATA must be excluded from FILE_GENERIC_WRITE: */
+  r = uv_fs_open(NULL,
+                 &open_req1,
+                 "test_file",
+                 UV_FS_O_RDWR | UV_FS_O_CREAT | UV_FS_O_DIRECT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r >= 0);
+  ASSERT(open_req1.result >= 0);
+  uv_fs_req_cleanup(&open_req1);
+
+  r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+  ASSERT(r == 0);
+  ASSERT(close_req.result == 0);
+  uv_fs_req_cleanup(&close_req);
+
+  /* FILE_APPEND_DATA and FILE_FLAG_NO_BUFFERING are mutually exclusive: */
+  r = uv_fs_open(NULL,
+                 &open_req2,
+                 "test_file",
+                 UV_FS_O_APPEND | UV_FS_O_DIRECT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r == UV_EINVAL);
+  ASSERT(open_req2.result == UV_EINVAL);
+  uv_fs_req_cleanup(&open_req2);
 
   /* Cleanup */
   unlink("test_file");

@@ -55,7 +55,7 @@ static void write_cb(uv_write_t* req, int status) {
 }
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT(status == 0 || status == UV_ENOTCONN);
   uv_close((uv_handle_t*) req->handle, NULL);
 }
 
@@ -150,6 +150,7 @@ int ipc_helper_heavy_traffic_deadlock_bug(void) {
   r = uv_pipe_open(&pipe, 0);
   ASSERT(r == 0);
 
+  notify_parent_process();
   do_writes_and_reads((uv_stream_t*) &pipe);
   uv_sleep(100);
 

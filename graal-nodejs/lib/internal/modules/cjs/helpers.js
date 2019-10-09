@@ -1,6 +1,9 @@
 'use strict';
 
-const { ERR_INVALID_ARG_TYPE } = require('internal/errors').codes;
+const { validateString } = require('internal/validators');
+const path = require('path');
+const { pathToFileURL } = require('internal/url');
+const { URL } = require('url');
 
 const {
   CHAR_LINE_FEED,
@@ -26,18 +29,14 @@ function makeRequireFunction(mod) {
   }
 
   function resolve(request, options) {
-    if (typeof request !== 'string') {
-      throw new ERR_INVALID_ARG_TYPE('request', 'string', request);
-    }
+    validateString(request, 'request');
     return Module._resolveFilename(request, mod, false, options);
   }
 
   require.resolve = resolve;
 
   function paths(request) {
-    if (typeof request !== 'string') {
-      throw new ERR_INVALID_ARG_TYPE('request', 'string', request);
-    }
+    validateString(request, 'request');
     return Module._resolveLookupPaths(request, mod, true);
   }
 
@@ -156,10 +155,18 @@ function addBuiltinLibsToObject(object) {
   });
 }
 
+function normalizeReferrerURL(referrer) {
+  if (typeof referrer === 'string' && path.isAbsolute(referrer)) {
+    return pathToFileURL(referrer).href;
+  }
+  return new URL(referrer).href;
+}
+
 module.exports = exports = {
   addBuiltinLibsToObject,
   builtinLibs,
   makeRequireFunction,
+  normalizeReferrerURL,
   requireDepth: 0,
   stripBOM,
   stripShebang

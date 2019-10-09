@@ -50,11 +50,9 @@ If you didn't find an answer in the resources above, try these unofficial
 resources:
 
 * [Questions tagged 'node.js' on StackOverflow][]
-* [#node.js channel on chat.freenode.net][]. See <http://nodeirc.info/> for more
-  information.
-* [Node.js Discord Community](https://discordapp.com/invite/v7rrPdE)
-* [Node.js Slack Community](https://node-js.slack.com/): Visit
-  [nodeslackers.com](http://www.nodeslackers.com/) to register.
+* [#node.js channel on chat.freenode.net][]
+* [Node.js Slack Community](https://node-js.slack.com/)
+  * To register: [nodeslackers.com](http://www.nodeslackers.com/)
 
 GitHub issues are for tracking enhancements and bugs, not general support.
 
@@ -83,7 +81,7 @@ your expectations.
 Current and LTS releases follow [Semantic Versioning](https://semver.org). A
 member of the Release Team [signs](#release-keys) each Current and LTS release.
 For more information, see the
-[Release README](https://github.com/nodejs/Release).
+[Release README](https://github.com/nodejs/Release#readme).
 
 ### Download
 
@@ -187,6 +185,8 @@ For information about the governance of the Node.js project, see
 **Gabriel Schulhof** &lt;gabriel.schulhof@intel.com&gt;
 * [jasnell](https://github.com/jasnell) -
 **James M Snell** &lt;jasnell@gmail.com&gt; (he/him)
+* [gireeshpunathil](https://github.com/gireeshpunathil) -
+**Gireesh Punathil** &lt;gpunathi@in.ibm.com&gt; (he/him)
 * [joyeecheung](https://github.com/joyeecheung) -
 **Joyee Cheung** &lt;joyeec9h3@gmail.com&gt; (she/her)
 * [mcollina](https://github.com/mcollina) -
@@ -203,6 +203,8 @@ For information about the governance of the Node.js project, see
 **Michaël Zasso** &lt;targos@protonmail.com&gt; (he/him)
 * [thefourtheye](https://github.com/thefourtheye) -
 **Sakthipriyan Vairamani** &lt;thechargingvolcano@gmail.com&gt; (he/him)
+* [Trott](https://github.com/Trott) -
+**Rich Trott** &lt;rtrott@gmail.com&gt; (he/him)
 
 ### TSC Emeriti
 
@@ -234,8 +236,6 @@ For information about the governance of the Node.js project, see
 **Tiancheng "Timothy" Gu** &lt;timothygu99@gmail.com&gt; (he/him)
 * [trevnorris](https://github.com/trevnorris) -
 **Trevor Norris** &lt;trev.norris@gmail.com&gt;
-* [Trott](https://github.com/Trott) -
-**Rich Trott** &lt;rtrott@gmail.com&gt; (he/him)
 
 ### Collaborators
 
@@ -249,6 +249,8 @@ For information about the governance of the Node.js project, see
 **Andreas Madsen** &lt;amwebdk@gmail.com&gt; (he/him)
 * [AnnaMag](https://github.com/AnnaMag) -
 **Anna M. Kedzierska** &lt;anna.m.kedzierska@gmail.com&gt;
+* [antsmartian](https://github.com/antsmartian) -
+**Anto Aravinth** &lt;anto.aravinth.cse@gmail.com&gt; (he/him)
 * [apapirovski](https://github.com/apapirovski) -
 **Anatoli Papirovski** &lt;apapirovski@mac.com&gt; (he/him)
 * [aqrln](https://github.com/aqrln) -
@@ -485,6 +487,8 @@ For information about the governance of the Node.js project, see
 **Yorkie Liu** &lt;yorkiefixer@gmail.com&gt;
 * [yosuke-furukawa](https://github.com/yosuke-furukawa) -
 **Yosuke Furukawa** &lt;yosuke.furukawa@gmail.com&gt;
+* [ZYSzys](https://github.com/ZYSzys) -
+**Yongsheng Zhang** &lt;zyszys98@gmail.com&gt; (he/him)
 
 ### Collaborator Emeriti
 
@@ -550,11 +554,14 @@ GPG keys used to sign Node.js releases:
 `DD8F2338BAE7501E3DD5AC78C273792F7D83545D`
 * **Ruben Bridgewater** &lt;ruben@bridgewater.de&gt;
 `A48C2BEE680E841632CD4E44F07496B3EB3C1762`
+* **Shelley Vohr** &lt;shelley.vohr@gmail.com&gt;
+`B9E2F5981AA6E0CD28160D9FF13993A75599653C`
 
 To import the full set of trusted release keys:
 
 ```shell
 gpg --keyserver pool.sks-keyservers.net --recv-keys 4ED778F539E3634C779C87C6D7062848A1AB005C
+gpg --keyserver pool.sks-keyservers.net --recv-keys B9E2F5981AA6E0CD28160D9FF13993A75599653C
 gpg --keyserver pool.sks-keyservers.net --recv-keys 94AE36675C464D64BAFA68DD7434390BDBE9B9C5
 gpg --keyserver pool.sks-keyservers.net --recv-keys B9AE9905FFD7803F25714661B63B535A4C206CA9
 gpg --keyserver pool.sks-keyservers.net --recv-keys 77984A986EBC2AA786BC0F66B01FBB92821C587A

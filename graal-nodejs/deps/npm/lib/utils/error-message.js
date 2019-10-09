@@ -103,8 +103,7 @@ function errorMessage (er) {
 
     case 'EOTP':
     case 'E401':
-      // the E401 message checking is a hack till we replace npm-registry-client with something
-      // OTP aware.
+      // E401 is for places where we accidentally neglect OTP stuff
       if (er.code === 'EOTP' || /one-time pass/.test(er.message)) {
         short.push(['', 'This operation requires a one-time password from your authenticator.'])
         detail.push([
@@ -155,10 +154,12 @@ function errorMessage (er) {
       var msg = er.message.replace(/^404\s+/, '')
       short.push(['404', msg])
       if (er.pkgid && er.pkgid !== '-') {
+        var pkg = er.pkgid.replace(/(?!^)@.*$/, '')
+
         detail.push(['404', ''])
         detail.push(['404', '', "'" + er.pkgid + "' is not in the npm registry."])
 
-        var valResult = nameValidator(er.pkgid)
+        var valResult = nameValidator(pkg)
 
         if (valResult.validForNewPackages) {
           detail.push(['404', 'You should bug the author to publish it (or use the name yourself!)'])

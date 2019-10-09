@@ -230,7 +230,7 @@ public final class Options {
                     System.err.println("--prof option is not supported, use one of our profiling tools instead (use --help:tools for more details)");
                     System.exit(1);
                 }
-                if ("experimental-modules".equals(key)) {
+                if ("experimental-modules".equals(key) || "expose-internals".equals(key)) {
                     polyglotOptions.put("js.ecmascript-version", "2020");
                     continue;
                 }
