@@ -1757,7 +1757,7 @@ public final class GraalJSAccess {
             code.append(";})");
         }
 
-        TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
+        TruffleFile truffleFile = realm.getEnv().getTruffleFile(sourceName);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code.toString()).name(sourceName).build();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
 
