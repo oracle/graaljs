@@ -344,7 +344,7 @@ public class TruffleJSONParser {
         if (!posValid()) {
             error(MALFORMED_NUMBER);
         }
-        int startPos = pos;
+        final int startPos = pos;
         int fractionPos = -1;
         boolean firstPosIsZero = false;
         char c = get();
@@ -377,42 +377,38 @@ public class TruffleJSONParser {
         if (fractionPos == startPos || fractionPos == (pos - 1)) {
             error(MALFORMED_NUMBER);
         }
-        String valueStr;
 
         boolean hasExponent = false;
-        int exponent = 0;
         if (posValid() && isExponentPart()) {
             hasExponent = true;
             pos++; // reads the "E" without skipping whitespace
-            exponent = readDigits();
+            readDigits();
         }
-        valueStr = parseStr.substring(startPos, pos);
+        final int endPos = pos;
         skipWhitespace(); // after the number
 
-        if (fractionPos >= 0) {
-            return parseAsDouble(sign, valueStr);
-        } else {
-            try {
-                return parseAsInt(sign, valueStr, hasExponent, Math.pow(10, exponent));
-            } catch (NumberFormatException ex) {
-                return parseAsDouble(sign, valueStr);
-            }
-        }
-    }
-
-    protected static Number parseAsInt(int sign, String valueStr, boolean hasExponent, double expVal) {
-        int intVal = Integer.parseInt(valueStr);
-        if (sign == -1) {
-            if (intVal == 0) {
+        if (firstPosIsZero && (endPos - startPos == 1)) {
+            if (sign == 1) {
+                return 0;
+            } else {
                 return -0.0;
             }
-            intVal *= -1;
+        } else if (fractionPos == -1 && !hasExponent && (endPos - startPos <= JSRuntime.MAX_SAFE_INTEGER_DIGITS)) {
+            // safe integer but not zero
+            final int radix = 10;
+            long safeInt = JSRuntime.parseSafeInteger(parseStr, startPos, endPos, radix);
+            assert safeInt != 0;
+            if (safeInt != JSRuntime.INVALID_SAFE_INTEGER) {
+                safeInt *= sign;
+                if (JSRuntime.longIsRepresentableAsInt(safeInt)) {
+                    return (int) safeInt;
+                } else {
+                    return (double) safeInt;
+                }
+            }
         }
-        if (hasExponent) {
-            return intVal * expVal;
-        } else {
-            return intVal;
-        }
+        String valueStr = parseStr.substring(startPos, endPos);
+        return parseAsDouble(sign, valueStr);
     }
 
     protected static Number parseAsDouble(int sign, String valueStr) {
