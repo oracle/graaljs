@@ -1838,7 +1838,7 @@ public final class GraalJSAccess {
             JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
             DynamicObject setBreakPoint = JSFunction.create(context.getRealm(), setBreakPointData);
             extraArgument = setBreakPoint;
-        } else if ("internal/worker.js".equals(moduleName)) {
+        } else if ("internal/worker/io.js".equals(moduleName) || "internal/main/worker_thread.js".equals(moduleName)) {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
             extraArgument = SharedMemMessagingBindings.createInitFunction(this, context);
         } else if ("inspector.js".equals(moduleName)) {
