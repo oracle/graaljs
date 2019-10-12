@@ -48,6 +48,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicSet;
+
 /**
  * Utility class for calls to library methods that require a {@link TruffleBoundary}.
  */
@@ -330,5 +332,20 @@ public final class Boundaries {
     @TruffleBoundary
     public static <T> Iterator<T> iterator(Iterable<T> iterable) {
         return iterable.iterator();
+    }
+
+    @TruffleBoundary
+    public static <T> EconomicSet<T> economicSetCreate() {
+        return EconomicSet.create();
+    }
+
+    @TruffleBoundary
+    public static <T> boolean economicSetAdd(EconomicSet<T> economicSet, T element) {
+        return economicSet.add(element);
+    }
+
+    @TruffleBoundary
+    public static <T> boolean economicSetContains(EconomicSet<T> economicSet, T element) {
+        return economicSet.contains(element);
     }
 }

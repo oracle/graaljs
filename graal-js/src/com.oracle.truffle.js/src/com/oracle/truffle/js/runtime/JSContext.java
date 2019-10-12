@@ -365,6 +365,7 @@ public class JSContext {
     @CompilationFinal(dimensions = 1) private final JSObjectFactory[] directTypedArrayFactories;
 
     private final JSObjectFactory enumerateIteratorFactory;
+    private final JSObjectFactory forInIteratorFactory;
     private final JSObjectFactory generatorObjectFactory;
     private final JSObjectFactory asyncGeneratorObjectFactory;
     private final JSObjectFactory asyncFromSyncIteratorFactory;
@@ -504,6 +505,7 @@ public class JSContext {
         this.nonStrictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialNonStrictArgumentsShape);
         this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsObject::makeInitialStrictArgumentsShape);
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
+        this.forInIteratorFactory = builder.create(JSRealm::getForInIteratorPrototype, JSFunction::makeInitialForInIteratorShape);
 
         this.generatorObjectFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
         this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
@@ -775,6 +777,10 @@ public class JSContext {
 
     public final JSObjectFactory getEnumerateIteratorFactory() {
         return enumerateIteratorFactory;
+    }
+
+    public final JSObjectFactory getForInIteratorFactory() {
+        return forInIteratorFactory;
     }
 
     public final JSObjectFactory getMapFactory() {

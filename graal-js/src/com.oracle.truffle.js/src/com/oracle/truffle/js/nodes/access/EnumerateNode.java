@@ -63,7 +63,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -72,7 +71,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.util.EnumerateIterator;
+import com.oracle.truffle.js.runtime.util.ForInIterator;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 /**
@@ -118,25 +117,13 @@ public abstract class EnumerateNode extends JavaScriptNode {
     @Specialization(guards = {"isJSType(iteratedObject)", "!isJSAdapter(iteratedObject)"})
     protected DynamicObject doEnumerateObject(DynamicObject iteratedObject,
                     @Cached("createBinaryProfile()") ConditionProfile isObject) {
-        Iterator<?> iterator;
         if (isObject.profile(JSRuntime.isObject(iteratedObject))) {
-            iterator = createEnumerateIterator(iteratedObject, values);
+            return newForInIterator(context, iteratedObject, values);
         } else {
             // null or undefined
-            iterator = Collections.emptyIterator();
+            Iterator<?> iterator = Collections.emptyIterator();
+            return newEnumerateIterator(context, iterator);
         }
-        return newEnumerateIterator(context, iterator);
-    }
-
-    @TruffleBoundary
-    private static Iterator<?> createEnumerateIterator(DynamicObject iteratedObject, boolean values) {
-        Iterator<?> iterator = new EnumerateIterator(iteratedObject);
-        if (values) {
-            iterator = IteratorUtil.convertIterator(iterator, key -> {
-                return JSObject.get(iteratedObject, Boundaries.javaToString(key));
-            });
-        }
-        return iterator;
     }
 
     @Specialization(guards = "isJSAdapter(iteratedObject)")
@@ -298,11 +285,15 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     private DynamicObject enumerateString(String string) {
-        return newEnumerateIterator(context, createEnumerateIterator(JSString.create(context, string), values));
+        return newForInIterator(context, JSString.create(context, string), values);
     }
 
     private static DynamicObject newEnumerateIterator(JSContext context, Iterator<?> iterator) {
         return JSObject.create(context, context.getEnumerateIteratorFactory(), iterator);
+    }
+
+    private static DynamicObject newForInIterator(JSContext context, DynamicObject obj, boolean values) {
+        return JSObject.create(context, context.getForInIteratorFactory(), new ForInIterator(obj, values));
     }
 
     @Specialization(guards = {"!isJSObject(iteratedObject)"})
