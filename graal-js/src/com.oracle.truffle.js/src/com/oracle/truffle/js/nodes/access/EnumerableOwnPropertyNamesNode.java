@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -57,6 +57,8 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
+import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
  * EnumerableOwnPropertyNames (O, kind).
@@ -68,6 +70,7 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
     private final JSContext context;
     @Child private JSGetOwnPropertyNode getOwnPropertyNode;
     private final ConditionProfile hasFastShapesProfile = ConditionProfile.createBinaryProfile();
+    private final BranchProfile growProfile = BranchProfile.create();
 
     protected EnumerableOwnPropertyNamesNode(JSContext context, boolean keys, boolean values) {
         this.context = context;
@@ -87,38 +90,40 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
         return EnumerableOwnPropertyNamesNodeGen.create(context, true, true);
     }
 
-    public abstract List<? extends Object> execute(DynamicObject obj);
+    public abstract UnmodifiableArrayList<? extends Object> execute(DynamicObject obj);
 
     @Specialization
-    protected List<? extends Object> enumerableOwnPropertyNames(DynamicObject thisObj) {
+    protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(DynamicObject thisObj) {
         JSClass jsclass = JSObject.getJSClass(thisObj);
         if (hasFastShapesProfile.profile(keys && !values && JSTruffleOptions.FastOwnKeys && jsclass.hasOnlyShapeProperties(thisObj))) {
             return JSShape.getEnumerablePropertyNames(thisObj.getShape());
         } else {
             boolean isProxy = JSProxy.isProxy(thisObj);
             List<Object> ownKeys = jsclass.ownPropertyKeys(thisObj);
-            List<Object> properties = new ArrayList<>();
             int ownKeysSize = Boundaries.listSize(ownKeys);
+            SimpleArrayList<Object> properties = new SimpleArrayList<>();
             for (int i = 0; i < ownKeysSize; i++) {
                 Object key = Boundaries.listGet(ownKeys, i);
                 if (key instanceof String) {
                     PropertyDescriptor desc = getOwnProperty(thisObj, key);
                     if (desc != null && desc.getEnumerable()) {
+                        Object element;
                         if (keys && !values) {
-                            Boundaries.listAdd(properties, key);
+                            element = key;
                         } else {
                             Object value = (desc.isAccessorDescriptor() || isProxy) ? jsclass.get(thisObj, key) : desc.getValue();
                             if (!keys && values) {
-                                Boundaries.listAdd(properties, value);
+                                element = value;
                             } else {
                                 assert keys && values;
-                                Boundaries.listAdd(properties, JSArray.createConstant(context, new Object[]{key, value}));
+                                element = JSArray.createConstant(context, new Object[]{key, value});
                             }
                         }
+                        properties.add(element, growProfile);
                     }
                 }
             }
-            return properties;
+            return new UnmodifiableArrayList<>(properties.toArray());
         }
     }
 
