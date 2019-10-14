@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -54,7 +52,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
-import com.oracle.truffle.js.runtime.util.IteratorUtil;
+import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
  * Extra metadata associated with JavaScript object shapes.
@@ -124,7 +122,7 @@ public final class JSShapeData {
         }
     }
 
-    static List<Property> getProperties(Shape shape) {
+    static UnmodifiableArrayList<Property> getProperties(Shape shape) {
         return asUnmodifiableList(getPropertiesArray(shape));
     }
 
@@ -142,27 +140,12 @@ public final class JSShapeData {
         }
     }
 
-    static List<String> getEnumerablePropertyNames(Shape shape) {
+    static UnmodifiableArrayList<String> getEnumerablePropertyNames(Shape shape) {
         return asUnmodifiableList(getEnumerablePropertyNamesArray(shape));
     }
 
-    private static <T> List<T> asUnmodifiableList(T[] array) {
-        return new AbstractList<T>() {
-            @Override
-            public T get(int index) {
-                return array[index];
-            }
-
-            @Override
-            public int size() {
-                return array.length;
-            }
-
-            @Override
-            public Iterator<T> iterator() {
-                return IteratorUtil.simpleArrayIterator(array);
-            }
-        };
+    private static <T> UnmodifiableArrayList<T> asUnmodifiableList(T[] array) {
+        return new UnmodifiableArrayList<>(array);
     }
 
     private static final DebugCounter enumerablePropertyListAllocCount = DebugCounter.create("Enumerable property lists allocated");
