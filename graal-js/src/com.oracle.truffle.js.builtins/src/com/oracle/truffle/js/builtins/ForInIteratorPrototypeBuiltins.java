@@ -69,6 +69,7 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -230,6 +231,9 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 }
 
                 DynamicObject proto = getPrototypeNode.executeJSObject(object);
+                if (tryFastForwardImmutablePrototype(proto)) {
+                    proto = Null.instance;
+                }
                 state.object = proto;
                 state.objectWasVisited = false;
                 if (proto == Null.instance) {
@@ -256,6 +260,22 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         private static void addPreviouslyVisitedKeys(ForInIterator state) {
             for (int i = 0; i < state.remainingKeysIndex - 1; i++) {
                 state.addVisitedKey(getKey(state.remainingKeys.get(i)));
+            }
+        }
+
+        private boolean tryFastForwardImmutablePrototype(DynamicObject proto) {
+            if (proto == Null.instance) {
+                return false;
+            }
+            // If none of the remaining prototypes have enumerable properties, we are done.
+            // If the object has an immutable prototype (i.e., Object.prototype, Module Namespace),
+            // its prototype is always null and we can skip [[GetPrototypeOf]]().
+            JSClass jsclass = JSObject.getJSClass(proto);
+            if (jsclass == JSObjectPrototype.INSTANCE && hasOnlyShapePropertiesNode.execute(proto, jsclass) && JSShape.getEnumerablePropertyNames(proto.getShape()).isEmpty()) {
+                assert JSObject.getPrototype(proto) == Null.instance;
+                return true;
+            } else {
+                return false;
             }
         }
 
@@ -292,15 +312,29 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         public abstract boolean execute(DynamicObject object, JSClass jsclass);
 
-        @Specialization(guards = {"jsclass == cachedJSClass"}, limit = "3")
+        @Specialization(guards = {"jsclass == cachedJSClass", "!isJSObjectPrototype(cachedJSClass)"}, limit = "3")
         static boolean doCached(DynamicObject object, @SuppressWarnings("unused") JSClass jsclass,
                         @Cached(value = "jsclass") JSClass cachedJSClass) {
             return cachedJSClass.hasOnlyShapeProperties(object);
         }
 
-        @Specialization(replaces = {"doCached"})
+        @Specialization(guards = {"isJSObjectPrototype(jsclass)"})
+        static boolean doObjectPrototype(DynamicObject object, JSClass jsclass,
+                        @Cached("getJSContext(object)") JSContext context) {
+            if (context.getArrayPrototypeNoElementsAssumption().isValid()) {
+                assert jsclass.hasOnlyShapeProperties(object);
+                return true;
+            }
+            return JSObjectPrototype.INSTANCE.hasOnlyShapeProperties(object);
+        }
+
+        @Specialization(replaces = {"doCached", "doObjectPrototype"})
         static boolean doUncached(DynamicObject object, JSClass jsclass) {
             return jsclass.hasOnlyShapeProperties(object);
+        }
+
+        static boolean isJSObjectPrototype(JSClass jsclass) {
+            return jsclass == JSObjectPrototype.INSTANCE;
         }
     }
 }
