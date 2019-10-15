@@ -447,6 +447,15 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         }
     #endif
 
+        const char* verbose_graalvm_launchers = std::getenv("VERBOSE_GRAALVM_LAUNCHERS");
+        if (verbose_graalvm_launchers && strcmp(verbose_graalvm_launchers, "true") == 0) {
+            fprintf(stderr, "load: %s ", jvmlib_path.c_str());
+            for (int i = 0; i < options.size(); i++) {
+                fprintf(stderr, " %s", options[i].optionString);
+            }
+            fprintf(stderr, "\n");
+        }
+
         JavaVMInitArgs vm_args;
         vm_args.version = JNI_VERSION_1_8;
         vm_args.nOptions = options.size();
