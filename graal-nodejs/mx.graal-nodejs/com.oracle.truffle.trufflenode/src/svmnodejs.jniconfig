@@ -99,6 +99,7 @@
       { "name": "isolateInternalErrorCheck" },
       { "name": "isolatePerformGC" },
       { "name": "isolateRunMicrotasks" },
+      { "name": "isolateSchedulePauseOnNextStatement" },
       { "name": "isolateTerminateExecution" },
       { "name": "isolateThrowException" },
       { "name": "isolateThrowStackOverflowError" },

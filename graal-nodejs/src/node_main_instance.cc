@@ -203,6 +203,9 @@ std::unique_ptr<Environment> NodeMainInstance::CreateMainEnvironment(
 #if HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
   *exit_code = env->InitializeInspector(nullptr);
 #endif
+  if (env->options()->debug_options().break_node_first_line) {
+      isolate_->SchedulePauseOnNextStatement();
+  }
   if (*exit_code != 0) {
     return env;
   }

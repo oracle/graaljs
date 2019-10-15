@@ -366,6 +366,10 @@ namespace v8 {
         reinterpret_cast<GraalIsolate*> (this)->Dispose(exit, status);
     }
 
+    void Isolate::SchedulePauseOnNextStatement() {
+        reinterpret_cast<GraalIsolate*> (this)->SchedulePauseOnNextStatement();
+    }
+
     bool Isolate::IsDead() {
         return false;
     }

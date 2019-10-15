@@ -7899,6 +7899,8 @@ class V8_EXPORT Isolate {
   void Dispose();
   void Dispose(bool exit, int status); // graal-node.js extension
 
+  void SchedulePauseOnNextStatement(); // graal-node.js extension
+
   /**
    * Dumps activated low-level V8 internal stats. This can be used instead
    * of performing a full isolate disposal.
