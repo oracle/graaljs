@@ -280,13 +280,13 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
-    public static <T> T listGet(List<T> list, int intValue) {
-        return list.get(intValue);
+    public static <T> T listGet(List<T> list, int index) {
+        return list.get(index);
     }
 
     @TruffleBoundary
-    public static <T> void listSet(List<T> list, int intValue, T value) {
-        list.set(intValue, value);
+    public static <T> void listSet(List<T> list, int index, T value) {
+        list.set(index, value);
     }
 
     @TruffleBoundary

@@ -54,6 +54,8 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltinsFactory.ForInIteratorPrototypeNextNodeGen;
 import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltinsFactory.HasOnlyShapePropertiesNodeGen;
+import com.oracle.truffle.js.builtins.helper.ListGetNode;
+import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -61,7 +63,6 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -119,6 +120,8 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private GetPrototypeNode getPrototypeNode;
         @Child private JSForeignToJSTypeNode importValueNode;
         @Child private HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode;
+        @Child private ListGetNode listGet;
+        @Child private ListSizeNode listSize;
         private final BranchProfile errorBranch = BranchProfile.create();
         private final BranchProfile growProfile = BranchProfile.create();
         private final ConditionProfile fastOwnKeysProfile = ConditionProfile.createBinaryProfile();
@@ -134,6 +137,8 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.FOR_IN_ITERATOR_ID, context);
             this.getPrototypeNode = GetPrototypeNode.create();
             this.hasOnlyShapePropertiesNode = HasOnlyShapePropertiesNode.create();
+            this.listGet = ListGetNode.create();
+            this.listSize = ListSizeNode.create();
         }
 
         @Specialization
@@ -179,7 +184,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     } else {
                         fastOwnKeys = false;
                         list = jsclass.ownPropertyKeys(object);
-                        size = Boundaries.listSize(list);
+                        size = listSize.execute(list);
                     }
                     state.objectShape = object.getShape();
                     state.remainingKeys = list;
@@ -191,7 +196,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
                 assert state.remainingKeysSize == state.remainingKeys.size();
                 while (state.remainingKeysIndex < state.remainingKeysSize) {
-                    final Object next = Boundaries.listGet(state.remainingKeys, state.remainingKeysIndex++);
+                    final Object next = listGet.execute(state.remainingKeys, state.remainingKeysIndex++);
                     final Object key = getKey(next);
                     if (!(key instanceof String)) {
                         continue;
