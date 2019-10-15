@@ -1772,9 +1772,15 @@ public final class GraalJSAccess {
             code.append(";})");
         }
 
-        TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code.toString()).name(sourceName).build();
-        hostDefinedOptionsMap.put(source, hostDefinedOptions);
+        Source source;
+        if (hostDefinedOptions == null) {
+            // sources of built-in modules
+            source = Source.newBuilder(JavaScriptLanguage.ID, code, sourceName).build();
+        } else {
+            TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
+            source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code.toString()).name(sourceName).build();
+            hostDefinedOptionsMap.put(source, hostDefinedOptions);
+        }
 
         DynamicObject fn = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
         return anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
