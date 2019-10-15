@@ -43,6 +43,8 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -54,7 +56,6 @@ import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSApplyNo
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSBindNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSCallNodeGen;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltinsFactory.JSFunctionToStringNodeGen;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -63,6 +64,7 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -331,26 +333,27 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return ct.toString();
         }
 
-        @Specialization(guards = {"!isJSFunction(fnObj)", "isES2019Callable(fnObj)"})
-        protected String toStringCallable(@SuppressWarnings("unused") Object fnObj) {
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"isES2019OrLater()", "!isJSFunction(fnObj)", "isCallable.executeBoolean(fnObj)"}, limit = "1")
+        protected String toStringCallable(Object fnObj,
+                        @Cached @Shared("isCallable") IsCallableNode isCallable) {
             return NATIVE_CODE_STR;
         }
 
-        @Specialization(guards = "!isValid(fnObj)")
-        protected String toStringNotCallable(Object fnObj) {
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"isES2019OrLater()", "!isCallable.executeBoolean(fnObj)"}, limit = "1")
+        protected String toStringNotCallable(Object fnObj,
+                        @Cached @Shared("isCallable") IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }
 
-        protected boolean isES2019Callable(Object fnObject) {
-            return getContext().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019 && JSGuards.isCallable(fnObject);
+        @Specialization(guards = {"!isES2019OrLater()", "!isJSFunction(fnObj)"})
+        protected String toStringNotFunction(Object fnObj) {
+            throw Errors.createTypeErrorNotAFunction(fnObj);
         }
 
-        protected boolean isValid(Object fnObject) {
-            if (getContext().getEcmaScriptVersion() <= JSTruffleOptions.ECMAScript2018) {
-                return JSFunction.isJSFunction(fnObject);
-            } else {
-                return JSRuntime.isCallable(fnObject);
-            }
+        final boolean isES2019OrLater() {
+            return getContext().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019;
         }
 
         @TruffleBoundary
@@ -383,20 +386,25 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return apply(function, target, args);
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isCallable(function)")
-        protected Object nonCallable(Object function, Object target, Object args) {
-            throw Errors.createTypeErrorNotAFunction(function);
+        @Specialization(guards = "isCallable.executeBoolean(function)", replaces = "applyFunction", limit = "1")
+        protected Object applyCallable(Object function, Object target, Object args,
+                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+            return apply(function, target, args);
         }
 
-        @Specialization(guards = "isCallable(function)", replaces = "applyFunction")
-        protected Object apply(Object function, Object target, Object args) {
+        private Object apply(Object function, Object target, Object args) {
             Object[] applyUserArgs = toObjectArray.executeObjectArray(args);
             assert applyUserArgs.length <= JSTruffleOptions.MaxApplyArgumentLength;
             Object[] passedOnArguments = JSArguments.create(target, function, applyUserArgs);
             return call.executeCall(passedOnArguments);
         }
 
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isCallable.executeBoolean(function)", limit = "1")
+        protected Object error(Object function, Object target, Object args,
+                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+            throw Errors.createTypeErrorNotAFunction(function);
+        }
     }
 
     public abstract static class JSCallNode extends JSBuiltinNode {

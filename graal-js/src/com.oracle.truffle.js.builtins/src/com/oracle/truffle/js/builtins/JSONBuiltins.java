@@ -46,6 +46,8 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -138,16 +140,18 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             super(context, builtin);
         }
 
-        @Specialization(guards = "isCallable(reviver)")
-        protected Object parse(Object text, Object reviver) {
+        @Specialization(guards = "isCallable.executeBoolean(reviver)", limit = "1")
+        protected Object parse(Object text, Object reviver,
+                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             Object unfiltered = parseIntl(toString(text));
             DynamicObject root = JSUserObject.create(getContext());
             JSObjectUtil.putDataProperty(getContext(), root, "", unfiltered, JSAttributes.getDefault());
             return walk((DynamicObject) reviver, root, "");
         }
 
-        @Specialization(guards = "!isCallable(reviver)")
-        protected Object parseUnfiltered(Object text, @SuppressWarnings("unused") Object reviver) {
+        @Specialization(guards = "!isCallable.executeBoolean(reviver)", limit = "1")
+        protected Object parseUnfiltered(Object text, @SuppressWarnings("unused") Object reviver,
+                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             return parseIntl(toString(text));
         }
 
