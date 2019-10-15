@@ -204,6 +204,7 @@ enum GraalAccessMethod {
     isolate_enter,
     isolate_exit,
     isolate_enqueue_microtask,
+    isolate_schedule_pause_on_next_statement,
     template_set,
     template_set_accessor_property,
     object_template_new,
@@ -590,6 +591,7 @@ public:
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
     void Externalize(jobject java_buffer);
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
+    void SchedulePauseOnNextStatement();
 
     static void SetFlags(int argc, char** argv) {
         if (GraalIsolate::argv != nullptr) {

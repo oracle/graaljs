@@ -689,6 +689,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_enter, "isolateEnter", "(J)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_exit, "isolateExit", "(J)J")
     ACCESS_METHOD(GraalAccessMethod::isolate_enqueue_microtask, "isolateEnqueueMicrotask", "(Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_schedule_pause_on_next_statement, "isolateSchedulePauseOnNextStatement", "()V")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "()Ljava/lang/Object;")
@@ -1440,4 +1441,8 @@ void GraalIsolate::EnqueueMicrotask(v8::Local<v8::Function> microtask) {
 
 v8::ArrayBuffer::Allocator* GraalIsolate::GetArrayBufferAllocator() {
     return array_buffer_allocator_;
+}
+
+void GraalIsolate::SchedulePauseOnNextStatement() {
+    JNI_CALL_VOID(this, GraalAccessMethod::isolate_schedule_pause_on_next_statement);
 }

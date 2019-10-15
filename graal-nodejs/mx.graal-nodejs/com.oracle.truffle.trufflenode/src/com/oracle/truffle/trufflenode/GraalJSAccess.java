@@ -113,6 +113,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
@@ -1771,9 +1772,15 @@ public final class GraalJSAccess {
             code.append(";})");
         }
 
-        TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code.toString()).name(sourceName).build();
-        hostDefinedOptionsMap.put(source, hostDefinedOptions);
+        Source source;
+        if (hostDefinedOptions == null) {
+            // sources of built-in modules
+            source = Source.newBuilder(JavaScriptLanguage.ID, code, sourceName).build();
+        } else {
+            TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
+            source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code.toString()).name(sourceName).build();
+            hostDefinedOptionsMap.put(source, hostDefinedOptions);
+        }
 
         DynamicObject fn = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
         return anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
@@ -2745,6 +2752,12 @@ public final class GraalJSAccess {
 
     public void isolateEnqueueMicrotask(Object microtask) {
         agent.enqueuePromiseJob((DynamicObject) microtask);
+    }
+
+    public void isolateSchedulePauseOnNextStatement() {
+        Breakpoint breakpoint = Breakpoint.newBuilder((URI) null).oneShot().build();
+        Debugger debugger = lookupInstrument("debugger", Debugger.class);
+        debugger.install(breakpoint);
     }
 
     public Object correctReturnValue(Object value) {
