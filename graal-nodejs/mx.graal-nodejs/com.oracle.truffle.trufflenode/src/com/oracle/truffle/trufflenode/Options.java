@@ -74,7 +74,7 @@ public final class Options {
             // AbstractLanguageLauncher is not accessible through
             // language class loader (that loaded this class) in GraalVM
             Class<Function<String[], Object[]>> clazz = loadOptionsParser();
-            parser = clazz.newInstance();
+            parser = clazz.getDeclaredConstructor().newInstance();
         }
         Object[] result = parser.apply(args);
         return new Options((Context.Builder) result[0], (Boolean) result[1]);
@@ -93,7 +93,7 @@ public final class Options {
         }
         URL truffleNodeURL = new URL("file:" + truffleNodePath);
         URL launcherCommonURL = new URL("file:" + launcherCommonPath);
-        ClassLoader loader = new URLClassLoader(new URL[]{launcherCommonURL, truffleNodeURL}, null);
+        ClassLoader loader = new URLClassLoader(new URL[]{launcherCommonURL, truffleNodeURL}, ClassLoader.getSystemClassLoader());
         return (Class<Function<String[], Object[]>>) loader.loadClass("com.oracle.truffle.trufflenode.Options$OptionsParser");
     }
 
