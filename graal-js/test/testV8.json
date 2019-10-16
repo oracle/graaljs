@@ -1326,12 +1326,12 @@
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
     "filePath" : "mjsunit/regexp-tier-up-multiple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "status" : "SKIP",
+    "comment" : "Tests specificities of V8's RegExp implementation (the use of different tiers)."
   }, {
     "filePath" : "mjsunit/regexp-tier-up.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "status" : "SKIP",
+    "comment" : "Tests specificities of V8's RegExp implementation (the use of different tiers)."
   }, {
     "filePath" : "mjsunit/regress-930045.js",
     "status" : "FAIL",
