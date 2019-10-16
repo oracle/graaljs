@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -62,7 +61,6 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -118,7 +116,6 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private PropertySetNode setDoneNode;
         @Child private PropertyGetNode getIteratorNode;
         @Child private GetPrototypeNode getPrototypeNode;
-        @Child private JSForeignToJSTypeNode importValueNode;
         @Child private HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode;
         @Child private ListGetNode listGet;
         @Child private ListSizeNode listSize;
@@ -156,7 +153,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 nextValue = Undefined.instance;
             } else {
                 if (valuesProfile.profile(state.iterateValues)) {
-                    nextValue = getValue(state, nextValue);
+                    nextValue = JSObject.get(state.object, nextValue);
                 } else {
                     assert nextValue instanceof String;
                 }
@@ -289,15 +286,6 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             setValueNode.setValue(iterResultObject, value);
             setDoneNode.setValueBoolean(iterResultObject, done);
             return iterResultObject;
-        }
-
-        private Object getValue(ForInIterator state, Object key) {
-            if (importValueNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                importValueNode = insert(JSForeignToJSTypeNode.create());
-            }
-            Object value = JSObject.get(state.object, key);
-            return importValueNode.executeWithTarget(value);
         }
     }
 
