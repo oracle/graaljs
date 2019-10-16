@@ -200,7 +200,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         Source source = parsingRequest.getSource();
         List<String> argumentNames = parsingRequest.getArgumentNames();
         if (argumentNames == null || argumentNames.isEmpty()) {
-            final JSContext context = getCurrentJSRealm().getContext();
+            final JSContext context = getJSContext();
 
             if (context.isOptionParseOnly()) {
                 parseInContext(source, context);
@@ -252,7 +252,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
         final Source source = request.getSource();
         final MaterializedFrame requestFrame = request.getFrame();
-        final JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
+        final JSContext context = getJSContext();
         final boolean strict = isStrictLocation(request.getLocation());
         final ExecutableNode executableNode = new ExecutableNode(this) {
             @Child private JavaScriptNode expression = insert(parseInline(source, context, requestFrame, strict));
@@ -591,6 +591,10 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     public Assumption getPromiseJobsQueueEmptyAssumption() {
         return promiseJobsQueueEmptyAssumption;
+    }
+
+    public JSContext getJSContext() {
+        return languageContext;
     }
 
     private static void ensureErrorClassesInitialized() {

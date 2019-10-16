@@ -54,7 +54,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -1437,7 +1437,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child protected JSFunctionCallNode callOnPrototypeNode;
         @Child protected PropertyGetNode getFunctionNode;
-        @CompilationFinal private TruffleLanguage.ContextReference<JSRealm> contextReference;
+        @CompilationFinal private LanguageReference<JavaScriptLanguage> languageRef;
 
         ForeignInvokeNode(String functionName, int expectedArgumentCount) {
             super(expectedArgumentCount);
@@ -1487,11 +1487,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private JSContext getContext() {
-            if (contextReference == null) {
+            if (languageRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextReference = lookupContextReference(JavaScriptLanguage.class);
+                languageRef = lookupLanguageReference(JavaScriptLanguage.class);
             }
-            return contextReference.get().getContext();
+            return languageRef.get().getJSContext();
         }
     }
 
