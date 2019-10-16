@@ -43,9 +43,9 @@ package com.oracle.truffle.js.nodes.binary;
 import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -73,9 +73,6 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
 
     @CompilationFinal boolean truncate;
-
-    @Child private JSDoubleToStringNode doubleToStringNode;
-    @Child private JSConcatStringsNode concatStringsNode;
 
     protected JSAddNode(boolean truncate, JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
@@ -185,8 +182,9 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     }
 
     @Specialization
-    protected CharSequence doString(CharSequence a, CharSequence b) {
-        return getConcatStringsNode().executeCharSequence(a, b);
+    protected CharSequence doString(CharSequence a, CharSequence b,
+                    @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode) {
+        return concatStringsNode.executeCharSequence(a, b);
     }
 
     @Specialization
@@ -200,13 +198,17 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     }
 
     @Specialization(guards = "isNumber(b)")
-    protected CharSequence doStringNumber(CharSequence a, Object b) {
-        return getConcatStringsNode().executeCharSequence(a, getDoubleToStringNode().executeString(b));
+    protected CharSequence doStringNumber(CharSequence a, Object b,
+                    @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode,
+                    @Cached @Shared("doubleToStringNode") JSDoubleToStringNode doubleToStringNode) {
+        return concatStringsNode.executeCharSequence(a, doubleToStringNode.executeString(b));
     }
 
     @Specialization(guards = "isNumber(a)")
-    protected CharSequence doNumberString(Object a, CharSequence b) {
-        return getConcatStringsNode().executeCharSequence(getDoubleToStringNode().executeString(a), b);
+    protected CharSequence doNumberString(Object a, CharSequence b,
+                    @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode,
+                    @Cached @Shared("doubleToStringNode") JSDoubleToStringNode doubleToStringNode) {
+        return concatStringsNode.executeCharSequence(doubleToStringNode.executeString(a), b);
     }
 
     @Specialization(replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doLargeInteger", "doIntLargeInteger", "doLargeIntegerInt", "doLargeIntegerTruncate", "doIntLargeIntegerTruncate",
@@ -252,22 +254,6 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         if (truncate == false) {
             truncate = true;
         }
-    }
-
-    protected JSDoubleToStringNode getDoubleToStringNode() {
-        if (doubleToStringNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            doubleToStringNode = insert(JSDoubleToStringNode.create());
-        }
-        return doubleToStringNode;
-    }
-
-    protected JSConcatStringsNode getConcatStringsNode() {
-        if (concatStringsNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            concatStringsNode = insert(JSConcatStringsNode.create());
-        }
-        return concatStringsNode;
     }
 
     @Override
