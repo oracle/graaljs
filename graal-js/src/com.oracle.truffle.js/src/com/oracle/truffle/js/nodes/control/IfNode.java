@@ -41,7 +41,9 @@
 package com.oracle.truffle.js.nodes.control;
 
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -219,8 +221,22 @@ public final class IfNode extends StatementNode implements ResumableNode {
             return condition.executeBoolean(frame);
         } catch (UnexpectedResultException ex) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            condition.replace(JSToBooleanNode.create(condition));
+            insertToBoolean();
             return JSRuntime.toBoolean(ex.getResult());
+        }
+    }
+
+    private void insertToBoolean() {
+        CompilerAsserts.neverPartOfCompilation();
+        Lock lock = getLock();
+        lock.lock();
+        try {
+            JavaScriptNode cond = condition;
+            if (!(cond instanceof JSToBooleanNode)) {
+                condition = insert(JSToBooleanNode.create(cond));
+            }
+        } finally {
+            lock.unlock();
         }
     }
 }
