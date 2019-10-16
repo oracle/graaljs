@@ -927,3 +927,23 @@ var testRunner = (function() {
         }
     };
 })();
+
+// new mockups from 2019-10-15
+
+function v8HasElementsInALargeObjectSpace(array) {
+    return v8IgnoreResult;
+}
+
+function v8WasmNumCodeSpaces(argument) {
+}
+
+function v8SimulateNewspaceFull() {
+}
+
+function v8RegexpHasBytecode(regexp, is_latin1) {
+    return v8IgnoreResult;
+}
+
+function v8RegexpHasNativeCode(regexp, is_latin1) {
+    return v8IgnoreResult;
+}
