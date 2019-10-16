@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -70,11 +71,13 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -184,19 +187,26 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization(guards = "isJSFunction(target)")
         protected final Object applyFunction(DynamicObject target, Object thisArgument, Object argumentsList) {
-            return applyCallable(target, thisArgument, argumentsList);
+            return apply(target, thisArgument, argumentsList);
         }
 
-        @Specialization(guards = "isCallable(target)", replaces = "applyFunction")
-        protected final Object applyCallable(Object target, Object thisArgument, Object argumentsList) {
+        @Specialization(guards = "isCallable.executeBoolean(target)", replaces = "applyFunction", limit = "1")
+        protected final Object applyCallable(Object target, Object thisArgument, Object argumentsList,
+                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+            return apply(target, thisArgument, argumentsList);
+        }
+
+        private Object apply(Object target, Object thisArgument, Object argumentsList) {
             Object[] applyUserArgs = toObjectArray.executeObjectArray(argumentsList);
+            assert applyUserArgs.length <= JSTruffleOptions.MaxApplyArgumentLength;
             Object[] passedOnArguments = JSArguments.create(thisArgument, target, applyUserArgs);
             return call.executeCall(passedOnArguments);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isCallable(target)")
-        protected static Object error(Object target, Object thisArgument, Object argumentsList) {
+        @Specialization(guards = "!isCallable.executeBoolean(target)", limit = "1")
+        protected static Object error(Object target, Object thisArgument, Object argumentsList,
+                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             throw Errors.createTypeErrorCallableExpected();
         }
     }

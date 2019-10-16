@@ -41,7 +41,9 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.CreateMapIteratorNodeGen;
@@ -58,6 +60,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -255,29 +258,29 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
     }
 
     public abstract static class JSMapForEachNode extends JSMapOperation {
-        @Child private JSFunctionCallNode callNode;
 
         public JSMapForEachNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        private Object call(Object target, DynamicObject function, Object[] params) {
-            if (callNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                callNode = insert(JSFunctionCallNode.createCall());
+        @Specialization(guards = {"isJSMap(thisObj)", "isCallable.executeBoolean(callback)"}, limit = "1")
+        protected Object forEachFunction(DynamicObject thisObj, Object callback, Object thisArg,
+                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached("createCall()") JSFunctionCallNode callNode) {
+            JSHashMap map = JSMap.getInternalMap(thisObj);
+            JSHashMap.Cursor cursor = map.getEntries();
+            while (cursor.advance()) {
+                Object value = cursor.getValue();
+                Object key = cursor.getKey();
+                callNode.executeCall(JSArguments.create(thisArg, callback, new Object[]{value, key, thisObj}));
             }
-            return callNode.executeCall(JSArguments.create(target, function, params));
-        }
-
-        @Specialization(guards = {"isJSMap(thisObj)", "isCallable(callback)"})
-        protected Object forEachFunction(DynamicObject thisObj, DynamicObject callback, Object thisArg) {
-            forEachIntl(thisObj, thisArg, callback);
             return Undefined.instance;
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isJSMap(thisObj)", "!isCallable(callback)"})
-        protected static Object forEachFunctionNoFunction(Object thisObj, Object callback, Object thisArg) {
+        @Specialization(guards = {"isJSMap(thisObj)", "!isCallable.executeBoolean(callback)"}, limit = "1")
+        protected static Object forEachFunctionNoFunction(Object thisObj, Object callback, Object thisArg,
+                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -285,17 +288,6 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization(guards = {"!isJSMap(thisObj)"})
         protected static Object notMap(Object thisObj, Object callback, Object thisArg) {
             throw Errors.createTypeErrorMapExpected();
-        }
-
-        private void forEachIntl(DynamicObject thisObj, Object thisArg, DynamicObject callbackObj) {
-            assert JSRuntime.isCallable(callbackObj);
-            JSHashMap map = JSMap.getInternalMap(thisObj);
-            JSHashMap.Cursor cursor = map.getEntries();
-            while (cursor.advance()) {
-                Object value = cursor.getValue();
-                Object key = cursor.getKey();
-                call(thisArg, callbackObj, new Object[]{value, key, thisObj});
-            }
         }
     }
 
