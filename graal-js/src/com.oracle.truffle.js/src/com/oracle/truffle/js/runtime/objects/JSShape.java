@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -56,6 +55,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
  * Static helper methods for JS-specific operations on shapes.
@@ -186,12 +186,12 @@ public final class JSShape {
         return isFrozenHelper(shape, currentProperty -> JSProperty.isConfigurable(currentProperty) && !currentProperty.isHidden());
     }
 
-    public static List<Property> getProperties(Shape shape) {
+    public static UnmodifiableArrayList<Property> getProperties(Shape shape) {
         assert JSTruffleOptions.FastOwnKeys;
         return JSShapeData.getProperties(shape);
     }
 
-    public static List<String> getEnumerablePropertyNames(Shape shape) {
+    public static UnmodifiableArrayList<String> getEnumerablePropertyNames(Shape shape) {
         assert JSTruffleOptions.FastOwnKeys;
         return JSShapeData.getEnumerablePropertyNames(shape);
     }

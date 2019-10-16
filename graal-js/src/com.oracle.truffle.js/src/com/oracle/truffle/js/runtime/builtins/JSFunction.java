@@ -86,6 +86,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.ForInIterator;
 
 public final class JSFunction extends JSBuiltinObject {
 
@@ -101,6 +102,7 @@ public final class JSFunction extends JSBuiltinObject {
     public static final String ASYNC_GENERATOR_NAME = "AsyncGenerator";
     public static final String ASYNC_GENERATOR_PROTOTYPE_NAME = "AsyncGenerator.prototype";
     public static final String ENUMERATE_ITERATOR_PROTOTYPE_NAME = "[[Enumerate]].prototype";
+    public static final String FOR_IN_ITERATOR_PROTOYPE_NAME = "%ForInIteratorPrototype%";
     public static final String CALLER = "caller";
     public static final String ARGUMENTS = "arguments";
     public static final String LENGTH = "length";
@@ -1021,6 +1023,19 @@ public final class JSFunction extends JSBuiltinObject {
         final Property iteratorProperty = JSObjectUtil.makeHiddenProperty(JSRuntime.ENUMERATE_ITERATOR_ID,
                         JSShape.makeAllocator(JSObject.LAYOUT).locationForType(Iterator.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
         return JSObjectUtil.getProtoChildShape(enumerateIteratorPrototype, JSUserObject.INSTANCE, context).addProperty(iteratorProperty);
+    }
+
+    public static DynamicObject createForInIteratorPrototype(JSRealm realm) {
+        DynamicObject iteratorPrototype = realm.getIteratorPrototype();
+        DynamicObject enumerateIteratorPrototype = JSObject.createInit(realm, iteratorPrototype, JSUserObject.INSTANCE);
+        JSObjectUtil.putFunctionsFromContainer(realm, enumerateIteratorPrototype, JSFunction.FOR_IN_ITERATOR_PROTOYPE_NAME);
+        return enumerateIteratorPrototype;
+    }
+
+    public static Shape makeInitialForInIteratorShape(JSContext context, DynamicObject iteratorPrototype) {
+        final Property iteratorProperty = JSObjectUtil.makeHiddenProperty(JSRuntime.FOR_IN_ITERATOR_ID,
+                        JSShape.makeAllocator(JSObject.LAYOUT).locationForType(ForInIterator.class));
+        return JSObjectUtil.getProtoChildShape(iteratorPrototype, JSUserObject.INSTANCE, context).addProperty(iteratorProperty);
     }
 
     public static Shape makeInitialBoundFunctionShape(JSContext context, DynamicObject prototype, boolean isAnonymous) {

@@ -249,6 +249,7 @@ public class JSRealm {
     private final DynamicObject stringIteratorPrototype;
     private final DynamicObject regExpStringIteratorPrototype;
     private final DynamicObject enumerateIteratorPrototype;
+    private final DynamicObject forInIteratorPrototype;
 
     @CompilationFinal(dimensions = 1) private final JSConstructor[] simdTypeConstructors;
 
@@ -505,6 +506,7 @@ public class JSRealm {
             this.generatorObjectPrototype = null;
         }
         this.enumerateIteratorPrototype = JSFunction.createEnumerateIteratorPrototype(this);
+        this.forInIteratorPrototype = JSFunction.createForInIteratorPrototype(this);
         this.arrayProtoValuesIterator = (DynamicObject) getArrayPrototype().get(Symbol.SYMBOL_ITERATOR, Undefined.instance);
 
         if (context.isOptionSharedArrayBuffer()) {
@@ -883,6 +885,10 @@ public class JSRealm {
 
     public final DynamicObject getEnumerateIteratorPrototype() {
         return enumerateIteratorPrototype;
+    }
+
+    public final DynamicObject getForInIteratorPrototype() {
+        return forInIteratorPrototype;
     }
 
     public final DynamicObject getGeneratorObjectPrototype() {
