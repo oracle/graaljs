@@ -2885,15 +2885,19 @@ public final class GraalJSAccess {
             Object arrayBuffer = arrayBufferNew(context, 4);
             Object typedArray = uint8ArrayNew(arrayBuffer, 2, 1);
 
-            String byteBuffer = findObjectFieldName(arrayBuffer, JSArrayBuffer.getDirectByteBuffer((DynamicObject) arrayBuffer));
-            String buffer = findObjectFieldName(typedArray, arrayBuffer);
+            try {
+                String byteBuffer = findObjectFieldName(arrayBuffer, JSArrayBuffer.getDirectByteBuffer((DynamicObject) arrayBuffer));
+                String buffer = findObjectFieldName(typedArray, arrayBuffer);
 
-            return new Object[]{arrayBuffer.getClass(), byteBuffer, typedArray.getClass(), buffer};
+                return new Object[]{arrayBuffer.getClass(), byteBuffer, typedArray.getClass(), buffer};
+            } catch (Exception e) {
+                // fall through
+            }
         }
         return null;
     }
 
-    private static String findObjectFieldName(Object object, Object search) {
+    private static String findObjectFieldName(Object object, Object search) throws Exception {
         if (!JSTruffleOptions.SubstrateVM) {
             Field[] declaredFields = object.getClass().getDeclaredFields();
             for (Field field : declaredFields) {
@@ -2901,12 +2905,8 @@ public final class GraalJSAccess {
                     continue;
                 }
                 field.setAccessible(true);
-                try {
-                    if (field.get(object) == search) {
-                        return field.getName();
-                    }
-                } catch (IllegalAccessException e) {
-                    break;
+                if (field.get(object) == search) {
+                    return field.getName();
                 }
             }
         }
