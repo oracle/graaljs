@@ -113,10 +113,6 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
         return getCurrentLanguage(TestLanguage.class);
     }
 
-    public static ContextReference<LanguageContext> getCurrentContextReference() {
-        return getCurrentLanguage(TestLanguage.class).getContextReference();
-    }
-
     @Override
     protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         if (wrapper) {

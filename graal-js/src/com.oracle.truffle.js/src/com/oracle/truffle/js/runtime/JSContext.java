@@ -399,7 +399,7 @@ public class JSContext {
         }
 
         this.language = lang;
-        this.contextRef = lang.getContextReference();
+        this.contextRef = getContextReference(lang);
         this.truffleLanguageEnv = env;
 
         this.emptyShape = createEmptyShape();
@@ -531,6 +531,11 @@ public class JSContext {
         this.dictionaryObjectFactory = JSTruffleOptions.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionaryObject::makeDictionaryShape) : null;
 
         this.factoryCount = builder.finish();
+    }
+
+    @SuppressWarnings("deprecation")
+    private static ContextReference<JSRealm> getContextReference(JavaScriptLanguage lang) {
+        return lang.getContextReference();
     }
 
     public final JSFunctionLookup getFunctionLookup() {
