@@ -500,7 +500,11 @@ if _suite.primary:
 
 def _prepare_svm_env():
     import mx_vm
-    graalvm_home = mx_vm.graalvm_home()
+    if hasattr(mx_vm, 'graalvm_home'):
+        graalvm_home = mx_vm.graalvm_home()
+    else:
+        import mx_sdk_vm_impl
+        graalvm_home = mx_sdk_vm_impl.graalvm_home()
     libpolyglot_filename = mx.add_lib_suffix(mx.add_lib_prefix('polyglot'))
     libpolyglots = [join(graalvm_home, directory, libpolyglot_filename) for directory in [join('jre', 'lib', 'polyglot'), join('lib', 'polyglot')]]
     libpolyglot = None
