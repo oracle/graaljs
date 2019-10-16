@@ -151,6 +151,7 @@ test-gc-http-client-timeout: SKIP
 test-gc-net-timeout: SKIP
 test-gc-tls-external-memory: SKIP
 test-http-server-keepalive-req-gc: SKIP
+test-http2-response-splitting: SKIP
 test-net-connect-memleak: FAIL
 test-repl: FAIL
 test-repl-tab-complete: FAIL
