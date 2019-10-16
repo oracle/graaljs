@@ -334,6 +334,11 @@ public final class JSContextOptions {
     public static final OptionKey<Integer> FUNCTION_CONSTRUCTOR_CACHE_SIZE = new OptionKey<>(32);
     @CompilationFinal private int functionConstructorCacheSize;
 
+    public static final String STRING_LENGTH_LIMIT_NAME = JS_OPTION_PREFIX + "string-length-limit";
+    @Option(name = STRING_LENGTH_LIMIT_NAME, category = OptionCategory.EXPERT, help = "Maximum string length.") //
+    public static final OptionKey<Integer> STRING_LENGTH_LIMIT = new OptionKey<>(JSTruffleOptions.StringLengthLimit);
+    @CompilationFinal private int stringLengthLimit;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -401,6 +406,7 @@ public final class JSContextOptions {
         this.testV8Mode = readBooleanOption(TESTV8_MODE);
         this.validateRegExpLiterals = readBooleanOption(VALIDATE_REGEXP_LITERALS);
         this.functionConstructorCacheSize = readIntegerOption(FUNCTION_CONSTRUCTOR_CACHE_SIZE);
+        this.stringLengthLimit = readIntegerOption(STRING_LENGTH_LIMIT);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -647,6 +653,10 @@ public final class JSContextOptions {
         return functionConstructorCacheSize;
     }
 
+    public int getStringLengthLimit() {
+        return stringLengthLimit;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -679,6 +689,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.testV8Mode ? 1 : 0);
         hash = 53 * hash + (this.validateRegExpLiterals ? 1 : 0);
         hash = 53 * hash + this.functionConstructorCacheSize;
+        hash = 53 * hash + this.stringLengthLimit;
         return hash;
     }
 
@@ -776,6 +787,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.functionConstructorCacheSize != other.functionConstructorCacheSize) {
+            return false;
+        }
+        if (this.stringLengthLimit != other.stringLengthLimit) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

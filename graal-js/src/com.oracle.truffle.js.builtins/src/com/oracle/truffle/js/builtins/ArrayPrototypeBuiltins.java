@@ -1506,11 +1506,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final ConditionProfile isTwo = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isSparse = ConditionProfile.createBinaryProfile();
         private final BranchProfile growProfile = BranchProfile.create();
-        private final StringBuilderProfile stringBuilderProfile = StringBuilderProfile.create();
+        private final StringBuilderProfile stringBuilderProfile;
 
         public JSArrayJoinNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
             this.elementToStringNode = JSToStringNode.create();
+            this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
         }
 
         @Specialization
@@ -1553,7 +1554,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             String second = toStringOrEmpty(thisObject, read(thisObject, 1));
 
             long resultLength = first.length() + (appendSep ? joinSeparator.length() : 0) + second.length();
-            if (resultLength > JSTruffleOptions.StringLengthLimit) {
+            if (resultLength > getContext().getStringLengthLimit()) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorInvalidStringLength();
             }
@@ -1620,7 +1621,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (appendSep) {
                 calculatedLength += (length - 1) * joinSeparator.length();
             }
-            if (calculatedLength > JSTruffleOptions.StringLengthLimit) {
+            if (calculatedLength > getContext().getStringLengthLimit()) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorInvalidStringLength();
             }
@@ -1650,12 +1651,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class JSArrayToLocaleStringNode extends JSArrayOperation {
 
-        private final StringBuilderProfile stringBuilderProfile = StringBuilderProfile.create();
+        private final StringBuilderProfile stringBuilderProfile;
         @Child private PropertyGetNode getToLocaleStringNode;
         @Child private JSFunctionCallNode callToLocaleStringNode;
 
         public JSArrayToLocaleStringNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
+            this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
         }
 
         @Specialization

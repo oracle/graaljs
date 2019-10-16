@@ -916,7 +916,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ConditionProfile validPositionProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasNamedCaptureGroupsProfile = ConditionProfile.createBinaryProfile();
         private final BranchProfile dollarProfile = BranchProfile.create();
-        final StringBuilderProfile stringBuilderProfile = StringBuilderProfile.create();
+        final StringBuilderProfile stringBuilderProfile;
         final BranchProfile invalidGroupNumberProfile = BranchProfile.create();
         private final ValueProfile compiledRegexProfile = ValueProfile.createIdentityProfile();
         private final BranchProfile growProfile = BranchProfile.create();
@@ -929,6 +929,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.isObjectNode = IsJSObjectNode.create();
             this.isCallableNode = IsCallableNode.create();
             this.hasLazyRegexResultNode = HasHiddenKeyCacheNode.create(JSArray.LAZY_REGEX_RESULT_ID);
+            this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
         }
 
         @Specialization(guards = {"cachedReplaceValue.equals(replaceValue)"})

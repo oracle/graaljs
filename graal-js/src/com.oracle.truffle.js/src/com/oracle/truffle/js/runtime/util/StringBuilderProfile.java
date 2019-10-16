@@ -44,7 +44,6 @@ import com.oracle.truffle.api.nodes.NodeCloneable;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
  * A wrapper around StringBuilder methods that takes care of profiling and checking that the string
@@ -57,13 +56,13 @@ public final class StringBuilderProfile extends NodeCloneable {
     private final int stringLengthLimit;
     private final BranchProfile errorBranch;
 
-    private StringBuilderProfile() {
-        this.stringLengthLimit = JSTruffleOptions.StringLengthLimit;
+    private StringBuilderProfile(int stringLengthLimit) {
+        this.stringLengthLimit = stringLengthLimit;
         this.errorBranch = BranchProfile.create();
     }
 
-    public static StringBuilderProfile create() {
-        return new StringBuilderProfile();
+    public static StringBuilderProfile create(int stringLengthLimit) {
+        return new StringBuilderProfile(stringLengthLimit);
     }
 
     @SuppressWarnings("static-method")
@@ -123,6 +122,6 @@ public final class StringBuilderProfile extends NodeCloneable {
 
     @Override
     protected Object clone() {
-        return new StringBuilderProfile();
+        return new StringBuilderProfile(stringLengthLimit);
     }
 }

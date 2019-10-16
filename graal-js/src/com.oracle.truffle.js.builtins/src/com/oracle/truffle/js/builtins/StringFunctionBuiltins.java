@@ -61,7 +61,6 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 
@@ -241,8 +240,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private static void appendChecked(StringBuilder result, String str) {
-            if (result.length() + str.length() > JSTruffleOptions.StringLengthLimit) {
+        private void appendChecked(StringBuilder result, String str) {
+            if (result.length() + str.length() > getContext().getStringLengthLimit()) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorInvalidStringLength();
             }

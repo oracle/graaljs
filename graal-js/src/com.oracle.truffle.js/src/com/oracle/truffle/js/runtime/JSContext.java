@@ -1231,6 +1231,10 @@ public class JSContext {
         return contextOptions.getFunctionArgumentsLimit();
     }
 
+    public int getStringLengthLimit() {
+        return contextOptions.getStringLengthLimit();
+    }
+
     public boolean usePromiseResolve() {
         return contextOptions.isAwaitOptimization();
     }

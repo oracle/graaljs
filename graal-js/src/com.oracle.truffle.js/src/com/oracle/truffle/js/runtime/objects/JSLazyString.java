@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -64,7 +65,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
                 return left;
             }
             int resultLength = left.length() + right.length();
-            if (resultLength > JSTruffleOptions.StringLengthLimit) {
+            if (resultLength > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             if (resultLength < JSTruffleOptions.MinLazyStringLength) {
@@ -85,12 +86,13 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
         return new JSLazyString(left, right, length);
     }
 
+    @TruffleBoundary
     private static boolean assertChecked(CharSequence left, CharSequence right, int length) {
         assert JSTruffleOptions.LazyStrings;
         assert JSRuntime.isString(left) && JSRuntime.isString(right);
         assert length == left.length() + right.length();
         assert left.length() > 0 && right.length() > 0;
-        assert JSRuntime.stringLengthValid(left, right);
+        assert left.length() + right.length() <= JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit();
         assert length >= JSTruffleOptions.MinLazyStringLength;
         return true;
     }

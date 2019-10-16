@@ -1088,10 +1088,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      */
     public abstract static class JSStringConcatNode extends JSStringOperation {
 
-        private final StringBuilderProfile stringBuilderProfile = StringBuilderProfile.create();
+        private final StringBuilderProfile stringBuilderProfile;
 
         public JSStringConcatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
         }
 
         @Specialization
@@ -1292,7 +1293,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected String replace(Object thisObj, Object searchValue, Object replaceValue) {
             requireObjectCoercible(thisObj);
             String thisStr = toString(thisObj);
-            JSRuntime.checkStringLength(thisStr);
+            if (thisStr.length() > getContext().getStringLengthLimit()) {
+                CompilerDirectives.transferToInterpreter();
+                throw Errors.createRangeErrorInvalidStringLength();
+            }
             if (isRegExp.profile(JSRegExp.isJSRegExp(searchValue))) {
                 DynamicObject searchRegExp = (DynamicObject) searchValue;
                 int groupCount = compiledRegexAccessor.groupCount(JSRegExp.getCompiledRegex(searchRegExp));
@@ -1408,7 +1412,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             while (resultAccessor.isMatch(result)) {
                 Boundaries.builderAppend(sb, input, thisIndex, resultAccessor.captureGroupStart(result, 0));
                 replacer.appendReplacement(sb, input, result, groupCount, replaceValue);
-                if (sb.length() > JSTruffleOptions.StringLengthLimit) {
+                if (sb.length() > getContext().getStringLengthLimit()) {
                     throw Errors.createRangeErrorInvalidStringLength();
                 }
                 thisIndex = resultAccessor.captureGroupEnd(result, 0);
@@ -2318,7 +2322,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return "";
             }
             int repeatCountInt = (int) repeatCount;
-            if (repeatCountInt != repeatCount || repeatCount * thisStr.length() > JSTruffleOptions.StringLengthLimit) {
+            if (repeatCountInt != repeatCount || repeatCount * thisStr.length() > getContext().getStringLengthLimit()) {
                 errorBranch.enter();
                 throw Errors.createRangeErrorInvalidStringLength();
             }
@@ -2430,7 +2434,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int len = toInteger(args[0]);
             if (len <= thisStr.length()) {
                 return thisStr;
-            } else if (len > JSTruffleOptions.StringLengthLimit) {
+            } else if (len > getContext().getStringLengthLimit()) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorInvalidStringLength();
             }
