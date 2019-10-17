@@ -41,8 +41,11 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -51,6 +54,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -65,6 +69,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 public class ThrowNode extends StatementNode {
     @Child private JavaScriptNode exceptionNode;
     @Child private PropertyGetNode getErrorNode;
+    @Child private InteropLibrary interopNode;
     private final ConditionProfile isError = ConditionProfile.createBinaryProfile();
 
     protected ThrowNode(JavaScriptNode exceptionNode) {
@@ -94,16 +99,28 @@ public class ThrowNode extends StatementNode {
         if (isError.profile(JSError.isJSError(exceptionObject))) {
             DynamicObject jsobject = (DynamicObject) exceptionObject;
             if (JSTruffleOptions.NashornCompatibilityMode) {
-                if (hasSourceSection()) {
-                    SourceSection sourceSection = getSourceSection();
-                    JSContext context = JSObject.getJSContext(jsobject);
-                    JSError.setLineNumber(context, jsobject, sourceSection.getStartLine());
-                    JSError.setColumnNumber(context, jsobject, sourceSection.getStartColumn());
-                }
+                setLineAndColumnNumber(jsobject);
             }
             throw getException(jsobject);
+        } else {
+            tryRethrowInterop(exceptionObject);
         }
         throw UserScriptException.create(exceptionObject, this);
+    }
+
+    private void tryRethrowInterop(Object exceptionObject) {
+        InteropLibrary interop = interopNode;
+        if (interop == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(3));
+        }
+        if (interop.isException(exceptionObject)) {
+            try {
+                interop.throwException(exceptionObject);
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(exceptionObject, e, "throwException", this);
+            }
+        }
     }
 
     private GraalJSException getException(DynamicObject errorObj) {
@@ -114,6 +131,16 @@ public class ThrowNode extends StatementNode {
         Object exception = getErrorNode.getValue(errorObj);
         return (GraalJSException) exception;
 
+    }
+
+    @TruffleBoundary
+    private void setLineAndColumnNumber(DynamicObject jsobject) {
+        if (hasSourceSection()) {
+            SourceSection sourceSection = getSourceSection();
+            JSContext context = JSObject.getJSContext(jsobject);
+            JSError.setLineNumber(context, jsobject, sourceSection.getStartLine());
+            JSError.setColumnNumber(context, jsobject, sourceSection.getStartColumn());
+        }
     }
 
     @Override

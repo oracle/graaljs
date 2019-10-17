@@ -54,6 +54,8 @@ import org.graalvm.polyglot.Context;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -198,7 +200,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         Source source = parsingRequest.getSource();
         List<String> argumentNames = parsingRequest.getArgumentNames();
         if (argumentNames == null || argumentNames.isEmpty()) {
-            final JSContext context = getContextReference().get().getContext();
+            final JSContext context = getJSContext();
 
             if (context.isOptionParseOnly()) {
                 parseInContext(source, context);
@@ -210,10 +212,15 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             RootNode rootNode = new RootNode(this) {
                 @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
                 @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+                @CompilationFinal private ContextReference<JSRealm> contextReference;
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    JSRealm realm = getContextReference().get();
+                    if (contextReference == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        contextReference = lookupContextReference(JavaScriptLanguage.class);
+                    }
+                    JSRealm realm = contextReference.get();
                     assert realm.getContext() == context : "unexpected JSContext";
                     try {
                         interopBoundaryEnter(realm);
@@ -245,7 +252,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
         final Source source = request.getSource();
         final MaterializedFrame requestFrame = request.getFrame();
-        final JSContext context = getContextReference().get().getContext();
+        final JSContext context = getJSContext();
         final boolean strict = isStrictLocation(request.getLocation());
         final ExecutableNode executableNode = new ExecutableNode(this) {
             @Child private JavaScriptNode expression = insert(parseInline(source, context, requestFrame, strict));
@@ -253,7 +260,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                assert getContextReference().get().getContext() == context : "unexpected JSContext";
+                assert JavaScriptLanguage.getCurrentJSRealm().getContext() == context : "unexpected JSContext";
                 Object result = expression.execute(frame);
                 return exportValueNode.execute(result);
             }
@@ -273,9 +280,16 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     private RootNode parseWithArgumentNames(Source source, List<String> argumentNames) {
         return new RootNode(this) {
+            @CompilationFinal private ContextReference<JSRealm> contextReference;
+
             @Override
             public Object execute(VirtualFrame frame) {
-                return executeImpl(getContextReference().get(), frame.getArguments());
+                if (contextReference == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    contextReference = lookupContextReference(JavaScriptLanguage.class);
+                }
+                JSRealm realm = contextReference.get();
+                return executeImpl(realm, frame.getArguments());
             }
 
             @TruffleBoundary
@@ -577,6 +591,10 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     public Assumption getPromiseJobsQueueEmptyAssumption() {
         return promiseJobsQueueEmptyAssumption;
+    }
+
+    public JSContext getJSContext() {
+        return languageContext;
     }
 
     private static void ensureErrorClassesInitialized() {

@@ -50,10 +50,11 @@ import java.util.concurrent.locks.Lock;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -388,11 +389,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         AbstractCacheNode newNode = null;
         int userArgumentCount = JSArguments.getUserArgumentCount(arguments);
         Object thisObject = JSArguments.getThisObject(arguments);
-        JavaScriptLanguage language = JavaScriptLanguage.getCurrentLanguage();
         if (JSGuards.isForeignObject(thisObject)) {
             Object propertyKey = functionCallNode.getPropertyKey();
             if (propertyKey != null && propertyKey instanceof String) {
-                newNode = new ForeignInvokeNode(language, (String) propertyKey, userArgumentCount);
+                newNode = new ForeignInvokeNode((String) propertyKey, userArgumentCount);
             }
         }
         if (newNode == null) {
@@ -1437,12 +1437,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child protected JSFunctionCallNode callOnPrototypeNode;
         @Child protected PropertyGetNode getFunctionNode;
-        private final TruffleLanguage.ContextReference<JSRealm> contextRef;
+        @CompilationFinal private LanguageReference<JavaScriptLanguage> languageRef;
 
-        ForeignInvokeNode(JavaScriptLanguage language, String functionName, int expectedArgumentCount) {
+        ForeignInvokeNode(String functionName, int expectedArgumentCount) {
             super(expectedArgumentCount);
             this.functionName = functionName;
-            this.contextRef = language.getContextReference();
         }
 
         @Override
@@ -1459,12 +1458,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 try {
                     callReturn = interop.invokeMember(receiver, functionName, callArguments);
                 } catch (UnknownIdentifierException | UnsupportedMessageException uiex) {
-                    JSRealm realm = contextRef.get();
-                    if (realm.getContext().getContextOptions().hasForeignObjectPrototype()) {
+                    JSContext context = getContext();
+                    if (context.getContextOptions().hasForeignObjectPrototype()) {
                         if (foreignObjectPrototypeNode == null || getFunctionNode == null || callOnPrototypeNode == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
-                            getFunctionNode = insert(PropertyGetNode.create(functionName, contextRef.get().getContext()));
+                            getFunctionNode = insert(PropertyGetNode.create(functionName, context));
                             callOnPrototypeNode = insert(JSFunctionCallNode.createCall());
                         }
                         DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(receiver);
@@ -1485,6 +1484,14 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 }
             }
             return convertForeignReturn(callReturn);
+        }
+
+        private JSContext getContext() {
+            if (languageRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                languageRef = lookupLanguageReference(JavaScriptLanguage.class);
+            }
+            return languageRef.get().getJSContext();
         }
     }
 

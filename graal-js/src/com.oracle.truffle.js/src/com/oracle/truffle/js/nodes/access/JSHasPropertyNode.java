@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,7 +58,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -174,7 +173,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,
                     @Cached("create()") JSHasPropertyNode hasInPrototype,
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) {
+                    @CachedLanguage LanguageReference<JavaScriptLanguage> languageRef) {
         if (propertyName instanceof Symbol) {
             return false;
         } else if (propertyName instanceof Number) {
@@ -184,8 +183,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
             if (interop.isMemberExisting(object, toStringNode.executeString(propertyName))) {
                 return true;
             }
-            JSRealm realm = contextRef.get();
-            if (realm.getContext().getContextOptions().hasForeignObjectPrototype()) {
+            if (languageRef.get().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
                 DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(object);
                 return hasInPrototype.executeBoolean(prototype, propertyName);
             } else {

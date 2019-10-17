@@ -77,12 +77,11 @@ public class InnerContextTest {
 
                     @TruffleBoundary
                     private Object innerJS() {
-                        ContextReference<LanguageContext> contextReference = languageInstance.getContextReference();
-                        TruffleLanguage.Env env = contextReference.get().getEnv();
+                        TruffleLanguage.Env env = TruffleLanguage.getCurrentContext(TestLanguage.class).getEnv();
                         TruffleContext innerContext = env.newContextBuilder().build();
                         Object prev = innerContext.enter();
                         try {
-                            TruffleLanguage.Env innerEnv = contextReference.get().getEnv();
+                            TruffleLanguage.Env innerEnv = TruffleLanguage.getCurrentContext(TestLanguage.class).getEnv();
                             CallTarget answer = innerEnv.parsePublic(com.oracle.truffle.api.source.Source.newBuilder(JavaScriptLanguage.ID, "42", "test.js").build());
                             return answer.call();
                         } finally {
@@ -197,7 +196,7 @@ public class InnerContextTest {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     CompilerDirectives.transferToInterpreter();
-                    TestLanguage.LanguageContext ctx = languageInstance.getContextReference().get();
+                    TestLanguage.LanguageContext ctx = TruffleLanguage.getCurrentContext(TestLanguage.class);
                     TruffleLanguage.Env e = ctx.env;
                     com.oracle.truffle.api.source.Source src = com.oracle.truffle.api.source.Source.newBuilder("js", jsCode, "jscode.js").build();
                     CallTarget call = e.parseInternal(src, argumentNames);
