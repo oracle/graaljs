@@ -53,6 +53,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -592,15 +593,26 @@ public abstract class JSClass extends ObjectType {
         return objectType instanceof JSAbstractArray || objectType instanceof JSArrayBufferView;
     }
 
+    @ImportStatic({JSGuards.class})
     @ExportMessage
-    static long getArraySize(DynamicObject target) throws UnsupportedMessageException {
-        if (JSArray.isJSArray(target)) {
+    abstract static class GetArraySize {
+        @Specialization(guards = "isJSArray(target)")
+        static long array(DynamicObject target) {
             return JSArray.arrayGetLength(target);
-        } else if (JSArrayBufferView.isJSArrayBufferView(target)) {
+        }
+
+        @Specialization(guards = "isJSArrayBufferView(target)")
+        static long typedArray(DynamicObject target) {
             return JSArrayBufferView.typedArrayGetLength(target);
-        } else if (JSArgumentsObject.isJSArgumentsObject(target)) {
+        }
+
+        @Specialization(guards = "isJSArgumentsObject(target)")
+        static long argumentsObject(DynamicObject target) {
             return JSRuntime.toInteger(JSObject.get(target, JSAbstractArray.LENGTH));
-        } else {
+        }
+
+        @Fallback
+        static long unsupported(@SuppressWarnings("unused") DynamicObject target) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
     }
