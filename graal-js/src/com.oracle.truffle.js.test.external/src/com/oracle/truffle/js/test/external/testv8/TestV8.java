@@ -77,6 +77,9 @@ public class TestV8 extends TestSuite {
     private static final String TESTS_CONFIG_FILE = "testV8.json";
     private static final String FAILED_TESTS_FILE = "testv8.failed";
 
+    /** An arbitrary limit high enough to pass mjsunit/regress/regress-crbug-160010.js. */
+    private static final int STRING_LENGTH_LIMIT = (1 << 28) + 16;
+
     private final Source mockupSource;
     private final Map<String, String> commonOptions;
     private final List<String> commonOptionsExtLauncher;
@@ -92,6 +95,8 @@ public class TestV8 extends TestSuite {
         options.put(JSContextOptions.V8_LEGACY_CONST_NAME, "true");
         options.put(JSContextOptions.INTL_402_NAME, "true");
         options.put(JSContextOptions.SHELL_NAME, "true"); // readbuffer, quit
+        // Reduce string length limit in order to avoid transient out of memory errors.
+        options.put(JSContextOptions.STRING_LENGTH_LIMIT_NAME, String.valueOf(STRING_LENGTH_LIMIT));
         config.addCommonOptions(options);
         commonOptions = Collections.unmodifiableMap(options);
         commonOptionsExtLauncher = optionsToExtLauncherOptions(options);

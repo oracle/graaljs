@@ -2053,17 +2053,6 @@ public final class JSRuntime {
         return longValue(value);
     }
 
-    public static void checkStringLength(String str) {
-        if (str.length() > JSTruffleOptions.StringLengthLimit) {
-            CompilerDirectives.transferToInterpreter();
-            throw Errors.createRangeErrorInvalidStringLength();
-        }
-    }
-
-    public static boolean stringLengthValid(CharSequence left, CharSequence right) {
-        return (length(left) + length(right)) <= JSTruffleOptions.StringLengthLimit;
-    }
-
     /**
      * Concatenate two strings, preallocating the buffer with the exact length of the result.
      */

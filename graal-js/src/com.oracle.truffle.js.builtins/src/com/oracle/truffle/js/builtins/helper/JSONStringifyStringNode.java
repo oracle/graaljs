@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -78,10 +77,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     private final JSContext context;
     @Child private PropertyGetNode getToJSONProperty;
     @Child private JSFunctionCallNode callToJSONFunction;
-    private final StringBuilderProfile stringBuilderProfile = StringBuilderProfile.create();
+    private final StringBuilderProfile stringBuilderProfile;
 
     protected JSONStringifyStringNode(JSContext context) {
         this.context = context;
+        this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
     }
 
     public abstract Object execute(Object data, String key, DynamicObject holder);
@@ -370,7 +370,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
         // output will reach maximum length in at most in StringLengthLimit steps
         long length = JSRuntime.toLength(lenObject);
-        if (length > JSTruffleOptions.StringLengthLimit) {
+        if (length > context.getStringLengthLimit()) {
             throw Errors.createRangeErrorInvalidStringLength();
         }
         int len = (int) length;

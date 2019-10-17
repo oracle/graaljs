@@ -40,9 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.dsl.ImportStatic;
+import static com.oracle.truffle.api.CompilerDirectives.SLOWPATH_PROBABILITY;
+import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
+
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -50,45 +55,50 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
-@SuppressWarnings("unused")
-@ImportStatic(JSRuntime.class)
 public abstract class JSConcatStringsNode extends JavaScriptBaseNode {
 
-    protected final ConditionProfile leftIsString = ConditionProfile.createBinaryProfile();
-    protected final ConditionProfile leftIsLazyString = ConditionProfile.createBinaryProfile();
-    protected final ConditionProfile leftIsFlat = ConditionProfile.createBinaryProfile();
-    protected final ConditionProfile rightIsString = ConditionProfile.createBinaryProfile();
-    protected final ConditionProfile rightIsLazyString = ConditionProfile.createBinaryProfile();
-    protected final ConditionProfile rightIsFlat = ConditionProfile.createBinaryProfile();
-    protected final ConditionProfile stringLength = ConditionProfile.createBinaryProfile();
-    protected final ConditionProfile shortStringAppend = ConditionProfile.createBinaryProfile();
+    protected final int stringLengthLimit;
 
-    protected JSConcatStringsNode() {
-        super();
+    protected JSConcatStringsNode(int stringLengthLimit) {
+        this.stringLengthLimit = stringLengthLimit;
+    }
+
+    public static JSConcatStringsNode create(int stringLengthLimit) {
+        return JSConcatStringsNodeGen.create(stringLengthLimit);
     }
 
     public static JSConcatStringsNode create() {
-        return JSConcatStringsNodeGen.create();
+        return create(JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit());
     }
 
     public abstract CharSequence executeCharSequence(CharSequence a, CharSequence b);
 
-    @Specialization(guards = "length(left, leftIsString, leftIsLazyString) == 0")
-    protected static CharSequence doLeftEmpty(CharSequence left, CharSequence right) {
+    @Specialization(guards = "isEmptyString(left)")
+    protected static CharSequence doLeftEmpty(@SuppressWarnings("unused") CharSequence left, CharSequence right) {
         return right;
     }
 
-    @Specialization(guards = "length(right, rightIsString, rightIsLazyString) == 0")
-    protected static CharSequence doRightEmpty(CharSequence left, CharSequence right) {
+    @Specialization(guards = "isEmptyString(right)")
+    protected static CharSequence doRightEmpty(CharSequence left, @SuppressWarnings("unused") CharSequence right) {
         return left;
     }
 
-    @Specialization(guards = {"concatGuard(left, right)"})
-    protected CharSequence doConcat(CharSequence left, CharSequence right) {
+    @Specialization(guards = {"!isEmptyString(left)", "!isEmptyString(right)"})
+    protected final CharSequence doConcat(CharSequence left, CharSequence right,
+                    @Cached("createBinaryProfile()") ConditionProfile leftIsString,
+                    @Cached("createBinaryProfile()") ConditionProfile leftIsLazyString,
+                    @Cached("createBinaryProfile()") ConditionProfile leftIsFlat,
+                    @Cached("createBinaryProfile()") ConditionProfile rightIsString,
+                    @Cached("createBinaryProfile()") ConditionProfile rightIsLazyString,
+                    @Cached("createBinaryProfile()") ConditionProfile rightIsFlat,
+                    @Cached("createBinaryProfile()") ConditionProfile stringLength,
+                    @Cached("createBinaryProfile()") ConditionProfile shortStringAppend,
+                    @Cached BranchProfile errorBranch) {
         if (JSTruffleOptions.LazyStrings) {
             int leftLength = JSRuntime.length(left, leftIsString, leftIsLazyString);
             int rightLength = JSRuntime.length(right, rightIsString, rightIsLazyString);
             int resultLength = leftLength + rightLength;
+            validateStringLength(resultLength, errorBranch);
             if (stringLength.profile(resultLength >= JSTruffleOptions.MinLazyStringLength)) {
                 if (shortStringAppend.profile(leftLength == 1 || rightLength == 1)) {
                     JSLazyString result = JSLazyString.concatToLeafMaybe(left, right, resultLength);
@@ -101,7 +111,17 @@ public abstract class JSConcatStringsNode extends JavaScriptBaseNode {
         }
         String leftString = toString(left, leftIsString, leftIsLazyString, leftIsFlat);
         String rightString = toString(right, rightIsString, rightIsLazyString, rightIsFlat);
+        if (!JSTruffleOptions.LazyStrings) {
+            validateStringLength(leftString.length() + rightString.length(), errorBranch);
+        }
         return Boundaries.stringConcat(leftString, rightString);
+    }
+
+    private void validateStringLength(int resultLength, BranchProfile errorBranch) {
+        if (injectBranchProbability(SLOWPATH_PROBABILITY, resultLength < 0 || resultLength > stringLengthLimit)) {
+            errorBranch.enter();
+            throw Errors.createRangeErrorInvalidStringLength(this);
+        }
     }
 
     private static String toString(CharSequence cs, ConditionProfile stringProfile, ConditionProfile lazyStringProfile, ConditionProfile flatProfile) {
@@ -114,19 +134,8 @@ public abstract class JSConcatStringsNode extends JavaScriptBaseNode {
         }
     }
 
-    @Specialization(guards = "!concatStringLengthValid(left, right)")
-    protected final CharSequence doInvalidLength(CharSequence left, CharSequence right) {
-        throw Errors.createRangeErrorInvalidStringLength(this);
-    }
-
-    protected boolean concatGuard(CharSequence left, CharSequence right) {
-        int leftLength = JSRuntime.length(left, leftIsString, leftIsLazyString);
-        int rightLength = JSRuntime.length(right, rightIsString, rightIsLazyString);
-        return leftLength > 0 && rightLength > 0 && (leftLength + rightLength) <= JSTruffleOptions.StringLengthLimit;
-    }
-
-    protected boolean concatStringLengthValid(CharSequence left, CharSequence right) {
-        return (JSRuntime.length(left, leftIsString, leftIsLazyString) + JSRuntime.length(right, rightIsString, rightIsLazyString)) <= JSTruffleOptions.StringLengthLimit;
+    protected static boolean isEmptyString(CharSequence s) {
+        return s instanceof String && ((String) s).isEmpty();
     }
 
 }
