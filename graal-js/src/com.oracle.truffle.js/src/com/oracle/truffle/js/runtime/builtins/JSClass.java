@@ -49,6 +49,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -507,11 +508,10 @@ public abstract class JSClass extends ObjectType {
         }
     }
 
-    @SuppressWarnings("unused")
     @ExportMessage
     static Object readMember(DynamicObject target, String key,
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnknownIdentifierException, UnsupportedMessageException {
         ensureHasMembers(target);
         Object result;
@@ -535,13 +535,13 @@ public abstract class JSClass extends ObjectType {
         return keyInfo.execute(target, key, KeyInfoNode.READABLE);
     }
 
-    @SuppressWarnings("unused")
     @ExportMessage
     static void writeMember(DynamicObject target, String key, Object value,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode)
+                    throws UnknownIdentifierException, UnsupportedMessageException {
         ensureHasMembers(target);
         if (!keyInfo.execute(target, key, KeyInfoNode.WRITABLE)) {
             throw UnknownIdentifierException.create(key);
@@ -617,11 +617,10 @@ public abstract class JSClass extends ObjectType {
         }
     }
 
-    @SuppressWarnings("unused")
     @ExportMessage
     static Object readArrayElement(DynamicObject target, long index,
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws InvalidArrayIndexException, UnsupportedMessageException {
         if (!hasArrayElements(target)) {
             throw UnsupportedMessageException.create();
@@ -644,13 +643,12 @@ public abstract class JSClass extends ObjectType {
         return hasArrayElements(target) && keyInfo.execute(target, index, KeyInfoNode.READABLE);
     }
 
-    @SuppressWarnings("unused")
     @ExportMessage
     static void writeArrayElement(DynamicObject target, long index, Object value,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode castValueNode,
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
         if (!hasArrayElements(target)) {
             throw UnsupportedMessageException.create();
         }
