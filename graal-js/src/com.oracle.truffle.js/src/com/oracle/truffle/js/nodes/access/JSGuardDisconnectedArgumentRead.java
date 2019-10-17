@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -88,9 +89,10 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
     }
 
     @Specialization(guards = "!isArgumentsDisconnected(argumentsArray)")
-    public Object doObject(DynamicObject argumentsArray, @Cached("createBinaryProfile()") ConditionProfile unconnectedProfile) {
+    public Object doObject(DynamicObject argumentsArray,
+                    @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsObject.isJSArgumentsObject(argumentsArray);
-        if (unconnectedProfile.profile(index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray))) {
+        if (unconnected.profile(index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray))) {
             return Undefined.instance;
         } else {
             return readElementNode.executeWithTargetAndIndex(argumentsArray, index);
@@ -102,11 +104,13 @@ public abstract class JSGuardDisconnectedArgumentRead extends JavaScriptNode imp
     }
 
     @Specialization(guards = "isArgumentsDisconnected(argumentsArray)")
-    public Object doObjectDisconnected(DynamicObject argumentsArray) {
+    public Object doObjectDisconnected(DynamicObject argumentsArray,
+                    @Cached("createBinaryProfile()") ConditionProfile wasDisconnected,
+                    @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
         assert JSArgumentsObject.isJSArgumentsObject(argumentsArray);
-        if (JSArgumentsObject.wasIndexDisconnected(argumentsArray, index)) {
+        if (wasDisconnected.profile(JSArgumentsObject.wasIndexDisconnected(argumentsArray, index))) {
             return JSArgumentsObject.getDisconnectedIndexValue(argumentsArray, index);
-        } else if (index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray)) {
+        } else if (unconnected.profile(index >= JSArgumentsObject.getConnectedArgumentCount(argumentsArray))) {
             return Undefined.instance;
         } else {
             return readElementNode.executeWithTargetAndIndex(argumentsArray, index);

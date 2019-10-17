@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -55,7 +55,6 @@ import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -71,12 +70,11 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
 
     public abstract Object execute(DynamicObject receiver, String name, Object[] arguments) throws UnknownIdentifierException, UnsupportedMessageException;
 
-    @SuppressWarnings("unused")
     @Specialization(guards = {"cachedName.equals(name)"}, limit = "1")
-    Object doCached(DynamicObject receiver, String name, Object[] arguments,
+    Object doCached(DynamicObject receiver, @SuppressWarnings("unused") String name, Object[] arguments,
                     @Cached("name") String cachedName,
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached("createGetProperty(cachedName, contextRef)") PropertyGetNode functionPropertyGetNode,
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @Cached("createGetProperty(cachedName, languageRef)") PropertyGetNode functionPropertyGetNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
@@ -91,11 +89,10 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
         }
     }
 
-    @SuppressWarnings("unused")
     @Specialization(replaces = "doCached")
     Object doUncached(DynamicObject receiver, String name, Object[] arguments,
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
-                    @Cached(value = "createCachedInterop(contextRef)", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Shared("importValue") @Cached JSForeignToJSTypeNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
@@ -120,8 +117,8 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
         }
     }
 
-    PropertyGetNode createGetProperty(String name, ContextReference<JSRealm> contextRef) {
-        return PropertyGetNode.create(name, false, contextRef.get().getContext());
+    PropertyGetNode createGetProperty(String name, LanguageReference<JavaScriptLanguage> languageRef) {
+        return PropertyGetNode.create(name, false, languageRef.get().getJSContext());
     }
 
     static ReadElementNode getUncachedRead() {
