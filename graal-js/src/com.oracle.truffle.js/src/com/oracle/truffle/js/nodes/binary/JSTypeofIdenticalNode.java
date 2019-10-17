@@ -59,6 +59,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
@@ -67,7 +68,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -180,11 +180,16 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         }
     }
 
+    @SuppressWarnings("deprecation")
+    private JavaScriptLanguage getLanguage() {
+        return getRootNode().getLanguage(JavaScriptLanguage.class);
+    }
+
     private Object[] parseMaterializationInfo() {
         String literal;
         boolean identity;
         boolean typeofAsLeftOperand;
-        JSContext context = AbstractJavaScriptLanguage.getCurrentJSRealm().getContext();
+        JSContext context = getLanguage().getJSContext();
         try {
             Expression expression = context.getEvaluator().parseExpression(context, getSourceSection().getCharacters().toString());
             if (expression instanceof BinaryNode) {
