@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -79,6 +78,8 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectSetPro
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectTestIntegrityLevelNodeGen;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectValuesOrEntriesNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
+import com.oracle.truffle.js.builtins.helper.ListGetNode;
+import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
@@ -340,19 +341,25 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class ObjectGetOwnPropertyDescriptorsNode extends ObjectOperation {
-        private final JSClassProfile classProfile = JSClassProfile.create();
-        @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
 
         public ObjectGetOwnPropertyDescriptorsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
+        protected abstract DynamicObject executeEvaluated(Object obj);
+
         @Specialization(guards = {"isJSObject(thisObj)"})
-        protected DynamicObject getJSObject(DynamicObject thisObj) {
+        protected DynamicObject getJSObject(DynamicObject thisObj,
+                        @Cached JSGetOwnPropertyNode getOwnPropertyNode,
+                        @Cached ListSizeNode listSize,
+                        @Cached ListGetNode listGet,
+                        @Cached JSClassProfile classProfile) {
             DynamicObject retObj = JSUserObject.create(getContext());
 
-            for (Iterator<Object> iterator = Boundaries.iterator(JSObject.ownPropertyKeys(thisObj, classProfile)); Boundaries.iteratorHasNext(iterator);) {
-                Object key = Boundaries.iteratorNext(iterator);
+            List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(thisObj, classProfile);
+            int size = listSize.execute(ownPropertyKeys);
+            for (int i = 0; i < size; i++) {
+                Object key = listGet.execute(ownPropertyKeys, i);
                 assert JSRuntime.isPropertyKey(key);
                 PropertyDescriptor desc = getOwnPropertyNode.execute(thisObj, key);
                 if (desc != null) {
@@ -414,12 +421,15 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
-        protected DynamicObject getDefault(Object thisObj) {
+        protected DynamicObject getDefault(Object thisObj,
+                        @Cached("createRecursive()") ObjectGetOwnPropertyDescriptorsNode recursive) {
             TruffleObject object = toTruffleObject(thisObj);
-            assert JSObject.isJSObject(object);
-            return getJSObject((DynamicObject) object);
+            return recursive.executeEvaluated(object);
         }
 
+        ObjectGetOwnPropertyDescriptorsNode createRecursive() {
+            return ObjectGetOwnPropertyDescriptorsNodeGen.create(getContext(), getBuiltin(), new JavaScriptNode[0]);
+        }
     }
 
     public abstract static class ObjectGetOwnPropertyNamesOrSymbolsNode extends ObjectOperation {
@@ -893,7 +903,9 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object assign(Object target, Object[] sources,
                         @Cached("create(getContext())") ReadElementNode read,
                         @Cached("create(getContext(), STRICT)") WriteElementNode write,
-                        @Cached JSGetOwnPropertyNode getOwnProperty,
+                        @Cached("create(false)") JSGetOwnPropertyNode getOwnProperty,
+                        @Cached ListSizeNode listSize,
+                        @Cached ListGetNode listGet,
                         @Cached BranchProfile listProfile,
                         @Cached BranchProfile elementProfile,
                         @Cached JSClassProfile classProfile,
@@ -906,8 +918,10 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 if (o != Undefined.instance && o != Null.instance) {
                     listProfile.enter();
                     DynamicObject from = JSRuntime.expectJSObject(toObject(o), notAJSObjectBranch);
-                    for (Iterator<Object> iterator = Boundaries.iterator(JSObject.ownPropertyKeys(from, classProfile)); Boundaries.iteratorHasNext(iterator);) {
-                        Object nextKey = Boundaries.iteratorNext(iterator);
+                    List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(from, classProfile);
+                    int size = listSize.execute(ownPropertyKeys);
+                    for (int i = 0; i < size; i++) {
+                        Object nextKey = listGet.execute(ownPropertyKeys, i);
                         assert JSRuntime.isPropertyKey(nextKey);
                         PropertyDescriptor desc = getOwnProperty.execute(from, nextKey);
                         if (desc != null && desc.getEnumerable()) {

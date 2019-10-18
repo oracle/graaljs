@@ -52,6 +52,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNodeGen.UsesOrdinaryGetOwnPropertyNodeGen;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -82,6 +84,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     private final ConditionProfile hasPropertyBranch = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isDataPropertyBranch = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isAccessorPropertyBranch = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile isProxyPropertyBranch = ConditionProfile.createBinaryProfile();
 
     protected JSGetOwnPropertyNode(boolean needValue, boolean needEnumerability, boolean needConfigurability, boolean needWritability, boolean allowCaching) {
         this.needValue = needValue;
@@ -155,8 +158,9 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         return ordinaryGetOwnProperty(thisObj, cachedProperty);
     }
 
-    @Specialization(guards = "getJSClassIfOrdinary(thisObj) != null", replaces = "cachedOrdinary")
-    PropertyDescriptor uncachedOrdinary(DynamicObject thisObj, Object propertyKey) {
+    @Specialization(guards = "usesOrdinaryGetOwnProperty.execute(thisObj)", replaces = "cachedOrdinary", limit = "1")
+    PropertyDescriptor uncachedOrdinary(DynamicObject thisObj, Object propertyKey,
+                    @SuppressWarnings("unused") @Cached UsesOrdinaryGetOwnPropertyNode usesOrdinaryGetOwnProperty) {
         assert JSRuntime.isPropertyKey(propertyKey) && JSObject.getJSClass(thisObj).usesOrdinaryGetOwnProperty();
         Property prop = thisObj.getShape().getProperty(propertyKey);
         return ordinaryGetOwnProperty(thisObj, prop);
@@ -178,7 +182,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         }
         PropertyDescriptor d;
         if (isDataPropertyBranch.profile(JSProperty.isData(prop))) {
-            Object value = needValue ? JSProperty.getValue(prop, thisObj, thisObj, false) : null;
+            Object value = needValue ? getDataPropertyValue(thisObj, prop) : null;
             d = PropertyDescriptor.createData(value);
             if (needWritability) {
                 d.setWritable(JSProperty.isWritable(prop));
@@ -202,6 +206,16 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         return d;
     }
 
+    private Object getDataPropertyValue(DynamicObject thisObj, Property prop) {
+        assert JSProperty.isData(prop);
+        Object value = prop.get(thisObj, false);
+        if (isProxyPropertyBranch.profile(JSProperty.isProxy(prop))) {
+            return ((PropertyProxy) value).get(thisObj);
+        } else {
+            return value;
+        }
+    }
+
     @Specialization(guards = {"!jsclassProfile.getJSClass(thisObj).usesOrdinaryGetOwnProperty()", "!isJSArray(thisObj)", "!isJSString(thisObj)"}, limit = "1")
     static PropertyDescriptor generic(DynamicObject thisObj, Object key,
                     @Cached("create()") JSClassProfile jsclassProfile) {
@@ -219,6 +233,33 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             seenNonArrayIndex = true;
             return JSRuntime.INVALID_ARRAY_INDEX;
+        }
+    }
+
+    public abstract static class UsesOrdinaryGetOwnPropertyNode extends JavaScriptBaseNode {
+
+        protected UsesOrdinaryGetOwnPropertyNode() {
+        }
+
+        public static UsesOrdinaryGetOwnPropertyNode create() {
+            return UsesOrdinaryGetOwnPropertyNodeGen.create();
+        }
+
+        public final boolean execute(DynamicObject object) {
+            return execute(JSObject.getJSClass(object));
+        }
+
+        public abstract boolean execute(JSClass jsclass);
+
+        @Specialization(guards = {"jsclass == cachedJSClass"}, limit = "3")
+        static boolean doCached(@SuppressWarnings("unused") JSClass jsclass,
+                        @Cached(value = "jsclass") JSClass cachedJSClass) {
+            return cachedJSClass.usesOrdinaryGetOwnProperty();
+        }
+
+        @Specialization(replaces = {"doCached"})
+        static boolean doObjectPrototype(JSClass jsclass) {
+            return jsclass.usesOrdinaryGetOwnProperty();
         }
     }
 }
