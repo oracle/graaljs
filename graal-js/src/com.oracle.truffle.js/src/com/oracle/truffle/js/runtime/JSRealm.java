@@ -281,6 +281,10 @@ public class JSRealm {
     @CompilationFinal private DynamicObject simdTypeConstructor;
     @CompilationFinal private DynamicObject simdTypePrototype;
 
+    private DynamicObject preinitIntlObject;
+    private DynamicObject preinitConsoleBuiltinObject;
+    private DynamicObject preinitPerformanceObject;
+
     private volatile Map<Object, DynamicObject> templateRegistry;
 
     private final DynamicObject globalScope;
@@ -1168,7 +1172,7 @@ public class JSRealm {
 
     private void addPerformanceGlobal() {
         if (context.getContextOptions().isPerformance()) {
-            putGlobalProperty(PERFORMANCE_CLASS_NAME, createPerformance());
+            putGlobalProperty(PERFORMANCE_CLASS_NAME, preinitPerformanceObject != null ? preinitPerformanceObject : createPerformanceObject());
         }
     }
 
@@ -1209,24 +1213,27 @@ public class JSRealm {
 
     private void addIntlGlobal() {
         if (context.isOptionIntl402()) {
-            DynamicObject intlObject = JSIntl.create(this);
-            DynamicObject collatorFn = getCollatorConstructor();
-            DynamicObject numberFormatFn = getNumberFormatConstructor();
-            DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor();
-            DynamicObject pluralRulesFn = getPluralRulesConstructor();
-            DynamicObject listFormatFn = getListFormatConstructor();
-            DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor();
-            DynamicObject segmenterFn = getSegmenterConstructor();
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(segmenterFn), segmenterFn, JSAttributes.getDefaultNotEnumerable());
-
-            putGlobalProperty(JSIntl.CLASS_NAME, intlObject);
+            putGlobalProperty(JSIntl.CLASS_NAME, preinitIntlObject != null ? preinitIntlObject : createIntlObject());
         }
+    }
+
+    private DynamicObject createIntlObject() {
+        DynamicObject intlObject = JSIntl.create(this);
+        DynamicObject collatorFn = getCollatorConstructor();
+        DynamicObject numberFormatFn = getNumberFormatConstructor();
+        DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor();
+        DynamicObject pluralRulesFn = getPluralRulesConstructor();
+        DynamicObject listFormatFn = getListFormatConstructor();
+        DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor();
+        DynamicObject segmenterFn = getSegmenterConstructor();
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(segmenterFn), segmenterFn, JSAttributes.getDefaultNotEnumerable());
+        return intlObject;
     }
 
     private void putGraalObject() {
@@ -1347,14 +1354,17 @@ public class JSRealm {
 
     private void addConsoleGlobals() {
         if (context.getContextOptions().isConsole()) {
-            DynamicObject console = JSUserObject.createInit(this);
-            JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
-
-            putGlobalProperty("console", console);
+            putGlobalProperty("console", preinitConsoleBuiltinObject != null ? preinitConsoleBuiltinObject : createConsoleObject());
         }
     }
 
-    private DynamicObject createPerformance() {
+    private DynamicObject createConsoleObject() {
+        DynamicObject console = JSUserObject.createInit(this);
+        JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
+        return console;
+    }
+
+    private DynamicObject createPerformanceObject() {
         DynamicObject obj = JSUserObject.createInit(this);
         JSObjectUtil.putFunctionsFromContainer(this, obj, PERFORMANCE_CLASS_NAME);
         return obj;
@@ -1589,6 +1599,7 @@ public class JSRealm {
     public void initialize() {
         CompilerAsserts.neverPartOfCompilation();
         if (getEnv().isPreInitialization()) {
+            preinitializeObjects();
             return;
         }
 
@@ -1596,6 +1607,12 @@ public class JSRealm {
         addOptionalGlobals();
 
         initTimeOffsetAndRandom();
+    }
+
+    private void preinitializeObjects() {
+        preinitIntlObject = createIntlObject();
+        preinitConsoleBuiltinObject = createConsoleObject();
+        preinitPerformanceObject = createPerformanceObject();
     }
 
     @TruffleBoundary
