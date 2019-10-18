@@ -893,7 +893,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object assign(Object target, Object[] sources,
                         @Cached("create(getContext())") ReadElementNode read,
                         @Cached("create(getContext(), STRICT)") WriteElementNode write,
-                        @Cached JSGetOwnPropertyNode getOwnProperty,
+                        @Cached("create(false)") JSGetOwnPropertyNode getOwnProperty,
                         @Cached BranchProfile listProfile,
                         @Cached BranchProfile elementProfile,
                         @Cached JSClassProfile classProfile,
