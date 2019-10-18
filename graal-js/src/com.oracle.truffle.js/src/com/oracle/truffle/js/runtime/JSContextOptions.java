@@ -215,7 +215,7 @@ public final class JSContextOptions {
 
     public static final String GLOBAL_PROPERTY_NAME = JS_OPTION_PREFIX + "global-property";
     @Option(name = GLOBAL_PROPERTY_NAME, category = OptionCategory.USER, help = "Provide 'global' global property.") //
-    public static final OptionKey<Boolean> GLOBAL_PROPERTY = new OptionKey<>(true);
+    public static final OptionKey<Boolean> GLOBAL_PROPERTY = new OptionKey<>(false);
 
     public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
     @Option(name = CONSOLE_NAME, category = OptionCategory.USER, help = "Provide 'console' global property.") //
@@ -223,7 +223,7 @@ public final class JSContextOptions {
 
     public static final String PERFORMANCE_NAME = JS_OPTION_PREFIX + "performance";
     @Option(name = PERFORMANCE_NAME, category = OptionCategory.USER, help = "Provide 'performance' global property.") //
-    public static final OptionKey<Boolean> PERFORMANCE = new OptionKey<>(true);
+    public static final OptionKey<Boolean> PERFORMANCE = new OptionKey<>(false);
 
     public static final String SHELL_NAME = JS_OPTION_PREFIX + "shell";
     @Option(name = SHELL_NAME, category = OptionCategory.USER, help = "Provide global functions for js shell.") //
@@ -581,20 +581,22 @@ public final class JSContextOptions {
 
     public boolean isConsole() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option console was assumed not to be accessed in compiled code.");
-        return CONSOLE.getValue(optionValues);
+        return CONSOLE.getValue(optionValues) || (!CONSOLE.hasBeenSet(optionValues) && isShell());
     }
 
     public boolean isPrint() {
-        return PRINT.getValue(optionValues);
+        CompilerAsserts.neverPartOfCompilation("Context patchable option print was assumed not to be accessed in compiled code.");
+        return PRINT.getValue(optionValues) || (!PRINT.hasBeenSet(optionValues) && (isShell() || isNashornCompatibilityMode()));
     }
 
     public boolean isLoad() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
-        return LOAD.getValue(optionValues);
+        return LOAD.getValue(optionValues) || (!LOAD.hasBeenSet(optionValues) && (isShell() || isNashornCompatibilityMode()));
     }
 
     public boolean isPerformance() {
-        return PERFORMANCE.getValue(optionValues);
+        CompilerAsserts.neverPartOfCompilation("Context patchable option performance was assumed not to be accessed in compiled code.");
+        return PERFORMANCE.getValue(optionValues) || (!PERFORMANCE.hasBeenSet(optionValues) && isShell());
     }
 
     public boolean isShell() {

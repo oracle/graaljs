@@ -1092,9 +1092,6 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
                             lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
-        if (context.getContextOptions().isPrint()) {
-            initGlobalPrintExtensions();
-        }
         if (context.getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
             setupPolyglot();
         }
@@ -1141,9 +1138,6 @@ public class JSRealm {
         if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject();
         }
-        if (context.getContextOptions().isPerformance()) {
-            putGlobalProperty(PERFORMANCE_CLASS_NAME, createPerformance());
-        }
         if (JSTruffleOptions.ProfileTime) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
@@ -1158,15 +1152,23 @@ public class JSRealm {
         putGlobalProperty("parseToJSON", parseToJSON);
     }
 
-    private void initGlobalPrintExtensions() {
-        putGlobalProperty("print", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "print"));
-        putGlobalProperty("printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
+    private void addPrintGlobals() {
+        if (context.getContextOptions().isPrint()) {
+            putGlobalProperty("print", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "print"));
+            putGlobalProperty("printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
+        }
     }
 
     private void addLoadGlobals() {
         if (getContext().getContextOptions().isLoad()) {
             putGlobalProperty("load", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "load"));
             putGlobalProperty("loadWithNewGlobal", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "loadWithNewGlobal"));
+        }
+    }
+
+    private void addPerformanceGlobal() {
+        if (context.getContextOptions().isPerformance()) {
+            putGlobalProperty(PERFORMANCE_CLASS_NAME, createPerformance());
         }
     }
 
@@ -1182,6 +1184,8 @@ public class JSRealm {
         addIntlGlobal();
         addLoadGlobals();
         addConsoleGlobals();
+        addPrintGlobals();
+        addPerformanceGlobal();
 
         if (isJavaInteropEnabled()) {
             setupJavaInterop();
@@ -1189,7 +1193,7 @@ public class JSRealm {
     }
 
     private void addGlobalGlobal() {
-        if (getContext().getContextOptions().isGlobalProperty() && !context.isOptionV8CompatibilityMode()) {
+        if (getContext().getContextOptions().isGlobalProperty()) {
             putGlobalProperty("global", getGlobalObject());
         }
     }
