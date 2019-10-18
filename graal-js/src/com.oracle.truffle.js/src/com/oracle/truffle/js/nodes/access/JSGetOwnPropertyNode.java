@@ -84,6 +84,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     private final ConditionProfile hasPropertyBranch = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isDataPropertyBranch = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isAccessorPropertyBranch = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile isProxyPropertyBranch = ConditionProfile.createBinaryProfile();
 
     protected JSGetOwnPropertyNode(boolean needValue, boolean needEnumerability, boolean needConfigurability, boolean needWritability, boolean allowCaching) {
         this.needValue = needValue;
@@ -205,10 +206,10 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         return d;
     }
 
-    private static Object getDataPropertyValue(DynamicObject thisObj, Property prop) {
+    private Object getDataPropertyValue(DynamicObject thisObj, Property prop) {
         assert JSProperty.isData(prop);
         Object value = prop.get(thisObj, false);
-        if (JSProperty.isProxy(prop)) {
+        if (isProxyPropertyBranch.profile(JSProperty.isProxy(prop))) {
             return ((PropertyProxy) value).get(thisObj);
         } else {
             return value;
