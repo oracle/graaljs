@@ -452,7 +452,17 @@ def _setEnvVar(name, val):
 def _getJdkHome():
     global _jdkHome
     if not _jdkHome:
-        _jdkHome = mx.get_env('JAVA_HOME')
+        if mx.suite('compiler', fatalIfMissing=False):
+            import mx_compiler
+            if hasattr(mx_compiler, 'get_graaljdk'):
+                _jdkHome = mx_compiler.get_graaljdk().home
+            elif hasattr(mx_compiler, '_update_graaljdk'):
+                jdk = mx.get_jdk(tag='default')
+                _jdkHome, _ = mx_compiler._update_graaljdk(jdk)
+            else:
+                mx.abort('Cannot find a GraalJDK.\nAre you running with an old version of Graal?')
+        else:
+            _jdkHome = mx.get_env('JAVA_HOME')
     return _jdkHome
 
 def _parseArgs(args):
