@@ -49,8 +49,17 @@ import js2c
 import os
 import sys
 
-def WrapModule(module_code):
-    return "(function (exports, require, module, __filename, __dirname) { " + module_code + "\n});"
+def WrapModule(module_path, module_code):
+    if module_path in ['lib/internal/per_context/primordials.js', 'lib/internal/per_context/setup.js', 'lib/internal/per_context/domexception.js']:
+        return "(function (global, exports, primordials) {" + module_code + "\n});"
+    elif module_path in ['lib/internal/main/inspect.js', 'lib/internal/main/print_help.js', 'lib/internal/main/print_bash_completion.js', 'lib/internal/main/prof_process.js', 'lib/internal/main/eval_string.js', 'lib/internal/main/check_syntax.js', 'lib/internal/main/run_main_module.js', 'lib/internal/main/repl.js', 'lib/internal/main/eval_stdin.js']:
+        return "(function (process, require, internalBinding, primordials, markBootstrapComplete) {" + module_code + "\n});"
+    elif module_path == 'lib/internal/bootstrap/node.js':
+        return "(function (process, require, internalBinding, isMainThread, ownsProcessState, primordials) {" + module_code + "\n});"
+    elif module_path == 'lib/internal/bootstrap/loaders.js':
+        return "(function (process, getLinkedBinding, getInternalBinding, primordials) {" + module_code + "\n});"
+    else:
+        return "(function (exports, require, module, process, internalBinding, primordials) {" + module_code + "\n});"
 
 def EnsureDirExists(dirpath):
     try:
@@ -74,10 +83,7 @@ def ProcessModules(sources, outdir):
         contents = js2c.ReadFile(m)
         contents = js2c.ExpandConstants(contents, consts)
         contents = js2c.ExpandMacros(contents, macros)
-        # bootstrap_node.js is the module that implements the module system,
-        # therefore bootstrap_node.js does not use it and must not be wrapped.
-        if not m.endswith('internal/bootstrap_node.js'):
-            contents = WrapModule(contents)
+        contents = WrapModule(m, contents)
 
         outpath = os.path.join(outdir, m)
         EnsureDirExists(os.path.split(outpath)[0])
