@@ -92,9 +92,8 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk11 + gateGraalTip                                                                             + common.gate + common.darwin + {name: 'nodejs-gate-graal-tip-jdk11-darwin-amd64'},
     graalNodeJs + common.jdk8  + gateSubstrateVmTip                                                                       + common.gate + common.linux  + {name: 'nodejs-gate-substratevm-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + gateSubstrateVmTip                                                                       + common.gate + common.darwin + {name: 'nodejs-gate-substratevm-tip-jdk8-darwin-amd64'},
-    # GR-19013
-    # graalNodeJs + common.jdk11 + gateSubstrateVmTip                                                                       + common.gate + common.linux  + {name: 'nodejs-gate-substratevm-tip-jdk11-linux-amd64'},
-    # graalNodeJs + common.jdk11 + gateSubstrateVmTip                                                                       + common.gate + common.darwin + {name: 'nodejs-gate-substratevm-tip-jdk11-darwin-amd64'},
+    graalNodeJs + common.jdk11 + gateSubstrateVmTip                                                                       + common.gate + common.linux  + {name: 'nodejs-gate-substratevm-tip-jdk11-linux-amd64'},
+    graalNodeJs + common.jdk11 + gateSubstrateVmTip                                                                       + common.gate + common.darwin + {name: 'nodejs-gate-substratevm-tip-jdk11-darwin-amd64'},
     graalNodeJs + common.jdk8  + testNodeGraalTip + buildAddons + {environment+: {SUITE: 'addons', PART: '-r0,1'}}        + common.gate + common.linux  + {name: 'nodejs-gate-addons-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + testNodeGraalTip + buildNodeAPI + {environment+: {SUITE: 'node-api', PART: '-r0,1'}}     + common.gate + common.linux  + {name: 'nodejs-gate-node-api-graal-tip-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + testNodeGraalTip + buildJSNativeAPI + {environment+: {SUITE: 'js-native-api', PART: '-r0,1'}} + common.gate + common.linux + {name: 'nodejs-gate-js-native-api-graal-tip-jdk8-linux-amd64'},
