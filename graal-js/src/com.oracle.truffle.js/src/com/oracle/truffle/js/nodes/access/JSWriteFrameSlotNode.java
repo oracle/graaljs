@@ -48,10 +48,12 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.LargeInteger;
 
@@ -62,7 +64,7 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == WriteVariableTag.class) {
+        if (tag == WriteVariableTag.class || tag == StandardTags.WriteVariableTag.class) {
             return !JSFrameUtil.isInternal(frameSlot);
         } else if (tag == JSTags.InputNodeTag.class) {
             return !JSFrameUtil.isInternal(frameSlot);
@@ -73,12 +75,15 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode implements Writ
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("name", JSFrameUtil.getPublicName(frameSlot));
+        String name = JSFrameUtil.getPublicName(frameSlot);
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", name);
+        descriptor.addProperty(StandardTags.WriteVariableTag.NAME, name);
+        return descriptor;
     }
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(WriteVariableTag.class)) {
+        if (materializedTags.contains(WriteVariableTag.class) || materializedTags.contains(StandardTags.WriteVariableTag.class)) {
             if (getRhs() != null && !getRhs().hasSourceSection() && this.hasSourceSection()) {
                 transferSourceSectionAddExpressionTag(this, getRhs());
             }
