@@ -233,8 +233,9 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         relInputPaths = [join('lib', m) for m in self.modulesToSnapshot()] + \
                         [join('mx.graal-nodejs', 'mx_graal_nodejs.py'),
                          join('tools', 'js2c.py'),
-                         join('tools', 'expand-js-macros.py'),
+                         join('tools', 'expand-js-modules.py'),
                          join('tools', 'snapshot2c.py'),
+                         join('tools', 'js2c_macros', 'check_macros.py'),
                          join('tools', 'js2c_macros', 'notrace_macros.py')]
         absInputPaths = [join(_suite.dir, p) for p in relInputPaths]
         return mx.TimeStampFile.newest(absInputPaths)
@@ -257,16 +258,23 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
             return []
 
         brokenModules = [                                        # Uses:
+            '_stream_readable.js',                               # await
             'assert.js',                                         # await
             join('internal', 'buffer.js'),                       # BigInt
             join('internal', 'errors.js'),                       # JSFunction.HOME_OBJECT_ID
             join('internal', 'fs', 'promises.js'),               # await
             join('internal', 'fs', 'utils.js'),                  # BigInt
             join('internal', 'http2', 'util.js'),                # JSFunction.HOME_OBJECT_ID
+            join('internal', 'modules', 'cjs', 'loader.js'),     # await
+            join('internal', 'modules', 'esm', 'loader.js'),     # await
+            join('internal', 'modules', 'esm', 'module_job.js'), # await
             join('internal', 'modules', 'esm', 'module_map.js'), # JSFunction.HOME_OBJECT_ID
+            join('internal', 'modules', 'esm', 'translators.js'),# await
+            join('internal', 'process', 'esm_loader.js'),        # await
             join('internal', 'readline', 'utils.js'),            # yield
             join('internal', 'repl', 'utils.js'),                # JSFunction.HOME_OBJECT_ID
             join('internal', 'streams', 'buffer_list.js'),       # yield
+            join('internal', 'vm', 'source_text_module.js'),     # await
             'vm.js',                                             # JSFunction.HOME_OBJECT_ID
         ]
 
@@ -288,7 +296,7 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         outputDirBin = join(outputDir, 'lib')
         mx.ensure_dir_exists(outputDirBin)
 
-        macroFiles = []
+        macroFiles = [join('tools', 'js2c_macros', 'check_macros.py')]
         # DTrace is disabled explicitly by the --without-dtrace option
         # ETW is enabled by default only on Windows
         if _currentOs != 'windows':
