@@ -117,8 +117,8 @@ public class Recording {
     private static final boolean EARLY_FIXUP = true;
     private static final boolean CONST_IN_VAR = true;
     private static final boolean SOURCE_SECTIONS = true;
-    private static final boolean FIXUP_SOURCE_SECTIONS = false;
-    private static final boolean FIXUP_TAGS = false;
+    private static final boolean FIXUP_SOURCE_SECTIONS = true;
+    private static final boolean FIXUP_TAGS = true;
     private static final boolean TEST_DECODE = true;
     private static final boolean LAMBDA = true;
 
