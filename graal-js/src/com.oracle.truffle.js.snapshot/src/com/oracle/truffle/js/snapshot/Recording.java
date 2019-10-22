@@ -859,7 +859,7 @@ public class Recording {
 
         @Override
         public void encodeTo(JSNodeEncoder encoder) {
-            encoder.encodeNodeSourceSectionFixup(node.getId(), source.getId(), charIndex, charLength);
+            encoder.encodeNodeSourceSectionFixup(node.getId(), charIndex, charLength);
         }
 
         @Override

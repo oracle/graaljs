@@ -374,10 +374,9 @@ public class JSNodeEncoder {
         this.regsMax = limit;
     }
 
-    public void encodeNodeSourceSectionFixup(int nodeArg, int sourceArg, int charIndex, int charLength) {
+    public void encodeNodeSourceSectionFixup(int nodeArg, int charIndex, int charLength) {
         putBytecode(ID_NODE_SOURCE_SECTION_FIXUP);
         encodeReg(nodeArg);
-        encodeReg(sourceArg);
         putInt(charIndex);
         putInt(charLength);
     }
