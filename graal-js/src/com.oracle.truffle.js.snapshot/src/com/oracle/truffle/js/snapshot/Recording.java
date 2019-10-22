@@ -100,6 +100,7 @@ import com.oracle.truffle.js.parser.BinarySnapshotProvider;
 import com.oracle.truffle.js.parser.SnapshotProvider;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.json.JSONParser;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -372,6 +373,8 @@ public class Recording {
                 stringified = String.valueOf(constant) + 'L';
             } else if (constant instanceof String) {
                 stringified = JSONParser.quote((String) constant);
+            } else if (constant instanceof BigInt) {
+                stringified = typeName(BigInt.class) + ".valueOf(" + JSONParser.quote(constant.toString()) + ")";
             } else if (constant.getClass().isEnum()) {
                 stringified = typeName(constant.getClass()) + "." + constant;
             } else if (constant == Dead.instance()) {
@@ -393,7 +396,7 @@ public class Recording {
 
         @Override
         public boolean isPrimitiveValue() {
-            return !(constant instanceof String);
+            return !(constant instanceof String || constant instanceof BigInt);
         }
 
         @Override

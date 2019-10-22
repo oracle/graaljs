@@ -55,6 +55,7 @@ import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FRAME_SLOT;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FUNCTION_DATA;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FUNCTION_DATA_NAME_FIXUP;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_JUMP_TARGET;
+import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_BIGINT;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_BOOLEAN;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_DOUBLE;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_ENUM;
@@ -88,6 +89,7 @@ import com.oracle.truffle.js.nodes.NodeFactoryDecoderGen;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.parser.BinarySnapshotProvider;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
 public class JSNodeEncoder {
@@ -197,6 +199,9 @@ public class JSNodeEncoder {
         } else if (value instanceof String) {
             putBytecode(ID_LDC_STRING);
             putString((String) value);
+        } else if (value instanceof BigInt) {
+            putBytecode(ID_LDC_BIGINT);
+            putString(((BigInt) value).toString());
         } else if (value instanceof Enum<?>) {
             putBytecode(ID_LDC_ENUM);
             int typeId = Arrays.asList(GEN.getClasses()).indexOf(value.getClass());
