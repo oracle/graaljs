@@ -1787,7 +1787,7 @@ public class Recording {
     }
 
     private static int countRegs(List<Inst> methodInsts, List<Inst> params) {
-        int count = (int) methodInsts.stream().filter(in -> !in.isRoot()).count() + params.size();
+        int count = methodInsts.size() + params.size();
         logv(() -> String.format("regs: %d => %d", (methodInsts.stream().mapToInt(Inst::getId).max().orElse(-1) + 1), count));
         return count;
     }
