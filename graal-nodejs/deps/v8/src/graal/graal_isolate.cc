@@ -447,8 +447,8 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         }
     #endif
 
-        const char* verbose_graalvm_launchers = std::getenv("VERBOSE_GRAALVM_LAUNCHERS");
-        if (verbose_graalvm_launchers && strcmp(verbose_graalvm_launchers, "true") == 0) {
+        std::string verbose_graalvm_launchers = getstdenv("VERBOSE_GRAALVM_LAUNCHERS");
+        if (verbose_graalvm_launchers == "true") {
             fprintf(stderr, "load: %s ", jvmlib_path.c_str());
             for (int i = 0; i < options.size(); i++) {
                 fprintf(stderr, " %s", options[i].optionString);
