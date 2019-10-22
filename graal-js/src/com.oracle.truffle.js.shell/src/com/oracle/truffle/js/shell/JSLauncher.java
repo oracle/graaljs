@@ -313,42 +313,45 @@ public class JSLauncher extends AbstractLanguageLauncher {
         int status;
         contextBuilder.arguments("js", programArgs);
         contextBuilder.option("js.shell", "true");
-        Context context = contextBuilder.build();
-        runVersionAction(versionAction, context.getEngine());
-        preEval(context);
-        if (hasSources()) {
-            // Every engine runs different Source objects.
-            Source[] sources = parseSources();
-            status = -1;
-            for (Source source : sources) {
-                try {
-                    Value result = context.eval(source);
-                    if (printResult) {
-                        System.out.println("Result: " + result.toString());
-                    }
-                    status = 0;
-                } catch (PolyglotException e) {
-                    if (e.isExit()) {
-                        status = e.getExitStatus();
-                    } else if (e.isSyntaxError()) {
-                        System.err.println(e.getMessage());
-                        status = 7;
-                    } else if (!e.isInternalError()) {
-                        printStackTraceSkipTrailingHost(e, System.err);
-                        status = 7;
-                    } else {
-                        e.printStackTrace();
+        try (Context context = contextBuilder.build()) {
+            runVersionAction(versionAction, context.getEngine());
+            preEval(context);
+            if (hasSources()) {
+                // Every engine runs different Source objects.
+                Source[] sources = parseSources();
+                status = -1;
+                for (Source source : sources) {
+                    try {
+                        Value result = context.eval(source);
+                        if (printResult) {
+                            System.out.println("Result: " + result.toString());
+                        }
+                        status = 0;
+                    } catch (PolyglotException e) {
+                        if (e.isExit()) {
+                            status = e.getExitStatus();
+                            if (status != 0) {
+                                printError(e, System.err);
+                            }
+                        } else if (e.isSyntaxError()) {
+                            printError(e, System.err);
+                            status = 7;
+                        } else if (!e.isInternalError()) {
+                            printStackTraceSkipTrailingHost(e, System.err);
+                            status = 7;
+                        } else {
+                            e.printStackTrace();
+                            status = 8;
+                        }
+                    } catch (Throwable t) {
+                        t.printStackTrace();
                         status = 8;
                     }
-                } catch (Throwable t) {
-                    t.printStackTrace();
-                    status = 8;
                 }
+            } else {
+                status = runREPL(context);
             }
-        } else {
-            status = runREPL(context);
         }
-        context.close();
         System.out.flush();
         System.err.flush();
         return status;
@@ -375,7 +378,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 if (e.isExit()) {
                     return e.getExitStatus();
                 } else if (e.isSyntaxError()) {
-                    output.println(e.getMessage());
+                    printError(e, output);
                 } else if (!e.isInternalError()) {
                     printStackTraceSkipTrailingHost(e, output);
                 } else {
@@ -386,6 +389,13 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 t.printStackTrace();
                 return 8;
             }
+        }
+    }
+
+    private static void printError(Throwable e, PrintStream output) {
+        String message = e.getMessage();
+        if (message != null && !message.isEmpty()) {
+            output.println(message);
         }
     }
 
