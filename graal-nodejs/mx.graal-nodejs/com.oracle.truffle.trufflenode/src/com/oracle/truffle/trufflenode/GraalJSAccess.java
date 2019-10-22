@@ -296,21 +296,29 @@ public final class GraalJSAccess {
 
             exposeGC = options.isGCExposed();
             evaluator = contextBuilder.build();
+            mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         } catch (IllegalArgumentException iaex) {
             System.err.printf("ERROR: %s", iaex.getMessage());
             System.exit(1);
             throw iaex; // avoids compiler complaints that final fields are not initialized
         } catch (PolyglotException pex) {
-            if (pex.isInternalError() || pex.getMessage() == null) {
+            int exitCode = 1;
+            String message = pex.getMessage();
+            boolean emptyMessage = message == null || message.isEmpty();
+            if (pex.isExit()) {
+                exitCode = pex.getExitStatus();
+                if (exitCode != 0 && !emptyMessage) {
+                    System.err.println(message);
+                }
+            } else if (pex.isInternalError() || emptyMessage) {
                 pex.printStackTrace();
             } else {
-                System.err.println("ERROR: " + pex.getMessage());
+                System.err.println("ERROR: " + message);
             }
-            System.exit(pex.isExit() ? pex.getExitStatus() : 1);
+            System.exit(exitCode);
             throw pex;
         }
 
-        mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         mainJSContext = mainJSRealm.getContext();
         assert mainJSContext != null : "JSContext initialized";
         agent = new NodeJSAgent();
