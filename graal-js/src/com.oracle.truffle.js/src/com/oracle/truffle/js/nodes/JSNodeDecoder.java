@@ -306,13 +306,12 @@ public class JSNodeDecoder {
                 }
                 case ID_NODE_SOURCE_SECTION_FIXUP: {
                     JavaScriptNode jsnode = (JavaScriptNode) state.getObject();
-                    Source src = (Source) state.getObject();
                     int charIndex = state.getInt();
                     int charLength = state.getInt();
-                    if ((charIndex < 0 || charLength < 0) || (src.getCharacters().length() == 0 && charIndex + charLength > 0)) {
-                        jsnode.setSourceSection(src.createUnavailableSection());
+                    if ((charIndex < 0 || charLength < 0) || (source.getCharacters().length() == 0 && charIndex + charLength > 0)) {
+                        jsnode.setSourceSection(source.createUnavailableSection());
                     } else {
-                        jsnode.setSourceSection(src, charIndex, charLength);
+                        jsnode.setSourceSection(source, charIndex, charLength);
                     }
                     break;
                 }
