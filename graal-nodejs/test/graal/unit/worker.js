@@ -48,7 +48,7 @@ describe('Worker', function () {
             var worker = new Worker('java.lang.Thread.sleep(1000000)', {eval: true});
             worker.on('online', function () {
                 setTimeout(function () {
-                    worker.terminate(done);
+                    worker.terminate().then(() => done());
                 }, 1000);
             });
         }).timeout(5000);
