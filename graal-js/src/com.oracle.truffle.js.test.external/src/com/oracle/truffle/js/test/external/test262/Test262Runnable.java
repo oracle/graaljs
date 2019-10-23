@@ -157,6 +157,7 @@ public class Test262Runnable extends TestRunnable {
                     "async-iteration",
                     "caller",
                     "class",
+                    "coalesce-expression",
                     "computed-property-names",
                     "const",
                     "cross-realm",
@@ -176,10 +177,12 @@ public class Test262Runnable extends TestRunnable {
                     "object-rest",
                     "object-spread",
                     "optional-catch-binding",
+                    "proxy-missing-checks",
                     "regexp-dotall",
                     "regexp-lookbehind",
                     "regexp-named-groups",
                     "regexp-unicode-property-escapes",
+                    "rest-parameters",
                     "string-trimming",
                     "super",
                     "template",
@@ -187,10 +190,14 @@ public class Test262Runnable extends TestRunnable {
                     "well-formed-json-stringify",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "FinalizationGroup",
                     "Intl.DateTimeFormat-datetimestyle",
+                    "Intl.DateTimeFormat-dayPeriod",
                     "Intl.DateTimeFormat-formatRange",
+                    "Intl.DateTimeFormat-fractionalSecondDigits",
                     "Intl.Locale",
                     "IsHTMLDDA",
+                    "WeakRef",
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
@@ -198,10 +205,15 @@ public class Test262Runnable extends TestRunnable {
                     "class-static-fields-public",
                     "class-static-methods-private",
                     "export-star-as-namespace-from-module",
-                    "tail-call-optimization"
+                    "host-gc-required",
+                    "optional-chaining",
+                    "regexp-match-indices",
+                    "tail-call-optimization",
+                    "top-level-await"
     }));
     private static final Set<String> ES2020_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Promise.allSettled",
+                    "coalesce-expression",
                     "dynamic-import",
                     "import.meta",
                     "numeric-separator-literal",

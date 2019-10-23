@@ -12,17 +12,37 @@
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
   }, {
-    "filePath" : "built-ins/Promise/all/invoke-resolve-get-error-close.js",
+    "filePath" : "built-ins/JSON/stringify/replacer-array-wrong-type.js",
     "status" : "FAIL",
-    "comment" : "https://github.com/tc39/test262/issues/2206"
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
-    "filePath" : "built-ins/Promise/allSettled/invoke-resolve-get-error-close.js",
+    "filePath" : "built-ins/JSON/stringify/replacer-function-wrapper.js",
     "status" : "FAIL",
-    "comment" : "https://github.com/tc39/test262/issues/2206"
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
-    "filePath" : "built-ins/Promise/race/invoke-resolve-get-error-close.js",
+    "filePath" : "built-ins/Promise/all/resolve-element-function-name.js",
     "status" : "FAIL",
-    "comment" : "https://github.com/tc39/test262/issues/2206"
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "built-ins/Promise/allSettled/reject-element-function-name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "built-ins/Promise/allSettled/resolve-element-function-name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "built-ins/Promise/executor-function-name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "built-ins/Promise/reject-function-name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "built-ins/Promise/resolve-function-name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "built-ins/Proxy/defineProperty/targetdesc-not-configurable-writable-desc-not-writable.js",
     "status" : "FAIL",
@@ -35,6 +55,10 @@
     "filePath" : "built-ins/Proxy/getOwnPropertyDescriptor/resultdesc-is-not-configurable-not-writable-targetdesc-is-writable.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "built-ins/Proxy/revocable/revocation-function-name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "FAIL",
@@ -1681,12 +1705,24 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/String/prototype/matchAll/flags-nonglobal-throws.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "built-ins/String/prototype/matchAll/flags-undefined-throws.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/Final_Sigma_U180E.js",
     "status" : "FAIL",
     "comment" : "String.toLowerCase() does not handle Final_Sigma special casing with respect to u180e correctly"
   }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "built-ins/ThrowTypeError/name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
@@ -1698,6 +1734,10 @@
     "filePath" : "intl402/Collator/missing-unicode-ext-value-defaults-to-true.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
+  }, {
+    "filePath" : "intl402/Collator/prototype/compare/compare-function-name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "intl402/Collator/prototype/compare/non-normative-sensitivity.js",
     "status" : "PASS",
@@ -1724,6 +1764,10 @@
     },
     "comment" : "GR-15359"
   }, {
+    "filePath" : "intl402/DateTimeFormat/constructor-calendar-numberingSystem-order.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "intl402/DateTimeFormat/date-time-options.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1745,12 +1789,24 @@
     },
     "comment" : "GR-15359"
   }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/format/format-function-name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/main.js",
     "status" : "PASS",
     "statusOverrides" : {
       "SVM" : "SKIP"
     },
     "comment" : "GR-15359"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/pattern-on-calendar.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/related-year.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/basic.js",
     "status" : "PASS",
@@ -1782,6 +1838,10 @@
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
+    "filePath" : "intl402/Intl/getCanonicalLocales/grandfathered.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/invalid-tags.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
@@ -1791,14 +1851,6 @@
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
     "filePath" : "intl402/Intl/getCanonicalLocales/preferred-grandfathered.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/preferred-variant.js",
-    "status" : "FAIL",
-    "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/language-tags-canonicalized.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
   }, {
@@ -1821,6 +1873,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
+    "filePath" : "intl402/ListFormat/constructor/constructor/locales-valid.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "intl402/ListFormat/constructor/supportedLocalesOf/locales-invalid.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
@@ -1831,6 +1887,38 @@
       "SVM" : "SKIP"
     },
     "comment" : "GR-15359"
+  }, {
+    "filePath" : "intl402/NumberFormat/constructor-compactDisplay-compact.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/constructor-compactDisplay-no-compact.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/constructor-notation.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/constructor-numberingSystem-order.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/constructor-options-throwing-getters.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/constructor-signDisplay.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/constructor-unit.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/constructor-unitDisplay.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "intl402/NumberFormat/currencyDisplay-unit.js",
     "status" : "FAIL",
@@ -1854,6 +1942,26 @@
     },
     "comment" : "GR-15359"
   }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/engineering-scientific-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/engineering-scientific-en-US.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/engineering-scientific-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/engineering-scientific-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/engineering-scientific-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-fraction-digits-precision.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1864,6 +1972,10 @@
     "filePath" : "intl402/NumberFormat/prototype/format/format-fraction-digits.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/format-function-name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits-precision.js",
     "status" : "FAIL",
@@ -1879,6 +1991,110 @@
     },
     "comment" : "GR-15359"
   }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/notation-compact-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/notation-compact-en-US.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/notation-compact-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/notation-compact-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/notation-compact-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-currency-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-currency-en-US.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-currency-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-currency-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-currency-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-en-US.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/signDisplay-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/unit-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/unit-en-US.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/unit-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/unit-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/unit-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/units.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/engineering-scientific-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/engineering-scientific-en-US.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/engineering-scientific-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/engineering-scientific-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/engineering-scientific-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "intl402/NumberFormat/prototype/formatToParts/main.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1886,21 +2102,129 @@
     },
     "comment" : "GR-15359"
   }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/notation-compact-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/notation-compact-en-US.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/notation-compact-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/notation-compact-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/notation-compact-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-en-US.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-currency-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-en-US.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/signDisplay-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/unit-de-DE.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/unit-en-US.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/unit-ja-JP.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/unit-ko-KR.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/unit-zh-TW.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/formatToParts/unit.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/resolvedOptions/order.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "intl402/NumberFormat/style-unit.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
+  }, {
+    "filePath" : "intl402/PluralRules/prototype/resolvedOptions/order.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/locales-invalid.js",
     "status" : "FAIL",
     "comment" : "test262 update 2018-07-12"
   }, {
+    "filePath" : "intl402/RelativeTimeFormat/constructor/constructor/locales-valid.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "intl402/RelativeTimeFormat/constructor/supportedLocalesOf/locales-invalid.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/format/en-us-numeric-auto.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "intl402/RelativeTimeFormat/prototype/formatToParts/en-us-numeric-auto.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "intl402/Segmenter/constructor/constructor/locales-invalid.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+  }, {
+    "filePath" : "intl402/Segmenter/constructor/constructor/locales-valid.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "intl402/Segmenter/constructor/supportedLocalesOf/locales-invalid.js",
     "status" : "FAIL",
@@ -1921,6 +2245,22 @@
     },
     "comment" : "Segfaults on SVM, see GR-15064"
   }, {
+    "filePath" : "language/asi/S7.9_A5.7_T1.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/computed-property-names/class/static/method-number.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/computed-property-names/class/static/method-string.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/computed-property-names/class/static/method-symbol.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "language/eval-code/direct/super-prop-method.js",
     "status" : "FAIL"
   }, {
@@ -1929,6 +2269,10 @@
   }, {
     "filePath" : "language/eval-code/indirect/lex-env-heritage.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/arrow-function/name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/arrow-function/scope-body-lex-distinct.js",
     "status" : "FAIL"
@@ -1948,8 +2292,48 @@
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "language/expressions/assignment/fn-name-lhs-cover.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/assignment/fn-name-lhs-member.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/assignment/non-simple-target.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "language/expressions/assignment/S11.13.1_A5_T5.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/assignment/target-boolean.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/assignment/target-cover-newtarget.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/assignment/target-cover-yieldexpr.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/assignment/target-newtarget.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/assignment/target-null.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/assignment/target-number.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/assignment/target-string.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/async-arrow-function/await-as-param-ident-nested-arrow-parameter-position.js",
     "status" : "FAIL",
@@ -1967,6 +2351,30 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
+    "filePath" : "language/expressions/async-arrow-function/name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/async-function/early-errors-expression-not-simple-assignment-target.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/async-function/name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/async-generator/early-errors-expression-not-simple-assignment-target.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/async-generator/name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/await/early-errors-await-not-simple-assignment-target.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "language/expressions/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
@@ -1979,9 +2387,141 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
   }, {
+    "filePath" : "language/expressions/class/name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/coalesce/chainable-if-parenthesis-covered-logical-and.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/coalesce/chainable-if-parenthesis-covered-logical-or.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/add-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/btws-and-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/btws-or-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/btws-xor-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/div-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/left-shift-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/mod-div-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/mult-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/right-shift-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/subtract-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/compound-assignment/u-right-shift-non-simple.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/conditional/coalesce-expr-ternary.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-1-update-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-10-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-11-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-12-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-13-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-14-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-15-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-16-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-17-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-2-update-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-3-update-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-4-update-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-5-lhs-equals-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-6-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-7-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-8-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-9-lhs-assignment-operator-assignment-expression.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "language/expressions/dynamic-import/usage-from-eval.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+  }, {
+    "filePath" : "language/expressions/function/name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/function/scope-body-lex-distinct.js",
     "status" : "FAIL"
@@ -1998,6 +2538,10 @@
     "filePath" : "language/expressions/function/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "language/expressions/generators/name.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "language/expressions/generators/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -2012,6 +2556,14 @@
   }, {
     "filePath" : "language/expressions/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/import.meta/syntax/invalid-assignment-target-assignment-expr.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/import.meta/syntax/invalid-assignment-target-update-expr.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/object/scope-gen-meth-body-lex-distinct.js",
     "status" : "FAIL"
@@ -2049,6 +2601,54 @@
     "filePath" : "language/expressions/object/scope-setter-body-lex-distinc.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "language/expressions/postfix-decrement/target-cover-newtarget.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/postfix-decrement/target-cover-yieldexpr.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/postfix-decrement/target-newtarget.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/postfix-increment/target-cover-newtarget.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/postfix-increment/target-cover-yieldexpr.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/postfix-increment/target-newtarget.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/prefix-decrement/target-cover-newtarget.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/prefix-decrement/target-cover-yieldexpr.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/prefix-decrement/target-newtarget.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/prefix-increment/target-cover-newtarget.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/prefix-increment/target-cover-yieldexpr.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/expressions/prefix-increment/target-newtarget.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
     "filePath" : "language/expressions/super/prop-dot-cls-val-from-eval.js",
     "status" : "FAIL"
   }, {
@@ -2060,6 +2660,10 @@
   }, {
     "filePath" : "language/expressions/super/prop-expr-obj-val-from-eval.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "language/expressions/this/S11.1.1_A1.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/function-code/each-param-has-own-non-shared-eval-scope.js",
     "status" : "FAIL",
@@ -2078,6 +2682,30 @@
     "filePath" : "language/literals/regexp/u-surrogate-pairs-atom-escape-decimal.js",
     "status" : "FAIL",
     "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode."
+  }, {
+    "filePath" : "language/module-code/instn-resolve-empty-export.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/module-code/instn-resolve-empty-import.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/module-code/instn-resolve-err-syntax-2.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/module-code/instn-resolve-order-depth.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/module-code/instn-resolve-order-src.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/module-code/parse-err-syntax-2.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/statements/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
@@ -2141,5 +2769,21 @@
   }, {
     "filePath" : "language/statements/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "language/types/boolean/S8.3_A2.1.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/types/boolean/S8.3_A2.2.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/types/reference/S8.7.2_A1_T1.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+  }, {
+    "filePath" : "language/types/reference/S8.7.2_A1_T2.js",
+    "status" : "FAIL",
+    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   } ]
 }
