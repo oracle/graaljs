@@ -1728,8 +1728,13 @@ public final class GraalJSAccess {
         Evaluator nodeEvaluator = jsContext.getEvaluator();
         Object extraArgument = getExtraArgumentOfInternalScript(sourceName, jsContext);
         Object[] extensions;
+        ByteBuffer snapshot = null;
         if (extraArgument == null) {
             extensions = exts;
+            if (USE_SNAPSHOTS && hostDefinedOptions == null) {
+                assert exts.length == 0 && UnboundScript.isCoreModule(sourceName);
+                snapshot = getCoreModuleBinarySnapshot(sourceName);
+            }
         } else {
             assert exts.length == 0;
             DynamicObject graalExtension = JSUserObject.create(jsContext);
@@ -1783,15 +1788,20 @@ public final class GraalJSAccess {
         Source source;
         if (hostDefinedOptions == null) {
             // sources of built-in modules
-            source = Source.newBuilder(JavaScriptLanguage.ID, code, sourceName).build();
+            source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
         } else {
             TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
             source = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(code.toString()).name(sourceName).build();
             hostDefinedOptionsMap.put(source, hostDefinedOptions);
         }
 
-        DynamicObject fn = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
-        return anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
+        if (snapshot == null) {
+            DynamicObject fn = (DynamicObject) nodeEvaluator.evaluate(realm, null, source);
+            return anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
+        } else {
+            ScriptNode scriptNode = parseScriptNodeFromSnapshot(jsContext, source, snapshot);
+            return scriptNode.run(realm);
+        }
     }
 
     public Object scriptCompile(Object context, Object sourceCode, Object fileName, Object hostDefinedOptions) {
@@ -1900,19 +1910,9 @@ public final class GraalJSAccess {
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
 
         if (USE_SNAPSHOTS && fileNameStr != null && UnboundScript.isCoreModule(fileNameStr)) {
-            // bootstrap_node.js is located in the internal folder,
-            // but is loaded as bootstrap_node.js
-            String modulePath = fileNameStr.equals("bootstrap_node.js") ? "internal/bootstrap_node.js" : fileNameStr;
-            ByteBuffer snapshotBinary = NativeAccess.getCoreModuleBinarySnapshot(modulePath);
+            ByteBuffer snapshotBinary = getCoreModuleBinarySnapshot(fileNameStr);
             if (snapshotBinary != null) {
-                if (VERBOSE) {
-                    System.out.printf("successfully read snapshot for %s (%d bytes, %d source chars)\n", fileNameStr, snapshotBinary.limit(), sourceCodeStr.length());
-                }
                 return new UnboundScript(source, snapshotBinary);
-            } else {
-                if (VERBOSE) {
-                    System.out.printf("no snapshot for %s\n", fileNameStr);
-                }
             }
         }
 
@@ -1920,6 +1920,18 @@ public final class GraalJSAccess {
         FunctionNode functionNode = parseSource(source, mainJSContext);
 
         return new UnboundScript(source, functionNode);
+    }
+
+    private static ByteBuffer getCoreModuleBinarySnapshot(String modulePath) {
+        ByteBuffer snapshotBinary = NativeAccess.getCoreModuleBinarySnapshot(modulePath);
+        if (VERBOSE) {
+            if (snapshotBinary == null) {
+                System.err.printf("no snapshot for %s\n", modulePath);
+            } else {
+                System.err.printf("successfully read snapshot for %s\n", modulePath);
+            }
+        }
+        return snapshotBinary;
     }
 
     public Object unboundScriptBindToContext(Object context, Object script) {
@@ -1972,8 +1984,8 @@ public final class GraalJSAccess {
         } catch (IllegalArgumentException e) {
             if (VERBOSE) {
                 String moduleName = source.getName();
-                System.out.printf("error when parsing binary snapshot for %s: %s\n", moduleName, e);
-                System.out.printf("falling back to parsing %s at runtime\n", moduleName);
+                System.err.printf("error when parsing binary snapshot for %s: %s\n", moduleName, e);
+                System.err.printf("falling back to parsing %s at runtime\n", moduleName);
             }
             return parser.parseScriptNode(context, source);
         }
