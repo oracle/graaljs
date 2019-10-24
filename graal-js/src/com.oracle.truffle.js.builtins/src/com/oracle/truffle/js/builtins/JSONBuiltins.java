@@ -57,7 +57,7 @@ import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONStringifyNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSONData;
 import com.oracle.truffle.js.builtins.helper.JSONStringifyStringNode;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -201,7 +201,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         @Child private JSONStringifyStringNode jsonStringifyStringNode;
-        @Child private PropertySetNode setWrapperProperty;
+        @Child private CreateDataPropertyNode createWrapperPropertyNode;
         @Child private JSToIntegerNode toIntegerNode;
         @Child private JSToNumberNode toNumberNode;
         @Child private JSIsArrayNode isArrayNode;
@@ -277,11 +277,11 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             final String gap = spaceIsUndefinedProfile.profile(spaceParam == Undefined.instance) ? "" : getGap(spaceParam);
 
             DynamicObject wrapper = JSUserObject.create(getContext());
-            if (setWrapperProperty == null) {
+            if (createWrapperPropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                setWrapperProperty = insert(PropertySetNode.create("", false, getContext(), false));
+                createWrapperPropertyNode = insert(CreateDataPropertyNode.create(getContext(), ""));
             }
-            setWrapperProperty.setValue(wrapper, value);
+            createWrapperPropertyNode.executeVoid(wrapper, value);
             return jsonStr(new JSONData(gap, replacerFnObj, replacerList), "", wrapper);
         }
 
