@@ -247,13 +247,15 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             for (int i = 0; i < len; i++) {
                 // harmony/proxies-json.js requires toString()
                 Object v = JSObject.get(replacerObj, JSRuntime.toString(i));
-                String item = "";
+                String item = null; // Let item be undefined.
                 if (JSRuntime.isString(v)) {
                     item = JSRuntime.toStringIsString(v);
                 } else if (JSRuntime.isNumber(v) || JSNumber.isJSNumber(v) || JSString.isJSString(v)) {
                     item = toString(v);
                 }
-                addToReplacer(replacerList, item);
+                if (item != null) { // If item is not undefined ...
+                    addToReplacer(replacerList, item);
+                }
             }
             return stringifyIntl(value, spaceParam, null, replacerList);
         }
