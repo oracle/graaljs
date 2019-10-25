@@ -541,6 +541,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         "graal-nodejs:TRUFFLENODE"
     ],
     has_polyglot_lib_entrypoints=True,
+    installable=False,
 ))
 
 
