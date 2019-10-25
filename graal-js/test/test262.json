@@ -2246,8 +2246,10 @@
     "comment" : "Segfaults on SVM, see GR-15064"
   }, {
     "filePath" : "language/asi/S7.9_A5.7_T1.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/computed-property-names/class/static/method-number.js",
     "status" : "FAIL",
@@ -2301,39 +2303,55 @@
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/assignment/non-simple-target.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/assignment/S11.13.1_A5_T5.js",
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/assignment/target-boolean.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/assignment/target-cover-newtarget.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/assignment/target-cover-yieldexpr.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/assignment/target-newtarget.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/assignment/target-null.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/assignment/target-number.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/assignment/target-string.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/async-arrow-function/await-as-param-ident-nested-arrow-parameter-position.js",
     "status" : "FAIL",
@@ -2356,24 +2374,30 @@
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/async-function/early-errors-expression-not-simple-assignment-target.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/async-function/name.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/async-generator/early-errors-expression-not-simple-assignment-target.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/async-generator/name.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/await/early-errors-await-not-simple-assignment-target.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
@@ -2400,118 +2424,72 @@
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/compound-assignment/add-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/compound-assignment/btws-and-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/compound-assignment/btws-or-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/compound-assignment/btws-xor-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/compound-assignment/div-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/compound-assignment/left-shift-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/compound-assignment/mod-div-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/compound-assignment/mult-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/compound-assignment/right-shift-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/compound-assignment/subtract-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/compound-assignment/u-right-shift-non-simple.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/conditional/coalesce-expr-ternary.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-1-update-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-10-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-11-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-12-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-13-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-14-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-15-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-16-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-17-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-2-update-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-3-update-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-4-update-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-5-lhs-equals-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-6-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-7-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-8-lhs-assignment-operator-assignment-expression.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/dynamic-import/syntax/invalid/invalid-assignmenttargettype-syntax-error-9-lhs-assignment-operator-assignment-expression.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
@@ -2557,14 +2535,6 @@
     "filePath" : "language/expressions/generators/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/import.meta/syntax/invalid-assignment-target-assignment-expr.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/import.meta/syntax/invalid-assignment-target-update-expr.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "language/expressions/object/scope-gen-meth-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -2602,52 +2572,76 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/postfix-decrement/target-cover-newtarget.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/postfix-decrement/target-cover-yieldexpr.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/postfix-decrement/target-newtarget.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/postfix-increment/target-cover-newtarget.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/postfix-increment/target-cover-yieldexpr.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/postfix-increment/target-newtarget.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/prefix-decrement/target-cover-newtarget.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/prefix-decrement/target-cover-yieldexpr.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/prefix-decrement/target-newtarget.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/prefix-increment/target-cover-newtarget.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/prefix-increment/target-cover-yieldexpr.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/prefix-increment/target-newtarget.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/expressions/super/prop-dot-cls-val-from-eval.js",
     "status" : "FAIL"
@@ -2662,8 +2656,10 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/expressions/this/S11.1.1_A1.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/function-code/each-param-has-own-non-shared-eval-scope.js",
     "status" : "FAIL",
@@ -2684,28 +2680,40 @@
     "comment" : "Back-references cause TRegex to bail out and then JONI is unable to cope with Unicode."
   }, {
     "filePath" : "language/module-code/instn-resolve-empty-export.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/module-code/instn-resolve-empty-import.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/module-code/instn-resolve-err-syntax-2.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/module-code/instn-resolve-order-depth.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/module-code/instn-resolve-order-src.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/module-code/parse-err-syntax-2.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/statements/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
@@ -2771,19 +2779,27 @@
     "status" : "FAIL"
   }, {
     "filePath" : "language/types/boolean/S8.3_A2.1.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/types/boolean/S8.3_A2.2.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/types/reference/S8.7.2_A1_T1.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "language/types/reference/S8.7.2_A1_T2.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS"
   } ]
 }
