@@ -854,7 +854,7 @@ public class Parser extends AbstractParser {
                 if (lhs instanceof IdentNode) {
                     IdentNode ident = (IdentNode) lhs;
                     if (!checkIdentLValue(ident) || ident.isMetaProperty()) {
-                        return referenceError(lhs, rhs, true);
+                        throw invalidLHSError(lhs);
                     }
                     verifyStrictIdent(ident, ASSIGNMENT_TARGET_CONTEXT);
                     break;
@@ -864,7 +864,7 @@ public class Parser extends AbstractParser {
                     verifyDestructuringAssignmentPattern(lhs, ASSIGNMENT_TARGET_CONTEXT);
                     break;
                 } else {
-                    return referenceError(lhs, rhs, env.earlyLvalueError);
+                    throw invalidLHSError(lhs);
                 }
             default:
                 break;
@@ -4991,19 +4991,9 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private RuntimeNode referenceError(final Expression lhs, final Expression rhs, final boolean earlyError) {
-        if (earlyError) {
-            throw error(JSErrorType.ReferenceError, AbstractParser.message(MESSAGE_INVALID_LVALUE), lhs.getToken());
-        }
-        final ArrayList<Expression> args = new ArrayList<>();
-        args.add(lhs);
-        if (rhs == null) {
-            args.add(LiteralNode.newInstance(lhs.getToken(), lhs.getFinish()));
-        } else {
-            args.add(rhs);
-        }
-        args.add(LiteralNode.newInstance(lhs.getToken(), lhs.toString()));
-        return new RuntimeNode(lhs.getToken(), lhs.getFinish(), RuntimeNode.Request.REFERENCE_ERROR, args);
+    private ParserException invalidLHSError(final Expression lhs) {
+        JSErrorType errorType = isES2020() ? JSErrorType.SyntaxError : JSErrorType.ReferenceError;
+        return error(errorType, AbstractParser.message(MESSAGE_INVALID_LVALUE), lhs.getToken());
     }
 
     /**
@@ -5124,13 +5114,13 @@ public class Parser extends AbstractParser {
         if (!(lhs instanceof AccessNode ||
                         lhs instanceof IndexNode ||
                         lhs instanceof IdentNode)) {
-            return referenceError(lhs, null, env.earlyLvalueError);
+            throw invalidLHSError(lhs);
         }
 
         if (lhs instanceof IdentNode) {
             IdentNode ident = (IdentNode) lhs;
             if (!checkIdentLValue(ident) || ident.isMetaProperty()) {
-                return referenceError(lhs, null, true);
+                throw invalidLHSError(lhs);
             }
             assert opType == TokenType.INCPREFIX || opType == TokenType.DECPREFIX;
             String contextString = opType == TokenType.INCPREFIX ? "operand for ++ operator" : "operand for -- operator";

@@ -59,9 +59,6 @@ public final class ScriptEnvironment {
     /** Display stack trace upon error, default is false */
     final boolean dumpOnError;
 
-    /** Invalid lvalue expressions should be reported as early errors */
-    final boolean earlyLvalueError;
-
     /** Empty statements should be preserved in the AST */
     final boolean emptyStatements;
 
@@ -113,14 +110,13 @@ public final class ScriptEnvironment {
     /** Are Annex B Web Compatibility extensions enabled? */
     final boolean annexB;
 
-    private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean earlyLvalueError, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
+    private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
                     boolean constAsVar, boolean allowBigInt, boolean annexB, FunctionStatementBehavior functionStatementBehavior, PrintWriter dumpOnError) {
         this.namespace = new Namespace();
         this.err = dumpOnError;
 
         this.constAsVar = constAsVar;
         this.dumpOnError = dumpOnError != null;
-        this.earlyLvalueError = earlyLvalueError;
         this.emptyStatements = emptyStatements;
         this.functionStatement = functionStatementBehavior;
         this.syntaxExtensions = syntaxExtensions;
@@ -162,7 +158,6 @@ public final class ScriptEnvironment {
     public static final class Builder {
         private int ecmaScriptVersion;
         private boolean constAsVar;
-        private boolean earlyLvalueError = true;
         private boolean emptyStatements;
         private boolean syntaxExtensions = true;
         private boolean scripting;
@@ -183,11 +178,6 @@ public final class ScriptEnvironment {
 
         public Builder constAsVar(boolean constAsVar) {
             this.constAsVar = constAsVar;
-            return this;
-        }
-
-        public Builder earlyLvalueError(boolean earlyLvalueError) {
-            this.earlyLvalueError = earlyLvalueError;
             return this;
         }
 
@@ -237,7 +227,7 @@ public final class ScriptEnvironment {
         }
 
         public ScriptEnvironment build() {
-            return new ScriptEnvironment(strict, ecmaScriptVersion, earlyLvalueError, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
+            return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
                             functionStatementBehavior, dumpOnError);
         }
     }
