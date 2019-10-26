@@ -78,6 +78,17 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
     }
 
     @TruffleBoundary
+    public static BigInt fromBigInteger(BigInteger value) {
+        if (value.equals(BigInteger.ZERO)) {
+            return ZERO;
+        } else if (value.equals(BigInteger.ONE)) {
+            return ONE;
+        } else {
+            return new BigInt(value);
+        }
+    }
+
+    @TruffleBoundary
     public static BigInt valueOf(String s) {
         return new BigInt(parseBigInteger(s));
     }

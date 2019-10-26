@@ -100,6 +100,7 @@ import com.oracle.truffle.js.parser.BinarySnapshotProvider;
 import com.oracle.truffle.js.parser.SnapshotProvider;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.json.JSONParser;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -117,8 +118,8 @@ public class Recording {
     private static final boolean EARLY_FIXUP = true;
     private static final boolean CONST_IN_VAR = true;
     private static final boolean SOURCE_SECTIONS = true;
-    private static final boolean FIXUP_SOURCE_SECTIONS = false;
-    private static final boolean FIXUP_TAGS = false;
+    private static final boolean FIXUP_SOURCE_SECTIONS = true;
+    private static final boolean FIXUP_TAGS = true;
     private static final boolean TEST_DECODE = true;
     private static final boolean LAMBDA = true;
 
@@ -372,6 +373,8 @@ public class Recording {
                 stringified = String.valueOf(constant) + 'L';
             } else if (constant instanceof String) {
                 stringified = JSONParser.quote((String) constant);
+            } else if (constant instanceof BigInt) {
+                stringified = typeName(BigInt.class) + ".valueOf(" + JSONParser.quote(constant.toString()) + ")";
             } else if (constant.getClass().isEnum()) {
                 stringified = typeName(constant.getClass()) + "." + constant;
             } else if (constant == Dead.instance()) {
@@ -393,7 +396,7 @@ public class Recording {
 
         @Override
         public boolean isPrimitiveValue() {
-            return !(constant instanceof String);
+            return !(constant instanceof String || constant instanceof BigInt);
         }
 
         @Override
@@ -859,7 +862,7 @@ public class Recording {
 
         @Override
         public void encodeTo(JSNodeEncoder encoder) {
-            encoder.encodeNodeSourceSectionFixup(node.getId(), source.getId(), charIndex, charLength);
+            encoder.encodeNodeSourceSectionFixup(node.getId(), charIndex, charLength);
         }
 
         @Override
@@ -1787,7 +1790,7 @@ public class Recording {
     }
 
     private static int countRegs(List<Inst> methodInsts, List<Inst> params) {
-        int count = (int) methodInsts.stream().filter(in -> !in.isRoot()).count() + params.size();
+        int count = methodInsts.size() + params.size();
         logv(() -> String.format("regs: %d => %d", (methodInsts.stream().mapToInt(Inst::getId).max().orElse(-1) + 1), count));
         return count;
     }

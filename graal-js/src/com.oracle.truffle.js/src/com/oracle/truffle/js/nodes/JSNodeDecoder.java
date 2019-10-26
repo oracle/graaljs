@@ -58,6 +58,7 @@ import com.oracle.truffle.js.codec.BinaryDecoder;
 import com.oracle.truffle.js.codec.NodeDecoder;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
@@ -87,6 +88,8 @@ public class JSNodeDecoder {
         ID_LDC_STRING,
         /** Load singleton constant into register. */
         ID_LDC_SINGLETON,
+        /** Load BigInt constant into register. */
+        ID_LDC_BIGINT,
 
         /** Load argument into register. */
         ID_LD_ARG,
@@ -177,6 +180,9 @@ public class JSNodeDecoder {
                     break;
                 case ID_LDC_SINGLETON:
                     storeResult(state, SINGLETONS[state.getInt()]);
+                    break;
+                case ID_LDC_BIGINT:
+                    storeResult(state, BigInt.valueOf(state.getString()));
                     break;
                 case ID_MOV:
                     state.setObjReg(state.getReg(), state.getObjReg(state.getReg()));
@@ -306,13 +312,12 @@ public class JSNodeDecoder {
                 }
                 case ID_NODE_SOURCE_SECTION_FIXUP: {
                     JavaScriptNode jsnode = (JavaScriptNode) state.getObject();
-                    Source src = (Source) state.getObject();
                     int charIndex = state.getInt();
                     int charLength = state.getInt();
-                    if ((charIndex < 0 || charLength < 0) || (src.getCharacters().length() == 0 && charIndex + charLength > 0)) {
-                        jsnode.setSourceSection(src.createUnavailableSection());
+                    if ((charIndex < 0 || charLength < 0) || (source.getCharacters().length() == 0 && charIndex + charLength > 0)) {
+                        jsnode.setSourceSection(source.createUnavailableSection());
                     } else {
-                        jsnode.setSourceSection(src, charIndex, charLength);
+                        jsnode.setSourceSection(source, charIndex, charLength);
                     }
                     break;
                 }

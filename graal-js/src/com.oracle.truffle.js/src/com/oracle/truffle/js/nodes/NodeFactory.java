@@ -206,6 +206,7 @@ import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -634,6 +635,10 @@ public class NodeFactory {
 
     public JavaScriptNode createAccessNewTarget() {
         return AccessIndexedArgumentNode.create(0);
+    }
+
+    public JavaScriptNode createAccessHomeObject(JSContext context) {
+        return PropertyNode.createProperty(context, createAccessCallee(0), JSFunction.HOME_OBJECT_ID);
     }
 
     // ##### Element nodes

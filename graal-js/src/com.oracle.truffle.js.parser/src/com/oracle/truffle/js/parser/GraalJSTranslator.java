@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.parser;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -165,12 +166,12 @@ import com.oracle.truffle.js.parser.env.FunctionEnvironment.JumpTargetCloseable;
 import com.oracle.truffle.js.parser.env.GlobalEnvironment;
 import com.oracle.truffle.js.parser.env.WithEnvironment;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -1155,7 +1156,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode prepareSuper(JavaScriptNode body) {
-        JavaScriptNode getHomeObject = factory.createProperty(context, factory.createAccessCallee(0), JSFunction.HOME_OBJECT_ID);
+        JavaScriptNode getHomeObject = factory.createAccessHomeObject(context);
         JavaScriptNode setSuperNode = environment.findSuperVar().createWriteNode(getHomeObject);
         return factory.createExprBlock(setSuperNode, body);
     }
@@ -1383,6 +1384,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             return factory.createConstantDouble(((Long) value).doubleValue());
         } else if (value instanceof Lexer.RegexToken) {
             return factory.createRegExpLiteral(context, ((Lexer.RegexToken) value).getExpression(), ((Lexer.RegexToken) value).getOptions());
+        } else if (value instanceof BigInteger) {
+            value = BigInt.fromBigInteger((BigInteger) value);
         }
         return factory.createConstant(value);
     }

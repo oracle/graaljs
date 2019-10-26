@@ -63,10 +63,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public abstract class JSConstantNode extends JavaScriptNode implements RepeatableNode {
 
     public static JSConstantNode create(Object value) {
-        assert !(value instanceof Long);
-        if (value instanceof BigInteger) {
-            return createBigInt(new BigInt((BigInteger) value));
-        } else if (value instanceof Integer) {
+        assert !(value instanceof Long || value instanceof BigInteger);
+        if (value instanceof Integer) {
             return createInt((Integer) value);
         } else if (value instanceof Double) {
             double doubleValue = (Double) value;
@@ -83,6 +81,8 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
             return createNull();
         } else if (value == Undefined.instance) {
             return createUndefined();
+        } else if (value instanceof BigInt) {
+            return createBigInt((BigInt) value);
         } else if (JSObject.isDynamicObject(value)) {
             return new JSConstantJSObjectNode((DynamicObject) value);
         } else {
