@@ -349,10 +349,9 @@ public final class JSFunction extends JSBuiltinObject {
         return factory.createWithPrototype(functionData, enclosingFrame, classPrototype, realm, prototype);
     }
 
-    public static DynamicObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments,
-                    boolean isAnonymous) {
+    public static DynamicObject createBound(JSContext context, JSRealm realm, JSFunctionData functionData, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
         assert functionData != null;
-        JSFunctionFactory factory = context.getBoundFunctionFactory(functionData, isAnonymous);
+        JSFunctionFactory factory = context.getBoundFunctionFactory(functionData);
         return factory.createBound(functionData, CLASS_PROTOTYPE_PLACEHOLDER, realm, boundTargetFunction, boundThis, boundArguments);
     }
 
@@ -388,7 +387,7 @@ public final class JSFunction extends JSBuiltinObject {
         assert JSFunction.isJSFunction(thisFnObj);
         JSContext context = realm.getContext();
         DynamicObject proto = JSObject.getPrototype(thisFnObj);
-        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, false, null, null);
+        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, null, null);
 
         long length = 0;
         boolean targetHasLength = JSObject.hasOwnProperty(thisFnObj, JSFunction.LENGTH);
@@ -414,7 +413,7 @@ public final class JSFunction extends JSBuiltinObject {
         return boundFunction;
     }
 
-    public static DynamicObject boundFunctionCreate(JSContext context, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto, boolean isAnonymous,
+    public static DynamicObject boundFunctionCreate(JSContext context, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto,
                     ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile) {
         assert JSFunction.isJSFunction(boundTargetFunction);
         CompilerAsserts.partialEvaluationConstant(context);
@@ -427,7 +426,7 @@ public final class JSFunction extends JSBuiltinObject {
             functionData = makeBoundFunctionData(context, length, constructor, isAsync);
         }
         JSRealm realm = getRealm(boundTargetFunction, context);
-        DynamicObject boundFunction = JSFunction.createBound(context, realm, functionData, boundTargetFunction, boundThis, boundArguments, isAnonymous);
+        DynamicObject boundFunction = JSFunction.createBound(context, realm, functionData, boundTargetFunction, boundThis, boundArguments);
         boolean needSetProto = proto != realm.getFunctionPrototype();
         if ((setProtoProfile == null ? needSetProto : setProtoProfile.profile(needSetProto))) {
             JSObject.setPrototype(boundFunction, proto);
