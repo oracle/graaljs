@@ -440,16 +440,16 @@ public class JSContext {
         CompilableBiFunction<JSContext, DynamicObject, Shape> ordinaryObjectShapeSupplier = JSUserObject.INSTANCE::makeInitialShape;
         JSObjectFactory.IntrinsicBuilder builder = new JSObjectFactory.IntrinsicBuilder(this);
 
-        this.functionFactory = builder.function(functionPrototypeSupplier, false, false, false, false, false, false);
-        this.constructorFactory = builder.function(functionPrototypeSupplier, false, false, true, false, false, false);
-        this.strictFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, false, false, false);
-        this.strictConstructorFactory = builder.function(functionPrototypeSupplier, true, false, true, false, false, false);
+        this.functionFactory = builder.function(functionPrototypeSupplier, false, false, false, false, false);
+        this.constructorFactory = builder.function(functionPrototypeSupplier, false, true, false, false, false);
+        this.strictFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, false, false);
+        this.strictConstructorFactory = builder.function(functionPrototypeSupplier, true, true, false, false, false);
 
-        this.asyncFunctionFactory = builder.function(asyncFunctionPrototypeSupplier, true, false, false, false, false, true);
-        this.generatorFunctionFactory = builder.function(generatorFunctionPrototypeSupplier, true, false, false, true, false, false);
-        this.asyncGeneratorFunctionFactory = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, false, false, true, false, true);
+        this.asyncFunctionFactory = builder.function(asyncFunctionPrototypeSupplier, true, false, false, false, true);
+        this.generatorFunctionFactory = builder.function(generatorFunctionPrototypeSupplier, true, false, true, false, false);
+        this.asyncGeneratorFunctionFactory = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, false, true, false, true);
 
-        this.boundFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, false, true, false);
+        this.boundFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, true, false);
 
         this.ordinaryObjectFactory = builder.create(JSUserObject.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);

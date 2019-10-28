@@ -101,10 +101,10 @@ public abstract class JSObjectFactory {
         }
 
         public JSFunctionFactory function(CompilableFunction<JSRealm, DynamicObject> intrinsicDefaultProto,
-                        boolean isStrict, boolean isAnonymous, boolean isConstructor, boolean isGenerator, boolean isBound, boolean isAsync) {
+                        boolean isStrict, boolean isConstructor, boolean isGenerator, boolean isBound, boolean isAsync) {
             assert !closed;
             int index = count++;
-            return JSFunctionFactory.createIntrinsic(context, intrinsicDefaultProto, isStrict, isAnonymous, isConstructor, isGenerator, isBound, isAsync, index);
+            return JSFunctionFactory.createIntrinsic(context, intrinsicDefaultProto, isStrict, isConstructor, isGenerator, isBound, isAsync, index);
         }
 
         public int finish() {

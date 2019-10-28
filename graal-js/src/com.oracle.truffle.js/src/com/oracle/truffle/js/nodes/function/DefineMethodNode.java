@@ -116,8 +116,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
 
         @TruffleBoundary
         protected final JSFunctionFactory makeFactory(DynamicObject prototype) {
-            return JSFunctionFactory.create(getContext(), JSFunction.makeInitialFunctionShape(getContext(), prototype, true, functionData.getName().isEmpty(), true,
-                            functionData.isPrototypeNotWritable()).createFactory());
+            return JSFunctionFactory.create(getContext(), JSFunction.makeInitialFunctionShape(getContext(), prototype, true, true, functionData.isPrototypeNotWritable()).createFactory());
         }
 
         protected final JSFunctionFactory makeFactoryMultiContext() {
