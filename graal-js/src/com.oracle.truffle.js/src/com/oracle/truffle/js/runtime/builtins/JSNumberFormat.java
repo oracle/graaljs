@@ -69,8 +69,9 @@ import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -96,6 +97,8 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     private static final HiddenKey INTERNAL_STATE_ID = new HiddenKey("_internalState");
     private static final Property INTERNAL_STATE_PROPERTY;
+
+    static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(CLASS_NAME);
 
     public static final JSNumberFormat INSTANCE = new JSNumberFormat();
 
@@ -825,10 +828,9 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     private static CallTarget createGetFormatCallTarget(JSContext context) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
-            private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
             private final BranchProfile errorBranch = BranchProfile.create();
             @CompilationFinal private ContextReference<JSRealm> realmRef;
+            @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -852,9 +854,8 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
                         }
                         JSFunctionData formatFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.NumberFormatFormat, c -> createFormatFunctionData(c));
                         DynamicObject formatFn = JSFunction.create(realmRef.get(), formatFunctionData);
-                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, formatFn, numberFormatObj, new Object[]{}, JSObject.getPrototype(formatFn), true, isAsyncProfile,
-                                        setProtoProfile);
-                        state.boundFormatFunction = boundFn;
+                        setBoundObjectNode.setValue(formatFn, numberFormatObj);
+                        state.boundFormatFunction = formatFn;
                     }
 
                     return state.boundFormatFunction;
@@ -867,14 +868,17 @@ public final class JSNumberFormat extends JSBuiltinObject implements JSConstruct
 
     private static JSFunctionData createFormatFunctionData(JSContext context) {
         return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
+
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = (DynamicObject) JSArguments.getThisObject(arguments);
+                DynamicObject thisObj = (DynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
+                assert isJSNumberFormat(thisObj);
                 Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
                 return format(thisObj, n);
             }
-        }), 1, "format");
+        }), 1, "");
     }
 
     private static DynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {
