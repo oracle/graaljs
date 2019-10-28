@@ -12,14 +12,6 @@
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
   }, {
-    "filePath" : "built-ins/JSON/stringify/replacer-array-wrong-type.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "built-ins/JSON/stringify/replacer-function-wrapper.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "built-ins/Promise/all/resolve-element-function-name.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
