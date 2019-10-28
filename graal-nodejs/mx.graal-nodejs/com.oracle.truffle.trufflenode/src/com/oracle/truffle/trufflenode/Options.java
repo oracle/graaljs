@@ -162,6 +162,9 @@ public final class Options {
 
         @Override
         protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
+            // Node.js-specific defaults, may be overridden by command line arguments.
+            polyglotOptions.put("js.print", "false");
+
             List<String> unprocessedArguments = new ArrayList<>();
             for (String arg : arguments) {
                 String key = "";

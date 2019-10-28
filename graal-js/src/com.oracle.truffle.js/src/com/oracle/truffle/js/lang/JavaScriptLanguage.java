@@ -422,7 +422,9 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     JSContextOptions.DIRECT_BYTE_BUFFER,
                     JSContextOptions.INTL_402,
                     JSContextOptions.LOAD,
-                    JSContextOptions.CONSOLE
+                    JSContextOptions.PRINT,
+                    JSContextOptions.CONSOLE,
+                    JSContextOptions.PERFORMANCE,
     };
 
     /**

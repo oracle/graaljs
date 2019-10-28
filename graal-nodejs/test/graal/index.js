@@ -54,7 +54,7 @@ for (var i = 2; i < process.argv.length; i++) {
 
 var isGraalJS = function () {
     // TODO: replace by a more reliable check
-    return typeof (print) === 'function';
+    return typeof (Graal) === 'object';
 };
 
 // Add skipOnGraal, skipOnNode verbs to the default bdd UI
