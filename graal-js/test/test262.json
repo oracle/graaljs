@@ -12,30 +12,6 @@
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
   }, {
-    "filePath" : "built-ins/Promise/all/resolve-element-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "built-ins/Promise/allSettled/reject-element-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "built-ins/Promise/allSettled/resolve-element-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "built-ins/Promise/executor-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "built-ins/Promise/reject-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "built-ins/Promise/resolve-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "built-ins/Proxy/defineProperty/targetdesc-not-configurable-writable-desc-not-writable.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
@@ -47,10 +23,6 @@
     "filePath" : "built-ins/Proxy/getOwnPropertyDescriptor/resultdesc-is-not-configurable-not-writable-targetdesc-is-writable.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "built-ins/Proxy/revocable/revocation-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "FAIL",
@@ -1712,10 +1684,6 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "built-ins/ThrowTypeError/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1726,10 +1694,6 @@
     "filePath" : "intl402/Collator/missing-unicode-ext-value-defaults-to-true.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl402/Collator/prototype/compare/compare-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "intl402/Collator/prototype/compare/non-normative-sensitivity.js",
     "status" : "PASS",
@@ -1780,10 +1744,6 @@
       "SVM" : "SKIP"
     },
     "comment" : "GR-15359"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/format/format-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/formatToParts/main.js",
     "status" : "PASS",
@@ -1964,10 +1924,6 @@
     "filePath" : "intl402/NumberFormat/prototype/format/format-fraction-digits.js",
     "status" : "FAIL",
     "comment" : "new fails after update 2018-03-19"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/format/format-function-name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits-precision.js",
     "status" : "FAIL",
@@ -2264,10 +2220,6 @@
     "filePath" : "language/eval-code/indirect/lex-env-heritage.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/arrow-function/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "language/expressions/arrow-function/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -2285,14 +2237,6 @@
   }, {
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/assignment/fn-name-lhs-cover.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/assignment/fn-name-lhs-member.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/assignment/non-simple-target.js",
     "ecmaVersion" : {
@@ -2361,29 +2305,17 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
-    "filePath" : "language/expressions/async-arrow-function/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "language/expressions/async-function/early-errors-expression-not-simple-assignment-target.js",
     "ecmaVersion" : {
       "minVersion" : 11
     },
     "status" : "PASS"
   }, {
-    "filePath" : "language/expressions/async-function/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "language/expressions/async-generator/early-errors-expression-not-simple-assignment-target.js",
     "ecmaVersion" : {
       "minVersion" : 11
     },
     "status" : "PASS"
-  }, {
-    "filePath" : "language/expressions/async-generator/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/await/early-errors-await-not-simple-assignment-target.js",
     "ecmaVersion" : {
@@ -2402,10 +2334,6 @@
     "filePath" : "language/expressions/class/elements/syntax/early-errors/grammar-special-meth-ctor-async-meth.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
-  }, {
-    "filePath" : "language/expressions/class/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/coalesce/chainable-if-parenthesis-covered-logical-and.js",
     "status" : "FAIL",
@@ -2489,10 +2417,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
-    "filePath" : "language/expressions/function/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "language/expressions/function/scope-body-lex-distinct.js",
     "status" : "FAIL"
   }, {
@@ -2507,10 +2431,6 @@
   }, {
     "filePath" : "language/expressions/function/scope-param-rest-elem-var-open.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "language/expressions/generators/name.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/generators/scope-body-lex-distinct.js",
     "status" : "FAIL"

@@ -672,9 +672,6 @@
     "filePath" : "mjsunit/es6/classes-subclass-builtins.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/classes.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/computed-property-names-classes.js",
     "status" : "FAIL"
   }, {
@@ -1622,10 +1619,6 @@
     "filePath" : "mjsunit/regress/regress-7652.js",
     "status" : "SKIP",
     "comment" : "Long-running test: we iterate to ~2^53."
-  }, {
-    "filePath" : "mjsunit/regress/regress-7773.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/regress/regress-779407.js",
     "runInIsolation" : true,

@@ -59,8 +59,9 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -83,6 +84,8 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     private static final HiddenKey INTERNAL_STATE_ID = new HiddenKey("_internalState");
     private static final Property INTERNAL_STATE_PROPERTY;
+
+    static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(CLASS_NAME);
 
     public static final JSCollator INSTANCE = new JSCollator();
 
@@ -277,9 +280,8 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     private static CallTarget createGetCompareCallTarget(JSContext context) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
 
-            private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
-            private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
             @CompilationFinal private ContextReference<JSRealm> realmRef;
+            @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -311,9 +313,8 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                             compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCompare, c -> createCompareFunctionData(c));
                             compareFn = JSFunction.create(realm, compareFunctionData);
                         }
-                        DynamicObject boundFn = JSFunction.boundFunctionCreate(context, compareFn, collatorObj, new Object[]{}, JSObject.getPrototype(compareFn), true, isAsyncProfile,
-                                        setProtoProfile);
-                        state.boundCompareFunction = boundFn;
+                        setBoundObjectNode.setValue(compareFn, collatorObj);
+                        state.boundCompareFunction = compareFn;
                     }
 
                     return state.boundCompareFunction;
@@ -325,36 +326,40 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     private static JSFunctionData createCompareFunctionData(JSContext context) {
         return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
             @Child private JSToStringNode toString1Node = JSToStringNode.create();
             @Child private JSToStringNode toString2Node = JSToStringNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = (DynamicObject) JSArguments.getThisObject(arguments);
+                DynamicObject thisObj = (DynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
+                assert isJSCollator(thisObj);
                 int argumentCount = JSArguments.getUserArgumentCount(arguments);
                 String one = (argumentCount > 0) ? toString1Node.executeString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
                 String two = (argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
                 return compare(thisObj, one, two);
             }
-        }), 2, "compare");
+        }), 2, "");
     }
 
     private static JSFunctionData createCaseSensitiveCompareFunctionData(JSContext context) {
         return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
             @Child private JSToStringNode toString1Node = JSToStringNode.create();
             @Child private JSToStringNode toString2Node = JSToStringNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = (DynamicObject) JSArguments.getThisObject(arguments);
+                DynamicObject thisObj = (DynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
+                assert isJSCollator(thisObj);
                 int argumentCount = JSArguments.getUserArgumentCount(arguments);
                 String one = (argumentCount > 0) ? toString1Node.executeString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
                 String two = (argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
                 return caseSensitiveCompare(thisObj, one, two);
             }
-        }), 2, "compare");
+        }), 2, "");
     }
 
     private static DynamicObject createCompareFunctionGetter(JSRealm realm, JSContext context) {

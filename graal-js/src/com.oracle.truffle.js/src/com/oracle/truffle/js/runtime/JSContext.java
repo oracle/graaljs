@@ -311,24 +311,16 @@ public class JSContext {
 
     private volatile ClassValue<Class<?>> javaAdapterClasses;
 
-    private final JSFunctionFactory functionFactoryNamed;
-    private final JSFunctionFactory functionFactoryAnonymous;
-    private final JSFunctionFactory constructorFactoryNamed;
-    private final JSFunctionFactory constructorFactoryAnonymous;
-    private final JSFunctionFactory strictFunctionFactoryNamed;
-    private final JSFunctionFactory strictFunctionFactoryAnonymous;
-    private final JSFunctionFactory strictConstructorFactoryNamed;
-    private final JSFunctionFactory strictConstructorFactoryAnonymous;
+    private final JSFunctionFactory functionFactory;
+    private final JSFunctionFactory constructorFactory;
+    private final JSFunctionFactory strictFunctionFactory;
+    private final JSFunctionFactory strictConstructorFactory;
 
-    private final JSFunctionFactory generatorFunctionFactoryNamed;
-    private final JSFunctionFactory generatorFunctionFactoryAnonymous;
-    private final JSFunctionFactory asyncFunctionFactoryNamed;
-    private final JSFunctionFactory asyncFunctionFactoryAnonymous;
-    private final JSFunctionFactory asyncGeneratorFunctionFactoryNamed;
-    private final JSFunctionFactory asyncGeneratorFunctionFactoryAnonymous;
+    private final JSFunctionFactory generatorFunctionFactory;
+    private final JSFunctionFactory asyncFunctionFactory;
+    private final JSFunctionFactory asyncGeneratorFunctionFactory;
 
-    private final JSFunctionFactory boundFunctionFactoryNamed;
-    private final JSFunctionFactory boundFunctionFactoryAnonymous;
+    private final JSFunctionFactory boundFunctionFactory;
 
     static final CompilableFunction<JSRealm, DynamicObject> functionPrototypeSupplier = JSRealm::getFunctionPrototype;
     static final CompilableFunction<JSRealm, DynamicObject> asyncFunctionPrototypeSupplier = JSRealm::getAsyncFunctionPrototype;
@@ -448,24 +440,16 @@ public class JSContext {
         CompilableBiFunction<JSContext, DynamicObject, Shape> ordinaryObjectShapeSupplier = JSUserObject.INSTANCE::makeInitialShape;
         JSObjectFactory.IntrinsicBuilder builder = new JSObjectFactory.IntrinsicBuilder(this);
 
-        this.functionFactoryNamed = builder.function(functionPrototypeSupplier, false, false, false, false, false, false);
-        this.functionFactoryAnonymous = builder.function(functionPrototypeSupplier, false, true, false, false, false, false);
-        this.constructorFactoryNamed = builder.function(functionPrototypeSupplier, false, false, true, false, false, false);
-        this.constructorFactoryAnonymous = builder.function(functionPrototypeSupplier, false, true, true, false, false, false);
-        this.strictFunctionFactoryNamed = builder.function(functionPrototypeSupplier, true, false, false, false, false, false);
-        this.strictFunctionFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, false, false, false, false);
-        this.strictConstructorFactoryNamed = builder.function(functionPrototypeSupplier, true, false, true, false, false, false);
-        this.strictConstructorFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, true, false, false, false);
+        this.functionFactory = builder.function(functionPrototypeSupplier, false, false, false, false, false);
+        this.constructorFactory = builder.function(functionPrototypeSupplier, false, true, false, false, false);
+        this.strictFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, false, false);
+        this.strictConstructorFactory = builder.function(functionPrototypeSupplier, true, true, false, false, false);
 
-        this.asyncFunctionFactoryNamed = builder.function(asyncFunctionPrototypeSupplier, true, false, false, false, false, true);
-        this.asyncFunctionFactoryAnonymous = builder.function(asyncFunctionPrototypeSupplier, true, true, false, false, false, true);
-        this.generatorFunctionFactoryNamed = builder.function(generatorFunctionPrototypeSupplier, true, false, false, true, false, false);
-        this.generatorFunctionFactoryAnonymous = builder.function(generatorFunctionPrototypeSupplier, true, true, false, true, false, false);
-        this.asyncGeneratorFunctionFactoryNamed = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, false, false, true, false, true);
-        this.asyncGeneratorFunctionFactoryAnonymous = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, true, false, true, false, true);
+        this.asyncFunctionFactory = builder.function(asyncFunctionPrototypeSupplier, true, false, false, false, true);
+        this.generatorFunctionFactory = builder.function(generatorFunctionPrototypeSupplier, true, false, true, false, false);
+        this.asyncGeneratorFunctionFactory = builder.function(asyncGeneratorFunctionPrototypeSupplier, true, false, true, false, true);
 
-        this.boundFunctionFactoryNamed = builder.function(functionPrototypeSupplier, true, false, false, false, true, false);
-        this.boundFunctionFactoryAnonymous = builder.function(functionPrototypeSupplier, true, true, false, false, true, false);
+        this.boundFunctionFactory = builder.function(functionPrototypeSupplier, true, false, false, true, false);
 
         this.ordinaryObjectFactory = builder.create(JSUserObject.INSTANCE);
         this.arrayFactory = builder.create(JSArray.INSTANCE);
@@ -1459,36 +1443,34 @@ public class JSContext {
         boolean isConstructor = functionData.isConstructor();
         boolean isGenerator = functionData.isGenerator();
         boolean isAsync = functionData.isAsync();
-        // V8 always provides a name property.
-        boolean isAnonymous = functionData.getName().isEmpty() && !functionData.getContext().isOptionV8CompatibilityMode();
         assert !isBuiltin || (!isGenerator && !isAsync) : "built-in functions are never generator or async functions!";
         if (isAsync) {
             if (isGenerator) {
-                return isAnonymous ? asyncGeneratorFunctionFactoryAnonymous : asyncGeneratorFunctionFactoryNamed;
+                return asyncGeneratorFunctionFactory;
             } else {
-                return isAnonymous ? asyncFunctionFactoryAnonymous : asyncFunctionFactoryNamed;
+                return asyncFunctionFactory;
             }
         } else if (isGenerator) {
-            return isAnonymous ? generatorFunctionFactoryAnonymous : generatorFunctionFactoryNamed;
+            return generatorFunctionFactory;
         } else if (isConstructor && !isBuiltin) {
             if (strictFunctionProperties) {
-                return isAnonymous ? strictConstructorFactoryAnonymous : strictConstructorFactoryNamed;
+                return strictConstructorFactory;
             } else {
-                return isAnonymous ? constructorFactoryAnonymous : constructorFactoryNamed;
+                return constructorFactory;
             }
         } else {
             // Built-in constructor functions end up here due to the way they're initialized.
             if (strictFunctionProperties) {
-                return isAnonymous ? strictFunctionFactoryAnonymous : strictFunctionFactoryNamed;
+                return strictFunctionFactory;
             } else {
-                return isAnonymous ? functionFactoryAnonymous : functionFactoryNamed;
+                return functionFactory;
             }
         }
     }
 
-    public JSFunctionFactory getBoundFunctionFactory(JSFunctionData functionData, boolean isAnonymous) {
+    public JSFunctionFactory getBoundFunctionFactory(JSFunctionData functionData) {
         assert functionData.isStrict();
-        return isAnonymous ? boundFunctionFactoryAnonymous : boundFunctionFactoryNamed;
+        return boundFunctionFactory;
     }
 
     JSObjectFactory.RealmData newObjectFactoryRealmData() {
