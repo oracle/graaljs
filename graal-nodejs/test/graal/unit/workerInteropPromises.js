@@ -39,13 +39,10 @@
  * SOFTWARE.
  */
 
-var assert = require('assert');
-
+const assert = require('assert');
 const {
     Worker,
-    MessagePort,
     isMainThread,
-    workerData
 } = require('worker_threads')
 
 class PromiseWorker {
@@ -57,24 +54,26 @@ class PromiseWorker {
                             const {
                                 parentPort
                             } = require('worker_threads');
+                            const assert = require('assert');
+                            const runnableFunction = eval('${runnableFunction}');
+                            assert(typeof runnableFunction === 'function');
 
-                            parentPort.on('message', (m) => {
-                                const promise = m.promise;
+                            parentPort.on('message', m => {
+                                const resolveRejectPair = m.resolveRejectPair;
                                 const data = m.data;
                                 try {
-                                    // For simplicity, we just eval the function string value
-                                    const result = eval('(${runnableFunction.toString()})')(data);
-                                    parentPort.postMessage({result:result, promise:promise});
+                                    const result = runnableFunction(data);
+                                    parentPort.postMessage({result:result, resolveRejectPair:resolveRejectPair});
                                 } catch (e) {
-                                    parentPort.postMessage({error:e.toString(), promise:promise});
+                                    parentPort.postMessage({error:e.toString(), resolveRejectPair:resolveRejectPair});
                                 }
                             });
             `, {
                 eval: true
             });
-        this.worker.on('message', (m) => {
-            const promiseResolve = m.promise[0];
-            const promiseReject = m.promise[1];
+        this.worker.on('message', m => {
+            const promiseResolve = m.resolveRejectPair[0];
+            const promiseReject = m.resolveRejectPair[1];
             if (m.error) {
                 promiseReject(m.error);
             } else {
@@ -83,7 +82,7 @@ class PromiseWorker {
         });
     }
 
-    computeFromWorker(num) {
+    compute(num) {
         // Using GraalVM's Java-to-JS interop, one can use a Java array to "wrap" the Promise's reject and resolve functions.
         // In this way, they can be "borrowed" to a worker. Note that calling reject or resolve from the worker thread would 
         // result in an exception, because JS functions can be executed only by the thread that created them. Nevertheless, 
@@ -91,11 +90,11 @@ class PromiseWorker {
         // there is no need to maintain an explicit mapping between worker messages and the corresponding promises.
         const JavaArray = Java.type('java.lang.Object[]');
         const worker = this.worker;
-        return new Promise(function(resolve, reject) {
-            var wrapper = new JavaArray(2);
+        return new Promise((resolve, reject) => {
+            const wrapper = new JavaArray(2);
             wrapper[0] = resolve;
             wrapper[1] = reject;
-            worker.postMessage({data:num, promise:wrapper});
+            worker.postMessage({data:num, resolveRejectPair:wrapper});
         });
     }
 
@@ -104,32 +103,32 @@ class PromiseWorker {
     }
 }
 
-describe('Java interop can be used to map promises to workers', function () {
+describe('Java interop can be used to map promises to worker messages', () => {
     if (typeof java === 'undefined') {
         // No interop
         return;
     }
 
-    it('Can use a promise to await on a worker incoming message.', async function () {
+    it('Can use a promise to await on a worker incoming message.', async () => {
         if (isMainThread) {
-            var worker = new PromiseWorker(n => n + 42);
+            const worker = new PromiseWorker(`n => n + 42`);
             var sum = 0;
             var expected = 0;
             for (var i = 0; i < 100; i++) {
-                sum = sum + await worker.computeFromWorker(i);
-                expected += (i + 42);
+                sum = sum + await worker.compute(i);
+                expected += i + 42;
             }
             assert(expected === sum);
             worker.kill();
         }
     }).timeout(15000);
 
-    it('Worker failures reject promises.', async function () {
+    it('Worker failures reject promises.', async () => {
         if (isMainThread) {
-            var worker = new PromiseWorker(m => {throw m;});
+            const worker = new PromiseWorker(`m => {throw m;}`);
             var hit = false;
             try {
-                var result = await worker.computeFromWorker('will fail');
+                var result = await worker.compute('will fail');
             } catch (e) {
                 assert(e === 'will fail');
                 hit = true;
