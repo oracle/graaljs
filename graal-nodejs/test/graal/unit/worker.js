@@ -40,7 +40,11 @@
  */
 
 var assert = require('assert');
-var Worker = require('worker_threads').Worker;
+
+const {
+    Worker,
+    isMainThread
+} = require('worker_threads');
 
 describe('Worker', function () {
     if (typeof java !== 'undefined') {
@@ -52,5 +56,36 @@ describe('Worker', function () {
                 }, 1000);
             });
         }).timeout(5000);
+
+        it('The Main thread can load classes from the classpath', function (done) {
+            if (isMainThread) {
+                const JavaAsyncClass = Java.type('com.oracle.truffle.js.test.threading.JavaAsyncTaskScheduler.Example');
+                done();
+            }
+        }).timeout(5000);
+
+        it('A Worker thread can load classes from the classpath, too', function (done) {
+            if (isMainThread) {
+            let w = new Worker(`
+                            const {
+                                parentPort
+                            } = require('worker_threads');
+
+                            parentPort.on('message', (m) => {
+                                const JavaAsyncClass = Java.type('com.oracle.truffle.js.test.threading.JavaAsyncTaskScheduler.Example');
+                                parentPort.postMessage('ok!');
+                            });
+            `, {
+                eval: true
+            });
+            w.on('message', (m) => {
+                assert(m === 'ok!');
+                w.terminate().then(()=>{done()});
+            });
+            w.postMessage('ignore me');
+        }
+
+        }).timeout(5000);
+
     }
 });
