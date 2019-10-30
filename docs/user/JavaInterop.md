@@ -263,10 +263,5 @@ try {
 ```
 
 ## Multithreading
-GraalVM JavaScript supports multithreading by creating several `Context` objects from Java code.
-Multiple JavaScript engines can be created from a Java application, and can be safely executed in parallel on multiple threads.
 
-On the other hand, GraalVM JavaScript interoperability prevents the creation of Java threads from JavaScript applications.
-This could lead to unmanagable synchronization problems like data races in a language that is not prepared for multithreading.
-
-
+GraalVM JavaScript supports multithreading when used in combination with Java. More details about the GraalVM JavaScript multithreading model can be found in the [Multithreading](Multithreading.md) documentation.
