@@ -196,7 +196,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         padStart(1),
         padEnd(1),
 
-        // TBD
+        // ES2020
         matchAll(1);
 
         private final int length;
@@ -222,17 +222,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else if (EnumSet.range(padStart, padEnd).contains(this)) {
                 return 8;
             } else if (this.equals(matchAll)) {
-                return JSTruffleOptions.ECMAScript2019;
+                return JSTruffleOptions.ECMAScript2020;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
-        }
-
-        @Override
-        public boolean isEnabled() {
-            if (this.equals(matchAll)) {
-                return JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019;
-            }
-            return true;
         }
 
         @Override
