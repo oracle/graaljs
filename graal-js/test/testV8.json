@@ -1095,6 +1095,13 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/harmony/string-matchAll.js",
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "FAIL",
+    "comment" : "Off-spec: String.prototype.matchAll is used with a regular expression without 'g' flag."
+  }, {
     "filePath" : "mjsunit/harmony/weakrefs/basics.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1322,6 +1329,13 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
+    "filePath" : "mjsunit/regexp-override-symbol-match-all.js",
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "FAIL",
+    "comment" : "Off-spec: String.prototype.matchAll is used with a regular expression without 'g' flag."
+  }, {
     "filePath" : "mjsunit/regexp-stack-overflow.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1341,6 +1355,20 @@
     "filePath" : "mjsunit/regress-966460.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+  }, {
+    "filePath" : "mjsunit/regress-v8-8445-2.js",
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "FAIL",
+    "comment" : "Off-spec: String.prototype.matchAll is used with a regular expression without 'g' flag."
+  }, {
+    "filePath" : "mjsunit/regress-v8-8445.js",
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "FAIL",
+    "comment" : "Off-spec: String.prototype.matchAll is used with a regular expression without 'g' flag."
   }, {
     "filePath" : "mjsunit/regress/cross-script-vars.js",
     "status" : "FAIL"
@@ -1991,6 +2019,13 @@
     "filePath" : "mjsunit/regress/regress-crbug-897406.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-899464.js",
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "FAIL",
+    "comment" : "Off-spec: String.prototype.matchAll is used with a regular expression without 'g' flag."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-902610.js",
     "status" : "FAIL",

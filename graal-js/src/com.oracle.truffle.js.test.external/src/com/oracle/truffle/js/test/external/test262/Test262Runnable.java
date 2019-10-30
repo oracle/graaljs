@@ -213,6 +213,8 @@ public class Test262Runnable extends TestRunnable {
     }));
     private static final Set<String> ES2020_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Promise.allSettled",
+                    "String.prototype.matchAll",
+                    "Symbol.matchAll",
                     "coalesce-expression",
                     "dynamic-import",
                     "import.meta",

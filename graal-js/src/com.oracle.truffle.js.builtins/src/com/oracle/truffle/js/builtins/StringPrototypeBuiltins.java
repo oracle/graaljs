@@ -196,7 +196,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         padStart(1),
         padEnd(1),
 
-        // TBD
+        // ES2020
         matchAll(1);
 
         private final int length;
@@ -222,17 +222,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else if (EnumSet.range(padStart, padEnd).contains(this)) {
                 return 8;
             } else if (this.equals(matchAll)) {
-                return JSTruffleOptions.ECMAScript2019;
+                return JSTruffleOptions.ECMAScript2020;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
-        }
-
-        @Override
-        public boolean isEnabled() {
-            if (this.equals(matchAll)) {
-                return JSTruffleOptions.MaxECMAScriptVersion >= JSTruffleOptions.ECMAScript2019;
-            }
-            return true;
         }
 
         @Override
@@ -1879,6 +1871,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     public abstract static class JSStringMatchNode extends JSStringOperationWithRegExpArgument {
         @Child private CompileRegexNode compileRegexNode;
         @Child private CreateRegExpNode createRegExpNode;
+        @Child private IsRegExpNode isRegExpNode;
+        @Child private PropertyGetNode getFlagsNode;
         private final boolean matchAll;
 
         protected JSStringMatchNode(JSContext context, JSBuiltin builtin, boolean matchAll) {
@@ -1891,6 +1885,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object regex = JSRuntime.getArgOrUndefined(args, 0);
             requireObjectCoercible(thisObj);
             if (isSpecialProfile.profile(!(regex == Undefined.instance || regex == Null.instance))) {
+                if (matchAll && getIsRegExpNode().executeBoolean(regex)) {
+                    Object flags = getFlags(regex);
+                    requireObjectCoercible(flags);
+                    if (toString(flags).indexOf('g') == -1) {
+                        throw Errors.createTypeError("Regular expression passed to matchAll() is missing 'g' flag.");
+                    }
+                }
                 Object matcher = getMethod(regex, matchSymbol());
                 if (callSpecialProfile.profile(matcher != Undefined.instance)) {
                     return call(matcher, regex, new Object[]{thisObj});
@@ -1925,6 +1926,23 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             return createRegExpNode;
         }
+
+        private IsRegExpNode getIsRegExpNode() {
+            if (isRegExpNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isRegExpNode = insert(IsRegExpNode.create(getContext()));
+            }
+            return isRegExpNode;
+        }
+
+        private Object getFlags(Object regexp) {
+            if (getFlagsNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getFlagsNode = insert(PropertyGetNode.create(JSRegExp.FLAGS, getContext()));
+            }
+            return getFlagsNode.getValue(regexp);
+        }
+
     }
 
     /**

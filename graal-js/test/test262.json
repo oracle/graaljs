@@ -1669,14 +1669,6 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
-    "filePath" : "built-ins/String/prototype/matchAll/flags-nonglobal-throws.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "built-ins/String/prototype/matchAll/flags-undefined-throws.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/Final_Sigma_U180E.js",
     "status" : "FAIL",
     "comment" : "String.toLowerCase() does not handle Final_Sigma special casing with respect to u180e correctly"
