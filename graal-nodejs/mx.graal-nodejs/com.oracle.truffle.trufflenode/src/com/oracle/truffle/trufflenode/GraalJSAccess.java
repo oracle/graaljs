@@ -141,7 +141,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
-import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.ImportMetaInitializer;
 import com.oracle.truffle.js.runtime.ImportModuleDynamicallyCallback;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
@@ -150,6 +149,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -280,6 +280,9 @@ public final class GraalJSAccess {
 
     private final boolean exposeGC;
 
+    /**
+     * @see Options.OptionsParser#preprocessArguments
+     */
     private GraalJSAccess(String[] args) throws Exception {
         try {
             Options options = Options.parseArguments(prepareArguments(args));
@@ -296,21 +299,29 @@ public final class GraalJSAccess {
 
             exposeGC = options.isGCExposed();
             evaluator = contextBuilder.build();
+            mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         } catch (IllegalArgumentException iaex) {
             System.err.printf("ERROR: %s", iaex.getMessage());
             System.exit(1);
             throw iaex; // avoids compiler complaints that final fields are not initialized
         } catch (PolyglotException pex) {
-            if (pex.isInternalError() || pex.getMessage() == null) {
+            int exitCode = 1;
+            String message = pex.getMessage();
+            boolean emptyMessage = message == null || message.isEmpty();
+            if (pex.isExit()) {
+                exitCode = pex.getExitStatus();
+                if (exitCode != 0 && !emptyMessage) {
+                    System.err.println(message);
+                }
+            } else if (pex.isInternalError() || emptyMessage) {
                 pex.printStackTrace();
             } else {
-                System.err.println("ERROR: " + pex.getMessage());
+                System.err.println("ERROR: " + message);
             }
-            System.exit(pex.isExit() ? pex.getExitStatus() : 1);
+            System.exit(exitCode);
             throw pex;
         }
 
-        mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         mainJSContext = mainJSRealm.getContext();
         assert mainJSContext != null : "JSContext initialized";
         agent = new NodeJSAgent();

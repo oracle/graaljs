@@ -9,6 +9,9 @@ The main focus is on user-observable behavior of the engine.
 * Updated ICU4J library to version 64.2.
 * Updated ASM library to version 7.1.
 * Updated Node.js to version 12.10.0.
+* Disabled the non-standard `global` global property by default, which has been superseded by `globalThis`; use option `js.global-property` to reenable.
+* Disabled the non-standard `performance` global property by default except for the `js` launcher; use option `js.performance` to reenable.
+* Disabled the non-standard `print` and `printErr` functions in Node.js; use option `js.print` to reenable.
 
 ## Version 19.2.0
 * Added support for date and time interop.

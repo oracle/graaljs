@@ -281,6 +281,10 @@ public class JSRealm {
     @CompilationFinal private DynamicObject simdTypeConstructor;
     @CompilationFinal private DynamicObject simdTypePrototype;
 
+    private DynamicObject preinitIntlObject;
+    private DynamicObject preinitConsoleBuiltinObject;
+    private DynamicObject preinitPerformanceObject;
+
     private volatile Map<Object, DynamicObject> templateRegistry;
 
     private final DynamicObject globalScope;
@@ -1092,9 +1096,6 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
                             lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
-        if (context.getContextOptions().isPrint()) {
-            initGlobalPrintExtensions();
-        }
         if (context.getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
             setupPolyglot();
         }
@@ -1141,9 +1142,6 @@ public class JSRealm {
         if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject();
         }
-        if (context.getContextOptions().isPerformance()) {
-            putGlobalProperty(PERFORMANCE_CLASS_NAME, createPerformance());
-        }
         if (JSTruffleOptions.ProfileTime) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
@@ -1158,15 +1156,23 @@ public class JSRealm {
         putGlobalProperty("parseToJSON", parseToJSON);
     }
 
-    private void initGlobalPrintExtensions() {
-        putGlobalProperty("print", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "print"));
-        putGlobalProperty("printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
+    private void addPrintGlobals() {
+        if (context.getContextOptions().isPrint()) {
+            putGlobalProperty("print", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "print"));
+            putGlobalProperty("printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
+        }
     }
 
     private void addLoadGlobals() {
         if (getContext().getContextOptions().isLoad()) {
             putGlobalProperty("load", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "load"));
             putGlobalProperty("loadWithNewGlobal", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "loadWithNewGlobal"));
+        }
+    }
+
+    private void addPerformanceGlobal() {
+        if (context.getContextOptions().isPerformance()) {
+            putGlobalProperty(PERFORMANCE_CLASS_NAME, preinitPerformanceObject != null ? preinitPerformanceObject : createPerformanceObject());
         }
     }
 
@@ -1182,6 +1188,8 @@ public class JSRealm {
         addIntlGlobal();
         addLoadGlobals();
         addConsoleGlobals();
+        addPrintGlobals();
+        addPerformanceGlobal();
 
         if (isJavaInteropEnabled()) {
             setupJavaInterop();
@@ -1189,7 +1197,7 @@ public class JSRealm {
     }
 
     private void addGlobalGlobal() {
-        if (getContext().getContextOptions().isGlobalProperty() && !context.isOptionV8CompatibilityMode()) {
+        if (getContext().getContextOptions().isGlobalProperty()) {
             putGlobalProperty("global", getGlobalObject());
         }
     }
@@ -1205,24 +1213,27 @@ public class JSRealm {
 
     private void addIntlGlobal() {
         if (context.isOptionIntl402()) {
-            DynamicObject intlObject = JSIntl.create(this);
-            DynamicObject collatorFn = getCollatorConstructor();
-            DynamicObject numberFormatFn = getNumberFormatConstructor();
-            DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor();
-            DynamicObject pluralRulesFn = getPluralRulesConstructor();
-            DynamicObject listFormatFn = getListFormatConstructor();
-            DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor();
-            DynamicObject segmenterFn = getSegmenterConstructor();
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
-            JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(segmenterFn), segmenterFn, JSAttributes.getDefaultNotEnumerable());
-
-            putGlobalProperty(JSIntl.CLASS_NAME, intlObject);
+            putGlobalProperty(JSIntl.CLASS_NAME, preinitIntlObject != null ? preinitIntlObject : createIntlObject());
         }
+    }
+
+    private DynamicObject createIntlObject() {
+        DynamicObject intlObject = JSIntl.create(this);
+        DynamicObject collatorFn = getCollatorConstructor();
+        DynamicObject numberFormatFn = getNumberFormatConstructor();
+        DynamicObject dateTimeFormatFn = getDateTimeFormatConstructor();
+        DynamicObject pluralRulesFn = getPluralRulesConstructor();
+        DynamicObject listFormatFn = getListFormatConstructor();
+        DynamicObject relativeTimeFormatFn = getRelativeTimeFormatConstructor();
+        DynamicObject segmenterFn = getSegmenterConstructor();
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(collatorFn), collatorFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(numberFormatFn), numberFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(dateTimeFormatFn), dateTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(pluralRulesFn), pluralRulesFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(listFormatFn), listFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(relativeTimeFormatFn), relativeTimeFormatFn, JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(context, intlObject, JSFunction.getName(segmenterFn), segmenterFn, JSAttributes.getDefaultNotEnumerable());
+        return intlObject;
     }
 
     private void putGraalObject() {
@@ -1343,14 +1354,17 @@ public class JSRealm {
 
     private void addConsoleGlobals() {
         if (context.getContextOptions().isConsole()) {
-            DynamicObject console = JSUserObject.createInit(this);
-            JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
-
-            putGlobalProperty("console", console);
+            putGlobalProperty("console", preinitConsoleBuiltinObject != null ? preinitConsoleBuiltinObject : createConsoleObject());
         }
     }
 
-    private DynamicObject createPerformance() {
+    private DynamicObject createConsoleObject() {
+        DynamicObject console = JSUserObject.createInit(this);
+        JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
+        return console;
+    }
+
+    private DynamicObject createPerformanceObject() {
         DynamicObject obj = JSUserObject.createInit(this);
         JSObjectUtil.putFunctionsFromContainer(this, obj, PERFORMANCE_CLASS_NAME);
         return obj;
@@ -1585,6 +1599,7 @@ public class JSRealm {
     public void initialize() {
         CompilerAsserts.neverPartOfCompilation();
         if (getEnv().isPreInitialization()) {
+            preinitializeObjects();
             return;
         }
 
@@ -1592,6 +1607,12 @@ public class JSRealm {
         addOptionalGlobals();
 
         initTimeOffsetAndRandom();
+    }
+
+    private void preinitializeObjects() {
+        preinitIntlObject = createIntlObject();
+        preinitConsoleBuiltinObject = createConsoleObject();
+        preinitPerformanceObject = createPerformanceObject();
     }
 
     @TruffleBoundary
