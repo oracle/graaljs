@@ -66,26 +66,24 @@ describe('Worker', function () {
 
         it('A Worker thread can load classes from the classpath, too', function (done) {
             if (isMainThread) {
-            let w = new Worker(`
-                            const {
-                                parentPort
-                            } = require('worker_threads');
+                let w = new Worker(`
+                                const {
+                                    parentPort
+                                } = require('worker_threads');
 
-                            parentPort.on('message', (m) => {
-                                const JavaAsyncClass = Java.type('com.oracle.truffle.js.test.threading.JavaAsyncTaskScheduler.Example');
-                                parentPort.postMessage('ok!');
-                            });
-            `, {
-                eval: true
-            });
-            w.on('message', (m) => {
-                assert(m === 'ok!');
-                w.terminate().then(()=>{done()});
-            });
-            w.postMessage('ignore me');
-        }
-
+                                parentPort.on('message', (m) => {
+                                    const JavaAsyncClass = Java.type('com.oracle.truffle.js.test.threading.JavaAsyncTaskScheduler.Example');
+                                    parentPort.postMessage('ok!');
+                                });
+                `, {
+                    eval: true
+                });
+                w.on('message', (m) => {
+                    assert(m === 'ok!');
+                    w.terminate().then(()=>{done()});
+                });
+                w.postMessage('ignore me');
+            }
         }).timeout(5000);
-
     }
 });
