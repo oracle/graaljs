@@ -110,7 +110,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             assert JSExternalObject.isJSExternalObject(nativeMessagePortData);
             GraalJSAccess access = (GraalJSAccess) SharedMemMessagingBindings.getApiField(self);
             access.setCurrentMessagePortData(nativeMessagePortData);
-            return this;
+            return self;
         }
     }
 
@@ -144,7 +144,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         public Object free(DynamicObject self) {
             GraalJSAccess access = (GraalJSAccess) SharedMemMessagingBindings.getApiField(self);
             access.getCurrentMessagePortData().disposeLastMessageRefs();
-            return this;
+            return self;
         }
     }
 
