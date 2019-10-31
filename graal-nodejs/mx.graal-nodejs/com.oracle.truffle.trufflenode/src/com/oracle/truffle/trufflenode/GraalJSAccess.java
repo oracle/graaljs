@@ -345,6 +345,7 @@ public final class GraalJSAccess {
     }
 
     public static Object create(String[] args) throws Exception {
+        Thread.currentThread().setContextClassLoader(ClassLoader.getSystemClassLoader());
         return new GraalJSAccess(args);
     }
 
