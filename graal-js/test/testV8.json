@@ -958,7 +958,10 @@
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
     "filePath" : "mjsunit/harmony/nullish.js",
-    "status" : "FAIL",
+    "ecmaVersion" : {
+      "minVersion" : 11
+    },
+    "status" : "PASS",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/harmony/numeric-separator.js",

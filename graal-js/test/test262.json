@@ -2327,14 +2327,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-01-15)"
   }, {
-    "filePath" : "language/expressions/coalesce/chainable-if-parenthesis-covered-logical-and.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/expressions/coalesce/chainable-if-parenthesis-covered-logical-or.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "language/expressions/compound-assignment/add-non-simple.js",
     "ecmaVersion" : {
       "minVersion" : 11
@@ -2400,10 +2392,6 @@
       "minVersion" : 11
     },
     "status" : "PASS"
-  }, {
-    "filePath" : "language/expressions/conditional/coalesce-expr-ternary.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
   }, {
     "filePath" : "language/expressions/dynamic-import/usage-from-eval.js",
     "status" : "FAIL",
