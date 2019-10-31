@@ -3,11 +3,13 @@
     "name" : "com.ibm.icu.text.RuleBasedNumberFormat",
     "methods" : [
         { "name" : "postProcess",
+          "justification" : "Loads and instantiates RBNFPostProcessor reflectively, points-to analysis assumes all classes configured for reflective access.",
           "parameterTypes" : [
               "java.lang.StringBuilder",
               "com.ibm.icu.text.NFRuleSet"
         ]},
         { "name" : "getLenientScannerProvider",
+          "justification" : "Loads and instantiates RbnfLenientScannerProvider reflectively, points-to analysis assumes all classes configured for reflective access.",
           "parameterTypes" : [
         ]}
     ]
@@ -16,6 +18,7 @@
     "name" : "com.ibm.icu.impl.ResourceBundleWrapper$2",
     "methods" : [
         { "name" : "load",
+          "justification" : "Loads and instantiates ResourceBundle reflectively, points-to analysis assumes all classes configured for reflective access.",
           "parameterTypes" : [
         ]}
     ]
@@ -24,6 +27,7 @@
     "name" : "com.ibm.icu.text.NumberFormat",
     "methods" : [
         { "name" : "getShim",
+          "justification" : "Loads and instantiates NumberFormatShim reflectively, points-to analysis assumes all classes configured for reflective access.",
           "parameterTypes" : [
         ]}
     ]
@@ -32,6 +36,7 @@
     "name" : "com.ibm.icu.text.BreakIterator",
     "methods" : [
         { "name" : "getShim",
+          "justification" : "Loads and instantiates BreakIteratorServiceShim reflectively, points-to analysis assumes all classes configured for reflective access.",
           "parameterTypes" : [
         ]}
     ]
@@ -40,6 +45,7 @@
     "name" : "com.ibm.icu.text.Collator",
     "methods" : [
         { "name" : "getShim",
+          "justification" : "Loads and instantiates ServiceShim reflectively, points-to analysis assumes all classes configured for reflective access.",
           "parameterTypes" : [
         ]}
     ]
@@ -48,6 +54,7 @@
     "name" : "com.ibm.icu.impl.ClassLoaderUtil",
     "methods" : [
         { "name" : "getBootstrapClassLoader",
+          "justification" : "Creates a new dummy ClassLoader to represent a null ClassLoader, classloading is not supported by SVM.",
           "parameterTypes" : [
         ]}
     ]
@@ -55,6 +62,7 @@
 
   {
     "name" : "com.ibm.icu.impl.ICUData",
+    "justification" : "Loads resources using class loader, classloading is not supported by SVM.",
     "methods" : [
         { "name" : "getStream",
           "parameterTypes" : [
@@ -74,6 +82,7 @@
     "name" : "com.ibm.icu.impl.ICUBinary",
     "methods" : [
         { "name" : "mapFile",
+          "justification" : "In runtime unused, JavaScript loads data from resources instead of files.",
           "parameterTypes" : [
             "java.io.File"
         ]}
@@ -84,6 +93,7 @@
     "name" : "com.ibm.icu.impl.ICUConfig",
     "methods" : [
         { "name" : "get",
+          "justification" : "Reads system property for ICU library.",
           "parameterTypes" : [
             "java.lang.String",
             "java.lang.String"
@@ -93,6 +103,7 @@
 
   {
     "name" : "com.ibm.icu.impl.URLHandler$JarURLHandler",
+    "justification" : "Unreachable in runtime but called in PrivilegedAction which makes it visible in context insensitive points-to-analyses.",
     "methods" : [
         { "name" : "<init>",
           "parameterTypes" : [
@@ -102,6 +113,7 @@
   },
   {
     "name" : "com.ibm.icu.impl.URLHandler$FileURLHandler",
+    "justification" : "Unreachable in runtime but called in PrivilegedAction which makes it visible in context insensitive points-to-analyses.",
     "methods" : [
         { "name" : "<init>",
           "parameterTypes" : [
