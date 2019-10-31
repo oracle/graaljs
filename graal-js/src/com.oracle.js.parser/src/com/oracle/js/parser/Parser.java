@@ -933,11 +933,15 @@ public class Parser extends AbstractParser {
 
     private static boolean forbiddenNullishCoalescingUsage(TokenType opType, Expression lhs, Expression rhs) {
         if (opType == TokenType.NULLISHCOALESC) {
-            return lhs.isTokenType(TokenType.AND) || lhs.isTokenType(TokenType.OR) || rhs.isTokenType(TokenType.AND) || rhs.isTokenType(TokenType.OR);
+            return forbiddenNullishCoalescingChaining(lhs) || forbiddenNullishCoalescingChaining(rhs);
         } else {
             assert opType == TokenType.AND || opType == TokenType.OR;
-            return lhs.isTokenType(TokenType.NULLISHCOALESC) || rhs.isTokenType(TokenType.NULLISHCOALESC);
+            return (!lhs.isParenthesized() && lhs.isTokenType(TokenType.NULLISHCOALESC)) || (!rhs.isParenthesized() && rhs.isTokenType(TokenType.NULLISHCOALESC));
         }
+    }
+
+    private static boolean forbiddenNullishCoalescingChaining(Expression expression) {
+        return !expression.isParenthesized() && (expression.isTokenType(TokenType.AND) || expression.isTokenType(TokenType.OR));
     }
 
     /**
