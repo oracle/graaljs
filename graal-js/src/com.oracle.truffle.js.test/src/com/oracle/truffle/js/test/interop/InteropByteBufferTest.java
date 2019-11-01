@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.test.interop;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
@@ -123,7 +124,7 @@ public class InteropByteBufferTest {
 
     @Test
     public void testJavaInteropDirect() {
-        try (Context cx = Context.newBuilder("js").allowHostAccess(true).build()) {
+        try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
             Value buffer = cx.eval("js", "const ByteBuffer = Java.type('java.nio.ByteBuffer');" +
                             "const bb = ByteBuffer.allocateDirect(3);" +
                             "const ab = new ArrayBuffer(bb);" +
@@ -142,7 +143,7 @@ public class InteropByteBufferTest {
 
     @Test
     public void testJavaInteropHeap() {
-        try (Context cx = Context.newBuilder("js").allowHostAccess(true).build()) {
+        try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
             Value buffer = cx.eval("js", "const ByteBuffer = Java.type('java.nio.ByteBuffer');" +
                             "const bb = ByteBuffer.allocate(3);" +
                             "const ab = new ArrayBuffer(bb);" +

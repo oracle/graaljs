@@ -356,10 +356,6 @@
     "filePath" : "basic/JDK-8035312_5.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/JDK-8036743.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
     "filePath" : "basic/JDK-8041998.js",
     "status" : "SKIP",
     "comment" : "non-deterministic failures because of multi-threading"
