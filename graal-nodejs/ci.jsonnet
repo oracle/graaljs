@@ -48,7 +48,7 @@ local common = import '../common.jsonnet';
       ['${GRAALVM_HOME}/bin/node', '-e', 'console.log(\'Hello, World!\')'],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
     ],
-    timelimit: '30:00',
+    timelimit: '45:00',
   },
 
   local testNodeGraalTip = buildGraalTip + {
