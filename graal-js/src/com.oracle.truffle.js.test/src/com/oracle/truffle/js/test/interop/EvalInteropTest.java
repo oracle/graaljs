@@ -74,4 +74,17 @@ public class EvalInteropTest {
         }
     }
 
+    @Test
+    public void testNestedContext() {
+        Context cx = Context.newBuilder("js").allowAllAccess(true).build();
+        Value v = cx.eval("js", "Java.type('com.oracle.truffle.js.test.interop.EvalInteropTest').nestedContextEval();");
+        assertTrue(v.isNumber());
+        assertEquals(42, v.asInt());
+    }
+
+    public static Object nestedContextEval() {
+        Context context = Context.newBuilder("js").build();
+        return context.eval("js", "Number(42);");
+    }
+
 }

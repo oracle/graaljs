@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-var assert = require('assert');
+const assert = require('assert');
 
 const {
     Worker,
@@ -85,5 +85,40 @@ describe('Worker', function () {
                 w.postMessage('ignore me');
             }
         }).timeout(5000);
+
+        it('The Main thread can load classes from the classpath and nest context calls', function (done) {
+            if (isMainThread) {
+                const JavaAsyncClass = Java.type('com.oracle.truffle.js.test.threading.JavaAsyncTaskScheduler.Example');
+                const num = JavaAsyncClass.evalJsCode();
+                assert(num === 42);
+                done();
+            }
+        }).timeout(5000);
+
+        it('A Worker thread can load classes from the classpath and nest context calls, too', function (done) {
+            if (isMainThread) {
+                let w = new Worker(`
+                                const {
+                                    parentPort
+                                } = require('worker_threads');
+                                const assert = require('assert');
+
+                                parentPort.on('message', (m) => {
+                                    const JavaAsyncClass = Java.type('com.oracle.truffle.js.test.threading.JavaAsyncTaskScheduler.Example');
+                                    const num = JavaAsyncClass.evalJsCode();
+                                    assert(num === 42);
+                                    parentPort.postMessage(num);
+                                });
+                `, {
+                    eval: true
+                });
+                w.on('message', (m) => {
+                    assert(m === 42);
+                    w.terminate().then(()=>{done()});
+                });
+                w.postMessage('ignore me');
+            }
+        }).timeout(5000);
+
     }
 });
