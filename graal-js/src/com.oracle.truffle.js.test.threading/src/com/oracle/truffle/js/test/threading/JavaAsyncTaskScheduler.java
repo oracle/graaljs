@@ -80,6 +80,11 @@ public class JavaAsyncTaskScheduler {
             });
             thread.start();
         }
+
+        public static Object evalJsCode() {
+            Context context = Context.newBuilder("js").build();
+            return context.eval("js", "42;");
+        }
     }
 
     /**
