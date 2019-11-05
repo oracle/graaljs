@@ -590,6 +590,10 @@ public final class Errors {
         return createTypeError("proxy has been revoked");
     }
 
+    public static JSException createTypeErrorProxyTargetNotExtensible() {
+        return createTypeError("target is not extensible");
+    }
+
     @TruffleBoundary
     public static JSException createTypeErrorProxyGetInvariantViolated(Object propertyKey, Object expectedValue, Object actualValue) {
         String propertyName = propertyKey.toString();
