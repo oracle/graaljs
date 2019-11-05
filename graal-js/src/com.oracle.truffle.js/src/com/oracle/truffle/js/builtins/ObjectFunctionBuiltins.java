@@ -79,6 +79,7 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltinsFactory.ObjectValues
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins.ObjectOperation;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
@@ -95,8 +96,10 @@ import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -119,6 +122,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -892,7 +896,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class ObjectAssignNode extends ObjectOperation {
+    public abstract static class ObjectAssignNode extends JSBuiltinNode {
 
         protected static final boolean STRICT = true;
 
@@ -902,37 +906,72 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object assign(Object target, Object[] sources,
-                        @Cached("create(getContext())") ReadElementNode read,
+                        @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
                         @Cached("create(getContext(), STRICT)") WriteElementNode write,
-                        @Cached("create(false)") JSGetOwnPropertyNode getOwnProperty,
-                        @Cached ListSizeNode listSize,
-                        @Cached ListGetNode listGet,
-                        @Cached BranchProfile listProfile,
-                        @Cached BranchProfile elementProfile,
-                        @Cached JSClassProfile classProfile) {
-            Object to = toObject(target);
+                        @Cached("create(getContext())") AssignPropertiesNode assignProperties) {
+            Object to = toObjectNode.executeTruffleObject(target);
             if (sources.length == 0) {
                 return to;
             }
             for (Object o : sources) {
-                if (o != Undefined.instance && o != Null.instance) {
-                    listProfile.enter();
-                    DynamicObject from = toJSObject(o);
-                    List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(from, classProfile);
-                    int size = listSize.execute(ownPropertyKeys);
-                    for (int i = 0; i < size; i++) {
-                        Object nextKey = listGet.execute(ownPropertyKeys, i);
-                        assert JSRuntime.isPropertyKey(nextKey);
-                        PropertyDescriptor desc = getOwnProperty.execute(from, nextKey);
-                        if (desc != null && desc.getEnumerable()) {
-                            elementProfile.enter();
-                            Object propValue = read.executeWithTargetAndIndex(from, nextKey);
-                            write.executeWithTargetAndIndexAndValue(to, nextKey, propValue);
-                        }
-                    }
+                if (!JSRuntime.isNullOrUndefined(o)) {
+                    Object from = toObjectNode.executeTruffleObject(o);
+                    assignProperties.executeVoid(to, from, write);
                 }
             }
             return to;
+        }
+    }
+
+    abstract static class AssignPropertiesNode extends JavaScriptBaseNode {
+        protected final JSContext context;
+
+        protected AssignPropertiesNode(JSContext context) {
+            this.context = context;
+        }
+
+        abstract void executeVoid(Object to, Object from, WriteElementNode write);
+
+        @Specialization(guards = {"isJSObject(from)"})
+        protected static void copyPropertiesFromJSObject(Object to, DynamicObject from, WriteElementNode write,
+                        @Cached("create(context)") ReadElementNode read,
+                        @Cached("create(false)") JSGetOwnPropertyNode getOwnProperty,
+                        @Cached ListSizeNode listSize,
+                        @Cached ListGetNode listGet,
+                        @Cached JSClassProfile classProfile) {
+            List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(from, classProfile);
+            int size = listSize.execute(ownPropertyKeys);
+            for (int i = 0; i < size; i++) {
+                Object nextKey = listGet.execute(ownPropertyKeys, i);
+                assert JSRuntime.isPropertyKey(nextKey);
+                PropertyDescriptor desc = getOwnProperty.execute(from, nextKey);
+                if (desc != null && desc.getEnumerable()) {
+                    Object propValue = read.executeWithTargetAndIndex(from, nextKey);
+                    write.executeWithTargetAndIndexAndValue(to, nextKey, propValue);
+                }
+            }
+        }
+
+        @Specialization(guards = {"!isJSObject(from)"}, limit = "3")
+        protected final void doObject(Object to, Object from, WriteElementNode write,
+                        @CachedLibrary("from") InteropLibrary fromInterop,
+                        @CachedLibrary(limit = "3") InteropLibrary keysInterop,
+                        @CachedLibrary(limit = "3") InteropLibrary stringInterop) {
+            if (fromInterop.isNull(from)) {
+                return;
+            }
+            try {
+                Object members = fromInterop.getMembers(from);
+                long length = JSInteropUtil.getArraySize(members, keysInterop, this);
+                for (long i = 0; i < length; i++) {
+                    Object key = keysInterop.readArrayElement(members, i);
+                    String stringKey = stringInterop.asString(key);
+                    Object value = fromInterop.readMember(from, stringKey);
+                    write.executeWithTargetAndIndexAndValue(to, stringKey, value);
+                }
+            } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
+                throw Errors.createTypeErrorInteropException(from, e, "CopyDataProperties", this);
+            }
         }
     }
 
