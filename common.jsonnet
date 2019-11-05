@@ -1,7 +1,7 @@
 {
-  local labsjdk8 = {name: 'oraclejdk', version: '8u221-jvmci-19.3-b02', platformspecific: true},
+  local labsjdk8 = {name: 'oraclejdk', version: '8u231-jvmci-19.3-b04', platformspecific: true},
 
-  local labsjdk_ce_11 = {name : 'labsjdk', version : 'ce-11.0.5+9-jvmci-19.3-b03', platformspecific: true},
+  local labsjdk_ce_11 = {name : 'labsjdk', version : 'ce-11.0.5+10-jvmci-19.3-b04', platformspecific: true},
 
   jdk8: {
     downloads+: {
