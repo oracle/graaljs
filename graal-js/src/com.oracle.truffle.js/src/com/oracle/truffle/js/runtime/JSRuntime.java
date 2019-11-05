@@ -2827,7 +2827,7 @@ public final class JSRuntime {
         return builder.toString();
     }
 
-    public static DynamicObject expectJSObject(TruffleObject to, BranchProfile errorBranch) {
+    public static DynamicObject expectJSObject(Object to, BranchProfile errorBranch) {
         if (!JSObject.isJSObject(to)) {
             errorBranch.enter();
             throw Errors.createTypeErrorJSObjectExpected();

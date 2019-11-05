@@ -897,7 +897,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected Object toJSON(Object thisDate, @SuppressWarnings("unused") Object key) {
-            DynamicObject o = toObject(thisDate);
+            DynamicObject o = toJSObject(thisDate);
             Object tv = toPrimitiveNode.execute(o);
             if (JSRuntime.isNumber(tv)) {
                 double d = JSRuntime.doubleValue(((Number) tv));

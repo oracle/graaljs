@@ -53,7 +53,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -254,7 +253,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     return Null.instance;
                 }
             } else {
-                TruffleObject tobject = toTruffleObject(object);
+                Object tobject = toObject(object);
                 if (JSObject.isJSObject(tobject)) {
                     return JSObject.getPrototype((DynamicObject) tobject);
                 } else {
@@ -267,7 +266,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private DynamicObject getForeignObjectPrototype(TruffleObject truffleObject) {
+        private DynamicObject getForeignObjectPrototype(Object truffleObject) {
             assert JSRuntime.isForeignObject(truffleObject);
             if (foreignObjectPrototypeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -299,7 +298,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
-        protected DynamicObject getForeignObject(TruffleObject thisObj, Object property,
+        protected DynamicObject getForeignObject(Object thisObj, Object property,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @Cached("create()") JSForeignToJSTypeNode toJSType) {
             Object propertyKey = toPropertyKeyNode.execute(property);
@@ -335,7 +334,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
         protected DynamicObject getDefault(Object thisObj, Object property) {
-            TruffleObject object = toTruffleObject(thisObj);
+            Object object = toObject(thisObj);
             assert JSObject.isJSObject(object);
             return getJSObject((DynamicObject) object, property);
         }
@@ -373,7 +372,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"isForeignObject(thisObj)"}, limit = "3")
-        protected DynamicObject getForeignObject(TruffleObject thisObj,
+        protected DynamicObject getForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members,
                         @Cached("create()") JSForeignToJSTypeNode toJSType) {
@@ -425,7 +424,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
         protected DynamicObject getDefault(Object thisObj,
                         @Cached("createRecursive()") ObjectGetOwnPropertyDescriptorsNode recursive) {
-            TruffleObject object = toTruffleObject(thisObj);
+            Object object = toObject(thisObj);
             return recursive.executeEvaluated(object);
         }
 
@@ -451,18 +450,18 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
         protected DynamicObject getDefault(Object thisObj,
                         @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
-            DynamicObject object = toOrAsObject(thisObj);
+            DynamicObject object = toOrAsJSObject(thisObj);
             return getJSObject(object, jsclassProfile);
         }
 
         @Specialization(guards = {"isForeignObject(thisObj)", "symbols"})
-        protected DynamicObject getForeignObjectSymbols(@SuppressWarnings("unused") TruffleObject thisObj) {
+        protected DynamicObject getForeignObjectSymbols(@SuppressWarnings("unused") Object thisObj) {
             // TruffleObjects can never have symbols.
             return JSArray.createConstantEmptyArray(getContext());
         }
 
         @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"}, limit = "3")
-        protected DynamicObject getForeignObjectNames(TruffleObject thisObj,
+        protected DynamicObject getForeignObjectNames(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop,
                         @CachedLibrary(limit = "3") InteropLibrary members) {
             Object[] array;
@@ -568,7 +567,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private DynamicObject objectDefineProperties(DynamicObject ret, Object properties) {
             if (properties != Undefined.instance) {
                 needDefineProperties.enter();
-                intlDefineProperties(ret, toObject(properties));
+                intlDefineProperties(ret, toJSObject(properties));
             }
             return ret;
         }
@@ -591,7 +590,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected DynamicObject defineProperty(Object thisObj, Object property, Object attributes) {
-            DynamicObject object = asObject(thisObj);
+            DynamicObject object = asJSObject(thisObj);
             PropertyDescriptor desc = toPropertyDescriptor(attributes);
             Object propertyKey = toPropertyKeyNode.execute(property);
             JSRuntime.definePropertyOrThrow(object, propertyKey, desc);
@@ -612,8 +611,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected DynamicObject defineProperties(Object thisObj, Object properties) {
-            DynamicObject object = asObject(thisObj);
-            return intlDefineProperties(object, toObject(properties));
+            DynamicObject object = asJSObject(thisObj);
+            return intlDefineProperties(object, toJSObject(properties));
         }
     }
 
@@ -720,7 +719,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "isJSType(thisObj)")
         protected DynamicObject keysDynamicObject(DynamicObject thisObj) {
-            UnmodifiableArrayList<? extends Object> keyList = enumerableOwnPropertyNames(toOrAsObject(thisObj));
+            UnmodifiableArrayList<? extends Object> keyList = enumerableOwnPropertyNames(toOrAsJSObject(thisObj));
             int len = keyList.size();
             if (hasElements.profile(len > 0)) {
                 assert keyList.stream().allMatch(String.class::isInstance);
@@ -731,27 +730,27 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected DynamicObject keys(Symbol symbol) {
-            return keysDynamicObject(toOrAsObject(symbol));
+            return keysDynamicObject(toOrAsJSObject(symbol));
         }
 
         @Specialization
         protected DynamicObject keys(JSLazyString string) {
-            return keysDynamicObject(toOrAsObject(string));
+            return keysDynamicObject(toOrAsJSObject(string));
         }
 
         @Specialization
         protected DynamicObject keys(LargeInteger largeInteger) {
-            return keysDynamicObject(toOrAsObject(largeInteger));
+            return keysDynamicObject(toOrAsJSObject(largeInteger));
         }
 
         @Specialization
         protected DynamicObject keys(BigInt bigInt) {
-            return keysDynamicObject(toOrAsObject(bigInt));
+            return keysDynamicObject(toOrAsJSObject(bigInt));
         }
 
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected DynamicObject keys(Object thisObj) {
-            return keysDynamicObject(toOrAsObject(thisObj));
+            return keysDynamicObject(toOrAsJSObject(thisObj));
         }
 
         @Specialization(guards = "isForeignObject(obj)", limit = "3")
@@ -828,7 +827,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private Object setPrototypeOfImpl(Object thisObj, DynamicObject newProto) {
             requireObjectCoercible(thisObj);
             if (isObjectProfile.profile(JSObject.isDynamicObject(thisObj))) {
-                DynamicObject object = asObject(thisObj);
+                DynamicObject object = asJSObject(thisObj);
                 if (!JSObject.setPrototype(object, newProto, classProfile)) {
                     errorBranch.enter();
                     throw Errors.createTypeError("setPrototype failed");
@@ -842,7 +841,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSObject(newProto)", "!isJSNull(newProto)"})
         protected Object setPrototypeOfInvalidNewProto(Object thisObj, Object newProto) {
             assert newProto != null;
-            asObject(thisObj);
+            asJSObject(thisObj);
             throw Errors.createTypeErrorInvalidPrototype(newProto);
         }
 
@@ -910,16 +909,15 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached ListGetNode listGet,
                         @Cached BranchProfile listProfile,
                         @Cached BranchProfile elementProfile,
-                        @Cached JSClassProfile classProfile,
-                        @Cached BranchProfile notAJSObjectBranch) {
-            Object to = toTruffleObject(target);
+                        @Cached JSClassProfile classProfile) {
+            Object to = toObject(target);
             if (sources.length == 0) {
                 return to;
             }
             for (Object o : sources) {
                 if (o != Undefined.instance && o != Null.instance) {
                     listProfile.enter();
-                    DynamicObject from = JSRuntime.expectJSObject(toObject(o), notAJSObjectBranch);
+                    DynamicObject from = toJSObject(o);
                     List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(from, classProfile);
                     int size = listSize.execute(ownPropertyKeys);
                     for (int i = 0; i < size; i++) {
@@ -1001,7 +999,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"!isJSObject(obj)", "!isForeignObject(obj)"})
         protected DynamicObject valuesOrEntriesGeneric(Object obj,
                         @Cached("createRecursive()") ObjectValuesOrEntriesNode recursive) {
-            TruffleObject thisObj = toTruffleObject(obj);
+            Object thisObj = toObject(obj);
             return recursive.executeEvaluated(thisObj);
         }
 

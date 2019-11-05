@@ -53,7 +53,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -582,7 +581,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(context));
             }
-            TruffleObject from = toObjectNode.executeTruffleObject(sourceValue);
+            Object from = toObjectNode.executeTruffleObject(sourceValue);
             if (isJSObjectProfile.profile(JSObject.isJSObject(from))) {
                 copyDataProperties(target, (DynamicObject) from);
             } else {

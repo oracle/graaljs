@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -106,7 +105,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
     protected final Object doOther(DynamicObject restObj, Object value,
                     @Shared("toObject") @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode,
                     @Shared("isJSObject") @Cached("createBinaryProfile()") ConditionProfile isJSObjectProfile) {
-        TruffleObject from = toObjectNode.executeTruffleObject(value);
+        Object from = toObjectNode.executeTruffleObject(value);
         if (isJSObjectProfile.profile(JSGuards.isJSType(from))) {
             doObject(restObj, (DynamicObject) from);
         } else {
@@ -119,7 +118,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptNode {
     protected final Object doOtherWithExcluded(VirtualFrame frame, DynamicObject restObj, Object value,
                     @Shared("toObject") @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode,
                     @Shared("isJSObject") @Cached("createBinaryProfile()") ConditionProfile isJSObjectProfile) {
-        TruffleObject from = toObjectNode.executeTruffleObject(value);
+        Object from = toObjectNode.executeTruffleObject(value);
         if (isJSObjectProfile.profile(JSGuards.isJSType(from))) {
             doObjectWithExcluded(frame, restObj, (DynamicObject) from);
         } else {

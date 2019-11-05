@@ -181,14 +181,14 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         /**
          * Convert to a DynamicObject that is a JavaScript object.
          */
-        protected final DynamicObject toObject(Object target) {
-            return JSRuntime.expectJSObject(toTruffleObject(target), notAJSObjectBranch);
+        protected final DynamicObject toJSObject(Object target) {
+            return JSRuntime.expectJSObject(toObject(target), notAJSObjectBranch);
         }
 
         /**
          * Convert to a TruffleObject.
          */
-        protected final TruffleObject toTruffleObject(Object target) {
+        protected final Object toObject(Object target) {
             if (toObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
@@ -200,7 +200,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
          * Coerce to Object or throw TypeError. Must be the first statement (evaluation order!) and
          * executed only once.
          */
-        protected final DynamicObject asObject(Object object) {
+        protected final DynamicObject asJSObject(Object object) {
             if (isObject.profile(JSRuntime.isObject(object))) {
                 return (DynamicObject) object;
             } else {
@@ -208,11 +208,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        protected final DynamicObject toOrAsObject(Object thisObj) {
+        protected final DynamicObject toOrAsJSObject(Object thisObj) {
             if (getContext().getEcmaScriptVersion() >= 6) {
-                return toObject(thisObj);
+                return toJSObject(thisObj);
             } else {
-                return asObject(thisObj); // ES5
+                return asJSObject(thisObj); // ES5
             }
         }
 
@@ -231,32 +231,32 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isJSType(thisObj)")
         protected DynamicObject valueOf(DynamicObject thisObj) {
-            return toObject(thisObj);
+            return toJSObject(thisObj);
         }
 
         @Specialization
         protected DynamicObject valueOf(Symbol thisObj) {
-            return toObject(thisObj);
+            return toJSObject(thisObj);
         }
 
         @Specialization
         protected DynamicObject valueOf(JSLazyString thisObj) {
-            return toObject(thisObj);
+            return toJSObject(thisObj);
         }
 
         @Specialization
         protected DynamicObject valueOf(LargeInteger thisObj) {
-            return toObject(thisObj);
+            return toJSObject(thisObj);
         }
 
         @Specialization
         protected DynamicObject valueOf(BigInt thisObj) {
-            return toObject(thisObj);
+            return toJSObject(thisObj);
         }
 
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected DynamicObject valueOf(Object thisObj) {
-            return toObject(thisObj);
+            return toJSObject(thisObj);
         }
 
         @Specialization(guards = "isForeignObject(thisObj)")
@@ -340,28 +340,28 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected String doSymbol(Symbol thisObj) {
             assert thisObj != null;
-            return JSObject.defaultToString(toObject(thisObj));
+            return JSObject.defaultToString(toJSObject(thisObj));
         }
 
         @Specialization
         protected String doLazyString(JSLazyString thisObj) {
-            return JSObject.defaultToString(toObject(thisObj));
+            return JSObject.defaultToString(toJSObject(thisObj));
         }
 
         @Specialization
         protected String doLargeInteger(LargeInteger thisObj) {
-            return JSObject.defaultToString(toObject(thisObj));
+            return JSObject.defaultToString(toJSObject(thisObj));
         }
 
         @Specialization
         protected String doBigInt(BigInt thisObj) {
-            return JSObject.defaultToString(toObject(thisObj));
+            return JSObject.defaultToString(toJSObject(thisObj));
         }
 
         @Specialization(guards = {"!isTruffleObject(thisObj)"})
         protected String doObject(Object thisObj) {
             assert thisObj != null;
-            return JSObject.defaultToString(toObject(thisObj));
+            return JSObject.defaultToString(toJSObject(thisObj));
         }
     }
 
@@ -429,7 +429,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object toLocaleString(Object obj) {
             Object objConv = obj;
             if (getContext().getEcmaScriptVersion() < 6 || getContext().isOptionV8CompatibilityMode()) {
-                objConv = toObject(obj);
+                objConv = toJSObject(obj);
             }
             Object toStringFn = getToString.getValue(objConv);
             return callNode.executeCall(JSArguments.createZeroArg(obj, toStringFn));
@@ -448,7 +448,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected boolean propertyIsEnumerable(Object obj, Object key) {
             Object propertyKey = toPropertyKeyNode.execute(key);
-            DynamicObject thisJSObj = toObject(obj);
+            DynamicObject thisJSObj = toJSObject(obj);
             PropertyDescriptor desc = getOwnPropertyNode.execute(thisJSObj, propertyKey);
             if (descNull.profile(desc == null)) {
                 return false;
@@ -497,7 +497,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected boolean hasOwnPropertyPrimitive(Object thisObj, Object propName) {
             Object key = getToPropertyKeyNode().execute(propName);
-            DynamicObject obj = toObject(thisObj);
+            DynamicObject obj = toJSObject(thisObj);
             return getHasOwnPropertyNode().executeBoolean(obj, key);
         }
 
@@ -549,7 +549,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isJSObject(arg)")
         protected boolean isPrototypeOf(Object thisObj, DynamicObject arg) {
-            DynamicObject object = toObject(thisObj);
+            DynamicObject object = toJSObject(thisObj);
             if (argIsNull.profile(arg == null)) {
                 return false;
             }
@@ -591,7 +591,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected Object define(Object thisObj, Object prop, Object getterOrSetter) {
-            DynamicObject object = toObject(thisObj);
+            DynamicObject object = toJSObject(thisObj);
             if (!isCallableNode.executeBoolean(getterOrSetter)) {
                 throw createTypeErrorExpectingFunction();
             }
@@ -626,7 +626,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected Object lookup(Object thisObj, Object prop) {
-            DynamicObject object = toObject(thisObj);
+            DynamicObject object = toJSObject(thisObj);
             Object key = toPropertyKeyNode.execute(prop);
 
             DynamicObject current = object;
