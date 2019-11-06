@@ -1,4 +1,4 @@
-[![Join the chat at https://gitter.im/graalvm/graaljs](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/graalvm/graaljs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the GraalVM Slack chat](https://img.shields.io/badge/slack-join%20chat-E01563.svg)](https://join.slack.com/t/graalvm/shared_invite/enQtNzk0NTc5MzUyNzg5LTAwY2YyODQ4MzJjMGJjZGQzMWY2ZDA3NWI3YzEzNDRlNGQ1MTZkYzkzM2JkYjIxMTY2NGQzNjUxOGQzZGExZmU)
 
 A high performance implementation of the JavaScript programming language.
 Built on the GraalVM by Oracle Labs.
