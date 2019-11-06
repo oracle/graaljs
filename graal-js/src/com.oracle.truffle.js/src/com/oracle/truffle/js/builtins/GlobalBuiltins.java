@@ -100,6 +100,8 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNo
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
+import com.oracle.truffle.js.builtins.cjs.CommonJsRequireBuiltin;
+import com.oracle.truffle.js.builtins.cjs.CommonJsRequireBuiltinNodeGen;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -328,6 +330,39 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     return JSGlobalLoadNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
                 case loadWithNewGlobal:
                     return JSGlobalLoadWithNewGlobalNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Built-ins for CommonJS 'require' emulation.
+     */
+    public static final class GlobalCommonJsRequireBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalCommonJsRequireBuiltins.GlobalRequire> {
+        protected GlobalCommonJsRequireBuiltins() {
+            super(JSGlobalObject.CLASS_NAME_COMMONJS_REQUIRE_EXTENSIONS, GlobalRequire.class);
+        }
+
+        public enum GlobalRequire implements BuiltinEnum<GlobalRequire> {
+            require(1);
+
+            private final int length;
+
+            GlobalRequire(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalRequire builtinEnum) {
+            switch (builtinEnum) {
+                case require:
+                    return CommonJsRequireBuiltinNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
             }
             return null;
         }

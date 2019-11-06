@@ -1186,6 +1186,13 @@ public class JSRealm {
         }
     }
 
+    private void addCommonJsGlobals() {
+        // TODO option
+        if (getContext().getContextOptions().isLoad()) {
+            putGlobalProperty("require", lookupFunction(JSGlobalObject.CLASS_NAME_COMMONJS_REQUIRE_EXTENSIONS, "require"));
+        }
+    }
+
     private void addLoadGlobals() {
         if (getContext().getContextOptions().isLoad()) {
             putGlobalProperty("load", lookupFunction(GlobalBuiltins.GLOBAL_LOAD, "load"));
@@ -1213,6 +1220,7 @@ public class JSRealm {
         addConsoleGlobals();
         addPrintGlobals();
         addPerformanceGlobal();
+        addCommonJsGlobals();
 
         if (isJavaInteropEnabled()) {
             setupJavaInterop();
