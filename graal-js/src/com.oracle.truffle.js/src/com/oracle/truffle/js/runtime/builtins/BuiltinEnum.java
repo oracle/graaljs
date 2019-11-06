@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.js.nodes.function.BuiltinArgumentBuilder;
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.JSContext;
+
 public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
     @SuppressWarnings("unchecked")
     default E asEnum() {
@@ -90,6 +94,15 @@ public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
 
     default boolean isEnumerable() {
         return false;
+    }
+
+    @SuppressWarnings("unused")
+    default Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
+        throw new UnsupportedOperationException();
+    }
+
+    default BuiltinArgumentBuilder args() {
+        return BuiltinArgumentBuilder.builder();
     }
 
     static String stripName(String name) {

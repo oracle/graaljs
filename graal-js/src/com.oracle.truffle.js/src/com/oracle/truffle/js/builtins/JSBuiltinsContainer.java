@@ -84,6 +84,14 @@ public class JSBuiltinsContainer {
         return name;
     }
 
+    public static <E extends Enum<E> & BuiltinEnum<E>> JSBuiltinsContainer fromEnum(String name, Class<E> builtinEnum) {
+        return new SwitchEnum<>(name, builtinEnum);
+    }
+
+    public static <E extends Enum<E> & BuiltinEnum<E>> JSBuiltinsContainer fromEnum(Class<E> builtinEnum) {
+        return fromEnum(null, builtinEnum);
+    }
+
     /**
      * Builtins container for builtin nodes created via switch dispatch method.
      */
@@ -135,7 +143,7 @@ public class JSBuiltinsContainer {
     /**
      * Builtins container for builtin nodes created via switch-enum dispatch method.
      */
-    public abstract static class SwitchEnum<E extends Enum<E> & BuiltinEnum<E>> extends JSBuiltinsContainer {
+    public static class SwitchEnum<E extends Enum<E> & BuiltinEnum<E>> extends JSBuiltinsContainer {
         private final Class<E> enumType;
 
         protected SwitchEnum(String name, Class<E> enumType) {
@@ -187,7 +195,9 @@ public class JSBuiltinsContainer {
             return enumType;
         }
 
-        protected abstract Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, E builtinEnum);
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, E builtinEnum) {
+            return builtinEnum.createNode(context, builtin, construct, newTarget);
+        }
     }
 
     /**
