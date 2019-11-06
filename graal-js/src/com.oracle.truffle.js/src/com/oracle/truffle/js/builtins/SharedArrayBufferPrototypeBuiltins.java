@@ -57,7 +57,10 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
  * Contains builtins for {@linkplain JSSharedArrayBuffer}.prototype.
  */
 public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lambda {
-    public SharedArrayBufferPrototypeBuiltins() {
+
+    public static final JSBuiltinsContainer BUILTINS = new SharedArrayBufferPrototypeBuiltins();
+
+    protected SharedArrayBufferPrototypeBuiltins() {
         super(JSSharedArrayBuffer.PROTOTYPE_NAME);
         defineFunction("slice", 2, (context, builtin) -> JSSharedArrayBufferSliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context)));
     }

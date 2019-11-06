@@ -115,7 +115,9 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
  */
 public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpPrototypeBuiltins.RegExpPrototype> {
 
-    RegExpPrototypeBuiltins() {
+    public static final JSBuiltinsContainer BUILTINS = new RegExpPrototypeBuiltins();
+
+    protected RegExpPrototypeBuiltins() {
         super(JSRegExp.PROTOTYPE_NAME, RegExpPrototype.class);
     }
 
@@ -1573,8 +1575,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     public static final class RegExpPrototypeGetterBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpPrototypeGetterBuiltins.RegExpPrototypeGetters> {
 
+        public static final JSBuiltinsContainer BUILTINS = new RegExpPrototypeGetterBuiltins();
+
         protected RegExpPrototypeGetterBuiltins() {
-            super(JSRegExp.PROTOTYPE_GETTER_NAME, RegExpPrototypeGetters.class);
+            super(JSRegExp.PROTOTYPE_NAME, RegExpPrototypeGetters.class);
         }
 
         public enum RegExpPrototypeGetters implements BuiltinEnum<RegExpPrototypeGetters> {

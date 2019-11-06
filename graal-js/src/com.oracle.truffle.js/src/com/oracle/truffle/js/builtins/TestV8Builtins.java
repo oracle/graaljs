@@ -82,7 +82,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8Builtins.TestV8> {
 
-    public static final String CLASS_NAME = "TestV8";
+    public static final JSBuiltinsContainer BUILTINS = new TestV8Builtins();
 
     protected TestV8Builtins() {
         super(JSTestV8.CLASS_NAME, TestV8.class);

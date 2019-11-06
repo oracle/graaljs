@@ -58,6 +58,8 @@ import com.oracle.truffle.js.runtime.builtins.JSIntl;
  */
 public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuiltins.Intl> {
 
+    public static final JSBuiltinsContainer BUILTINS = new IntlBuiltins();
+
     protected IntlBuiltins() {
         super(JSIntl.CLASS_NAME, Intl.class);
     }

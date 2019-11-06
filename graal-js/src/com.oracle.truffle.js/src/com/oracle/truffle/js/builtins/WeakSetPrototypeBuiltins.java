@@ -57,6 +57,9 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
  * Contains builtins for {@linkplain JSWeakSet}.prototype.
  */
 public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WeakSetPrototypeBuiltins.WeakSetPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new WeakSetPrototypeBuiltins();
+
     protected WeakSetPrototypeBuiltins() {
         super(JSWeakSet.PROTOTYPE_NAME, WeakSetPrototype.class);
     }

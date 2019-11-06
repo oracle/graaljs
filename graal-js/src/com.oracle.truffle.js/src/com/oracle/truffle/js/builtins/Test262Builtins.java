@@ -77,6 +77,8 @@ import com.oracle.truffle.js.runtime.util.DebugJSAgent;
  */
 public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test262Builtins.Test262> {
 
+    public static final JSBuiltinsContainer BUILTINS = new Test262Builtins();
+
     protected Test262Builtins() {
         super(JSTest262.CLASS_NAME, Test262.class);
     }

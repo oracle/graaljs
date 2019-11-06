@@ -59,6 +59,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.CollatorFunctionBuiltins;
+import com.oracle.truffle.js.builtins.CollatorPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -120,7 +122,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
         JSContext ctx = realm.getContext();
         DynamicObject collatorPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, collatorPrototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, collatorPrototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, collatorPrototype, CollatorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putConstantAccessorProperty(ctx, collatorPrototype, "compare", createCompareFunctionGetter(realm, ctx), Undefined.instance);
         JSObjectUtil.putDataProperty(ctx, collatorPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Object", JSAttributes.configurableNotEnumerableNotWritable());
         return collatorPrototype;
@@ -191,7 +193,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, CollatorFunctionBuiltins.BUILTINS);
     }
 
     public static DynamicObject create(JSContext context) {

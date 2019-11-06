@@ -64,7 +64,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for {@linkplain JSError} function (constructor).
  */
 public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
-    public ErrorFunctionBuiltins() {
+    public static final JSBuiltinsContainer BUILTINS = new ErrorFunctionBuiltins();
+
+    protected ErrorFunctionBuiltins() {
         super(JSError.CLASS_NAME);
         defineFunction("captureStackTrace", 2, JSAttributes.getDefault(),
                         (context, builtin) -> ErrorCaptureStackTraceNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context)));

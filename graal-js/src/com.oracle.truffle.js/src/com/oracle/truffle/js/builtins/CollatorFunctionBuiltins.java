@@ -50,6 +50,9 @@ import com.oracle.truffle.js.runtime.builtins.JSCollator;
  * Contains built-ins for {@linkplain JSCollator} function (constructor).
  */
 public final class CollatorFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<CollatorFunctionBuiltins.CollatorFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new CollatorFunctionBuiltins();
+
     protected CollatorFunctionBuiltins() {
         super(JSCollator.CLASS_NAME, CollatorFunction.class);
     }

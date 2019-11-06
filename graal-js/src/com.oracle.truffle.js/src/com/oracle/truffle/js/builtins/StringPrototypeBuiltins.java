@@ -142,6 +142,10 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
  * Contains builtins for {@linkplain JSString}.prototype.
  */
 public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<StringPrototypeBuiltins.StringPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new StringPrototypeBuiltins();
+    public static final JSBuiltinsContainer EXTENSION_BUILTINS = new StringPrototypeExtensionBuiltins();
+
     protected StringPrototypeBuiltins() {
         super(JSString.PROTOTYPE_NAME, StringPrototype.class);
     }

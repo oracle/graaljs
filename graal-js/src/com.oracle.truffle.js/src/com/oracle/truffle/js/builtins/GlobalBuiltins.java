@@ -133,7 +133,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSURLDecoder;
 import com.oracle.truffle.js.runtime.builtins.JSURLEncoder;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -148,9 +147,14 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
  * Contains builtins for the global object.
  */
 public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltins.Global> {
+    public static final JSBuiltinsContainer GLOBAL_FUNCTIONS = new GlobalBuiltins();
+    public static final JSBuiltinsContainer GLOBAL_SHELL = new GlobalShellBuiltins();
+    public static final JSBuiltinsContainer GLOBAL_NASHORN_EXTENSIONS = new GlobalNashornScriptingBuiltins();
+    public static final JSBuiltinsContainer GLOBAL_PRINT = new GlobalPrintBuiltins();
+    public static final JSBuiltinsContainer GLOBAL_LOAD = new GlobalLoadBuiltins();
 
     protected GlobalBuiltins() {
-        super(JSGlobalObject.CLASS_NAME, Global.class);
+        super(Global.class);
     }
 
     public enum Global implements BuiltinEnum<Global> {
@@ -219,7 +223,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     public static final class GlobalShellBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalShellBuiltins.GlobalShell> {
         protected GlobalShellBuiltins() {
-            super(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, GlobalShell.class);
+            super(GlobalShell.class);
         }
 
         public enum GlobalShell implements BuiltinEnum<GlobalShell> {
@@ -261,7 +265,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     public static final class GlobalPrintBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalPrintBuiltins.GlobalPrint> {
         protected GlobalPrintBuiltins() {
-            super(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, GlobalPrint.class);
+            super(GlobalPrint.class);
         }
 
         public enum GlobalPrint implements BuiltinEnum<GlobalPrint> {
@@ -297,7 +301,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     public static final class GlobalLoadBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalLoadBuiltins.GlobalLoad> {
         protected GlobalLoadBuiltins() {
-            super(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, GlobalLoad.class);
+            super(GlobalLoad.class);
         }
 
         public enum GlobalLoad implements BuiltinEnum<GlobalLoad> {
@@ -330,7 +334,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
     public static final class GlobalNashornScriptingBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalNashornScriptingBuiltins.GlobalNashornScripting> {
         protected GlobalNashornScriptingBuiltins() {
-            super(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, GlobalNashornScripting.class);
+            super(GlobalNashornScripting.class);
         }
 
         /**

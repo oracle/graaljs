@@ -73,6 +73,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains functions of the %Promise% constructor function object.
  */
 public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<PromiseFunctionBuiltins.PromiseFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new PromiseFunctionBuiltins();
+
     protected PromiseFunctionBuiltins() {
         super(JSPromise.CLASS_NAME, PromiseFunction.class);
     }

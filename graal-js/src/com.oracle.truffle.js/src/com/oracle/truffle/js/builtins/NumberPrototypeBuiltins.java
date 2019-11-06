@@ -76,6 +76,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for {@linkplain JSNumber}.prototype.
  */
 public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<NumberPrototypeBuiltins.NumberPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new NumberPrototypeBuiltins();
+
     protected NumberPrototypeBuiltins() {
         super(JSNumber.PROTOTYPE_NAME, NumberPrototype.class);
     }

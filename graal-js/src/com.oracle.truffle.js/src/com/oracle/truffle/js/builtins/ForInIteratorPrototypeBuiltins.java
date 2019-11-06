@@ -82,6 +82,8 @@ import com.oracle.truffle.js.runtime.util.ForInIterator;
  * Functions of the %ForInIteratorPrototype% object.
  */
 public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
+    public static final JSBuiltinsContainer BUILTINS = new ForInIteratorPrototypeBuiltins();
+
     protected ForInIteratorPrototypeBuiltins() {
         super(JSFunction.FOR_IN_ITERATOR_PROTOYPE_NAME);
         defineFunction("next", 0);

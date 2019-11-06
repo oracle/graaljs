@@ -55,6 +55,9 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
  * Contains builtins for {@linkplain JSBoolean}.prototype.
  */
 public final class BooleanPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<BooleanPrototypeBuiltins.BooleanPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new BooleanPrototypeBuiltins();
+
     protected BooleanPrototypeBuiltins() {
         super(JSBoolean.PROTOTYPE_NAME, BooleanPrototype.class);
     }

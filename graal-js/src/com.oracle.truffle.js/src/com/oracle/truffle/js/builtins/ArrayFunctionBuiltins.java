@@ -82,6 +82,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ArrayFunctionBuiltins.ArrayFunction> {
 
+    public static final JSBuiltinsContainer BUILTINS = new ArrayFunctionBuiltins();
+
     protected ArrayFunctionBuiltins() {
         super(JSArray.CLASS_NAME, ArrayFunction.class);
     }

@@ -64,6 +64,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<RealmFunctionBuiltins.RealmFunction> {
 
+    public static final JSBuiltinsContainer BUILTINS = new RealmFunctionBuiltins();
+
     protected RealmFunctionBuiltins() {
         super(JSRealm.REALM_BUILTIN_CLASS_NAME, RealmFunction.class);
     }

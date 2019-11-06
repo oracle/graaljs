@@ -83,6 +83,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for {@linkplain JSON} function (constructor).
  */
 public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuiltins.JSON> {
+
+    public static final JSBuiltinsContainer BUILTINS = new JSONBuiltins();
+
     protected JSONBuiltins() {
         super(com.oracle.truffle.js.runtime.builtins.JSON.CLASS_NAME, JSON.class);
     }

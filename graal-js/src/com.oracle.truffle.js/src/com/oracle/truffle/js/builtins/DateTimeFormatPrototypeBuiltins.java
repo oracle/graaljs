@@ -54,6 +54,8 @@ import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 
 public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DateTimeFormatPrototypeBuiltins.DateTimeFormatPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new DateTimeFormatPrototypeBuiltins();
+
     protected DateTimeFormatPrototypeBuiltins() {
         super(JSDateTimeFormat.PROTOTYPE_NAME, DateTimeFormatPrototype.class);
     }

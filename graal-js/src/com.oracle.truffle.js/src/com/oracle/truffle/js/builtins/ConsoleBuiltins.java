@@ -72,6 +72,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for `console`.
  */
 public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<ConsoleBuiltins.Console> {
+
+    public static final JSBuiltinsContainer BUILTINS = new ConsoleBuiltins();
+
     protected ConsoleBuiltins() {
         super(JSRealm.CONSOLE_CLASS_NAME, Console.class);
     }

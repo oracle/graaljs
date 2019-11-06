@@ -127,6 +127,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class SIMDTypeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<SIMDTypeFunctionBuiltins.SIMDTypeFunction> {
+
     public SIMDTypeFunctionBuiltins(String typeName, SIMDType simdContext) {
         super(typeName, SIMDTypeFunction.class);
         this.simdContext = simdContext;

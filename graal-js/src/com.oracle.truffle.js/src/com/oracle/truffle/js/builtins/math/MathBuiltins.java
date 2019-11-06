@@ -52,7 +52,10 @@ import com.oracle.truffle.js.runtime.builtins.JSMath;
  * Contains builtins for math.
  */
 public class MathBuiltins extends JSBuiltinsContainer.SwitchEnum<MathBuiltins.Math> {
-    public MathBuiltins() {
+
+    public static final JSBuiltinsContainer BUILTINS = new MathBuiltins();
+
+    protected MathBuiltins() {
         super(JSMath.CLASS_NAME, Math.class);
     }
 

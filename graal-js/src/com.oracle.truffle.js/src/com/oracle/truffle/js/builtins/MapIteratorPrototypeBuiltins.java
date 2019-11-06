@@ -66,6 +66,9 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
  * Contains functions of the %MapIteratorPrototype% object.
  */
 public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<MapIteratorPrototypeBuiltins.MapIteratorPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new MapIteratorPrototypeBuiltins();
+
     protected MapIteratorPrototypeBuiltins() {
         super(JSMap.ITERATOR_PROTOTYPE_NAME, MapIteratorPrototype.class);
     }

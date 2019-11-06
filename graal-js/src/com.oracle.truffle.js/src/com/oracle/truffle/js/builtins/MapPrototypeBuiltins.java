@@ -74,6 +74,9 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
  * Contains builtins for {@linkplain JSMap}.prototype.
  */
 public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<MapPrototypeBuiltins.MapPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new MapPrototypeBuiltins();
+
     protected MapPrototypeBuiltins() {
         super(JSMap.PROTOTYPE_NAME, MapPrototype.class);
     }

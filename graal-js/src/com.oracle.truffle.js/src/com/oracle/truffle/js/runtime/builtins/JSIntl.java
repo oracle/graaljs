@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.IntlBuiltins;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -54,7 +55,7 @@ public final class JSIntl {
 
     public static DynamicObject create(JSRealm realm) {
         DynamicObject obj = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(realm, obj, CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, obj, IntlBuiltins.BUILTINS);
         return obj;
     }
 }

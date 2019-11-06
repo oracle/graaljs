@@ -53,7 +53,10 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
  * Contains builtins for {@linkplain JSArrayBuffer} function (constructor).
  */
 public final class ArrayBufferFunctionBuiltins extends JSBuiltinsContainer.Lambda {
-    public ArrayBufferFunctionBuiltins() {
+
+    public static final JSBuiltinsContainer BUILTINS = new ArrayBufferFunctionBuiltins();
+
+    protected ArrayBufferFunctionBuiltins() {
         super(JSArrayBuffer.CLASS_NAME);
         defineFunction("isView", 1, (context, builtin) -> JSIsArrayBufferViewNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context)));
     }

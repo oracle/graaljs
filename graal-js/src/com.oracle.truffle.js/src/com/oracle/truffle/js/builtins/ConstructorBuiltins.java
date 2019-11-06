@@ -209,9 +209,11 @@ import com.oracle.truffle.js.runtime.util.WeakMap;
 import com.oracle.truffle.regex.util.LRUCache;
 
 /**
- * Contains builtins for the global object.
+ * Contains built-in constructor functions.
  */
 public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<ConstructorBuiltins.Constructor> {
+    public static final JSBuiltinsContainer BUILTINS = new ConstructorBuiltins();
+
     protected ConstructorBuiltins() {
         super(null, Constructor.class);
     }

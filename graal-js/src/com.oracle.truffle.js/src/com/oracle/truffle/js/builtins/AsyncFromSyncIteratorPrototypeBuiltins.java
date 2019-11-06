@@ -89,6 +89,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<AsyncFromSyncIteratorPrototypeBuiltins.GeneratorPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new AsyncFromSyncIteratorPrototypeBuiltins();
+
     protected AsyncFromSyncIteratorPrototypeBuiltins() {
         super(JSFunction.ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME, GeneratorPrototype.class);
     }

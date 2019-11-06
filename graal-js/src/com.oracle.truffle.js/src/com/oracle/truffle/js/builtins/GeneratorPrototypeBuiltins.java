@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains built-in methods of Generator.prototype.
  */
 public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<GeneratorPrototypeBuiltins.GeneratorPrototype> {
+    public static final JSBuiltinsContainer BUILTINS = new GeneratorPrototypeBuiltins();
 
     protected GeneratorPrototypeBuiltins() {
         super(JSFunction.GENERATOR_PROTOTYPE_NAME, GeneratorPrototype.class);

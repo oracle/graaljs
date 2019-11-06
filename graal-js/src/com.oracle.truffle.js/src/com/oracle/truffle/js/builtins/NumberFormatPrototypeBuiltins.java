@@ -54,6 +54,8 @@ import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
 
 public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<NumberFormatPrototypeBuiltins.NumberFormatPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new NumberFormatPrototypeBuiltins();
+
     protected NumberFormatPrototypeBuiltins() {
         super(JSNumberFormat.PROTOTYPE_NAME, NumberFormatPrototype.class);
     }

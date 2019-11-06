@@ -53,7 +53,10 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
  * Contains builtins for {@linkplain JSSharedArrayBuffer} function (constructor).
  */
 public final class SharedArrayBufferFunctionBuiltins extends JSBuiltinsContainer.Lambda {
-    public SharedArrayBufferFunctionBuiltins() {
+
+    public static final JSBuiltinsContainer BUILTINS = new SharedArrayBufferFunctionBuiltins();
+
+    protected SharedArrayBufferFunctionBuiltins() {
         super(JSSharedArrayBuffer.CLASS_NAME);
         defineFunction("isView", 1, (context, builtin) -> JSIsArrayBufferViewNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context)));
     }

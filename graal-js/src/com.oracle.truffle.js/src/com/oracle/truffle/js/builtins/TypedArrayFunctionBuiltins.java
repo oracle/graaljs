@@ -61,6 +61,9 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
  * Contains functions of the %TypedArray% constructor function object.
  */
 public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TypedArrayFunctionBuiltins.TypedArrayFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new TypedArrayFunctionBuiltins();
+
     protected TypedArrayFunctionBuiltins() {
         super(JSArrayBufferView.CLASS_NAME, TypedArrayFunction.class);
     }

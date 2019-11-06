@@ -89,6 +89,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<AtomicsBuiltins.Atomics> {
 
+    public static final JSBuiltinsContainer BUILTINS = new AtomicsBuiltins();
+
     protected AtomicsBuiltins() {
         super(JSRealm.ATOMICS_CLASS_NAME, Atomics.class);
     }

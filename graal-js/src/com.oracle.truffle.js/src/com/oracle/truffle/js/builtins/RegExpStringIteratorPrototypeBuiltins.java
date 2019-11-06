@@ -67,6 +67,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains functions of the %RegExpStringIteratorPrototype% object.
  */
 public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpStringIteratorPrototypeBuiltins.RegExpStringIteratorPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new RegExpStringIteratorPrototypeBuiltins();
+
     protected RegExpStringIteratorPrototypeBuiltins() {
         super(JSString.REGEXP_ITERATOR_PROTOTYPE_NAME, RegExpStringIteratorPrototype.class);
     }

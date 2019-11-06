@@ -54,6 +54,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.PluralRulesFunctionBuiltins;
+import com.oracle.truffle.js.builtins.PluralRulesPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -105,7 +107,7 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
         JSContext ctx = realm.getContext();
         DynamicObject pluralRulesPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, pluralRulesPrototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, pluralRulesPrototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, pluralRulesPrototype, PluralRulesPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, pluralRulesPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Object", JSAttributes.configurableNotEnumerableNotWritable());
         return pluralRulesPrototype;
     }
@@ -118,7 +120,7 @@ public final class JSPluralRules extends JSBuiltinObject implements JSConstructo
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, PluralRulesFunctionBuiltins.BUILTINS);
     }
 
     public static DynamicObject create(JSContext context) {

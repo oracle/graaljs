@@ -59,6 +59,9 @@ import com.oracle.truffle.js.runtime.builtins.JSBigInt;
  * Contains builtins for {@linkplain JSBigInt} function (constructor).
  */
 public final class BigIntFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<BigIntFunctionBuiltins.BigIntFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new BigIntFunctionBuiltins();
+
     protected BigIntFunctionBuiltins() {
         super(JSBigInt.CLASS_NAME, BigIntFunction.class);
     }

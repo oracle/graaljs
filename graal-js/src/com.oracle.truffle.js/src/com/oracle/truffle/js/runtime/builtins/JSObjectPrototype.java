@@ -45,6 +45,8 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -58,6 +60,7 @@ public final class JSObjectPrototype extends JSBuiltinObject {
     public static final String CLASS_NAME = "Object";
 
     public static final JSObjectPrototype INSTANCE = new JSObjectPrototype();
+    public static final JSBuiltinsContainer BUILTINS = ObjectPrototypeBuiltins.BUILTINS;
 
     private JSObjectPrototype() {
     }

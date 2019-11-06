@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.PerformanceBuiltins;
+import com.oracle.truffle.js.builtins.Test262Builtins;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -55,9 +57,9 @@ public final class JSTest262 {
 
     public static DynamicObject create(JSRealm realm) {
         DynamicObject obj = JSUserObject.createInit(realm);
-        JSObjectUtil.putDataProperty(obj, "createRealm", realm.lookupFunction(CLASS_NAME, "createRealm"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(obj, "detachArrayBuffer", realm.lookupFunction(CLASS_NAME, "detachArrayBuffer"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(obj, "evalScript", realm.lookupFunction(CLASS_NAME, "evalScript"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(obj, "createRealm", realm.lookupFunction(Test262Builtins.BUILTINS, "createRealm"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(obj, "detachArrayBuffer", realm.lookupFunction(Test262Builtins.BUILTINS, "detachArrayBuffer"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(obj, "evalScript", realm.lookupFunction(Test262Builtins.BUILTINS, "evalScript"), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(obj, "global", realm.getGlobalObject(), JSAttributes.getDefaultNotEnumerable());
         DynamicObject agent = createAgent(realm);
         JSObjectUtil.putDataProperty(obj, "agent", agent, JSAttributes.getDefaultNotEnumerable());
@@ -66,14 +68,14 @@ public final class JSTest262 {
 
     private static DynamicObject createAgent(JSRealm realm) {
         DynamicObject agent = JSUserObject.createInit(realm);
-        JSObjectUtil.putDataProperty(agent, "start", realm.lookupFunction(CLASS_NAME, "agentStart"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(agent, "broadcast", realm.lookupFunction(CLASS_NAME, "agentBroadcast"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(agent, "getReport", realm.lookupFunction(CLASS_NAME, "agentGetReport"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(agent, "sleep", realm.lookupFunction(CLASS_NAME, "agentSleep"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(agent, "monotonicNow", realm.lookupFunction(JSRealm.PERFORMANCE_CLASS_NAME, "now"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(agent, "receiveBroadcast", realm.lookupFunction(CLASS_NAME, "agentReceiveBroadcast"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(agent, "report", realm.lookupFunction(CLASS_NAME, "agentReport"), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(agent, "leaving", realm.lookupFunction(CLASS_NAME, "agentLeaving"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(agent, "start", realm.lookupFunction(Test262Builtins.BUILTINS, "agentStart"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(agent, "broadcast", realm.lookupFunction(Test262Builtins.BUILTINS, "agentBroadcast"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(agent, "getReport", realm.lookupFunction(Test262Builtins.BUILTINS, "agentGetReport"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(agent, "sleep", realm.lookupFunction(Test262Builtins.BUILTINS, "agentSleep"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(agent, "monotonicNow", realm.lookupFunction(PerformanceBuiltins.BUILTINS, "now"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(agent, "receiveBroadcast", realm.lookupFunction(Test262Builtins.BUILTINS, "agentReceiveBroadcast"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(agent, "report", realm.lookupFunction(Test262Builtins.BUILTINS, "agentReport"), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(agent, "leaving", realm.lookupFunction(Test262Builtins.BUILTINS, "agentLeaving"), JSAttributes.getDefaultNotEnumerable());
         return agent;
     }
 }

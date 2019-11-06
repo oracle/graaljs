@@ -50,6 +50,9 @@ import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
  * Contains built-ins for {@linkplain JSRelativeTimeFormat} function (constructor).
  */
 public final class RelativeTimeFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<RelativeTimeFormatFunctionBuiltins.RelativeTimeFormatFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new RelativeTimeFormatFunctionBuiltins();
+
     protected RelativeTimeFormatFunctionBuiltins() {
         super(JSRelativeTimeFormat.CLASS_NAME, RelativeTimeFormatFunction.class);
     }

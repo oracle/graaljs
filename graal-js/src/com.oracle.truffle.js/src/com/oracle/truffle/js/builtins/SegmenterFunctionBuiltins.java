@@ -50,6 +50,9 @@ import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
  * Contains built-ins for {@linkplain JSSegmenter} function (constructor).
  */
 public final class SegmenterFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<SegmenterFunctionBuiltins.SegmenterFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new SegmenterFunctionBuiltins();
+
     protected SegmenterFunctionBuiltins() {
         super(JSSegmenter.CLASS_NAME, SegmenterFunction.class);
     }

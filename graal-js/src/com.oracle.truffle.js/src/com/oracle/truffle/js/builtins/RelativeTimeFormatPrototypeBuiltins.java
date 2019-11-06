@@ -59,6 +59,8 @@ import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 
 public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<RelativeTimeFormatPrototypeBuiltins.RelativeTimeFormatPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new RelativeTimeFormatPrototypeBuiltins();
+
     protected RelativeTimeFormatPrototypeBuiltins() {
         super(JSRelativeTimeFormat.PROTOTYPE_NAME, RelativeTimeFormatPrototype.class);
     }

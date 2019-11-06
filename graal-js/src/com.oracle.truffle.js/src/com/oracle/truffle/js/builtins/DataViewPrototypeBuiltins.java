@@ -55,6 +55,9 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 
 public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DataViewPrototypeBuiltins.DataViewPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new DataViewPrototypeBuiltins();
+
     protected DataViewPrototypeBuiltins() {
         super(JSDataView.PROTOTYPE_NAME, DataViewPrototype.class);
     }

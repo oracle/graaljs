@@ -50,6 +50,9 @@ import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
  * Contains built-ins for {@linkplain JSDateTimeFormat} function (constructor).
  */
 public final class DateTimeFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<DateTimeFormatFunctionBuiltins.DateTimeFormatFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new DateTimeFormatFunctionBuiltins();
+
     protected DateTimeFormatFunctionBuiltins() {
         super(JSDateTimeFormat.CLASS_NAME, DateTimeFormatFunction.class);
     }

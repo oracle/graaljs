@@ -67,6 +67,9 @@ import java.util.WeakHashMap;
  * Contains builtins for {@linkplain JSWeakMap}.prototype.
  */
 public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WeakMapPrototypeBuiltins.WeakMapPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new WeakMapPrototypeBuiltins();
+
     protected WeakMapPrototypeBuiltins() {
         super(JSWeakMap.PROTOTYPE_NAME, WeakMapPrototype.class);
     }

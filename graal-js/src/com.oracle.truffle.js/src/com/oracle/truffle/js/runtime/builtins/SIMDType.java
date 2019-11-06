@@ -45,6 +45,12 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.simd.SIMDBoolFunctionBuiltins;
+import com.oracle.truffle.js.builtins.simd.SIMDFloatFunctionBuiltins;
+import com.oracle.truffle.js.builtins.simd.SIMDIntFunctionBuiltins;
+import com.oracle.truffle.js.builtins.simd.SIMDSmallIntFunctionBuiltins;
+import com.oracle.truffle.js.builtins.simd.SIMDTypeFunctionBuiltins;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
@@ -591,12 +597,26 @@ public abstract class SIMDType {
         @CompilationFinal private int factoryIndex;
         private final String name;
         private final T simdType;
+        private final JSBuiltinsContainer builtinsContainer;
 
         SIMDTypeFactory(int bytesPerElement, int numberOfElements, String name, T simdType) {
             this.bytesPerElement = bytesPerElement;
             this.numberOfElements = numberOfElements;
             this.name = name;
             this.simdType = simdType;
+
+            Class<? extends SIMDType> simdTypeClass = simdType.getClass();
+            if (simdTypeClass.equals(SIMDFloat32x4.class)) {
+                this.builtinsContainer = new SIMDFloatFunctionBuiltins(name, simdType);
+            } else if (simdTypeClass.equals(SIMDBool32x4.class) || simdTypeClass.equals(SIMDBool16x8.class) || simdTypeClass.equals(SIMDBool8x16.class)) {
+                this.builtinsContainer = new SIMDBoolFunctionBuiltins(name, simdType);
+            } else if (simdTypeClass.equals(SIMDInt16x8.class) || simdTypeClass.equals(SIMDInt8x16.class) || simdTypeClass.equals(SIMDUint16x8.class) || simdTypeClass.equals(SIMDUint8x16.class)) {
+                this.builtinsContainer = new SIMDSmallIntFunctionBuiltins(name, simdType);
+            } else if (simdTypeClass.equals(SIMDInt32x4.class) || simdTypeClass.equals(SIMDUint32x4.class)) {
+                this.builtinsContainer = new SIMDIntFunctionBuiltins(name, simdType);
+            } else {
+                this.builtinsContainer = new SIMDTypeFunctionBuiltins(name, simdType);
+            }
         }
 
         public SIMDType createSimdType() {
@@ -617,6 +637,10 @@ public abstract class SIMDType {
 
         public String getName() {
             return name;
+        }
+
+        public JSBuiltinsContainer getFunctionBuiltins() {
+            return builtinsContainer;
         }
 
         @Override

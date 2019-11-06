@@ -124,6 +124,9 @@ import com.oracle.truffle.object.DynamicObjectImpl;
  * Contains builtins for {@code Debug} object.
  */
 public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBuiltins.Debug> {
+
+    public static final JSBuiltinsContainer BUILTINS = new DebugBuiltins();
+
     protected DebugBuiltins() {
         super(JSRealm.DEBUG_CLASS_NAME, Debug.class);
     }

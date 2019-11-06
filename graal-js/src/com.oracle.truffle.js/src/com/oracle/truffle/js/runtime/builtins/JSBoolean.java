@@ -45,6 +45,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -88,7 +89,7 @@ public final class JSBoolean extends JSPrimitiveObject implements JSConstructorF
         DynamicObject booleanPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), INSTANCE);
         JSObjectUtil.putHiddenProperty(booleanPrototype, VALUE_PROPERTY, Boolean.FALSE);
         JSObjectUtil.putConstructorProperty(ctx, booleanPrototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, booleanPrototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, booleanPrototype, BooleanPrototypeBuiltins.BUILTINS);
         return booleanPrototype;
     }
 

@@ -65,6 +65,8 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Prototype of [[Enumerate]]().
  */
 public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<EnumerateIteratorPrototypeBuiltins.EnumerateIteratorPrototype> {
+    public static final JSBuiltinsContainer BUILTINS = new EnumerateIteratorPrototypeBuiltins();
+
     protected EnumerateIteratorPrototypeBuiltins() {
         super(JSFunction.ENUMERATE_ITERATOR_PROTOTYPE_NAME, EnumerateIteratorPrototype.class);
     }

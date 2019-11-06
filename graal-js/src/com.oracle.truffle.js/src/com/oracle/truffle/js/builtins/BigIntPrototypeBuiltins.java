@@ -68,6 +68,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for {@linkplain JSBigInt}.prototype.
  */
 public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<BigIntPrototypeBuiltins.BigIntPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new BigIntPrototypeBuiltins();
+
     protected BigIntPrototypeBuiltins() {
         super(JSBigInt.PROTOTYPE_NAME, BigIntPrototype.class);
     }

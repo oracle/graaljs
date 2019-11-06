@@ -101,6 +101,10 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuiltins.Java> {
+
+    public static final JSBuiltinsContainer BUILTINS = new JavaBuiltins();
+    public static final JSBuiltinsContainer BUILTINS_NASHORN_COMPAT = new JavaNashornCompatBuiltins();
+
     protected JavaBuiltins() {
         super(JSRealm.JAVA_CLASS_NAME, Java.class);
     }

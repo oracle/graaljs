@@ -68,7 +68,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains built-in functions of the Proxy Constructor.
  */
 public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
-    public ProxyFunctionBuiltins() {
+
+    public static final JSBuiltinsContainer BUILTINS = new ProxyFunctionBuiltins();
+
+    protected ProxyFunctionBuiltins() {
         super(JSProxy.CLASS_NAME);
         defineFunction("revocable", 2, (context, builtin) -> RevocableNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context)));
     }

@@ -58,6 +58,9 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
  * Contains builtins for Symbol.prototype.
  */
 public final class SymbolPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SymbolPrototypeBuiltins.SymbolPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new SymbolPrototypeBuiltins();
+
     protected SymbolPrototypeBuiltins() {
         super(JSSymbol.PROTOTYPE_NAME, SymbolPrototype.class);
     }

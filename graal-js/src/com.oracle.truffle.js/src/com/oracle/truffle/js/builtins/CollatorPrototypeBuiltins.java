@@ -53,6 +53,8 @@ import com.oracle.truffle.js.runtime.builtins.JSCollator;
 
 public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<CollatorPrototypeBuiltins.CollatorPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new CollatorPrototypeBuiltins();
+
     protected CollatorPrototypeBuiltins() {
         super(JSCollator.PROTOTYPE_NAME, CollatorPrototype.class);
     }

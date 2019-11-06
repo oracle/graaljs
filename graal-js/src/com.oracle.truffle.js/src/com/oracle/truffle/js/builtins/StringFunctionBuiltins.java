@@ -68,6 +68,9 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
  * Contains builtins for {@linkplain JSString} function (constructor).
  */
 public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<StringFunctionBuiltins.StringFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new StringFunctionBuiltins();
+
     protected StringFunctionBuiltins() {
         super(JSString.CLASS_NAME, StringFunction.class);
     }

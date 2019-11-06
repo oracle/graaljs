@@ -64,6 +64,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * @see JSError
  */
 public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<CallSitePrototypeBuiltins.CallSitePrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new CallSitePrototypeBuiltins();
+
     protected CallSitePrototypeBuiltins() {
         super(JSError.CALL_SITE_PROTOTYPE_NAME, CallSitePrototype.class);
     }

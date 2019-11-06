@@ -50,6 +50,9 @@ import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
  * Contains built-ins for {@linkplain JSNumberFormat} function (constructor).
  */
 public final class NumberFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<NumberFormatFunctionBuiltins.NumberFormatFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new NumberFormatFunctionBuiltins();
+
     protected NumberFormatFunctionBuiltins() {
         super(JSNumberFormat.CLASS_NAME, NumberFormatFunction.class);
     }

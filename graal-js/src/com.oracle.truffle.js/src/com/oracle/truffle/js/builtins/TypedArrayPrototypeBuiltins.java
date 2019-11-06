@@ -111,6 +111,9 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  * Contains %TypedArrayPrototype% methods.
  */
 public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TypedArrayPrototypeBuiltins.TypedArrayPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new TypedArrayPrototypeBuiltins();
+
     protected TypedArrayPrototypeBuiltins() {
         super(JSArrayBufferView.PROTOTYPE_NAME, TypedArrayPrototype.class);
     }

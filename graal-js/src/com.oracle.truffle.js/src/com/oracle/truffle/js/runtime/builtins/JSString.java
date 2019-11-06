@@ -51,6 +51,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.StringFunctionBuiltins;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -249,9 +251,9 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         // sets the length just for the prototype
         JSObjectUtil.putDataProperty(ctx, prototype, LENGTH, 0, JSAttributes.notConfigurableNotEnumerableNotWritable());
-        JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, StringPrototypeBuiltins.BUILTINS);
         if (ctx.isOptionNashornCompatibilityMode() || ctx.getParserOptions().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
-            JSObjectUtil.putFunctionsFromContainer(realm, prototype, CLASS_NAME_EXTENSIONS);
+            JSObjectUtil.putFunctionsFromContainer(realm, prototype, StringPrototypeBuiltins.EXTENSION_BUILTINS);
         }
         if (ctx.isOptionAnnexB()) {
             // trimLeft/trimRight are the same objects as trimStart/trimEnd
@@ -272,7 +274,7 @@ public final class JSString extends JSPrimitiveObject implements JSConstructorFa
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, StringFunctionBuiltins.BUILTINS);
     }
 
     @Override

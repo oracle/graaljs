@@ -69,7 +69,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class SIMDTypePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SIMDTypePrototypeBuiltins.SIMDTypePrototype> {
 
-    public SIMDTypePrototypeBuiltins() {
+    public static final JSBuiltinsContainer BUILTINS = new SIMDTypePrototypeBuiltins();
+
+    protected SIMDTypePrototypeBuiltins() {
         super(JSSIMD.PROTOTYPE_NAME, SIMDTypePrototype.class);
     }
 

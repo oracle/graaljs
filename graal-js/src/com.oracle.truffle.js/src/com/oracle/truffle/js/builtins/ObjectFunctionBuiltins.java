@@ -129,6 +129,8 @@ import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
  * Contains builtins for {@linkplain DynamicObject} function (constructor).
  */
 public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ObjectFunctionBuiltins.ObjectFunction> {
+    public static final JSBuiltinsContainer BUILTINS = new ObjectFunctionBuiltins();
+
     protected ObjectFunctionBuiltins() {
         super(JSUserObject.CLASS_NAME, ObjectFunction.class);
     }

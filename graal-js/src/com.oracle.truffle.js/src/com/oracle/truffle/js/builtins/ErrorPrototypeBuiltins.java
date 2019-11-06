@@ -63,7 +63,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for {@linkplain JSError}.prototype.
  */
 public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
-    public ErrorPrototypeBuiltins() {
+    public static final JSBuiltinsContainer BUILTINS = new ErrorPrototypeBuiltins();
+
+    protected ErrorPrototypeBuiltins() {
         super(JSError.PROTOTYPE_NAME);
         defineFunction("toString", 0);
     }
@@ -78,8 +80,10 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
     }
 
     public static final class ErrorPrototypeNashornCompatBuiltins extends JSBuiltinsContainer.SwitchEnum<ErrorPrototypeNashornCompatBuiltins.ErrorNashornCompat> {
+        public static final JSBuiltinsContainer BUILTINS = new ErrorPrototypeNashornCompatBuiltins();
+
         protected ErrorPrototypeNashornCompatBuiltins() {
-            super(JSError.CLASS_NAME_NASHORN_COMPAT, ErrorNashornCompat.class);
+            super(JSError.PROTOTYPE_NAME, ErrorNashornCompat.class);
         }
 
         public enum ErrorNashornCompat implements BuiltinEnum<ErrorNashornCompat> {

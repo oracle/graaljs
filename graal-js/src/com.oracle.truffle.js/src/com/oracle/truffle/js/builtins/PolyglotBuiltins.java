@@ -103,6 +103,9 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.Pair;
 
 public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<PolyglotBuiltins.Polyglot> {
+    public static final JSBuiltinsContainer BUILTINS = new PolyglotBuiltins();
+    public static final JSBuiltinsContainer INTERNAL_BUILTINS = new PolyglotInternalBuiltins();
+
     protected PolyglotBuiltins() {
         super(JSRealm.POLYGLOT_CLASS_NAME, Polyglot.class);
     }
@@ -140,7 +143,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
     public static final class PolyglotInternalBuiltins extends JSBuiltinsContainer.SwitchEnum<PolyglotInternalBuiltins.PolyglotInternal> {
         protected PolyglotInternalBuiltins() {
-            super(JSRealm.POLYGLOT_INTERNAL_CLASS_NAME, PolyglotInternal.class);
+            super(JSRealm.POLYGLOT_CLASS_NAME, PolyglotInternal.class);
         }
 
         public enum PolyglotInternal implements BuiltinEnum<PolyglotInternal> {

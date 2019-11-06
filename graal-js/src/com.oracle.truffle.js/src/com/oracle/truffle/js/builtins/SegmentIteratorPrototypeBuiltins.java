@@ -72,6 +72,9 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  * Contains functions of the %SegmentIteratorPrototype% object.
  */
 public final class SegmentIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SegmentIteratorPrototypeBuiltins.SegmentIteratorPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new SegmentIteratorPrototypeBuiltins();
+
     protected SegmentIteratorPrototypeBuiltins() {
         super(JSSegmenter.ITERATOR_PROTOTYPE_NAME, SegmentIteratorPrototype.class);
     }

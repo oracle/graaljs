@@ -56,7 +56,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 /**
  * Intended to be subclassed by definitions of builtin functions.
  */
-public abstract class JSBuiltinsContainer {
+public class JSBuiltinsContainer {
     private final String name;
     final EconomicMap<String, JSBuiltin> builtins = EconomicMap.create();
 
@@ -146,6 +146,10 @@ public abstract class JSBuiltinsContainer {
                     loadBuiltin(builtin);
                 }
             }
+        }
+
+        protected SwitchEnum(Class<E> enumType) {
+            this(null, enumType);
         }
 
         private void loadBuiltin(E builtinEnum) {

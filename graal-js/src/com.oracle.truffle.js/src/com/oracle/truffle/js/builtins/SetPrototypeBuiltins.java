@@ -74,6 +74,8 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
  */
 public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SetPrototypeBuiltins.SetPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new SetPrototypeBuiltins();
+
     protected SetPrototypeBuiltins() {
         super(JSSet.PROTOTYPE_NAME, SetPrototype.class);
     }

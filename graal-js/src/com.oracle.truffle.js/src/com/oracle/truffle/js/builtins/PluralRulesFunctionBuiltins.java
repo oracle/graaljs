@@ -50,6 +50,9 @@ import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
  * Contains built-ins for {@linkplain JSPluralRules} function (constructor).
  */
 public final class PluralRulesFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<PluralRulesFunctionBuiltins.PluralRulesFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new PluralRulesFunctionBuiltins();
+
     protected PluralRulesFunctionBuiltins() {
         super(JSPluralRules.CLASS_NAME, PluralRulesFunction.class);
     }

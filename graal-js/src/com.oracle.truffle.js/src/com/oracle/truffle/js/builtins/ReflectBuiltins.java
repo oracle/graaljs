@@ -95,6 +95,9 @@ import com.oracle.truffle.js.runtime.util.JSReflectUtils;
  * Contains builtins for Reflect (ES2015, 26.1).
  */
 public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuiltins.Reflect> {
+
+    public static final JSBuiltinsContainer BUILTINS = new ReflectBuiltins();
+
     protected ReflectBuiltins() {
         super(JSRealm.REFLECT_CLASS_NAME, Reflect.class);
     }

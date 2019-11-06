@@ -61,6 +61,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for Symbol function.
  */
 public final class SymbolFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<SymbolFunctionBuiltins.SymbolFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new SymbolFunctionBuiltins();
+
     protected SymbolFunctionBuiltins() {
         super(JSSymbol.CLASS_NAME, SymbolFunction.class);
     }

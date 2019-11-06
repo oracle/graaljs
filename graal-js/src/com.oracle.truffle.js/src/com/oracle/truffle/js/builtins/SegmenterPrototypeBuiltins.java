@@ -59,6 +59,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SegmenterPrototypeBuiltins.SegmenterPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new SegmenterPrototypeBuiltins();
+
     protected SegmenterPrototypeBuiltins() {
         super(JSSegmenter.PROTOTYPE_NAME, SegmenterPrototype.class);
     }

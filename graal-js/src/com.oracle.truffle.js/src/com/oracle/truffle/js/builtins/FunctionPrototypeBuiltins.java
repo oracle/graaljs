@@ -82,6 +82,9 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  */
 public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<FunctionPrototypeBuiltins.FunctionPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new FunctionPrototypeBuiltins();
+    public static final JSBuiltinsContainer BUILTINS_NASHORN_COMPAT = new FunctionPrototypeNashornCompatBuiltins();
+
     protected FunctionPrototypeBuiltins() {
         super(JSFunction.PROTOTYPE_NAME, FunctionPrototype.class);
     }
@@ -148,7 +151,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
     public static final class FunctionPrototypeNashornCompatBuiltins extends JSBuiltinsContainer.SwitchEnum<FunctionPrototypeNashornCompatBuiltins.FunctionNashornCompat> {
         protected FunctionPrototypeNashornCompatBuiltins() {
-            super(JSFunction.CLASS_NAME_NASHORN_COMPAT, FunctionNashornCompat.class);
+            super(FunctionNashornCompat.class);
         }
 
         public enum FunctionNashornCompat implements BuiltinEnum<FunctionNashornCompat> {

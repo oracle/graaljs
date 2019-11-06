@@ -105,6 +105,9 @@ import com.oracle.truffle.js.runtime.objects.Null;
  * Contains builtins for {@linkplain JSDate}.prototype.
  */
 public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DatePrototypeBuiltins.DatePrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new DatePrototypeBuiltins();
+
     protected DatePrototypeBuiltins() {
         super(JSDate.PROTOTYPE_NAME, DatePrototype.class);
     }

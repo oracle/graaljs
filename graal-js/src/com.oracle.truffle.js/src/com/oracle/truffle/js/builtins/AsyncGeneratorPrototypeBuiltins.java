@@ -56,6 +56,8 @@ import com.oracle.truffle.js.runtime.objects.Completion;
  */
 public final class AsyncGeneratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<AsyncGeneratorPrototypeBuiltins.AsyncGeneratorPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new AsyncGeneratorPrototypeBuiltins();
+
     protected AsyncGeneratorPrototypeBuiltins() {
         super(JSFunction.ASYNC_GENERATOR_PROTOTYPE_NAME, AsyncGeneratorPrototype.class);
     }

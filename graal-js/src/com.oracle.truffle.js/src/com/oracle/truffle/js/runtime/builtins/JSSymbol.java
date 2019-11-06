@@ -52,6 +52,8 @@ import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.SymbolFunctionBuiltins;
+import com.oracle.truffle.js.builtins.SymbolPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
@@ -106,7 +108,7 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, SymbolPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         if (ctx.getContextOptions().getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
             JSObjectUtil.putConstantAccessorProperty(ctx, prototype, DESCRIPTION, createDescriptionGetterFunction(realm), Undefined.instance);
@@ -122,7 +124,7 @@ public final class JSSymbol extends JSBuiltinObject implements JSConstructorFact
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, SymbolFunctionBuiltins.BUILTINS);
     }
 
     private static DynamicObject createDescriptionGetterFunction(JSRealm realm) {

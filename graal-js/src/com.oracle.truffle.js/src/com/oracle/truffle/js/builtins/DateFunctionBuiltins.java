@@ -58,6 +58,9 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
  * Contains builtins for {@linkplain JSDate} function (constructor).
  */
 public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<DateFunctionBuiltins.DateFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new DateFunctionBuiltins();
+
     protected DateFunctionBuiltins() {
         super(JSDate.CLASS_NAME, DateFunction.class);
     }

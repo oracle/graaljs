@@ -178,6 +178,9 @@ import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
  * Contains builtins for {@linkplain JSArray}.prototype.
  */
 public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ArrayPrototypeBuiltins.ArrayPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new ArrayPrototypeBuiltins();
+
     protected ArrayPrototypeBuiltins() {
         super(JSArray.PROTOTYPE_NAME, ArrayPrototype.class);
     }

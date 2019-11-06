@@ -60,6 +60,8 @@ import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 
 public final class ListFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ListFormatPrototypeBuiltins.ListFormatPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new ListFormatPrototypeBuiltins();
+
     protected ListFormatPrototypeBuiltins() {
         super(JSListFormat.PROTOTYPE_NAME, ListFormatPrototype.class);
     }

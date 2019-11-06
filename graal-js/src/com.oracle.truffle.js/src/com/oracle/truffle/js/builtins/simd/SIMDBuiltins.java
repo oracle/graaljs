@@ -52,7 +52,10 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSIMD;
 
 public final class SIMDBuiltins extends JSBuiltinsContainer.SwitchEnum<SIMDBuiltins.SIMDConstructor> {
-    public SIMDBuiltins() {
+
+    public static final JSBuiltinsContainer BUILTINS = new SIMDBuiltins();
+
+    protected SIMDBuiltins() {
         super(JSSIMD.SIMD_OBJECT_NAME, SIMDConstructor.class);
     }
 

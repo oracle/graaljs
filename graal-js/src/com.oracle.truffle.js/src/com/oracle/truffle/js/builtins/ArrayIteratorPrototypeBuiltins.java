@@ -69,6 +69,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains functions of the %ArrayIteratorPrototype% object.
  */
 public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ArrayIteratorPrototypeBuiltins.ArrayIteratorPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new ArrayIteratorPrototypeBuiltins();
+
     protected ArrayIteratorPrototypeBuiltins() {
         super(JSArray.ITERATOR_PROTOTYPE_NAME, ArrayIteratorPrototype.class);
     }

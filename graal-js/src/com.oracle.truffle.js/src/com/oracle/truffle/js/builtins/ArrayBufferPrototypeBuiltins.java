@@ -63,7 +63,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for {@linkplain JSArrayBuffer}.prototype.
  */
 public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lambda {
-    public ArrayBufferPrototypeBuiltins() {
+
+    public static final JSBuiltinsContainer BUILTINS = new ArrayBufferPrototypeBuiltins();
+
+    protected ArrayBufferPrototypeBuiltins() {
         super(JSArrayBuffer.PROTOTYPE_NAME);
         defineFunction("slice", 2, (context, builtin) -> JSArrayBufferSliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context)));
     }

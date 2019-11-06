@@ -53,6 +53,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -199,7 +201,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         putArrayProperties(arrayPrototype, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
 
         putConstructorProperty(ctx, arrayPrototype, ctor);
-        putFunctionsFromContainer(realm, arrayPrototype, PROTOTYPE_NAME);
+        putFunctionsFromContainer(realm, arrayPrototype, ArrayPrototypeBuiltins.BUILTINS);
         // sets the length just for the prototype
         putProxyProperty(arrayPrototype, ARRAY_LENGTH_PROXY_PROPERTY);
         if (ctx.getEcmaScriptVersion() >= 6) {
@@ -256,7 +258,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, ArrayFunctionBuiltins.BUILTINS);
     }
 
     public static class ArrayLengthProxyProperty implements PropertyProxy {

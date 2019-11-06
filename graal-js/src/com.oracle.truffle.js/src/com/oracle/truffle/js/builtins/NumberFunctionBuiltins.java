@@ -56,6 +56,9 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
  * Contains builtins for {@linkplain JSNumber} function (constructor).
  */
 public final class NumberFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<NumberFunctionBuiltins.NumberFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new NumberFunctionBuiltins();
+
     protected NumberFunctionBuiltins() {
         super(JSNumber.CLASS_NAME, NumberFunction.class);
     }

@@ -66,6 +66,9 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
  * Contains functions of the %SetIteratorPrototype% object.
  */
 public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SetIteratorPrototypeBuiltins.SetIteratorPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new SetIteratorPrototypeBuiltins();
+
     protected SetIteratorPrototypeBuiltins() {
         super(JSSet.ITERATOR_PROTOTYPE_NAME, SetIteratorPrototype.class);
     }

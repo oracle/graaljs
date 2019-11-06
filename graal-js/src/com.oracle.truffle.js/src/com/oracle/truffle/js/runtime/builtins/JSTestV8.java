@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.TestV8Builtins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -59,7 +60,7 @@ public final class JSTestV8 {
         DynamicObject obj = JSUserObject.createInit(realm);
         JSObjectUtil.putDataProperty(ctx, obj, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(ctx, obj, "stringMaxLength", ctx.getStringLengthLimit());
-        JSObjectUtil.putFunctionsFromContainer(realm, obj, CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, obj, TestV8Builtins.BUILTINS);
         return obj;
     }
 }

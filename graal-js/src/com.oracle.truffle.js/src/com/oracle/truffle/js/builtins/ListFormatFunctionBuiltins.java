@@ -50,6 +50,9 @@ import com.oracle.truffle.js.runtime.builtins.JSListFormat;
  * Contains built-ins for {@linkplain JSListFormat} function (constructor).
  */
 public final class ListFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ListFormatFunctionBuiltins.ListFormatFunction> {
+
+    public static final JSBuiltinsContainer BUILTINS = new ListFormatFunctionBuiltins();
+
     protected ListFormatFunctionBuiltins() {
         super(JSListFormat.CLASS_NAME, ListFormatFunction.class);
     }

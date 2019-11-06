@@ -96,6 +96,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * Contains builtins for Object.prototype.
  */
 public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ObjectPrototypeBuiltins.ObjectPrototype> {
+
+    public static final JSBuiltinsContainer BUILTINS = new ObjectPrototypeBuiltins();
+
     protected ObjectPrototypeBuiltins() {
         super(JSUserObject.PROTOTYPE_NAME, ObjectPrototype.class);
     }

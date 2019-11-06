@@ -54,6 +54,8 @@ import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 
 public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<PluralRulesPrototypeBuiltins.PluralRulesPrototype> {
 
+    public static final JSBuiltinsContainer BUILTINS = new PluralRulesPrototypeBuiltins();
+
     protected PluralRulesPrototypeBuiltins() {
         super(JSPluralRules.PROTOTYPE_NAME, PluralRulesPrototype.class);
     }
