@@ -216,22 +216,11 @@ suite = {
       "workingSets" : "Truffle,JavaScript",
     },
 
-    "com.oracle.truffle.js.builtins" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.js"],
-      "jacoco" : "include",
-      "checkstyle" : "com.oracle.truffle.js",
-      "javaCompliance" : "8+",
-      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle,JavaScript",
-    },
-
     "com.oracle.truffle.js.parser" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.js.builtins",
+        "com.oracle.truffle.js",
       ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
@@ -342,7 +331,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.js.shell",
         "NETBEANS_PROFILER",
-        "com.oracle.truffle.js.builtins",
+        "com.oracle.truffle.js",
       ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
