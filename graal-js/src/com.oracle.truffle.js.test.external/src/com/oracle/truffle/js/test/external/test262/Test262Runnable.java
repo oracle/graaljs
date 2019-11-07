@@ -219,6 +219,7 @@ public class Test262Runnable extends TestRunnable {
                     "dynamic-import",
                     "import.meta",
                     "numeric-separator-literal",
+                    "proxy-missing-checks",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {

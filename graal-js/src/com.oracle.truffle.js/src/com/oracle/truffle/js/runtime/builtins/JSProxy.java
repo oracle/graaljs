@@ -412,6 +412,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         if (targetDesc.hasConfigurable() && !targetDesc.getConfigurable()) {
             throw Errors.createTypeErrorConfigurableExpected();
         }
+        JSContext context = JSObject.getJSContext(thisObj);
+        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2020) {
+            boolean extensibleTarget = JSObject.isExtensible((DynamicObject) target);
+            if (!extensibleTarget) {
+                throw Errors.createTypeErrorProxyTargetNotExtensible();
+            }
+        }
         return true;
     }
 
@@ -449,17 +456,22 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         boolean settingConfigFalse = desc.hasConfigurable() && !desc.getConfigurable();
         if (targetDesc == null) {
             if (!extensibleTarget) {
-                throw Errors.createTypeError("ES 9.5.6 19.a");
+                throw Errors.createTypeError("'defineProperty' on proxy: trap returned truish for adding property to the non-extensible proxy target");
             }
             if (settingConfigFalse) {
-                throw Errors.createTypeError("ES 9.5.6 19.b");
+                throw Errors.createTypeError("'defineProperty' on proxy: trap returned truish for defining non-configurable property which is non-existant in the proxy target");
             }
         } else {
             if (!isCompatiblePropertyDescriptor(extensibleTarget, desc, targetDesc)) {
-                throw Errors.createTypeError("ES 9.5.6 20.a");
+                throw Errors.createTypeError("'defineProperty' on proxy: trap returned truish for adding property that is incompatible with the existing property in the proxy target");
             }
             if (settingConfigFalse && targetDesc.getConfigurable()) {
-                throw Errors.createTypeError("ES 9.5.6 20.b");
+                throw Errors.createTypeError("'defineProperty' on proxy: trap returned truish for defining non-configurable property which is configurable in the proxy target");
+            }
+            if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2020 && targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && targetDesc.getWritable() && desc.hasWritable() &&
+                            !desc.getWritable()) {
+                throw Errors.createTypeError("'defineProperty' on proxy: trap returned truish for defining non-configurable property " +
+                                "which cannot be non-writable, unless there exists a corresponding non-configurable, non-writable own property of the proxy target");
             }
         }
         return true;
@@ -778,7 +790,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             }
             boolean isExtensible = JSObject.isExtensible((DynamicObject) target);
             if (!isExtensible) {
-                throw Errors.createTypeError("not extensible");
+                throw Errors.createTypeErrorProxyTargetNotExtensible();
             }
             return null; // undefined
         }
@@ -792,6 +804,10 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         if (!resultDesc.getConfigurable()) {
             if (targetDesc == null || (targetDesc.hasConfigurable() && targetDesc.getConfigurable())) {
                 throw Errors.createTypeErrorConfigurableExpected();
+            }
+            JSContext context = JSObject.getJSContext(thisObj);
+            if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2020 && resultDesc.hasWritable() && !resultDesc.getWritable() && targetDesc.getWritable()) {
+                throw Errors.createTypeError("target is missing the corresponding non-configurable and non-writable own property");
             }
         }
         return resultDesc;
