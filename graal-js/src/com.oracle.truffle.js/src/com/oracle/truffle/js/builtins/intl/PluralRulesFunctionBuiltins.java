@@ -38,31 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
-import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSCollator;
+import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 
 /**
- * Contains built-ins for {@linkplain JSCollator} function (constructor).
+ * Contains built-ins for {@linkplain JSPluralRules} function (constructor).
  */
-public final class CollatorFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<CollatorFunctionBuiltins.CollatorFunction> {
+public final class PluralRulesFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<PluralRulesFunctionBuiltins.PluralRulesFunction> {
 
-    public static final JSBuiltinsContainer BUILTINS = new CollatorFunctionBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new PluralRulesFunctionBuiltins();
 
-    protected CollatorFunctionBuiltins() {
-        super(JSCollator.CLASS_NAME, CollatorFunction.class);
+    protected PluralRulesFunctionBuiltins() {
+        super(JSPluralRules.CLASS_NAME, PluralRulesFunction.class);
     }
 
-    public enum CollatorFunction implements BuiltinEnum<CollatorFunction> {
+    public enum PluralRulesFunction implements BuiltinEnum<PluralRulesFunction> {
         supportedLocalesOf(1);
 
         private final int length;
 
-        CollatorFunction(int length) {
+        PluralRulesFunction(int length) {
             this.length = length;
         }
 
@@ -73,7 +74,7 @@ public final class CollatorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, CollatorFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, PluralRulesFunction builtinEnum) {
         switch (builtinEnum) {
             case supportedLocalesOf:
                 return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));

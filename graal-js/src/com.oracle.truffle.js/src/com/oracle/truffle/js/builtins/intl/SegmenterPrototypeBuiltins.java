@@ -38,20 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.ibm.icu.text.BreakIterator;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.builtins.SegmenterPrototypeBuiltinsFactory.JSSegmenterResolvedOptionsNodeGen;
-import com.oracle.truffle.js.builtins.SegmenterPrototypeBuiltinsFactory.JSSegmenterSegmentNodeGen;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.intl.SegmenterPrototypeBuiltinsFactory.JSSegmenterResolvedOptionsNodeGen;
+import com.oracle.truffle.js.builtins.intl.SegmenterPrototypeBuiltinsFactory.JSSegmenterSegmentNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.JSSegmenter.Granularity;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
+import java.util.Arrays;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.intl.IntlBuiltinsFactory.GetCanonicalLocalesNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.intl.JSToCanonicalizedLocaleListNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSListFormat;
+import com.oracle.truffle.js.runtime.builtins.JSIntl;
 
 /**
- * Contains built-ins for {@linkplain JSListFormat} function (constructor).
+ * Contains builtins for {@linkplain Intl} function (constructor).
  */
-public final class ListFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ListFormatFunctionBuiltins.ListFormatFunction> {
+public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuiltins.Intl> {
 
-    public static final JSBuiltinsContainer BUILTINS = new ListFormatFunctionBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new IntlBuiltins();
 
-    protected ListFormatFunctionBuiltins() {
-        super(JSListFormat.CLASS_NAME, ListFormatFunction.class);
+    protected IntlBuiltins() {
+        super(JSIntl.CLASS_NAME, Intl.class);
     }
 
-    public enum ListFormatFunction implements BuiltinEnum<ListFormatFunction> {
-        supportedLocalesOf(1);
+    public enum Intl implements BuiltinEnum<Intl> {
+        getCanonicalLocales(1);
 
         private final int length;
 
-        ListFormatFunction(int length) {
+        Intl(int length) {
             this.length = length;
         }
 
@@ -73,11 +81,31 @@ public final class ListFormatFunctionBuiltins extends JSBuiltinsContainer.Switch
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ListFormatFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, Intl builtinEnum) {
         switch (builtinEnum) {
-            case supportedLocalesOf:
-                return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case getCanonicalLocales:
+                return GetCanonicalLocalesNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class GetCanonicalLocalesNode extends JSBuiltinNode {
+
+        @Child JSToCanonicalizedLocaleListNode canonicalizeLocaleListNode;
+
+        public GetCanonicalLocalesNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        @CompilerDirectives.TruffleBoundary
+        protected Object getCanonicalLocales(Object locales) {
+            if (canonicalizeLocaleListNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                canonicalizeLocaleListNode = insert(JSToCanonicalizedLocaleListNode.create(getContext()));
+            }
+            String[] languageTags = canonicalizeLocaleListNode.executeLanguageTags(locales);
+            return JSRuntime.createArrayFromList(getContext(), Arrays.asList((Object[]) languageTags));
+        }
     }
 }

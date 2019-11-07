@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 
 /**
- * Contains built-ins for {@linkplain JSRelativeTimeFormat} function (constructor).
+ * Contains built-ins for {@linkplain JSDateTimeFormat} function (constructor).
  */
-public final class RelativeTimeFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<RelativeTimeFormatFunctionBuiltins.RelativeTimeFormatFunction> {
+public final class DateTimeFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<DateTimeFormatFunctionBuiltins.DateTimeFormatFunction> {
 
-    public static final JSBuiltinsContainer BUILTINS = new RelativeTimeFormatFunctionBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new DateTimeFormatFunctionBuiltins();
 
-    protected RelativeTimeFormatFunctionBuiltins() {
-        super(JSRelativeTimeFormat.CLASS_NAME, RelativeTimeFormatFunction.class);
+    protected DateTimeFormatFunctionBuiltins() {
+        super(JSDateTimeFormat.CLASS_NAME, DateTimeFormatFunction.class);
     }
 
-    public enum RelativeTimeFormatFunction implements BuiltinEnum<RelativeTimeFormatFunction> {
+    public enum DateTimeFormatFunction implements BuiltinEnum<DateTimeFormatFunction> {
         supportedLocalesOf(1);
 
         private final int length;
 
-        RelativeTimeFormatFunction(int length) {
+        DateTimeFormatFunction(int length) {
             this.length = length;
         }
 
@@ -73,7 +74,7 @@ public final class RelativeTimeFormatFunctionBuiltins extends JSBuiltinsContaine
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, RelativeTimeFormatFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, DateTimeFormatFunction builtinEnum) {
         switch (builtinEnum) {
             case supportedLocalesOf:
                 return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));

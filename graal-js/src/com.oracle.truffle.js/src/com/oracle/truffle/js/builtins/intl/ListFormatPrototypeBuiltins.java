@@ -38,23 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
-
-import com.oracle.truffle.api.object.DynamicObject;
+package com.oracle.truffle.js.builtins.intl;
 
 import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.builtins.ListFormatPrototypeBuiltinsFactory.JSListFormatResolvedOptionsNodeGen;
-import com.oracle.truffle.js.builtins.ListFormatPrototypeBuiltinsFactory.JSListFormatFormatNodeGen;
-import com.oracle.truffle.js.builtins.ListFormatPrototypeBuiltinsFactory.JSListFormatFormatToPartsNodeGen;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.intl.ListFormatPrototypeBuiltinsFactory.JSListFormatFormatNodeGen;
+import com.oracle.truffle.js.builtins.intl.ListFormatPrototypeBuiltinsFactory.JSListFormatFormatToPartsNodeGen;
+import com.oracle.truffle.js.builtins.intl.ListFormatPrototypeBuiltinsFactory.JSListFormatResolvedOptionsNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSStringListFromIterableNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 

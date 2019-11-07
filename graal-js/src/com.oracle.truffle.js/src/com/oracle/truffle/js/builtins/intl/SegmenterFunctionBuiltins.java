@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
-import java.util.Arrays;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.builtins.IntlBuiltinsFactory.GetCanonicalLocalesNodeGen;
-import com.oracle.truffle.js.nodes.intl.JSToCanonicalizedLocaleListNode;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSIntl;
+import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
 
 /**
- * Contains builtins for {@linkplain Intl} function (constructor).
+ * Contains built-ins for {@linkplain JSSegmenter} function (constructor).
  */
-public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuiltins.Intl> {
+public final class SegmenterFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<SegmenterFunctionBuiltins.SegmenterFunction> {
 
-    public static final JSBuiltinsContainer BUILTINS = new IntlBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new SegmenterFunctionBuiltins();
 
-    protected IntlBuiltins() {
-        super(JSIntl.CLASS_NAME, Intl.class);
+    protected SegmenterFunctionBuiltins() {
+        super(JSSegmenter.CLASS_NAME, SegmenterFunction.class);
     }
 
-    public enum Intl implements BuiltinEnum<Intl> {
-        getCanonicalLocales(1);
+    public enum SegmenterFunction implements BuiltinEnum<SegmenterFunction> {
+        supportedLocalesOf(1);
 
         private final int length;
 
-        Intl(int length) {
+        SegmenterFunction(int length) {
             this.length = length;
         }
 
@@ -80,31 +74,11 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, Intl builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, SegmenterFunction builtinEnum) {
         switch (builtinEnum) {
-            case getCanonicalLocales:
-                return GetCanonicalLocalesNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case supportedLocalesOf:
+                return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
-    }
-
-    public abstract static class GetCanonicalLocalesNode extends JSBuiltinNode {
-
-        @Child JSToCanonicalizedLocaleListNode canonicalizeLocaleListNode;
-
-        public GetCanonicalLocalesNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        @CompilerDirectives.TruffleBoundary
-        protected Object getCanonicalLocales(Object locales) {
-            if (canonicalizeLocaleListNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                canonicalizeLocaleListNode = insert(JSToCanonicalizedLocaleListNode.create(getContext()));
-            }
-            String[] languageTags = canonicalizeLocaleListNode.executeLanguageTags(locales);
-            return JSRuntime.createArrayFromList(getContext(), Arrays.asList((Object[]) languageTags));
-        }
     }
 }

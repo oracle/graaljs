@@ -38,31 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
+import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 
 /**
- * Contains built-ins for {@linkplain JSPluralRules} function (constructor).
+ * Contains built-ins for {@linkplain JSListFormat} function (constructor).
  */
-public final class PluralRulesFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<PluralRulesFunctionBuiltins.PluralRulesFunction> {
+public final class ListFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ListFormatFunctionBuiltins.ListFormatFunction> {
 
-    public static final JSBuiltinsContainer BUILTINS = new PluralRulesFunctionBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new ListFormatFunctionBuiltins();
 
-    protected PluralRulesFunctionBuiltins() {
-        super(JSPluralRules.CLASS_NAME, PluralRulesFunction.class);
+    protected ListFormatFunctionBuiltins() {
+        super(JSListFormat.CLASS_NAME, ListFormatFunction.class);
     }
 
-    public enum PluralRulesFunction implements BuiltinEnum<PluralRulesFunction> {
+    public enum ListFormatFunction implements BuiltinEnum<ListFormatFunction> {
         supportedLocalesOf(1);
 
         private final int length;
 
-        PluralRulesFunction(int length) {
+        ListFormatFunction(int length) {
             this.length = length;
         }
 
@@ -73,7 +74,7 @@ public final class PluralRulesFunctionBuiltins extends JSBuiltinsContainer.Switc
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, PluralRulesFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ListFormatFunction builtinEnum) {
         switch (builtinEnum) {
             case supportedLocalesOf:
                 return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));

@@ -38,31 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.JSRelativeTimeFormat;
 
 /**
- * Contains built-ins for {@linkplain JSSegmenter} function (constructor).
+ * Contains built-ins for {@linkplain JSRelativeTimeFormat} function (constructor).
  */
-public final class SegmenterFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<SegmenterFunctionBuiltins.SegmenterFunction> {
+public final class RelativeTimeFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<RelativeTimeFormatFunctionBuiltins.RelativeTimeFormatFunction> {
 
-    public static final JSBuiltinsContainer BUILTINS = new SegmenterFunctionBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new RelativeTimeFormatFunctionBuiltins();
 
-    protected SegmenterFunctionBuiltins() {
-        super(JSSegmenter.CLASS_NAME, SegmenterFunction.class);
+    protected RelativeTimeFormatFunctionBuiltins() {
+        super(JSRelativeTimeFormat.CLASS_NAME, RelativeTimeFormatFunction.class);
     }
 
-    public enum SegmenterFunction implements BuiltinEnum<SegmenterFunction> {
+    public enum RelativeTimeFormatFunction implements BuiltinEnum<RelativeTimeFormatFunction> {
         supportedLocalesOf(1);
 
         private final int length;
 
-        SegmenterFunction(int length) {
+        RelativeTimeFormatFunction(int length) {
             this.length = length;
         }
 
@@ -73,7 +74,7 @@ public final class SegmenterFunctionBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, SegmenterFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, RelativeTimeFormatFunction builtinEnum) {
         switch (builtinEnum) {
             case supportedLocalesOf:
                 return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));

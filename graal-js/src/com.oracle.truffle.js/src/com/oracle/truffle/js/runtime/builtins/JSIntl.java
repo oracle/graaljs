@@ -41,7 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.builtins.IntlBuiltins;
+import com.oracle.truffle.js.builtins.intl.IntlBuiltins;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;

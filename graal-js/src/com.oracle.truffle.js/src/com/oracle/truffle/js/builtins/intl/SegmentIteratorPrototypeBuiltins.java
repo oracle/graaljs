@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
 import com.ibm.icu.text.BreakIterator;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -48,9 +48,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.builtins.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorNextNodeGen;
-import com.oracle.truffle.js.builtins.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorFollowingNodeGen;
-import com.oracle.truffle.js.builtins.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorPrecedingNodeGen;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorFollowingNodeGen;
+import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorNextNodeGen;
+import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltinsFactory.SegmentIteratorPrecedingNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;

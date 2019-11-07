@@ -38,34 +38,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.builtins.CollatorPrototypeBuiltinsFactory.JSCollatorResolvedOptionsNodeGen;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatToPartsNodeGen;
+import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatResolvedOptionsNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSCollator;
+import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
 
-public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<CollatorPrototypeBuiltins.CollatorPrototype> {
+public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DateTimeFormatPrototypeBuiltins.DateTimeFormatPrototype> {
 
-    public static final JSBuiltinsContainer BUILTINS = new CollatorPrototypeBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new DateTimeFormatPrototypeBuiltins();
 
-    protected CollatorPrototypeBuiltins() {
-        super(JSCollator.PROTOTYPE_NAME, CollatorPrototype.class);
+    protected DateTimeFormatPrototypeBuiltins() {
+        super(JSDateTimeFormat.PROTOTYPE_NAME, DateTimeFormatPrototype.class);
     }
 
-    public enum CollatorPrototype implements BuiltinEnum<CollatorPrototype> {
+    public enum DateTimeFormatPrototype implements BuiltinEnum<DateTimeFormatPrototype> {
 
-        resolvedOptions(0);
+        resolvedOptions(0),
+        formatToParts(1);
 
         private final int length;
 
-        CollatorPrototype(int length) {
+        DateTimeFormatPrototype(int length) {
             this.length = length;
         }
 
@@ -76,28 +79,48 @@ public final class CollatorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, CollatorPrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, DateTimeFormatPrototype builtinEnum) {
         switch (builtinEnum) {
             case resolvedOptions:
-                return JSCollatorResolvedOptionsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSDateTimeFormatResolvedOptionsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case formatToParts:
+                return JSDateTimeFormatFormatToPartsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
 
-    public abstract static class JSCollatorResolvedOptionsNode extends JSBuiltinNode {
+    public abstract static class JSDateTimeFormatResolvedOptionsNode extends JSBuiltinNode {
 
-        public JSCollatorResolvedOptionsNode(JSContext context, JSBuiltin builtin) {
+        public JSDateTimeFormatResolvedOptionsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSCollator(collator)"})
-        public Object doResolvedOptions(DynamicObject collator) {
-            return JSCollator.resolvedOptions(getContext(), collator);
+        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
+        public Object doResolvedOptions(DynamicObject dateTimeFormat) {
+            return JSDateTimeFormat.resolvedOptions(getContext(), dateTimeFormat);
         }
 
         @Fallback
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeError("Collator object expected.");
+            throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
+        }
+    }
+
+    public abstract static class JSDateTimeFormatFormatToPartsNode extends JSBuiltinNode {
+
+        public JSDateTimeFormatFormatToPartsNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
+        public Object doFormatToParts(DynamicObject dateTimeFormat, Object value) {
+            return JSDateTimeFormat.formatToParts(getContext(), dateTimeFormat, value);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public void throwTypeError(Object bummer, Object value) {
+            throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
     }
 }

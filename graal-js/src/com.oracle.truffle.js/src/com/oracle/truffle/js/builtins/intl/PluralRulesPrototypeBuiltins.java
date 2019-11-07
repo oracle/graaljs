@@ -38,36 +38,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.builtins.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatResolvedOptionsNodeGen;
-import com.oracle.truffle.js.builtins.NumberFormatPrototypeBuiltinsFactory.JSNumberFormatFormatToPartsNodeGen;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesResolvedOptionsNodeGen;
+import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesSelectNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSNumberFormat;
+import com.oracle.truffle.js.runtime.builtins.JSPluralRules;
 
-public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<NumberFormatPrototypeBuiltins.NumberFormatPrototype> {
+public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<PluralRulesPrototypeBuiltins.PluralRulesPrototype> {
 
-    public static final JSBuiltinsContainer BUILTINS = new NumberFormatPrototypeBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new PluralRulesPrototypeBuiltins();
 
-    protected NumberFormatPrototypeBuiltins() {
-        super(JSNumberFormat.PROTOTYPE_NAME, NumberFormatPrototype.class);
+    protected PluralRulesPrototypeBuiltins() {
+        super(JSPluralRules.PROTOTYPE_NAME, PluralRulesPrototype.class);
     }
 
-    public enum NumberFormatPrototype implements BuiltinEnum<NumberFormatPrototype> {
+    public enum PluralRulesPrototype implements BuiltinEnum<PluralRulesPrototype> {
 
         resolvedOptions(0),
-        formatToParts(1);
+        select(1);
 
         private final int length;
 
-        NumberFormatPrototype(int length) {
+        PluralRulesPrototype(int length) {
             this.length = length;
         }
 
@@ -78,48 +79,48 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, NumberFormatPrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, PluralRulesPrototype builtinEnum) {
         switch (builtinEnum) {
             case resolvedOptions:
-                return JSNumberFormatResolvedOptionsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case formatToParts:
-                return JSNumberFormatFormatToPartsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSPluralRulesResolvedOptionsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case select:
+                return JSPluralRulesSelectNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
 
-    public abstract static class JSNumberFormatResolvedOptionsNode extends JSBuiltinNode {
+    public abstract static class JSPluralRulesResolvedOptionsNode extends JSBuiltinNode {
 
-        public JSNumberFormatResolvedOptionsNode(JSContext context, JSBuiltin builtin) {
+        public JSPluralRulesResolvedOptionsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public Object doResolvedOptions(DynamicObject numberFormat) {
-            return JSNumberFormat.resolvedOptions(getContext(), numberFormat);
+        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
+        public Object doResolvedOptions(DynamicObject pluralRules) {
+            return JSPluralRules.resolvedOptions(getContext(), pluralRules);
         }
 
         @Fallback
         public void doResolvedOptions(@SuppressWarnings("unused") Object bummer) {
-            throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
+            throw Errors.createTypeErrorTypeXExpected(JSPluralRules.CLASS_NAME);
         }
     }
 
-    public abstract static class JSNumberFormatFormatToPartsNode extends JSBuiltinNode {
+    public abstract static class JSPluralRulesSelectNode extends JSBuiltinNode {
 
-        public JSNumberFormatFormatToPartsNode(JSContext context, JSBuiltin builtin) {
+        public JSPluralRulesSelectNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
-        public Object doFormatToParts(DynamicObject numberFormat, Object value) {
-            return JSNumberFormat.formatToParts(getContext(), numberFormat, value);
+        @Specialization(guards = {"isJSPluralRules(pluralRules)"})
+        public Object doSelect(DynamicObject pluralRules, Object value) {
+            return JSPluralRules.select(pluralRules, value);
         }
 
         @Fallback
         @SuppressWarnings("unused")
         public void throwTypeError(Object bummer, Object value) {
-            throw Errors.createTypeErrorTypeXExpected(JSNumberFormat.CLASS_NAME);
+            throw Errors.createTypeErrorTypeXExpected(JSPluralRules.CLASS_NAME);
         }
     }
 }

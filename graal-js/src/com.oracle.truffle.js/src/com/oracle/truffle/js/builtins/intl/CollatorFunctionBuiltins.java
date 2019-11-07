@@ -38,31 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.intl;
 
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.intl.SupportedLocalesOfNodeGen;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.JSCollator;
 
 /**
- * Contains built-ins for {@linkplain JSDateTimeFormat} function (constructor).
+ * Contains built-ins for {@linkplain JSCollator} function (constructor).
  */
-public final class DateTimeFormatFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<DateTimeFormatFunctionBuiltins.DateTimeFormatFunction> {
+public final class CollatorFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<CollatorFunctionBuiltins.CollatorFunction> {
 
-    public static final JSBuiltinsContainer BUILTINS = new DateTimeFormatFunctionBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new CollatorFunctionBuiltins();
 
-    protected DateTimeFormatFunctionBuiltins() {
-        super(JSDateTimeFormat.CLASS_NAME, DateTimeFormatFunction.class);
+    protected CollatorFunctionBuiltins() {
+        super(JSCollator.CLASS_NAME, CollatorFunction.class);
     }
 
-    public enum DateTimeFormatFunction implements BuiltinEnum<DateTimeFormatFunction> {
+    public enum CollatorFunction implements BuiltinEnum<CollatorFunction> {
         supportedLocalesOf(1);
 
         private final int length;
 
-        DateTimeFormatFunction(int length) {
+        CollatorFunction(int length) {
             this.length = length;
         }
 
@@ -73,7 +74,7 @@ public final class DateTimeFormatFunctionBuiltins extends JSBuiltinsContainer.Sw
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, DateTimeFormatFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, CollatorFunction builtinEnum) {
         switch (builtinEnum) {
             case supportedLocalesOf:
                 return SupportedLocalesOfNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
