@@ -77,6 +77,7 @@ import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringPad
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringRepeatNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringReplaceES5NodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringReplaceNodeGen;
+import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringReplaceAllNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringSearchES5NodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringSearchNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.JSStringSliceNodeGen;
@@ -159,6 +160,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         localeCompare(1),
         match(1),
         replace(2),
+        replaceAll(2), // ------replaceAll added here
         search(1),
         slice(2),
         split(2),
@@ -268,6 +270,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 } else {
                     return JSStringReplaceES5NodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
                 }
+            case replaceAll:
+                return JSStringReplaceAllNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case search:
                 if (context.getEcmaScriptVersion() >= 6) {
                     return JSStringSearchNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
@@ -1201,6 +1205,222 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             Boundaries.builderAppend(sb, input, pos + searchString.length(), input.length());
             return Boundaries.builderToString(sb);
+        }
+
+        private static void appendSubstitution(StringBuilder sb, String input, String replaceStr, String matched, int pos, BranchProfile dollarProfile) {
+            ReplaceStringParser.process(replaceStr, 0, false, dollarProfile, new ReplaceStringConsumer(sb, input, replaceStr, matched, pos), null);
+        }
+
+        private static final class ReplaceStringConsumer implements ReplaceStringParser.Consumer<Void> {
+
+            private final StringBuilder sb;
+            private final String input;
+            private final String replaceStr;
+            private final String matched;
+            private final int matchedPos;
+
+            private ReplaceStringConsumer(StringBuilder sb, String input, String replaceStr, String matched, int matchedPos) {
+                this.sb = sb;
+                this.input = input;
+                this.replaceStr = replaceStr;
+                this.matched = matched;
+                this.matchedPos = matchedPos;
+            }
+
+            @Override
+            public void literal(Void node, int start, int end) {
+                Boundaries.builderAppend(sb, replaceStr, start, end);
+            }
+
+            @Override
+            public void match(Void node) {
+                Boundaries.builderAppend(sb, matched);
+            }
+
+            @Override
+            public void matchHead(Void node) {
+                Boundaries.builderAppend(sb, input, 0, matchedPos);
+            }
+
+            @Override
+            public void matchTail(Void node) {
+                Boundaries.builderAppend(sb, input, matchedPos + matched.length(), input.length());
+            }
+
+            @Override
+            public void captureGroup(Void node, int groupNumber, int literalStart, int literalEnd) {
+                throw Errors.shouldNotReachHere();
+            }
+
+            @Override
+            public void namedCaptureGroup(Void node, String groupName) {
+                throw Errors.shouldNotReachHere();
+            }
+        }
+
+        protected final Object functionReplaceCall(Object splitter, Object separator, Object[] args) {
+            if (functionReplaceCallNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                functionReplaceCallNode = insert(JSFunctionCallNode.createCall());
+            }
+            return functionReplaceCallNode.executeCall(JSArguments.create(separator, splitter, args));
+        }
+    }
+
+    public abstract static class JSStringReplaceAllNode extends JSStringOperationWithRegExpArgument {
+        @Child private JSFunctionCallNode functionReplaceCallNode;
+        @Child private JSToStringNode toString2Node;
+        @Child private JSToStringNode toString3Node;
+        @Child private IsCallableNode isCallableNode;
+        private final ConditionProfile functionalReplaceProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile replaceNecessaryProfile = ConditionProfile.createBinaryProfile();
+        private final BranchProfile dollarProfile = BranchProfile.create();
+        private final ValueProfile searchValueProfile = ValueProfile.createIdentityProfile();
+        private final ValueProfile replaceValueProfile = ValueProfile.createIdentityProfile();
+
+        public JSStringReplaceAllNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "cachedReplaceValue.equals(replaceValue)")
+        protected Object replaceStringCached(Object thisObj, String searchValue, @SuppressWarnings("unused") String replaceValue,
+                        @Cached("replaceValue") String cachedReplaceValue,
+                        @Cached(value = "parseReplaceValue(replaceValue)", dimensions = 1) ReplaceStringParser.Token[] cachedParsedReplaceValue) {
+            requireObjectCoercible(thisObj);
+            return performReplaceAll(searchValue, cachedReplaceValue, thisObj, cachedParsedReplaceValue);
+        }
+
+        @Specialization(replaces = "replaceStringCached")
+        protected Object replaceString(Object thisObj, String searchValue, String replaceValue) {
+            requireObjectCoercible(thisObj);
+            return performReplaceAll(searchValue, replaceValue, thisObj, null);
+        }
+
+        private class ReplacedStringPosition {
+            public String replacedPart;
+            public int position;
+
+            public ReplacedStringPosition(String replaced, int pos) {
+                this.replacedPart = replaced;
+                this.position = pos;
+            }
+        }
+
+        protected Object performReplaceAll(String searchValue, String replaceValue, Object thisObj, ReplaceStringParser.Token[] parsedReplaceParam) {
+            String thisStr = toString(thisObj);
+            // TODO: This may be bad. So optimize it. Split may be bad decision.
+            // Think on providing some profiling classes, empty string may be unlikely profile.
+            if (Boundaries.stringCompareTo(searchValue, "") == 0) {
+                return thisStr.replaceAll("", replaceValue);
+            }
+            StringBuilder result = new StringBuilder();
+            ReplacedStringPosition strPos = new ReplacedStringPosition("", 0);
+            StringBuilder methodInput = new StringBuilder();
+            int position = 0;
+
+            while (position < thisStr.length()) {
+                Boundaries.builderAppend(methodInput, thisStr, position, thisStr.length());
+                strPos = builtinReplaceString(searchValue, replaceValue, Boundaries.builderToString(methodInput), parsedReplaceParam);
+                Boundaries.builderAppend(result, strPos.replacedPart, 0, strPos.replacedPart.length());
+                methodInput.setLength(0);
+                position += strPos.position;
+            }
+
+            return Boundaries.builderToString(result); // builtinReplaceString(searchValue,
+                                                       // replaceValue, thisObj,
+                                                       // parsedReplaceParam);
+        }
+
+        @Specialization(replaces = {"replaceString", "replaceStringCached"})
+        protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue) {
+            requireObjectCoercible(thisObj);
+            Object searchVal = searchValueProfile.profile(searchValue);
+            Object replaceVal = replaceValueProfile.profile(replaceValue);
+            if (isSpecialProfile.profile(!(searchVal == Undefined.instance || searchVal == Null.instance))) {
+                Object replacer = getMethod(searchVal, Symbol.SYMBOL_REPLACE);
+                if (callSpecialProfile.profile(replacer != Undefined.instance)) {
+                    return call(replacer, searchVal, new Object[]{thisObj, replaceVal});
+                }
+            }
+            // all child nodes must be checked to avoid race conditions on shared ASTs
+            if (toString2Node == null || toString3Node == null || isCallableNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toString2Node = insert(JSToStringNode.create());
+                toString3Node = insert(JSToStringNode.create());
+                isCallableNode = insert(IsCallableNode.create());
+            }
+            return performReplaceAllGeneric(searchVal, replaceVal, thisObj);
+        }
+
+        protected Object performReplaceAllGeneric(Object searchValue, Object replParam, Object thisObj) {
+            String thisStr = toString(thisObj);
+            String searchString = toString2Node.executeString(searchValue);
+            // TODO: call builtinReplace thisStr.length()+1 times with shifted argument.
+            ReplacedStringPosition strPos = new ReplacedStringPosition("", 0);
+            if (Boundaries.stringCompareTo(searchString, "") == 0) {
+                strPos = builtinReplace(searchString, replParam, thisStr);
+                return Boundaries.stringConcat(strPos.replacedPart, thisStr);
+            }
+
+            StringBuilder result = new StringBuilder();
+            StringBuilder methodInput = new StringBuilder();
+            int position = 0;
+            // TODO: Provide callback with adequate arguments. Maybe pass last position and add it
+            // to existing and
+            // pass thisStr as it is.
+            // Then, while refactoring, think about making strPos and maybe something else as
+            // private field in
+            // JSStringReplaceAllNode to avoid passing too much parameters.
+            while (position < thisStr.length()) {
+                Boundaries.builderAppend(methodInput, thisStr, position, thisStr.length());
+                strPos = builtinReplace(searchString, replParam, Boundaries.builderToString(methodInput));
+                Boundaries.builderAppend(result, strPos.replacedPart, 0, strPos.replacedPart.length());
+                methodInput.setLength(0);
+                position += strPos.position;
+            }
+
+            return Boundaries.builderToString(result);
+        }
+
+        static ReplaceStringParser.Token[] parseReplaceValue(String replaceValue) {
+            return ReplaceStringParser.parse(replaceValue, 0, false);
+        }
+
+        private ReplacedStringPosition builtinReplace(String searchString, Object replParam, String input) {
+            boolean functionalReplace = isCallableNode.executeBoolean(replParam);
+            String replaceString = null;
+            if (!functionalReplaceProfile.profile(functionalReplace)) {
+                replaceString = toString3Node.executeString(replParam);
+            }
+            int pos = input.indexOf(searchString);
+            if (replaceNecessaryProfile.profile(pos < 0)) {
+                return new ReplacedStringPosition(input, input.length());
+            }
+            StringBuilder sb = new StringBuilder(pos + (input.length() - (pos + searchString.length())) + 20);
+            Boundaries.builderAppend(sb, input, 0, pos);
+            if (functionalReplaceProfile.profile(functionalReplace)) {
+                Object replValue = functionReplaceCall(replParam, Undefined.instance, new Object[]{searchString, pos, input});
+                Boundaries.builderAppend(sb, toString3Node.executeString(replValue));
+            } else {
+                appendSubstitution(sb, input, replaceString, searchString, pos, dollarProfile);
+            }
+            return new ReplacedStringPosition(Boundaries.builderToString(sb), pos + searchString.length());
+        }
+
+        private ReplacedStringPosition builtinReplaceString(String searchString, String replaceString, Object o, ReplaceStringParser.Token[] parsedReplaceParam) {
+            String input = toString(o);
+            int pos = input.indexOf(searchString);
+            if (replaceNecessaryProfile.profile(pos < 0)) {
+                return new ReplacedStringPosition(input, input.length());
+            }
+            StringBuilder sb = new StringBuilder(pos + (input.length() - (pos + searchString.length())) + 20);
+            Boundaries.builderAppend(sb, input, 0, pos);
+            if (parsedReplaceParam == null) {
+                appendSubstitution(sb, input, replaceString, searchString, pos, dollarProfile);
+            } else {
+                ReplaceStringParser.processParsed(parsedReplaceParam, new ReplaceStringConsumer(sb, input, replaceString, searchString, pos), null);
+            }
+            return new ReplacedStringPosition(Boundaries.builderToString(sb), pos + searchString.length());
         }
 
         private static void appendSubstitution(StringBuilder sb, String input, String replaceStr, String matched, int pos, BranchProfile dollarProfile) {
