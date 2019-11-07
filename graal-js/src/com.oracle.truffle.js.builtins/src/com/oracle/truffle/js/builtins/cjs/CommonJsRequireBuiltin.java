@@ -40,14 +40,27 @@
  */
 package com.oracle.truffle.js.builtins.cjs;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.source.MissingMIMETypeException;
+import com.oracle.truffle.api.source.MissingNameException;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperation {
+
+    private static final String MODULE_CLOSURE = "\n});";
+    private static final String MODULE_PREAMBLE = "(function (exports, require, module, __filename, __dirname) {";
 
     public CommonJsRequireBuiltin(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
@@ -55,8 +68,44 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
 
     @Specialization
     protected Object require(String path) {
-        System.out.println("will require " + path);
+        JSRealm realm = getContext().getRealm();
+        Source source = sourceFromPath(path, realm);
+
+        CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_CLOSURE;
+
+        Source build = Source.newBuilder("js").mimeType("text/javascript").name("foo").content(characters).build();
+
+
+        CallTarget callTarget = realm.getEnv().parsePublic(build);
+        Object call = callTarget.call();
+
+        DynamicObject exportsBuiltin = createExportsBuiltin(realm);
+        DynamicObject requireBuiltin = createRequireBuiltin(realm);
+        DynamicObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin);
+        String filenameBuiltin = "foo.js";
+        String dirnameBuiltin = "/foo/";
+
+        if (JSFunction.isJSFunction(call)) {
+            JSFunction.call(JSArguments.create(call, call, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin));
+            return exportsBuiltin;
+        }
+
+
         return Undefined.instance;
+    }
+
+    private DynamicObject createModuleBuiltin(JSRealm realm, DynamicObject exportsBuiltin) {
+        DynamicObject module = JSUserObject.create(realm.getContext(), realm);
+        JSObject.set(module, "exports", exportsBuiltin);
+        return module;
+    }
+
+    private DynamicObject createRequireBuiltin(JSRealm realm) {
+        return JSUserObject.create(realm.getContext(), realm);
+    }
+
+    private DynamicObject createExportsBuiltin(JSRealm realm) {
+        return JSUserObject.create(realm.getContext(), realm);
     }
 
 }
