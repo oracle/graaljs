@@ -49,6 +49,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
@@ -692,8 +693,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 }
             }
             if (stream != null) {
-                try {
-                    return Source.newBuilder(JavaScriptLanguage.ID, new InputStreamReader(stream, StandardCharsets.UTF_8), resource).build();
+                try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+                    return Source.newBuilder(JavaScriptLanguage.ID, reader, resource).build();
                 } catch (IOException | SecurityException e) {
                 }
             }
