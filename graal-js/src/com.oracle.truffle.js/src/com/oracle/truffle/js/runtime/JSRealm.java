@@ -1108,6 +1108,9 @@ public class JSRealm {
         if (context.getContextOptions().isTestV8Mode()) {
             putGlobalProperty(JSTestV8.CLASS_NAME, JSTestV8.create(this));
         }
+        if (context.getContextOptions().isV8RealmBuiltin()) {
+            initRealmBuiltinObject();
+        }
         if (context.getEcmaScriptVersion() >= 6) {
             Object parseInt = JSObject.get(global, "parseInt");
             Object parseFloat = JSObject.get(global, "parseFloat");
@@ -1628,9 +1631,6 @@ public class JSRealm {
                 childRealm.parentRealm = this;
 
                 if (getContext().getContextOptions().isV8RealmBuiltin()) {
-                    // "Realm" object is shared by all realms (V8 compatibility mode)
-                    childRealm.setRealmBuiltinObject(getRealmBuiltinObject());
-
                     JSRealm topLevelRealm = this;
                     while (topLevelRealm.parentRealm != null) {
                         topLevelRealm = topLevelRealm.parentRealm;

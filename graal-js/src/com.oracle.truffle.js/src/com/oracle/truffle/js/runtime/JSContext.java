@@ -600,7 +600,6 @@ public class JSContext {
                 newRealm.setAgent(new MainJSAgent());
             }
             if (contextOptions.isV8RealmBuiltin()) {
-                newRealm.initRealmBuiltinObject();
                 newRealm.initRealmList();
                 newRealm.addToRealmList(newRealm);
             }
