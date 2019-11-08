@@ -1951,7 +1951,7 @@ public class JSRealm {
 
     public synchronized JSRealm getFromRealmList(int idx) {
         CompilerAsserts.neverPartOfCompilation();
-        return realmList.get(idx);
+        return (0 <= idx && idx < realmList.size()) ? realmList.get(idx) : null;
     }
 
     public synchronized int getIndexFromRealmList(JSRealm rlm) {
