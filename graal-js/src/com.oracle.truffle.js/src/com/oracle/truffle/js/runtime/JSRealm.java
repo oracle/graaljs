@@ -66,6 +66,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -124,6 +125,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.LocalTimeZoneHolder;
@@ -342,6 +344,10 @@ public class JSRealm {
      * Parent realm (for a child realm) or {@code null} for a top-level realm.
      */
     private JSRealm parentRealm;
+    /**
+     * Value shared across V8 realms ({@code Realm.shared}).
+     */
+    Object v8RealmShared = Undefined.instance;
 
     static final ThreadLocal<Boolean> CREATING_CHILD_REALM = new ThreadLocal<>();
 
@@ -1533,6 +1539,7 @@ public class JSRealm {
     private DynamicObject createRealmBuiltinObject() {
         DynamicObject obj = JSUserObject.createInit(this);
         JSObjectUtil.putDataProperty(getContext(), obj, Symbol.SYMBOL_TO_STRING_TAG, REALM_BUILTIN_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
+        JSObjectUtil.putProxyProperty(obj, REALM_SHARED_PROPERTY);
         JSObjectUtil.putFunctionsFromContainer(this, obj, REALM_BUILTIN_CLASS_NAME);
         return obj;
     }
@@ -1962,6 +1969,32 @@ public class JSRealm {
     public synchronized void removeFromRealmList(int idx) {
         CompilerAsserts.neverPartOfCompilation();
         realmList.set(idx, null);
+    }
+
+    private static final PropertyProxy REALM_SHARED_PROXY = new RealmSharedPropertyProxy();
+    private static final Property REALM_SHARED_PROPERTY = JSObjectUtil.makeProxyProperty("shared", REALM_SHARED_PROXY, JSAttributes.getDefault());
+
+    private static class RealmSharedPropertyProxy implements PropertyProxy {
+        @Override
+        public Object get(DynamicObject store) {
+            JSContext context = JSObject.getJSContext(store);
+            return topLevelRealm(context).v8RealmShared;
+        }
+
+        @Override
+        public boolean set(DynamicObject store, Object value) {
+            JSContext context = JSObject.getJSContext(store);
+            topLevelRealm(context).v8RealmShared = value;
+            return true;
+        }
+
+        private static JSRealm topLevelRealm(JSContext context) {
+            JSRealm realm = context.getRealm();
+            while (realm.getParent() != null) {
+                realm = realm.getParent();
+            }
+            return realm;
+        }
     }
 
 }
