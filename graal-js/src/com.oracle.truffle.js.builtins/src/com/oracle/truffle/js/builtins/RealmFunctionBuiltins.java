@@ -181,7 +181,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Specialization
         protected Object current() {
             JSRealm topLevelRealm = topLevelRealm(getContext());
-            return topLevelRealm.getIndexFromRealmList(getContext().getRealm());
+            return topLevelRealm.getIndexFromRealmList(topLevelRealm.getCurrentV8Realm());
         }
     }
 
@@ -199,7 +199,13 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             JSRealm jsrealm = topLevelRealm.getFromRealmList(realmIndex);
             String sourceText = JSRuntime.toString(code);
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).build();
-            return jsrealm.getContext().getEvaluator().evaluate(jsrealm, this, source);
+            JSRealm currentV8Realm = topLevelRealm.getCurrentV8Realm();
+            try {
+                topLevelRealm.setCurrentV8Realm(jsrealm);
+                return jsrealm.getContext().getEvaluator().evaluate(jsrealm, this, source);
+            } finally {
+                topLevelRealm.setCurrentV8Realm(currentV8Realm);
+            }
         }
     }
 }

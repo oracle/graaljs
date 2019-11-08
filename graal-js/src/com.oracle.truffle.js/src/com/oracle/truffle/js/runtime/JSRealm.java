@@ -345,6 +345,10 @@ public class JSRealm {
      */
     private JSRealm parentRealm;
     /**
+     * Current realm (as returned by {@code Realm.current()} V8 built-in).
+     */
+    private JSRealm v8RealmCurrent = this;
+    /**
      * Value shared across V8 realms ({@code Realm.shared}).
      */
     Object v8RealmShared = Undefined.instance;
@@ -1969,6 +1973,14 @@ public class JSRealm {
     public synchronized void removeFromRealmList(int idx) {
         CompilerAsserts.neverPartOfCompilation();
         realmList.set(idx, null);
+    }
+
+    public JSRealm getCurrentV8Realm() {
+        return v8RealmCurrent;
+    }
+
+    public void setCurrentV8Realm(JSRealm realm) {
+        v8RealmCurrent = realm;
     }
 
     private static final PropertyProxy REALM_SHARED_PROXY = new RealmSharedPropertyProxy();
