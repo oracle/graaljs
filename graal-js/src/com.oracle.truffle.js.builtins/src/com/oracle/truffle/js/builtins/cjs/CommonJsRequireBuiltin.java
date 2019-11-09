@@ -42,56 +42,258 @@ package com.oracle.truffle.js.builtins.cjs;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.source.MissingMIMETypeException;
-import com.oracle.truffle.api.source.MissingNameException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.*;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.sun.org.apache.bcel.internal.generic.JSR;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperation {
 
     private static final String MODULE_CLOSURE = "\n});";
     private static final String MODULE_PREAMBLE = "(function (exports, require, module, __filename, __dirname) {";
+    
+    private static final String[] CORE_MODULES = new String[] {"assert", "async_hooks", "buffer", "child_process", "cluster", "crypto",
+            "dgram", "dns", "domain", "events", "fs", "http", "http2", "https", "net",
+            "os", "path", "perf_hooks", "punycode", "querystring", "readline", "repl",
+            "stream", "string_decoder", "tls", "trace_events", "tty", "url", "util",
+            "v8", "vm", "worker_threads", "zlib"};
+
+    private final String cwd;
 
     public CommonJsRequireBuiltin(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
+        String cwdOption = context.getContextOptions().getRequireCwd();
+        this.cwd = (cwdOption == null ? Paths.get(".").toAbsolutePath().normalize().toString() : cwdOption) + "/";
     }
 
     @Specialization
-    protected Object require(String path) {
+    protected Object require(String moduleIdentifier) {
+        String y = cwd;
+        /*
+            1. If X is a core module,
+                a. return the core module
+                b. STOP
+        */
+        if (isCoreModule(moduleIdentifier) || "".equals(moduleIdentifier)) {
+            throw fail(moduleIdentifier);
+        }
+        /*
+            2. If X begins with '/'
+                a. set Y to be the filesystem root
+        */
+        if (moduleIdentifier.charAt(0) == '/') {
+            // TODO(db) this does not work on windows;
+            y = File.listRoots()[0].getAbsolutePath();
+        }
+        /*
+            3. If X begins with './' or '/' or '../'
+                a. LOAD_AS_FILE(Y + X)
+                b. LOAD_AS_DIRECTORY(Y + X)
+                c. THROW "not found"
+        */
+        if (isPathFileName(moduleIdentifier)) {
+            Object module = loadAsFileOrDirectory(y + moduleIdentifier);
+            if (module == null) {
+                throw fail(moduleIdentifier);
+            } else {
+                return module;
+            }
+        }
+        /*
+            4. LOAD_NODE_MODULES(X, dirname(Y))
+            5. LOAD_SELF_REFERENCE(X, dirname(Y))
+            6. THROW "not found"
+        */
+        Object module = loadNodeModulesOrSelfReference(moduleIdentifier, y);
+        if (module == null) {
+            throw fail(moduleIdentifier);
+        } else {
+            return module;
+        }
+    }
+
+    private Object loadNodeModulesOrSelfReference(String moduleIdentifier, String start) {
+        /*
+            1. let DIRS = NODE_MODULES_PATHS(START)
+            2. for each DIR in DIRS:
+                a. LOAD_AS_FILE(DIR/X)
+                b. LOAD_AS_DIRECTORY(DIR/X)
+        */
+        String[] nodeModulesPaths = getNodeModulesPaths(start);
+        for (String s : nodeModulesPaths) {
+            Object module = loadAsFileOrDirectory(s + File.separator + moduleIdentifier);
+            if (module != null) {
+                return module;
+            }
+        }
+
+        throw new UnsupportedOperationException("TODO");
+    }
+
+    protected String[] getNodeModulesPaths(String path) {
+        String[] folders = path.split(File.separator);
+        List<String> list = new ArrayList<>();
+        int i = folders.length;
+
+        for (int p = 0; p<folders.length; p++) {
+            String subPath = "/";
+            for (int s = 0; s < i; s++) {
+                subPath += folders[s] + "/";
+            }
+            i--;
+            list.add(subPath + "/node_modules");
+        }
+        // TODO the list should include "Global" folders.
+        return list.toArray(new String[]{});
+    }
+
+    private static JSException fail(String moduleIdentifier) {
+        return JSException.create(JSErrorType.TypeError, "Cannot load Node.js native module: '" + moduleIdentifier + "'");
+    }
+
+    private Object loadAsJavaScriptText(String modulePath) {
         JSRealm realm = getContext().getRealm();
-        Source source = sourceFromPath(path, realm);
-
-        CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_CLOSURE;
-
-        Source build = Source.newBuilder("js").mimeType("text/javascript").name("foo").content(characters).build();
-
-
-        CallTarget callTarget = realm.getEnv().parsePublic(build);
-        Object call = callTarget.call();
+        Source source = sourceFromPath(modulePath, realm);
+        Path path = Paths.get(modulePath);
 
         DynamicObject exportsBuiltin = createExportsBuiltin(realm);
         DynamicObject requireBuiltin = createRequireBuiltin(realm);
         DynamicObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin);
-        String filenameBuiltin = "foo.js";
-        String dirnameBuiltin = "/foo/";
+        String filenameBuiltin = path.getFileName().toString();
+        String dirnameBuiltin = path.toAbsolutePath().toString();
+
+        CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_CLOSURE;
+        Source build = Source.newBuilder(JavaScriptLanguage.ID)
+                .mimeType(JavaScriptLanguage.TEXT_MIME_TYPE)
+                .name(filenameBuiltin)
+                .content(characters)
+                .build();
+
+        CallTarget callTarget = realm.getEnv().parsePublic(build);
+        Object call = callTarget.call();
 
         if (JSFunction.isJSFunction(call)) {
             JSFunction.call(JSArguments.create(call, call, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin));
             return exportsBuiltin;
         }
+        return null;
+    }
 
+    private Object loadAsFileOrDirectory(String modulePath) {
+        Object maybeFile = loadAsFile(modulePath);
+        if (maybeFile == null) {
+            return loadAsDirectory(modulePath);
+        } else {
+            return maybeFile;
+        }
+    }
 
-        return Undefined.instance;
+    private Object loadAsDirectory(String modulePath) {
+        if (fileExists(modulePath + "/package.json")) {
+            JSRealm realm = getContext().getRealm();
+            Source source = sourceFromPath(modulePath + "/package.json", realm);
+
+            // TODO should parse from json file, directly
+            CharSequence characters = source.getCharacters();
+            Source build = Source.newBuilder(JavaScriptLanguage.ID)
+                    .mimeType(JavaScriptLanguage.TEXT_MIME_TYPE)
+                    .name("package.json")
+                    .content(characters)
+                    .build();
+
+            CallTarget callTarget = realm.getEnv().parsePublic(build);
+            Object call = callTarget.call();
+            if (JSObject.isJSObject(call)) {
+                Object main = JSObject.get((TruffleObject) call, "main");
+                if (!JSRuntime.isString(main)) {
+                    return loadIndex(modulePath);
+                }
+                String m = modulePath + "/" + JSRuntime.safeToString(main);
+                Object asFile = loadAsFile(m);
+                if (asFile != null) {
+                    return asFile;
+                } else {
+                    Object loadIndex = loadIndex(m);
+                    if (loadIndex != null) {
+                        return loadIndex;
+                    }
+                }
+            }
+        } else {
+            return loadIndex(modulePath);
+        }
+        throw fail(modulePath);
+    }
+
+    private Object loadIndex(String modulePath) {
+        /*
+            LOAD_INDEX(X)
+                1. If X/index.js is a file, load X/index.js as JavaScript text.  STOP
+                2. If X/index.json is a file, parse X/index.json to a JavaScript object. STOP
+                3. If X/index.node is a file, load X/index.node as binary addon.  STOP
+        */
+        if (fileExists(modulePath + "/index.js")) {
+            return loadAsJavaScriptText(modulePath);
+        } else if (fileExists(modulePath + "/index.json")) {
+            throw new UnsupportedOperationException("TODO load json");
+        } else if (fileExists(modulePath + "/index.node")) {
+            throw fail("cannot load native module '" + modulePath + "'");
+        }
+        return null;
+    }
+
+    private Object loadAsFile(String modulePath) {
+        /*
+            LOAD_AS_FILE(X)
+                1. If X is a file, load X as JavaScript text.  STOP
+                2. If X.js is a file, load X.js as JavaScript text.  STOP
+                3. If X.json is a file, parse X.json to a JavaScript Object.  STOP
+                4. If X.node is a file, load X.node as binary addon.  STOP
+        */
+        if (fileExists(modulePath)) {
+            return loadAsJavaScriptText(modulePath);
+        } else if (fileExists(modulePath + ".js")) {
+            return loadAsJavaScriptText(modulePath);
+        } else if (fileExists(modulePath + ".json")) {
+            throw new UnsupportedOperationException("TODO load json");
+        } else if (fileExists(modulePath + ".node")) {
+            throw fail("cannot load native module '" + modulePath + "'");
+        }
+        return null;
+    }
+
+    private boolean fileExists(String modulePath) {
+        File f = new File(modulePath);
+        return f.isFile();
+    }
+
+    private boolean isPathFileName(String moduleIdentifier) {
+        if (moduleIdentifier.charAt(0) == '/') {
+            return true;
+        } else if (moduleIdentifier.length() > 1 && moduleIdentifier.substring(0, 2).equals("./")) {
+            return true;
+        } else {
+            return moduleIdentifier.length() > 2 && moduleIdentifier.substring(0, 3).equals("../");
+        }
+    }
+
+    private boolean isCoreModule(String moduleIdentifier) {
+        return Arrays.asList(CORE_MODULES).contains(moduleIdentifier);
     }
 
     private DynamicObject createModuleBuiltin(JSRealm realm, DynamicObject exportsBuiltin) {

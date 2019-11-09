@@ -49,19 +49,102 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 
 public class CommonJsRequireTest {
 
+    private static class NodeModulesFolder {
+        public static NodeModulesFolder create(Path folder, String name) throws IOException {
+            return new NodeModulesFolder(folder, name);
+        }
+
+        private final String moduleFolderPath;
+
+        private NodeModulesFolder(Path folder, String name) throws IOException {
+            String tmpFolder = folder.toAbsolutePath().toString();
+            String nodeModulesPath = tmpFolder + File.separator + "node_modules";
+            this.moduleFolderPath = nodeModulesPath + File.separator + name;
+            try {
+                Files.createDirectory(Paths.get(nodeModulesPath));
+            } catch (FileAlreadyExistsException e) {
+                // That's OK
+            }
+            Files.createDirectory(Paths.get(moduleFolderPath));
+        }
+    }
+
+    private static class TestFile {
+        private final String absolutePath;
+
+        public static TestFile create(Path folder, String fileName, String src) throws IOException {
+            String path = folder.toAbsolutePath().toString();
+            return new TestFile(path, fileName, src);
+        }
+
+        public static TestFile create(NodeModulesFolder folder, String fileName, String src) throws IOException {
+            String path = folder.moduleFolderPath;
+            return new TestFile(path, fileName, src);
+        }
+
+        private TestFile(String path, String fileName, String src) throws IOException {
+            File tmpFile = new File(path + File.separator + fileName);
+            tmpFile.deleteOnExit();
+            FileWriter fileWriter = new FileWriter(tmpFile);
+            fileWriter.write(src);
+            fileWriter.flush();
+            this.absolutePath = tmpFile.getAbsolutePath();
+        }
+
+        String getAbsolutePath() {
+            return absolutePath;
+        }
+    }
+
+    private static Context getContext(Path tempFolder) {
+        return Context.newBuilder(ID).allowPolyglotAccess(PolyglotAccess.ALL)
+                .allowExperimentalOptions(true)
+                .option("js.cjs-require", "true")
+                .option("js.cjs-require-cwd", tempFolder.toAbsolutePath().toString())
+                .allowIO(true).build();
+    }
+
+    private static Path getTempFolder() throws IOException {
+        return Files.createTempDirectory("commonjs_testing");
+    }
+
     @Test
-    public void helloTest() throws IOException {
-        File tmpFile = File.createTempFile("module", ".js");
-        tmpFile.deleteOnExit();
-        FileWriter fileWriter = new FileWriter(tmpFile);
-        fileWriter.write("module.exports.foo = 42;");
-        fileWriter.flush();
-        String absolutePath = tmpFile.getAbsolutePath();
-        try (Context cx = Context.newBuilder("js").allowPolyglotAccess(PolyglotAccess.ALL).allowIO(true).build()) {
-            Value js = cx.eval("js", "require('"+absolutePath+"').foo;");
+    public void helloAbsolute() throws IOException {
+        Path f = getTempFolder();
+        try (Context cx = getContext(f)) {
+            TestFile m = TestFile.create(f,"module.js", "module.exports.foo = 42;");
+            Value js = cx.eval(ID, "require('" + m.getAbsolutePath() + "').foo;");
+            Assert.assertEquals(js.asInt(), 42);
+        }
+    }
+
+    @Test
+    public void helloRelative() throws IOException {
+        Path f = getTempFolder();
+        try (Context cx = getContext(f)) {
+            TestFile.create(f,"module.js", "module.exports.foo = 42;");
+            Value js = cx.eval(ID, "require('./module.js').foo;");
+            Assert.assertEquals(js.asInt(), 42);
+        }
+    }
+
+    @Test
+    public void helloNodeModulesFolder() throws IOException {
+        Path f = getTempFolder();
+        try (Context cx = getContext(f)) {
+            NodeModulesFolder nm = NodeModulesFolder.create(f, "foo");
+            TestFile.create(nm,"package.json", "a = {main:'index.js'};a;");
+            TestFile.create(nm,"index.js", "module.exports.foo = 42;");
+            Value js = cx.eval(ID, "require('foo').foo;");
             Assert.assertEquals(js.asInt(), 42);
         }
     }

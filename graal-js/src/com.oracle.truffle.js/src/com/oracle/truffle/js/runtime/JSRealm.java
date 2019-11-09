@@ -1188,7 +1188,7 @@ public class JSRealm {
 
     private void addCommonJsGlobals() {
         // TODO option
-        if (getContext().getContextOptions().isLoad()) {
+        if (getContext().getContextOptions().isRequire()) {
             putGlobalProperty("require", lookupFunction(JSGlobalObject.CLASS_NAME_COMMONJS_REQUIRE_EXTENSIONS, "require"));
         }
     }

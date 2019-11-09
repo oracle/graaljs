@@ -245,6 +245,14 @@ public final class JSContextOptions {
     @Option(name = LOAD_FROM_CLASSPATH_NAME, category = OptionCategory.USER, help = "Allow 'load' to access 'classpath:' URLs. Do not use with untrusted code.") //
     public static final OptionKey<Boolean> LOAD_FROM_CLASSPATH = new OptionKey<>(false);
 
+    public static final String COMMONJS_REQUIRE_NAME = JS_OPTION_PREFIX + "cjs-require";
+    @Option(name = COMMONJS_REQUIRE_NAME, category = OptionCategory.USER, help = "Enable CommonJS require emulation.") //
+    public static final OptionKey<Boolean> COMMONJS_REQUIRE_EMULATION = new OptionKey<>(false);
+
+    public static final String COMMONJS_REQUIRE_CWS_NAME = JS_OPTION_PREFIX + "cjs-require-cwd";
+    @Option(name = COMMONJS_REQUIRE_CWS_NAME, category = OptionCategory.USER, help = "CommonJS default current working directory.") //
+    public static final OptionKey<String> COMMONJS_REQUIRE_CWS = new OptionKey<>("");
+
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
     @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
@@ -602,6 +610,15 @@ public final class JSContextOptions {
     public boolean isLoad() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
         return LOAD.getValue(optionValues) || (!LOAD.hasBeenSet(optionValues) && (isShell() || isNashornCompatibilityMode()));
+    }
+
+    public boolean isRequire() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
+        return COMMONJS_REQUIRE_EMULATION.getValue(optionValues);
+    }
+
+    public String getRequireCwd() {
+        return COMMONJS_REQUIRE_CWS.getValue(optionValues);
     }
 
     public boolean isPerformance() {
