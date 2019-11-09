@@ -328,21 +328,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
                         }
                         status = 0;
                     } catch (PolyglotException e) {
-                        if (e.isExit()) {
-                            status = e.getExitStatus();
-                            if (status != 0) {
-                                printError(e, System.err);
-                            }
-                        } else if (e.isSyntaxError()) {
-                            printError(e, System.err);
-                            status = 7;
-                        } else if (!e.isInternalError()) {
-                            printStackTraceSkipTrailingHost(e, System.err);
-                            status = 7;
-                        } else {
-                            e.printStackTrace();
-                            status = 8;
-                        }
+                        status = handlePolyglotException(e);
                     } catch (Throwable t) {
                         t.printStackTrace();
                         status = 8;
@@ -351,9 +337,31 @@ public class JSLauncher extends AbstractLanguageLauncher {
             } else {
                 status = runREPL(context);
             }
+        } catch (PolyglotException e) {
+            status = handlePolyglotException(e);
         }
         System.out.flush();
         System.err.flush();
+        return status;
+    }
+
+    private static int handlePolyglotException(PolyglotException e) {
+        int status;
+        if (e.isExit()) {
+            status = e.getExitStatus();
+            if (status != 0) {
+                printError(e, System.err);
+            }
+        } else if (e.isSyntaxError()) {
+            printError(e, System.err);
+            status = 7;
+        } else if (!e.isInternalError()) {
+            printStackTraceSkipTrailingHost(e, System.err);
+            status = 7;
+        } else {
+            e.printStackTrace();
+            status = 8;
+        }
         return status;
     }
 
