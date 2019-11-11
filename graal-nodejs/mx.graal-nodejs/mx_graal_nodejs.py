@@ -38,7 +38,6 @@ from os.path import exists, join, isdir
 _suite = mx.suite('graal-nodejs')
 _currentOs = mx.get_os()
 _currentArch = mx.get_arch()
-_jdkHome = None
 _config_files = [join(_suite.dir, f) for f in ('configure', 'configure.py')]
 _generated_config_files = [join(_suite.dir, f) for f in ('config.gypi', 'config.status', 'configure.pyc', 'config.mk', 'icu_config.gypi')]
 
@@ -123,7 +122,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                     'no-cctest',
                     'noetw',
                     'nosnapshot',
-                    'java-home', _getJdkHome()
+                    'java-home', _java_home()
                     ] + debug + shared_library,
                    cwd=_suite.dir, verbose=True)
         else:
@@ -138,7 +137,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
                     '--without-dtrace',
                     '--without-snapshot',
                     '--without-node-snapshot',
-                    '--java-home', _getJdkHome()
+                    '--java-home', _java_home()
                     ] + debug + shared_library + lazy_generator,
                    cwd=_suite.dir, verbose=True)
 
@@ -155,7 +154,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         built = post_ts.isNewerThan(pre_ts)
         if built and _currentOs == 'darwin':
             nodePath = join(_suite.dir, 'out', 'Debug' if debug_mode else 'Release', 'node')
-            _mxrun(['install_name_tool', '-add_rpath', join(_getJdkHome(), 'jre', 'lib'), '-add_rpath', join(_getJdkHome(), 'lib'), nodePath], verbose=True)
+            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], verbose=True)
         return built
 
     def needsBuild(self, newestInput):
@@ -166,7 +165,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
             if _currentOs == 'windows':
                 mx.run([join('.', 'vcbuild.bat'),
                         'clean',
-                        'java-home', _getJdkHome()
+                        'java-home', _java_home()
                     ], cwd=_suite.dir)
             else:
                 mx.run([mx.gmake_cmd(), 'clean'], nonZeroIsFatal=False, cwd=_suite.dir)
@@ -332,7 +331,7 @@ def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     return mx.run([python_cmd(), join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
 
 def setLibraryPath(additionalPath=None):
-    javaHome = _getJdkHome()
+    javaHome = _java_home()
 
     if _currentOs == 'darwin':
         libraryPath = join(javaHome, 'jre', 'lib')
@@ -365,8 +364,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     if mx.suite('vm', fatalIfMissing=False) is not None or mx.suite('substratevm', fatalIfMissing=False) is not None:
         mx.warn("Running on the JVM.\nIf you want to run on SubstrateVM, you need to dynamically import both '/substratevm' and '/vm'.\nExample: 'mx --env svm node'")
 
-    javaHome = _getJdkHome()
-    _setEnvVar('JAVA_HOME', javaHome)
+    _setEnvVar('JAVA_HOME', _java_home())
     if mx.suite('compiler', fatalIfMissing=False) is None:
         _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
@@ -378,7 +376,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     prevPATH = os.environ['PATH']
     _setEnvVar('PATH', "%s:%s" % (join(_suite.mxDir, 'fake_launchers'), prevPATH))
 
-    if add_graal_vm_args:
+    if _has_jvmci() and add_graal_vm_args:
         if mx.suite('graal-enterprise', fatalIfMissing=False):
             # explicitly require the enterprise compiler configuration
             vmArgs += ['-Dgraal.CompilerConfiguration=enterprise']
@@ -401,7 +399,7 @@ def makeInNodeEnvironment(args):
         _mxrun([join('.', 'vcbuild.bat'),
                 'noprojgen',
                 'nobuild',
-                'java-home', _getJdkHome()
+                'java-home', _java_home()
             ] + argGroups[2], cwd=_suite.dir)
     else:
         makeCmd = mx.gmake_cmd()
@@ -451,21 +449,11 @@ def _setEnvVar(name, val):
         mx.logv('Setting environment variable %s=%s' % (name, val))
         os.environ[name] = val
 
-def _getJdkHome():
-    global _jdkHome
-    if not _jdkHome:
-        if mx.suite('compiler', fatalIfMissing=False):
-            import mx_compiler
-            if hasattr(mx_compiler, 'get_graaljdk'):
-                _jdkHome = mx_compiler.get_graaljdk().home
-            elif hasattr(mx_compiler, '_update_graaljdk'):
-                jdk = mx.get_jdk(tag='default')
-                _jdkHome, _ = mx_compiler._update_graaljdk(jdk)
-            else:
-                mx.abort('Cannot find a GraalJDK.\nAre you running with an old version of Graal?')
-        else:
-            _jdkHome = mx.get_env('JAVA_HOME')
-    return _jdkHome
+def _java_home():
+    return mx.get_jdk().home
+
+def _has_jvmci():
+    return mx.get_jdk().tag == 'jvmci'
 
 def _parseArgs(args):
     arguments = list(args)
