@@ -60,6 +60,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatFunctionBuiltins;
+import com.oracle.truffle.js.builtins.intl.RelativeTimeFormatPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -112,7 +114,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
         JSContext ctx = realm.getContext();
         DynamicObject relativeTimeFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, relativeTimeFormatPrototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, relativeTimeFormatPrototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, relativeTimeFormatPrototype, RelativeTimeFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, relativeTimeFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.RelativeTimeFormat", JSAttributes.configurableNotEnumerableNotWritable());
         return relativeTimeFormatPrototype;
     }
@@ -125,7 +127,7 @@ public final class JSRelativeTimeFormat extends JSBuiltinObject implements JSCon
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, RelativeTimeFormatFunctionBuiltins.BUILTINS);
     }
 
     public static DynamicObject create(JSContext context) {

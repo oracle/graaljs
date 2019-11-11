@@ -56,6 +56,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.intl.ListFormatFunctionBuiltins;
+import com.oracle.truffle.js.builtins.intl.ListFormatPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -107,7 +109,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
         JSContext ctx = realm.getContext();
         DynamicObject listFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, listFormatPrototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, listFormatPrototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, listFormatPrototype, ListFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, listFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Intl.ListFormat", JSAttributes.configurableNotEnumerableNotWritable());
         return listFormatPrototype;
     }
@@ -120,7 +122,7 @@ public final class JSListFormat extends JSBuiltinObject implements JSConstructor
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, ListFormatFunctionBuiltins.BUILTINS);
     }
 
     public static DynamicObject create(JSContext context) {

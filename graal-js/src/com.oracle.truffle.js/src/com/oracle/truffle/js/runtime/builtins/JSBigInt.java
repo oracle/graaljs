@@ -48,6 +48,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.BigIntFunctionBuiltins;
+import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -98,7 +100,7 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
         JSContext context = realm.getContext();
         DynamicObject bigIntPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(context, bigIntPrototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, bigIntPrototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, bigIntPrototype, BigIntPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, bigIntPrototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return bigIntPrototype;
     }
@@ -111,7 +113,7 @@ public final class JSBigInt extends JSPrimitiveObject implements JSConstructorFa
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, BigIntFunctionBuiltins.BUILTINS);
     }
 
     public static boolean isJSBigInt(Object obj) {

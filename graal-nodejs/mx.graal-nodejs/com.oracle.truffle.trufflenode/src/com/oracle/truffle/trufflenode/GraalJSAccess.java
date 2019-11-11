@@ -127,6 +127,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.builtins.JSONBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -178,7 +179,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
-import com.oracle.truffle.js.runtime.builtins.JSON;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -2942,7 +2942,7 @@ public final class GraalJSAccess {
     }
 
     public String jsonStringify(Object context, Object object, String gap) {
-        DynamicObject stringify = ((JSRealm) context).lookupFunction(JSON.CLASS_NAME, "stringify");
+        DynamicObject stringify = ((JSRealm) context).lookupFunction(JSONBuiltins.BUILTINS, "stringify");
         return (String) JSFunction.call(stringify, Undefined.instance, new Object[]{
                         object,
                         Undefined.instance, // replacer

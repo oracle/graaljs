@@ -49,6 +49,10 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltins;
+import com.oracle.truffle.js.builtins.ConstructorBuiltins;
+import com.oracle.truffle.js.builtins.ErrorFunctionBuiltins;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
@@ -73,7 +77,6 @@ public final class JSError extends JSBuiltinObject {
     public static final String MESSAGE = "message";
     public static final String NAME = "name";
     public static final String CLASS_NAME = "Error";
-    public static final String CLASS_NAME_NASHORN_COMPAT = "ErrorNashornCompat";
     public static final String PROTOTYPE_NAME = "Error.prototype";
     public static final HiddenKey EXCEPTION_PROPERTY_NAME = new HiddenKey("Exception");
     public static final String STACK_NAME = "stack";
@@ -179,9 +182,9 @@ public final class JSError extends JSBuiltinObject {
         JSObjectUtil.putDataProperty(ctx, errorPrototype, MESSAGE, "", JSAttributes.getDefaultNotEnumerable());
 
         if (errorType == JSErrorType.Error) {
-            JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, PROTOTYPE_NAME);
+            JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.BUILTINS);
             if (ctx.isOptionNashornCompatibilityMode()) {
-                JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, JSError.CLASS_NAME_NASHORN_COMPAT);
+                JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.ErrorPrototypeNashornCompatBuiltins.BUILTINS);
             }
         }
         return errorPrototype;
@@ -190,7 +193,7 @@ public final class JSError extends JSBuiltinObject {
     public static JSConstructor createErrorConstructor(JSRealm realm, JSErrorType errorType) {
         JSContext context = realm.getContext();
         String name = errorType.toString();
-        DynamicObject errorConstructor = realm.lookupFunction(JSConstructor.BUILTINS, name); // (Type)Error
+        DynamicObject errorConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, name); // (Type)Error
         DynamicObject classPrototype = JSError.createErrorPrototype(realm, errorType); // (Type)Error.prototype
         if (errorType != JSErrorType.Error) {
             JSObject.setPrototype(errorConstructor, realm.getErrorConstructor(JSErrorType.Error));
@@ -199,7 +202,7 @@ public final class JSError extends JSBuiltinObject {
         JSObjectUtil.putDataProperty(context, classPrototype, NAME, name, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putConstructorPrototypeProperty(context, errorConstructor, classPrototype);
         if (errorType == JSErrorType.Error) {
-            JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, CLASS_NAME);
+            JSObjectUtil.putFunctionsFromContainer(realm, errorConstructor, ErrorFunctionBuiltins.BUILTINS);
             JSObjectUtil.putDataProperty(context, errorConstructor, STACK_TRACE_LIMIT_PROPERTY_NAME, JSContextOptions.STACK_TRACE_LIMIT.getValue(realm.getOptions()), JSAttributes.getDefault());
         }
 
@@ -218,7 +221,7 @@ public final class JSError extends JSBuiltinObject {
     private static DynamicObject createCallSitePrototype(JSRealm realm) {
         DynamicObject proto = realm.getObjectPrototype();
         DynamicObject callSitePrototype = JSObject.createInit(realm, proto, JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(realm, callSitePrototype, CALL_SITE_PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, callSitePrototype, CallSitePrototypeBuiltins.BUILTINS);
         return callSitePrototype;
     }
 

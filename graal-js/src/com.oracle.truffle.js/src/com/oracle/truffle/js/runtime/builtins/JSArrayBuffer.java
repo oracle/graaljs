@@ -54,13 +54,15 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.ArrayBufferFunctionBuiltins;
+import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -125,7 +127,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
             putHiddenProperty(arrayBufferPrototype, BYTE_ARRAY_PROPERTY, new byte[0]);
         }
         putConstructorProperty(context, arrayBufferPrototype, ctor);
-        putFunctionsFromContainer(realm, arrayBufferPrototype, PROTOTYPE_NAME);
+        putFunctionsFromContainer(realm, arrayBufferPrototype, ArrayBufferPrototypeBuiltins.BUILTINS);
 
         JSFunctionData byteLengthGetterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ArrayBufferByteLength, (c) -> {
             return JSFunctionData.createCallOnly(context, createByteLengthGetterCallTarget(c), 0, "get " + BYTE_LENGTH);
@@ -181,7 +183,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return HEAP_INSTANCE.createConstructorAndPrototype(realm);
+        return HEAP_INSTANCE.createConstructorAndPrototype(realm, ArrayBufferFunctionBuiltins.BUILTINS);
     }
 
     @Override

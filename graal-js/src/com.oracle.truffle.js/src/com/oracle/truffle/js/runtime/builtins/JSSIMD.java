@@ -50,6 +50,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.simd.SIMDBuiltins;
+import com.oracle.truffle.js.builtins.simd.SIMDTypePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -115,7 +117,7 @@ public final class JSSIMD extends JSBuiltinObject {
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, SIMDTypePrototypeBuiltins.BUILTINS);
 
         DynamicObject toStringTagGetter = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(ctx.getLanguage(), null, null) {
             @Override
@@ -136,7 +138,7 @@ public final class JSSIMD extends JSBuiltinObject {
 
     public static JSConstructor createSIMDTypeConstructor(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        DynamicObject taConstructor = realm.lookupFunction(SIMD_OBJECT_NAME, SIMD_TYPES_CLASS_NAME);
+        DynamicObject taConstructor = realm.lookupFunction(SIMDBuiltins.BUILTINS, SIMD_TYPES_CLASS_NAME);
         DynamicObject taPrototype = createTypedArrayPrototype(realm, taConstructor);
         JSObjectUtil.putDataProperty(ctx, taConstructor, JSObject.PROTOTYPE, taPrototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
 
@@ -162,12 +164,12 @@ public final class JSSIMD extends JSBuiltinObject {
     public static JSConstructor createConstructor(JSRealm realm, SIMDTypeFactory<? extends SIMDType> factory, JSConstructor taConstructor) {
         JSContext ctx = realm.getContext();
         String constructorName = factory.getName();
-        DynamicObject simdConstructor = realm.lookupFunction(SIMD_OBJECT_NAME, constructorName);
+        DynamicObject simdConstructor = realm.lookupFunction(SIMDBuiltins.BUILTINS, constructorName);
         JSObject.setPrototype(simdConstructor, taConstructor.getFunctionObject());
 
         DynamicObject simdPrototype = createSIMDPrototype(realm, simdConstructor, factory, taConstructor.getPrototype());
         JSObjectUtil.putDataProperty(ctx, simdConstructor, JSObject.PROTOTYPE, simdPrototype, JSAttributes.notConfigurableNotEnumerableNotWritable());
-        JSObjectUtil.putFunctionsFromContainer(realm, simdConstructor, constructorName);
+        JSObjectUtil.putFunctionsFromContainer(realm, simdConstructor, factory.getFunctionBuiltins());
         JSObjectUtil.putConstantAccessorProperty(ctx, simdConstructor, Symbol.SYMBOL_SPECIES, createSymbolSpeciesGetterFunction(realm), Undefined.instance);
         return new JSConstructor(simdConstructor, simdPrototype);
     }

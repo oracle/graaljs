@@ -58,6 +58,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.DateFunctionBuiltins;
+import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -160,7 +162,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
             JSObjectUtil.putHiddenProperty(datePrototype, TIME_MILLIS_PROPERTY, Double.NaN);
         }
         JSObjectUtil.putConstructorProperty(ctx, datePrototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, datePrototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, datePrototype, DatePrototypeBuiltins.BUILTINS);
 
         if (ctx.isOptionAnnexB()) {
             JSObjectUtil.putDataProperty(ctx, datePrototype, "toGMTString", datePrototype.get("toUTCString"), JSAttributes.getDefaultNotEnumerable());
@@ -176,7 +178,7 @@ public final class JSDate extends JSBuiltinObject implements JSConstructorFactor
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, DateFunctionBuiltins.BUILTINS);
     }
 
     @TruffleBoundary

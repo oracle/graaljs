@@ -49,6 +49,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -58,7 +59,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
+public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final JSWeakSet INSTANCE = new JSWeakSet();
 
@@ -87,7 +88,7 @@ public final class JSWeakSet extends JSBuiltinObject implements JSConstructorFac
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakSetPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }

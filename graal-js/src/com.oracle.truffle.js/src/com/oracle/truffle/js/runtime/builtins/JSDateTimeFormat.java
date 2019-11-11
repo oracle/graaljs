@@ -72,6 +72,8 @@ import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.builtins.intl.DateTimeFormatFunctionBuiltins;
+import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -141,7 +143,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
         JSContext ctx = realm.getContext();
         DynamicObject numberFormatPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, DateTimeFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putConstantAccessorProperty(ctx, numberFormatPrototype, "format", createFormatFunctionGetter(realm, ctx), Undefined.instance);
         JSObjectUtil.putDataProperty(ctx, numberFormatPrototype, Symbol.SYMBOL_TO_STRING_TAG, "Object", JSAttributes.configurableNotEnumerableNotWritable());
         return numberFormatPrototype;
@@ -155,7 +157,7 @@ public final class JSDateTimeFormat extends JSBuiltinObject implements JSConstru
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, DateTimeFormatFunctionBuiltins.BUILTINS);
     }
 
     public static DynamicObject create(JSContext context) {

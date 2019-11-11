@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.DynamicObject;
 
 public final class JSConstructor {
-    public static final String BUILTINS = "%Constructors%";
 
     private final DynamicObject constructor;
     private final DynamicObject prototype;

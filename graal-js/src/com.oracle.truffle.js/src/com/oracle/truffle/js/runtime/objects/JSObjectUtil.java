@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -390,9 +391,9 @@ public final class JSObjectUtil {
         return key;
     }
 
-    public static void putFunctionsFromContainer(JSRealm realm, DynamicObject thisObj, String containerName) {
+    public static void putFunctionsFromContainer(JSRealm realm, DynamicObject thisObj, JSBuiltinsContainer container) {
         JSContext context = realm.getContext();
-        context.getFunctionLookup().iterateBuiltinFunctions(containerName, new Consumer<Builtin>() {
+        container.forEachBuiltin(new Consumer<Builtin>() {
             @Override
             public void accept(Builtin builtin) {
                 if (builtin.getECMAScriptVersion() > context.getEcmaScriptVersion()) {

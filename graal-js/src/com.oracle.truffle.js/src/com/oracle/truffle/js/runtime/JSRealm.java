@@ -69,6 +69,23 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.AtomicsBuiltins;
+import com.oracle.truffle.js.builtins.ConsoleBuiltins;
+import com.oracle.truffle.js.builtins.ConstructorBuiltins;
+import com.oracle.truffle.js.builtins.DebugBuiltins;
+import com.oracle.truffle.js.builtins.GlobalBuiltins;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.JavaBuiltins;
+import com.oracle.truffle.js.builtins.MapIteratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.ObjectFunctionBuiltins;
+import com.oracle.truffle.js.builtins.PerformanceBuiltins;
+import com.oracle.truffle.js.builtins.PolyglotBuiltins;
+import com.oracle.truffle.js.builtins.RealmFunctionBuiltins;
+import com.oracle.truffle.js.builtins.ReflectBuiltins;
+import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
@@ -139,7 +156,6 @@ public class JSRealm {
 
     public static final String POLYGLOT_CLASS_NAME = "Polyglot";
     // used for non-public properties of Polyglot
-    public static final String POLYGLOT_INTERNAL_CLASS_NAME = "PolyglotInternal";
     public static final String REFLECT_CLASS_NAME = "Reflect";
     public static final String SHARED_ARRAY_BUFFER_CLASS_NAME = "SharedArrayBuffer";
     public static final String ATOMICS_CLASS_NAME = "Atomics";
@@ -383,7 +399,7 @@ public class JSRealm {
 
         this.objectConstructor = createObjectConstructor(this, objectPrototype);
         JSObjectUtil.putDataProperty(context, this.objectPrototype, JSObject.CONSTRUCTOR, objectConstructor, JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putFunctionsFromContainer(this, this.objectPrototype, JSUserObject.PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, this.objectPrototype, JSObjectPrototype.BUILTINS);
         this.functionConstructor = JSFunction.createFunctionConstructor(this);
         JSFunction.fillFunctionPrototype(this);
 
@@ -617,17 +633,17 @@ public class JSRealm {
         return context;
     }
 
-    public final DynamicObject lookupFunction(String containerName, String methodName) {
-        Builtin builtin = Objects.requireNonNull(context.getFunctionLookup().lookupBuiltinFunction(containerName, methodName));
+    public final DynamicObject lookupFunction(JSBuiltinsContainer container, String methodName) {
+        Builtin builtin = Objects.requireNonNull(container.lookupByName(methodName));
         JSFunctionData functionData = builtin.createFunctionData(context);
         return JSFunction.create(this, functionData);
     }
 
     public static DynamicObject createObjectConstructor(JSRealm realm, DynamicObject objectPrototype) {
         JSContext context = realm.getContext();
-        DynamicObject objectConstructor = realm.lookupFunction(JSConstructor.BUILTINS, JSUserObject.CLASS_NAME);
+        DynamicObject objectConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, JSUserObject.CLASS_NAME);
         JSObjectUtil.putConstructorPrototypeProperty(context, objectConstructor, objectPrototype);
-        JSObjectUtil.putFunctionsFromContainer(realm, objectConstructor, JSUserObject.CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, objectConstructor, ObjectFunctionBuiltins.BUILTINS);
         return objectConstructor;
     }
 
@@ -1072,7 +1088,7 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(context, global, JSRuntime.INFINITY_STRING, Double.POSITIVE_INFINITY);
         JSObjectUtil.putDataProperty(context, global, Undefined.NAME, Undefined.instance);
 
-        JSObjectUtil.putFunctionsFromContainer(this, global, JSGlobalObject.CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, global, GlobalBuiltins.GLOBAL_FUNCTIONS);
 
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
@@ -1104,7 +1120,7 @@ public class JSRealm {
         }
         if (context.getContextOptions().isScriptEngineGlobalScopeImport()) {
             JSObjectUtil.putDataProperty(context, getScriptEngineImportScope(), "importScriptEngineGlobalBindings",
-                            lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
+                            lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "importScriptEngineGlobalBindings"), JSAttributes.notConfigurableNotEnumerableNotWritable());
         }
         if (context.getContextOptions().isPolyglotBuiltin() && (getEnv().isPolyglotEvalAllowed() || getEnv().isPolyglotBindingsAccessAllowed())) {
             setupPolyglot();
@@ -1163,23 +1179,23 @@ public class JSRealm {
     private void initGlobalNashornExtensions() {
         assert getContext().isOptionNashornCompatibilityMode();
         putGlobalProperty(JSAdapter.CLASS_NAME, jsAdapterConstructor);
-        putGlobalProperty("exit", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exit"));
-        putGlobalProperty("quit", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "quit"));
-        DynamicObject parseToJSON = lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "parseToJSON");
+        putGlobalProperty("exit", lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "exit"));
+        putGlobalProperty("quit", lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "quit"));
+        DynamicObject parseToJSON = lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "parseToJSON");
         putGlobalProperty("parseToJSON", parseToJSON);
     }
 
     private void addPrintGlobals() {
         if (context.getContextOptions().isPrint()) {
-            putGlobalProperty("print", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "print"));
-            putGlobalProperty("printErr", lookupFunction(JSGlobalObject.CLASS_NAME_PRINT_EXTENSIONS, "printErr"));
+            putGlobalProperty("print", lookupFunction(GlobalBuiltins.GLOBAL_PRINT, "print"));
+            putGlobalProperty("printErr", lookupFunction(GlobalBuiltins.GLOBAL_PRINT, "printErr"));
         }
     }
 
     private void addLoadGlobals() {
         if (getContext().getContextOptions().isLoad()) {
-            putGlobalProperty("load", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "load"));
-            putGlobalProperty("loadWithNewGlobal", lookupFunction(JSGlobalObject.CLASS_NAME_LOAD_EXTENSIONS, "loadWithNewGlobal"));
+            putGlobalProperty("load", lookupFunction(GlobalBuiltins.GLOBAL_LOAD, "load"));
+            putGlobalProperty("loadWithNewGlobal", lookupFunction(GlobalBuiltins.GLOBAL_LOAD, "loadWithNewGlobal"));
         }
     }
 
@@ -1217,7 +1233,7 @@ public class JSRealm {
 
     private void addShellGlobals() {
         if (getContext().getContextOptions().isShell()) {
-            getContext().getFunctionLookup().iterateBuiltinFunctions(JSGlobalObject.CLASS_NAME_SHELL_EXTENSIONS, (Builtin builtin) -> {
+            GlobalBuiltins.GLOBAL_SHELL.forEachBuiltin((Builtin builtin) -> {
                 JSFunctionData functionData = builtin.createFunctionData(getContext());
                 putGlobalProperty(builtin.getKey(), JSFunction.create(JSRealm.this, functionData), builtin.getAttributeFlags());
             });
@@ -1327,9 +1343,9 @@ public class JSRealm {
         assert isJavaInteropEnabled();
         DynamicObject java = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, java, Symbol.SYMBOL_TO_STRING_TAG, JAVA_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, java, JavaBuiltins.BUILTINS);
         if (context.isOptionNashornCompatibilityMode()) {
-            JSObjectUtil.putFunctionsFromContainer(this, java, JAVA_CLASS_NAME_NASHORN_COMPAT);
+            JSObjectUtil.putFunctionsFromContainer(this, java, JavaBuiltins.BUILTINS_NASHORN_COMPAT);
         }
         putGlobalProperty(JAVA_CLASS_NAME, java);
 
@@ -1354,13 +1370,13 @@ public class JSRealm {
 
     private void setupPolyglot() {
         DynamicObject polyglotObject = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, POLYGLOT_CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.BUILTINS);
 
         if (getContext().isOptionDebugBuiltin()) {
-            JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, POLYGLOT_INTERNAL_CLASS_NAME);
+            JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.INTERNAL_BUILTINS);
         } else if (getContext().getContextOptions().isPolyglotEvalFile()) {
             // already loaded above when `debug-builtin` is true
-            JSObjectUtil.putDataProperty(context, polyglotObject, "evalFile", lookupFunction(POLYGLOT_INTERNAL_CLASS_NAME, "evalFile"), JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(context, polyglotObject, "evalFile", lookupFunction(PolyglotBuiltins.INTERNAL_BUILTINS, "evalFile"), JSAttributes.getDefaultNotEnumerable());
         }
         putGlobalProperty(POLYGLOT_CLASS_NAME, polyglotObject);
     }
@@ -1373,13 +1389,13 @@ public class JSRealm {
 
     private DynamicObject createConsoleObject() {
         DynamicObject console = JSUserObject.createInit(this);
-        JSObjectUtil.putFunctionsFromContainer(this, console, CONSOLE_CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, console, ConsoleBuiltins.BUILTINS);
         return console;
     }
 
     private DynamicObject createPerformanceObject() {
         DynamicObject obj = JSUserObject.createInit(this);
-        JSObjectUtil.putFunctionsFromContainer(this, obj, PERFORMANCE_CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, obj, PerformanceBuiltins.BUILTINS);
         return obj;
     }
 
@@ -1401,7 +1417,7 @@ public class JSRealm {
      */
     private DynamicObject createArrayIteratorPrototype() {
         DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, JSArray.ITERATOR_PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, ArrayIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSArray.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }
@@ -1411,7 +1427,7 @@ public class JSRealm {
      */
     private DynamicObject createSetIteratorPrototype() {
         DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, JSSet.ITERATOR_PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, SetIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSSet.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }
@@ -1421,7 +1437,7 @@ public class JSRealm {
      */
     private DynamicObject createMapIteratorPrototype() {
         DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, JSMap.ITERATOR_PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, MapIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSMap.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }
@@ -1431,7 +1447,7 @@ public class JSRealm {
      */
     private DynamicObject createStringIteratorPrototype() {
         DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, JSString.ITERATOR_PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, StringIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSString.ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }
@@ -1441,7 +1457,7 @@ public class JSRealm {
      */
     private DynamicObject createRegExpStringIteratorPrototype() {
         DynamicObject prototype = JSObject.createInit(this, this.iteratorPrototype, JSUserObject.INSTANCE);
-        JSObjectUtil.putFunctionsFromContainer(this, prototype, JSString.REGEXP_ITERATOR_PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, RegExpStringIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_TO_STRING_TAG, JSString.REGEXP_ITERATOR_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }
@@ -1453,14 +1469,14 @@ public class JSRealm {
     private DynamicObject createReflect() {
         DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, REFLECT_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putFunctionsFromContainer(this, obj, REFLECT_CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, obj, ReflectBuiltins.BUILTINS);
         return obj;
     }
 
     private DynamicObject createAtomics() {
         DynamicObject obj = JSObject.createInit(this, this.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, ATOMICS_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putFunctionsFromContainer(this, obj, ATOMICS_CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.BUILTINS);
         return obj;
     }
 
@@ -1517,9 +1533,9 @@ public class JSRealm {
             putGlobalProperty("$ENV", envObj, JSAttributes.configurableNotEnumerableWritable());
 
             // $EXEC
-            putGlobalProperty("$EXEC", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "exec"));
-            putGlobalProperty("readFully", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readFully"));
-            putGlobalProperty("readLine", lookupFunction(JSGlobalObject.CLASS_NAME_NASHORN_EXTENSIONS, "readLine"));
+            putGlobalProperty("$EXEC", lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "exec"));
+            putGlobalProperty("readFully", lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "readFully"));
+            putGlobalProperty("readLine", lookupFunction(GlobalBuiltins.GLOBAL_NASHORN_EXTENSIONS, "readLine"));
 
             // $OUT, $ERR, $EXIT
             putGlobalProperty("$EXIT", Undefined.instance);
@@ -1544,14 +1560,14 @@ public class JSRealm {
         DynamicObject obj = JSUserObject.createInit(this);
         JSObjectUtil.putDataProperty(getContext(), obj, Symbol.SYMBOL_TO_STRING_TAG, REALM_BUILTIN_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putProxyProperty(obj, REALM_SHARED_PROPERTY);
-        JSObjectUtil.putFunctionsFromContainer(this, obj, REALM_BUILTIN_CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, obj, RealmFunctionBuiltins.BUILTINS);
         return obj;
     }
 
     private DynamicObject createDebugObject() {
         DynamicObject obj = JSUserObject.createInit(this);
         JSObjectUtil.putDataProperty(context, obj, Symbol.SYMBOL_TO_STRING_TAG, DEBUG_CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
-        JSObjectUtil.putFunctionsFromContainer(this, obj, DEBUG_CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, obj, DebugBuiltins.BUILTINS);
         return obj;
     }
 

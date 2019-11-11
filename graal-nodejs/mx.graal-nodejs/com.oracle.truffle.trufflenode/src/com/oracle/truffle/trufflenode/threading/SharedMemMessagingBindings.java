@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.trufflenode.threading;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.builtins.JSBuiltinLookup;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -94,8 +93,7 @@ public final class SharedMemMessagingBindings extends JSBuiltinObject {
     @TruffleBoundary
     private static DynamicObject create(JSContext context, GraalJSAccess graalJSAccess) {
         DynamicObject obj = context.createEmptyShape().addProperty(API_PROPERTY).newInstance();
-        ((JSBuiltinLookup) context.getFunctionLookup()).defineBuiltins(BUILTINS);
-        JSObjectUtil.putFunctionsFromContainer(context.getRealm(), obj, BUILTINS.getName());
+        JSObjectUtil.putFunctionsFromContainer(context.getRealm(), obj, BUILTINS);
         setApiField(obj, graalJSAccess);
         return obj;
     }

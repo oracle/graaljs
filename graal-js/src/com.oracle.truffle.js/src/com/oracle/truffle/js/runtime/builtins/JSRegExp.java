@@ -50,6 +50,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.RegExpBuiltins;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -85,8 +87,6 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
     public static final String INPUT = "input";
     public static final String GROUPS = "groups";
     public static final String INDEX = "index";
-
-    public static final String PROTOTYPE_GETTER_NAME = PROTOTYPE_NAME + " getter";
 
     private static final HiddenKey COMPILED_REGEX_ID = new HiddenKey("compiledRegex");
     private static final Property COMPILED_REGEX_PROPERTY;
@@ -294,12 +294,12 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
         }
         // ctor and functions
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, RegExpPrototypeBuiltins.BUILTINS);
         return prototype;
     }
 
     private static void putRegExpPropertyAccessor(JSRealm realm, DynamicObject prototype, String name) {
-        DynamicObject getter = realm.lookupFunction(PROTOTYPE_GETTER_NAME, name);
+        DynamicObject getter = realm.lookupFunction(RegExpPrototypeBuiltins.RegExpPrototypeGetterBuiltins.BUILTINS, name);
         JSObjectUtil.putConstantAccessorProperty(realm.getContext(), prototype, name, getter, Undefined.instance);
     }
 
@@ -376,7 +376,7 @@ public final class JSRegExp extends JSBuiltinObject implements JSConstructorFact
 
     private static void putRegExpStaticPropertyAccessor(JSRealm realm, DynamicObject constructor, BuiltinFunctionKey builtinKey, String getterName, String propertyName) {
         JSContext ctx = realm.getContext();
-        DynamicObject getter = realm.lookupFunction(CLASS_NAME, getterName);
+        DynamicObject getter = realm.lookupFunction(RegExpBuiltins.BUILTINS, getterName);
 
         // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
         String setterName = "set " + propertyName;

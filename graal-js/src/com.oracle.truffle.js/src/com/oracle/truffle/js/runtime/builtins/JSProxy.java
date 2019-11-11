@@ -49,6 +49,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.ConstructorBuiltins;
+import com.oracle.truffle.js.builtins.ProxyFunctionBuiltins;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -590,8 +592,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        DynamicObject proxyConstructor = realm.lookupFunction(JSConstructor.BUILTINS, CLASS_NAME);
-        JSObjectUtil.putFunctionsFromContainer(realm, proxyConstructor, CLASS_NAME);
+        DynamicObject proxyConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, proxyConstructor, ProxyFunctionBuiltins.BUILTINS);
         // Proxy constructor does not have a prototype property (ES6 26.2.2)
         // Still, makeInitialShape currently needs a dummy prototype
         DynamicObject dummyPrototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);

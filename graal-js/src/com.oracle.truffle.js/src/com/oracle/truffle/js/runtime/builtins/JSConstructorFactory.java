@@ -41,15 +41,27 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.ConstructorBuiltins;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public interface JSConstructorFactory {
-    JSConstructor createConstructorAndPrototype(JSRealm realm);
+
+    String getClassName();
+
+    DynamicObject createPrototype(JSRealm realm, DynamicObject constructor);
+
+    default DynamicObject createConstructorObject(JSRealm realm) {
+        return realm.lookupFunction(ConstructorBuiltins.BUILTINS, getClassName());
+    }
+
+    @SuppressWarnings("unused")
+    default void fillConstructor(JSRealm realm, DynamicObject constructor) {
+    }
 
     interface Default extends JSConstructorFactory {
-        @Override
         default JSConstructor createConstructorAndPrototype(JSRealm realm) {
             JSContext ctx = realm.getContext();
             DynamicObject constructor = createConstructorObject(realm);
@@ -60,31 +72,31 @@ public interface JSConstructorFactory {
             return new JSConstructor(constructor, prototype);
         }
 
-        String getClassName();
-
-        DynamicObject createPrototype(JSRealm realm, DynamicObject constructor);
-
-        default DynamicObject createConstructorObject(JSRealm realm) {
-            return realm.lookupFunction(JSConstructor.BUILTINS, getClassName());
-        }
-
-        @SuppressWarnings("unused")
-        default void fillConstructor(JSRealm realm, DynamicObject constructor) {
-        }
-
-        interface WithFunctions extends Default {
+        interface WithSpecies extends Default {
             @Override
             default void fillConstructor(JSRealm realm, DynamicObject constructor) {
-                JSObjectUtil.putFunctionsFromContainer(realm, constructor, getClassName());
-            }
-        }
-
-        interface WithFunctionsAndSpecies extends Default {
-            @Override
-            default void fillConstructor(JSRealm realm, DynamicObject constructor) {
-                JSObjectUtil.putFunctionsFromContainer(realm, constructor, getClassName());
                 JSBuiltinObject.putConstructorSpeciesGetter(realm, constructor);
             }
+        }
+    }
+
+    interface WithFunctions extends JSConstructorFactory {
+        default JSConstructor createConstructorAndPrototype(JSRealm realm, JSBuiltinsContainer functionBuiltins) {
+            JSContext ctx = realm.getContext();
+            DynamicObject constructor = createConstructorObject(realm);
+            DynamicObject prototype = createPrototype(realm, constructor);
+            JSObjectUtil.putPrototypeData(prototype);
+            JSObjectUtil.putConstructorPrototypeProperty(ctx, constructor, prototype);
+            JSObjectUtil.putFunctionsFromContainer(realm, constructor, functionBuiltins);
+            fillConstructor(realm, constructor);
+            return new JSConstructor(constructor, prototype);
+        }
+    }
+
+    interface WithFunctionsAndSpecies extends WithFunctions {
+        @Override
+        default void fillConstructor(JSRealm realm, DynamicObject constructor) {
+            JSBuiltinObject.putConstructorSpeciesGetter(realm, constructor);
         }
     }
 }

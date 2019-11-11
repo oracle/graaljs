@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.math.MathBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -72,7 +73,7 @@ public final class JSMath {
         JSObjectUtil.putDataProperty(ctx, obj, "SQRT1_2", 0.7071067811865476);
         JSObjectUtil.putDataProperty(ctx, obj, "SQRT2", 1.4142135623730951);
 
-        JSObjectUtil.putFunctionsFromContainer(realm, obj, CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, obj, MathBuiltins.BUILTINS);
         return obj;
     }
 }

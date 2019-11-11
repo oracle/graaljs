@@ -93,7 +93,6 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
 import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSListFormat;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -137,7 +136,6 @@ import com.oracle.truffle.js.runtime.util.TimeProfiler;
 
 public class JSContext {
     private final Evaluator evaluator;
-    private final JSFunctionLookup functionLookup;
 
     private final JavaScriptLanguage language;
     private TruffleLanguage.Env truffleLanguageEnv;
@@ -382,8 +380,7 @@ public class JSContext {
 
     @CompilationFinal private Locale locale;
 
-    protected JSContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
-        this.functionLookup = lookup;
+    protected JSContext(Evaluator evaluator, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
         this.contextOptions = contextOptions;
 
         if (env != null) { // env could still be null
@@ -524,10 +521,6 @@ public class JSContext {
         return lang.getContextReference();
     }
 
-    public final JSFunctionLookup getFunctionLookup() {
-        return functionLookup;
-    }
-
     public final Evaluator getEvaluator() {
         return evaluator;
     }
@@ -576,8 +569,8 @@ public class JSContext {
         return regExpStaticResultUnusedAssumption;
     }
 
-    public static JSContext createContext(Evaluator evaluator, JSFunctionLookup lookup, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
-        return new JSContext(evaluator, lookup, contextOptions, lang, env);
+    public static JSContext createContext(Evaluator evaluator, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
+        return new JSContext(evaluator, contextOptions, lang, env);
     }
 
     public JSRealm createRealm(TruffleLanguage.Env env) {

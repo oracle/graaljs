@@ -44,17 +44,14 @@ import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionLookup;
 
 public final class JSEngine {
     private static final JSEngine INSTANCE = new JSEngine();
 
-    private final JSFunctionLookup functionLookup;
     private final Evaluator parser;
 
     private JSEngine() {
         ClassLoader classLoader = getClass().getClassLoader();
-        this.functionLookup = ServiceLoader.load(JSFunctionLookup.class, classLoader).iterator().next();
         this.parser = ServiceLoader.load(Evaluator.class, classLoader).iterator().next();
     }
 
@@ -66,21 +63,17 @@ public final class JSEngine {
         return parser;
     }
 
-    public JSFunctionLookup getFunctionLookup() {
-        return functionLookup;
-    }
-
     public Evaluator getParser() {
         return parser;
     }
 
     private JSContext createContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
         JSContextOptions contextOptions = JSContextOptions.fromOptionValues(env.getOptions());
-        return JSContext.createContext(parser, functionLookup, contextOptions, language, env);
+        return JSContext.createContext(parser, contextOptions, language, env);
     }
 
     public JSContext createContext(JavaScriptLanguage language, JSContextOptions contextOptions, TruffleLanguage.Env env) {
-        return JSContext.createContext(parser, functionLookup, contextOptions, language, env);
+        return JSContext.createContext(parser, contextOptions, language, env);
     }
 
     public static JSContext createJSContext(JavaScriptLanguage language, TruffleLanguage.Env env) {

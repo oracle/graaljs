@@ -48,6 +48,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.NumberFunctionBuiltins;
+import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -100,7 +102,7 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
         JSObjectUtil.putHiddenProperty(numberPrototype, VALUE_PROPERTY, 0);
         JSObjectUtil.putConstructorProperty(context, numberPrototype, ctor);
 
-        JSObjectUtil.putFunctionsFromContainer(realm, numberPrototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, numberPrototype, NumberPrototypeBuiltins.BUILTINS);
         return numberPrototype;
     }
 
@@ -129,7 +131,7 @@ public final class JSNumber extends JSPrimitiveObject implements JSConstructorFa
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, NumberFunctionBuiltins.BUILTINS);
     }
 
     public static boolean isJSNumber(Object obj) {

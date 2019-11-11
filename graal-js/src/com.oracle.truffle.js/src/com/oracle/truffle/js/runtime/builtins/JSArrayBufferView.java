@@ -59,6 +59,9 @@ import com.oracle.truffle.api.object.LocationModifier;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.js.builtins.ConstructorBuiltins;
+import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltins;
+import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -81,9 +84,8 @@ import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 public final class JSArrayBufferView extends JSBuiltinObject {
-    public static final String CLASS_NAME = "ArrayBufferView";
-    public static final String PROTOTYPE_NAME = "ArrayBufferView.prototype";
-    public static final String TYPED_ARRAY_CLASS_NAME = "TypedArray";
+    public static final String CLASS_NAME = "TypedArray";
+    public static final String PROTOTYPE_NAME = CLASS_NAME + ".prototype";
 
     public static final JSArrayBufferView INSTANCE = new JSArrayBufferView();
 
@@ -404,7 +406,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     public static JSConstructor createConstructor(JSRealm realm, TypedArrayFactory factory, JSConstructor taConstructor) {
         JSContext ctx = realm.getContext();
-        DynamicObject arrayBufferViewConstructor = realm.lookupFunction(JSConstructor.BUILTINS, factory.getName());
+        DynamicObject arrayBufferViewConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, factory.getName());
         JSObject.setPrototype(arrayBufferViewConstructor, taConstructor.getFunctionObject());
 
         DynamicObject arrayBufferViewPrototype = createArrayBufferViewPrototype(realm, arrayBufferViewConstructor, factory.getBytesPerElement(), factory, taConstructor.getPrototype());
@@ -418,7 +420,7 @@ public final class JSArrayBufferView extends JSBuiltinObject {
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
-        JSObjectUtil.putFunctionsFromContainer(realm, prototype, PROTOTYPE_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, TypedArrayPrototypeBuiltins.BUILTINS);
         putArrayBufferViewPrototypeGetter(realm, prototype, LENGTH, BuiltinFunctionKey.ArrayBufferViewLength, new ArrayBufferViewGetter() {
             @Override
             public Object apply(DynamicObject view, boolean condition) {
@@ -473,10 +475,10 @@ public final class JSArrayBufferView extends JSBuiltinObject {
 
     public static JSConstructor createTypedArrayConstructor(JSRealm realm) {
         JSContext ctx = realm.getContext();
-        DynamicObject taConstructor = realm.lookupFunction(JSConstructor.BUILTINS, TYPED_ARRAY_CLASS_NAME);
+        DynamicObject taConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
         DynamicObject taPrototype = createTypedArrayPrototype(realm, taConstructor);
         JSObjectUtil.putConstructorPrototypeProperty(ctx, taConstructor, taPrototype);
-        JSObjectUtil.putFunctionsFromContainer(realm, taConstructor, CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, taConstructor, TypedArrayFunctionBuiltins.BUILTINS);
         putConstructorSpeciesGetter(realm, taConstructor);
         return new JSConstructor(taConstructor, taPrototype);
     }
