@@ -965,7 +965,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 long length = JSInteropUtil.getArraySize(members, keysInterop, this);
                 for (long i = 0; i < length; i++) {
                     Object key = keysInterop.readArrayElement(members, i);
-                    String stringKey = stringInterop.asString(key);
+                    String stringKey = key instanceof String ? (String) key : stringInterop.asString(key);
                     Object value = fromInterop.readMember(from, stringKey);
                     write.executeWithTargetAndIndexAndValue(to, stringKey, value);
                 }

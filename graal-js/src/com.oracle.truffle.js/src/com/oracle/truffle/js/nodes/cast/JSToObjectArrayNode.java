@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -56,9 +57,11 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
+import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -92,6 +95,32 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
 
     public static JSToObjectArrayNode create(JSContext context, boolean nullOrUndefinedAsEmptyArray) {
         return JSToObjectArrayNodeGen.create(context, nullOrUndefinedAsEmptyArray);
+    }
+
+    public static JavaScriptNode create(JSContext context, JavaScriptNode operand) {
+        class Unary extends JSUnaryNode {
+            @Child private JSToObjectArrayNode toObjectArray = JSToObjectArrayNode.create(context);
+
+            Unary(JavaScriptNode operandNode) {
+                super(operandNode);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame, Object operandValue) {
+                return toObjectArray.executeObjectArray(operandValue);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return execute(frame, operandNode.execute(frame));
+            }
+
+            @Override
+            protected JavaScriptNode copyUninitialized() {
+                return new Unary(cloneUninitialized(getOperand()));
+            }
+        }
+        return new Unary(operand);
     }
 
     @Specialization(guards = {"isJSObject(obj)"})
