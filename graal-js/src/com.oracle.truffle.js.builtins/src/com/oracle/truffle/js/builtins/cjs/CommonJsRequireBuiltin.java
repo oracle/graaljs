@@ -301,7 +301,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         if (fileExists(modulePath)) {
             return loadAsJavaScriptText(modulePath);
         } else if (fileExists(modulePath + JS_EXT)) {
-            return loadAsJavaScriptText(modulePath);
+            return loadAsJavaScriptText(modulePath + JS_EXT);
         } else if (fileExists(modulePath + JSON_EXT)) {
             throw new UnsupportedOperationException("TODO load json");
         } else if (fileExists(modulePath + NODE_EXT)) {

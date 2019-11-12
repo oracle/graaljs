@@ -103,11 +103,11 @@ public class CommonJsRequireTest {
         }
     }
 
-    private static Context getContext(Path tempFolder) {
-        return getContext(tempFolder, System.out, System.err);
+    private static Context testContext(Path tempFolder) {
+        return testContext(tempFolder, System.out, System.err);
     }
 
-    private static Context getContext(Path tempFolder, OutputStream out, OutputStream err) {
+    private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {
         return Context.newBuilder(ID).allowPolyglotAccess(PolyglotAccess.ALL)
                 .allowExperimentalOptions(true)
                 .option("js.cjs-require", "true")
@@ -121,10 +121,36 @@ public class CommonJsRequireTest {
         return Files.createTempDirectory("commonjs_testing");
     }
 
+    private void testBasicPackageJsonRequire(String moduleName, String packageJson) throws IOException {
+        Path f = getTempFolder();
+        try (Context cx = testContext(f)) {
+            NodeModulesFolder nm = NodeModulesFolder.create(f, "foo");
+            if (!"".equals(packageJson)) {
+                TestFile.create(nm, "package.json", packageJson);
+            }
+            TestFile.create(nm,"index.js", "module.exports.foo = 42;");
+            Value js = cx.eval(ID, "require(" + moduleName + ").foo;");
+            Assert.assertEquals(42, js.asInt());
+        }
+    }
+
+    private void testBasicPackageJsonRequire(String moduleName) throws IOException {
+        testBasicPackageJsonRequire(moduleName, "{\"main\":\"index.js\"}");
+    }
+
+    private void testBasicRequire(String moduleName) throws IOException {
+        Path f = getTempFolder();
+        try (Context cx = testContext(f)) {
+            TestFile.create(f,"module.js", "module.exports.foo = 42;");
+            Value js = cx.eval(ID, "require('./module').foo;");
+            Assert.assertEquals(42, js.asInt());
+        }
+    }
+
     @Test
     public void absoluteFilename() throws IOException {
         Path f = getTempFolder();
-        try (Context cx = getContext(f)) {
+        try (Context cx = testContext(f)) {
             TestFile m = TestFile.create(f,"module.js", "module.exports.foo = 42;");
             Value js = cx.eval(ID, "require('" + m.getAbsolutePath() + "').foo;");
             Assert.assertEquals(42, js.asInt());
@@ -133,12 +159,12 @@ public class CommonJsRequireTest {
 
     @Test
     public void relativeFilename() throws IOException {
-        Path f = getTempFolder();
-        try (Context cx = getContext(f)) {
-            TestFile.create(f,"module.js", "module.exports.foo = 42;");
-            Value js = cx.eval(ID, "require('./module.js').foo;");
-            Assert.assertEquals(42, js.asInt());
-        }
+        testBasicRequire("./module.js");
+    }
+
+    @Test
+    public void relativeNoExtFilename() throws IOException {
+        testBasicRequire("./module");
     }
 
     @Test
@@ -166,25 +192,20 @@ public class CommonJsRequireTest {
         testBasicPackageJsonRequire("'./foo'", "{\"not_a_valid_main\":\"index.js\"}");
     }
 
-    private void testBasicPackageJsonRequire(String moduleName, String packageJson) throws IOException {
-        Path f = getTempFolder();
-        try (Context cx = getContext(f)) {
-            NodeModulesFolder nm = NodeModulesFolder.create(f, "foo");
-            TestFile.create(nm,"package.json", packageJson);
-            TestFile.create(nm,"index.js", "module.exports.foo = 42;");
-            Value js = cx.eval(ID, "require(" + moduleName + ").foo;");
-            Assert.assertEquals(42, js.asInt());
-        }
+    @Test
+    public void testMissingPackageJson() throws IOException {
+        testBasicPackageJsonRequire("'foo'", "");
     }
 
-    private void testBasicPackageJsonRequire(String moduleName) throws IOException {
-        testBasicPackageJsonRequire(moduleName, "{\"main\":\"index.js\"}");
+    @Test
+    public void testMissingPackageJson2() throws IOException {
+        testBasicPackageJsonRequire("'foo'", "");
     }
 
     @Test
     public void nestedRequire() throws IOException {
         Path f = getTempFolder();
-        try (Context cx = getContext(f)) {
+        try (Context cx = testContext(f)) {
             TestFile.create(f,"a.js", "module.exports.foo = 42;");
             TestFile.create(f,"b.js", "const a = require('./a.js');" +
                     "exports.foo = a.foo;");
@@ -198,7 +219,7 @@ public class CommonJsRequireTest {
         Path f = getTempFolder();
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
-        try (Context cx = getContext(f, out, err)) {
+        try (Context cx = testContext(f, out, err)) {
             TestFile.create(f,"a.js", "console.log('a starting');" +
                     "exports.done = false;" +
                     "const b = require('./b.js');" +
