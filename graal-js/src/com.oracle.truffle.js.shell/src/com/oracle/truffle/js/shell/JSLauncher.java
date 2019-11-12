@@ -44,10 +44,8 @@ import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Consumed;
 import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.MissingValue;
 import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Unhandled;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -68,6 +66,7 @@ import org.graalvm.polyglot.Value;
 
 public class JSLauncher extends AbstractLanguageLauncher {
     static final String MODULE_MIME_TYPE = "application/javascript+module";
+    private static final String PROMPT = "> ";
 
     public static void main(String[] args) {
         new JSLauncher().launch(args);
@@ -366,14 +365,19 @@ public class JSLauncher extends AbstractLanguageLauncher {
     }
 
     private static int runREPL(Context context) {
-        final BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
-        PrintStream output = System.out;
+        ConsoleHandler console;
+        try {
+            console = setupConsole();
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+            return 1;
+        }
+
         int lineNumber = 0;
 
         for (;;) {
             try {
-                output.print("> ");
-                String line = input.readLine();
+                String line = console.readLine();
                 if (line == null) {
                     return 0;
                 }
@@ -386,9 +390,9 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 if (e.isExit()) {
                     return e.getExitStatus();
                 } else if (e.isSyntaxError()) {
-                    printError(e, output);
+                    printError(e, System.err);
                 } else if (!e.isInternalError()) {
-                    printStackTraceSkipTrailingHost(e, output);
+                    printStackTraceSkipTrailingHost(e, System.err);
                 } else {
                     e.printStackTrace();
                     return 8;
@@ -398,6 +402,17 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 return 8;
             }
         }
+    }
+
+    private static boolean isInteractiveTerminal() {
+        return System.console() != null;
+    }
+
+    private static ConsoleHandler setupConsole() throws IOException {
+        if (isInteractiveTerminal()) {
+            return new JLineConsoleHandler(System.in, System.out, PROMPT);
+        }
+        return new DefaultConsoleHandler(System.in, System.out, null);
     }
 
     private static void printError(Throwable e, PrintStream output) {
