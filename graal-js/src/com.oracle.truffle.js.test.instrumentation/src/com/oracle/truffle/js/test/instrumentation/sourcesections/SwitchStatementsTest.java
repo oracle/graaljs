@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,77 +42,21 @@ package com.oracle.truffle.js.test.instrumentation.sourcesections;
 
 import org.junit.Test;
 
-public class StatementsTest extends SourceSectionInstrumentationTest {
+public class SwitchStatementsTest extends SourceSectionInstrumentationTest {
 
     @Test
     public void basicDeclarations() {
-        evalStatements("a = 3; b = 2; a + b;");
-        assertSourceSections(new String[]{
-                        "a = 3",
-                        "b = 2",
-                        "a + b",
-        });
-    }
+        String src = "var bar = 0;" +
+                        "switch ('foo') {" +
+                        "case 'bar':" +
+                        "  bar--;" +
+                        "};";
 
-    @Test
-    public void basicVarDeclarations() {
-        evalStatements("var a = 3;");
+        evalStatements(src);
         assertSourceSections(new String[]{
-                        "var a = 3",
-        });
-    }
-
-    @Test
-    public void emptyConditionBreak() {
-        evalStatements("for(;;) {break;}");
-        assertSourceSections(new String[]{
-                        "for(;;) {break;}",
-                        "break;"
-        });
-    }
-
-    @Test
-    public void emptyConditionInfinite() {
-        evalMaxStatementsTimeout("for(;;) {}", 3, 1000);
-        assertSourceSections(new String[]{
-                        "for(;;) {}",
-                        "for(;;) {}",
-                        "for(;;) {}",
-        });
-    }
-
-    @Test
-    public void forOf() {
-        evalStatements("for (var a of [1]) {}");
-        assertSourceSections(new String[]{
-                        "[1]",
-                        "a",
-        });
-    }
-
-    @Test
-    public void forIn() {
-        evalStatements("for (var a in [1]) {}");
-        assertSourceSections(new String[]{
-                        "[1]",
-                        "a",
-        });
-    }
-
-    @Test
-    public void whileDo() {
-        evalStatements("while(true) {break;}");
-        assertSourceSections(new String[]{
-                        "true",
-                        "break;",
-        });
-    }
-
-    @Test
-    public void doWhile() {
-        evalStatements("do {break;} while(true);");
-        assertSourceSections(new String[]{
-                        "break;"
+                        "var bar = 0",
+                        "'foo'",
+                        "'bar'",
         });
     }
 }
