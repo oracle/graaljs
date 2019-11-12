@@ -543,7 +543,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     /**
      * @throws SecurityException
      */
-    static TruffleFile resolveRelativeFilePath(String path, TruffleLanguage.Env env) {
+    public static TruffleFile resolveRelativeFilePath(String path, TruffleLanguage.Env env) {
         CompilerAsserts.neverPartOfCompilation();
         TruffleFile file = env.getPublicTruffleFile(path);
         if (!file.isAbsolute() && !file.exists()) {

@@ -44,7 +44,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.*;
@@ -123,51 +122,79 @@ public class CommonJsRequireTest {
     }
 
     @Test
-    public void helloAbsolute() throws IOException {
+    public void absoluteFilename() throws IOException {
         Path f = getTempFolder();
         try (Context cx = getContext(f)) {
             TestFile m = TestFile.create(f,"module.js", "module.exports.foo = 42;");
             Value js = cx.eval(ID, "require('" + m.getAbsolutePath() + "').foo;");
-            Assert.assertEquals(js.asInt(), 42);
+            Assert.assertEquals(42, js.asInt());
         }
     }
 
     @Test
-    public void helloRelative() throws IOException {
+    public void relativeFilename() throws IOException {
         Path f = getTempFolder();
         try (Context cx = getContext(f)) {
             TestFile.create(f,"module.js", "module.exports.foo = 42;");
             Value js = cx.eval(ID, "require('./module.js').foo;");
-            Assert.assertEquals(js.asInt(), 42);
+            Assert.assertEquals(42, js.asInt());
         }
     }
 
     @Test
-    public void helloNodeModulesFolder() throws IOException {
+    public void nodeModulesFolderWithPackageJson() throws IOException {
+        testBasicPackageJsonRequire("'foo'");
+    }
+
+    @Test
+    public void nodeModulesFolderWithPackageJson2() throws IOException {
+        testBasicPackageJsonRequire("'./foo'");
+    }
+
+    @Test
+    public void nodeModulesFolderWithPackageJson3() throws IOException {
+        testBasicPackageJsonRequire("'././foo'");
+    }
+
+    @Test
+    public void nodeModulesFolderWithPackageJsonNoMain() throws IOException {
+        testBasicPackageJsonRequire("'foo'", "{\"not_a_valid_main\":\"index.js\"}");
+    }
+
+    @Test
+    public void nodeModulesFolderWithPackageJsonNoMain2() throws IOException {
+        testBasicPackageJsonRequire("'./foo'", "{\"not_a_valid_main\":\"index.js\"}");
+    }
+
+    private void testBasicPackageJsonRequire(String moduleName, String packageJson) throws IOException {
         Path f = getTempFolder();
         try (Context cx = getContext(f)) {
             NodeModulesFolder nm = NodeModulesFolder.create(f, "foo");
-            TestFile.create(nm,"package.json", "a = {main:'index.js'};a;");
+            TestFile.create(nm,"package.json", packageJson);
             TestFile.create(nm,"index.js", "module.exports.foo = 42;");
-            Value js = cx.eval(ID, "require('foo').foo;");
-            Assert.assertEquals(js.asInt(), 42);
+            Value js = cx.eval(ID, "require(" + moduleName + ").foo;");
+            Assert.assertEquals(42, js.asInt());
         }
     }
 
+    private void testBasicPackageJsonRequire(String moduleName) throws IOException {
+        testBasicPackageJsonRequire(moduleName, "{\"main\":\"index.js\"}");
+    }
+
     @Test
-    public void helloNested() throws IOException {
+    public void nestedRequire() throws IOException {
         Path f = getTempFolder();
         try (Context cx = getContext(f)) {
             TestFile.create(f,"a.js", "module.exports.foo = 42;");
             TestFile.create(f,"b.js", "const a = require('./a.js');" +
                     "exports.foo = a.foo;");
             Value js = cx.eval(ID, "require('./b.js').foo;");
-            Assert.assertEquals(js.asInt(), 42);
+            Assert.assertEquals(42, js.asInt());
         }
     }
 
     @Test
-    public void helloCycle() throws IOException {
+    public void cyclicRequire() throws IOException {
         Path f = getTempFolder();
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
@@ -194,16 +221,16 @@ public class CommonJsRequireTest {
             String outPrint = new String(out.toByteArray());
             String errPrint = new String(err.toByteArray());
 
-            Assert.assertEquals(outPrint, "main starting\n" +
+            Assert.assertEquals("main starting\n" +
                     "a starting\n" +
                     "b starting\n" +
                     "in b, a.done = false\n" +
                     "b done\n" +
                     "in a, b.done = true\n" +
                     "a done\n" +
-                    "in main, a.done = true, b.done = true\n");
+                    "in main, a.done = true, b.done = true\n", outPrint);
             Assert.assertEquals("", errPrint);
-            Assert.assertEquals(js.asInt(), 42);
+            Assert.assertEquals(42, js.asInt());
         }
     }
 

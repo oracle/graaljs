@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.cjs;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -52,8 +53,6 @@ import com.oracle.truffle.js.runtime.*;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.sun.org.apache.bcel.internal.generic.JSR;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -67,6 +66,23 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
 
     private static final String MODULE_CLOSURE = "\n});";
     private static final String MODULE_PREAMBLE = "(function (exports, require, module, __filename, __dirname) {";
+
+    // TODO windows?
+    private static final String ROOT_PATH = "/";
+    private static final String SEPARATOR = File.separator;
+    private static final String INDEX_JS = "index.js";
+    private static final String INDEX_JSON = "index.json";
+    private static final String INDEX_NODE = "index.node";
+    private static final String PACKAGE_JSON = "package.json";
+    private static final String NODE_MODULES = "node_modules";
+
+    private static final String JS_EXT = ".js";
+    private static final String JSON_EXT = ".json";
+    private static final String NODE_EXT = ".node";
+
+    private static final String EXPORTS = "exports";
+    private static final String REQUIRE = "require";
+    private static final String MAIN_PROPERTY ="main";
     
     private static final String[] CORE_MODULES = new String[] {"assert", "async_hooks", "buffer", "child_process", "cluster", "crypto",
             "dgram", "dns", "domain", "events", "fs", "http", "http2", "https", "net",
@@ -79,7 +95,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
     public CommonJsRequireBuiltin(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
         String cwdOption = context.getContextOptions().getRequireCwd();
-        this.cwd = (cwdOption == null ? Paths.get(".").toAbsolutePath().normalize().toString() : cwdOption) + "/";
+        this.cwd = (cwdOption == null ? Paths.get(".").toAbsolutePath().normalize().toString() : cwdOption) + SEPARATOR;
     }
 
     @Specialization
@@ -110,7 +126,8 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         if (isPathFileName(moduleIdentifier)) {
             Object module = loadAsFileOrDirectory(y + moduleIdentifier);
             if (module == null) {
-                throw fail(moduleIdentifier);
+                // TODO(db) node.js informal spec says we should throw. Node v12.x does not throw and loads
+                // throw fail(moduleIdentifier);
             } else {
                 return module;
             }
@@ -137,7 +154,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         */
         String[] nodeModulesPaths = getNodeModulesPaths(start);
         for (String s : nodeModulesPaths) {
-            Object module = loadAsFileOrDirectory(s + File.separator + moduleIdentifier);
+            Object module = loadAsFileOrDirectory(s + SEPARATOR + moduleIdentifier);
             if (module != null) {
                 return module;
             }
@@ -147,17 +164,17 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
     }
 
     protected String[] getNodeModulesPaths(String path) {
-        String[] folders = path.split(File.separator);
+        String[] folders = path.split(SEPARATOR);
         List<String> list = new ArrayList<>();
         int i = folders.length;
 
         for (int p = 0; p<folders.length; p++) {
-            String subPath = "/";
+            String subPath = ROOT_PATH;
             for (int s = 0; s < i; s++) {
-                subPath += folders[s] + "/";
+                subPath += folders[s] + SEPARATOR;
             }
             i--;
-            list.add(subPath + "/node_modules");
+            list.add(subPath + SEPARATOR + NODE_MODULES);
         }
         // TODO the list should include "Global" folders.
         return list.toArray(new String[]{});
@@ -199,7 +216,6 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
             JSFunction.call(JSArguments.create(call, call, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin));
             return exportsBuiltin;
         }
-        // TODO should throw?
         return null;
     }
 
@@ -213,40 +229,48 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
     }
 
     private Object loadAsDirectory(String modulePath) {
-        if (fileExists(modulePath + "/package.json")) {
+        if (fileExists(modulePath + SEPARATOR + PACKAGE_JSON)) {
             JSRealm realm = getContext().getRealm();
-            Source source = sourceFromPath(modulePath + "/package.json", realm);
+            Source source = sourceFromPath(modulePath + SEPARATOR + PACKAGE_JSON, realm);
 
-            // TODO should parse from json file, directly
-            CharSequence characters = source.getCharacters();
-            Source build = Source.newBuilder(JavaScriptLanguage.ID)
-                    .mimeType(JavaScriptLanguage.TEXT_MIME_TYPE)
-                    .name("package.json")
-                    .content(characters)
-                    .build();
-
-            CallTarget callTarget = realm.getEnv().parsePublic(build);
-            Object call = callTarget.call();
-            if (JSObject.isJSObject(call)) {
-                Object main = JSObject.get((TruffleObject) call, "main");
-                if (!JSRuntime.isString(main)) {
-                    return loadIndex(modulePath);
-                }
-                String m = modulePath + "/" + JSRuntime.safeToString(main);
-                Object asFile = loadAsFile(m);
-                if (asFile != null) {
-                    return asFile;
+            try {
+                TruffleFile file = GlobalBuiltins.resolveRelativeFilePath(modulePath + SEPARATOR + PACKAGE_JSON, realm.getEnv());
+                if (file.isRegularFile()) {
+                    source = sourceFromTruffleFile(file);
                 } else {
-                    Object loadIndex = loadIndex(m);
-                    if (loadIndex != null) {
-                        return loadIndex;
+                    fail(modulePath);
+                }
+                // TODO load builtin, not property
+                DynamicObject JSON = (DynamicObject) getContext().getRealm().getGlobalObject().get("JSON");
+                DynamicObject parse = (DynamicObject) JSObject.get(JSON, "parse");
+
+                String jsonString = source.getCharacters().toString().replace('\n', ' ');
+                Object jsonObj = JSFunction.call(JSArguments.create(JSON, parse, jsonString));
+
+                if (JSObject.isJSObject(jsonObj)) {
+                    Object main = JSObject.get((TruffleObject) jsonObj, MAIN_PROPERTY);
+                    if (!JSRuntime.isString(main)) {
+                        return loadIndex(modulePath);
+                    }
+                    String m = modulePath + SEPARATOR + JSRuntime.safeToString(main);
+                    Object asFile = loadAsFile(m);
+                    if (asFile != null) {
+                        return asFile;
+                    } else {
+                        Object loadIndex = loadIndex(m);
+                        if (loadIndex != null) {
+                            return loadIndex;
+                        }
                     }
                 }
+            } catch (SecurityException e) {
+                throw Errors.createErrorFromException(e);
             }
         } else {
             return loadIndex(modulePath);
         }
         throw fail(modulePath);
+
     }
 
     private Object loadIndex(String modulePath) {
@@ -256,11 +280,11 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
                 2. If X/index.json is a file, parse X/index.json to a JavaScript object. STOP
                 3. If X/index.node is a file, load X/index.node as binary addon.  STOP
         */
-        if (fileExists(modulePath + "/index.js")) {
-            return loadAsJavaScriptText(modulePath);
-        } else if (fileExists(modulePath + "/index.json")) {
+        if (fileExists(modulePath + SEPARATOR + INDEX_JS)) {
+            return loadAsJavaScriptText(modulePath + SEPARATOR + INDEX_JS);
+        } else if (fileExists(modulePath + SEPARATOR + INDEX_JSON)) {
             throw new UnsupportedOperationException("TODO load json");
-        } else if (fileExists(modulePath + "/index.node")) {
+        } else if (fileExists(modulePath +  SEPARATOR + INDEX_NODE)) {
             throw fail("cannot load native module '" + modulePath + "'");
         }
         return null;
@@ -276,11 +300,11 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         */
         if (fileExists(modulePath)) {
             return loadAsJavaScriptText(modulePath);
-        } else if (fileExists(modulePath + ".js")) {
+        } else if (fileExists(modulePath + JS_EXT)) {
             return loadAsJavaScriptText(modulePath);
-        } else if (fileExists(modulePath + ".json")) {
+        } else if (fileExists(modulePath + JSON_EXT)) {
             throw new UnsupportedOperationException("TODO load json");
-        } else if (fileExists(modulePath + ".node")) {
+        } else if (fileExists(modulePath + NODE_EXT)) {
             throw fail("cannot load native module '" + modulePath + "'");
         }
         return null;
@@ -307,13 +331,13 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
 
     private DynamicObject createModuleBuiltin(JSRealm realm, DynamicObject exportsBuiltin) {
         DynamicObject module = JSUserObject.create(realm.getContext(), realm);
-        JSObject.set(module, "exports", exportsBuiltin);
+        JSObject.set(module, EXPORTS, exportsBuiltin);
         return module;
     }
 
     private DynamicObject createRequireBuiltin(JSRealm realm) {
         // TODO use internal built-in, not global property
-        return (DynamicObject) JSObject.get(realm.getGlobalObject(), "require");
+        return (DynamicObject) JSObject.get(realm.getGlobalObject(), REQUIRE);
     }
 
     private DynamicObject createExportsBuiltin(JSRealm realm) {
