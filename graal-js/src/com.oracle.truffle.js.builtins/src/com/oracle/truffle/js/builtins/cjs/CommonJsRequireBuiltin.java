@@ -61,6 +61,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperation {
 
@@ -168,6 +169,12 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
 
     private Object loadAsJavaScriptText(String modulePath) {
         JSRealm realm = getContext().getRealm();
+
+        Map<String, DynamicObject> commonJsCache = realm.getCommonJsRequireCache();
+        if (commonJsCache.containsKey(modulePath)) {
+            return commonJsCache.get(modulePath);
+        }
+
         Source source = sourceFromPath(modulePath, realm);
         Path path = Paths.get(modulePath);
 
@@ -188,9 +195,11 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         Object call = callTarget.call();
 
         if (JSFunction.isJSFunction(call)) {
+            commonJsCache.put(modulePath, exportsBuiltin);
             JSFunction.call(JSArguments.create(call, call, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin));
             return exportsBuiltin;
         }
+        // TODO should throw?
         return null;
     }
 
@@ -303,7 +312,8 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
     }
 
     private DynamicObject createRequireBuiltin(JSRealm realm) {
-        return JSUserObject.create(realm.getContext(), realm);
+        // TODO use internal built-in, not global property
+        return (DynamicObject) JSObject.get(realm.getGlobalObject(), "require");
     }
 
     private DynamicObject createExportsBuiltin(JSRealm realm) {

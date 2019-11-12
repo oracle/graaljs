@@ -44,11 +44,10 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -106,10 +105,16 @@ public class CommonJsRequireTest {
     }
 
     private static Context getContext(Path tempFolder) {
+        return getContext(tempFolder, System.out, System.err);
+    }
+
+    private static Context getContext(Path tempFolder, OutputStream out, OutputStream err) {
         return Context.newBuilder(ID).allowPolyglotAccess(PolyglotAccess.ALL)
                 .allowExperimentalOptions(true)
                 .option("js.cjs-require", "true")
                 .option("js.cjs-require-cwd", tempFolder.toAbsolutePath().toString())
+                .out(out)
+                .err(err)
                 .allowIO(true).build();
     }
 
@@ -145,6 +150,59 @@ public class CommonJsRequireTest {
             TestFile.create(nm,"package.json", "a = {main:'index.js'};a;");
             TestFile.create(nm,"index.js", "module.exports.foo = 42;");
             Value js = cx.eval(ID, "require('foo').foo;");
+            Assert.assertEquals(js.asInt(), 42);
+        }
+    }
+
+    @Test
+    public void helloNested() throws IOException {
+        Path f = getTempFolder();
+        try (Context cx = getContext(f)) {
+            TestFile.create(f,"a.js", "module.exports.foo = 42;");
+            TestFile.create(f,"b.js", "const a = require('./a.js');" +
+                    "exports.foo = a.foo;");
+            Value js = cx.eval(ID, "require('./b.js').foo;");
+            Assert.assertEquals(js.asInt(), 42);
+        }
+    }
+
+    @Test
+    public void helloCycle() throws IOException {
+        Path f = getTempFolder();
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context cx = getContext(f, out, err)) {
+            TestFile.create(f,"a.js", "console.log('a starting');" +
+                    "exports.done = false;" +
+                    "const b = require('./b.js');" +
+                    "console.log('in a, b.done = ' + b.done);" +
+                    "exports.done = true;" +
+                    "console.log('a done');");
+            TestFile.create(f,"b.js", "console.log('b starting');" +
+                    "exports.done = false;" +
+                    "const a = require('./a.js');" +
+                    "console.log('in b, a.done = ' + a.done);" +
+                    "exports.done = true;" +
+                    "console.log('b done');");
+            Value js = cx.eval(ID, "console.log('main starting');" +
+                    "const a = require('./a.js');" +
+                    "const b = require('./b.js');" +
+                    "console.log('in main, a.done = ' + a.done + ', b.done = ' + b.done);" +
+                    "42;");
+            out.flush();
+            err.flush();
+            String outPrint = new String(out.toByteArray());
+            String errPrint = new String(err.toByteArray());
+
+            Assert.assertEquals(outPrint, "main starting\n" +
+                    "a starting\n" +
+                    "b starting\n" +
+                    "in b, a.done = false\n" +
+                    "b done\n" +
+                    "in a, b.done = true\n" +
+                    "a done\n" +
+                    "in main, a.done = true, b.done = true\n");
+            Assert.assertEquals("", errPrint);
             Assert.assertEquals(js.asInt(), 42);
         }
     }

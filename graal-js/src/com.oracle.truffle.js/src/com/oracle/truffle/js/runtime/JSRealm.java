@@ -376,6 +376,11 @@ public class JSRealm {
      */
     private JavaScriptNode callNode;
 
+    /**
+     * Per-realm cache used by the CommonJs `require` emulation.
+     */
+    private final Map<String, DynamicObject> commonJsRequireCache;
+
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
@@ -599,6 +604,12 @@ public class JSRealm {
         this.outputWriter = new PrintWriterWrapper(outputStream, true);
         this.errorWriter = new PrintWriterWrapper(errorStream, true);
         this.consoleUtil = new JSConsoleUtil();
+
+        if (context.getContextOptions().isRequire()) {
+            this.commonJsRequireCache = new HashMap<>();
+        } else {
+            this.commonJsRequireCache = null;
+        }
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1982,6 +1993,7 @@ public class JSRealm {
         realmList.set(idx, null);
     }
 
+<<<<<<< HEAD
     public JSRealm getCurrentV8Realm() {
         return v8RealmCurrent;
     }
@@ -2014,6 +2026,11 @@ public class JSRealm {
             }
             return realm;
         }
+    }
+
+    public final Map<String, DynamicObject> getCommonJsRequireCache() {
+        assert context.getContextOptions().isRequire();
+        return commonJsRequireCache;
     }
 
 }
