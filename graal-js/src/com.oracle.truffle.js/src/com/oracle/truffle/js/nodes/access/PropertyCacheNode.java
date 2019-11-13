@@ -777,7 +777,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 }
             }
             // Return the shape check of the prototype we're going to access.
-            return result;
+            return true;
         }
 
         @ExplodeLoop
