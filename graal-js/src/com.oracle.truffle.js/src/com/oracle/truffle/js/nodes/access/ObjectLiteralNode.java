@@ -571,7 +571,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
             if (toObjectNode == null || copyDataPropertiesNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(context));
-                copyDataPropertiesNode = insert(CopyDataPropertiesNode.create(context, false));
+                copyDataPropertiesNode = insert(CopyDataPropertiesNode.create(context));
             }
             Object from = toObjectNode.executeTruffleObject(sourceValue);
             copyDataPropertiesNode.execute(target, from);

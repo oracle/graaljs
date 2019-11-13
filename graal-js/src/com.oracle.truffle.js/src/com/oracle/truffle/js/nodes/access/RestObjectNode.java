@@ -59,7 +59,7 @@ public abstract class RestObjectNode extends JavaScriptNode {
         this.context = context;
         this.targetNode = targetNode;
         this.sourceNode = sourceNode;
-        this.copyDataPropertiesNode = CopyDataPropertiesNode.create(context, false);
+        this.copyDataPropertiesNode = CopyDataPropertiesNode.create(context);
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode targetNode, JavaScriptNode sourceNode, JavaScriptNode excludedNode) {
@@ -108,7 +108,7 @@ abstract class RestObjectWithExcludedNode extends JavaScriptNode {
         this.targetNode = targetNode;
         this.sourceNode = sourceNode;
         this.excludedNode = JSToObjectArrayNode.create(context, excludedNode);
-        this.copyDataPropertiesNode = CopyDataPropertiesNode.create(context, true);
+        this.copyDataPropertiesNode = CopyDataPropertiesNode.create(context);
     }
 
     @SuppressWarnings("unused")

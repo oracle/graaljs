@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -63,31 +64,33 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
     protected final JSContext context;
-    private final boolean withExcluded;
 
-    protected CopyDataPropertiesNode(JSContext context, boolean withExcluded) {
+    protected CopyDataPropertiesNode(JSContext context) {
         this.context = context;
-        this.withExcluded = withExcluded;
     }
 
-    public static CopyDataPropertiesNode create(JSContext context, boolean withExcluded) {
-        return CopyDataPropertiesNodeGen.create(context, withExcluded);
+    public static CopyDataPropertiesNode create(JSContext context) {
+        return CopyDataPropertiesNodeGen.create(context);
     }
 
     public final Object execute(Object target, Object source) {
-        return execute(target, source, null);
+        return executeImpl(target, source, null, false);
     }
 
-    public abstract Object execute(Object target, Object source, Object[] excludedItems);
+    public final Object execute(Object target, Object source, Object[] excludedItems) {
+        return executeImpl(target, source, excludedItems, true);
+    }
+
+    protected abstract Object executeImpl(Object target, Object source, Object[] excludedItems, boolean withExcluded);
 
     @SuppressWarnings("unused")
     @Specialization(guards = "isNullOrUndefined(value)")
-    protected static DynamicObject doNullOrUndefined(DynamicObject target, Object value, Object[] excludedItems) {
+    protected static DynamicObject doNullOrUndefined(DynamicObject target, Object value, Object[] excludedItems, boolean withExcluded) {
         return target;
     }
 
     @Specialization(guards = {"isJSObject(source)"})
-    protected final DynamicObject copyDataProperties(DynamicObject target, DynamicObject source, Object[] excludedItems,
+    protected static DynamicObject copyDataProperties(DynamicObject target, DynamicObject source, Object[] excludedItems, boolean withExcluded,
                     @Cached("create(context)") ReadElementNode getNode,
                     @Cached("create(false)") JSGetOwnPropertyNode getOwnProperty,
                     @Cached ListSizeNode listSize,
@@ -98,7 +101,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
         for (int i = 0; i < size; i++) {
             Object nextKey = listGet.execute(ownPropertyKeys, i);
             assert JSRuntime.isPropertyKey(nextKey);
-            if (!isExcluded(excludedItems, nextKey)) {
+            if (!isExcluded(withExcluded, excludedItems, nextKey)) {
                 PropertyDescriptor desc = getOwnProperty.execute(source, nextKey);
                 if (desc != null && desc.getEnumerable()) {
                     Object propValue = getNode.executeWithTargetAndIndex(source, nextKey);
@@ -109,7 +112,8 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
         return target;
     }
 
-    private boolean isExcluded(Object[] excludedKeys, Object key) {
+    private static boolean isExcluded(boolean withExcluded, Object[] excludedKeys, Object key) {
+        CompilerAsserts.partialEvaluationConstant(withExcluded);
         if (withExcluded) {
             for (Object e : excludedKeys) {
                 assert JSRuntime.isPropertyKey(e);
@@ -122,7 +126,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!isJSType(from)"}, limit = "3")
-    protected final DynamicObject copyDataPropertiesForeign(DynamicObject target, Object from, Object[] excludedItems,
+    protected final DynamicObject copyDataPropertiesForeign(DynamicObject target, Object from, Object[] excludedItems, boolean withExcluded,
                     @CachedLibrary("from") InteropLibrary objInterop,
                     @CachedLibrary(limit = "3") InteropLibrary keysInterop,
                     @CachedLibrary(limit = "3") InteropLibrary stringInterop) {
@@ -136,7 +140,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                 Object key = keysInterop.readArrayElement(members, i);
                 assert InteropLibrary.getFactory().getUncached().isString(key);
                 String stringKey = key instanceof String ? (String) key : stringInterop.asString(key);
-                if (!isExcluded(excludedItems, stringKey)) {
+                if (!isExcluded(withExcluded, excludedItems, stringKey)) {
                     Object value = objInterop.readMember(from, stringKey);
                     JSRuntime.createDataProperty(target, stringKey, JSRuntime.importValue(value));
                 }
