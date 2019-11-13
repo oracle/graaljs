@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -89,10 +88,5 @@ public class IteratorNextUnaryNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized() {
         return create(cloneUninitialized(iteratorNode));
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == TruffleObject.class;
     }
 }
