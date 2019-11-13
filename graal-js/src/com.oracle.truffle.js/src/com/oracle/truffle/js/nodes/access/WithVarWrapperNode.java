@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -73,17 +71,13 @@ public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, Wr
 
     @Override
     public Object execute(VirtualFrame frame) {
-        TruffleObject target = evaluateTarget(frame);
+        Object target = evaluateTarget(frame);
         return executeWithTarget(frame, target);
     }
 
     @Override
-    public TruffleObject evaluateTarget(VirtualFrame frame) {
-        try {
-            return withTarget.executeTruffleObject(frame);
-        } catch (UnexpectedResultException e) {
-            throw Errors.shouldNotReachHere();
-        }
+    public Object evaluateTarget(VirtualFrame frame) {
+        return withTarget.execute(frame);
     }
 
     @Override

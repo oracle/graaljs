@@ -47,7 +47,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -196,10 +195,6 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
 
     public LargeInteger executeLargeInteger(VirtualFrame frame) throws UnexpectedResultException {
         return JSTypesGen.expectLargeInteger(execute(frame));
-    }
-
-    public TruffleObject executeTruffleObject(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectTruffleObject(execute(frame));
     }
 
     /**

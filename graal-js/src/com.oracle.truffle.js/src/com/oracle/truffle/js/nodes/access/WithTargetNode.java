@@ -41,12 +41,9 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -83,20 +80,7 @@ public final class WithTargetNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return executeTruffleObject(frame);
-    }
-
-    public TruffleObject executeUnchecked(VirtualFrame frame) {
-        try {
-            return withVariable.executeTruffleObject(frame);
-        } catch (UnexpectedResultException e) {
-            throw Errors.shouldNotReachHere("With variable must always be a TruffleObject.");
-        }
-    }
-
-    @Override
-    public TruffleObject executeTruffleObject(VirtualFrame frame) {
-        TruffleObject target = executeUnchecked(frame);
+        Object target = withVariable.execute(frame);
         if (withObjectHasProperty.hasProperty(target) && isPropertyScopable(target)) {
             // with object has a scopable property
             return target;
@@ -112,7 +96,7 @@ public final class WithTargetNode extends JavaScriptNode {
     /**
      * Object Environment Records - HasBinding (ES6 8.1.1.2.1).
      */
-    private boolean isPropertyScopable(TruffleObject target) {
+    private boolean isPropertyScopable(Object target) {
         if (context.getEcmaScriptVersion() >= 6) {
             if (JSObject.isJSObject(target)) {
                 Object unscopables = withObjectGetUnscopables.getValue(target);
@@ -130,7 +114,7 @@ public final class WithTargetNode extends JavaScriptNode {
         return true;
     }
 
-    private boolean hasNoSuchProperty(TruffleObject thisTruffleObj, boolean isMethod) {
+    private boolean hasNoSuchProperty(Object thisTruffleObj, boolean isMethod) {
         if (JSRuntime.isObject(thisTruffleObj)) {
             DynamicObject thisObj = (DynamicObject) thisTruffleObj;
             if ((!isMethod && !context.getNoSuchPropertyUnusedAssumption().isValid() && JSObject.hasOwnProperty(thisObj, JSObject.NO_SUCH_PROPERTY_NAME)) ||
