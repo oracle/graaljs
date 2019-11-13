@@ -45,7 +45,6 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayFromNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayOfNodeGen;
@@ -208,7 +207,6 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private JSGetLengthNode getSourceLengthNode;
         @Child private IsArrayNode isFastArrayNode;
         private final ConditionProfile isIterable = ConditionProfile.createBinaryProfile();
-        private final BranchProfile notAJSObjectBranch = BranchProfile.create();
 
         public JSArrayFromNode(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);
@@ -224,7 +222,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             iteratorCloseNode.executeAbrupt(iterator);
         }
 
-        protected IteratorRecord getIterator(DynamicObject object, Object usingIterator) {
+        protected IteratorRecord getIterator(Object object, Object usingIterator) {
             if (callIteratorMethodNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callIteratorMethodNode = insert(JSFunctionCallNode.createCall());
@@ -265,7 +263,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             return callMapFnNode.executeCall(JSArguments.create(target, function, userArguments));
         }
 
-        protected long getSourceLength(DynamicObject thisObject) {
+        protected long getSourceLength(Object thisObject) {
             if (getSourceLengthNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getSourceLengthNode = insert(JSGetLengthNode.create(getContext()));
@@ -290,17 +288,17 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 checkCallbackIsFunction(mapFn);
                 mapping = true;
             }
-            DynamicObject itemsObject = JSRuntime.expectJSObject(toObject(items), notAJSObjectBranch);
-            Object usingIterator = getIteratorMethodNode.executeWithTarget(itemsObject);
+            Object usingIterator = getIteratorMethodNode.executeWithTarget(items);
             if (isIterable.profile(usingIterator != Undefined.instance)) {
-                return arrayFromIterable(thisObj, itemsObject, usingIterator, mapFn, thisArg, mapping);
+                return arrayFromIterable(thisObj, items, usingIterator, mapFn, thisArg, mapping);
             } else {
                 // NOTE: source is not an Iterable so assume it is already an array-like object.
+                Object itemsObject = toObject(items);
                 return arrayFromArrayLike(thisObj, itemsObject, mapFn, thisArg, mapping, setLength);
             }
         }
 
-        protected DynamicObject arrayFromIterable(Object thisObj, DynamicObject items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
+        protected DynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
             DynamicObject obj = constructOrArray(thisObj, 0, false);
 
             IteratorRecord iteratorRecord = getIterator(items, usingIterator);
@@ -329,7 +327,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        protected DynamicObject arrayFromArrayLike(Object thisObj, DynamicObject items, Object mapFn, Object thisArg, boolean mapping, boolean setLength) {
+        protected DynamicObject arrayFromArrayLike(Object thisObj, Object items, Object mapFn, Object thisArg, boolean mapping, boolean setLength) {
             long len = getSourceLength(items);
 
             DynamicObject obj = constructOrArray(thisObj, len, true);

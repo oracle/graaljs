@@ -139,7 +139,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Override
-        protected DynamicObject arrayFromIterable(Object thisObj, DynamicObject items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
+        protected DynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping) {
             SimpleArrayList<Object> values = new SimpleArrayList<>();
 
             IteratorRecord iteratorRecord = getIterator(items, usingIterator);
