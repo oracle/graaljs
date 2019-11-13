@@ -51,7 +51,6 @@ import java.util.TreeMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.LocationModifier;
@@ -121,7 +120,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         ARRAY_OFFSET_PROPERTY = JSObjectUtil.makeHiddenProperty(ARRAY_OFFSET_ID, allocator.locationForType(int.class), false);
         HOLE_COUNT_PROPERTY = JSObjectUtil.makeHiddenProperty(HOLE_COUNT_ID, allocator.locationForType(int.class), false);
         LAZY_REGEX_RESULT_PROPERTY = JSObjectUtil.makeHiddenProperty(LAZY_REGEX_RESULT_ID,
-                        allocator.locationForType(TruffleObject.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
+                        allocator.locationForType(Object.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
         LAZY_REGEX_ORIGINAL_INPUT_PROPERTY = JSObjectUtil.makeHiddenProperty(LAZY_REGEX_ORIGINAL_INPUT_ID,
                         allocator.locationForType(String.class, EnumSet.of(LocationModifier.Final, LocationModifier.NonNull)));
     }
@@ -227,12 +226,12 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
         return (ArrayAllocationSite) ALLOCATION_SITE_PROPERTY.get(thisObj, arrayCondition);
     }
 
-    public static TruffleObject arrayGetRegexResult(DynamicObject thisObj) {
+    public static Object arrayGetRegexResult(DynamicObject thisObj) {
         return arrayGetRegexResult(thisObj, JSArray.isJSArray(thisObj) && JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY);
     }
 
-    public static TruffleObject arrayGetRegexResult(DynamicObject thisObj, boolean arrayCondition) {
-        return (TruffleObject) LAZY_REGEX_RESULT_PROPERTY.get(thisObj, arrayCondition);
+    public static Object arrayGetRegexResult(DynamicObject thisObj, boolean arrayCondition) {
+        return LAZY_REGEX_RESULT_PROPERTY.get(thisObj, arrayCondition);
     }
 
     public static String arrayGetRegexResultOriginalInput(DynamicObject thisObj) {
