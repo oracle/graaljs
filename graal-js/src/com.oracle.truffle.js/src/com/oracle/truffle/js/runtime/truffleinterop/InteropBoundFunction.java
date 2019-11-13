@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -68,10 +67,6 @@ public final class InteropBoundFunction extends InteropFunction {
 
     public Object getReceiver() {
         return receiver;
-    }
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof InteropBoundFunction;
     }
 
     @Override

@@ -162,7 +162,4 @@ public final class Symbol implements TruffleObject {
         return super.hashCode();
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof Symbol;
-    }
 }

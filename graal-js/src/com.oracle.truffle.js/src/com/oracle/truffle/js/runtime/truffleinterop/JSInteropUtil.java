@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -190,7 +189,7 @@ public final class JSInteropUtil {
     }
 
     @TruffleBoundary
-    public static boolean hasProperty(TruffleObject obj, Object key) {
+    public static boolean hasProperty(Object obj, Object key) {
         if (key instanceof String) {
             return InteropLibrary.getFactory().getUncached().isMemberExisting(obj, (String) key);
         } else {
@@ -199,7 +198,7 @@ public final class JSInteropUtil {
     }
 
     @TruffleBoundary
-    public static boolean remove(TruffleObject obj, Object key) {
+    public static boolean remove(Object obj, Object key) {
         if (key instanceof String) {
             try {
                 InteropLibrary.getFactory().getUncached().removeMember(obj, (String) key);

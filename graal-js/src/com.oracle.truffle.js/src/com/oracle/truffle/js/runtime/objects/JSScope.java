@@ -534,10 +534,6 @@ public abstract class JSScope {
             this.frame = frame;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof VariablesMapObject;
-        }
-
         @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasMembers() {
@@ -619,10 +615,6 @@ public abstract class JSScope {
 
         private DynamicScopeWrapper(DynamicObject scope) {
             this.scope = scope;
-        }
-
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof DynamicScopeWrapper;
         }
 
         static boolean isConst(DynamicScopeWrapper wrapper, String name) {
