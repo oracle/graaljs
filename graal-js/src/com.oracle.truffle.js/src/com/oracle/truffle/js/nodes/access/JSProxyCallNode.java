@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -102,7 +101,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {
             DynamicObject pxHandler = JSProxy.getHandlerChecked(proxy);
-            TruffleObject pxTarget = JSProxy.getTarget(proxy);
+            Object pxTarget = JSProxy.getTarget(proxy);
             Object pxTrapFun = trapGetter.executeWithTarget(pxHandler);
             Object[] proxyArguments = JSArguments.extractUserArguments(arguments);
             if (pxTrapFunProfile.profile(pxTrapFun == Undefined.instance)) {
@@ -126,7 +125,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {
             DynamicObject pxHandler = JSProxy.getHandlerChecked(proxy);
-            TruffleObject pxTarget = JSProxy.getTarget(proxy);
+            Object pxTarget = JSProxy.getTarget(proxy);
             Object pxTrapFun = trapGetter.executeWithTarget(pxHandler);
             Object newTarget = isNewTarget ? JSArguments.getNewTarget(arguments) : proxy;
             Object[] constructorArguments = JSArguments.extractUserArguments(arguments, isNewTarget ? 1 : 0);

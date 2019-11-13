@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -260,7 +259,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isForeignObject(thisObj)")
-        protected Object valueOf(TruffleObject thisObj,
+        protected Object valueOf(Object thisObj,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {
             if (interop.isNull(thisObj)) {
                 throw Errors.createTypeErrorNotObjectCoercible(thisObj);
@@ -313,7 +312,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isJSProxy(thisObj)")
         protected String doJSProxy(DynamicObject thisObj,
                         @Shared("builtinTag") @Cached("create()") GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
-            TruffleObject target = JSProxy.getTargetNonProxy(thisObj);
+            Object target = JSProxy.getTargetNonProxy(thisObj);
             String toString = getToStringTag(thisObj);
             if (toString == null) {
                 toString = getBuiltinToStringTagNode.execute(target);
@@ -333,7 +332,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isForeignObject(thisObj)")
         @TruffleBoundary
-        protected String doForeignObject(TruffleObject thisObj) {
+        protected String doForeignObject(Object thisObj) {
             return "[foreign " + thisObj.getClass().getSimpleName() + "]";
         }
 
@@ -517,7 +516,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isForeignObject(thisObj)")
-        protected boolean hasOwnPropertyForeign(TruffleObject thisObj, Object propName) {
+        protected boolean hasOwnPropertyForeign(Object thisObj, Object propName) {
             return getHasOwnPropertyNode().executeBoolean(thisObj, propName);
         }
 

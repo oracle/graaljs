@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
@@ -84,7 +83,7 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
         return getArrayType(object, arrayCondition);
     }
 
-    protected final boolean isArraySuitableForEnumBasedProcessing(TruffleObject object, long length) {
+    protected final boolean isArraySuitableForEnumBasedProcessing(Object object, long length) {
         return length > JSTruffleOptions.BigArrayThreshold && !JSArrayBufferView.isJSArrayBufferView(object) && !JSProxy.isProxy(object) &&
                         ((JSArray.isJSArray(object) && context.getArrayPrototypeNoElementsAssumption().isValid()) || !JSObject.isJSObject(object) ||
                                         JSObject.getPrototype((DynamicObject) object) == Null.instance);

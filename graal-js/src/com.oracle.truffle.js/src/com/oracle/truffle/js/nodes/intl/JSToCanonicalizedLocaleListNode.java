@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -132,7 +131,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     }
 
     @Specialization(guards = {"isForeignObject(object)"})
-    protected String[] doForeignType(TruffleObject object,
+    protected String[] doForeignType(Object object,
                     @CachedLibrary(limit = "1") InteropLibrary interop,
                     @Cached TypeOfNode typeOfNode,
                     @Cached JSToStringNode toStringNode) {

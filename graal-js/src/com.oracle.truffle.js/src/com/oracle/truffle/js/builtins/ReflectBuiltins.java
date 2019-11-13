@@ -43,9 +43,8 @@ package com.oracle.truffle.js.builtins;
 import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectApplyNodeGen;
@@ -424,8 +423,8 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             DynamicObject proxyObj = (DynamicObject) proxy;
 
             DynamicObject handler = JSProxy.getHandler(proxyObj);
-            TruffleObject pxTarget = JSProxy.getTarget(proxyObj);
-            TruffleObject trap = JSProxy.getTrapFromObject(handler, JSProxy.SET);
+            Object pxTarget = JSProxy.getTarget(proxyObj);
+            Object trap = JSProxy.getTrapFromObject(handler, JSProxy.SET);
 
             while (trap == Undefined.instance) {
                 if (JSProxy.isProxy(pxTarget)) {

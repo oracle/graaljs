@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.array;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -70,11 +69,11 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
         return JSArrayLastElementIndexNodeGen.create(context);
     }
 
-    public final long executeLong(TruffleObject object, long length) {
+    public final long executeLong(Object object, long length) {
         return executeLong(object, length, isArray(object));
     }
 
-    public abstract long executeLong(TruffleObject object, long length, boolean isArray);
+    public abstract long executeLong(Object object, long length, boolean isArray);
 
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object, isArray) == cachedArrayType",
                     "!cachedArrayType.hasHoles(object, isArray)"}, limit = "MAX_CACHED_ARRAY_TYPES")
@@ -137,7 +136,7 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
     }
 
     @Specialization(guards = {"!isArray", "!isArraySuitableForEnumBasedProcessing(object, length)"})
-    public long doObject(TruffleObject object, long length, @SuppressWarnings("unused") boolean isArray,
+    public long doObject(Object object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create()") JSHasPropertyNode hasPropertyNode) {
         long index = length - 1;
         while (!hasPropertyNode.executeBoolean(object, index) && index > 0) {

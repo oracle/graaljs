@@ -135,7 +135,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             }
         } else if (value instanceof TruffleObject) {
             assert JSGuards.isForeignObject(value);
-            jsonForeignObject(builder, data, (TruffleObject) value);
+            jsonForeignObject(builder, data, value);
         } else if (JSRuntime.isJavaPrimitive(value)) {
             // call toString on Java objects, GR-3722
             jsonQuote(builder, value.toString());
@@ -144,7 +144,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private void jsonForeignObject(StringBuilder builder, JSONData data, TruffleObject obj) {
+    private void jsonForeignObject(StringBuilder builder, JSONData data, Object obj) {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
         if (interop.isNull(obj)) {
             stringBuilderProfile.append(builder, Null.NAME);
@@ -173,7 +173,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private Object jsonStrPrepare(JSONData data, String key, TruffleObject holder) {
+    private Object jsonStrPrepare(JSONData data, String key, Object holder) {
         Object value;
         if (JSObject.isJSObject(holder)) {
             value = JSObject.get((DynamicObject) holder, key);
@@ -190,13 +190,13 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private Object jsonStrPrepareForeign(JSONData data, int key, TruffleObject holder) {
+    private Object jsonStrPrepareForeign(JSONData data, int key, Object holder) {
         assert JSGuards.isForeignObject(holder);
         Object value = truffleRead(holder, key);
         return jsonStrPreparePart2(data, key, holder, value);
     }
 
-    private Object jsonStrPreparePart2(JSONData data, Object key, TruffleObject holder, Object valueArg) {
+    private Object jsonStrPreparePart2(JSONData data, Object key, Object holder, Object valueArg) {
         Object value = valueArg;
         if (JSRuntime.isObject(value) || JSRuntime.isBigInt(value)) {
             value = jsonStrPrepareObject(JSRuntime.toPropertyKey(key), value);
@@ -205,12 +205,12 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         if (data.getReplacerFnObj() != null) {
             value = JSRuntime.call(data.getReplacerFnObj(), holder, new Object[]{JSRuntime.toPropertyKey(key), value});
         }
-        if (value instanceof TruffleObject) {
-            if (JSObject.isJSObject(value)) {
-                return jsonStrPrepareJSObject((DynamicObject) value);
-            } else if (value instanceof Symbol || (JSRuntime.isForeignObject(value) && InteropLibrary.getFactory().getUncached(value).isExecutable(value))) {
-                return Undefined.instance;
-            }
+        if (JSObject.isJSObject(value)) {
+            return jsonStrPrepareJSObject((DynamicObject) value);
+        } else if (value instanceof Symbol) {
+            return Undefined.instance;
+        } else if (JSRuntime.isForeignObject(value) && InteropLibrary.getFactory().getUncached(value).isExecutable(value)) {
+            return Undefined.instance;
         }
         return value;
     }
@@ -254,7 +254,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private void jsonJO(StringBuilder builder, JSONData data, TruffleObject value) {
+    private void jsonJO(StringBuilder builder, JSONData data, Object value) {
         checkCycle(data, value);
         data.pushStack(value);
         checkStackDepth(data);
@@ -279,7 +279,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         data.setIndent(stepback);
     }
 
-    private boolean serializeJSONObjectProperties(StringBuilder builder, JSONData data, TruffleObject value, int indent, List<? extends Object> keys) {
+    private boolean serializeJSONObjectProperties(StringBuilder builder, JSONData data, Object value, int indent, List<? extends Object> keys) {
         boolean isFirst = true;
         boolean hasContent = false;
         for (Object key : keys) {
@@ -308,7 +308,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private boolean serializeForeignObjectProperties(StringBuilder builder, JSONData data, TruffleObject obj, int indent) {
+    private boolean serializeForeignObjectProperties(StringBuilder builder, JSONData data, Object obj, int indent) {
         try {
             InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(obj);
             if (!objInterop.hasMembers(obj)) {
@@ -348,7 +348,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private void jsonJA(StringBuilder builder, JSONData data, TruffleObject value) {
+    private void jsonJA(StringBuilder builder, JSONData data, Object value) {
         checkCycle(data, value);
         assert JSRuntime.isArray(value) || InteropLibrary.getFactory().getUncached().hasArrayElements(value);
         data.pushStack(value);
@@ -447,7 +447,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private static void checkCycle(JSONData data, TruffleObject value) {
+    private static void checkCycle(JSONData data, Object value) {
         if (data.stack.contains(value)) {
             throw Errors.createTypeError("Converting circular structure to JSON");
         }
@@ -514,11 +514,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         stringBuilderProfile.append(builder, Character.forDigit(c & 0xF, 16));
     }
 
-    private Object truffleGetSize(TruffleObject obj) {
+    private Object truffleGetSize(Object obj) {
         return JSInteropUtil.getArraySize(obj, InteropLibrary.getFactory().getUncached(), this);
     }
 
-    private Object truffleRead(TruffleObject obj, String key) {
+    private Object truffleRead(Object obj, String key) {
         try {
             return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readMember(obj, key));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
@@ -526,7 +526,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private Object truffleRead(TruffleObject obj, int index) {
+    private Object truffleRead(Object obj, int index) {
         try {
             return JSRuntime.importValue(InteropLibrary.getFactory().getUncached().readArrayElement(obj, index));
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {

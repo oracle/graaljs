@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.NumberPrototypeBuiltins.JSNumberOperation;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCharCodeNodeGen;
@@ -210,8 +209,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected String raw(Object template, Object[] substitutions) {
             int numberOfSubstitutions = substitutions.length;
-            TruffleObject cooked = templateToObjectNode.executeTruffleObject(template);
-            TruffleObject raw = rawToObjectNode.executeTruffleObject(getRawNode.getValue(cooked));
+            Object cooked = templateToObjectNode.executeTruffleObject(template);
+            Object raw = rawToObjectNode.executeTruffleObject(getRawNode.getValue(cooked));
 
             int literalSegments = getRawLength(raw);
             if (emptyProf.profile(literalSegments <= 0)) {
@@ -234,7 +233,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return Boundaries.builderToString(result);
         }
 
-        private int getRawLength(TruffleObject raw) {
+        private int getRawLength(Object raw) {
             long length = getRawLengthNode.executeLong(raw);
             try {
                 return Math.toIntExact(length);

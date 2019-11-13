@@ -329,7 +329,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     private static boolean checkProxy(DynamicObject value, boolean isFunction) {
-        TruffleObject obj = JSProxy.getTargetNonProxy(value);
+        Object obj = JSProxy.getTargetNonProxy(value);
         if (isFunction) {
             return JSFunction.isJSFunction(obj) || JSRuntime.isCallableForeign(obj) || JSRuntime.isConstructorForeign(obj);
         } else {

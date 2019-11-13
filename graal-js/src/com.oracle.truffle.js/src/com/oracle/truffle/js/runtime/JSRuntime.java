@@ -2349,7 +2349,7 @@ public final class JSRuntime {
         } else if (JSProxy.isProxy(value)) {
             return isCallableProxy((DynamicObject) value);
         } else if (value instanceof TruffleObject) {
-            return isCallableForeign((TruffleObject) value);
+            return isCallableForeign(value);
         }
         return false;
     }
@@ -2365,7 +2365,7 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static boolean isCallableForeign(TruffleObject value) {
+    public static boolean isCallableForeign(Object value) {
         if (isForeignObject(value)) {
             return InteropLibrary.getFactory().getUncached().isExecutable(value);
         }
@@ -2722,13 +2722,13 @@ public final class JSRuntime {
         } else if (JSProxy.isProxy(constrObj)) {
             return isConstructorProxy((DynamicObject) constrObj);
         } else if (constrObj instanceof TruffleObject) {
-            return isConstructorForeign((TruffleObject) constrObj);
+            return isConstructorForeign(constrObj);
         }
         return false;
     }
 
     @TruffleBoundary
-    public static boolean isConstructorForeign(TruffleObject value) {
+    public static boolean isConstructorForeign(Object value) {
         if (isForeignObject(value)) {
             return InteropLibrary.getFactory().getUncached().isInstantiable(value);
         }

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -93,7 +92,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
         DynamicObject handler = JSProxy.getHandler(proxy);
-        TruffleObject target = JSProxy.getTarget(proxy);
+        Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
@@ -107,12 +106,12 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         return trapResult;
     }
 
-    private void checkInvariants(Object propertyKey, TruffleObject truffleTarget, Object trapResult) {
+    private void checkInvariants(Object propertyKey, Object proxyTarget, Object trapResult) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        if (!JSObject.isJSObject(truffleTarget)) {
+        if (!JSObject.isJSObject(proxyTarget)) {
             return; // best effort, cannot check for foreign objects
         }
-        PropertyDescriptor targetDesc = getOwnProperty((DynamicObject) truffleTarget, propertyKey);
+        PropertyDescriptor targetDesc = getOwnProperty((DynamicObject) proxyTarget, propertyKey);
         if (targetDesc != null) {
             if (targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && !targetDesc.getWritable()) {
                 Object targetValue = targetDesc.getValue();

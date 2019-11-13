@@ -62,7 +62,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -1285,7 +1284,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"!isNewTargetCase", "arguments.length > 0", "!arg0NullOrUndefined(arguments)"})
-        protected TruffleObject constructObjectJSObject(@SuppressWarnings("unused") DynamicObject newTarget, Object[] arguments,
+        protected Object constructObjectJSObject(@SuppressWarnings("unused") DynamicObject newTarget, Object[] arguments,
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
             return toObjectNode.executeTruffleObject(arguments[0]);
         }
@@ -1831,7 +1830,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        private void checkRevokedProxy(TruffleObject obj) {
+        private void checkRevokedProxy(Object obj) {
             if (JSProxy.isProxy(obj) && revoked.profile(JSProxy.isRevoked((DynamicObject) obj))) {
                 throw Errors.createTypeError("argument cannot be a revoked proxy");
             }
@@ -1846,11 +1845,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (handlerNonObject.profile(!JSGuards.isJSObject(handler))) {
                 throw Errors.createTypeError("handler expected to be an object");
             }
-            TruffleObject targetObj = (TruffleObject) target;
             DynamicObject handlerObj = (DynamicObject) handler;
-            checkRevokedProxy(targetObj);
+            checkRevokedProxy(target);
             checkRevokedProxy(handlerObj);
-            return swapPrototype(JSProxy.create(getContext(), targetObj, handlerObj), newTarget);
+            return swapPrototype(JSProxy.create(getContext(), target, handlerObj), newTarget);
         }
 
         @Override

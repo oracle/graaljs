@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -93,7 +92,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
                     @Cached("createBinaryProfile()") ConditionProfile trapFunProfile) {
         assert JSProxy.isProxy(proxy);
         Object propertyKey = toPropertyKeyNode.execute(key);
-        TruffleObject target = JSProxy.getTarget(proxy);
+        Object target = JSProxy.getTarget(proxy);
         DynamicObject handler = JSProxy.getHandler(proxy);
         Object trapFun = trapGetter.executeWithTarget(handler);
         if (trapFunProfile.profile(trapFun == Undefined.instance)) {

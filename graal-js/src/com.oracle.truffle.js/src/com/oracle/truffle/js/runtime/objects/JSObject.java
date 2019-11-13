@@ -414,14 +414,6 @@ public final class JSObject {
         return classProfile.getJSClass(obj).hasOwnProperty(obj, key);
     }
 
-    public static boolean hasOwnProperty(TruffleObject target, Object key) {
-        if (isJSObject(target)) {
-            return hasOwnProperty((DynamicObject) target, key);
-        } else {
-            return JSInteropUtil.hasProperty(target, key);
-        }
-    }
-
     @TruffleBoundary
     public static boolean hasProperty(DynamicObject obj, long index) {
         return JSObject.getJSClass(obj).hasProperty(obj, index);
@@ -645,11 +637,4 @@ public final class JSObject {
         return JSObject.getJSClass(obj).setIntegrityLevel(obj, freeze);
     }
 
-    public static Object get(TruffleObject target, long index, JSClassProfile targetClassProfile) {
-        if (isJSObject(target)) {
-            return get((DynamicObject) target, index, targetClassProfile);
-        } else {
-            return null;
-        }
-    }
 }

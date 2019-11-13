@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -98,7 +97,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
         DynamicObject handler = JSProxy.getHandler(proxy);
-        TruffleObject target = JSProxy.getTarget(proxy);
+        Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
@@ -124,7 +123,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         return JSProxy.checkProxySetTrapInvariants(proxy, propertyKey, value);
     }
 
-    private void truffleWrite(TruffleObject obj, Object key, Object value) {
+    private void truffleWrite(Object obj, Object key, Object value) {
         InteropLibrary interop = interopNode;
         ExportValueNode exportValue = exportValueNode;
         if (interop == null || exportValue == null) {

@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -623,7 +622,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected TruffleObject fill(Object thisObj, Object value, Object start, Object end) {
+        protected DynamicObject fill(Object thisObj, Object value, Object start, Object end) {
             validateTypedArray(thisObj);
             DynamicObject thisJSObj = (DynamicObject) thisObj;
             long len = getLength(thisJSObj);

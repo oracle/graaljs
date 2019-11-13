@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
@@ -183,7 +182,7 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
     }
 
     @Specialization(guards = "isForeignObject(operand)", limit = "1")
-    protected boolean doForeign(TruffleObject operand,
+    protected boolean doForeign(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
         return interop.isNull(operand);
     }

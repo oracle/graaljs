@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
@@ -63,13 +62,13 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
         return JSSetLengthNodeGen.create(context, strict);
     }
 
-    public abstract Object execute(TruffleObject target, Object value);
+    public abstract Object execute(Object target, Object value);
 
     protected final WritePropertyNode createWritePropertyNode() {
         return WritePropertyNode.create(null, JSArray.LENGTH, null, context, isStrict);
     }
 
-    protected static boolean isArray(TruffleObject object) {
+    protected static boolean isArray(Object object) {
         // currently, must be fast array
         return JSArray.isJSFastArray(object);
     }
@@ -96,7 +95,7 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isDynamicObject(object)")
-    protected static Object setLengthForeign(@SuppressWarnings("unused") TruffleObject object, Object length) {
+    protected static Object setLengthForeign(@SuppressWarnings("unused") Object object, Object length) {
         // there is no SET_SIZE message. Let's assume WRITE already has done the job
         return length;
     }

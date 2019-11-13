@@ -43,12 +43,11 @@ package com.oracle.truffle.js.builtins.helper;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 
 public class JSONData {
 
-    protected List<TruffleObject> stack = new ArrayList<>();
+    protected List<Object> stack = new ArrayList<>();
     private int indent;
     private final String gap;
     private final List<String> propertyList;
@@ -82,7 +81,7 @@ public class JSONData {
         return replacerFnObj;
     }
 
-    public void pushStack(TruffleObject value) {
+    public void pushStack(Object value) {
         stack.add(value);
     }
 
