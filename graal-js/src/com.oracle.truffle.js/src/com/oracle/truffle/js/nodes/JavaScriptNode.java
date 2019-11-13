@@ -177,20 +177,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         return JSTypesGen.expectObjectArray(execute(frame));
     }
 
-    public char executeCharacter(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectCharacter(execute(frame));
-    }
-
-    public float executeFloat(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectFloat(execute(frame));
-    }
-
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
         return JSTypesGen.expectLong(execute(frame));
-    }
-
-    public byte executeByte(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectByte(execute(frame));
     }
 
     public LargeInteger executeLargeInteger(VirtualFrame frame) throws UnexpectedResultException {
