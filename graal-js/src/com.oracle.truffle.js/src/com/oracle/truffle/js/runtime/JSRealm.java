@@ -44,15 +44,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.nio.file.Path;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.SplittableRandom;
-import java.util.TimeZone;
-import java.util.WeakHashMap;
+import java.util.*;
 
 import org.graalvm.options.OptionValues;
 
@@ -377,9 +371,10 @@ public class JSRealm {
     private JavaScriptNode callNode;
 
     /**
-     * Per-realm cache used by the CommonJs `require` emulation.
+     * Per-realm data structures used by the CommonJs `require` emulation.
      */
-    private final Map<String, DynamicObject> commonJsRequireCache;
+    private final Map<Path, DynamicObject> commonJsRequireCache;
+    private final Stack<Path> commonJsStack = new Stack<>();
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -1994,6 +1989,7 @@ public class JSRealm {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     public JSRealm getCurrentV8Realm() {
         return v8RealmCurrent;
     }
@@ -2031,6 +2027,11 @@ public class JSRealm {
     public final Map<String, DynamicObject> getCommonJsRequireCache() {
         assert context.getContextOptions().isRequire();
         return commonJsRequireCache;
+    }
+
+    public final Stack<Path> getCommonJsRequireStack() {
+        assert context.getContextOptions().isRequire();
+        return commonJsStack;
     }
 
 }
