@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -129,7 +130,8 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
     protected final DynamicObject copyDataPropertiesForeign(DynamicObject target, Object from, Object[] excludedItems, boolean withExcluded,
                     @CachedLibrary("from") InteropLibrary objInterop,
                     @CachedLibrary(limit = "3") InteropLibrary keysInterop,
-                    @CachedLibrary(limit = "3") InteropLibrary stringInterop) {
+                    @CachedLibrary(limit = "3") InteropLibrary stringInterop,
+                    @Cached JSForeignToJSTypeNode importValue) {
         if (objInterop.isNull(from)) {
             return target;
         }
@@ -142,7 +144,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                 String stringKey = key instanceof String ? (String) key : stringInterop.asString(key);
                 if (!isExcluded(withExcluded, excludedItems, stringKey)) {
                     Object value = objInterop.readMember(from, stringKey);
-                    JSRuntime.createDataProperty(target, stringKey, JSRuntime.importValue(value));
+                    JSRuntime.createDataProperty(target, stringKey, importValue.executeWithTarget(value));
                 }
             }
         } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
