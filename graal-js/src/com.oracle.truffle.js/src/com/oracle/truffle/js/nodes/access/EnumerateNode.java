@@ -55,11 +55,11 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -147,10 +147,11 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     @Specialization(guards = {"isForeignObject(iteratedObject)"}, limit = "3")
-    protected DynamicObject doEnumerateTruffleObject(TruffleObject iteratedObject,
+    protected DynamicObject doEnumerateTruffleObject(Object iteratedObject,
                     @CachedLibrary("iteratedObject") InteropLibrary interop,
                     @CachedLibrary(limit = "3") InteropLibrary keysInterop,
-                    @Cached("createBinaryProfile()") ConditionProfile isHostObject) {
+                    @Cached("createBinaryProfile()") ConditionProfile isHostObject,
+                    @Cached BranchProfile notIterable) {
         TruffleLanguage.Env env = context.getRealm().getEnv();
         if (isHostObject.profile(env.isHostObject(iteratedObject))) {
             Object hostObject = env.asHostObject(iteratedObject);
@@ -160,7 +161,30 @@ public abstract class EnumerateNode extends JavaScriptNode {
             }
         }
 
-        return doEnumerateTruffleObjectIntl(iteratedObject, interop, keysInterop);
+        try {
+            if (!interop.isNull(iteratedObject)) {
+                if (interop.hasArrayElements(iteratedObject)) {
+                    long longSize = interop.getArraySize(iteratedObject);
+                    return enumerateForeignArrayLike(context, iteratedObject, longSize, values, interop);
+                } else if (interop.hasMembers(iteratedObject)) {
+                    Object keysObj = interop.getMembers(iteratedObject);
+                    assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
+                    long longSize = keysInterop.getArraySize(keysObj);
+                    return enumerateForeignNonArray(context, iteratedObject, keysObj, longSize, values, interop, keysInterop);
+                } else if (interop.isString(iteratedObject)) {
+                    String string = interop.asString(iteratedObject);
+                    return enumerateString(string);
+                }
+            }
+        } catch (UnsupportedMessageException ex) {
+            // swallow and default
+        }
+        notIterable.enter();
+        if (requireIterable) {
+            throw Errors.createTypeErrorNotIterable(iteratedObject, this);
+        }
+        // in case of any errors, return an empty iterator
+        return newEnumerateIterator(context, Collections.emptyIterator());
     }
 
     @TruffleBoundary
@@ -187,32 +211,6 @@ public abstract class EnumerateNode extends JavaScriptNode {
             return IteratorUtil.convertIterator(iterator, env::asGuestValue);
         }
         return null;
-    }
-
-    private DynamicObject doEnumerateTruffleObjectIntl(Object iteratedObject, InteropLibrary objInterop, InteropLibrary keysInterop) {
-        try {
-            if (!objInterop.isNull(iteratedObject)) {
-                if (objInterop.hasArrayElements(iteratedObject)) {
-                    long longSize = objInterop.getArraySize(iteratedObject);
-                    return enumerateForeignArrayLike(context, iteratedObject, longSize, values, objInterop);
-                } else if (objInterop.hasMembers(iteratedObject)) {
-                    Object keysObj = objInterop.getMembers(iteratedObject);
-                    assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
-                    long longSize = keysInterop.getArraySize(keysObj);
-                    return enumerateForeignNonArray(context, iteratedObject, keysObj, longSize, values, objInterop, keysInterop);
-                } else if (objInterop.isString(iteratedObject)) {
-                    String string = objInterop.asString(iteratedObject);
-                    return enumerateString(string);
-                }
-            }
-        } catch (UnsupportedMessageException ex) {
-            // swallow and default
-        }
-        if (requireIterable) {
-            throw Errors.createTypeErrorNotIterable(iteratedObject, this);
-        }
-        // in case of any errors, return an empty iterator
-        return newEnumerateIterator(context, Collections.emptyIterator());
     }
 
     private static DynamicObject enumerateForeignArrayLike(JSContext context, Object iteratedObject, long longSize, boolean values,
