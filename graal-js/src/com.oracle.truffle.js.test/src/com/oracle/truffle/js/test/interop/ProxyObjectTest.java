@@ -175,4 +175,29 @@ public class ProxyObjectTest {
         assertEquals(668, context.eval(ID, "obj.foo").asInt());
         assertEquals(333, context.eval(ID, "obj.p3").asInt());
     }
+
+    private void arrayFromProxyArrayCommon(String method) {
+        ProxyArray proxyArr = ProxyArray.fromArray(41, 42, 43);
+        context.getBindings(ID).putMember("proxyArr", proxyArr);
+        context.eval(ID, "arr = " + method + "(proxyArr);");
+        assertEquals(3, context.eval(ID, "arr.length").asInt());
+        assertEquals(41, context.eval(ID, "arr[0]").asInt());
+        assertEquals(42, context.eval(ID, "arr[1]").asInt());
+        assertEquals(43, context.eval(ID, "arr[2]").asInt());
+    }
+
+    @Test
+    public void arrayFromProxyArray() {
+        arrayFromProxyArrayCommon("Array.from");
+    }
+
+    @Test
+    public void typedArrayFromProxyArray() {
+        arrayFromProxyArrayCommon("Int8Array.from");
+    }
+
+    @Test
+    public void newTypedArrayFromProxyArray() {
+        arrayFromProxyArrayCommon("new Int8Array");
+    }
 }
