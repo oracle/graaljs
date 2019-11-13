@@ -1358,7 +1358,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             // TODO: call builtinReplace thisStr.length()+1 times with shifted argument.
             ReplacedStringPosition strPos = new ReplacedStringPosition("", 0);
             if (Boundaries.stringCompareTo(searchString, "") == 0) {
-                strPos = builtinReplace(searchString, replParam, thisStr);
+                strPos = builtinReplace(searchString, replParam, thisStr, thisStr, 0);
                 return Boundaries.stringConcat(strPos.replacedPart, thisStr);
             }
 
@@ -1366,14 +1366,13 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             StringBuilder methodInput = new StringBuilder();
             int position = 0;
             // TODO: Provide callback with adequate arguments. Maybe pass last position and add it
-            // to existing and
-            // pass thisStr as it is.
+            // to existing and pass thisStr as it is. - DONE.
             // Then, while refactoring, think about making strPos and maybe something else as
             // private field in
             // JSStringReplaceAllNode to avoid passing too much parameters.
             while (position < thisStr.length()) {
                 Boundaries.builderAppend(methodInput, thisStr, position, thisStr.length());
-                strPos = builtinReplace(searchString, replParam, Boundaries.builderToString(methodInput));
+                strPos = builtinReplace(searchString, replParam, Boundaries.builderToString(methodInput), thisStr, position);
                 Boundaries.builderAppend(result, strPos.replacedPart, 0, strPos.replacedPart.length());
                 methodInput.setLength(0);
                 position += strPos.position;
@@ -1386,7 +1385,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return ReplaceStringParser.parse(replaceValue, 0, false);
         }
 
-        private ReplacedStringPosition builtinReplace(String searchString, Object replParam, String input) {
+        private ReplacedStringPosition builtinReplace(String searchString, Object replParam, String input, String thisStr, int previousPosition) {
             boolean functionalReplace = isCallableNode.executeBoolean(replParam);
             String replaceString = null;
             if (!functionalReplaceProfile.profile(functionalReplace)) {
@@ -1399,7 +1398,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             StringBuilder sb = new StringBuilder(pos + (input.length() - (pos + searchString.length())) + 20);
             Boundaries.builderAppend(sb, input, 0, pos);
             if (functionalReplaceProfile.profile(functionalReplace)) {
-                Object replValue = functionReplaceCall(replParam, Undefined.instance, new Object[]{searchString, pos, input});
+                Object replValue = functionReplaceCall(replParam, Undefined.instance, new Object[]{searchString, pos + previousPosition, thisStr});
                 Boundaries.builderAppend(sb, toString3Node.executeString(replValue));
             } else {
                 appendSubstitution(sb, input, replaceString, searchString, pos, dollarProfile);
