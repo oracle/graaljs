@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
@@ -1120,7 +1119,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected abstract T createJavaPropertyNodeMaybe(Object thisObj, int depth);
 
-    protected abstract T createTruffleObjectPropertyNode(TruffleObject thisObj);
+    protected abstract T createTruffleObjectPropertyNode();
 
     protected T specialize(Object thisObj) {
         CompilerAsserts.neverPartOfCompilation();
@@ -1203,7 +1202,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
         } else if (JSRuntime.isForeignObject(thisObj)) {
             assert !JSObject.isJSObject(thisObj);
-            specialized = createTruffleObjectPropertyNode((TruffleObject) thisObj);
+            specialized = createTruffleObjectPropertyNode();
         } else {
             store = wrapPrimitive(thisObj, context);
         }

@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -1375,7 +1374,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     @Override
-    protected SetCacheNode createTruffleObjectPropertyNode(TruffleObject thisObject) {
+    protected SetCacheNode createTruffleObjectPropertyNode() {
         return new ForeignPropertySetNode(context);
     }
 

@@ -1744,7 +1744,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     @Override
-    protected GetCacheNode createTruffleObjectPropertyNode(TruffleObject thisObject) {
+    protected GetCacheNode createTruffleObjectPropertyNode() {
         return new ForeignPropertyGetNode(key, isMethod(), isGlobal(), context);
     }
 }
