@@ -288,8 +288,11 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         } finally {
             lock.unlock();
         }
-        assert c.accept(function);
-        return c.executeCall(arguments);
+        if (c.accept(function)) {
+            return c.executeCall(arguments);
+        } else {
+            throw new AssertionError();
+        }
     }
 
     private static boolean isCached(AbstractCacheNode c) {
