@@ -115,6 +115,6 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
         }
-        return (DynamicObject) toObjectNode.executeTruffleObject(o);
+        return (DynamicObject) toObjectNode.execute(o);
     }
 }

@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -168,7 +167,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isForeignObject(object)")
-    public boolean foreignObject(TruffleObject object, Object propertyName,
+    public boolean foreignObject(Object object, Object propertyName,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,

@@ -342,7 +342,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
             }
-            return toObjectNode.executeTruffleObject(target);
+            return toObjectNode.execute(target);
         }
 
         protected long getLength(Object thisObject) {
@@ -2215,7 +2215,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toObjectNode = insert(JSToObjectNode.createToObject(context));
             }
-            return toObjectNode.executeTruffleObject(target);
+            return toObjectNode.execute(target);
         }
 
         protected long getLength(Object thisObject) {
@@ -3021,7 +3021,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = "!isJSObject(thisObj)")
         protected DynamicObject doNotJSObject(VirtualFrame frame, Object thisObj,
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
-            return createArrayIteratorNode.execute(frame, toObjectNode.executeTruffleObject(thisObj));
+            return createArrayIteratorNode.execute(frame, toObjectNode.execute(thisObj));
         }
     }
 

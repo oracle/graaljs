@@ -298,7 +298,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
     protected DynamicObject doNonObject(Object iteratedObject,
                     @Cached("createToObjectNoCheck(context)") JSToObjectNode toObjectNode,
                     @Cached("copyRecursive()") EnumerateNode enumerateNode) {
-        return enumerateNode.execute(toObjectNode.executeTruffleObject(iteratedObject));
+        return enumerateNode.execute(toObjectNode.execute(iteratedObject));
     }
 
     private static final class ArrayIterator implements Iterator<Object> {

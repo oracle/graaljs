@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -104,7 +103,7 @@ abstract class GetLengthHelperNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isDynamicObject(target)", limit = "3")
-    public double getLengthForeign(TruffleObject target, @SuppressWarnings("unused") boolean isArray,
+    public double getLengthForeign(Object target, @SuppressWarnings("unused") boolean isArray,
                     @CachedLibrary("target") InteropLibrary interop) {
         return JSInteropUtil.getArraySize(target, interop, this);
     }

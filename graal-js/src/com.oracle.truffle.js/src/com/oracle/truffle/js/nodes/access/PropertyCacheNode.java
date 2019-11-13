@@ -192,7 +192,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return (DynamicObject) toObject.executeTruffleObject(thisObj);
+            return (DynamicObject) toObject.execute(thisObj);
         }
     }
 

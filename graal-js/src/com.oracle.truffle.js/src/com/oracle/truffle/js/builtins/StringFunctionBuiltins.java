@@ -209,8 +209,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected String raw(Object template, Object[] substitutions) {
             int numberOfSubstitutions = substitutions.length;
-            Object cooked = templateToObjectNode.executeTruffleObject(template);
-            Object raw = rawToObjectNode.executeTruffleObject(getRawNode.getValue(cooked));
+            Object cooked = templateToObjectNode.execute(template);
+            Object raw = rawToObjectNode.execute(getRawNode.getValue(cooked));
 
             int literalSegments = getRawLength(raw);
             if (emptyProf.profile(literalSegments <= 0)) {

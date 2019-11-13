@@ -954,7 +954,7 @@ public final class JSRuntime {
         if (JSArray.isJSArray(obj)) {
             isArrayLike = true;
             isArray = true;
-            length = arrayGetLength(obj);
+            length = JSArray.arrayGetLength(obj);
         } else if (JSArrayBufferView.isJSArrayBufferView(obj)) {
             isArrayLike = true;
             length = JSArrayBufferView.typedArrayGetLength(obj);
@@ -1175,16 +1175,6 @@ public final class JSRuntime {
         }
         sb.append('}');
         return sb.toString();
-    }
-
-    @TruffleBoundary
-    private static long arrayGetLength(TruffleObject obj) {
-        if (JSArray.isJSArray(obj)) {
-            return JSArray.arrayGetLength((DynamicObject) obj);
-        } else {
-            assert isForeignObject(obj);
-            return JSInteropUtil.getArraySize(obj, InteropLibrary.getFactory().getUncached(), null);
-        }
     }
 
     private static boolean fillEmptyArrayElements(StringBuilder sb, long index, long prevArrayIndex, boolean prependComma) {

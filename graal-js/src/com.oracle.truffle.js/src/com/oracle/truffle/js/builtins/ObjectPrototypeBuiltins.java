@@ -192,7 +192,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
             }
-            return toObjectNode.executeTruffleObject(target);
+            return toObjectNode.execute(target);
         }
 
         /**

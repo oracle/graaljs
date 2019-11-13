@@ -111,7 +111,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                     @Cached TypeOfNode typeOfNode,
                     @Cached JSToStringNode toStringNode) {
         List<String> result = new ArrayList<>();
-        DynamicObject localeObj = (DynamicObject) toObjectNode.executeTruffleObject(object);
+        DynamicObject localeObj = (DynamicObject) toObjectNode.execute(object);
         long len = getLengthNode.executeLong(localeObj);
         for (long k = 0; k < len; k++) {
             if (hasPropertyNode.executeBoolean(localeObj, k)) {

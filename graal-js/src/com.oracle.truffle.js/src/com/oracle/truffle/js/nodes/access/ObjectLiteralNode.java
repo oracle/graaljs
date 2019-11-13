@@ -573,7 +573,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(context));
                 copyDataPropertiesNode = insert(CopyDataPropertiesNode.create(context));
             }
-            Object from = toObjectNode.executeTruffleObject(sourceValue);
+            Object from = toObjectNode.execute(sourceValue);
             copyDataPropertiesNode.execute(target, from);
         }
 

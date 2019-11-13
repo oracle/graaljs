@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -128,7 +127,7 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isForeignObject(value)")
-    protected Number doForeignObject(TruffleObject value,
+    protected Number doForeignObject(Object value,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode) {
         return toNumber(toPrimitiveNode.execute(value));
     }

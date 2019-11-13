@@ -1413,7 +1413,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
             }
-            return toObjectNode.executeTruffleObject(obj);
+            return toObjectNode.execute(obj);
         }
 
         final TRegexUtil.TRegexNamedCaptureGroupsAccessor getNamedCaptureGroupsAccessor() {

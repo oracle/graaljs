@@ -990,7 +990,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 }
                 foreignSetNode.setValue(thisObj, value, receiver, root, guard);
             } else {
-                setValueInDynamicObject(toObjectNode.executeTruffleObject(thisObj), value, receiver, root);
+                setValueInDynamicObject(toObjectNode.execute(thisObj), value, receiver, root);
             }
             return true;
         }

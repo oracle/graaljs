@@ -1067,7 +1067,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(root.getContext()));
                     }
-                    DynamicObject object = JSRuntime.expectJSObject(toObjectNode.executeTruffleObject(thisObj), notAJSObjectBranch);
+                    DynamicObject object = JSRuntime.expectJSObject(toObjectNode.execute(thisObj), notAJSObjectBranch);
                     return getPropertyFromJSObject(object, receiver, defaultValue, root);
                 }
             }

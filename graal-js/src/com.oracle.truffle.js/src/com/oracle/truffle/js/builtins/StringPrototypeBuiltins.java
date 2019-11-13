@@ -523,7 +523,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
             }
-            return getMethodNode.executeWithTarget(toObjectNode.executeTruffleObject(target));
+            return getMethodNode.executeWithTarget(toObjectNode.execute(target));
         }
     }
 

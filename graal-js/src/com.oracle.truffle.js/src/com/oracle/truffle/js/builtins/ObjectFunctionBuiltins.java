@@ -909,13 +909,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
                         @Cached("create(getContext(), STRICT)") WriteElementNode write,
                         @Cached("create(getContext())") AssignPropertiesNode assignProperties) {
-            Object to = toObjectNode.executeTruffleObject(target);
+            Object to = toObjectNode.execute(target);
             if (sources.length == 0) {
                 return to;
             }
             for (Object o : sources) {
                 if (!JSRuntime.isNullOrUndefined(o)) {
-                    Object from = toObjectNode.executeTruffleObject(o);
+                    Object from = toObjectNode.execute(o);
                     assignProperties.executeVoid(to, from, write);
                 }
             }

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -89,7 +88,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         this.allowForeign = allowForeign;
     }
 
-    public abstract TruffleObject executeTruffleObject(Object value);
+    public abstract Object execute(Object value);
 
     public static JSToObjectNode createToObject(JSContext context) {
         return createToObject(context, true, false, true);
@@ -210,7 +209,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isForeignObject(obj)"})
-    protected TruffleObject doForeignTruffleObject(TruffleObject obj) {
+    protected Object doForeignTruffleObject(Object obj) {
         if (isAllowForeign()) {
             if (isFromWith() && context.isOptionNashornCompatibilityMode() && context.getRealm().getEnv().isHostObject(obj)) {
                 throwWithError();
@@ -222,14 +221,14 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!isBoolean(object)", "!isNumber(object)", "!isString(object)", "!isSymbol(object)", "!isJSObject(object)", "!isForeignObject(object)"})
-    protected TruffleObject doJavaGeneric(Object object) {
+    protected Object doJavaGeneric(Object object) {
         // assume these to be Java objects
         assert !JSRuntime.isJSNative(object);
         if (isFromWith()) {
             // ... but make that an error within "with"
             throwWithError();
         }
-        return (TruffleObject) context.getRealm().getEnv().asBoxedGuestValue(object);
+        return context.getRealm().getEnv().asBoxedGuestValue(object);
     }
 
     @TruffleBoundary
@@ -263,14 +262,9 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
             return JSToObjectWrapperNodeGen.create(child, JSToObjectNodeGen.create(context, checkForNullOrUndefined, true, true));
         }
 
-        @Override
-        public boolean isResultAlwaysOfType(Class<?> clazz) {
-            return clazz == TruffleObject.class;
-        }
-
         @Specialization
-        protected TruffleObject doDefault(Object value) {
-            return toObjectNode.executeTruffleObject(value);
+        protected Object doDefault(Object value) {
+            return toObjectNode.execute(value);
         }
 
         @Override

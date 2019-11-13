@@ -68,7 +68,7 @@ public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
                     @Cached("createToObject(getContext())") JSToObjectNode toObjectNode,
                     @Cached("createMatcherGetter(getContext())") GetStringOptionNode getMatcherNode) {
 
-        String matcher = getMatcherNode.executeValue(toObjectNode.executeTruffleObject(opts));
+        String matcher = getMatcherNode.executeValue(toObjectNode.execute(opts));
         return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), matcher));
     }
 
