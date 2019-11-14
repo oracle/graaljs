@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
@@ -51,8 +53,11 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.Callable;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class CommonJsRequireTest {
 
@@ -144,6 +149,21 @@ public class CommonJsRequireTest {
             TestFile.create(f,"module.js", "module.exports.foo = 42;");
             Value js = cx.eval(ID, "require('./module').foo;");
             Assert.assertEquals(42, js.asInt());
+        }
+    }
+
+    private static void assertThrows(String src, Class<? extends Throwable> expected, String expectedMessage) {
+        try {
+            Path f = getTempFolder();
+            try (Context cx = testContext(f)) {
+                cx.eval(ID, src);
+            }
+            assert false;
+        } catch (Throwable t) {
+            if (!t.getClass().isAssignableFrom(expected)) {
+                throw new AssertionError("Unexpected exception " + t);
+            }
+            assertEquals(expectedMessage, t.getMessage());
         }
     }
 
@@ -253,6 +273,26 @@ public class CommonJsRequireTest {
             Assert.assertEquals("", errPrint);
             Assert.assertEquals(42, js.asInt());
         }
+    }
+
+    @Test
+    public void unknownModule() {
+        assertThrows("require('unknown')", PolyglotException.class, "TypeError: Cannot load Node.js native module: 'TODO: not implemented yet'");
+    }
+
+    @Test
+    public void unknownFile() {
+        assertThrows("require('./unknown')", PolyglotException.class, "TypeError: Cannot load Node.js native module: 'TODO: not implemented yet'");
+    }
+
+    @Test
+    public void unknownFileWithExt() {
+        assertThrows("require('./unknown.js')", PolyglotException.class, "TypeError: Cannot load Node.js native module: 'TODO: not implemented yet'");
+    }
+
+    @Test
+    public void unknownAbsolute() {
+        assertThrows("require('/path/to/unknown.js')", PolyglotException.class, "TypeError: Cannot load Node.js native module: 'TODO: not implemented yet'");
     }
 
 }
