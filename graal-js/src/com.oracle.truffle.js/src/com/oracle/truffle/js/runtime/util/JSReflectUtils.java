@@ -56,7 +56,7 @@ public final class JSReflectUtils {
     }
 
     // Implementation of OrdinaryGet (O, P, Receiver)
-    @TruffleBoundary(transferToInterpreterOnException = false)
+    @TruffleBoundary
     public static Object performOrdinaryGet(DynamicObject target, Object key, Object receiver) {
         assert JSRuntime.isPropertyKey(key);
         PropertyDescriptor descriptor = JSObject.getOwnProperty(target, key);
@@ -65,7 +65,7 @@ public final class JSReflectUtils {
             if (parent == Null.instance) {
                 return Undefined.instance;
             }
-            return performOrdinaryGet(parent, key, receiver);
+            return JSObject.getWithReceiver(parent, key, receiver);
         }
         if (descriptor.isDataDescriptor()) {
             return descriptor.getValue();
@@ -78,14 +78,20 @@ public final class JSReflectUtils {
     }
 
     // Implementation of OrdinarySet (O, P, V, Receiver)
-    @TruffleBoundary(transferToInterpreterOnException = false)
+    @TruffleBoundary
     public static boolean performOrdinarySet(DynamicObject target, Object key, Object value, Object receiver) {
         assert JSRuntime.isPropertyKey(key);
         PropertyDescriptor descriptor = JSObject.getOwnProperty(target, key);
+        return performOrdinarySetWithOwnDescriptor(target, key, value, receiver, descriptor);
+    }
+
+    @TruffleBoundary
+    public static boolean performOrdinarySetWithOwnDescriptor(DynamicObject target, Object key, Object value, Object receiver, PropertyDescriptor desc) {
+        PropertyDescriptor descriptor = desc;
         if (descriptor == null) {
             DynamicObject parent = JSObject.getPrototype(target);
             if (parent != Null.instance) {
-                return performOrdinarySet(parent, key, value, receiver);
+                return JSObject.setWithReceiver(parent, key, value, receiver, false);
             } else {
                 descriptor = PropertyDescriptor.undefinedDataDesc;
             }

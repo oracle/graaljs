@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -66,6 +67,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
+import com.oracle.truffle.js.runtime.util.JSReflectUtils;
 
 public abstract class JSBuiltinObject extends JSClass {
 
@@ -253,64 +255,83 @@ public abstract class JSBuiltinObject extends JSClass {
 
     @TruffleBoundary
     @Override
-    public boolean setOwn(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
-        return setOwn(thisObj, String.valueOf(index), value, receiver, isStrict);
+    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+        return ordinarySetIndex(thisObj, index, value, receiver, isStrict);
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
-        Object key = String.valueOf(index);
-        if (setOwn(thisObj, key, value, receiver, isStrict)) {
-            return true;
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+        return ordinarySet(thisObj, key, value, receiver, isStrict);
+    }
+
+    protected static boolean ordinarySetIndex(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+        Object key = Boundaries.stringValueOf(index);
+        if (receiver != thisObj) {
+            return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict);
+        }
+        Property entry = DefinePropertyUtil.getPropertyByKey(thisObj, key);
+        if (entry != null) {
+            return JSProperty.setValue(entry, thisObj, receiver, value, isStrict);
         }
         return setPropertySlow(thisObj, key, value, receiver, isStrict, true);
     }
 
-    @TruffleBoundary
-    @Override
-    public boolean setOwn(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+    protected static boolean ordinarySet(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+        if (receiver != thisObj) {
+            return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict);
+        }
         Property entry = DefinePropertyUtil.getPropertyByKey(thisObj, key);
         if (entry != null) {
-            JSProperty.setValue(entry, thisObj, receiver, value, null, isStrict);
+            return JSProperty.setValue(entry, thisObj, receiver, value, isStrict);
+        }
+        return setPropertySlow(thisObj, key, value, receiver, isStrict, false);
+    }
+
+    protected static boolean ordinarySetWithReceiver(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+        // OrdinarySet: set the property on the receiver instead
+        if (JSReflectUtils.performOrdinarySet(thisObj, key, value, receiver)) {
             return true;
+        } else if (isStrict) {
+            throw Errors.createTypeErrorSetNonObjectReceiver(receiver, key);
         } else {
             return false;
         }
     }
 
     @TruffleBoundary
-    @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        if (setOwn(thisObj, key, value, receiver, isStrict)) {
-            return true;
-        }
-        return setPropertySlow(thisObj, key, value, receiver, isStrict, false);
-    }
-
-    private static boolean setPropertySlow(DynamicObject thisObj, Object name, Object value, Object receiver, boolean isStrict, boolean isIndex) {
-        if (setPropertyPrototypes(thisObj, name, value, receiver, isStrict)) {
-            return true;
-        }
-
-        if (!JSRuntime.isObject(receiver)) {
-            if (isStrict) {
-                throw Errors.createTypeErrorSetNonObjectReceiver(receiver, name);
+    protected static boolean setPropertySlow(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, boolean isIndex) {
+        // check prototype chain for accessors
+        assert JSRuntime.isPropertyKey(key);
+        DynamicObject current = JSObject.getPrototype(thisObj);
+        while (current != Null.instance) {
+            if (JSProxy.isProxy(current)) {
+                return JSObject.setWithReceiver(current, key, value, receiver, isStrict);
+            } else {
+                PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
+                if (desc != null) {
+                    if (desc.isDataDescriptor() && !desc.getWritable()) {
+                        if (isStrict) {
+                            throw Errors.createTypeErrorNotWritableProperty(key, current);
+                        }
+                        return false;
+                    } else if (desc.isAccessorDescriptor()) {
+                        return invokeAccessorPropertySetter(desc, thisObj, key, value, receiver, isStrict);
+                    } else {
+                        break;
+                    }
+                }
             }
-            return true;
+            current = JSObject.getPrototype(current);
         }
 
+        assert thisObj == receiver;
         DynamicObject receiverObj = (DynamicObject) receiver;
         if (!JSObject.isExtensible(receiverObj)) {
             if (isStrict) {
-                throw Errors.createTypeErrorNotExtensible(receiverObj, name);
+                throw Errors.createTypeErrorNotExtensible(receiverObj, key);
             }
-            return true;
-        }
-
-        // OrdinarySet: if property does not exist, set it on the receiver
-        if (receiverObj != thisObj) {
-            return JSObject.defineOwnProperty(receiverObj, name, PropertyDescriptor.createDataDefault(value), isStrict);
+            return false;
         }
 
         if (JSTruffleOptions.DictionaryObject) {
@@ -320,54 +341,28 @@ public abstract class JSBuiltinObject extends JSClass {
                 isDictionaryObject = true;
             }
             if (isDictionaryObject) {
-                JSDictionaryObject.getHashMap(thisObj).put(name, PropertyDescriptor.createDataDefault(value));
+                JSDictionaryObject.getHashMap(thisObj).put(key, PropertyDescriptor.createDataDefault(value));
                 return true;
             }
         }
 
         // add it here
         JSContext context = JSObject.getJSContext(thisObj);
-        JSObjectUtil.putDataProperty(context, thisObj, name, value, JSAttributes.getDefault());
+        JSObjectUtil.putDataProperty(context, thisObj, key, value, JSAttributes.getDefault());
         return true;
     }
 
-    @TruffleBoundary
-    private static boolean setPropertyPrototypes(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        // check prototype chain for accessors
-        assert JSRuntime.isPropertyKey(key);
-        DynamicObject current = JSObject.getPrototype(thisObj);
-        while (current != Null.instance) {
-            if (JSProxy.isProxy(current)) {
-                return JSObject.setWithReceiver(current, key, value, receiver, false);
-            } else {
-                PropertyDescriptor desc = JSObject.getOwnProperty(current, key);
-                if (desc != null) {
-                    if (desc.isDataDescriptor() && !desc.getWritable()) {
-                        if (isStrict) {
-                            throw Errors.createTypeError("not writable");
-                        }
-                        return true;
-                    } else if (desc.isAccessorDescriptor()) {
-                        invokeAccessorPropertySetter(desc, thisObj, key, value, receiver, isStrict);
-                        return true;
-                    } else {
-                        break;
-                    }
-                }
-            }
-            current = JSObject.getPrototype(current);
-        }
-        return false;
-    }
-
-    protected static void invokeAccessorPropertySetter(PropertyDescriptor desc, DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+    protected static boolean invokeAccessorPropertySetter(PropertyDescriptor desc, DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
         CompilerAsserts.neverPartOfCompilation();
         assert desc.isAccessorDescriptor();
         DynamicObject setter = (DynamicObject) desc.getSet();
         if (setter != Undefined.instance) {
             JSRuntime.call(setter, receiver, new Object[]{value});
+            return true;
         } else if (isStrict) {
             throw Errors.createTypeErrorCannotSetAccessorProperty(key, thisObj);
+        } else {
+            return false;
         }
     }
 

@@ -258,26 +258,16 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         }
     }
 
+    @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        return setOwn(thisObj, key, value, receiver, isStrict);
+        return proxySet(thisObj, key, value, receiver, isStrict);
     }
 
+    @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
-        return setOwn(thisObj, index, value, receiver, isStrict);
-    }
-
-    @TruffleBoundary
-    @Override
-    public boolean setOwn(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
         return proxySet(thisObj, Boundaries.stringValueOf(index), value, receiver, isStrict);
-    }
-
-    @TruffleBoundary
-    @Override
-    public boolean setOwn(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        return proxySet(thisObj, key, value, receiver, isStrict);
     }
 
     @TruffleBoundary

@@ -92,7 +92,7 @@ public final class JSSlowArray extends JSAbstractArray {
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
         String indexAsString = Boundaries.stringValueOf(index);
         if (JSUserObject.INSTANCE.hasOwnProperty(thisObj, indexAsString)) {
-            return JSUserObject.INSTANCE.setOwn(thisObj, indexAsString, value, receiver, isStrict);
+            return ordinarySet(thisObj, indexAsString, value, receiver, isStrict);
         }
         return super.set(thisObj, index, value, receiver, isStrict);
     }

@@ -47,7 +47,6 @@ import static com.oracle.truffle.js.runtime.objects.JSAttributes.NOT_WRITABLE;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -112,14 +111,14 @@ public class JSProperty {
     /**
      * Set the value assigned to this property in the given object and store.
      *
-     * @param thisObj the object that this property was found in
      * @param store the store that this property's value resides in
+     * @param thisObj the object that this property was found in
      * @param value the value to assign to this property
      * @param isStrict whether the set is in a strict mode function
      */
-    public static void setValue(Property property, DynamicObject store, Object thisObj, Object value, Shape shape, boolean isStrict) {
+    public static boolean setValue(Property property, DynamicObject store, Object thisObj, Object value, boolean isStrict) {
         if (isAccessor(property)) {
-            setValueAccessor(property, store, thisObj, value, isStrict);
+            return setValueAccessor(property, store, thisObj, value, isStrict);
         } else {
             if (isWritable(property)) {
                 if (isProxy(property)) {
@@ -127,24 +126,30 @@ public class JSProperty {
                     if (!ret && isStrict) {
                         throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
                     }
+                    return ret;
                 } else {
                     assert isData(property);
-                    property.setGeneric(store, value, shape);
+                    property.setGeneric(store, value, null);
+                    return true;
                 }
             } else {
                 if (isStrict) {
                     throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
                 }
+                return false;
             }
         }
     }
 
-    private static void setValueAccessor(Property property, DynamicObject store, Object thisObj, Object value, boolean isStrict) {
+    private static boolean setValueAccessor(Property property, DynamicObject store, Object thisObj, Object value, boolean isStrict) {
         DynamicObject setter = ((Accessor) property.get(store, false)).getSetter();
         if (setter != Undefined.instance) {
             JSRuntime.call(setter, thisObj, new Object[]{value});
+            return true;
         } else if (isStrict) {
             throw Errors.createTypeErrorCannotSetAccessorProperty(property.getKey(), store);
+        } else {
+            return false;
         }
     }
 

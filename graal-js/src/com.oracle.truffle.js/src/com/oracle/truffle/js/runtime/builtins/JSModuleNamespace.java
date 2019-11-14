@@ -314,6 +314,24 @@ public final class JSModuleNamespace extends JSBuiltinObject {
         return true;
     }
 
+    @TruffleBoundary
+    @Override
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+        if (isStrict) {
+            throw Errors.createTypeErrorNotExtensible(thisObj, key);
+        }
+        return false;
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+        if (isStrict) {
+            throw Errors.createTypeErrorNotExtensible(thisObj, Boundaries.stringValueOf(index));
+        }
+        return false;
+    }
+
     @Override
     public boolean usesOrdinaryGetOwnProperty() {
         return false;
