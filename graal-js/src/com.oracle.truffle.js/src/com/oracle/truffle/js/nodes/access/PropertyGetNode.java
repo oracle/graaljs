@@ -52,7 +52,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -916,7 +915,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             this.interop = InteropLibrary.getFactory().createDispatched(5);
         }
 
-        private Object foreignGet(TruffleObject thisObj, PropertyGetNode root) {
+        private Object foreignGet(Object thisObj, PropertyGetNode root) {
             Object key = root.getKey();
             if (interop.isNull(thisObj)) {
                 throw Errors.createTypeErrorCannotGetProperty(key, thisObj, isMethod, this);
@@ -956,7 +955,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return toJSTypeNode.executeWithTarget(foreignResult);
         }
 
-        private Object maybeGetFromPrototype(TruffleObject thisObj, Object key) {
+        private Object maybeGetFromPrototype(Object thisObj, Object key) {
             if (context.getContextOptions().hasForeignObjectPrototype()) {
                 if (getFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -971,7 +970,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()`.
-        private Object tryInvokeGetter(TruffleObject thisObj, PropertyGetNode root) {
+        private Object tryInvokeGetter(Object thisObj, PropertyGetNode root) {
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
@@ -987,7 +986,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return maybeGetFromPrototype(thisObj, root.getKey());
         }
 
-        private Object tryGetResult(TruffleObject thisObj, String prefix, PropertyGetNode root) {
+        private Object tryGetResult(Object thisObj, String prefix, PropertyGetNode root) {
             String getterKey = root.getAccessorKey(prefix);
             if (getterKey == null) {
                 return null;
@@ -1008,7 +1007,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
         }
 
-        private Object getSize(TruffleObject thisObj) {
+        private Object getSize(Object thisObj) {
             try {
                 return JSRuntime.longToIntOrDouble(interop.getArraySize(thisObj));
             } catch (UnsupportedMessageException e) {
@@ -1017,8 +1016,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         @Override
-        protected Object getValue(Object object, Object receiver, PropertyGetNode root, boolean guard) {
-            TruffleObject thisObj = (TruffleObject) object;
+        protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             if (isMethod && !isGlobal) {
                 return thisObj;
             }
@@ -1446,7 +1444,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            TruffleObject regexResult = (TruffleObject) getResultNode.getValue(store);
+            Object regexResult = getResultNode.getValue(store);
             String input = (String) getOriginalInputNode.getValue(store);
             return materializeNode.materializeGroup(regexResult, groupIndex, input);
         }

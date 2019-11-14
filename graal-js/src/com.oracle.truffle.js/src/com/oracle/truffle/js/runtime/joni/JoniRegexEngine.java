@@ -104,7 +104,7 @@ public final class JoniRegexEngine implements TruffleObject {
     }
 
     @TruffleBoundary
-    public TruffleObject compile(String pattern, String flags) {
+    public Object compile(String pattern, String flags) {
         try {
             JoniRegexFlags parsedFlags = JoniRegexFlags.parseFlags(flags);
             Regex implementation = createJoniRegex(pattern, parsedFlags);

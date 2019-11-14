@@ -51,7 +51,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -209,7 +208,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!isJSObject(obj)"}, limit = "5")
-    protected static Object[] doForeignObject(TruffleObject obj,
+    protected static Object[] doForeignObject(Object obj,
                     @CachedLibrary("obj") InteropLibrary interop,
                     @Cached("create()") BranchProfile hasPropertiesBranch,
                     @Cached("create()") JSForeignToJSTypeNode foreignConvertNode) {

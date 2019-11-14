@@ -485,7 +485,7 @@ public class WriteElementNode extends JSTargetableNode {
             return new BigIntWriteElementTypeCacheNode(next);
         } else if (target instanceof TruffleObject) {
             assert JSRuntime.isForeignObject(target);
-            return new TruffleObjectWriteElementTypeCacheNode((Class<? extends TruffleObject>) target.getClass(), next);
+            return new TruffleObjectWriteElementTypeCacheNode(target.getClass(), next);
         } else {
             assert JSRuntime.isJavaPrimitive(target);
             return new JavaObjectWriteElementTypeCacheNode(target.getClass(), next);
@@ -1730,14 +1730,14 @@ public class WriteElementNode extends JSTargetableNode {
     }
 
     static class TruffleObjectWriteElementTypeCacheNode extends WriteElementTypeCacheNode {
-        private final Class<? extends TruffleObject> targetClass;
+        private final Class<?> targetClass;
         @Child private InteropLibrary interop;
         @Child private InteropLibrary keyInterop;
         @Child private InteropLibrary setterInterop;
         @Child private ExportValueNode exportKey;
         @Child private ExportValueNode exportValue;
 
-        TruffleObjectWriteElementTypeCacheNode(Class<? extends TruffleObject> targetClass, WriteElementTypeCacheNode next) {
+        TruffleObjectWriteElementTypeCacheNode(Class<?> targetClass, WriteElementTypeCacheNode next) {
             super(next);
             this.targetClass = targetClass;
             this.exportKey = ExportValueNode.create();
@@ -1748,7 +1748,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
-            TruffleObject truffleObject = targetClass.cast(target);
+            Object truffleObject = targetClass.cast(target);
             if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this);
             }
@@ -1791,7 +1791,7 @@ public class WriteElementNode extends JSTargetableNode {
             return targetClass.isInstance(target) && !JSObject.isJSObject(target);
         }
 
-        private void tryInvokeSetter(TruffleObject thisObj, String key, Object value, JSContext context) {
+        private void tryInvokeSetter(Object thisObj, String key, Object value, JSContext context) {
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {

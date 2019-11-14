@@ -323,7 +323,7 @@ public final class JSRuntime {
      * Converts a foreign object to a primitive value.
      */
     @TruffleBoundary
-    public static Object toPrimitiveFromForeign(TruffleObject tObj, int depth) {
+    public static Object toPrimitiveFromForeign(Object tObj, int depth) {
         TruffleLanguage.Env env;
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
         if (interop.isNull(tObj)) {
@@ -400,7 +400,7 @@ public final class JSRuntime {
         if (isObject(value)) {
             primitive = JSObject.toPrimitive((DynamicObject) value, HINT_NUMBER);
         } else if (isForeignObject(value)) {
-            primitive = toPrimitiveFromForeign((TruffleObject) value, TO_STRING_MAX_DEPTH);
+            primitive = toPrimitiveFromForeign(value, TO_STRING_MAX_DEPTH);
         } else {
             primitive = value;
         }
@@ -873,7 +873,7 @@ public final class JSRuntime {
             return toString(JSObject.toPrimitive((DynamicObject) value, HINT_STRING));
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value);
-            return toString(toPrimitiveFromForeign((TruffleObject) value, TO_STRING_MAX_DEPTH));
+            return toString(toPrimitiveFromForeign(value, TO_STRING_MAX_DEPTH));
         }
         throw toStringTypeError(value);
     }
