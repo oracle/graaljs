@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -64,8 +65,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
     private static final String MODULE_CLOSURE = "\n});";
     private static final String MODULE_PREAMBLE = "(function (exports, require, module, __filename, __dirname) {";
 
-    // TODO windows?
-    private static final String ROOT_PATH = "/";
+    private static final Path ROOT_PATH = Paths.get(File.listRoots()[0].getAbsolutePath());;
     private static final String SEPARATOR = File.separator;
     private static final String INDEX_JS = "index.js";
     private static final String INDEX_JSON = "index.json";
@@ -112,7 +112,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
                 a. set Y to be the filesystem root
         */
         if (moduleIdentifier.charAt(0) == '/') {
-            // TODO(db) this does not work on windows;
+            // XXX(db) this always returns `c:\` on windows.
             y = Paths.get(File.listRoots()[0].getAbsolutePath());
         }
         /*
@@ -122,9 +122,9 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
                 c. THROW "not found"
         */
         if (isPathFileName(moduleIdentifier)) {
-            Object module = loadAsFileOrDirectory(Paths.get(y.toString(),  moduleIdentifier));
+            Object module = loadAsFileOrDirectory(joinPaths(y, moduleIdentifier));
             if (module == null) {
-                // TODO(db) node.js informal spec says we should throw. Node v12.x does not throw and loads
+                // XXX(db) node.js informal spec says we should throw. Node v12.x does not throw and continues.
                 // throw fail(moduleIdentifier);
             } else {
                 return module;
@@ -150,35 +150,35 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
                 a. LOAD_AS_FILE(DIR/X)
                 b. LOAD_AS_DIRECTORY(DIR/X)
         */
-        String[] nodeModulesPaths = getNodeModulesPaths(start);
-        for (String s : nodeModulesPaths) {
-            Object module = loadAsFileOrDirectory(Paths.get(s, moduleIdentifier));
+        Path[] nodeModulesPaths = getNodeModulesPaths(start);
+        for (Path s : nodeModulesPaths) {
+            Object module = loadAsFileOrDirectory(joinPaths(s, moduleIdentifier));
             if (module != null) {
                 return module;
             }
         }
-        throw fail("TODO: not implemented yet");
+        throw fail(moduleIdentifier);
     }
 
-    protected String[] getNodeModulesPaths(Path path) {
-        String[] folders = path.toAbsolutePath().toString().split(SEPARATOR);
-        List<String> list = new ArrayList<>();
-        int i = folders.length;
+    private static Path joinPaths(Path p1, String p2) {
+        return Paths.get(p1.normalize().toString(), p2);
+    }
 
-        for (int p = 0; p<folders.length; p++) {
-            String subPath = ROOT_PATH;
-            for (int s = 0; s < i; s++) {
-                subPath += folders[s] + SEPARATOR;
-            }
-            i--;
-            list.add(subPath + SEPARATOR + NODE_MODULES);
+    private Path[] getNodeModulesPaths(Path path) {
+        File[] folders = path.toFile().listFiles(File::isDirectory);
+        List<Path> list = new ArrayList<>();
+
+        assert folders != null;
+        for (File folder : folders) {
+            // TODO skip node_modules folder
+            list.add(folder.toPath());
         }
         // TODO the list should include "Global" folders.
-        return list.toArray(new String[]{});
+        return list.toArray(new Path[]{});
     }
 
     private static JSException fail(String moduleIdentifier) {
-        return JSException.create(JSErrorType.TypeError, "Cannot load Node.js native module: '" + moduleIdentifier + "'");
+        return JSException.create(JSErrorType.TypeError, "Cannot load Npm module: '" + moduleIdentifier + "'");
     }
 
     private Object loadAsJavaScriptText(Path modulePath) {
@@ -190,13 +190,12 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         }
 
         Source source = sourceFromPath(modulePath.toString(), realm);
-        Path path = modulePath;
 
         DynamicObject exportsBuiltin = createExportsBuiltin(realm);
         DynamicObject requireBuiltin = createRequireBuiltin(realm);
         DynamicObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin);
-        String filenameBuiltin = path.getFileName().toString();
-        String dirnameBuiltin = path.getParent().toAbsolutePath().toString();
+        String filenameBuiltin = modulePath.getFileName().toString();
+        String dirnameBuiltin = modulePath.getParent().toAbsolutePath().toString();
 
         CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_CLOSURE;
         Source build = Source.newBuilder(JavaScriptLanguage.ID)
@@ -205,18 +204,18 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
                 .content(characters)
                 .build();
 
-        try {
-            CallTarget callTarget = realm.getEnv().parsePublic(build);
-            Object call = callTarget.call();
+        CallTarget callTarget = realm.getEnv().parsePublic(build);
+        Object call = callTarget.call();
 
-            if (JSFunction.isJSFunction(call)) {
+        if (JSFunction.isJSFunction(call)) {
+            try {
                 commonJsCache.put(modulePath.normalize(), exportsBuiltin);
                 realm.getCommonJsRequireStack().push(Paths.get(dirnameBuiltin));
                 JSFunction.call(JSArguments.create(call, call, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin));
                 return exportsBuiltin;
+            } finally {
+                realm.getCommonJsRequireStack().pop();
             }
-        } finally {
-            realm.getCommonJsRequireStack().pop();
         }
         return null;
     }
@@ -230,49 +229,54 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         }
     }
 
-    private Object loadAsDirectory(Path modulePath) {
-        if (fileExists(Paths.get(modulePath.toString(), PACKAGE_JSON))) {
-            JSRealm realm = getContext().getRealm();
-            Source source = sourceFromPath(modulePath + SEPARATOR + PACKAGE_JSON, realm);
-
-            try {
-                TruffleFile file = GlobalBuiltins.resolveRelativeFilePath(modulePath + SEPARATOR + PACKAGE_JSON, realm.getEnv());
+    private DynamicObject loadJsonObject(Path jsonFile) {
+        try {
+            if (fileExists(jsonFile)) {
+                Source source = null;
+                JSRealm realm = getContext().getRealm();
+                TruffleFile file = GlobalBuiltins.resolveRelativeFilePath(jsonFile.toString(), realm.getEnv());
                 if (file.isRegularFile()) {
                     source = sourceFromTruffleFile(file);
                 } else {
-                    fail(modulePath.toString());
+                    throw fail(jsonFile.toString());
                 }
-                // TODO load builtin, not property
-                DynamicObject JSON = (DynamicObject) getContext().getRealm().getGlobalObject().get("JSON");
-                DynamicObject parse = (DynamicObject) JSObject.get(JSON, "parse");
-
+                DynamicObject parse = (DynamicObject) realm.getJsonParseFunctionObject();
+                assert source != null;
                 String jsonString = source.getCharacters().toString().replace('\n', ' ');
-                Object jsonObj = JSFunction.call(JSArguments.create(JSON, parse, jsonString));
-
+                Object jsonObj = JSFunction.call(JSArguments.create(parse, parse, jsonString));
                 if (JSObject.isJSObject(jsonObj)) {
-                    Object main = JSObject.get((TruffleObject) jsonObj, MAIN_PROPERTY);
-                    if (!JSRuntime.isString(main)) {
-                        return loadIndex(modulePath);
-                    }
-                    Path m = Paths.get(modulePath.toString(), JSRuntime.safeToString(main));
-                    Object asFile = loadAsFile(m);
-                    if (asFile != null) {
-                        return asFile;
-                    } else {
-                        Object loadIndex = loadIndex(m);
-                        if (loadIndex != null) {
-                            return loadIndex;
-                        }
+                    return (DynamicObject) jsonObj;
+                }
+            }
+            throw fail(jsonFile.toString());
+        } catch (SecurityException e) {
+            throw Errors.createErrorFromException(e);
+        }
+    }
+
+    private Object loadAsDirectory(Path modulePath) {
+        if (fileExists(Paths.get(modulePath.toString(), PACKAGE_JSON))) {
+            DynamicObject jsonObj = loadJsonObject(Paths.get(modulePath.toString(), PACKAGE_JSON));
+            if (JSObject.isJSObject(jsonObj)) {
+                Object main = JSObject.get(jsonObj, MAIN_PROPERTY);
+                if (!JSRuntime.isString(main)) {
+                    return loadIndex(modulePath);
+                }
+                Path m = Paths.get(modulePath.toString(), JSRuntime.safeToString(main));
+                Object asFile = loadAsFile(m);
+                if (asFile != null) {
+                    return asFile;
+                } else {
+                    Object loadIndex = loadIndex(m);
+                    if (loadIndex != null) {
+                        return loadIndex;
                     }
                 }
-            } catch (SecurityException e) {
-                throw Errors.createErrorFromException(e);
             }
         } else {
             return loadIndex(modulePath);
         }
         throw fail(modulePath.toString());
-
     }
 
     private Object loadIndex(Path modulePath) {
@@ -285,9 +289,9 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         if (fileExists(Paths.get(modulePath.toString(), INDEX_JS))) {
             return loadAsJavaScriptText(Paths.get(modulePath.toString(), INDEX_JS));
         } else if (fileExists(Paths.get(modulePath.toString(), INDEX_JSON))) {
-            throw fail("TODO load json");
+            return loadJsonObject(Paths.get(modulePath.toString(), INDEX_JSON));
         } else if (fileExists(Paths.get(modulePath.toString(), INDEX_NODE))) {
-            throw fail("cannot load native module '" + modulePath + "'");
+            throw fail(modulePath.toString());
         }
         return null;
     }
@@ -301,19 +305,35 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
                 4. If X.node is a file, load X.node as binary addon.  STOP
         */
         if (fileExists(modulePath)) {
-            return loadAsJavaScriptText(modulePath);
+            return loadAsTextOrObject(modulePath);
         } else if (fileExists(Paths.get(modulePath.toString() + JS_EXT))) {
             return loadAsJavaScriptText(Paths.get(modulePath.toString() + JS_EXT));
         } else if (fileExists(Paths.get(modulePath.toString() + JSON_EXT))) {
-            throw fail("TODO: load json");
+            return loadJsonObject(Paths.get(modulePath.toString() + JSON_EXT));
         } else if (fileExists(Paths.get(modulePath.toString() + NODE_EXT))) {
-            throw fail("cannot load native module '" + modulePath + "'");
+            throw fail(modulePath.toString());
         }
         return null;
     }
 
+    private Object loadAsTextOrObject(Path file) {
+        assert fileExists(file);
+        // TODO safer way to check ext
+        String fileName = file.toFile().getName();
+        int len = fileName.length();
+        if (len > 5) {
+            if (fileName.substring(len - 5, len).equals(".json")) {
+                return loadJsonObject(file);
+            } else {
+                return loadAsJavaScriptText(file);
+            }
+        } else {
+            return loadAsJavaScriptText(file);
+        }
+    }
+
     private boolean fileExists(Path modulePath) {
-        return modulePath.toFile().isFile();
+        return Files.exists(modulePath) && modulePath.toFile().isFile();
     }
 
     private boolean isPathFileName(String moduleIdentifier) {
@@ -337,8 +357,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
     }
 
     private DynamicObject createRequireBuiltin(JSRealm realm) {
-        // TODO use internal built-in, not global property
-        return (DynamicObject) JSObject.get(realm.getGlobalObject(), REQUIRE);
+        return (DynamicObject) realm.getCommonJsRequireFunctionObject();
     }
 
     private DynamicObject createExportsBuiltin(JSRealm realm) {

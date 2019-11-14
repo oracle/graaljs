@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -53,11 +52,9 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.Callable;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class CommonJsRequireTest {
 
@@ -277,22 +274,49 @@ public class CommonJsRequireTest {
 
     @Test
     public void unknownModule() {
-        assertThrows("require('unknown')", PolyglotException.class, "TypeError: Cannot load Node.js native module: 'TODO: not implemented yet'");
+        assertThrows("require('unknown')", PolyglotException.class, "TypeError: Cannot load Npm module: 'unknown'");
     }
 
     @Test
     public void unknownFile() {
-        assertThrows("require('./unknown')", PolyglotException.class, "TypeError: Cannot load Node.js native module: 'TODO: not implemented yet'");
+        assertThrows("require('./unknown')", PolyglotException.class, "TypeError: Cannot load Npm module: './unknown'");
     }
 
     @Test
     public void unknownFileWithExt() {
-        assertThrows("require('./unknown.js')", PolyglotException.class, "TypeError: Cannot load Node.js native module: 'TODO: not implemented yet'");
+        assertThrows("require('./unknown.js')", PolyglotException.class, "TypeError: Cannot load Npm module: './unknown.js'");
     }
 
     @Test
     public void unknownAbsolute() {
-        assertThrows("require('/path/to/unknown.js')", PolyglotException.class, "TypeError: Cannot load Node.js native module: 'TODO: not implemented yet'");
+        assertThrows("require('/path/to/unknown.js')", PolyglotException.class, "TypeError: Cannot load Npm module: '/path/to/unknown.js'");
+    }
+
+    @Test
+    public void testLoadJson() throws IOException {
+        Path f = getTempFolder();
+        try (Context cx = testContext(f)) {
+            TestFile.create(f, "foo.json", "{\"foo\":42}");
+            Value js = cx.eval(ID, "require('./foo.json').foo;");
+            Assert.assertEquals(42, js.asInt());
+        }
+    }
+
+    @Test
+    public void testLoadBrokenJson() throws IOException {
+        Path f = getTempFolder();
+        try (Context cx = testContext(f)) {
+            TestFile.create(f, "foo.json", "{not_a_valid:##json}");
+            Value js = cx.eval(ID, "require('./foo.json').foo;");
+            assert false;
+        } catch (Throwable t) {
+            if (!t.getClass().isAssignableFrom(PolyglotException.class)) {
+                throw new AssertionError("Unexpected exception " + t);
+            }
+            assertEquals(t.getMessage(), "SyntaxError: Invalid JSON: <json>:1:1 Expected , or } but found n\n" +
+                    "{not_a_valid:##json}\n" +
+                    " ^");
+        }
     }
 
 }

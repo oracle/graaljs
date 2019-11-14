@@ -612,7 +612,7 @@ public final class JSContextOptions {
         return LOAD.getValue(optionValues) || (!LOAD.hasBeenSet(optionValues) && (isShell() || isNashornCompatibilityMode()));
     }
 
-    public boolean isRequire() {
+    public boolean isCommonJsRequire() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
         return COMMONJS_REQUIRE_EMULATION.getValue(optionValues);
     }

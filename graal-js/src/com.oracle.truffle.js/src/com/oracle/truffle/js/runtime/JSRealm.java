@@ -236,6 +236,8 @@ public class JSRealm {
     private Object callFunctionObject;
     private Object reflectApplyFunctionObject;
     private Object reflectConstructFunctionObject;
+    private Object commonJsRequireFunctionObject;
+    private Object jsonParseFunctionObject;
 
     private final DynamicObject arrayBufferConstructor;
     private final DynamicObject arrayBufferPrototype;
@@ -600,7 +602,7 @@ public class JSRealm {
         this.errorWriter = new PrintWriterWrapper(errorStream, true);
         this.consoleUtil = new JSConsoleUtil();
 
-        if (context.getContextOptions().isRequire()) {
+        if (context.getContextOptions().isCommonJsRequire()) {
             this.commonJsRequireCache = new HashMap<>();
         } else {
             this.commonJsRequireCache = null;
@@ -986,6 +988,14 @@ public class JSRealm {
         return reflectConstructFunctionObject;
     }
 
+    public final Object getCommonJsRequireFunctionObject() {
+        return commonJsRequireFunctionObject;
+    }
+
+    public final Object getJsonParseFunctionObject() {
+        return jsonParseFunctionObject;
+    }
+
     private static void putProtoAccessorProperty(final JSRealm realm) {
         JSContext context = realm.getContext();
         DynamicObject getProto = JSFunction.create(realm, context.protoGetterFunctionData);
@@ -1093,6 +1103,8 @@ public class JSRealm {
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
         this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
+        DynamicObject JSON = (DynamicObject) JSObject.get(global, "JSON");
+        this.jsonParseFunctionObject = JSObject.get(JSON, "parse");
 
         for (JSErrorType type : JSErrorType.errorTypes()) {
             putGlobalProperty(type.name(), getErrorConstructor(type));
@@ -1193,9 +1205,9 @@ public class JSRealm {
     }
 
     private void addCommonJsGlobals() {
-        // TODO option
-        if (getContext().getContextOptions().isRequire()) {
+        if (getContext().getContextOptions().isCommonJsRequire()) {
             putGlobalProperty("require", lookupFunction(JSGlobalObject.CLASS_NAME_COMMONJS_REQUIRE_EXTENSIONS, "require"));
+            this.commonJsRequireFunctionObject = JSObject.get(getGlobalObject(), "require");
         }
     }
 
@@ -1988,8 +2000,6 @@ public class JSRealm {
         realmList.set(idx, null);
     }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     public JSRealm getCurrentV8Realm() {
         return v8RealmCurrent;
     }
@@ -2025,12 +2035,12 @@ public class JSRealm {
     }
 
     public final Map<String, DynamicObject> getCommonJsRequireCache() {
-        assert context.getContextOptions().isRequire();
+        assert context.getContextOptions().isCommonJsRequire();
         return commonJsRequireCache;
     }
 
     public final Stack<Path> getCommonJsRequireStack() {
-        assert context.getContextOptions().isRequire();
+        assert context.getContextOptions().isCommonJsRequire();
         return commonJsStack;
     }
 
