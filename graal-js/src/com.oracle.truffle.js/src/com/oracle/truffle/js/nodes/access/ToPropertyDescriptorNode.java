@@ -62,7 +62,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
     private final JSContext context;
     @Child private JSToBooleanNode toBooleanNode;
-    @CompilationFinal private boolean wasExecuted = false;
+    @CompilationFinal private boolean wasExecuted;
 
     @Child private PropertyGetNode getEnumerableNode;
     @Child private PropertyGetNode getConfigurableNode;
@@ -88,6 +88,11 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
 
     protected ToPropertyDescriptorNode(JSContext context) {
         this.context = context;
+        /*
+         * We do not optimize for the first call in multi context mode, because all the code is
+         * likely to be executed again and code should be stable after the first call.
+         */
+        this.wasExecuted = context.isMultiContext();
     }
 
     private void initialize() {
