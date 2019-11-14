@@ -46,7 +46,6 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
@@ -101,24 +100,14 @@ public abstract class AbstractJSClass extends JSClass {
 
     @TruffleBoundary
     @Override
-    public boolean setOwn(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
         throw Errors.createTypeErrorCannotSetProperty(key, thisObj, null);
     }
 
     @TruffleBoundary
     @Override
-    public boolean setOwn(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
-        throw Errors.createTypeErrorCannotSetProperty(String.valueOf(index), thisObj, null);
-    }
-
-    @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        return setOwn(thisObj, key, value, receiver, isStrict);
-    }
-
-    @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
-        return setOwn(thisObj, index, value, receiver, isStrict);
+        throw Errors.createTypeErrorCannotSetProperty(String.valueOf(index), thisObj, null);
     }
 
     @TruffleBoundary
@@ -140,14 +129,10 @@ public abstract class AbstractJSClass extends JSClass {
 
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
-        if (!setOwn(thisObj, key, desc.getValue(), thisObj, doThrow)) {
-            if (isExtensible(thisObj)) {
-                JSObjectUtil.putDataProperty(thisObj, key, desc, desc.getFlags());
-            } else {
-                return false;
-            }
+        if (doThrow) {
+            throw Errors.createTypeErrorCannotSetProperty(key, thisObj, null);
         }
-        return true;
+        return false;
     }
 
     @Override

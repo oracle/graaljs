@@ -204,7 +204,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public boolean setOwn(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
         DynamicObject overrides = getOverrides(thisObj);
         if (overrides != null && JSObject.hasOwnProperty(overrides, index)) {
             JSObject.set(overrides, index, value, isStrict);
@@ -222,7 +222,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @TruffleBoundary
     @Override
-    public boolean setOwn(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
         assert JSRuntime.isPropertyKey(key);
         DynamicObject overrides = getOverrides(thisObj);
         if (overrides != null && JSObject.hasOwnProperty(overrides, key)) {
@@ -271,9 +271,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
-        boolean exists = setOwn(thisObj, key, desc.getValue(), thisObj, doThrow);
-        assert exists;
-        return exists;
+        return set(thisObj, key, desc.getValue(), thisObj, doThrow);
     }
 
     @Override

@@ -52,6 +52,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -66,6 +67,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 /**
  * This is a variant of {@link JSUserObject} that stores its contents as a HashMap of properties
@@ -183,33 +185,53 @@ public final class JSDictionaryObject extends JSBuiltinObject {
 
     @TruffleBoundary
     @Override
-    public boolean setOwn(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        EconomicMap<Object, PropertyDescriptor> hashMap = getHashMap(thisObj);
-        PropertyDescriptor property = hashMap.get(key);
-        if (property != null) {
-            setValue(key, property, thisObj, receiver, value, isStrict);
-            return true;
-        }
-
-        return super.setOwn(thisObj, key, value, receiver, isStrict);
+    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+        Object key = Boundaries.stringValueOf(index);
+        return dictionaryObjectSet(thisObj, key, value, receiver, isStrict);
     }
 
-    private static void setValue(Object key, PropertyDescriptor property, DynamicObject store, Object thisObj, Object value, boolean isStrict) {
+    @TruffleBoundary
+    @Override
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+        return dictionaryObjectSet(thisObj, key, value, receiver, isStrict);
+    }
+
+    protected static boolean dictionaryObjectSet(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
+        if (receiver != thisObj) {
+            return ordinarySetWithReceiver(thisObj, key, value, receiver, isStrict);
+        }
+        PropertyDescriptor property = getHashMap(thisObj).get(key);
+        if (property != null) {
+            return setValue(key, property, thisObj, receiver, value, isStrict);
+        }
+        Property entry = DefinePropertyUtil.getPropertyByKey(thisObj, key);
+        if (entry != null) {
+            return JSProperty.setValue(entry, thisObj, receiver, value, isStrict);
+        }
+        return setPropertySlow(thisObj, key, value, receiver, isStrict, false);
+    }
+
+    private static boolean setValue(Object key, PropertyDescriptor property, DynamicObject store, Object thisObj, Object value, boolean isStrict) {
         if (property.isAccessorDescriptor()) {
             DynamicObject setter = (DynamicObject) property.getSet();
             if (setter != Undefined.instance) {
                 JSRuntime.call(setter, thisObj, new Object[]{value});
+                return true;
             } else if (isStrict) {
                 throw Errors.createTypeErrorCannotSetAccessorProperty(key, store);
+            } else {
+                return false;
             }
         } else {
             assert property.isDataDescriptor();
             if (property.getWritable()) {
                 property.setValue(value);
+                return true;
             } else {
                 if (isStrict) {
                     throw Errors.createTypeErrorNotWritableProperty(key, thisObj);
                 }
+                return false;
             }
         }
     }
