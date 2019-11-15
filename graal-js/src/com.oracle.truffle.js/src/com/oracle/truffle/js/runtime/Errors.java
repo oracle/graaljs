@@ -586,6 +586,10 @@ public final class Errors {
         return createTypeError("'" + trap + "' on proxy: trap returned falsish for property '" + propertyKey + "'");
     }
 
+    public static JSException createTypeErrorOwnKeysTrapMissingKey(Object propertyKey) {
+        return createTypeErrorFormat("'ownKeys' on proxy: trap result did not include '%s'", propertyKey);
+    }
+
     public static JSException createTypeErrorProxyRevoked() {
         return createTypeError("proxy has been revoked");
     }
