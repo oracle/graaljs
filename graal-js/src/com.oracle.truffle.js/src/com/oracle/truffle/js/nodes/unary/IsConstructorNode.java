@@ -42,9 +42,13 @@ package com.oracle.truffle.js.nodes.unary;
 
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 /**
@@ -71,15 +75,40 @@ public abstract class IsConstructorNode extends JavaScriptBaseNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization
-    protected static boolean doString(String string) {
+    @Specialization(guards = {"isJSType(other)", "!isJSFunction(other)", "!isJSProxy(other)"})
+    protected static boolean doOther(Object other) {
         return false;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"!isJSFunction(other)", "!isJSProxy(other)"})
-    protected static boolean doOther(Object other) {
+    @Specialization
+    protected static boolean doCharSequence(@SuppressWarnings("unused") CharSequence charSequence) {
         return false;
+    }
+
+    @Specialization
+    protected static boolean doBoolean(@SuppressWarnings("unused") boolean value) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doNumber(@SuppressWarnings("unused") Number number) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doSymbol(@SuppressWarnings("unused") Symbol symbol) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doBigInt(@SuppressWarnings("unused") BigInt bigInt) {
+        return false;
+    }
+
+    @Specialization(guards = "isForeignObject(obj)", limit = "3")
+    protected static boolean doTruffleObject(Object obj,
+                    @CachedLibrary("obj") InteropLibrary interop) {
+        return interop.isInstantiable(obj);
     }
 
     public static IsConstructorNode create() {

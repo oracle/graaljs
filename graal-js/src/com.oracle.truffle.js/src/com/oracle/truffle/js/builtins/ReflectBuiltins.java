@@ -74,6 +74,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -135,7 +136,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             case apply:
                 return ReflectApplyNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
             case construct:
-                return ReflectConstructNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                return ReflectConstructNodeGen.create(context, builtin, args().fixedArgs(2).varArgs().createArgumentNodes(context));
             case defineProperty:
                 return ReflectDefinePropertyNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
             case deleteProperty:
@@ -163,7 +164,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
     }
 
     public abstract static class ReflectOperation extends JSBuiltinNode {
-        private final BranchProfile errorBranch = BranchProfile.create();
+        protected final BranchProfile errorBranch = BranchProfile.create();
 
         public ReflectOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -224,28 +225,29 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization
-        protected Object reflectConstruct(Object[] args) {
-            Object target = JSRuntime.getArgOrUndefined(args, 0);
-            Object argumentsList = JSRuntime.getArgOrUndefined(args, 1);
-            ensureConstructor(target);
-
-            Object newTarget = JSRuntime.getArg(args, 2, target);
-            ensureConstructor(newTarget);
+        protected Object reflectConstruct(Object target, Object argumentsList, Object[] optionalArgs,
+                        @Cached IsConstructorNode isConstructorNode) {
+            if (!isConstructorNode.executeBoolean(target)) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorNotAConstructor(target);
+            }
+            Object newTarget;
+            if (optionalArgs.length == 0) {
+                newTarget = target;
+            } else {
+                newTarget = optionalArgs[0];
+                if (!isConstructorNode.executeBoolean(newTarget)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorNotAConstructor(newTarget);
+                }
+            }
 
             if (!JSRuntime.isObject(argumentsList)) {
                 throw Errors.createTypeError("Reflect.construct: Arguments list has wrong type");
             }
-            Object[] applyUserArgs = toObjectArray.executeObjectArray(argumentsList);
-            Object[] passedOnArguments = JSArguments.createWithNewTarget(JSFunction.CONSTRUCT, target, newTarget, applyUserArgs);
+            Object[] args = toObjectArray.executeObjectArray(argumentsList);
+            Object[] passedOnArguments = JSArguments.createWithNewTarget(JSFunction.CONSTRUCT, target, newTarget, args);
             return constructCall.executeCall(passedOnArguments);
-        }
-
-        private void ensureConstructor(Object obj) {
-            ensureObject(obj);
-            DynamicObject constrObj = (DynamicObject) (obj);
-            if (!JSRuntime.isConstructor(constrObj)) {
-                throw Errors.createTypeErrorNotAConstructor(constrObj);
-            }
         }
     }
 

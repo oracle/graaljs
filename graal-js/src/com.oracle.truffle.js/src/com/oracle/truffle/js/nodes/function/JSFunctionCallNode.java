@@ -276,7 +276,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     } else if (JSProxy.isProxy(function)) {
                         c = insertAtFront(new JSProxyCacheNode(null, JSFunctionCallNode.isNew(flags), JSFunctionCallNode.isNewTarget(flags)), currentHead);
                     } else if (JSGuards.isForeignObject(function)) {
-                        c = specializeForeignCall(arguments, currentHead, this);
+                        c = specializeForeignCall(arguments, currentHead);
                     } else if (function instanceof JSNoSuchMethodAdapter) {
                         c = insertAtFront(new JSNoSuchMethodAdapterCacheNode(null), currentHead);
                     } else {
@@ -385,12 +385,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return gen;
     }
 
-    private AbstractCacheNode specializeForeignCall(Object[] arguments, AbstractCacheNode head, JSFunctionCallNode functionCallNode) {
+    private AbstractCacheNode specializeForeignCall(Object[] arguments, AbstractCacheNode head) {
         AbstractCacheNode newNode = null;
         int userArgumentCount = JSArguments.getUserArgumentCount(arguments);
         Object thisObject = JSArguments.getThisObject(arguments);
-        if (JSGuards.isForeignObject(thisObject)) {
-            Object propertyKey = functionCallNode.getPropertyKey();
+        if (isNew(flags) || isNewTarget(flags)) {
+            int skippedArgs = isNewTarget(flags) ? 1 : 0;
+            newNode = new ForeignInstantiateNode(skippedArgs, userArgumentCount - skippedArgs);
+        } else if (JSGuards.isForeignObject(thisObject)) {
+            Object propertyKey = getPropertyKey();
             if (propertyKey != null && propertyKey instanceof String) {
                 newNode = new ForeignInvokeNode((String) propertyKey, userArgumentCount);
             }
@@ -1405,6 +1408,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return exportArgumentsNode.export(JSArguments.extractUserArguments(arguments));
         }
 
+        protected final Object[] exportArguments(Object[] arguments, int skip) {
+            return exportArgumentsNode.export(JSArguments.extractUserArguments(arguments, skip));
+        }
+
         protected final Object convertForeignReturn(Object returnValue) {
             return typeConvertNode.executeWithTarget(returnValue);
         }
@@ -1492,6 +1499,28 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 languageRef = lookupLanguageReference(JavaScriptLanguage.class);
             }
             return languageRef.get().getJSContext();
+        }
+    }
+
+    private static class ForeignInstantiateNode extends ForeignCallNode {
+        @Child protected InteropLibrary interop;
+        private final int skip;
+
+        ForeignInstantiateNode(int skip, int expectedArgumentCount) {
+            super(expectedArgumentCount);
+            this.skip = skip;
+            this.interop = InteropLibrary.getFactory().createDispatched(3);
+        }
+
+        @Override
+        public Object executeCall(Object[] arguments) {
+            Object function = getForeignFunction(arguments);
+            Object[] callArguments = exportArguments(arguments, skip);
+            try {
+                return convertForeignReturn(interop.instantiate(function, callArguments));
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(function, e, "instantiate", this);
+            }
         }
     }
 
