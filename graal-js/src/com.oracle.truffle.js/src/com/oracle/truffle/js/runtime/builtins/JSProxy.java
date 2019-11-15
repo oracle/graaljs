@@ -726,7 +726,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         assert trapResult.size() == uncheckedResultKeys.size();
         for (Object key : targetNonconfigurableKeys) {
             if (!uncheckedResultKeys.contains(key)) {
-                throw Errors.createTypeErrorFormat("\'ownKeys\' on proxy: trap result did not include \'%s\'", key);
+                throw Errors.createTypeErrorOwnKeysTrapMissingKey(key);
             }
             while (uncheckedResultKeys.remove(key)) {
                 // harmony/proxies-ownkeys.js
@@ -737,14 +737,14 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         }
         for (Object key : targetConfigurableKeys) {
             if (!uncheckedResultKeys.contains(key)) {
-                throw Errors.createTypeError("Proxy.ownPropertyKeys, 23.a");
+                throw Errors.createTypeErrorOwnKeysTrapMissingKey(key);
             }
             while (uncheckedResultKeys.remove(key)) {
                 // harmony/proxies-ownkeys.js
             }
         }
         if (!uncheckedResultKeys.isEmpty()) {
-            throw Errors.createTypeError("Proxy.ownPropertyKeys, 24");
+            throw Errors.createTypeError("'ownKeys' on proxy: trap returned extra keys but proxy target is non-extensible");
         }
         return trapResult;
     }
