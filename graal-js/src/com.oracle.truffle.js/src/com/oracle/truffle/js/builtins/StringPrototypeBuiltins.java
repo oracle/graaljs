@@ -1296,7 +1296,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return performReplaceAll(searchValue, replaceValue, thisObj, null);
         }
 
-        private class ReplacedStringPosition {
+        /**
+         * This class represents pair of the part of string with replaced first match and the
+         * position of this match. It is used to return both values from method
+         */
+        private class ReplacedStringPosition { // TODO: Rename this class, current name may be
+                                               // unclear
             public String replacedPart;
             public int position;
 
@@ -1308,8 +1313,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected Object performReplaceAll(String searchValue, String replaceValue, Object thisObj, ReplaceStringParser.Token[] parsedReplaceParam) {
             String thisStr = toString(thisObj);
-            // TODO: This may be bad. So optimize it. Split may be bad decision.
-            // Think on providing some profiling classes, empty string may be unlikely profile.
+            // TODO: Think on providing some profiling classes, empty string may be unlikely
+            // profile.
             if (Boundaries.stringCompareTo(searchValue, "") == 0) {
                 return thisStr.replaceAll("", replaceValue);
             }
@@ -1317,7 +1322,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             ReplacedStringPosition strPos = new ReplacedStringPosition("", 0);
             StringBuilder methodInput = new StringBuilder();
             int position = 0;
-
+            // builtinReplaceString is called multiple times while there is a match. Pass as a
+            // parameter
+            // the substring that doesn't contain previous matches. builtinReplaceString returns the
+            // position
+            // of match and the substring from the beginning of parameter to the end of replaced
+            // part
             while (position < thisStr.length()) {
                 Boundaries.builderAppend(methodInput, thisStr, position, thisStr.length());
                 strPos = builtinReplaceString(searchValue, replaceValue, Boundaries.builderToString(methodInput), parsedReplaceParam);
@@ -1325,10 +1335,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 methodInput.setLength(0);
                 position += strPos.position;
             }
-
-            return Boundaries.builderToString(result); // builtinReplaceString(searchValue,
-                                                       // replaceValue, thisObj,
-                                                       // parsedReplaceParam);
+            return Boundaries.builderToString(result);
         }
 
         @Specialization(replaces = {"replaceString", "replaceStringCached"})
@@ -1355,21 +1362,37 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object performReplaceAllGeneric(Object searchValue, Object replParam, Object thisObj) {
             String thisStr = toString(thisObj);
             String searchString = toString2Node.executeString(searchValue);
-            // TODO: call builtinReplace thisStr.length()+1 times with shifted argument.
             ReplacedStringPosition strPos = new ReplacedStringPosition("", 0);
-            if (Boundaries.stringCompareTo(searchString, "") == 0) {
-                strPos = builtinReplace(searchString, replParam, thisStr, thisStr, 0);
-                return Boundaries.stringConcat(strPos.replacedPart, thisStr);
-            }
-
             StringBuilder result = new StringBuilder();
             StringBuilder methodInput = new StringBuilder();
             int position = 0;
-            // TODO: Provide callback with adequate arguments. Maybe pass last position and add it
-            // to existing and pass thisStr as it is. - DONE.
-            // Then, while refactoring, think about making strPos and maybe something else as
-            // private field in
-            // JSStringReplaceAllNode to avoid passing too much parameters.
+
+            // This is replaceAll behaviour in the case if searchString is empty string.
+            // It should be treated as unlikely case with its profiling branch.
+            // This is very straightforward implementation, but it works fine. This needs to be
+            // optimized and refactored
+            if (Boundaries.stringCompareTo(searchString, "") == 0) {
+                while (position <= thisStr.length()) {
+                    Boundaries.builderAppend(methodInput, thisStr, position, thisStr.length());
+                    strPos = builtinReplace(searchString, replParam, Boundaries.builderToString(methodInput), thisStr, position);
+                    Boundaries.builderAppend(result, strPos.replacedPart, 0, strPos.replacedPart.length());
+                    // builtinReplace returns a string that includes only replaced part, so we
+                    // have to append characters manually
+                    if (position < thisStr.length()) {
+                        Boundaries.builderAppend(result, thisStr.charAt(position));
+                    }
+                    methodInput.setLength(0);
+                    ++position;
+                }
+                return Boundaries.builderToString(result);
+            }
+
+            // TODO: While refactoring, think about making strPos and maybe something else as
+            // private field in JSStringReplaceAllNode to avoid passing too much parameters.
+
+            // Logic is the same as for replaceAll for strings, but there are 2 extra parameters
+            // provided for builtinReplace - thisStr and position for valid callback function
+            // parameters
             while (position < thisStr.length()) {
                 Boundaries.builderAppend(methodInput, thisStr, position, thisStr.length());
                 strPos = builtinReplace(searchString, replParam, Boundaries.builderToString(methodInput), thisStr, position);
