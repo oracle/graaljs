@@ -154,8 +154,8 @@ public abstract class GraalJSException extends RuntimeException implements Truff
      */
     @SuppressWarnings("sync-override")
     @Override
+    @TruffleBoundary
     public final Throwable fillInStackTrace() {
-        CompilerAsserts.neverPartOfCompilation("GraalJSException.fillInStackTrace");
         if (JSTruffleOptions.FillExceptionStack) {
             return super.fillInStackTrace();
         } else {
