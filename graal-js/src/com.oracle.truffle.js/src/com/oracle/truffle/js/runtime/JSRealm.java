@@ -376,7 +376,6 @@ public class JSRealm {
      * Per-realm data structures used by the CommonJs `require` emulation.
      */
     private final Map<Path, DynamicObject> commonJsRequireCache;
-    private final Stack<Path> commonJsStack = new Stack<>();
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -2037,11 +2036,6 @@ public class JSRealm {
     public final Map<String, DynamicObject> getCommonJsRequireCache() {
         assert context.getContextOptions().isCommonJsRequire();
         return commonJsRequireCache;
-    }
-
-    public final Stack<Path> getCommonJsRequireStack() {
-        assert context.getContextOptions().isCommonJsRequire();
-        return commonJsStack;
     }
 
 }

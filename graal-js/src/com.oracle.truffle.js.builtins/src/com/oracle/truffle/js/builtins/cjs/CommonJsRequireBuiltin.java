@@ -41,8 +41,11 @@
 package com.oracle.truffle.js.builtins.cjs;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
@@ -51,10 +54,13 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.*;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import java.io.File;
+import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -96,9 +102,9 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
     }
 
     @Specialization
-    protected Object require(String moduleIdentifier) {
-        Stack<Path> commonJsRequireStack = getContext().getRealm().getCommonJsRequireStack();
-        Path y = commonJsRequireStack.isEmpty() ? cwd : commonJsRequireStack.get(commonJsRequireStack.size() - 1);
+    protected Object require(VirtualFrame frame, String moduleIdentifier) {
+        DynamicObject currentRequire = (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
+        Path y = getCurrentPath(currentRequire);
         /*
             1. If X is a core module,
                 a. return the core module
@@ -143,6 +149,26 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
+    private Path getCurrentPath(DynamicObject currentRequire) {
+        if (JSObject.isJSObject(currentRequire)) {
+            // TODO use hidden property or closure value
+            Object maybeFilename = JSObject.get(currentRequire, "__filename");
+            if (maybeFilename instanceof String) {
+                try {
+                    String fileName = (String) maybeFilename;
+                    if (Paths.get(fileName).toFile().isFile()) {
+                        return Paths.get(fileName).getParent();
+                    }
+                } catch (ClassCastException e) {
+                    // dirname not a string. Will use default cwd.
+                }
+            }
+        }
+        // This is the first `require()` call, so we use the default cwd.
+        return cwd;
+    }
+
     private Object loadNodeModulesOrSelfReference(String moduleIdentifier, Path start) {
         /*
             1. let DIRS = NODE_MODULES_PATHS(START)
@@ -150,7 +176,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
                 a. LOAD_AS_FILE(DIR/X)
                 b. LOAD_AS_DIRECTORY(DIR/X)
         */
-        Path[] nodeModulesPaths = getNodeModulesPaths(start);
+        List<Path> nodeModulesPaths = getNodeModulesPaths(start);
         for (Path s : nodeModulesPaths) {
             Object module = loadAsFileOrDirectory(joinPaths(s, moduleIdentifier));
             if (module != null) {
@@ -164,17 +190,28 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         return Paths.get(p1.normalize().toString(), p2);
     }
 
-    private Path[] getNodeModulesPaths(Path path) {
-        File[] folders = path.toFile().listFiles(File::isDirectory);
-        List<Path> list = new ArrayList<>();
+    private static List<Path> getAllParentPaths(Path from) {
+        List<Path> paths = new ArrayList<>();
+        Path p = from;
+        while (p != null) {
+            paths.add(p);
+            p = p.getParent();
+        }
+        return paths;
+    }
 
-        assert folders != null;
-        for (File folder : folders) {
-            // TODO skip node_modules folder
-            list.add(folder.toPath());
+    private List<Path> getNodeModulesPaths(Path path) {
+        List<Path> list = new ArrayList<>();
+        List<Path> paths = getAllParentPaths(path);
+        for (Path p : paths) {
+            if (p.endsWith(Paths.get(NODE_MODULES))) {
+                list.add(p);
+            } else {
+                list.add(Paths.get(p.toString(), NODE_MODULES));
+            }
         }
         // TODO the list should include "Global" folders.
-        return list.toArray(new Path[]{});
+        return list;
     }
 
     private static JSException fail(String moduleIdentifier) {
@@ -190,12 +227,12 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         }
 
         Source source = sourceFromPath(modulePath.toString(), realm);
+        String filenameBuiltin = modulePath.normalize().toString();
+        String dirnameBuiltin = modulePath.getParent().toAbsolutePath().normalize().toString();
 
         DynamicObject exportsBuiltin = createExportsBuiltin(realm);
-        DynamicObject requireBuiltin = createRequireBuiltin(realm);
-        DynamicObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin);
-        String filenameBuiltin = modulePath.getFileName().toString();
-        String dirnameBuiltin = modulePath.getParent().toAbsolutePath().toString();
+        DynamicObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin, filenameBuiltin);
+        DynamicObject requireBuiltin = createRequireBuiltin(realm, moduleBuiltin, filenameBuiltin);
 
         CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_CLOSURE;
         Source build = Source.newBuilder(JavaScriptLanguage.ID)
@@ -208,14 +245,10 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         Object call = callTarget.call();
 
         if (JSFunction.isJSFunction(call)) {
-            try {
-                commonJsCache.put(modulePath.normalize(), exportsBuiltin);
-                realm.getCommonJsRequireStack().push(Paths.get(dirnameBuiltin));
-                JSFunction.call(JSArguments.create(call, call, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin));
-                return exportsBuiltin;
-            } finally {
-                realm.getCommonJsRequireStack().pop();
-            }
+            commonJsCache.put(modulePath.normalize(), exportsBuiltin);
+            JSFunction.call(JSArguments.create(call, call, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin));
+            JSObject.set(moduleBuiltin, "loaded", true);
+            return exportsBuiltin;
         }
         return null;
     }
@@ -350,14 +383,22 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         return Arrays.asList(CORE_MODULES).contains(moduleIdentifier);
     }
 
-    private DynamicObject createModuleBuiltin(JSRealm realm, DynamicObject exportsBuiltin) {
+    private DynamicObject createModuleBuiltin(JSRealm realm, DynamicObject exportsBuiltin, String fileNameBuiltin) {
         DynamicObject module = JSUserObject.create(realm.getContext(), realm);
         JSObject.set(module, EXPORTS, exportsBuiltin);
+        JSObject.set(module, "id", fileNameBuiltin);
+        JSObject.set(module, "filename", fileNameBuiltin);
+        JSObject.set(module, "loaded", false);
         return module;
     }
 
-    private DynamicObject createRequireBuiltin(JSRealm realm) {
-        return (DynamicObject) realm.getCommonJsRequireFunctionObject();
+    private DynamicObject createRequireBuiltin(JSRealm realm, DynamicObject moduleBuiltin, String fileNameBuiltin) {
+        DynamicObject mainRequire = (DynamicObject) realm.getCommonJsRequireFunctionObject();
+        JSFunctionData functionData = JSFunction.getFunctionData(mainRequire);
+        DynamicObject newRequire = JSFunction.create(realm, functionData);
+        JSObject.set(newRequire, "module", moduleBuiltin);
+        JSObject.set(newRequire, "__filename", fileNameBuiltin);
+        return newRequire;
     }
 
     private DynamicObject createExportsBuiltin(JSRealm realm) {

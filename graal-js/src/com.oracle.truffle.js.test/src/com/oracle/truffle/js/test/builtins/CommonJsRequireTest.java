@@ -149,7 +149,7 @@ public class CommonJsRequireTest {
         }
     }
 
-    private static void assertThrows(String src, Class<? extends Throwable> expected, String expectedMessage) {
+    private static void assertThrows(String src, String expectedMessage) {
         try {
             Path f = getTempFolder();
             try (Context cx = testContext(f)) {
@@ -157,7 +157,7 @@ public class CommonJsRequireTest {
             }
             assert false;
         } catch (Throwable t) {
-            if (!t.getClass().isAssignableFrom(expected)) {
+            if (!t.getClass().isAssignableFrom(PolyglotException.class)) {
                 throw new AssertionError("Unexpected exception " + t);
             }
             assertEquals(expectedMessage, t.getMessage());
@@ -274,22 +274,22 @@ public class CommonJsRequireTest {
 
     @Test
     public void unknownModule() {
-        assertThrows("require('unknown')", PolyglotException.class, "TypeError: Cannot load Npm module: 'unknown'");
+        assertThrows("require('unknown')", "TypeError: Cannot load Npm module: 'unknown'");
     }
 
     @Test
     public void unknownFile() {
-        assertThrows("require('./unknown')", PolyglotException.class, "TypeError: Cannot load Npm module: './unknown'");
+        assertThrows("require('./unknown')", "TypeError: Cannot load Npm module: './unknown'");
     }
 
     @Test
     public void unknownFileWithExt() {
-        assertThrows("require('./unknown.js')", PolyglotException.class, "TypeError: Cannot load Npm module: './unknown.js'");
+        assertThrows("require('./unknown.js')", "TypeError: Cannot load Npm module: './unknown.js'");
     }
 
     @Test
     public void unknownAbsolute() {
-        assertThrows("require('/path/to/unknown.js')", PolyglotException.class, "TypeError: Cannot load Npm module: '/path/to/unknown.js'");
+        assertThrows("require('/path/to/unknown.js')", "TypeError: Cannot load Npm module: '/path/to/unknown.js'");
     }
 
     @Test
