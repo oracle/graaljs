@@ -2179,18 +2179,6 @@
     },
     "status" : "PASS"
   }, {
-    "filePath" : "language/computed-property-names/class/static/method-number.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/computed-property-names/class/static/method-string.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
-    "filePath" : "language/computed-property-names/class/static/method-symbol.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2019-10-15)"
-  }, {
     "filePath" : "language/eval-code/direct/super-prop-method.js",
     "status" : "FAIL"
   }, {
