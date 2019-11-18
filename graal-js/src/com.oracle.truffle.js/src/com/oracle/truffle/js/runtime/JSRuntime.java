@@ -2300,15 +2300,19 @@ public final class JSRuntime {
         return JSObject.defineOwnProperty(o, p, PropertyDescriptor.createDataDefault(v));
     }
 
+    public static boolean createDataProperty(DynamicObject o, Object p, Object v, boolean doThrow) {
+        assert JSRuntime.isObject(o);
+        assert JSRuntime.isPropertyKey(p);
+        boolean success = JSObject.defineOwnProperty(o, p, PropertyDescriptor.createDataDefault(v), doThrow);
+        assert !doThrow || success : "should have thrown";
+        return success;
+    }
+
     /**
      * ES2015, 7.3.6 CreateDataPropertyOrThrow(O, P, V).
      */
     public static boolean createDataPropertyOrThrow(DynamicObject o, Object p, Object v) {
-        boolean success = createDataProperty(o, p, v);
-        if (!success) {
-            throw Errors.createTypeError("cannot create data property");
-        }
-        return success;
+        return createDataProperty(o, p, v, true);
     }
 
     /**

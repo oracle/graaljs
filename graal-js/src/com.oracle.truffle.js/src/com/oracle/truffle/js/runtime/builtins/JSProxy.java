@@ -63,7 +63,6 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
-import com.oracle.truffle.js.runtime.util.JSReflectUtils;
 
 public final class JSProxy extends AbstractJSClass implements PrototypeSupplier {
 
@@ -278,11 +277,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object trap = getTrapFromObject(handler, SET);
         if (trap == Undefined.instance) {
             if (JSObject.isJSObject(target)) {
-                boolean result = JSReflectUtils.performOrdinarySet((DynamicObject) target, key, value, receiver);
-                if (isStrict && !result) {
-                    throw Errors.createTypeErrorCannotSetProperty(key, thisObj, null);
-                }
-                return result;
+                return JSObject.setWithReceiver((DynamicObject) target, key, value, receiver, isStrict);
             } else {
                 JSInteropUtil.writeMember(target, key, value);
                 return true;
