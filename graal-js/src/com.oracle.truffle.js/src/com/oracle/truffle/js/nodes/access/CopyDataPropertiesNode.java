@@ -106,7 +106,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                 PropertyDescriptor desc = getOwnProperty.execute(source, nextKey);
                 if (desc != null && desc.getEnumerable()) {
                     Object propValue = getNode.executeWithTargetAndIndex(source, nextKey);
-                    JSRuntime.createDataProperty(target, nextKey, propValue);
+                    JSRuntime.createDataPropertyOrThrow(target, nextKey, propValue);
                 }
             }
         }
@@ -144,7 +144,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                 String stringKey = key instanceof String ? (String) key : stringInterop.asString(key);
                 if (!isExcluded(withExcluded, excludedItems, stringKey)) {
                     Object value = objInterop.readMember(from, stringKey);
-                    JSRuntime.createDataProperty(target, stringKey, importValue.executeWithTarget(value));
+                    JSRuntime.createDataPropertyOrThrow(target, stringKey, importValue.executeWithTarget(value));
                 }
             }
         } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
