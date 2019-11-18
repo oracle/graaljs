@@ -1122,14 +1122,13 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected abstract T createTruffleObjectPropertyNode(TruffleObject thisObj);
 
+    @TruffleBoundary
     protected T specialize(Object thisObj) {
-        CompilerAsserts.neverPartOfCompilation();
         return specialize(thisObj, null);
     }
 
+    @TruffleBoundary
     protected T specialize(Object thisObj, Object value) {
-        CompilerAsserts.neverPartOfCompilation();
-
         T res;
         Lock lock = getLock();
         lock.lock();

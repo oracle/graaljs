@@ -620,6 +620,7 @@ public abstract class JSAbstractArray extends JSBuiltinObject {
     }
 
     @Override
+    @TruffleBoundary
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
         if (key.equals(LENGTH)) {
             return defineOwnPropertyLength(thisObj, key, descriptor, doThrow);

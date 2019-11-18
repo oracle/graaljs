@@ -90,7 +90,7 @@ import com.oracle.js.parser.ir.UnaryNode;
 import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WithNode;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -183,7 +183,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private static final JavaScriptNode ANY_JAVA_SCRIPT_NODE = new JavaScriptNode() {
         @Override
         public Object execute(VirtualFrame frame) {
-            CompilerAsserts.neverPartOfCompilation();
+            CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException();
         }
     };

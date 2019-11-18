@@ -777,7 +777,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
     }
 
     public abstract static class DebugNeverPartOfCompilationNode extends JSBuiltinNode implements JSBuiltinNode.Inlineable, JSBuiltinNode.Inlined {
-        private static final String MESSAGE = "Debug.neverPartOfCompilation";
 
         public DebugNeverPartOfCompilationNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -786,14 +785,21 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Specialization
         protected static Object neverPartOfCompilation() {
             if (!CompilerDirectives.inCompilationRoot()) {
-                CompilerAsserts.neverPartOfCompilation(MESSAGE);
+                fail();
             }
             return Undefined.instance;
         }
 
+        protected static void fail() {
+            // CompilerAsserts.neverPartOfCompilation() does not work here
+            // SVM would recognize that as reachable around the
+            // `-H:+TruffleCheckNeverPartOfCompilation` check
+            CompilerAsserts.partialEvaluationConstant(System.currentTimeMillis());
+        }
+
         @Override
         public Object callInlined(Object[] arguments) {
-            CompilerAsserts.neverPartOfCompilation(MESSAGE);
+            fail();
             return Undefined.instance;
         }
 
