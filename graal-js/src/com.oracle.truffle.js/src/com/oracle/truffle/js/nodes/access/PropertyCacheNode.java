@@ -1569,7 +1569,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected static boolean isNonIntegerIndex(Object key) {
-        assert !(key instanceof String) || JSRuntime.INFINITY_STRING.equals(key) || (JSRuntime.canonicalNumericIndexString(key) == Undefined.instance);
+        assert !(key instanceof String) || JSRuntime.INFINITY_STRING.equals(key) || (JSRuntime.canonicalNumericIndexString((String) key) == Undefined.instance);
         return JSRuntime.INFINITY_STRING.equals(key);
     }
 

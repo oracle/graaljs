@@ -62,7 +62,6 @@ import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -2449,42 +2448,23 @@ public final class JSRuntime {
      * ES2015, 7.1.16 CanonicalNumericIndexString().
      */
     @TruffleBoundary
-    public static Object canonicalNumericIndexString(Object arg) {
-        assert JSRuntime.isString(arg);
-        String s = arg.toString();
+    public static Object canonicalNumericIndexString(String s) {
+        if (s.isEmpty() || !isNumericIndexStart(s.charAt(0))) {
+            return Undefined.instance;
+        }
         if ("-0".equals(s)) {
             return -0.0;
         }
-        Number n = JSRuntime.toNumber(s);
-        if (!JSRuntime.toString(n).equals(s)) {
+        Number n = stringToNumber(s);
+        if (!numberToString(n).equals(s)) {
             return Undefined.instance;
         }
         return n;
     }
 
-    /**
-     * ES2015, 9.4.5.8 IntegerIndexedElementGet.
-     */
-    @TruffleBoundary
-    public static Object integerIndexedElementGet(DynamicObject thisObj, Object index) {
-        assert JSRuntime.isNumber(index);
-        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        DynamicObject buffer = JSArrayBufferView.getArrayBuffer(thisObj);
-        if (JSArrayBuffer.isDetachedBuffer(buffer)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
-        if (!JSRuntime.isInteger(index)) {
-            return Undefined.instance;
-        }
-        if (JSRuntime.isNegativeZero(((Number) index).doubleValue())) {
-            return Undefined.instance;
-        }
-        long lIndex = ((Number) index).longValue();
-        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
-        if (lIndex < 0 || lIndex >= length) {
-            return Undefined.instance;
-        }
-        return JSArrayBufferView.typedArrayGetArrayType(thisObj).getElement(thisObj, lIndex);
+    private static boolean isNumericIndexStart(char c) {
+        // Start of a number, "Infinity", or "NaN".
+        return isAsciiDigit(c) || c == '-' || c == 'I' || c == 'N';
     }
 
     /**
@@ -2499,53 +2479,6 @@ public final class JSRuntime {
             return false;
         }
         return Math.floor(Math.abs(d)) == Math.abs(d);
-    }
-
-    /**
-     * ES205, 9.4.5.9 IntegerIndexedElementSet.
-     */
-    @TruffleBoundary
-    public static boolean integerIndexedElementSet(DynamicObject thisObj, Object indexObj, Object value) {
-        assert JSRuntime.isNumber(indexObj);
-        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        Number index = (Number) indexObj;
-        Object numValue = JSArrayBufferView.isBigIntArrayBufferView(thisObj) ? JSRuntime.toBigInt(value) : JSRuntime.toNumber(value);
-        DynamicObject buffer = JSArrayBufferView.getArrayBuffer(thisObj);
-        if (JSArrayBuffer.isDetachedBuffer(buffer)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
-        if (!isInteger(index)) {
-            return false;
-        }
-        double dIndex = index.doubleValue();
-        if (isNegativeZero(dIndex)) {
-            return false;
-        }
-        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
-        if (dIndex < 0 || dIndex >= length) {
-            return false;
-        }
-        JSArrayBufferView.typedArrayGetArrayType(thisObj).setElement(thisObj, index.intValue(), numValue, true);
-        return true;
-    }
-
-    /**
-     * ES2015, 9.4.5.9 IntegerIndexedElementSet, simplified version (numIndex is an int already).
-     */
-    @TruffleBoundary
-    public static boolean integerIndexedElementSet(DynamicObject thisObj, int numIndex, Object value) {
-        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        Object numValue = JSArrayBufferView.isBigIntArrayBufferView(thisObj) ? JSRuntime.toBigInt(value) : JSRuntime.toNumber(value);
-        DynamicObject buffer = JSArrayBufferView.getArrayBuffer(thisObj);
-        if (JSArrayBuffer.isDetachedBuffer(buffer)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
-        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
-        if (numIndex < 0 || numIndex >= length) {
-            return false;
-        }
-        JSArrayBufferView.typedArrayGetArrayType(thisObj).setElement(thisObj, numIndex, numValue, true);
-        return true;
     }
 
     @TruffleBoundary
