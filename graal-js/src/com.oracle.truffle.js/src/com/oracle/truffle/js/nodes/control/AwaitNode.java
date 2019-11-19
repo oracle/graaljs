@@ -134,7 +134,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == JSTags.ControlFlowBranchTag.class) {
+        if (tag == JSTags.ControlFlowBranchTag.class || tag == JSTags.InputNodeTag.class) {
             return true;
         }
         return super.hasTag(tag);

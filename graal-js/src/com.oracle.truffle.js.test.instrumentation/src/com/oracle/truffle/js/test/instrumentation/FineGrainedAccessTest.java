@@ -143,8 +143,9 @@ public abstract class FineGrainedAccessTest {
         protected final Object val;
         protected final JavaScriptNode instrumentedNode;
         protected final EventContext context;
+        protected final Object[] others;
 
-        public Event(EventContext context, Kind kind, JavaScriptNode instrumentedNode, Object inputValue) {
+        public Event(EventContext context, Kind kind, JavaScriptNode instrumentedNode, Object inputValue, Object... others) {
             if (DEBUG) {
                 System.out.println("New event: " + kind + " === " + inputValue + "  === " + instrumentedNode.getClass().getSimpleName());
             }
@@ -152,6 +153,7 @@ public abstract class FineGrainedAccessTest {
             this.kind = kind;
             this.val = inputValue;
             this.instrumentedNode = instrumentedNode;
+            this.others = others;
         }
 
         @Override
@@ -177,8 +179,7 @@ public abstract class FineGrainedAccessTest {
 
         AssertedEvent input(Object value) {
             Event event = test.getNextEvent();
-            assertTag(tag, event);
-            assertEquals(Event.Kind.INPUT, event.kind);
+            assertKindTag(Event.Kind.INPUT, tag, event);
             if (value instanceof Number) {
                 assertTrue(event.val instanceof Number);
                 assertEquals(((Number) value).doubleValue(), ((Number) event.val).doubleValue(), 0);
@@ -190,37 +191,34 @@ public abstract class FineGrainedAccessTest {
 
         AssertedEvent input() {
             Event event = test.getNextEvent();
-            assertTag(tag, event);
-            assertEquals(Event.Kind.INPUT, event.kind);
+            assertKindTag(Event.Kind.INPUT, tag, event);
             return this;
         }
 
         AssertedEvent input(Consumer<Event> verify) {
             Event event = test.getNextEvent();
-            assertTag(tag, event);
-            assertEquals(Event.Kind.INPUT, event.kind);
+            assertKindTag(Event.Kind.INPUT, tag, event);
             verify.accept(event);
             return this;
         }
 
         void exit() {
             Event event = test.getNextEvent();
-            assertTag(tag, event);
-            assertEquals(Event.Kind.RETURN, event.kind);
+            assertKindTag(Event.Kind.RETURN, tag, event);
         }
 
         void exitExceptional() {
             Event event = test.getNextEvent();
-            assertTag(tag, event);
-            assertEquals(Event.Kind.RETURN_EXCEPTIONAL, event.kind);
+            assertKindTag(Event.Kind.RETURN_EXCEPTIONAL, tag, event);
         }
 
         void exitMaybeControlFlowException() {
             Event event = test.getNextEvent();
-            assertTag(tag, event);
             if (event.kind == Event.Kind.RETURN) {
                 // OK
+                assertKindTag(Event.Kind.RETURN, tag, event);
             } else if (event.kind == Event.Kind.RETURN_EXCEPTIONAL) {
+                assertKindTag(Event.Kind.RETURN_EXCEPTIONAL, tag, event);
                 assert event.val instanceof YieldException || event.val instanceof ReturnException : event.val;
             } else {
                 assert false;
@@ -229,15 +227,15 @@ public abstract class FineGrainedAccessTest {
 
         void exit(Consumer<Event> verify) {
             Event event = test.getNextEvent();
-            assertTag(tag, event);
-            assertEquals(Event.Kind.RETURN, event.kind);
+            assertKindTag(Event.Kind.RETURN, tag, event);
             verify.accept(event);
         }
 
     }
 
-    private static void assertTag(Class<? extends Tag> tag, Event event) {
-        assertTrue("expected " + tag.getSimpleName() + ", actual [" + getTagNames(event.instrumentedNode) + "]", event.instrumentedNode.hasTag(tag));
+    private static void assertKindTag(Event.Kind kind, Class<? extends Tag> tag, Event event) {
+        assertTrue("expected " + kind.name() + " " + tag.getSimpleName() + ", actual [" + getTagNames(event.instrumentedNode) + ", " + event.kind + "]",
+                        event.instrumentedNode.hasTag(tag) && kind.equals(event.kind));
     }
 
     protected void enterDeclareTag(String expectedVarName) {
@@ -248,23 +246,20 @@ public abstract class FineGrainedAccessTest {
 
     protected AssertedEvent enter(Class<? extends Tag> tag) {
         Event event = getNextEvent();
-        assertTag(tag, event);
-        assertEquals(event.kind, Event.Kind.ENTER);
+        assertKindTag(Event.Kind.ENTER, tag, event);
         return new AssertedEvent(this, tag);
     }
 
     protected AssertedEvent enter(Class<? extends Tag> tag, Consumer<Event> verify) {
         Event event = getNextEvent();
-        assertTag(tag, event);
-        assertEquals(event.kind, Event.Kind.ENTER);
+        assertKindTag(Event.Kind.ENTER, tag, event);
         verify.accept(event);
         return new AssertedEvent(this, tag);
     }
 
     protected AssertedEvent enter(Class<? extends Tag> tag, BiConsumer<Event, AssertedEvent> verify) {
         Event event = getNextEvent();
-        assertTag(tag, event);
-        assertEquals(event.kind, Event.Kind.ENTER);
+        assertKindTag(Event.Kind.ENTER, tag, event);
         AssertedEvent chain = new AssertedEvent(this, tag);
         verify.accept(event, chain);
         return chain;
@@ -308,9 +303,10 @@ public abstract class FineGrainedAccessTest {
                         if (!collecting) {
                             return;
                         }
-                        inputEvents.push(inputEvents.pop() + 1);
-                        events.add(new Event(c, Event.Kind.INPUT, (JavaScriptNode) c.getInstrumentedNode(), inputValue));
                         saveInputValue(frame, inputIndex, inputValue);
+                        events.add(new Event(c, Event.Kind.INPUT, (JavaScriptNode) c.getInstrumentedNode(), inputValue, inputIndex));
+                        inputEvents.push(inputEvents.pop() + 1);
+
                     }
 
                     @Override

@@ -76,6 +76,14 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
     }
 
     private static JavaScriptNode createImpl(JavaScriptNode originalNode, JavaScriptNode transferSourcesFrom, Class<? extends Tag> expectedTag, boolean inputTag, NodeObjectDescriptor descriptor) {
+        // check if the node has already been tagged
+        JavaScriptNode realOriginal = originalNode;
+        if (originalNode instanceof WrapperNode) {
+            realOriginal = (JavaScriptNode) ((WrapperNode) originalNode).getDelegateNode();
+        }
+        if (realOriginal.hasTag(expectedTag) && (!inputTag || realOriginal.hasTag(JSTags.InputNodeTag.class))) {
+            return originalNode;
+        }
         JavaScriptNode clone = cloneUninitialized(originalNode);
         JavaScriptNode wrapper = new JSTaggedExecutionNode(clone, expectedTag, inputTag, descriptor);
         transferSourceSection(transferSourcesFrom, wrapper);
