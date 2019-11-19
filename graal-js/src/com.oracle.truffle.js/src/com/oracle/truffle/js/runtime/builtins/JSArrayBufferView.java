@@ -277,6 +277,9 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     @TruffleBoundary
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
+        if (thisObj != receiver) { // off-spec
+            return ordinarySetIndex(thisObj, index, value, receiver, isStrict);
+        }
         Object numValue = convertValue(thisObj, value);
         checkDetachedView(thisObj);
         typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
@@ -287,6 +290,9 @@ public final class JSArrayBufferView extends JSBuiltinObject {
     @Override
     public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
         assert JSRuntime.isPropertyKey(key);
+        if (thisObj != receiver) { // off-spec
+            return ordinarySet(thisObj, key, value, receiver, isStrict);
+        }
         if (key instanceof String) {
             Object numericIndex = JSRuntime.canonicalNumericIndexString((String) key);
             if (numericIndex != Undefined.instance) {
