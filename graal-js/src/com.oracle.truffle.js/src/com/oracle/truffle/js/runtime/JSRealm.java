@@ -237,6 +237,7 @@ public class JSRealm {
     private Object reflectApplyFunctionObject;
     private Object reflectConstructFunctionObject;
     private Object commonJsRequireFunctionObject;
+    private Map<String, DynamicObject> commonJsPreLoadedBuiltins;
     private Object jsonParseFunctionObject;
 
     private final DynamicObject arrayBufferConstructor;
@@ -1207,6 +1208,32 @@ public class JSRealm {
         if (getContext().getContextOptions().isCommonJsRequire()) {
             putGlobalProperty("require", lookupFunction(JSGlobalObject.CLASS_NAME_COMMONJS_REQUIRE_EXTENSIONS, "require"));
             this.commonJsRequireFunctionObject = JSObject.get(getGlobalObject(), "require");
+
+            String commonJsRequireGlobals = getContext().getContextOptions().getCommonJsRequireGlobals();
+            if (commonJsRequireGlobals != null && !"".equals(commonJsRequireGlobals)) {
+                Object globals = JSFunction.call(JSArguments.create(commonJsRequireFunctionObject, commonJsRequireFunctionObject, commonJsRequireGlobals));
+                DynamicObject commonJsGlobals = (DynamicObject) globals;
+                if (commonJsGlobals != null && commonJsGlobals != Undefined.instance) {
+                    List<String> globalNames = JSObject.enumerableOwnNames(commonJsGlobals);
+                    for (String name : globalNames) {
+                        JSObject.set(getGlobalObject(), name, JSObject.get(commonJsGlobals, name));
+                    }
+                }
+            }
+
+            Map<String, String> commonJsRequireBuiltins = getContext().getContextOptions().getCommonJsRequireBuiltins();
+
+            this.commonJsPreLoadedBuiltins = new HashMap<>();
+            for (String builtin : commonJsRequireBuiltins.keySet()) {
+                try {
+                    String builtinModule = commonJsRequireBuiltins.get(builtin);
+                    DynamicObject obj = (DynamicObject) JSFunction.call(JSArguments.create(commonJsRequireFunctionObject, commonJsRequireFunctionObject, builtinModule));
+                    this.commonJsPreLoadedBuiltins.put(builtin, obj);
+                } catch (Exception e) {
+                    throw Errors.createErrorFromException(e);
+                }
+            }
+
         }
     }
 

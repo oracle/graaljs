@@ -42,7 +42,9 @@ package com.oracle.truffle.js.runtime;
 
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -252,6 +254,14 @@ public final class JSContextOptions {
     public static final String COMMONJS_REQUIRE_CWS_NAME = JS_OPTION_PREFIX + "cjs-require-cwd";
     @Option(name = COMMONJS_REQUIRE_CWS_NAME, category = OptionCategory.USER, help = "CommonJS default current working directory.") //
     public static final OptionKey<String> COMMONJS_REQUIRE_CWS = new OptionKey<>("");
+
+    public static final String COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME = JS_OPTION_PREFIX + "cjs-global-builtins";
+    @Option(name = COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME, category = OptionCategory.USER, help = "Npm packages used to replace global Node.js builtins. Syntax: <name,module-name>.") //
+    public static final OptionKey<String> COMMONJS_REQUIRE_GLOBAL_BUILTINS = new OptionKey<>("");
+
+    public static final String COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME = JS_OPTION_PREFIX + "cjs-global-properties";
+    @Option(name = COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME, category = OptionCategory.USER, help = "Npm package used to populate Node.js global object.") //
+    public static final OptionKey<String> COMMONJS_REQUIRE_GLOBAL_PROPERTIES = new OptionKey<>("");
 
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
     @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
@@ -615,6 +625,28 @@ public final class JSContextOptions {
     public boolean isCommonJsRequire() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
         return COMMONJS_REQUIRE_EMULATION.getValue(optionValues);
+    }
+
+    public Map<String,String> getCommonJsRequireBuiltins() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
+        String value = COMMONJS_REQUIRE_GLOBAL_BUILTINS.getValue(optionValues);
+        Map<String, String> map = new HashMap<>();
+        String[] options = value.split(",");
+        for (String s : options) {
+            String[] builtin = s.split(":");
+            if (builtin.length != 2) {
+                throw new IllegalArgumentException("Unexpected builtin arguments: " + builtin);
+            }
+            String key = builtin[0];
+            String val = builtin[1];
+            map.put(key, val);
+        }
+        return map;
+    }
+
+    public String getCommonJsRequireGlobals() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
+        return COMMONJS_REQUIRE_GLOBAL_PROPERTIES.getValue(optionValues);
     }
 
     public String getRequireCwd() {
