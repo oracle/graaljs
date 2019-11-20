@@ -62,6 +62,10 @@ describe('vm', function () {
         assert.strictEqual(desc.enumerable, false);
         assert.strictEqual(desc.configurable, true);
     });
+    it('should handle vm.runInNewContext("toString")', function() {
+        var result = vm.runInNewContext('toString');
+        assert.strictEqual(typeof result, 'function');
+    });
     it('should handle non-configurable properties of sandbox', function () {
         var sandbox = {};
         var value = 42;
