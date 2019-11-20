@@ -206,7 +206,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             }
         }
         DynamicObject target = (DynamicObject) arguments[2];
-        return JSObject.hasOwnProperty(target, key);
+        return JSObject.hasProperty(target, key);
     }
 
     @CompilerDirectives.TruffleBoundary
