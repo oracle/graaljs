@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -159,6 +161,8 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
     }
 
     static final class FileNameNode extends JSConstantNode {
+        @CompilationFinal private String filename = null;
+
         FileNameNode() {
         }
 
@@ -173,9 +177,13 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
         }
 
         private String getFileName() {
-            Source source = getEncapsulatingSourceSection().getSource();
-            String path = source.getPath();
-            return (path == null) ? source.getName() : path;
+            if (filename == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Source source = getEncapsulatingSourceSection().getSource();
+                String path = source.getPath();
+                filename = (path == null) ? source.getName() : path;
+            }
+            return filename;
         }
 
         @Override
