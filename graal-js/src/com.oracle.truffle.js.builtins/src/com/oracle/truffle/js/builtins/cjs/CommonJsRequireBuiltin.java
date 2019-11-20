@@ -70,9 +70,9 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
 
     private static void log(String message) {
         if (LOG) {
-            String s = "";
+            StringBuilder s = new StringBuilder();
             for (int i = 0; i < nesting; i++) {
-                s += "  ";
+                s.append("  ");
             }
             System.err.println("[require] " + s + message);
         }
@@ -243,7 +243,8 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         Map<Path, DynamicObject> commonJsCache = realm.getCommonJsRequireCache();
         if (commonJsCache.containsKey(modulePath.normalize())) {
             log("returning cached '" + modulePath.normalize().toString() + "'");
-            return commonJsCache.get(modulePath.normalize());
+            DynamicObject moduleBuiltin = commonJsCache.get(modulePath.normalize());
+            return JSObject.get(moduleBuiltin, "exports");
         }
 
         Source source = sourceFromPath(modulePath.toString(), realm);
@@ -268,7 +269,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         JSObject.set(process, "env", JSUserObject.create(getContext()));
 
         if (JSFunction.isJSFunction(call)) {
-            commonJsCache.put(modulePath.normalize(), exportsBuiltin);
+            commonJsCache.put(modulePath.normalize(), moduleBuiltin);
 
             try {
                 nesting++;
@@ -278,6 +279,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
                 return JSObject.get(moduleBuiltin, "exports");
             } catch (Exception e) {
                 log("EXCEPTION: '" + e.getMessage() + "'");
+                throw e;
             } finally {
                 nesting--;
                 log("done '" + moduleIdentifier + "'");
