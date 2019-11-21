@@ -1378,7 +1378,15 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Object exit(Object[] arg,
                         @Cached("create()") JSToNumberNode toNumberNode) {
             int exitCode = arg.length == 0 ? 0 : (int) JSRuntime.toInteger(toNumberNode.executeNumber(arg[0]));
+            if (getContext().isOptionNashornCompatibilityMode()) {
+                nashornExit(exitCode);
+            }
             throw new ExitException(exitCode, this);
+        }
+
+        @TruffleBoundary
+        private static void nashornExit(int exitCode) {
+            System.exit(exitCode);
         }
     }
 
