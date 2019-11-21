@@ -1278,6 +1278,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final ValueProfile searchValueProfile = ValueProfile.createIdentityProfile();
         private final ValueProfile replaceValueProfile = ValueProfile.createIdentityProfile();
 
+        private final ConditionProfile isRegExp = ConditionProfile.createCountingProfile();
+        @Child private TRegexUtil.TRegexCompiledRegexSingleFlagAccessor globalFlagAccessor = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(TRegexUtil.Props.Flags.GLOBAL);
+
         public JSStringReplaceAllNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -1334,6 +1337,14 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object searchVal = searchValueProfile.profile(searchValue);
             Object replaceVal = replaceValueProfile.profile(replaceValue);
             if (isSpecialProfile.profile(!(searchVal == Undefined.instance || searchVal == Null.instance))) {
+
+                if (isRegExp.profile(JSRegExp.isJSRegExp(searchValue))) {
+                    DynamicObject searchRegExp = (DynamicObject) searchValue;
+
+                    if (!globalFlagAccessor.get(JSRegExp.getCompiledRegex(searchRegExp))) {
+                        throw Errors.createTypeError("Only global regexps allowed");
+                    }
+                }
                 Object replacer = getMethod(searchVal, Symbol.SYMBOL_REPLACE);
                 if (callSpecialProfile.profile(replacer != Undefined.instance)) {
                     return call(replacer, searchVal, new Object[]{thisObj, replaceVal});
