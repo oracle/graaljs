@@ -115,7 +115,6 @@ public class Recording {
     private static final boolean BATCHES_ENABLED = true;
     private static final boolean LAZY_FUNCTIONS = true;
     private static final boolean SORT_BY_ID = false;
-    private static final boolean EARLY_FIXUP = true;
     private static final boolean CONST_IN_VAR = true;
     private static final boolean SOURCE_SECTIONS = true;
     private static final boolean FIXUP_SOURCE_SECTIONS = true;
@@ -132,7 +131,8 @@ public class Recording {
     private final ArrayDeque<MethodCall> callStack = new ArrayDeque<>();
     private final Set<FrameDescriptor> frameDescriptorSet = new LinkedHashSet<>();
     private final Set<JSFunctionData> functionDataSet = new LinkedHashSet<>();
-    private final ArrayDeque<BooleanSupplier> fixups = new ArrayDeque<>();
+    private final ArrayDeque<Function<Boolean, Boolean>> earlyFixups = new ArrayDeque<>();
+    private final ArrayDeque<Function<Boolean, Boolean>> lateFixups = new ArrayDeque<>();
 
     private final Map<Inst, Collection<Inst>> usageMap = new HashMap<>();
     private final Map<Inst, Integer> indexMap = new HashMap<>();
@@ -1096,9 +1096,7 @@ public class Recording {
     }
 
     public void recordCall(Method method, Object[] args) {
-        if (EARLY_FIXUP) {
-            processFixUps();
-        }
+        processFixUps(true);
         callStack.push(new MethodCall(method, args));
     }
 
@@ -1282,7 +1280,7 @@ public class Recording {
         if (result instanceof JSFunctionData) {
             JSFunctionData functionData = (JSFunctionData) result;
             String originalName = functionData.getName();
-            addFixUp(() -> {
+            addFixUp((earlyFixup) -> {
                 String currentName = functionData.getName();
                 boolean nameChanged = !originalName.equals(currentName);
                 if (nameChanged) {
@@ -1302,35 +1300,59 @@ public class Recording {
 
         if (result instanceof JavaScriptNode) {
             JavaScriptNode jsnode = (JavaScriptNode) result;
-            addFixUp(() -> {
-                if (jsnode.hasSourceSection()) {
-                    if (FIXUP_SOURCE_SECTIONS) {
+            if (FIXUP_SOURCE_SECTIONS) {
+                addFixUp((earlyFixup) -> {
+                    if (jsnode.hasSourceSection()) {
                         SourceSection sourceSection = jsnode.getSourceSection();
                         insts.add(new FixUpNodeSourceSectionInst(nodeInst.asVar(), dumpSource(sourceSection.getSource()).asVar(), sourceSection));
+                        return true;
                     }
-                    if (FIXUP_TAGS) {
-                        boolean hasStatementTag = jsnode.hasTag(StandardTags.StatementTag.class);
-                        boolean hasCallTag = jsnode.hasTag(StandardTags.CallTag.class);
-                        boolean hasExpressionTag = jsnode.hasTag(StandardTags.ExpressionTag.class);
-                        boolean hasRootBodyTag = jsnode.hasTag(StandardTags.RootBodyTag.class);
-                        if (hasStatementTag || hasCallTag || hasExpressionTag || hasRootBodyTag) {
-                            insts.add(new FixUpNodeTagsInst(nodeInst.asVar(), hasStatementTag, hasCallTag, hasExpressionTag, hasRootBodyTag));
+                    return false;
+                });
+            }
+            if (FIXUP_TAGS) {
+                addFixUp(new Function<Boolean, Boolean>() {
+                    private int oldTags;
+
+                    @Override
+                    public Boolean apply(Boolean earlyFixup) {
+                        if (jsnode.hasSourceSection()) {
+                            boolean hasStatementTag = jsnode.hasTag(StandardTags.StatementTag.class);
+                            boolean hasCallTag = jsnode.hasTag(StandardTags.CallTag.class);
+                            boolean hasExpressionTag = jsnode.hasTag(StandardTags.ExpressionTag.class);
+                            boolean hasRootBodyTag = jsnode.hasTag(StandardTags.RootBodyTag.class);
+                            int newTags = tags(hasStatementTag, hasCallTag, hasExpressionTag, hasRootBodyTag);
+                            if (newTags != oldTags) {
+                                insts.add(new FixUpNodeTagsInst(nodeInst.asVar(), hasStatementTag, hasCallTag, hasExpressionTag, hasRootBodyTag));
+                                oldTags = newTags;
+                            }
+                            return !earlyFixup; // Check tags once more during late fix-up phase
                         }
+                        return false;
                     }
-                    return true;
-                }
-                return false;
-            });
+
+                    private int tags(boolean hasStatementTag, boolean hasCallTag, boolean hasExpressionTag, boolean hasRootBodyTag) {
+                        return (hasStatementTag ? (1 << 0) : 0) | (hasCallTag ? (1 << 1) : 0) | (hasExpressionTag ? (1 << 2) : 0) | (hasRootBodyTag ? (1 << 3) : 0);
+                    }
+                });
+            }
         }
     }
 
-    private void addFixUp(BooleanSupplier fixup) {
-        fixups.add(fixup);
+    private void addFixUp(Function<Boolean, Boolean> fixup) {
+        earlyFixups.add(fixup);
     }
 
-    private void processFixUps() {
+    private void processFixUps(boolean earlyFixup) {
+        ArrayDeque<Function<Boolean, Boolean>> fixups = (earlyFixup ? earlyFixups : lateFixups);
         if (!fixups.isEmpty()) {
-            fixups.removeIf(fixup -> fixup.getAsBoolean());
+            fixups.removeIf(fixup -> fixup.apply(earlyFixup));
+        }
+        if (earlyFixup) {
+            lateFixups.addAll(earlyFixups);
+            earlyFixups.clear();
+        } else {
+            lateFixups.clear();
         }
     }
 
@@ -1354,8 +1376,7 @@ public class Recording {
     }
 
     public void finish(RootNode rootNode) {
-        processFixUps();
-        fixups.clear();
+        processFixUps(false);
         append(new ReturnInst(getInst(rootNode).asVar()));
         dce();
 
