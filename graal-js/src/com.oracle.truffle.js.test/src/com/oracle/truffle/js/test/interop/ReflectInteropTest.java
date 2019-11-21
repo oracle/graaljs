@@ -42,9 +42,12 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -111,5 +114,31 @@ public class ReflectInteropTest {
         context.eval(ID, "Reflect.set").execute(proxyObject, "p4", 44);
         assertTrue(map.containsKey("p4"));
         assertEquals(44, context.asValue(map.get("p4")).asInt());
+    }
+
+    @Test
+    public void reflectHas() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("p1", 41);
+        map.put("p2", 42);
+        map.put("p3", 43);
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+
+        Value reflectHas = context.eval(ID, "Reflect.has");
+        assertTrue(reflectHas.execute(proxyObject, "p2").asBoolean());
+        assertTrue(reflectHas.execute(proxyObject, "p3").asBoolean());
+        assertFalse(reflectHas.execute(proxyObject, "p4").asBoolean());
+    }
+
+    @Test
+    public void reflectOwnKeys() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("p1", 41);
+        map.put("p2", 42);
+        map.put("p3", 43);
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+
+        Value reflectOwnKeys = context.eval(ID, "Reflect.ownKeys");
+        assertEquals(Arrays.asList("p1", "p2", "p3"), reflectOwnKeys.execute(proxyObject).as(List.class));
     }
 }
