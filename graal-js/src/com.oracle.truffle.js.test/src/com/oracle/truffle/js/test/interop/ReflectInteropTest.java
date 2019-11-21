@@ -141,4 +141,21 @@ public class ReflectInteropTest {
         Value reflectOwnKeys = context.eval(ID, "Reflect.ownKeys");
         assertEquals(Arrays.asList("p1", "p2", "p3"), reflectOwnKeys.execute(proxyObject).as(List.class));
     }
+
+    @Test
+    public void reflectDeleteProperty() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("p1", 41);
+        map.put("p2", 42);
+        map.put("p3", 43);
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+
+        Value reflectDelete = context.eval(ID, "Reflect.deleteProperty");
+        assertTrue(reflectDelete.execute(proxyObject, "p1").asBoolean());
+        assertFalse(reflectDelete.execute(proxyObject, "p1").asBoolean());
+        assertEquals(2, map.size());
+        assertTrue(map.containsKey("p2"));
+        assertTrue(map.containsKey("p3"));
+        assertFalse(reflectDelete.execute(proxyObject, 42).asBoolean());
+    }
 }

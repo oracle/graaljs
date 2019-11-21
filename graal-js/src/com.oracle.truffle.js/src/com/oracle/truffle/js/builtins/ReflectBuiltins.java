@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -271,16 +272,45 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
     public abstract static class ReflectDeletePropertyNode extends ReflectOperation {
 
+        @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
+
         public ReflectDeletePropertyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization
-        protected boolean reflectDeleteProperty(Object target, Object propertyKey,
-                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
-            ensureJSObject(target);
+        @Specialization(guards = "isJSObject(target)")
+        protected boolean doObject(DynamicObject target, Object propertyKey,
+                        @Cached("create()") JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
-            return JSObject.delete((DynamicObject) target, key);
+            return JSObject.delete(target, key, false, classProfile);
+        }
+
+        @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
+        protected boolean doForeignObject(Object target, Object propertyKey,
+                        @CachedLibrary("target") InteropLibrary interop) {
+            Object key = toPropertyKeyNode.execute(propertyKey);
+            if (interop.hasMembers(target)) {
+                if (key instanceof String) {
+                    String memberName = (String) key;
+                    if (interop.isMemberRemovable(target, memberName)) {
+                        try {
+                            InteropLibrary.getFactory().getUncached().removeMember(target, memberName);
+                        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                            throw Errors.createTypeErrorInteropException(target, e, "removeMember", memberName, null);
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            } else {
+                throw Errors.createTypeErrorCalledOnNonObject();
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSObject(target)", "!isForeignObject(target)"})
+        protected boolean doNonObject(Object target, Object propertyKey) {
+            throw Errors.createTypeErrorCalledOnNonObject();
         }
     }
 
