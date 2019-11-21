@@ -42,8 +42,10 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -199,5 +201,57 @@ public class ProxyObjectTest {
     @Test
     public void newTypedArrayFromProxyArray() {
         arrayFromProxyArrayCommon("new Int8Array");
+    }
+
+    @Test
+    public void objectPrototypeHasOwnProperty() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("p1", 41);
+        map.put("p2", 42);
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        assertFalse(context.eval(ID, "Object.prototype.hasOwnProperty.call(proxyObj, 'p0');").asBoolean());
+        assertTrue(context.eval(ID, "Object.prototype.hasOwnProperty.call(proxyObj, 'p1');").asBoolean());
+    }
+
+    @Test
+    public void objectGetOwnPropertyNames() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("p1", 41);
+        map.put("p2", 42);
+        map.put("p3", 43);
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        assertEquals(Arrays.asList("p1", "p2", "p3"), context.eval(ID, "Object.getOwnPropertyNames(proxyObj);").as(List.class));
+    }
+
+    @Test
+    public void objectGetOwnPropertyDescriptor() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("p1", 41);
+        map.put("p2", 42);
+        map.put("p3", 43);
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        assertEquals(42, context.eval(ID, "Object.getOwnPropertyDescriptor(proxyObj, 'p2').value;").asInt());
+    }
+
+    @Test
+    public void objectGetOwnPropertyDescriptors() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("p1", 41);
+        map.put("p2", 42);
+        map.put("p3", 43);
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        assertEquals(Arrays.asList("p1", "p2", "p3"), context.eval(ID, "var D = Object.getOwnPropertyDescriptors(proxyObj); Object.keys(D);").as(List.class));
+        assertEquals(Arrays.asList(41, 42, 43), context.eval(ID, "var D = Object.getOwnPropertyDescriptors(proxyObj); Object.values(D).map(d => d.value);").as(List.class));
+    }
+
+    @Test
+    public void objectFromEntries() {
+        context.getBindings(ID).putMember("proxyArr", ProxyArray.fromArray(ProxyArray.fromArray("p1", 41), ProxyArray.fromArray("p2", 42), ProxyArray.fromArray("p3", 43)));
+        assertEquals(Arrays.asList("p1", "p2", "p3"), context.eval(ID, "Object.keys(Object.fromEntries(proxyArr));").as(List.class));
+        assertEquals(Arrays.asList(41, 42, 43), context.eval(ID, "Object.values(Object.fromEntries(proxyArr));").as(List.class));
     }
 }
