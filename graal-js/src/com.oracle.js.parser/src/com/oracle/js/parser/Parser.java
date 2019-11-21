@@ -1521,7 +1521,7 @@ public class Parser extends AbstractParser {
                     break;
                 }
                 boolean isStatic = false;
-                if (type == STATIC) {
+                if (type == STATIC && lookahead() != LPAREN) {
                     isStatic = true;
                     next();
                 }
