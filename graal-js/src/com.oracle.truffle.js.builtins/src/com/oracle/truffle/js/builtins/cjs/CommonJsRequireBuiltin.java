@@ -66,15 +66,17 @@ import java.util.*;
 public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperation {
 
     private static final boolean LOG = false;
-    private static int nesting = 0;
+
+    private static Stack<String> requireStack = new Stack<>();
 
     private static void log(String message) {
         if (LOG) {
-            StringBuilder s = new StringBuilder();
-            for (int i = 0; i < nesting; i++) {
-                s.append("  ");
+            int nesting = requireStack.size() + 1;
+            StringBuilder s = new StringBuilder("'.'");
+            for (String module : requireStack) {
+                s.append(" '" + module + "'");
             }
-            System.err.println("[require] " + s + message);
+            System.err.println("[" + s.toString() + "] " + message);
         }
     }
 
@@ -98,7 +100,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
     private static final String MAIN_PROPERTY ="main";
     
     private static final String[] CORE_MODULES = new String[] {"assert", "async_hooks", "buffer", "child_process", "cluster", "crypto",
-            "dgram", "dns", "domain", "events", "fs", "http", "http2", "https", "net",
+            "dgram", "dns", "domain", "events", "fs", "http", "http2", "https", "module", "net",
             "os", "path", "perf_hooks", "punycode", "querystring", "readline", "repl",
             "stream", "string_decoder", "tls", "trace_events", "tty", "url", "util",
             "v8", "vm", "worker_threads", "zlib"};
@@ -117,9 +119,11 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
     protected Object require(VirtualFrame frame, String moduleIdentifier) {
         DynamicObject currentRequire = (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
         Path y = getCurrentPath(currentRequire);
+        return requireImpl(frame, moduleIdentifier, y);
+    }
 
+    protected Object requireImpl(VirtualFrame frame, String moduleIdentifier, Path y) {
         log("required module '" + moduleIdentifier + "'                                core:" + isCoreModule(moduleIdentifier) + " from path " + y.normalize().toString());
-
         /*
             1. If X is a core module,
                 a. return the core module
@@ -128,7 +132,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         if (isCoreModule(moduleIdentifier) || "".equals(moduleIdentifier)) {
             String moduleReplacementName = getContext().getContextOptions().getCommonJsRequireBuiltins().get(moduleIdentifier);
             if (moduleReplacementName != null && !"".equals(moduleReplacementName)) {
-                return require(frame, moduleReplacementName);
+                return requireImpl(frame, moduleReplacementName, cwd);
             }
             throw fail(moduleIdentifier);
         }
@@ -242,9 +246,10 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
 
         Map<Path, DynamicObject> commonJsCache = realm.getCommonJsRequireCache();
         if (commonJsCache.containsKey(modulePath.normalize())) {
-            log("returning cached '" + modulePath.normalize().toString() + "'");
             DynamicObject moduleBuiltin = commonJsCache.get(modulePath.normalize());
-            return JSObject.get(moduleBuiltin, "exports");
+            Object cached =  JSObject.get(moduleBuiltin, "exports");
+            log("returning cached '" + modulePath.normalize().toString() + "'  APIs: {" +JSObject.enumerableOwnNames((DynamicObject) cached) + "}");
+            return cached;
         }
 
         Source source = sourceFromPath(modulePath.toString(), realm);
@@ -272,7 +277,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
             commonJsCache.put(modulePath.normalize(), moduleBuiltin);
 
             try {
-                nesting++;
+                requireStack.push(moduleIdentifier);
                 log("executing '" + filenameBuiltin + "' for " + moduleIdentifier);
                 JSFunction.call(JSArguments.create(call, call, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin, process));
                 JSObject.set(moduleBuiltin, "loaded", true);
@@ -281,8 +286,9 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
                 log("EXCEPTION: '" + e.getMessage() + "'");
                 throw e;
             } finally {
-                nesting--;
-                log("done '" + moduleIdentifier + "'");
+                requireStack.pop();
+                Object module = JSObject.get(moduleBuiltin, "exports");
+                log("done '" + moduleIdentifier + "' module.exports: " + module + "   APIs: {" +JSObject.enumerableOwnNames((DynamicObject) module) + "}");
             }
         }
         return null;
