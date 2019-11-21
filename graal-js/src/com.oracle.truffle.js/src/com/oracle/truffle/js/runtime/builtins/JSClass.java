@@ -373,16 +373,22 @@ public abstract class JSClass extends ObjectType {
         return true;
     }
 
-    private static final PropertyDescriptor FREEZE_ACC_DESC;
-    private static final PropertyDescriptor FREEZE_DATA_DESC;
+    /**
+     * This class is used to break the class initialization cycle JSClass -> PropertyDescriptor ->
+     * Undefined -> Null -> NullClass -> AbstractJSClass -> JSClass.
+     */
+    private static final class FreezeHolder {
+        private static final PropertyDescriptor FREEZE_ACC_DESC;
+        private static final PropertyDescriptor FREEZE_DATA_DESC;
 
-    static {
-        FREEZE_ACC_DESC = PropertyDescriptor.createEmpty();
-        FREEZE_ACC_DESC.setConfigurable(false);
+        static {
+            FREEZE_ACC_DESC = PropertyDescriptor.createEmpty();
+            FREEZE_ACC_DESC.setConfigurable(false);
 
-        FREEZE_DATA_DESC = PropertyDescriptor.createEmpty();
-        FREEZE_DATA_DESC.setConfigurable(false);
-        FREEZE_DATA_DESC.setWritable(false);
+            FREEZE_DATA_DESC = PropertyDescriptor.createEmpty();
+            FREEZE_DATA_DESC.setConfigurable(false);
+            FREEZE_DATA_DESC.setWritable(false);
+        }
     }
 
     /**
@@ -402,9 +408,9 @@ public abstract class JSClass extends ObjectType {
                 if (currentDesc != null) {
                     PropertyDescriptor newDesc = null;
                     if (currentDesc.isAccessorDescriptor()) {
-                        newDesc = FREEZE_ACC_DESC;
+                        newDesc = FreezeHolder.FREEZE_ACC_DESC;
                     } else {
-                        newDesc = FREEZE_DATA_DESC;
+                        newDesc = FreezeHolder.FREEZE_DATA_DESC;
                     }
                     JSRuntime.definePropertyOrThrow(obj, key, newDesc);
                 }
@@ -412,7 +418,7 @@ public abstract class JSClass extends ObjectType {
         } else {
             // SEAL
             for (Object key : keys) {
-                JSRuntime.definePropertyOrThrow(obj, key, FREEZE_ACC_DESC);
+                JSRuntime.definePropertyOrThrow(obj, key, FreezeHolder.FREEZE_ACC_DESC);
             }
         }
         return true;
