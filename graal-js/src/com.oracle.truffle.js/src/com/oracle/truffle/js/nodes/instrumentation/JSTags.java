@@ -70,6 +70,7 @@ public final class JSTags {
                     ControlFlowBlockTag.class,
                     ControlFlowBranchTag.class,
                     DeclareTag.class,
+                    FunctionDeclarationTag.class
     };
 
     // ##### ECMAScript Language Expressions
@@ -523,6 +524,18 @@ public final class JSTags {
     @Tag.Identifier("Declare")
     public static final class DeclareTag extends Tag {
         private DeclareTag() {
+        }
+    }
+
+    /**
+     * Function declaration.
+     *
+     * TODO(aj) remove or merge into an equivalent standard declaration tag in Truffle.
+     *
+     */
+    @Tag.Identifier("FunctionDeclaration")
+    public static final class FunctionDeclarationTag extends Tag {
+        private FunctionDeclarationTag() {
         }
     }
 

@@ -89,6 +89,9 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
             return true;
         } else if (tag == JSTags.InputNodeTag.class) {
             return true;
+        } else if (tag == JSTags.FunctionDeclarationTag.class) {
+            // a function not tagged as an expression is a declaration
+            return !super.hasTag(ExpressionTag.class);
         } else {
             return super.hasTag(tag);
         }
