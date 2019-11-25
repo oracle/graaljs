@@ -1903,9 +1903,6 @@
     "runInIsolation" : true,
     "comment" : "Out of memory even when run together with other memory-intense tests"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-631917.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-647217.js",
     "status" : "SKIP",
     "comment" : "stack overflow, recursion"
