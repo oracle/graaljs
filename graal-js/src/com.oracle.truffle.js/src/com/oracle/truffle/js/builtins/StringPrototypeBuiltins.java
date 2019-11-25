@@ -1304,8 +1304,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
          * position of this match. It is used to return both values from method
          */
         private class ReplacedStringWithMatchPosition {
-            public String replacedPart;
-            public int position;
+            private String replacedPart;
+            private int position;
 
             public ReplacedStringWithMatchPosition(String replaced, int pos) {
                 this.replacedPart = replaced;
@@ -1367,16 +1367,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             StringBuilder result = new StringBuilder();
             int position = 0;
 
-            // This is replaceAll behaviour in the case if searchString is empty string.
-            // It should be treated as unlikely case with its profiling branch.
-            // This is very straightforward implementation, but it works fine. This needs to be
-            // optimized and refactored
             if (Boundaries.stringCompareTo(searchString, "") == 0) {
                 while (position <= thisStr.length()) {
                     strPos = builtinReplace(searchString, replParam, thisStr, position);
                     Boundaries.builderAppend(result, strPos.replacedPart, 0, strPos.replacedPart.length());
-                    // builtinReplace returns a string that includes only replaced part, so we
-                    // have to append characters manually
                     if (position < thisStr.length()) {
                         Boundaries.builderAppend(result, thisStr.charAt(position));
                     }
