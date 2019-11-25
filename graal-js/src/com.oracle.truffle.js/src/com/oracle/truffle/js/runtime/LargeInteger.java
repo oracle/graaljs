@@ -143,10 +143,6 @@ public final class LargeInteger extends Number implements Comparable<LargeIntege
         return LargeInteger.valueOf(result);
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LargeInteger;
-    }
-
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean isNumber() {

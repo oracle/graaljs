@@ -47,15 +47,9 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
@@ -63,7 +57,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -73,11 +66,9 @@ import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -86,7 +77,6 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 
 public class ObjectLiteralNode extends JavaScriptNode {
 
@@ -565,7 +555,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
     private static class ObjectLiteralSpreadMemberNode extends ObjectLiteralMemberNode {
         @Child private JavaScriptNode valueNode;
         @Child private JSToObjectNode toObjectNode;
-        private final ConditionProfile isJSObjectProfile = ConditionProfile.createBinaryProfile();
+        @Child private CopyDataPropertiesNode copyDataPropertiesNode;
 
         ObjectLiteralSpreadMemberNode(boolean isStatic, int attributes, JavaScriptNode valueNode) {
             super(isStatic, attributes);
@@ -578,48 +568,13 @@ public class ObjectLiteralNode extends JavaScriptNode {
             if (JSGuards.isNullOrUndefined(sourceValue)) {
                 return;
             }
-            if (toObjectNode == null) {
+            if (toObjectNode == null || copyDataPropertiesNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(context));
+                copyDataPropertiesNode = insert(CopyDataPropertiesNode.create(context));
             }
-            TruffleObject from = toObjectNode.executeTruffleObject(sourceValue);
-            if (isJSObjectProfile.profile(JSObject.isJSObject(from))) {
-                copyDataProperties(target, (DynamicObject) from);
-            } else {
-                copyDataPropertiesForeign(target, from);
-            }
-        }
-
-        @TruffleBoundary
-        private static void copyDataProperties(DynamicObject target, DynamicObject from) {
-            JSClass fromClass = JSObject.getJSClass(from);
-            Iterable<Object> ownPropertyKeys = fromClass.ownPropertyKeys(from);
-            for (Object nextKey : ownPropertyKeys) {
-                PropertyDescriptor desc = fromClass.getOwnProperty(from, nextKey);
-                if (desc != null && desc.getEnumerable()) {
-                    Object propValue = fromClass.get(from, nextKey);
-                    JSRuntime.createDataProperty(target, nextKey, propValue);
-                }
-            }
-        }
-
-        @TruffleBoundary
-        private void copyDataPropertiesForeign(DynamicObject target, Object from) {
-            InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(from);
-            try {
-                Object members = objInterop.getMembers(from);
-                InteropLibrary keysInterop = InteropLibrary.getFactory().getUncached(members);
-                long length = JSInteropUtil.getArraySize(members, keysInterop, this);
-                for (long i = 0; i < length; i++) {
-                    Object key = keysInterop.readArrayElement(members, i);
-                    assert InteropLibrary.getFactory().getUncached().isString(key);
-                    String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
-                    Object value = objInterop.readMember(from, stringKey);
-                    JSRuntime.createDataProperty(target, stringKey, JSRuntime.importValue(value));
-                }
-            } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
-                throw Errors.createTypeErrorInteropException(from, e, "CopyDataProperties", this);
-            }
+            Object from = toObjectNode.execute(sourceValue);
+            copyDataPropertiesNode.execute(target, from);
         }
 
         @Override

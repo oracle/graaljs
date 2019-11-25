@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -991,7 +990,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 }
                 foreignSetNode.setValue(thisObj, value, receiver, root, guard);
             } else {
-                setValueInDynamicObject(toObjectNode.executeTruffleObject(thisObj), value, receiver, root);
+                setValueInDynamicObject(toObjectNode.execute(thisObj), value, receiver, root);
             }
             return true;
         }
@@ -1230,6 +1229,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isDeclared()) : "const assignment";
         if (!JSProperty.isWritable(property)) {
             return new ReadOnlyPropertySetNode(shapeCheck, isStrict());
+        } else if (superProperty) {
+            // define the property on the receiver; currently not handled, rewrite to generic
+            return createGenericPropertyNode();
         } else if (depth > 0) {
             // define a new own property, shadowing an existing prototype property
             // NB: must have a guarding test that the inherited property is writable
@@ -1375,7 +1377,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     @Override
-    protected SetCacheNode createTruffleObjectPropertyNode(TruffleObject thisObject) {
+    protected SetCacheNode createTruffleObjectPropertyNode() {
         return new ForeignPropertySetNode(context);
     }
 

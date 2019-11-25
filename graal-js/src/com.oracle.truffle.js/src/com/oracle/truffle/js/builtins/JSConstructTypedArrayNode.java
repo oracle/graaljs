@@ -48,6 +48,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -68,6 +70,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -85,6 +88,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
@@ -141,7 +145,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return getPrototypeFromConstructorBufferNode.executeWithConstructor(newTarget);
     }
 
-    private DynamicObject integerIndexObjectCreate(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject proto) {
+    private DynamicObject integerIndexedObjectCreate(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject proto) {
         if (integerIndexObjectCreateNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             integerIndexObjectCreateNode = insert(IntegerIndexedObjectCreateNodeGen.create(getContext(), factory));
@@ -160,7 +164,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     /**
-     * %TypedArray%(buffer[, byteOffset[, length]]) (ES6 22.2.1.5).
+     * %TypedArray%(buffer[, byteOffset[, length]]).
      *
      * TypedArray(ArrayBuffer buffer, optional unsigned long byteOffset, optional unsigned long
      * length).
@@ -244,7 +248,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     /**
-     * %TypedArray%(typedArray) (ES6 22.2.1.3).
+     * %TypedArray%(typedArray).
      */
     @SuppressWarnings("unused")
     @Specialization(guards = {"isJSFunction(newTarget)", "isJSArrayBufferView(arrayBufferView)"})
@@ -291,7 +295,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     /**
-     * %TypedArray%(object) (ES6 22.2.1.4).
+     * %TypedArray%(object).
      */
     @SuppressWarnings("unused")
     @Specialization(guards = {"isJSFunction(newTarget)", "isJSArray(array)"})
@@ -312,7 +316,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     /**
-     * %TypedArray%() (ES6 22.2.1.1).
+     * %TypedArray%().
      *
      * This description applies only if the %TypedArray% function is called with no arguments.
      */
@@ -323,18 +327,26 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     /**
-     * %TypedArray%(length) (ES6 22.2.1.2).
+     * %TypedArray%(length).
+     */
+    @Specialization(guards = {"isJSFunction(newTarget)", "length >= 0"})
+    protected DynamicObject doIntLength(DynamicObject newTarget, int length, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0) {
+        return createTypedArrayWithLength(length, newTarget);
+    }
+
+    /**
+     * %TypedArray%(length).
      *
      * This description applies only if the %TypedArray% function is called with at least one
      * argument and the Type of the first argument is not Object.
      */
-    @Specialization(guards = {"isJSFunction(newTarget)", "!isJSObject(arg0)"})
+    @Specialization(guards = {"isJSFunction(newTarget)", "!isJSObject(arg0)", "!isForeignObject(arg0)"}, replaces = "doIntLength")
     protected DynamicObject doLength(DynamicObject newTarget, Object arg0, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0) {
         return createTypedArrayWithLength(toIndex(arg0), newTarget);
     }
 
     /**
-     * %TypedArray%(object) (ES6 22.2.1.4).
+     * %TypedArray%(object).
      *
      * This description applies only if the %TypedArray% function is called with at least one
      * argument and the Type of the first argument is Object and that object does not have either a
@@ -365,7 +377,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             int len = values.size();
             DynamicObject arrayBuffer = createTypedArrayBuffer(len);
             TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
-            DynamicObject obj = integerIndexObjectCreate(arrayBuffer, typedArray, 0, len, proto);
+            DynamicObject obj = integerIndexedObjectCreate(arrayBuffer, typedArray, 0, len, proto);
             for (int k = 0; k < len; k++) {
                 Object kValue = values.get(k);
                 writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
@@ -378,7 +390,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         DynamicObject arrayBuffer = createTypedArrayBuffer(len);
         assert len <= Integer.MAX_VALUE;
         TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
-        DynamicObject obj = integerIndexObjectCreate(arrayBuffer, typedArray, 0, (int) len, proto);
+        DynamicObject obj = integerIndexedObjectCreate(arrayBuffer, typedArray, 0, (int) len, proto);
         for (int k = 0; k < len; k++) {
             Object kValue = readNode.executeWithTargetAndIndex(object, k);
             writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
@@ -399,6 +411,26 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
             values.add(nextValue, growProfile);
         }
         return values;
+    }
+
+    @Specialization(guards = {"isJSFunction(newTarget)", "isForeignObject(object)"}, limit = "3")
+    protected DynamicObject doForeignObject(DynamicObject newTarget, Object object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
+                    @CachedLibrary("object") InteropLibrary interop,
+                    @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
+                    @Cached JSForeignToJSTypeNode importValue) {
+        long length;
+        if (interop.hasArrayElements(object)) {
+            length = toIndex(JSInteropUtil.getArraySize(object, interop, this));
+        } else {
+            length = 0;
+        }
+        DynamicObject obj = createTypedArrayWithLength(length, newTarget);
+        assert length <= Integer.MAX_VALUE;
+        for (int k = 0; k < length; k++) {
+            Object kValue = JSInteropUtil.readArrayElementOrDefault(object, k, 0, interop, importValue, this);
+            writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
+        }
+        return obj;
     }
 
     GetMethodNode createGetIteratorMethod() {
@@ -449,7 +481,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     private DynamicObject createTypedArray(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject newTarget) {
         DynamicObject proto = getPrototypeFromConstructorView(newTarget);
         assert JSRuntime.isObject(proto);
-        return integerIndexObjectCreate(arrayBuffer, typedArray, offset, length, proto);
+        return integerIndexedObjectCreate(arrayBuffer, typedArray, offset, length, proto);
     }
 
     private int checkLengthLimit(long length, int elementSize) {

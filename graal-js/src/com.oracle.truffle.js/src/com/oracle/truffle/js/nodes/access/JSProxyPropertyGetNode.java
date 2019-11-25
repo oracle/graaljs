@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -63,7 +62,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.util.JSReflectUtils;
+import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @NodeInfo(cost = NodeCost.NONE)
 public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
@@ -88,16 +87,17 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object doGeneric(DynamicObject proxy, Object receiver, Object key,
-                    @Cached("createBinaryProfile()") ConditionProfile hasTrap) {
+                    @Cached("createBinaryProfile()") ConditionProfile hasTrap,
+                    @Cached JSClassProfile targetClassProfile) {
         assert JSProxy.isProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
         DynamicObject handler = JSProxy.getHandler(proxy);
-        TruffleObject target = JSProxy.getTarget(proxy);
+        Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
-                return JSReflectUtils.performOrdinaryGet((DynamicObject) target, propertyKey, receiver);
+                return JSObject.getOrDefault((DynamicObject) target, propertyKey, receiver, Undefined.instance, targetClassProfile);
             } else {
                 return JSInteropUtil.readMemberOrDefault(target, propertyKey, Undefined.instance);
             }
@@ -107,12 +107,12 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
         return trapResult;
     }
 
-    private void checkInvariants(Object propertyKey, TruffleObject truffleTarget, Object trapResult) {
+    private void checkInvariants(Object propertyKey, Object proxyTarget, Object trapResult) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        if (!JSObject.isJSObject(truffleTarget)) {
+        if (!JSObject.isJSObject(proxyTarget)) {
             return; // best effort, cannot check for foreign objects
         }
-        PropertyDescriptor targetDesc = getOwnProperty((DynamicObject) truffleTarget, propertyKey);
+        PropertyDescriptor targetDesc = getOwnProperty((DynamicObject) proxyTarget, propertyKey);
         if (targetDesc != null) {
             if (targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && !targetDesc.getWritable()) {
                 Object targetValue = targetDesc.getValue();

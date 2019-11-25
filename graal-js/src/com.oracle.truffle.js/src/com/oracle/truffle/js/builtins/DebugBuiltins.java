@@ -55,7 +55,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -594,7 +593,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @Specialization
         protected boolean isHolesArray(Object arr) {
-            TruffleObject obj = toObjectNode.executeTruffleObject(arr);
+            Object obj = toObjectNode.execute(arr);
             if (isArray.profile(JSArray.isJSArray(obj))) {
                 DynamicObject dynObj = (DynamicObject) obj;
                 return arrayType.profile(JSObject.getArray(dynObj)).hasHoles(dynObj);

@@ -47,7 +47,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -178,28 +177,12 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         return JSTypesGen.expectObjectArray(execute(frame));
     }
 
-    public char executeCharacter(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectCharacter(execute(frame));
-    }
-
-    public float executeFloat(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectFloat(execute(frame));
-    }
-
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
         return JSTypesGen.expectLong(execute(frame));
     }
 
-    public byte executeByte(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectByte(execute(frame));
-    }
-
     public LargeInteger executeLargeInteger(VirtualFrame frame) throws UnexpectedResultException {
         return JSTypesGen.expectLargeInteger(execute(frame));
-    }
-
-    public TruffleObject executeTruffleObject(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectTruffleObject(execute(frame));
     }
 
     /**

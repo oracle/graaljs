@@ -62,7 +62,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
@@ -938,7 +937,7 @@ public class JSContext {
     @TruffleBoundary
     private Object createTRegexEngine() {
         Source engineBuilderRequest = Source.newBuilder(REGEX_LANGUAGE_ID, "", "TRegex Engine Builder Request").internal(true).build();
-        TruffleObject regexEngineBuilder = (TruffleObject) getRealm().getEnv().parseInternal(engineBuilderRequest).call();
+        Object regexEngineBuilder = getRealm().getEnv().parseInternal(engineBuilderRequest).call();
         String regexOptions = createRegexEngineOptions();
         JoniRegexEngine fallbackCompiler = new JoniRegexEngine(null);
         try {
@@ -1516,7 +1515,7 @@ public class JSContext {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                TruffleObject obj = toObjectNode.executeTruffleObject(JSArguments.getThisObject(frame.getArguments()));
+                Object obj = toObjectNode.execute(JSArguments.getThisObject(frame.getArguments()));
                 if (JSObject.isJSObject(obj)) {
                     return getPrototypeNode.executeJSObject(obj);
                 }

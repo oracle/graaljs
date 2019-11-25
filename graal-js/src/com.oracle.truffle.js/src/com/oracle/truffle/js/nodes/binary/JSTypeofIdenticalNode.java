@@ -55,7 +55,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -307,7 +306,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     @Specialization(guards = {"isForeignObject(value)"}, limit = "5")
-    protected final boolean doForeignObject(TruffleObject value,
+    protected final boolean doForeignObject(Object value,
                     @CachedLibrary("value") InteropLibrary interop) {
         if (type == Type.Undefined || type == Type.Symbol || type == Type.False) {
             return false;
@@ -329,7 +328,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     }
 
     private static boolean checkProxy(DynamicObject value, boolean isFunction) {
-        TruffleObject obj = JSProxy.getTargetNonProxy(value);
+        Object obj = JSProxy.getTargetNonProxy(value);
         if (isFunction) {
             return JSFunction.isJSFunction(obj) || JSRuntime.isCallableForeign(obj) || JSRuntime.isConstructorForeign(obj);
         } else {

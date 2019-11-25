@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -62,7 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.util.JSReflectUtils;
+import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @NodeInfo(cost = NodeCost.NONE)
 public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
@@ -93,20 +92,17 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
 
     @Specialization
     protected boolean doGeneric(DynamicObject proxy, Object receiver, Object value, Object key,
-                    @Cached("createBinaryProfile()") ConditionProfile hasTrap) {
+                    @Cached("createBinaryProfile()") ConditionProfile hasTrap,
+                    @Cached JSClassProfile targetClassProfile) {
         assert JSProxy.isProxy(proxy);
         assert !(key instanceof HiddenKey);
         Object propertyKey = toPropertyKey(key);
         DynamicObject handler = JSProxy.getHandler(proxy);
-        TruffleObject target = JSProxy.getTarget(proxy);
+        Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(trapFun == Undefined.instance)) {
             if (JSObject.isJSObject(target)) {
-                boolean result = JSReflectUtils.performOrdinarySet((DynamicObject) target, propertyKey, value, receiver);
-                if (isStrict && !result) {
-                    throw Errors.createTypeErrorCannotSetProperty(propertyKey, proxy, this);
-                }
-                return result;
+                return JSObject.setWithReceiver((DynamicObject) target, propertyKey, value, receiver, isStrict, targetClassProfile);
             } else {
                 truffleWrite(target, propertyKey, value);
                 return true;
@@ -124,7 +120,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         return JSProxy.checkProxySetTrapInvariants(proxy, propertyKey, value);
     }
 
-    private void truffleWrite(TruffleObject obj, Object key, Object value) {
+    private void truffleWrite(Object obj, Object key, Object value) {
         InteropLibrary interop = interopNode;
         ExportValueNode exportValue = exportValueNode;
         if (interop == null || exportValue == null) {

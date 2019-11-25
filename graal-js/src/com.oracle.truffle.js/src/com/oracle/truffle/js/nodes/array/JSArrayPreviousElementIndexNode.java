@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.array;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -131,7 +130,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
     }
 
     @Specialization(guards = {"!isArray", "!isArraySuitableForEnumBasedProcessing(object, currentIndex)"})
-    public long previousObjectViaIteration(TruffleObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
+    public long previousObjectViaIteration(Object object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create()") JSHasPropertyNode hasPropertyNode) {
         long index = currentIndex - 1;
         while (index >= 0 && !hasPropertyNode.executeBoolean(object, index)) {

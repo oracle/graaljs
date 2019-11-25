@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -66,10 +65,6 @@ public final class InteropAsyncFunction extends InteropFunction {
     public InteropAsyncFunction(DynamicObject function) {
         super(function);
         assert JSTruffleOptions.InteropCompletePromises;
-    }
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof InteropAsyncFunction;
     }
 
     @Override

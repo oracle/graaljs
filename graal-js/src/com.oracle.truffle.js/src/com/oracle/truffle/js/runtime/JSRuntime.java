@@ -62,7 +62,6 @@ import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -323,7 +322,7 @@ public final class JSRuntime {
      * Converts a foreign object to a primitive value.
      */
     @TruffleBoundary
-    public static Object toPrimitiveFromForeign(TruffleObject tObj, int depth) {
+    public static Object toPrimitiveFromForeign(Object tObj, int depth) {
         TruffleLanguage.Env env;
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
         if (interop.isNull(tObj)) {
@@ -400,7 +399,7 @@ public final class JSRuntime {
         if (isObject(value)) {
             primitive = JSObject.toPrimitive((DynamicObject) value, HINT_NUMBER);
         } else if (isForeignObject(value)) {
-            primitive = toPrimitiveFromForeign((TruffleObject) value, TO_STRING_MAX_DEPTH);
+            primitive = toPrimitiveFromForeign(value, TO_STRING_MAX_DEPTH);
         } else {
             primitive = value;
         }
@@ -873,7 +872,7 @@ public final class JSRuntime {
             return toString(JSObject.toPrimitive((DynamicObject) value, HINT_STRING));
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value);
-            return toString(toPrimitiveFromForeign((TruffleObject) value, TO_STRING_MAX_DEPTH));
+            return toString(toPrimitiveFromForeign(value, TO_STRING_MAX_DEPTH));
         }
         throw toStringTypeError(value);
     }
@@ -954,7 +953,7 @@ public final class JSRuntime {
         if (JSArray.isJSArray(obj)) {
             isArrayLike = true;
             isArray = true;
-            length = arrayGetLength(obj);
+            length = JSArray.arrayGetLength(obj);
         } else if (JSArrayBufferView.isJSArrayBufferView(obj)) {
             isArrayLike = true;
             length = JSArrayBufferView.typedArrayGetLength(obj);
@@ -1175,16 +1174,6 @@ public final class JSRuntime {
         }
         sb.append('}');
         return sb.toString();
-    }
-
-    @TruffleBoundary
-    private static long arrayGetLength(TruffleObject obj) {
-        if (JSArray.isJSArray(obj)) {
-            return JSArray.arrayGetLength((DynamicObject) obj);
-        } else {
-            assert isForeignObject(obj);
-            return JSInteropUtil.getArraySize(obj, InteropLibrary.getFactory().getUncached(), null);
-        }
     }
 
     private static boolean fillEmptyArrayElements(StringBuilder sb, long index, long prevArrayIndex, boolean prependComma) {
@@ -2301,15 +2290,19 @@ public final class JSRuntime {
         return JSObject.defineOwnProperty(o, p, PropertyDescriptor.createDataDefault(v));
     }
 
+    public static boolean createDataProperty(DynamicObject o, Object p, Object v, boolean doThrow) {
+        assert JSRuntime.isObject(o);
+        assert JSRuntime.isPropertyKey(p);
+        boolean success = JSObject.defineOwnProperty(o, p, PropertyDescriptor.createDataDefault(v), doThrow);
+        assert !doThrow || success : "should have thrown";
+        return success;
+    }
+
     /**
      * ES2015, 7.3.6 CreateDataPropertyOrThrow(O, P, V).
      */
     public static boolean createDataPropertyOrThrow(DynamicObject o, Object p, Object v) {
-        boolean success = createDataProperty(o, p, v);
-        if (!success) {
-            throw Errors.createTypeError("cannot create data property");
-        }
-        return success;
+        return createDataProperty(o, p, v, true);
     }
 
     /**
@@ -2349,7 +2342,7 @@ public final class JSRuntime {
         } else if (JSProxy.isProxy(value)) {
             return isCallableProxy((DynamicObject) value);
         } else if (value instanceof TruffleObject) {
-            return isCallableForeign((TruffleObject) value);
+            return isCallableForeign(value);
         }
         return false;
     }
@@ -2365,7 +2358,7 @@ public final class JSRuntime {
     }
 
     @TruffleBoundary
-    public static boolean isCallableForeign(TruffleObject value) {
+    public static boolean isCallableForeign(Object value) {
         if (isForeignObject(value)) {
             return InteropLibrary.getFactory().getUncached().isExecutable(value);
         }
@@ -2449,42 +2442,23 @@ public final class JSRuntime {
      * ES2015, 7.1.16 CanonicalNumericIndexString().
      */
     @TruffleBoundary
-    public static Object canonicalNumericIndexString(Object arg) {
-        assert JSRuntime.isString(arg);
-        String s = arg.toString();
+    public static Object canonicalNumericIndexString(String s) {
+        if (s.isEmpty() || !isNumericIndexStart(s.charAt(0))) {
+            return Undefined.instance;
+        }
         if ("-0".equals(s)) {
             return -0.0;
         }
-        Number n = JSRuntime.toNumber(s);
-        if (!JSRuntime.toString(n).equals(s)) {
+        Number n = stringToNumber(s);
+        if (!numberToString(n).equals(s)) {
             return Undefined.instance;
         }
         return n;
     }
 
-    /**
-     * ES2015, 9.4.5.8 IntegerIndexedElementGet.
-     */
-    @TruffleBoundary
-    public static Object integerIndexedElementGet(DynamicObject thisObj, Object index) {
-        assert JSRuntime.isNumber(index);
-        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        DynamicObject buffer = JSArrayBufferView.getArrayBuffer(thisObj);
-        if (JSArrayBuffer.isDetachedBuffer(buffer)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
-        if (!JSRuntime.isInteger(index)) {
-            return Undefined.instance;
-        }
-        if (JSRuntime.isNegativeZero(((Number) index).doubleValue())) {
-            return Undefined.instance;
-        }
-        long lIndex = ((Number) index).longValue();
-        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
-        if (lIndex < 0 || lIndex >= length) {
-            return Undefined.instance;
-        }
-        return JSArrayBufferView.typedArrayGetArrayType(thisObj).getElement(thisObj, lIndex);
+    private static boolean isNumericIndexStart(char c) {
+        // Start of a number, "Infinity", or "NaN".
+        return isAsciiDigit(c) || c == '-' || c == 'I' || c == 'N';
     }
 
     /**
@@ -2499,53 +2473,6 @@ public final class JSRuntime {
             return false;
         }
         return Math.floor(Math.abs(d)) == Math.abs(d);
-    }
-
-    /**
-     * ES205, 9.4.5.9 IntegerIndexedElementSet.
-     */
-    @TruffleBoundary
-    public static boolean integerIndexedElementSet(DynamicObject thisObj, Object indexObj, Object value) {
-        assert JSRuntime.isNumber(indexObj);
-        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        Number index = (Number) indexObj;
-        Object numValue = JSArrayBufferView.isBigIntArrayBufferView(thisObj) ? JSRuntime.toBigInt(value) : JSRuntime.toNumber(value);
-        DynamicObject buffer = JSArrayBufferView.getArrayBuffer(thisObj);
-        if (JSArrayBuffer.isDetachedBuffer(buffer)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
-        if (!isInteger(index)) {
-            return false;
-        }
-        double dIndex = index.doubleValue();
-        if (isNegativeZero(dIndex)) {
-            return false;
-        }
-        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
-        if (dIndex < 0 || dIndex >= length) {
-            return false;
-        }
-        JSArrayBufferView.typedArrayGetArrayType(thisObj).setElement(thisObj, index.intValue(), numValue, true);
-        return true;
-    }
-
-    /**
-     * ES2015, 9.4.5.9 IntegerIndexedElementSet, simplified version (numIndex is an int already).
-     */
-    @TruffleBoundary
-    public static boolean integerIndexedElementSet(DynamicObject thisObj, int numIndex, Object value) {
-        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        Object numValue = JSArrayBufferView.isBigIntArrayBufferView(thisObj) ? JSRuntime.toBigInt(value) : JSRuntime.toNumber(value);
-        DynamicObject buffer = JSArrayBufferView.getArrayBuffer(thisObj);
-        if (JSArrayBuffer.isDetachedBuffer(buffer)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
-        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
-        if (numIndex < 0 || numIndex >= length) {
-            return false;
-        }
-        JSArrayBufferView.typedArrayGetArrayType(thisObj).setElement(thisObj, numIndex, numValue, true);
-        return true;
     }
 
     @TruffleBoundary
@@ -2722,13 +2649,13 @@ public final class JSRuntime {
         } else if (JSProxy.isProxy(constrObj)) {
             return isConstructorProxy((DynamicObject) constrObj);
         } else if (constrObj instanceof TruffleObject) {
-            return isConstructorForeign((TruffleObject) constrObj);
+            return isConstructorForeign(constrObj);
         }
         return false;
     }
 
     @TruffleBoundary
-    public static boolean isConstructorForeign(TruffleObject value) {
+    public static boolean isConstructorForeign(Object value) {
         if (isForeignObject(value)) {
             return InteropLibrary.getFactory().getUncached().isInstantiable(value);
         }
@@ -2827,7 +2754,7 @@ public final class JSRuntime {
         return builder.toString();
     }
 
-    public static DynamicObject expectJSObject(TruffleObject to, BranchProfile errorBranch) {
+    public static DynamicObject expectJSObject(Object to, BranchProfile errorBranch) {
         if (!JSObject.isJSObject(to)) {
             errorBranch.enter();
             throw Errors.createTypeErrorJSObjectExpected();

@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
@@ -222,7 +221,7 @@ public abstract class EvalNode extends JavaScriptNode {
         }
 
         @Specialization(guards = {"isForeignObject(sourceCode)"}, limit = "3")
-        protected Object directEvalForeignObject(VirtualFrame frame, TruffleObject sourceCode,
+        protected Object directEvalForeignObject(VirtualFrame frame, Object sourceCode,
                         @CachedLibrary("sourceCode") InteropLibrary interop) {
             if (interop.isString(sourceCode)) {
                 try {

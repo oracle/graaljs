@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -90,7 +89,7 @@ public abstract class IsCallableNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isForeignObject(obj)", limit = "3")
-    protected static boolean doTruffleObject(TruffleObject obj,
+    protected static boolean doTruffleObject(Object obj,
                     @CachedLibrary("obj") InteropLibrary interop) {
         return interop.isExecutable(obj);
     }

@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -168,7 +167,7 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
 
     @TruffleBoundary
     @Specialization(guards = "isForeignObject(value)", limit = "5")
-    protected boolean doForeignObject(TruffleObject value,
+    protected boolean doForeignObject(Object value,
                     @CachedLibrary("value") InteropLibrary interop) {
         if (interop.isNull(value)) {
             return false;

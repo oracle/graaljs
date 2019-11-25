@@ -54,7 +54,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -156,7 +155,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return getTarget().execute(frame);
     }
 
-    public abstract boolean executeEvaluated(TruffleObject objectResult, Object propertyResult);
+    public abstract boolean executeEvaluated(Object objectResult, Object propertyResult);
 
     @Specialization(guards = "isJSType(targetObject)")
     protected final boolean doJSObject(DynamicObject targetObject, Object key,
@@ -220,7 +219,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     }
 
     @Specialization(guards = {"isForeignObject(target)"})
-    protected boolean member(TruffleObject target, String name,
+    protected boolean member(Object target, String name,
                     @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
         try {
             interop.removeMember(target, name);
@@ -231,7 +230,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     }
 
     @Specialization(guards = {"isForeignObject(target)"})
-    protected boolean arrayElementInt(TruffleObject target, int index,
+    protected boolean arrayElementInt(Object target, int index,
                     @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
         try {
             interop.removeArrayElement(target, index);
@@ -242,7 +241,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     }
 
     @Specialization(guards = {"isForeignObject(target)", "isNumber(index)"}, replaces = "arrayElementInt")
-    protected boolean arrayElement(TruffleObject target, Number index,
+    protected boolean arrayElement(Object target, Number index,
                     @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
         try {
             interop.removeArrayElement(target, index.longValue());
@@ -254,7 +253,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"isForeignObject(target)", "!isString(key)", "!isNumber(key)"})
-    protected Object foreignObject(TruffleObject target, Object key,
+    protected Object foreignObject(Object target, Object key,
                     @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
                     @CachedLibrary(limit = "3") InteropLibrary interopKey) {
         try {

@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
@@ -193,7 +192,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return (DynamicObject) toObject.executeTruffleObject(thisObj);
+            return (DynamicObject) toObject.execute(thisObj);
         }
     }
 
@@ -1120,7 +1119,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected abstract T createJavaPropertyNodeMaybe(Object thisObj, int depth);
 
-    protected abstract T createTruffleObjectPropertyNode(TruffleObject thisObj);
+    protected abstract T createTruffleObjectPropertyNode();
 
     @TruffleBoundary
     protected T specialize(Object thisObj) {
@@ -1202,7 +1201,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
         } else if (JSRuntime.isForeignObject(thisObj)) {
             assert !JSObject.isJSObject(thisObj);
-            specialized = createTruffleObjectPropertyNode((TruffleObject) thisObj);
+            specialized = createTruffleObjectPropertyNode();
         } else {
             store = wrapPrimitive(thisObj, context);
         }
@@ -1568,7 +1567,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected static boolean isNonIntegerIndex(Object key) {
-        assert !(key instanceof String) || JSRuntime.INFINITY_STRING.equals(key) || (JSRuntime.canonicalNumericIndexString(key) == Undefined.instance);
+        assert !(key instanceof String) || JSRuntime.INFINITY_STRING.equals(key) || (JSRuntime.canonicalNumericIndexString((String) key) == Undefined.instance);
         return JSRuntime.INFINITY_STRING.equals(key);
     }
 

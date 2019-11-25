@@ -94,10 +94,6 @@ public final class JSMetaObject implements TruffleObject {
         return map;
     }
 
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof JSMetaObject;
-    }
-
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean hasMembers() {

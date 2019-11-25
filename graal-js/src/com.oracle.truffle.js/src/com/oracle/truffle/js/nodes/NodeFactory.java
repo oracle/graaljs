@@ -57,7 +57,6 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorNextNode;
 import com.oracle.truffle.js.nodes.access.CompoundWriteElementNode;
 import com.oracle.truffle.js.nodes.access.ConstantVariableWriteNode;
-import com.oracle.truffle.js.nodes.access.CopyDataPropertiesNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalFunctionNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
@@ -96,6 +95,7 @@ import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.RegExpLiteralNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode.RequireObjectCoercibleWrapperNode;
+import com.oracle.truffle.js.nodes.access.RestObjectNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 import com.oracle.truffle.js.nodes.access.WithTargetNode;
@@ -1157,8 +1157,9 @@ public class NodeFactory {
         return ImportCallNode.create(context, argument, activeScriptOrModule);
     }
 
-    public JavaScriptNode createCopyDataProperties(JSContext context, JavaScriptNode targetObj, JavaScriptNode source, JavaScriptNode excludedNames) {
-        return CopyDataPropertiesNode.create(context, targetObj, source, excludedNames);
+    public JavaScriptNode createRestObject(JSContext context, JavaScriptNode source, JavaScriptNode excludedNames) {
+        JavaScriptNode restObj = ObjectLiteralNode.create(context, ObjectLiteralMemberNode.EMPTY);
+        return RestObjectNode.create(context, restObj, source, excludedNames);
     }
 
     public JavaScriptNode createToPropertyKey(JavaScriptNode key) {

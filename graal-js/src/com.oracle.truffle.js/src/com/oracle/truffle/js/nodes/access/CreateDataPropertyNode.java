@@ -77,7 +77,7 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"PropertyCacheLimit == 0", "isJSObject(object)"})
     protected final void doUncached(DynamicObject object, Object value) {
-        JSRuntime.createDataProperty(object, key, value);
+        JSRuntime.createDataPropertyOrThrow(object, key, value);
     }
 
     @Specialization(guards = "!isJSObject(object)")

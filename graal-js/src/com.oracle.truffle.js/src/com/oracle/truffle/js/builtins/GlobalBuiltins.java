@@ -1132,7 +1132,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization(guards = "isForeignObject(source)", limit = "3")
-        protected Object indirectEvalForeignObject(TruffleObject source,
+        protected Object indirectEvalForeignObject(Object source,
                         @CachedLibrary("source") InteropLibrary interop) {
             if (interop.isString(source)) {
                 try {
@@ -1291,7 +1291,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization(guards = "isForeignObject(scriptObj)")
-        protected Object loadTruffleObject(TruffleObject scriptObj, @SuppressWarnings("unused") Object[] args,
+        protected Object loadTruffleObject(Object scriptObj, @SuppressWarnings("unused") Object[] args,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {
             JSRealm realm = getContext().getRealm();
             TruffleLanguage.Env env = realm.getEnv();
@@ -1530,13 +1530,13 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
-        final Object importGlobalContext(TruffleObject globalContextBindings) {
+        final Object importGlobalContext(Object globalContextBindings) {
             doImport(globalContextBindings);
             return Undefined.instance;
         }
 
         @TruffleBoundary
-        private void doImport(TruffleObject globalContextBindings) {
+        private void doImport(Object globalContextBindings) {
             DynamicObject globalObject = getContext().getRealm().getGlobalObject();
             Bindings bindings = (Bindings) getContext().getRealm().getEnv().asHostObject(globalContextBindings);
             for (Map.Entry<String, Object> entry : bindings.entrySet()) {

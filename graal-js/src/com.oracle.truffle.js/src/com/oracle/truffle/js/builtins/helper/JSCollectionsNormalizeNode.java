@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.helper;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -108,7 +107,7 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isForeignObject(object)", limit = "3")
-    public Object doForeignObject(TruffleObject object,
+    public Object doForeignObject(Object object,
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached("createBinaryProfile()") ConditionProfile primitiveProfile,
                     @Cached("create()") JSCollectionsNormalizeNode nestedNormalizeNode) {

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
@@ -85,7 +84,7 @@ public abstract class InNode extends JSBinaryNode {
     }
 
     @Specialization(guards = "isForeignObject(haystack)")
-    protected boolean doForeign(Object needle, TruffleObject haystack) {
+    protected boolean doForeign(Object needle, Object haystack) {
         return getHasPropertyNode().executeBoolean(haystack, needle);
     }
 

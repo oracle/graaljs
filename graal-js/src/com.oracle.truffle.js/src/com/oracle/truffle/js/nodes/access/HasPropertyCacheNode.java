@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -348,7 +347,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     }
 
     @Override
-    protected HasCacheNode createTruffleObjectPropertyNode(TruffleObject thisObject) {
+    protected HasCacheNode createTruffleObjectPropertyNode() {
         return new ForeignHasPropertyCacheNode();
     }
 }

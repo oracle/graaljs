@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -163,7 +162,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isForeignObject(object)"})
-    protected String doTruffleObject(TruffleObject object,
+    protected String doTruffleObject(Object object,
                     @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode) {
         return getToStringNode().executeString(toPrimitiveNode.execute(object));
     }

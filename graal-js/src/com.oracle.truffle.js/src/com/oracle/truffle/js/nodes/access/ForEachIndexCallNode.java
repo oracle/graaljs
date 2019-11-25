@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -65,7 +64,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
     public abstract static class CallbackNode extends JavaScriptBaseNode {
-        public abstract Object apply(long index, Object value, TruffleObject target, Object callback, Object callbackThisArg, Object currentResult);
+        public abstract Object apply(long index, Object value, Object target, Object callback, Object callbackThisArg, Object currentResult);
     }
 
     @ValueType
@@ -128,7 +127,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
     }
 
-    public final Object executeForEachIndex(TruffleObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
+    public final Object executeForEachIndex(Object target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
         boolean isArray = isArrayNode.execute(target);
         if (isArray && context.getArrayPrototypeNoElementsAssumption().isValid()) {
             return executeForEachIndexFast((DynamicObject) target, callback, callbackThisArg, fromIndex, length, isArray, initialResult);
@@ -139,7 +138,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
     protected abstract Object executeForEachIndexFast(DynamicObject target, Object callback, Object callbackThisArg, long fromIndex, long length, boolean arrayCondition, Object initialResult);
 
-    protected abstract Object executeForEachIndexSlow(TruffleObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult);
+    protected abstract Object executeForEachIndexSlow(Object target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult);
 
     protected final long firstElementIndex(DynamicObject target, long length) {
         if (firstElementIndexNode == null) {
@@ -165,7 +164,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         return interop;
     }
 
-    protected Object foreignRead(TruffleObject target, long index) {
+    protected Object foreignRead(Object target, long index) {
         if (toJSTypeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toJSTypeNode = insert(JSForeignToJSTypeNode.create());
@@ -173,13 +172,22 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         return JSInteropUtil.readArrayElementOrDefault(target, index, Undefined.instance, getInterop(), toJSTypeNode, this);
     }
 
-    protected final void checkHasDetachedBuffer(TruffleObject view) {
+    protected Object getElement(Object target, long index, boolean isForeign) {
+        if (!isForeign) {
+            assert JSObject.isJSObject(target);
+            return JSObject.get((DynamicObject) target, index, targetClassProfile);
+        } else {
+            return foreignRead(target, index);
+        }
+    }
+
+    protected final void checkHasDetachedBuffer(Object view) {
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBufferView.isJSArrayBufferView(view) && JSArrayBufferView.hasDetachedBuffer((DynamicObject) view)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
     }
 
-    protected final Object callback(long index, Object value, TruffleObject target, Object callback, Object callbackThisArg, Object currentResult) {
+    protected final Object callback(long index, Object value, Object target, Object callback, Object callbackThisArg, Object currentResult) {
         if (callbackNode == null) {
             return callbackThisArg;
         } else {
@@ -191,7 +199,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         return readElementNode.executeArrayGet(target, JSObject.getArray(target, arrayCondition), index, target, Undefined.instance, arrayCondition, context);
     }
 
-    protected final boolean hasProperty(TruffleObject target, long index) {
+    protected final boolean hasProperty(Object target, long index) {
         if (hasPropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             hasPropertyNode = insert(JSHasPropertyNode.create());
@@ -230,7 +238,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object executeForEachIndexSlow(TruffleObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
+        protected Object executeForEachIndexSlow(Object target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             Object currentResult = initialResult;
             boolean isForeign = JSRuntime.isForeignObject(target);
             if (isForeign) {
@@ -241,7 +249,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             }
             for (long index = fromIndex; index < length; index++) {
                 if (hasProperty(target, index)) {
-                    Object value = isForeign ? foreignRead(target, index) : JSObject.get(target, index, targetClassProfile);
+                    Object value = getElement(target, index, isForeign);
                     Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
                     MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
                     checkHasDetachedBuffer(target);
@@ -294,7 +302,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
 
         @Override
-        protected Object executeForEachIndexSlow(TruffleObject target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
+        protected Object executeForEachIndexSlow(Object target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             Object currentResult = initialResult;
             boolean isForeign = JSRuntime.isForeignObject(target);
             if (isForeign) {
@@ -306,7 +314,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
             for (long index = fromIndex; index >= 0; index--) {
                 if (hasProperty(target, index)) {
-                    Object value = isForeign ? foreignRead(target, index) : JSObject.get(target, index, targetClassProfile);
+                    Object value = getElement(target, index, isForeign);
                     Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
                     MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
                     checkHasDetachedBuffer(target);

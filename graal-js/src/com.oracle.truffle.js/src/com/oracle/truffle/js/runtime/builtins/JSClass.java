@@ -197,12 +197,6 @@ public abstract class JSClass extends ObjectType {
     @TruffleBoundary
     public abstract boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict);
 
-    @TruffleBoundary
-    public abstract boolean setOwn(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict);
-
-    @TruffleBoundary
-    public abstract boolean setOwn(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict);
-
     /**
      * 9.1.10 [[Delete]] (P).
      */

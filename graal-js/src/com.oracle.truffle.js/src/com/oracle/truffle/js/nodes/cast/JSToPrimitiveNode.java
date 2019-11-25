@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -203,7 +202,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isForeignObject(object)", limit = "5")
-    protected Object doTruffleJavaObject(TruffleObject object,
+    protected Object doTruffleJavaObject(Object object,
                     @CachedLibrary("object") InteropLibrary interop,
                     @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
                     @Cached("create()") JSForeignToJSTypeNode toJSType) {

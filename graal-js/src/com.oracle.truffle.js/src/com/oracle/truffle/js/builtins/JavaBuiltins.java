@@ -55,9 +55,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaAddToClasspathNodeGen;
@@ -410,33 +410,30 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization
-        protected DynamicObject from(Object javaObj) {
-            if (javaObj instanceof TruffleObject) {
-                TruffleLanguage.Env env = getContext().getRealm().getEnv();
-                TruffleObject javaArray = (TruffleObject) javaObj;
-                if (env.isHostObject(javaArray)) {
-                    try {
-                        long size = interop.getArraySize(javaArray);
-                        if (size < 0 || size >= Integer.MAX_VALUE) {
-                            throw Errors.createRangeErrorInvalidArrayLength();
-                        }
-                        DynamicObject jsArray = JSArray.createEmptyChecked(getContext(), size);
-                        for (int i = 0; i < size; i++) {
-                            Object element = foreignConvert(interop.readArrayElement(javaArray, i));
-                            write(jsArray, i, element);
-                        }
-                        return jsArray;
-                    } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                        // fall through
+        protected DynamicObject from(Object javaArray) {
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            if (env.isHostObject(javaArray)) {
+                try {
+                    long size = interop.getArraySize(javaArray);
+                    if (size < 0 || size >= Integer.MAX_VALUE) {
+                        throw Errors.createRangeErrorInvalidArrayLength();
                     }
-                    Object hostObject = env.asHostObject(javaArray);
-                    if (hostObject instanceof List<?>) {
-                        List<?> javaList = (List<?>) hostObject;
-                        int len = Boundaries.listSize(javaList);
-                        DynamicObject jsArrayObj = JSArray.createEmptyChecked(getContext(), len);
-                        fromList(javaList, len, jsArrayObj);
-                        return jsArrayObj;
+                    DynamicObject jsArray = JSArray.createEmptyChecked(getContext(), size);
+                    for (int i = 0; i < size; i++) {
+                        Object element = foreignConvert(interop.readArrayElement(javaArray, i));
+                        write(jsArray, i, element);
                     }
+                    return jsArray;
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    // fall through
+                }
+                Object hostObject = env.asHostObject(javaArray);
+                if (hostObject instanceof List<?>) {
+                    List<?> javaList = (List<?>) hostObject;
+                    int len = Boundaries.listSize(javaList);
+                    DynamicObject jsArrayObj = JSArray.createEmptyChecked(getContext(), len);
+                    fromList(javaList, len, jsArrayObj);
+                    return jsArrayObj;
                 }
             }
             needErrorBranches.enter();
@@ -476,10 +473,10 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             return toStringNode.executeString(target);
         }
 
-        @Specialization
-        protected Object to(TruffleObject jsObj, Object toType) {
+        @Specialization(guards = {"isJSObject(jsObj)"})
+        protected Object to(Object jsObj, Object toType) {
             TruffleLanguage.Env env = getContext().getRealm().getEnv();
-            if (toType instanceof TruffleObject && env.isHostObject(toType)) {
+            if (env.isHostObject(toType)) {
                 if (isJavaArrayClass(toType, env)) {
                     return toArray(jsObj, toType, env);
                 } else {
@@ -498,9 +495,13 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             }
         }
 
-        @Specialization(guards = "!isTruffleObject(jsObj)")
-        protected Object toNonObject(Object jsObj, @SuppressWarnings("unused") Object toType) {
-            throw Errors.createTypeErrorNotAnObject(jsObj);
+        @Specialization(guards = {"!isJSObject(obj)"}, limit = "3")
+        protected Object toNonObject(Object obj, @SuppressWarnings("unused") Object toType,
+                        @CachedLibrary("obj") InteropLibrary interop) {
+            if (interop.hasArrayElements(obj)) {
+                return to(obj, toType);
+            }
+            throw Errors.createTypeErrorNotAnObject(obj);
         }
 
         private static boolean isJavaArrayClass(Object obj, TruffleLanguage.Env env) {
@@ -511,7 +512,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             return false;
         }
 
-        private Object toArray(TruffleObject jsObj, Object arrayType, TruffleLanguage.Env env) {
+        private Object toArray(Object jsObj, Object arrayType, TruffleLanguage.Env env) {
             assert isJavaArrayClass(arrayType, env);
 
             Object[] arr = toObjectArrayNode.executeObjectArray(jsObj);

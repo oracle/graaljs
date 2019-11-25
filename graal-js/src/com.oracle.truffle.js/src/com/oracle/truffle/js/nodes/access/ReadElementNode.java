@@ -434,7 +434,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return new BigIntReadElementTypeCacheNode(next);
         } else if (target instanceof TruffleObject) {
             assert JSRuntime.isForeignObject(target);
-            return new TruffleObjectReadElementTypeCacheNode((Class<? extends TruffleObject>) target.getClass(), next);
+            return new TruffleObjectReadElementTypeCacheNode(target.getClass(), next);
         } else {
             assert JSRuntime.isJavaPrimitive(target);
             return new JavaObjectReadElementTypeCacheNode(target.getClass(), next);
@@ -1465,7 +1465,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
     }
 
     static class TruffleObjectReadElementTypeCacheNode extends ReadElementTypeCacheNode {
-        private final Class<? extends TruffleObject> targetClass;
+        private final Class<?> targetClass;
 
         @Child private InteropLibrary interop;
         @Child private InteropLibrary keyInterop;
@@ -1475,7 +1475,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private ReadElementNode readFromPrototypeNode;
 
-        TruffleObjectReadElementTypeCacheNode(Class<? extends TruffleObject> targetClass, ReadElementTypeCacheNode next) {
+        TruffleObjectReadElementTypeCacheNode(Class<?> targetClass, ReadElementTypeCacheNode next) {
             super(next);
             this.targetClass = targetClass;
             this.exportKeyNode = ExportValueNode.create();
@@ -1486,7 +1486,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
-            TruffleObject truffleObject = targetClass.cast(target);
+            Object truffleObject = targetClass.cast(target);
             if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
             }
@@ -1527,7 +1527,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return toJSType(foreignResult);
         }
 
-        private Object tryInvokeGetter(TruffleObject thisObj, String key, JSContext context) {
+        private Object tryInvokeGetter(Object thisObj, String key, JSContext context) {
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
@@ -1543,7 +1543,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return maybeReadFromPrototype(thisObj, key, context);
         }
 
-        private Object tryGetResult(TruffleObject thisObj, String prefix, String key) {
+        private Object tryGetResult(Object thisObj, String prefix, String key) {
             String getterKey = PropertyCacheNode.getAccessorKey(prefix, key);
             if (getterKey == null) {
                 return null;
@@ -1572,7 +1572,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return toJSTypeNode.executeWithTarget(value);
         }
 
-        private Object getSize(TruffleObject truffleObject) {
+        private Object getSize(Object truffleObject) {
             try {
                 return JSRuntime.longToIntOrDouble(interop.getArraySize(truffleObject));
             } catch (UnsupportedMessageException e) {
@@ -1580,7 +1580,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        private Object maybeReadFromPrototype(TruffleObject truffleObject, String index, JSContext context) {
+        private Object maybeReadFromPrototype(Object truffleObject, String index, JSContext context) {
             if (context.getContextOptions().hasForeignObjectPrototype()) {
                 if (readFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

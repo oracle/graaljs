@@ -751,9 +751,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
-    "filePath" : "mjsunit/es6/proxies-set.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/regress/regress-2322.js",
     "status" : "FAIL"
   }, {
@@ -770,9 +767,6 @@
     "filePath" : "mjsunit/es6/regress/regress-9234.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/es6/regress/regress-cr493566.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/regress/regress-crbug-465671-null.js",
     "status" : "SKIP",
@@ -1908,9 +1902,6 @@
     "status" : "SKIP",
     "runInIsolation" : true,
     "comment" : "Out of memory even when run together with other memory-intense tests"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-631917.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-647217.js",
     "status" : "SKIP",
