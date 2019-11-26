@@ -739,10 +739,6 @@
     "filePath" : "mjsunit/es6/proxies-function.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/proxies-ownkeys.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/es6/proxies-prevent-extensions.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
@@ -864,16 +860,8 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/es8/object-entries.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
     "filePath" : "mjsunit/es8/object-get-own-property-descriptors.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es8/object-values.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "mjsunit/es9/regexp-lookbehind.js",
     "status" : "FAIL",
