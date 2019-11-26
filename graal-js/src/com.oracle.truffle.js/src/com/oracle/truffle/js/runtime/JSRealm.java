@@ -45,7 +45,14 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.SplittableRandom;
+import java.util.TimeZone;
+import java.util.WeakHashMap;
 
 import org.graalvm.options.OptionValues;
 
@@ -373,7 +380,7 @@ public class JSRealm {
     private JavaScriptNode callNode;
 
     /**
-     * Per-realm data structures used by the CommonJs `require` emulation.
+     * Per-realm CommonJs `require` cache.
      */
     private final Map<TruffleFile, DynamicObject> commonJsRequireCache;
 
@@ -1205,20 +1212,23 @@ public class JSRealm {
 
     private void addCommonJsGlobals() {
         if (getContext().getContextOptions().isCommonJsRequire()) {
-            putGlobalProperty("require", lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, "require"));
-            this.commonJsRequireFunctionObject = JSObject.get(getGlobalObject(), "require");
-            JSObject.set(getGlobalObject(), "__dirname", getEnv().getCurrentWorkingDirectory().toString());
+            final String requireName = "require";
+            final String dirNameName = "__dirname";
+            // Define `require` and `__dirname` in global scope.
+            putGlobalProperty(requireName, lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, requireName));
+            JSObject.set(getGlobalObject(), dirNameName, getEnv().getCurrentWorkingDirectory().toString());
+            this.commonJsRequireFunctionObject = JSObject.get(getGlobalObject(), requireName);
+            // Load an (optional) bootstrap module. Can be used to define global properties (e.g., Node.js builtin mock-ups).
             String commonJsRequireGlobals = getContext().getContextOptions().getCommonJsRequireGlobals();
             if (commonJsRequireGlobals != null && !"".equals(commonJsRequireGlobals)) {
-                Object globals = JSFunction.call(JSArguments.create(commonJsRequireFunctionObject, commonJsRequireFunctionObject, commonJsRequireGlobals));
-                DynamicObject commonJsGlobals = (DynamicObject) globals;
-                if (commonJsGlobals != null && commonJsGlobals != Undefined.instance) {
-                    List<String> globalNames = JSObject.enumerableOwnNames(commonJsGlobals);
-                    for (String name : globalNames) {
-                        JSObject.set(getGlobalObject(), name, JSObject.get(commonJsGlobals, name));
-                    }
+                try {
+                    // `require()` the module. Result is discarded.
+                    JSFunction.call(JSArguments.create(commonJsRequireFunctionObject, commonJsRequireFunctionObject, commonJsRequireGlobals));
+                } catch (Exception e) {
+                    throw Errors.createErrorFromException(e);
                 }
             }
+            // Configure an (optional) mapping from reserved module names (e.g., 'buffer') to arbitrary Npm modules. Can be used to provide user-specific implementations of the JS builtins.
             Map<String, String> commonJsRequireBuiltins = getContext().getContextOptions().getCommonJsRequireBuiltins();
             this.commonJsPreLoadedBuiltins = new HashMap<>();
             for (String builtin : commonJsRequireBuiltins.keySet()) {
