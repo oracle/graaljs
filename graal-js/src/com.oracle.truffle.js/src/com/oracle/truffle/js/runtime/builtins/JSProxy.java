@@ -703,7 +703,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             return uncheckedResultKeys;
         }
         JSContext context = JSObject.getJSContext(thisObj);
-        if (!context.isOptionV8CompatibilityMode() && context.getEcmaScriptVersion() >= 9 && containsDuplicateEntries(trapResult)) {
+        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2018 && containsDuplicateEntries(trapResult)) {
             throw Errors.createTypeError("trap result contains duplicate entries");
         }
         boolean extensibleTarget = JSObject.isExtensible((DynamicObject) target);
