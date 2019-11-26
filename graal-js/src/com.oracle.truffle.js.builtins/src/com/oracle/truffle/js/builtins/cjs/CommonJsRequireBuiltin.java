@@ -256,7 +256,6 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
             }
         }
         return null;
-//        throw fail(moduleIdentifier);
     }
 
     private Object loadAsFileOrDirectory(TruffleLanguage.Env env, TruffleFile modulePath, String moduleIdentifier) {
