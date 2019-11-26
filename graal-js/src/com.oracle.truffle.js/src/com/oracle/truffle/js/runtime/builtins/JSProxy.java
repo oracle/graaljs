@@ -41,7 +41,9 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -749,14 +751,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         return trapResult;
     }
 
+    @TruffleBoundary
     private static boolean containsDuplicateEntries(List<Object> trapResult) {
         // as spec does not specify, Object.equals should suffice?
-        for (int i = 0; i < trapResult.size(); i++) {
-            Object entry = trapResult.get(i);
-            for (int j = i + 1; j < trapResult.size(); j++) {
-                if (entry.equals(trapResult.get(j))) {
-                    return true;
-                }
+        Set<Object> set = new HashSet<>();
+        for (Object entry : trapResult) {
+            if (!set.add(entry)) {
+                return true;
             }
         }
         return false;
