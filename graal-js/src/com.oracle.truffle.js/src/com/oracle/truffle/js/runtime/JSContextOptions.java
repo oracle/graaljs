@@ -627,10 +627,13 @@ public final class JSContextOptions {
         return COMMONJS_REQUIRE_EMULATION.getValue(optionValues);
     }
 
-    public Map<String,String> getCommonJsRequireBuiltins() {
+    public Map<String, String> getCommonJsRequireBuiltins() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
         String value = COMMONJS_REQUIRE_GLOBAL_BUILTINS.getValue(optionValues);
         Map<String, String> map = new HashMap<>();
+        if ("".equals(value)) {
+            return map;
+        }
         String[] options = value.split(",");
         for (String s : options) {
             String[] builtin = s.split(":");

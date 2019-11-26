@@ -44,7 +44,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
-import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.*;
 
@@ -376,7 +375,7 @@ public class JSRealm {
     /**
      * Per-realm data structures used by the CommonJs `require` emulation.
      */
-    private final Map<Path, DynamicObject> commonJsRequireCache;
+    private final Map<TruffleFile, DynamicObject> commonJsRequireCache;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -1103,8 +1102,8 @@ public class JSRealm {
         this.evalFunctionObject = JSObject.get(global, JSGlobalObject.EVAL_NAME);
         this.applyFunctionObject = JSObject.get(getFunctionPrototype(), "apply");
         this.callFunctionObject = JSObject.get(getFunctionPrototype(), "call");
-        DynamicObject JSON = (DynamicObject) JSObject.get(global, "JSON");
-        this.jsonParseFunctionObject = JSObject.get(JSON, "parse");
+        DynamicObject jsonBuiltin = (DynamicObject) JSObject.get(global, "JSON");
+        this.jsonParseFunctionObject = JSObject.get(jsonBuiltin, "parse");
 
         for (JSErrorType type : JSErrorType.errorTypes()) {
             putGlobalProperty(type.name(), getErrorConstructor(type));
@@ -2026,6 +2025,7 @@ public class JSRealm {
         realmList.set(idx, null);
     }
 
+<<<<<<< HEAD
     public JSRealm getCurrentV8Realm() {
         return v8RealmCurrent;
     }
@@ -2060,7 +2060,7 @@ public class JSRealm {
         }
     }
 
-    public final Map<String, DynamicObject> getCommonJsRequireCache() {
+    public final Map<TruffleFile, DynamicObject> getCommonJsRequireCache() {
         assert context.getContextOptions().isCommonJsRequire();
         return commonJsRequireCache;
     }

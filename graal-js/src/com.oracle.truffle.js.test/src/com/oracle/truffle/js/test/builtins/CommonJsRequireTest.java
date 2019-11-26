@@ -58,7 +58,7 @@ import static org.junit.Assert.assertEquals;
 
 public class CommonJsRequireTest {
 
-    private static class NodeModulesFolder {
+    private static final class NodeModulesFolder {
         public static NodeModulesFolder create(Path folder, String name) throws IOException {
             return new NodeModulesFolder(folder, name);
         }
@@ -78,7 +78,7 @@ public class CommonJsRequireTest {
         }
     }
 
-    private static class TestFile {
+    private static final class TestFile {
         private final String absolutePath;
 
         public static TestFile create(Path folder, String fileName, String src) throws IOException {
@@ -110,13 +110,8 @@ public class CommonJsRequireTest {
     }
 
     private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {
-        return Context.newBuilder(ID).allowPolyglotAccess(PolyglotAccess.ALL)
-                .allowExperimentalOptions(true)
-                .option("js.cjs-require", "true")
-                .option("js.cjs-require-cwd", tempFolder.toAbsolutePath().toString())
-                .out(out)
-                .err(err)
-                .allowIO(true).build();
+        return Context.newBuilder(ID).allowPolyglotAccess(PolyglotAccess.ALL).allowExperimentalOptions(true).option("js.cjs-require", "true").option("js.cjs-require-cwd",
+                        tempFolder.toAbsolutePath().toString()).out(out).err(err).allowIO(true).build();
     }
 
     private static Path getTempFolder() throws IOException {
@@ -130,7 +125,7 @@ public class CommonJsRequireTest {
             if (!"".equals(packageJson)) {
                 TestFile.create(nm, "package.json", packageJson);
             }
-            TestFile.create(nm,"index.js", "module.exports.foo = 42;");
+            TestFile.create(nm, "index.js", "module.exports.foo = 42;");
             Value js = cx.eval(ID, "require(" + moduleName + ").foo;");
             Assert.assertEquals(42, js.asInt());
         }
@@ -143,7 +138,7 @@ public class CommonJsRequireTest {
     private void testBasicRequire(String moduleName) throws IOException {
         Path f = getTempFolder();
         try (Context cx = testContext(f)) {
-            TestFile.create(f,"module.js", "module.exports.foo = 42;");
+            TestFile.create(f, "module.js", "module.exports.foo = 42;");
             Value js = cx.eval(ID, "require('./module').foo;");
             Assert.assertEquals(42, js.asInt());
         }
@@ -168,7 +163,7 @@ public class CommonJsRequireTest {
     public void absoluteFilename() throws IOException {
         Path f = getTempFolder();
         try (Context cx = testContext(f)) {
-            TestFile m = TestFile.create(f,"module.js", "module.exports.foo = 42;");
+            TestFile m = TestFile.create(f, "module.js", "module.exports.foo = 42;");
             Value js = cx.eval(ID, "require('" + m.getAbsolutePath() + "').foo;");
             Assert.assertEquals(42, js.asInt());
         }
@@ -223,9 +218,9 @@ public class CommonJsRequireTest {
     public void nestedRequire() throws IOException {
         Path f = getTempFolder();
         try (Context cx = testContext(f)) {
-            TestFile.create(f,"a.js", "module.exports.foo = 42;");
-            TestFile.create(f,"b.js", "const a = require('./a.js');" +
-                    "exports.foo = a.foo;");
+            TestFile.create(f, "a.js", "module.exports.foo = 42;");
+            TestFile.create(f, "b.js", "const a = require('./a.js');" +
+                            "exports.foo = a.foo;");
             Value js = cx.eval(ID, "require('./b.js').foo;");
             Assert.assertEquals(42, js.asInt());
         }
@@ -237,36 +232,36 @@ public class CommonJsRequireTest {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
         try (Context cx = testContext(f, out, err)) {
-            TestFile.create(f,"a.js", "console.log('a starting');" +
-                    "exports.done = false;" +
-                    "const b = require('./b.js');" +
-                    "console.log('in a, b.done = ' + b.done);" +
-                    "exports.done = true;" +
-                    "console.log('a done');");
-            TestFile.create(f,"b.js", "console.log('b starting');" +
-                    "exports.done = false;" +
-                    "const a = require('./a.js');" +
-                    "console.log('in b, a.done = ' + a.done);" +
-                    "exports.done = true;" +
-                    "console.log('b done');");
+            TestFile.create(f, "a.js", "console.log('a starting');" +
+                            "exports.done = false;" +
+                            "const b = require('./b.js');" +
+                            "console.log('in a, b.done = ' + b.done);" +
+                            "exports.done = true;" +
+                            "console.log('a done');");
+            TestFile.create(f, "b.js", "console.log('b starting');" +
+                            "exports.done = false;" +
+                            "const a = require('./a.js');" +
+                            "console.log('in b, a.done = ' + a.done);" +
+                            "exports.done = true;" +
+                            "console.log('b done');");
             Value js = cx.eval(ID, "console.log('main starting');" +
-                    "const a = require('./a.js');" +
-                    "const b = require('./b.js');" +
-                    "console.log('in main, a.done = ' + a.done + ', b.done = ' + b.done);" +
-                    "42;");
+                            "const a = require('./a.js');" +
+                            "const b = require('./b.js');" +
+                            "console.log('in main, a.done = ' + a.done + ', b.done = ' + b.done);" +
+                            "42;");
             out.flush();
             err.flush();
             String outPrint = new String(out.toByteArray());
             String errPrint = new String(err.toByteArray());
 
             Assert.assertEquals("main starting\n" +
-                    "a starting\n" +
-                    "b starting\n" +
-                    "in b, a.done = false\n" +
-                    "b done\n" +
-                    "in a, b.done = true\n" +
-                    "a done\n" +
-                    "in main, a.done = true, b.done = true\n", outPrint);
+                            "a starting\n" +
+                            "b starting\n" +
+                            "in b, a.done = false\n" +
+                            "b done\n" +
+                            "in a, b.done = true\n" +
+                            "a done\n" +
+                            "in main, a.done = true, b.done = true\n", outPrint);
             Assert.assertEquals("", errPrint);
             Assert.assertEquals(42, js.asInt());
         }
@@ -274,22 +269,22 @@ public class CommonJsRequireTest {
 
     @Test
     public void unknownModule() {
-        assertThrows("require('unknown')", "TypeError: Cannot load Npm module: 'unknown'");
+        assertThrows("require('unknown')", "TypeError: Cannot load CommonJs module: 'unknown'");
     }
 
     @Test
     public void unknownFile() {
-        assertThrows("require('./unknown')", "TypeError: Cannot load Npm module: './unknown'");
+        assertThrows("require('./unknown')", "TypeError: Cannot load CommonJs module: './unknown'");
     }
 
     @Test
     public void unknownFileWithExt() {
-        assertThrows("require('./unknown.js')", "TypeError: Cannot load Npm module: './unknown.js'");
+        assertThrows("require('./unknown.js')", "TypeError: Cannot load CommonJs module: './unknown.js'");
     }
 
     @Test
     public void unknownAbsolute() {
-        assertThrows("require('/path/to/unknown.js')", "TypeError: Cannot load Npm module: '/path/to/unknown.js'");
+        assertThrows("require('/path/to/unknown.js')", "TypeError: Cannot load CommonJs module: '/path/to/unknown.js'");
     }
 
     @Test
@@ -314,8 +309,8 @@ public class CommonJsRequireTest {
                 throw new AssertionError("Unexpected exception " + t);
             }
             assertEquals(t.getMessage(), "SyntaxError: Invalid JSON: <json>:1:1 Expected , or } but found n\n" +
-                    "{not_a_valid:##json}\n" +
-                    " ^");
+                            "{not_a_valid:##json}\n" +
+                            " ^");
         }
     }
 

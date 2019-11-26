@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.builtins.cjs;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -55,153 +53,155 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Stack;
+import java.util.List;
 
 public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperation {
 
-    private static final boolean LOG = false;
+    private static final boolean LOG_REQUIRE_PATH_RESOLUTION = false;
+    private static final Stack<String> requireDebugStack;
 
-    private static Stack<String> requireStack = new Stack<>();
+    static {
+        requireDebugStack = LOG_REQUIRE_PATH_RESOLUTION ? null : new Stack<>();
+    }
 
-    private static void log(String message) {
-        if (LOG) {
-            int nesting = requireStack.size() + 1;
-            StringBuilder s = new StringBuilder("'.'");
-            for (String module : requireStack) {
-                s.append(" '" + module + "'");
+    private static void log(Object... message) {
+        if (LOG_REQUIRE_PATH_RESOLUTION) {
+            StringBuilder s = new StringBuilder("['.'");
+            for (String module : requireDebugStack) {
+                s.append(" '").append(module).append("'");
             }
-            System.err.println("[" + s.toString() + "] " + message);
+            s.append("] ");
+            for (Object m : message) {
+                s.append(m.toString());
+            }
+            System.err.println(s.toString());
         }
     }
 
-    private static final String MODULE_CLOSURE = "\n});";
-    private static final String MODULE_PREAMBLE_BASE = "(function (exports, require, module, __filename, __dirname) {";
+    private static void debugStackPush(String moduleIdentifier) {
+        if (LOG_REQUIRE_PATH_RESOLUTION) {
+            requireDebugStack.push(moduleIdentifier);
+        }
+    }
 
-    private static final Path ROOT_PATH = Paths.get(File.listRoots()[0].getAbsolutePath());;
-    private static final String SEPARATOR = File.separator;
+    private static void debugStackPop() {
+        if (LOG_REQUIRE_PATH_RESOLUTION) {
+            requireDebugStack.pop();
+        }
+    }
+
+    private static final String MODULE_END = "\n});";
+    private static final String MODULE_PREAMBLE = "(function (exports, require, module, __filename, __dirname) {";
+
+    private static final String FILENAME_VAR_NAME = "__filename";
+    private static final String LOADED_PROPERTY_NAME = "loaded";
+    private static final String FILENAME_PROPERTY_NAME = "filename";
+    private static final String MODULE_PROPERTY_NAME = "module";
+    private static final String ID_PROPERTY_NAME = "id";
+    private static final String EXPORTS_PROPERTY_NAME = "exports";
+    private static final String MAIN_PROPERTY_NAME = "main";
+    private static final String ENV_PROPERTY_NAME = "env";
+
+    private static final String JS_EXT = ".js";
+    private static final String JSON_EXT = ".json";
+    private static final String NODE_EXT = ".node";
     private static final String INDEX_JS = "index.js";
     private static final String INDEX_JSON = "index.json";
     private static final String INDEX_NODE = "index.node";
     private static final String PACKAGE_JSON = "package.json";
     private static final String NODE_MODULES = "node_modules";
 
-    private static final String JS_EXT = ".js";
-    private static final String JSON_EXT = ".json";
-    private static final String NODE_EXT = ".node";
+    private static final String[] CORE_MODULES = new String[]{"assert", "async_hooks", "buffer", "child_process", "cluster", "crypto",
+                    "dgram", "dns", "domain", "events", "fs", "http", "http2", "https", "module", "net",
+                    "os", "path", "perf_hooks", "punycode", "querystring", "readline", "repl",
+                    "stream", "string_decoder", "tls", "trace_events", "tty", "url", "util",
+                    "v8", "vm", "worker_threads", "zlib"};
 
-    private static final String EXPORTS = "exports";
-    private static final String REQUIRE = "require";
-    private static final String MAIN_PROPERTY ="main";
-    
-    private static final String[] CORE_MODULES = new String[] {"assert", "async_hooks", "buffer", "child_process", "cluster", "crypto",
-            "dgram", "dns", "domain", "events", "fs", "http", "http2", "https", "module", "net",
-            "os", "path", "perf_hooks", "punycode", "querystring", "readline", "repl",
-            "stream", "string_decoder", "tls", "trace_events", "tty", "url", "util",
-            "v8", "vm", "worker_threads", "zlib"};
+    private final TruffleFile modulesResolutionCwd;
 
-    private final Path cwd;
-    private HashMap<String, Object> extraGlobals;
-
-    public CommonJsRequireBuiltin(JSContext context, JSBuiltin builtin) {
+    CommonJsRequireBuiltin(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
         String cwdOption = context.getContextOptions().getRequireCwd();
-        this.cwd = (cwdOption == null ? Paths.get(".").toAbsolutePath().normalize() : Paths.get(cwdOption));
-        this.extraGlobals = new HashMap<String, Object>();
+        this.modulesResolutionCwd = getModulesResolutionCwd(cwdOption, context.getRealm().getEnv());
     }
 
     @Specialization
     protected Object require(VirtualFrame frame, String moduleIdentifier) {
         DynamicObject currentRequire = (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
-        Path y = getCurrentPath(currentRequire);
-        return requireImpl(frame, moduleIdentifier, y);
+        TruffleLanguage.Env env = getContext().getRealm().getEnv();
+        TruffleFile resolutionEntryPath = getModuleResolutionEntryPath(currentRequire, env);
+        return requireImpl(env, moduleIdentifier, resolutionEntryPath);
     }
 
-    protected Object requireImpl(VirtualFrame frame, String moduleIdentifier, Path y) {
-        log("required module '" + moduleIdentifier + "'                                core:" + isCoreModule(moduleIdentifier) + " from path " + y.normalize().toString());
-        /*
-            1. If X is a core module,
-                a. return the core module
-                b. STOP
-        */
+    /* @formatter:off
+     *
+     * CommonJs `require` implementation based on the Node.js runtime loading mechanism as described
+     * in the Node.js documentation: https://nodejs.org/api/modules.html.
+     *
+     * 1. If X is a core module
+     *     a. return the core module
+     *     b. STOP
+     *
+     * 2. If X begins with '/'
+     *     a. set Y to be the filesystem root
+     *
+     * 3. If X begins with './' or '/' or '../'
+     *     a. LOAD_AS_FILE(Y + X)
+     *     b. LOAD_AS_DIRECTORY(Y + X)
+     *     c. THROW "not found"
+     *
+     * 4. LOAD_NODE_MODULES(X, dirname(Y))
+     * 5. LOAD_SELF_REFERENCE(X, dirname(Y))
+     * 6. THROW "not found"
+     *
+     *  @formatter:on
+     */
+    @CompilerDirectives.TruffleBoundary
+    private Object requireImpl(TruffleLanguage.Env env, String moduleIdentifier, TruffleFile currentWorkingPath) {
+        log("required module '", moduleIdentifier, "'                                core:", isCoreModule(moduleIdentifier), " from path ", currentWorkingPath.normalize());
+        // 1. If X is a core module
         if (isCoreModule(moduleIdentifier) || "".equals(moduleIdentifier)) {
             String moduleReplacementName = getContext().getContextOptions().getCommonJsRequireBuiltins().get(moduleIdentifier);
             if (moduleReplacementName != null && !"".equals(moduleReplacementName)) {
-                return requireImpl(frame, moduleReplacementName, cwd);
+                return requireImpl(env, moduleReplacementName, modulesResolutionCwd);
             }
             throw fail(moduleIdentifier);
         }
-        /*
-            2. If X begins with '/'
-                a. set Y to be the filesystem root
-        */
+        // 2. If X begins with '/'
         if (moduleIdentifier.charAt(0) == '/') {
-            // XXX(db) this always returns `c:\` on windows.
-            y = Paths.get(File.listRoots()[0].getAbsolutePath());
+            currentWorkingPath = getFileSystemRootPath(env);
         }
-        /*
-            3. If X begins with './' or '/' or '../'
-                a. LOAD_AS_FILE(Y + X)
-                b. LOAD_AS_DIRECTORY(Y + X)
-                c. THROW "not found"
-        */
+        // 3. If X begins with './' or '/' or '../'
         if (isPathFileName(moduleIdentifier)) {
-            Object module = loadAsFileOrDirectory(joinPaths(y, moduleIdentifier), moduleIdentifier);
-            if (module == null) {
-                // XXX(db) node.js informal spec says we should throw. Node v12.x does not throw and continues.
-                // throw fail(moduleIdentifier);
-            } else {
+            Object module = loadAsFileOrDirectory(env, joinPaths(env, currentWorkingPath, moduleIdentifier), moduleIdentifier);
+            // XXX(db) The Node.js informal spec says we should throw if module is null here.
+            // Node v12.x, however, does not throw and attempts to load as a folder.
+            if (module != null) {
                 return module;
             }
         }
-        /*
-            4. LOAD_NODE_MODULES(X, dirname(Y))
-            5. LOAD_SELF_REFERENCE(X, dirname(Y))
-            6. THROW "not found"
-        */
-        Object module = loadNodeModulesOrSelfReference(moduleIdentifier, y);
-        if (module == null) {
-            throw fail(moduleIdentifier);
-        } else {
-            return module;
-        }
+        // 4. 5. 6. Try loading as a folder, or throw if not existing
+        return loadNodeModulesOrSelfReference(env, moduleIdentifier, currentWorkingPath);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private Path getCurrentPath(DynamicObject currentRequire) {
-        if (JSObject.isJSObject(currentRequire)) {
-            // TODO use hidden property or closure value
-            Object maybeFilename = JSObject.get(currentRequire, "__filename");
-            if (maybeFilename instanceof String) {
-                try {
-                    String fileName = (String) maybeFilename;
-                    if (Paths.get(fileName).toFile().isFile()) {
-                        return Paths.get(fileName).getParent();
-                    }
-                } catch (ClassCastException e) {
-                    // dirname not a string. Will use default cwd.
-                }
-            }
-        }
-        // This is the first `require()` call, so we use the default cwd.
-        return cwd;
-    }
-
-    private Object loadNodeModulesOrSelfReference(String moduleIdentifier, Path start) {
-        /*
-            1. let DIRS = NODE_MODULES_PATHS(START)
-            2. for each DIR in DIRS:
-                a. LOAD_AS_FILE(DIR/X)
-                b. LOAD_AS_DIRECTORY(DIR/X)
-        */
-        List<Path> nodeModulesPaths = getNodeModulesPaths(start);
-        for (Path s : nodeModulesPaths) {
-            Object module = loadAsFileOrDirectory(joinPaths(s, moduleIdentifier), moduleIdentifier);
+    private Object loadNodeModulesOrSelfReference(TruffleLanguage.Env env, String moduleIdentifier, TruffleFile startFolder) {
+        /* @formatter:off
+         *
+         * 1. let DIRS = NODE_MODULES_PATHS(START)
+         * 2. for each DIR in DIRS:
+         *     a. LOAD_AS_FILE(DIR/X)
+         *     b. LOAD_AS_DIRECTORY(DIR/X)
+         *
+         * @formatter:on
+         */
+        List<TruffleFile> nodeModulesPaths = getNodeModulesPaths(env, startFolder);
+        for (TruffleFile s : nodeModulesPaths) {
+            Object module = loadAsFileOrDirectory(env, joinPaths(env, s, moduleIdentifier), moduleIdentifier);
             if (module != null) {
                 return module;
             }
@@ -209,101 +209,66 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         throw fail(moduleIdentifier);
     }
 
-    private static Path joinPaths(Path p1, String p2) {
-        return Paths.get(p1.normalize().toString(), p2);
-    }
-
-    private static List<Path> getAllParentPaths(Path from) {
-        List<Path> paths = new ArrayList<>();
-        Path p = from;
-        while (p != null) {
-            paths.add(p);
-            p = p.getParent();
-        }
-        return paths;
-    }
-
-    private List<Path> getNodeModulesPaths(Path path) {
-        List<Path> list = new ArrayList<>();
-        List<Path> paths = getAllParentPaths(path);
-        for (Path p : paths) {
-            if (p.endsWith(Paths.get(NODE_MODULES))) {
-                list.add(p);
-            } else {
-                list.add(Paths.get(p.toString(), NODE_MODULES));
-            }
-        }
-        // TODO the list should include "Global" folders.
-        return list;
-    }
-
-    private static JSException fail(String moduleIdentifier) {
-        return JSException.create(JSErrorType.TypeError, "Cannot load Npm module: '" + moduleIdentifier + "'");
-    }
-
-    private Object loadAsJavaScriptText(Path modulePath, String moduleIdentifier) {
+    private Object loadAsJavaScriptText(TruffleFile modulePath, String moduleIdentifier) {
         JSRealm realm = getContext().getRealm();
-
-        Map<Path, DynamicObject> commonJsCache = realm.getCommonJsRequireCache();
+        // If cached, return from cache. This is by design to avoid infinite require loops.
+        Map<TruffleFile, DynamicObject> commonJsCache = realm.getCommonJsRequireCache();
         if (commonJsCache.containsKey(modulePath.normalize())) {
             DynamicObject moduleBuiltin = commonJsCache.get(modulePath.normalize());
-            Object cached =  JSObject.get(moduleBuiltin, "exports");
-            log("returning cached '" + modulePath.normalize().toString() + "'  APIs: {" +JSObject.enumerableOwnNames((DynamicObject) cached) + "}");
+            Object cached = JSObject.get(moduleBuiltin, EXPORTS_PROPERTY_NAME);
+            log("returning cached '", modulePath.normalize(), "'  APIs: {", JSObject.enumerableOwnNames((DynamicObject) cached), "}");
             return cached;
         }
-
+        // Read the file.
         Source source = sourceFromPath(modulePath.toString(), realm);
         String filenameBuiltin = modulePath.normalize().toString();
-        String dirnameBuiltin = modulePath.getParent().toAbsolutePath().normalize().toString();
-
+        if (modulePath.getParent() == null) {
+            throw fail(moduleIdentifier);
+        }
+        // Create `require` and other builtins for this module.
+        String dirnameBuiltin = modulePath.getParent().getAbsoluteFile().normalize().toString();
         DynamicObject exportsBuiltin = createExportsBuiltin(realm);
         DynamicObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin, filenameBuiltin);
         DynamicObject requireBuiltin = createRequireBuiltin(realm, moduleBuiltin, filenameBuiltin);
-
-        CharSequence characters = MODULE_PREAMBLE_BASE + source.getCharacters() + MODULE_CLOSURE;
-        Source build = Source.newBuilder(JavaScriptLanguage.ID)
-                .mimeType(JavaScriptLanguage.TEXT_MIME_TYPE)
-                .name(filenameBuiltin)
-                .content(characters)
-                .build();
-
-        CallTarget callTarget = realm.getEnv().parsePublic(build);
-        Object call = callTarget.call();
-
-        DynamicObject process = JSUserObject.create(getContext());
-        JSObject.set(process, "env", JSUserObject.create(getContext()));
-
-        if (JSFunction.isJSFunction(call)) {
+        DynamicObject env = JSUserObject.create(getContext());
+        JSObject.set(env, ENV_PROPERTY_NAME, JSUserObject.create(getContext()));
+        // Parse the module
+        CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_END;
+        Source moduleSources = Source.newBuilder(JavaScriptLanguage.ID).mimeType(JavaScriptLanguage.TEXT_MIME_TYPE).name(filenameBuiltin).content(characters).build();
+        CallTarget moduleCallTarget = realm.getEnv().parsePublic(moduleSources);
+        Object moduleExecutableFunction = moduleCallTarget.call();
+        // Execute the module.
+        if (JSFunction.isJSFunction(moduleExecutableFunction)) {
             commonJsCache.put(modulePath.normalize(), moduleBuiltin);
-
             try {
-                requireStack.push(moduleIdentifier);
-                log("executing '" + filenameBuiltin + "' for " + moduleIdentifier);
-                JSFunction.call(JSArguments.create(call, call, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin, process));
-                JSObject.set(moduleBuiltin, "loaded", true);
-                return JSObject.get(moduleBuiltin, "exports");
+                debugStackPush(moduleIdentifier);
+                log("executing '", filenameBuiltin, "' for ", moduleIdentifier);
+                JSFunction.call(JSArguments.create(moduleExecutableFunction, moduleExecutableFunction, exportsBuiltin, requireBuiltin, moduleBuiltin, filenameBuiltin, dirnameBuiltin, env));
+                JSObject.set(moduleBuiltin, LOADED_PROPERTY_NAME, true);
+                return JSObject.get(moduleBuiltin, EXPORTS_PROPERTY_NAME);
             } catch (Exception e) {
-                log("EXCEPTION: '" + e.getMessage() + "'");
+                log("EXCEPTION: '", e.getMessage(), "'");
                 throw e;
             } finally {
-                requireStack.pop();
-                Object module = JSObject.get(moduleBuiltin, "exports");
-                log("done '" + moduleIdentifier + "' module.exports: " + module + "   APIs: {" +JSObject.enumerableOwnNames((DynamicObject) module) + "}");
+                debugStackPop();
+                Object module = JSObject.get(moduleBuiltin, EXPORTS_PROPERTY_NAME);
+                log("done '", moduleIdentifier, "' module.exports: ", module, "   APIs: {", JSObject.enumerableOwnNames((DynamicObject) module), "}");
             }
         }
         return null;
+//        throw fail(moduleIdentifier);
     }
 
-    private Object loadAsFileOrDirectory(Path modulePath, String moduleIdentifier) {
-        Object maybeFile = loadAsFile(modulePath, moduleIdentifier);
+    private Object loadAsFileOrDirectory(TruffleLanguage.Env env, TruffleFile modulePath, String moduleIdentifier) {
+        Object maybeFile = loadAsFile(env, modulePath, moduleIdentifier);
         if (maybeFile == null) {
-            return loadAsDirectory(modulePath, moduleIdentifier);
+            return loadAsDirectory(env, modulePath, moduleIdentifier);
         } else {
             return maybeFile;
         }
     }
 
-    private DynamicObject loadJsonObject(Path jsonFile) {
+    private DynamicObject loadJsonObject(TruffleFile jsonFile) {
         try {
             if (fileExists(jsonFile)) {
                 Source source = null;
@@ -328,108 +293,102 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         }
     }
 
-    private Object loadAsDirectory(Path modulePath, String moduleIdentifier) {
-        if (fileExists(Paths.get(modulePath.toString(), PACKAGE_JSON))) {
-            DynamicObject jsonObj = loadJsonObject(Paths.get(modulePath.toString(), PACKAGE_JSON));
+    private Object loadAsDirectory(TruffleLanguage.Env env, TruffleFile modulePath, String moduleIdentifier) {
+        TruffleFile packageJson = joinPaths(env, modulePath, PACKAGE_JSON);
+        if (fileExists(packageJson)) {
+            DynamicObject jsonObj = loadJsonObject(packageJson);
             if (JSObject.isJSObject(jsonObj)) {
-                Object main = JSObject.get(jsonObj, MAIN_PROPERTY);
+                Object main = JSObject.get(jsonObj, MAIN_PROPERTY_NAME);
                 if (!JSRuntime.isString(main)) {
-                    return loadIndex(modulePath, moduleIdentifier);
+                    return loadIndex(env, modulePath, moduleIdentifier);
                 }
-                Path m = Paths.get(modulePath.toString(), JSRuntime.safeToString(main));
-                Object asFile = loadAsFile(m, moduleIdentifier);
+                TruffleFile module = joinPaths(env, modulePath, JSRuntime.safeToString(main));
+                Object asFile = loadAsFile(env, module, moduleIdentifier);
                 if (asFile != null) {
                     return asFile;
                 } else {
-                    Object loadIndex = loadIndex(m, moduleIdentifier);
+                    Object loadIndex = loadIndex(env, module, moduleIdentifier);
                     if (loadIndex != null) {
                         return loadIndex;
                     }
                 }
             }
         } else {
-            return loadIndex(modulePath, moduleIdentifier);
+            return loadIndex(env, modulePath, moduleIdentifier);
         }
         throw fail(modulePath.toString());
     }
 
-    private Object loadIndex(Path modulePath, String moduleIdentifier) {
-        /*
-            LOAD_INDEX(X)
-                1. If X/index.js is a file, load X/index.js as JavaScript text.  STOP
-                2. If X/index.json is a file, parse X/index.json to a JavaScript object. STOP
-                3. If X/index.node is a file, load X/index.node as binary addon.  STOP
-        */
-        if (fileExists(Paths.get(modulePath.toString(), INDEX_JS))) {
-            return loadAsJavaScriptText(Paths.get(modulePath.toString(), INDEX_JS), moduleIdentifier);
-        } else if (fileExists(Paths.get(modulePath.toString(), INDEX_JSON))) {
-            return loadJsonObject(Paths.get(modulePath.toString(), INDEX_JSON));
-        } else if (fileExists(Paths.get(modulePath.toString(), INDEX_NODE))) {
+    private Object loadIndex(TruffleLanguage.Env env, TruffleFile modulePath, String moduleIdentifier) {
+        /* @formatter:off
+         *
+         * LOAD_INDEX(X)
+         *     1. If X/index.js is a file, load X/index.js as JavaScript text. STOP
+         *     2. If X/index.json is a file, parse X/index.json to a JavaScript object. STOP
+         *     3. If X/index.node is a file, load X/index.node as binary addon. STOP
+         *
+         * @formatter:on
+         */
+        TruffleFile indexJs = joinPaths(env, modulePath, INDEX_JS);
+        TruffleFile indexJson = joinPaths(env, modulePath, INDEX_JSON);
+        if (fileExists(indexJs)) {
+            return loadAsJavaScriptText(indexJs, moduleIdentifier);
+        } else if (fileExists(indexJson)) {
+            return loadJsonObject(indexJson);
+        } else if (fileExists(joinPaths(env, modulePath, INDEX_NODE))) {
             throw fail(modulePath.toString());
         }
         return null;
     }
 
-    private Object loadAsFile(Path modulePath, String moduleIdentifier) {
-        /*
-            LOAD_AS_FILE(X)
-                1. If X is a file, load X as JavaScript text.  STOP
-                2. If X.js is a file, load X.js as JavaScript text.  STOP
-                3. If X.json is a file, parse X.json to a JavaScript Object.  STOP
-                4. If X.node is a file, load X.node as binary addon.  STOP
-        */
+    private Object loadAsFile(TruffleLanguage.Env env, TruffleFile modulePath, String moduleIdentifier) {
+        /* @formatter:off
+         *
+         * LOAD_AS_FILE(X)
+         *     1. If X is a file, load X as JavaScript text. STOP
+         *     2. If X.js is a file, load X.js as JavaScript text. STOP
+         *     3. If X.json is a file, parse X.json to a JavaScript Object. STOP
+         *     4. If X.node is a file, load X.node as binary addon. STOP
+         *
+         * @formatter:on
+         */
         if (fileExists(modulePath)) {
             return loadAsTextOrObject(modulePath, moduleIdentifier);
-        } else if (fileExists(Paths.get(modulePath.toString() + JS_EXT))) {
-            return loadAsJavaScriptText(Paths.get(modulePath.toString() + JS_EXT), moduleIdentifier);
-        } else if (fileExists(Paths.get(modulePath.toString() + JSON_EXT))) {
-            return loadJsonObject(Paths.get(modulePath.toString() + JSON_EXT));
-        } else if (fileExists(Paths.get(modulePath.toString() + NODE_EXT))) {
+        }
+        TruffleFile moduleJs = env.getPublicTruffleFile(modulePath.toString() + JS_EXT);
+        if (fileExists(moduleJs)) {
+            return loadAsJavaScriptText(moduleJs, moduleIdentifier);
+        }
+        TruffleFile moduleJson = env.getPublicTruffleFile(modulePath.toString() + JSON_EXT);
+        if (fileExists(moduleJson)) {
+            return loadJsonObject(moduleJson);
+        }
+        if (fileExists(env.getPublicTruffleFile(modulePath.toString() + NODE_EXT))) {
             throw fail(modulePath.toString());
         }
         return null;
     }
 
-    private Object loadAsTextOrObject(Path file, String moduleIdentifier) {
+    private Object loadAsTextOrObject(TruffleFile file, String moduleIdentifier) {
         assert fileExists(file);
-        // TODO safer way to check ext
-        String fileName = file.toFile().getName();
-        int len = fileName.length();
-        if (len > 5) {
-            if (fileName.substring(len - 5, len).equals(JSON_EXT)) {
-                return loadJsonObject(file);
-            } else {
-                return loadAsJavaScriptText(file, moduleIdentifier);
-            }
+        String fileName = file.getName();
+        if (hasExtension(fileName, JSON_EXT)) {
+            return loadJsonObject(file);
         } else {
             return loadAsJavaScriptText(file, moduleIdentifier);
         }
     }
 
-    private boolean fileExists(Path modulePath) {
-        return Files.exists(modulePath) && modulePath.toFile().isFile();
-    }
-
-    private boolean isPathFileName(String moduleIdentifier) {
-        if (moduleIdentifier.charAt(0) == '/') {
-            return true;
-        } else if (moduleIdentifier.length() > 1 && moduleIdentifier.substring(0, 2).equals("./")) {
-            return true;
-        } else {
-            return moduleIdentifier.length() > 2 && moduleIdentifier.substring(0, 3).equals("../");
-        }
-    }
-
-    private boolean isCoreModule(String moduleIdentifier) {
-        return Arrays.asList(CORE_MODULES).contains(moduleIdentifier);
+    private static JSException fail(String moduleIdentifier) {
+        return JSException.create(JSErrorType.TypeError, "Cannot load CommonJs module: '" + moduleIdentifier + "'");
     }
 
     private DynamicObject createModuleBuiltin(JSRealm realm, DynamicObject exportsBuiltin, String fileNameBuiltin) {
         DynamicObject module = JSUserObject.create(realm.getContext(), realm);
-        JSObject.set(module, EXPORTS, exportsBuiltin);
-        JSObject.set(module, "id", fileNameBuiltin);
-        JSObject.set(module, "filename", fileNameBuiltin);
-        JSObject.set(module, "loaded", false);
+        JSObject.set(module, EXPORTS_PROPERTY_NAME, exportsBuiltin);
+        JSObject.set(module, ID_PROPERTY_NAME, fileNameBuiltin);
+        JSObject.set(module, FILENAME_PROPERTY_NAME, fileNameBuiltin);
+        JSObject.set(module, LOADED_PROPERTY_NAME, false);
         return module;
     }
 
@@ -437,13 +396,107 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperat
         DynamicObject mainRequire = (DynamicObject) realm.getCommonJsRequireFunctionObject();
         JSFunctionData functionData = JSFunction.getFunctionData(mainRequire);
         DynamicObject newRequire = JSFunction.create(realm, functionData);
-        JSObject.set(newRequire, "module", moduleBuiltin);
-        JSObject.set(newRequire, "__filename", fileNameBuiltin);
+        JSObject.set(newRequire, MODULE_PROPERTY_NAME, moduleBuiltin);
+        // XXX(db) Here, we store the current filename in the (new) require builtin.
+        // In this way, we avoid managing a shadow stack to track the current require's parent.
+        // In Node.js, this is done using a (closed) level variable.
+        JSObject.set(newRequire, FILENAME_VAR_NAME, fileNameBuiltin);
         return newRequire;
     }
 
     private DynamicObject createExportsBuiltin(JSRealm realm) {
         return JSUserObject.create(realm.getContext(), realm);
+    }
+
+    private TruffleFile getModulesResolutionCwd(String cwdOption, TruffleLanguage.Env env) {
+        return cwdOption == null ? env.getCurrentWorkingDirectory() : env.getPublicTruffleFile(cwdOption);
+    }
+
+    private boolean fileExists(TruffleFile modulePath) {
+        return modulePath.exists() && modulePath.isRegularFile();
+    }
+
+    private boolean isPathFileName(String moduleIdentifier) {
+        if (moduleIdentifier.length() > 0 && moduleIdentifier.charAt(0) == '/') {
+            return true;
+        } else if (moduleIdentifier.length() > 1 && "./".equals(moduleIdentifier.substring(0, 2))) {
+            return true;
+        } else {
+            return moduleIdentifier.length() > 2 && "../".equals(moduleIdentifier.substring(0, 3));
+        }
+    }
+
+    private boolean isCoreModule(String moduleIdentifier) {
+        return Arrays.asList(CORE_MODULES).contains(moduleIdentifier);
+    }
+
+    private static TruffleFile joinPaths(TruffleLanguage.Env env, TruffleFile p1, String p2) {
+        String pathSeparator = env.getFileNameSeparator();
+        String pathName = p1.normalize().toString();
+        TruffleFile truffleFile = env.getPublicTruffleFile(pathName + pathSeparator + p2);
+        return truffleFile.normalize();
+    }
+
+    private static List<TruffleFile> getAllParentPaths(TruffleFile from) {
+        List<TruffleFile> paths = new ArrayList<>();
+        TruffleFile p = from;
+        while (p != null) {
+            paths.add(p);
+            p = p.getParent();
+        }
+        return paths;
+    }
+
+    private List<TruffleFile> getNodeModulesPaths(TruffleLanguage.Env env, TruffleFile path) {
+        List<TruffleFile> list = new ArrayList<>();
+        List<TruffleFile> paths = getAllParentPaths(path);
+        for (TruffleFile p : paths) {
+            if (p.endsWith(NODE_MODULES)) {
+                list.add(p);
+            } else {
+                String pathSeparator = env.getFileNameSeparator();
+                TruffleFile truffleFile = env.getPublicTruffleFile(p.toString() + pathSeparator + NODE_MODULES);
+                list.add(truffleFile);
+            }
+        }
+        return list;
+    }
+
+    private TruffleFile getFileSystemRootPath(TruffleLanguage.Env env) {
+        TruffleFile root = env.getCurrentWorkingDirectory();
+        TruffleFile last = root;
+        while (root != null) {
+            last = root;
+            root = root.getParent();
+        }
+        return last;
+    }
+
+    private TruffleFile getModuleResolutionEntryPath(DynamicObject currentRequire, TruffleLanguage.Env env) {
+        if (JSObject.isJSObject(currentRequire)) {
+            Object maybeFilename = JSObject.get(currentRequire, FILENAME_VAR_NAME);
+            if (JSRuntime.isString(maybeFilename)) {
+                String fileName = (String) maybeFilename;
+                if (isFile(env, fileName)) {
+                    return getParent(env, fileName);
+                }
+            }
+            // dirname not a string. Use default cwd.
+        }
+        // This is not a nested `require()` call, so we use the default cwd.
+        return modulesResolutionCwd;
+    }
+
+    private TruffleFile getParent(TruffleLanguage.Env env, String fileName) {
+        return env.getPublicTruffleFile(fileName).getParent();
+    }
+
+    private boolean isFile(TruffleLanguage.Env env, String fileName) {
+        return env.getPublicTruffleFile(fileName).exists();
+    }
+
+    private static boolean hasExtension(String fileName, String ext) {
+        return fileName.lastIndexOf(ext) > 0 && fileName.lastIndexOf(ext) == fileName.length() - ext.length();
     }
 
 }

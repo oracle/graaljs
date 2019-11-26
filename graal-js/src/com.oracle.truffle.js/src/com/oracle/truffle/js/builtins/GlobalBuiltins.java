@@ -100,7 +100,6 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNo
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
-import com.oracle.truffle.js.builtins.cjs.CommonJsRequireBuiltin;
 import com.oracle.truffle.js.builtins.cjs.CommonJsRequireBuiltinNodeGen;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
