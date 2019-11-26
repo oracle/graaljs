@@ -1207,7 +1207,7 @@ public class JSRealm {
         if (getContext().getContextOptions().isCommonJsRequire()) {
             putGlobalProperty("require", lookupFunction(JSGlobalObject.CLASS_NAME_COMMONJS_REQUIRE_EXTENSIONS, "require"));
             this.commonJsRequireFunctionObject = JSObject.get(getGlobalObject(), "require");
-
+            JSObject.set(getGlobalObject(), "__dirname", getEnv().getCurrentWorkingDirectory().toString());
             String commonJsRequireGlobals = getContext().getContextOptions().getCommonJsRequireGlobals();
             if (commonJsRequireGlobals != null && !"".equals(commonJsRequireGlobals)) {
                 Object globals = JSFunction.call(JSArguments.create(commonJsRequireFunctionObject, commonJsRequireFunctionObject, commonJsRequireGlobals));
@@ -1219,9 +1219,7 @@ public class JSRealm {
                     }
                 }
             }
-
             Map<String, String> commonJsRequireBuiltins = getContext().getContextOptions().getCommonJsRequireBuiltins();
-
             this.commonJsPreLoadedBuiltins = new HashMap<>();
             for (String builtin : commonJsRequireBuiltins.keySet()) {
                 try {
@@ -1232,7 +1230,6 @@ public class JSRealm {
                     throw Errors.createErrorFromException(e);
                 }
             }
-
         }
     }
 
