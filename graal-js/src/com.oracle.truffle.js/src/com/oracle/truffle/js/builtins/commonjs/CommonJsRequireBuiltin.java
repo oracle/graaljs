@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins.cjs;
+package com.oracle.truffle.js.builtins.commonjs;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -60,7 +60,7 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.List;
 
-public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSLoadOperation {
+public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
     private static final boolean LOG_REQUIRE_PATH_RESOLUTION = false;
     private static final Stack<String> requireDebugStack;

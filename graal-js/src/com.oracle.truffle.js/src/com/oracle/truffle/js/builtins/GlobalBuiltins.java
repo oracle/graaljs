@@ -100,7 +100,7 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNo
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
-import com.oracle.truffle.js.builtins.cjs.CommonJsRequireBuiltinNodeGen;
+import com.oracle.truffle.js.builtins.commonjs.CommonJsRequireBuiltinNodeGen;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -154,6 +154,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     public static final JSBuiltinsContainer GLOBAL_NASHORN_EXTENSIONS = new GlobalNashornScriptingBuiltins();
     public static final JSBuiltinsContainer GLOBAL_PRINT = new GlobalPrintBuiltins();
     public static final JSBuiltinsContainer GLOBAL_LOAD = new GlobalLoadBuiltins();
+    public static final JSBuiltinsContainer GLOBAL_COMMONJS_REQUIRE_EXTENSIONS = new GlobalCommonJsRequireBuiltins();
 
     protected GlobalBuiltins() {
         super(Global.class);
@@ -337,9 +338,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     /**
      * Built-ins for CommonJS 'require' emulation.
      */
-    public static final class GlobalCommonJsRequireBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalCommonJsRequireBuiltins.GlobalRequire> {
+    public static class GlobalCommonJsRequireBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalCommonJsRequireBuiltins.GlobalRequire> {
         protected GlobalCommonJsRequireBuiltins() {
-            super(JSGlobalObject.CLASS_NAME_COMMONJS_REQUIRE_EXTENSIONS, GlobalRequire.class);
+            super(GlobalRequire.class);
         }
 
         public enum GlobalRequire implements BuiltinEnum<GlobalRequire> {
@@ -539,6 +540,45 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
     }
 
+    public abstract static class JSFileLoadingOperation extends JSGlobalOperation {
+
+        protected JSFileLoadingOperation(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        protected Source sourceFromPath(String path, JSRealm realm) {
+            Source source = null;
+            try {
+                TruffleFile file = resolveRelativeFilePath(path, realm.getEnv());
+                if (file.isRegularFile()) {
+                    source = sourceFromTruffleFile(file);
+                }
+            } catch (SecurityException e) {
+                throw Errors.createErrorFromException(e);
+            }
+            if (source == null) {
+                throw cannotLoadScript(path);
+            }
+            return source;
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        protected static JSException cannotLoadScript(Object script) {
+            return Errors.createTypeError("Cannot load script: " + JSRuntime.safeToString(script));
+        }
+
+        @TruffleBoundary
+        protected final Source sourceFromTruffleFile(TruffleFile file) {
+            try {
+                return Source.newBuilder(JavaScriptLanguage.ID, file).build();
+            } catch (IOException | SecurityException e) {
+                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
+            }
+        }
+
+    }
+
     /**
      * @throws SecurityException
      */
@@ -575,7 +615,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         return null;
     }
 
-    public abstract static class JSLoadOperation extends JSGlobalOperation {
+    public abstract static class JSLoadOperation extends JSFileLoadingOperation {
         public JSLoadOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -630,15 +670,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Source sourceFromFileName(String fileName, JSRealm realm) {
             try {
                 return Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getPublicTruffleFile(fileName)).name(fileName).build();
-            } catch (IOException | SecurityException e) {
-                throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
-            }
-        }
-
-        @TruffleBoundary
-        protected final Source sourceFromTruffleFile(TruffleFile file) {
-            try {
-                return Source.newBuilder(JavaScriptLanguage.ID, file).build();
             } catch (IOException | SecurityException e) {
                 throw JSException.create(JSErrorType.EvalError, e.getMessage(), e, this);
             }
@@ -728,11 +759,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 }
             }
             return null;
-        }
-
-        @TruffleBoundary(transferToInterpreterOnException = false)
-        protected static JSException cannotLoadScript(Object script) {
-            return Errors.createTypeError("Cannot load script: " + JSRuntime.safeToString(script));
         }
     }
 

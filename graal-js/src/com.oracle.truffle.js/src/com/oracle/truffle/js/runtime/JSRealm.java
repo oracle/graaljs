@@ -1205,7 +1205,7 @@ public class JSRealm {
 
     private void addCommonJsGlobals() {
         if (getContext().getContextOptions().isCommonJsRequire()) {
-            putGlobalProperty("require", lookupFunction(JSGlobalObject.CLASS_NAME_COMMONJS_REQUIRE_EXTENSIONS, "require"));
+            putGlobalProperty("require", lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, "require"));
             this.commonJsRequireFunctionObject = JSObject.get(getGlobalObject(), "require");
             JSObject.set(getGlobalObject(), "__dirname", getEnv().getCurrentWorkingDirectory().toString());
             String commonJsRequireGlobals = getContext().getContextOptions().getCommonJsRequireGlobals();
@@ -2022,7 +2022,6 @@ public class JSRealm {
         realmList.set(idx, null);
     }
 
-<<<<<<< HEAD
     public JSRealm getCurrentV8Realm() {
         return v8RealmCurrent;
     }
