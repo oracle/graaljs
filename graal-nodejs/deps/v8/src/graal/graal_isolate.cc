@@ -227,18 +227,18 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
 #       ifdef LIBNODESVM_RELPATH
             bool force_native = false;
+            std::string node_jvm_lib = graalvm_home + (graalvm8 ? "/jre" : "") + LIBNODESVM_RELPATH;
             if (mode == kModeJVM) {
                  // will be set to appropriate libjvm path below
                 UnsetEnv("NODE_JVM_LIB");
             } else if (mode == kModeNative) {
                 force_native = true;
             } else { // mode == kModeDefault
-                if (getstdenv("NODE_JVM_LIB").empty()) {
+                if (getstdenv("NODE_JVM_LIB").empty() && access(node_jvm_lib.c_str(), F_OK) == 0) {
                     force_native = true;
                 } // else reuse NODE_JVM_LIB
             }
             if (force_native) {
-                std::string node_jvm_lib = graalvm_home + (graalvm8 ? "/jre" : "") + LIBNODESVM_RELPATH;
                 SetEnv("NODE_JVM_LIB", node_jvm_lib.c_str());
             }
 #       else
