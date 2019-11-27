@@ -129,17 +129,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
         return previousIndex;
     }
 
-    @Specialization(guards = {"!isArray", "!isArraySuitableForEnumBasedProcessing(object, currentIndex)"})
-    public long previousObjectViaIteration(Object object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
-        long index = currentIndex - 1;
-        while (index >= 0 && !hasPropertyNode.executeBoolean(object, index)) {
-            index--;
-        }
-        return index;
-    }
-
-    @Specialization(guards = {"!isArray", "isArraySuitableForEnumBasedProcessing(object, currentIndex)"})
+    @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, currentIndex)"})
     public long previousObjectViaEnumeration(DynamicObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create()") JSHasPropertyNode hasPropertyNode) {
         long currentIndexMinusOne = currentIndex - 1;
@@ -148,6 +138,27 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
         }
 
         return previousObjectViaEnumerationIntl(object, currentIndex);
+    }
+
+    @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, currentIndex)", "isSuitableForEnumBasedProcessing(object, currentIndex)"})
+    public long previousObjectViaFullEnumeration(DynamicObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
+                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+        long currentIndexMinusOne = currentIndex - 1;
+        if (hasPropertyNode.executeBoolean(object, currentIndexMinusOne)) {
+            return currentIndexMinusOne;
+        }
+
+        return previousObjectViaFullEnumerationIntl(object, currentIndex);
+    }
+
+    @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, currentIndex)"})
+    public long previousObjectViaIteration(Object object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
+                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+        long index = currentIndex - 1;
+        while (index >= 0 && !hasPropertyNode.executeBoolean(object, index)) {
+            index--;
+        }
+        return index;
     }
 
     @TruffleBoundary
@@ -167,4 +178,16 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
         }
         return result;
     }
+
+    @TruffleBoundary
+    private static long previousObjectViaFullEnumerationIntl(DynamicObject object, long currentIndex) {
+        long result = -1;
+        DynamicObject chainObject = object;
+        do {
+            result = Math.max(result, previousObjectViaEnumerationIntl(object, currentIndex));
+            chainObject = JSObject.getPrototype(chainObject);
+        } while (chainObject != Null.instance);
+        return result;
+    }
+
 }

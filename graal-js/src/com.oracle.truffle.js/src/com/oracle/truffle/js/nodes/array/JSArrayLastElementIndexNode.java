@@ -135,17 +135,7 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
         return lastIndex;
     }
 
-    @Specialization(guards = {"!isArray", "!isArraySuitableForEnumBasedProcessing(object, length)"})
-    public long doObject(Object object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
-        long index = length - 1;
-        while (!hasPropertyNode.executeBoolean(object, index) && index > 0) {
-            index--;
-        }
-        return index;
-    }
-
-    @Specialization(guards = {"!isArray", "isArraySuitableForEnumBasedProcessing(object, length)"})
+    @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)"})
     public long doObjectViaEnumeration(DynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create()") JSHasPropertyNode hasPropertyNode) {
         long lengthMinusOne = length - 1;
@@ -154,6 +144,27 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
         }
 
         return doObjectViaEnumerationIntl(object, lengthMinusOne);
+    }
+
+    @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)", "isSuitableForEnumBasedProcessing(object, length)"})
+    public long doObjectViaFullEnumeration(DynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
+                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+        long lengthMinusOne = length - 1;
+        if (hasPropertyNode.executeBoolean(object, lengthMinusOne)) {
+            return lengthMinusOne;
+        }
+
+        return doObjectViaFullEnumerationIntl(object, lengthMinusOne);
+    }
+
+    @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, length)"})
+    public long doObject(Object object, long length, @SuppressWarnings("unused") boolean isArray,
+                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+        long index = length - 1;
+        while (!hasPropertyNode.executeBoolean(object, index) && index > 0) {
+            index--;
+        }
+        return index;
     }
 
     @TruffleBoundary
@@ -173,4 +184,16 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
         }
         return result;
     }
+
+    @TruffleBoundary
+    private static long doObjectViaFullEnumerationIntl(DynamicObject object, long length) {
+        long result = -1;
+        DynamicObject chainObject = object;
+        do {
+            result = Math.max(result, doObjectViaEnumerationIntl(object, length));
+            chainObject = JSObject.getPrototype(chainObject);
+        } while (chainObject != Null.instance);
+        return result;
+    }
+
 }

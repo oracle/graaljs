@@ -134,7 +134,25 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
         return firstIndex;
     }
 
-    @Specialization(guards = {"!isArray", "!isArraySuitableForEnumBasedProcessing(object, length)"})
+    @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)"})
+    public long firstObjectViaEnumeration(DynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
+                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+        if (hasPropertyNode.executeBoolean(object, 0)) {
+            return 0;
+        }
+        return firstObjectViaEnumerationIntl(object, length);
+    }
+
+    @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)", "isSuitableForEnumBasedProcessing(object, length)"})
+    public long firstObjectViaFullEnumeration(DynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
+                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+        if (hasPropertyNode.executeBoolean(object, 0)) {
+            return 0;
+        }
+        return firstObjectViaFullEnumerationIntl(object, length);
+    }
+
+    @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, length)"})
     public long doObject(Object object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("create()") JSHasPropertyNode hasPropertyNode) {
         long index = 0;
@@ -142,15 +160,6 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
             index++;
         }
         return index;
-    }
-
-    @Specialization(guards = {"!isArray", "isArraySuitableForEnumBasedProcessing(object, length)"})
-    public long firstObjectViaEnumeration(DynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
-        if (hasPropertyNode.executeBoolean(object, 0)) {
-            return 0;
-        }
-        return firstObjectViaEnumerationIntl(object, length);
     }
 
     @TruffleBoundary
@@ -170,4 +179,16 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
         }
         return result;
     }
+
+    @TruffleBoundary
+    private static long firstObjectViaFullEnumerationIntl(DynamicObject object, long length) {
+        long result = Long.MAX_VALUE;
+        DynamicObject chainObject = object;
+        do {
+            result = Math.min(result, firstObjectViaEnumerationIntl(object, length));
+            chainObject = JSObject.getPrototype(chainObject);
+        } while (chainObject != Null.instance);
+        return result;
+    }
+
 }
