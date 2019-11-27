@@ -1276,7 +1276,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class JSStringReplaceAllNode extends JSStringReplaceBaseNode {
-
+        private final ConditionProfile isSearchValueEmpty = ConditionProfile.createCountingProfile();
         private final ConditionProfile isRegExp = ConditionProfile.createCountingProfile();
         @Child private TRegexUtil.TRegexCompiledRegexSingleFlagAccessor globalFlagAccessor = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(TRegexUtil.Props.Flags.GLOBAL);
 
@@ -1314,9 +1314,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected Object performReplaceAll(String searchValue, String replaceValue, Object thisObj, ReplaceStringParser.Token[] parsedReplaceParam) {
             String thisStr = toString(thisObj);
-            // TODO: Think on providing some profiling classes, empty string may be unlikely
-            // profile.
-            if (Boundaries.stringCompareTo(searchValue, "") == 0) {
+            if (isSearchValueEmpty.profile(Boundaries.stringCompareTo(searchValue, "") == 0)) {
                 return Boundaries.stringReplaceAll(thisStr, "", replaceValue);
             }
             StringBuilder result = new StringBuilder();
@@ -1336,7 +1334,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object searchVal = searchValueProfile.profile(searchValue);
             Object replaceVal = replaceValueProfile.profile(replaceValue);
             if (isSpecialProfile.profile(!(searchVal == Undefined.instance || searchVal == Null.instance))) {
-
                 if (isRegExp.profile(JSRegExp.isJSRegExp(searchValue))) {
                     DynamicObject searchRegExp = (DynamicObject) searchValue;
 
@@ -1366,7 +1363,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             StringBuilder result = new StringBuilder();
             int position = 0;
 
-            if (Boundaries.stringCompareTo(searchString, "") == 0) {
+            if (isSearchValueEmpty.profile(Boundaries.stringCompareTo(searchString, "") == 0)) {
                 while (position <= thisStr.length()) {
                     strPos = builtinReplace(searchString, replParam, thisStr, position);
                     Boundaries.builderAppend(result, strPos.replacedPart, 0, strPos.replacedPart.length());
