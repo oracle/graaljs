@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -62,11 +63,11 @@ import java.util.List;
 
 public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
-    private static final boolean LOG_REQUIRE_PATH_RESOLUTION = false;
+    private static final boolean LOG_REQUIRE_PATH_RESOLUTION = true;
     private static final Stack<String> requireDebugStack;
 
     static {
-        requireDebugStack = LOG_REQUIRE_PATH_RESOLUTION ? null : new Stack<>();
+        requireDebugStack = LOG_REQUIRE_PATH_RESOLUTION ? new Stack<>() : null;
     }
 
     private static void log(Object... message) {
@@ -95,15 +96,18 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         }
     }
 
+    public static final String FILENAME_VAR_NAME = "__filename";
+    public static final String DIRNAME_VAR_NAME = "__dirname";
+    public static final String MODULE_PROPERTY_NAME = "module";
+    public static final String EXPORTS_PROPERTY_NAME = "exports";
+    public static final String REQUIRE_PROPERTY_NAME = "require";
+
     private static final String MODULE_END = "\n});";
     private static final String MODULE_PREAMBLE = "(function (exports, require, module, __filename, __dirname) {";
 
-    private static final String FILENAME_VAR_NAME = "__filename";
     private static final String LOADED_PROPERTY_NAME = "loaded";
     private static final String FILENAME_PROPERTY_NAME = "filename";
-    private static final String MODULE_PROPERTY_NAME = "module";
     private static final String ID_PROPERTY_NAME = "id";
-    private static final String EXPORTS_PROPERTY_NAME = "exports";
     private static final String MAIN_PROPERTY_NAME = "main";
     private static final String ENV_PROPERTY_NAME = "env";
 
@@ -124,10 +128,14 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
 
     private final TruffleFile modulesResolutionCwd;
 
+    public static TruffleFile getModuleResolveCurrentWorkingDirectory(JSContext context) {
+        String cwdOption = context.getContextOptions().getRequireCwd();
+        return getModulesResolutionCwd(cwdOption, context.getRealm().getEnv());
+    }
+
     CommonJsRequireBuiltin(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
-        String cwdOption = context.getContextOptions().getRequireCwd();
-        this.modulesResolutionCwd = getModulesResolutionCwd(cwdOption, context.getRealm().getEnv());
+        this.modulesResolutionCwd = getModuleResolveCurrentWorkingDirectory(context);
     }
 
     @Specialization
@@ -407,7 +415,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return JSUserObject.create(realm.getContext(), realm);
     }
 
-    private TruffleFile getModulesResolutionCwd(String cwdOption, TruffleLanguage.Env env) {
+    private static TruffleFile getModulesResolutionCwd(String cwdOption, TruffleLanguage.Env env) {
         return cwdOption == null ? env.getCurrentWorkingDirectory() : env.getPublicTruffleFile(cwdOption);
     }
 

@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.*;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -52,6 +49,8 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
@@ -80,6 +79,7 @@ public class CommonJsRequireTest {
 
     private static final class TestFile {
         private final String absolutePath;
+        private final File file;
 
         public static TestFile create(Path folder, String fileName, String src) throws IOException {
             String path = folder.toAbsolutePath().toString();
@@ -94,14 +94,23 @@ public class CommonJsRequireTest {
         private TestFile(String path, String fileName, String src) throws IOException {
             File tmpFile = new File(path + File.separator + fileName);
             tmpFile.deleteOnExit();
+            Path folder = Paths.get(path);
+            if (!Files.exists(folder)) {
+                Files.createDirectories(folder);
+            }
             FileWriter fileWriter = new FileWriter(tmpFile);
             fileWriter.write(src);
             fileWriter.flush();
             this.absolutePath = tmpFile.getAbsolutePath();
+            this.file = tmpFile;
         }
 
         String getAbsolutePath() {
             return absolutePath;
+        }
+
+        public Source getSource() throws IOException {
+            return Source.newBuilder("js", file).build();
         }
     }
 
@@ -109,9 +118,19 @@ public class CommonJsRequireTest {
         return testContext(tempFolder, System.out, System.err);
     }
 
+    private static Context testContext(Map<String, String> options) {
+        return testContext(System.out, System.err, options);
+    }
+
+    private static Context testContext(OutputStream out, OutputStream err, Map<String, String> options) {
+        return Context.newBuilder(ID).allowPolyglotAccess(PolyglotAccess.ALL).allowExperimentalOptions(true).options(options).out(out).err(err).allowIO(true).build();
+    }
+
     private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {
-        return Context.newBuilder(ID).allowPolyglotAccess(PolyglotAccess.ALL).allowExperimentalOptions(true).option("js.cjs-require", "true").option("js.cjs-require-cwd",
-                        tempFolder.toAbsolutePath().toString()).out(out).err(err).allowIO(true).build();
+        Map<String, String> options = new HashMap<>();
+        options.put("js.cjs-require", "true");
+        options.put("js.cjs-require-cwd", tempFolder.toAbsolutePath().toString());
+        return testContext(out, err, options);
     }
 
     private static Path getTempFolder() throws IOException {
@@ -302,7 +321,7 @@ public class CommonJsRequireTest {
         Path f = getTempFolder();
         try (Context cx = testContext(f)) {
             TestFile.create(f, "foo.json", "{not_a_valid:##json}");
-            Value js = cx.eval(ID, "require('./foo.json').foo;");
+            cx.eval(ID, "require('./foo.json').foo;");
             assert false;
         } catch (Throwable t) {
             if (!t.getClass().isAssignableFrom(PolyglotException.class)) {
@@ -313,6 +332,59 @@ public class CommonJsRequireTest {
                                             ", or } but found n\n" +
                                             "{not_a_valid:##json}\n" +
                                             " ^");
+        }
+    }
+
+    @Test
+    public void testHasGlobals() throws IOException {
+        Path f = getTempFolder();
+        String[] builtins = new String[]{"require", "module", "exports", "module.exports", "__dirname", "__filename"};
+        String[] types = new String[]{"function", "object", "object", "object", "string", "string"};
+        for (int i = 0; i < builtins.length; i++) {
+            try (Context cx = testContext(f)) {
+                Value val = cx.eval(ID, "(typeof " + builtins[i] + ");");
+                Assert.assertEquals(types[i], val.asString());
+            }
+        }
+    }
+
+    @Test
+    public void testDirnameFilenameInModule() throws IOException {
+        Path root = getTempFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put("js.cjs-require", "true");
+        options.put("js.cjs-require-cwd", root.toString());
+        Path subFolder = Paths.get(root.normalize().toString(), "foo", "bar");
+        TestFile.create(subFolder, "testDir.js", "module.exports.dir = __dirname;");
+        TestFile fileFile = TestFile.create(subFolder, "testFile.js", "module.exports.file = __filename;");
+        try (Context cx = testContext(options)) {
+            Value dir = cx.eval("js", "require('./foo/bar/testDir.js').dir;");
+            Assert.assertEquals(subFolder.toString(), dir.asString());
+            Value fil = cx.eval("js", "require('./foo/bar/testFile.js').file;");
+            Assert.assertEquals(fileFile.getAbsolutePath(), fil.asString());
+        }
+    }
+
+    @Test
+    public void testGlobalDirnameFilename() throws IOException {
+        Path root = getTempFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put("js.cjs-require", "true");
+        Path subFolder = Paths.get(root.normalize().toString(), "foo", "bar");
+        TestFile dirFile = TestFile.create(subFolder, "testDir.js", "__dirname;");
+        TestFile fileFile = TestFile.create(subFolder, "testFile.js", "__filename;");
+        try (Context cx = testContext(options)) {
+            Value dir = cx.eval(dirFile.getSource());
+            Assert.assertEquals(subFolder.toString(), dir.asString());
+            Value fil = cx.eval(fileFile.getSource());
+            Assert.assertEquals(fileFile.getAbsolutePath(), fil.asString());
+        }
+        options.put("js.cjs-require-cwd", "/wrong/or/not/existing/folder");
+        try (Context cx = testContext(options)) {
+            Value dir = cx.eval(dirFile.getSource());
+            Assert.assertEquals(subFolder.toString(), dir.asString());
+            Value fil = cx.eval(fileFile.getSource());
+            Assert.assertEquals(fileFile.getAbsolutePath(), fil.asString());
         }
     }
 

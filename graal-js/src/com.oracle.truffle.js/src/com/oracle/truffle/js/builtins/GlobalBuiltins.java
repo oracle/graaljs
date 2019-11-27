@@ -100,6 +100,8 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNo
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
+import com.oracle.truffle.js.builtins.commonjs.CommonJsDirnameGetterBuiltinNodeGen;
+import com.oracle.truffle.js.builtins.commonjs.CommonJsFilenameGetterBuiltinNodeGen;
 import com.oracle.truffle.js.builtins.commonjs.CommonJsRequireBuiltinNodeGen;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
@@ -344,7 +346,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         public enum GlobalRequire implements BuiltinEnum<GlobalRequire> {
-            require(1);
+            require(1),
+            dirnameGetter(0),
+            filenameGetter(0);
 
             private final int length;
 
@@ -363,6 +367,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             switch (builtinEnum) {
                 case require:
                     return CommonJsRequireBuiltinNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context));
+                case dirnameGetter:
+                    return CommonJsDirnameGetterBuiltinNodeGen.create(context, builtin, args().fixedArgs(0).varArgs().createArgumentNodes(context));
+                case filenameGetter:
+                    return CommonJsFilenameGetterBuiltinNodeGen.create(context, builtin, args().fixedArgs(0).varArgs().createArgumentNodes(context));
             }
             return null;
         }
