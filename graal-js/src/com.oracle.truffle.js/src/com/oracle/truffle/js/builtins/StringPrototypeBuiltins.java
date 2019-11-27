@@ -1318,7 +1318,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             // TODO: Think on providing some profiling classes, empty string may be unlikely
             // profile.
             if (Boundaries.stringCompareTo(searchValue, "") == 0) {
-                return thisStr.replaceAll("", replaceValue);
+                return Boundaries.stringReplaceAll(thisStr, "", replaceValue);
             }
             StringBuilder result = new StringBuilder();
             ReplacedStringWithMatchPosition strPos = new ReplacedStringWithMatchPosition("", 0);
