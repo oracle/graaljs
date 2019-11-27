@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 
@@ -126,6 +127,6 @@ public final class JSNodeUtil {
 
     public static boolean hasExactlyOneRootBodyTag(JavaScriptNode body) {
         CompilerAsserts.neverPartOfCompilation();
-        return NodeUtil.countNodes(body, node -> node instanceof JavaScriptNode && ((JavaScriptNode) node).hasTag(RootBodyTag.class)) == 1;
+        return NodeUtil.countNodes(body, node -> !(node instanceof GeneratorWrapperNode) && node instanceof JavaScriptNode && ((JavaScriptNode) node).hasTag(RootBodyTag.class)) == 1;
     }
 }
