@@ -83,10 +83,24 @@ public abstract class JSArrayElementIndexNode extends JavaScriptBaseNode {
         return getArrayType(object, arrayCondition);
     }
 
-    protected final boolean isArraySuitableForEnumBasedProcessing(Object object, long length) {
+    protected final boolean isSuitableForEnumBasedProcessingUsingOwnKeys(Object object, long length) {
         return length > JSTruffleOptions.BigArrayThreshold && !JSArrayBufferView.isJSArrayBufferView(object) && !JSProxy.isProxy(object) &&
                         ((JSArray.isJSArray(object) && context.getArrayPrototypeNoElementsAssumption().isValid()) || !JSObject.isJSObject(object) ||
                                         JSObject.getPrototype((DynamicObject) object) == Null.instance);
+    }
+
+    protected static final boolean isSuitableForEnumBasedProcessing(Object object, long length) {
+        if (length <= JSTruffleOptions.BigArrayThreshold || !JSObject.isJSObject(object)) {
+            return false;
+        }
+        DynamicObject chainObject = (DynamicObject) object;
+        do {
+            if (JSArrayBufferView.isJSArrayBufferView(chainObject) || JSProxy.isProxy(chainObject)) {
+                return false;
+            }
+            chainObject = JSObject.getPrototype(chainObject);
+        } while (chainObject != Null.instance);
+        return true;
     }
 
     /**

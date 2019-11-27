@@ -1629,10 +1629,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/regress/regress-7652.js",
-    "status" : "SKIP",
-    "comment" : "Long-running test: we iterate to ~2^53."
-  }, {
     "filePath" : "mjsunit/regress/regress-779407.js",
     "runInIsolation" : true,
     "comment" : "memory intensive test"
