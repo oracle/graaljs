@@ -87,7 +87,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionDeclarationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ObjectAllocationTag;
@@ -152,7 +151,6 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 ControlFlowBlockTag.class,
                 ControlFlowBranchTag.class,
                 DeclareTag.class,
-                FunctionDeclarationTag.class,
                 // Other
                 InputNodeTag.class,
 })

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.test.instrumentation;
 import org.junit.Test;
 
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionDeclarationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 
@@ -54,8 +53,8 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
         evalWithTag("(function() { var b = 42; })();", DeclareTag.class);
 
         enter(DeclareTag.class, (e, decl) -> {
-            assertAttribute(e, NAME, "b");
-            assertAttribute(e, TYPE, "var");
+            assertAttribute(e, DECL_NAME, "b");
+            assertAttribute(e, DECL_TYPE, "var");
         }).exit();
     }
 
@@ -64,12 +63,12 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
         evalWithTag("(function(a) { var b = 42; })();", DeclareTag.class);
 
         enter(DeclareTag.class, (e, decl) -> {
-            assertAttribute(e, NAME, "a");
-            assertAttribute(e, TYPE, "var");
+            assertAttribute(e, DECL_NAME, "a");
+            assertAttribute(e, DECL_TYPE, "var");
         }).exit();
         enter(DeclareTag.class, (e, decl) -> {
-            assertAttribute(e, NAME, "b");
-            assertAttribute(e, TYPE, "var");
+            assertAttribute(e, DECL_NAME, "b");
+            assertAttribute(e, DECL_TYPE, "var");
         }).exit();
     }
 
@@ -78,8 +77,8 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
         evalWithTag("(function() { let b = 42; })();", DeclareTag.class);
 
         enter(DeclareTag.class, (e, decl) -> {
-            assertAttribute(e, NAME, "b");
-            assertAttribute(e, TYPE, "let");
+            assertAttribute(e, DECL_NAME, "b");
+            assertAttribute(e, DECL_TYPE, "let");
         }).exit();
     }
 
@@ -88,8 +87,8 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
         evalWithTags("(function() { const b = 42; })();", new Class<?>[]{DeclareTag.class, WriteVariableTag.class});
 
         enter(DeclareTag.class, (e, decl) -> {
-            assertAttribute(e, NAME, "b");
-            assertAttribute(e, TYPE, "const");
+            assertAttribute(e, DECL_NAME, "b");
+            assertAttribute(e, DECL_TYPE, "const");
         }).exit();
         enter(WriteVariableTag.class, (e1, w1) -> {
             assertAttribute(e1, NAME, "b");
@@ -102,18 +101,18 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
         evalWithTag("(function() { const c = 1; for(var i = 0; i<c; i++) { let b = i; } })();", DeclareTag.class);
 
         enter(DeclareTag.class, (e, decl) -> {
-            assertAttribute(e, NAME, "c");
-            assertAttribute(e, TYPE, "const");
+            assertAttribute(e, DECL_NAME, "c");
+            assertAttribute(e, DECL_TYPE, "const");
         }).exit();
 
         enter(DeclareTag.class, (e, decl) -> {
-            assertAttribute(e, NAME, "i");
-            assertAttribute(e, TYPE, "var");
+            assertAttribute(e, DECL_NAME, "i");
+            assertAttribute(e, DECL_TYPE, "var");
         }).exit();
 
         enter(DeclareTag.class, (e, decl) -> {
-            assertAttribute(e, NAME, "b");
-            assertAttribute(e, TYPE, "let");
+            assertAttribute(e, DECL_NAME, "b");
+            assertAttribute(e, DECL_TYPE, "let");
         }).exit();
     }
 
@@ -121,8 +120,8 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
     public void classDeclareVar() {
         evalWithTags("class Foo{}", new Class<?>[]{DeclareTag.class, WriteVariableTag.class});
         enter(DeclareTag.class, (e2) -> {
-            assertAttribute(e2, NAME, "Foo");
-            assertAttribute(e2, TYPE, "const");
+            assertAttribute(e2, DECL_NAME, "Foo");
+            assertAttribute(e2, DECL_TYPE, "const");
         }).exit();
         enter(WriteVariableTag.class, (e1, w1) -> {
             assertAttribute(e1, NAME, "Foo");
@@ -135,16 +134,43 @@ public class VarDeclarationsTest extends FineGrainedAccessTest {
         evalWithTags("class Foo{}", new Class<?>[]{DeclareTag.class});
 
         enter(DeclareTag.class, (e2) -> {
-            assertAttribute(e2, NAME, "Foo");
-            assertAttribute(e2, TYPE, "const");
+            assertAttribute(e2, DECL_NAME, "Foo");
+            assertAttribute(e2, DECL_TYPE, "const");
         }).exit();
     }
 
     @Test
     public void functionDeclare() {
-        evalWithTag("function foo() {};", FunctionDeclarationTag.class);
-        enter(FunctionDeclarationTag.class, (e, expr) -> {
-            assertAttribute(e, TYPE, LiteralTag.Type.FunctionLiteral.name());
+        evalWithTag("(function() { function foo() {} })();", DeclareTag.class);
+        // outer expression must not be entered as declaration
+        enter(DeclareTag.class, (e, expr) -> {
+            assertAttribute(e, DECL_NAME, "foo");
+            assertAttribute(e, DECL_TYPE, "var");
+        }).exit();
+    }
+
+    @Test
+    public void functionDeclareLiteral() {
+        evalWithTag("function foo() {};", LiteralTag.class);
+        enter(LiteralTag.class, (e, expr) -> {
+            assertAttribute(e, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
+        }).exit();
+    }
+
+    @Test
+    public void generatorDeclare() {
+        evalWithTag("function* foo() {};", DeclareTag.class);
+        enter(DeclareTag.class, (e, expr) -> {
+            assertAttribute(e, DECL_NAME, "foo");
+            assertAttribute(e, DECL_TYPE, "var");
+        }).exit();
+    }
+
+    @Test
+    public void generatorDeclareLiteral() {
+        evalWithTag("function* foo() {};", LiteralTag.class);
+        enter(LiteralTag.class, (e, expr) -> {
+            assertAttribute(e, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
     }
 }

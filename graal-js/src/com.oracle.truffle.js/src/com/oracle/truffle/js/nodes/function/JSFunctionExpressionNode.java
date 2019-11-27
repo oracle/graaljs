@@ -49,8 +49,10 @@ import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
+import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
@@ -89,7 +91,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
             return true;
         } else if (tag == JSTags.InputNodeTag.class) {
             return true;
-        } else if (tag == JSTags.FunctionDeclarationTag.class) {
+        } else if (tag == JSTags.DeclareTag.class) {
             // a function not tagged as an expression is a declaration
             return !super.hasTag(ExpressionTag.class);
         } else {
@@ -99,7 +101,13 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", LiteralTag.Type.FunctionLiteral.name());
+        if (super.hasTag(ExpressionTag.class)) {
+            return JSTags.createNodeObjectDescriptor(LiteralTag.TYPE, LiteralTag.Type.FunctionLiteral.name());
+        }
+        // function declaration, add declaration data and combine with literal type
+        NodeObjectDescriptor descriptor = DeclareTagProvider.createDeclareNodeObject(functionData.getName(), "var");
+        descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.FunctionLiteral.name());
+        return descriptor;
     }
 
     @Override

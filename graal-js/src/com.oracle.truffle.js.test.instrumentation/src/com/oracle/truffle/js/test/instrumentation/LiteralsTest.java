@@ -59,7 +59,7 @@ public class LiteralsTest extends FineGrainedAccessTest {
             prop.input(assertJSObjectInput);
             assertAttribute(e1, KEY, "x");
             enter(LiteralTag.class, (e2) -> {
-                assertAttribute(e2, TYPE, expectedTagType.name());
+                assertAttribute(e2, LITERAL_TYPE, expectedTagType.name());
             }).exit();
             if (expectedValue != null) {
                 prop.input(expectedValue);

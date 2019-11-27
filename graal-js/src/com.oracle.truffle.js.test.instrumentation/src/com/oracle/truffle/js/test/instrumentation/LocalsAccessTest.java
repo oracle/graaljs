@@ -64,7 +64,7 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
             call.input(assertUndefinedInput);
             // fetch the function, i.e., read the literal
             enter(LiteralTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
 
@@ -85,7 +85,7 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
             enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
             call.input(assertUndefinedInput);
             enter(LiteralTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
 
@@ -96,7 +96,7 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
                 enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
                 call2.input(assertUndefinedInput);
                 enter(LiteralTag.class).exit((e3) -> {
-                    assertAttribute(e3, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                    assertAttribute(e3, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
                 });
                 call2.input(assertJSFunctionInput);
                 // third call
@@ -104,7 +104,7 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
                     enter(LiteralTag.class).exit(assertReturnValue(Undefined.instance));
                     call3.input(assertUndefinedInput);
                     enter(LiteralTag.class).exit((e4) -> {
-                        assertAttribute(e4, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                        assertAttribute(e4, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
                     });
                     call3.input(assertJSFunctionInput);
                     // TODO missing input event for arguments to FunctionCallTag
@@ -127,7 +127,7 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
             call.input(assertUndefinedInput);
             // get the function from the literal
             enter(LiteralTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
 
@@ -158,7 +158,7 @@ public class LocalsAccessTest extends FineGrainedAccessTest {
             call.input(assertUndefinedInput);
             // get the function from the literal
             enter(LiteralTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             call.input(assertJSFunctionInput);
 

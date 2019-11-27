@@ -88,7 +88,7 @@ public class EvalTest extends FineGrainedAccessTest {
         enter(WritePropertyTag.class, (e, wp) -> {
             wp.input(assertGlobalObjectInput);
             enter(LiteralTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             wp.input(assertJSFunctionInput);
         }).exit();

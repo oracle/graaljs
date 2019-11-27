@@ -70,7 +70,6 @@ public final class JSTags {
                     ControlFlowBlockTag.class,
                     ControlFlowBranchTag.class,
                     DeclareTag.class,
-                    FunctionDeclarationTag.class
     };
 
     // ##### ECMAScript Language Expressions
@@ -147,6 +146,8 @@ public final class JSTags {
      */
     @Tag.Identifier("Literal")
     public static final class LiteralTag extends Tag {
+        public static final String TYPE = "literalType";
+
         public enum Type {
             ObjectLiteral,
             ArrayLiteral,
@@ -523,19 +524,10 @@ public final class JSTags {
      */
     @Tag.Identifier("Declare")
     public static final class DeclareTag extends Tag {
-        private DeclareTag() {
-        }
-    }
+        public static final String NAME = "declarationName";
+        public static final String TYPE = "declarationType";
 
-    /**
-     * Function declaration.
-     *
-     * TODO(aj) remove or merge into an equivalent standard declaration tag in Truffle.
-     *
-     */
-    @Tag.Identifier("FunctionDeclaration")
-    public static final class FunctionDeclarationTag extends Tag {
-        private FunctionDeclarationTag() {
+        private DeclareTag() {
         }
     }
 

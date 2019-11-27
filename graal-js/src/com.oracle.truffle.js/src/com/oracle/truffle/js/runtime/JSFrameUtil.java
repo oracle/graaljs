@@ -59,6 +59,7 @@ public final class JSFrameUtil {
     private static final int IS_LET = Symbol.IS_LET;
     private static final int IS_CONST = Symbol.IS_CONST;
     private static final int HAS_TDZ = IS_LET | IS_CONST;
+    private static final int IS_HOISTABLE_DECLARATION = Symbol.IS_HOISTABLE_DECLARATION;
 
     private JSFrameUtil() {
         // this utility class should not be instantiated
@@ -94,6 +95,10 @@ public final class JSFrameUtil {
 
     public static boolean isLet(FrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_LET) != 0;
+    }
+
+    public static boolean isHoistable(FrameSlot frameSlot) {
+        return (getFlags(frameSlot) & IS_HOISTABLE_DECLARATION) != 0;
     }
 
     public static MaterializedFrame getParentFrame(Frame frame) {

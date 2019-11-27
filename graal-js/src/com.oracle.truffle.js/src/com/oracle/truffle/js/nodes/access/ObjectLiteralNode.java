@@ -91,7 +91,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", LiteralTag.Type.ObjectLiteral.name());
+        return JSTags.createNodeObjectDescriptor(LiteralTag.TYPE, LiteralTag.Type.ObjectLiteral.name());
     }
 
     public static final class MakeMethodNode extends JavaScriptNode implements FunctionNameHolder.Delegate {

@@ -74,7 +74,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", LiteralTag.Type.RegExpLiteral.name());
+        return JSTags.createNodeObjectDescriptor(LiteralTag.TYPE, LiteralTag.Type.RegExpLiteral.name());
     }
 
     RegExpLiteralNode(JSContext context, String pattern, String flags) {

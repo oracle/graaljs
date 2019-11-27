@@ -105,9 +105,9 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
             assertAttribute(e, KEY, "a");
             prop.input(assertGlobalObjectInput);
             enter(LiteralTag.class, (e1, lit) -> {
-                assertAttribute(e1, TYPE, LiteralTag.Type.ObjectLiteral.name());
+                assertAttribute(e1, LITERAL_TYPE, LiteralTag.Type.ObjectLiteral.name());
                 enter(LiteralTag.class, (e2) -> {
-                    assertAttribute(e2, TYPE, LiteralTag.Type.ObjectLiteral.name());
+                    assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.ObjectLiteral.name());
                 }).exit();
                 lit.input((e2) -> {
                     assertTrue(JSObject.isDynamicObject(e2.val));
@@ -122,9 +122,9 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
             assertAttribute(e, KEY, "b");
             prop.input(assertGlobalObjectInput);
             enter(LiteralTag.class, (e1, lit) -> {
-                assertAttribute(e1, TYPE, LiteralTag.Type.ArrayLiteral.name());
+                assertAttribute(e1, LITERAL_TYPE, LiteralTag.Type.ArrayLiteral.name());
                 enter(LiteralTag.class, (e2) -> {
-                    assertAttribute(e2, TYPE, LiteralTag.Type.ArrayLiteral.name());
+                    assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.ArrayLiteral.name());
                 }).exit();
                 lit.input((e2) -> {
                     assertTrue(JSArray.isJSArray(e2.val));
@@ -139,9 +139,9 @@ public class ObjectAllocationTest extends FineGrainedAccessTest {
             assertAttribute(e, KEY, "c");
             prop.input(assertGlobalObjectInput);
             enter(LiteralTag.class, (e1, lit) -> {
-                assertAttribute(e1, TYPE, LiteralTag.Type.ObjectLiteral.name());
+                assertAttribute(e1, LITERAL_TYPE, LiteralTag.Type.ObjectLiteral.name());
                 enter(LiteralTag.class, (e2) -> {
-                    assertAttribute(e2, TYPE, LiteralTag.Type.ArrayLiteral.name());
+                    assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.ArrayLiteral.name());
                 }).exit();
                 lit.input((e2) -> {
                     assertTrue(JSArray.isJSArray(e2.val));

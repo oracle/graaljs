@@ -64,7 +64,7 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
             assertAttribute(e, KEY, "a");
             write.input(assertGlobalObjectInput);
             enter(LiteralTag.class, (e2) -> {
-                assertAttribute(e2, TYPE, Type.ObjectLiteral.name());
+                assertAttribute(e2, LITERAL_TYPE, Type.ObjectLiteral.name());
                 // num literal
                 enter(LiteralTag.class).exit();
             }).input(42).exit();
@@ -90,7 +90,7 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
             write.input(assertGlobalObjectInput);
             enter(LiteralTag.class, (e2) -> {
                 enter(LiteralTag.class, (e3) -> {
-                    assertAttribute(e3, TYPE, Type.ObjectLiteral.name());
+                    assertAttribute(e3, LITERAL_TYPE, Type.ObjectLiteral.name());
                     // num literal
                     enter(LiteralTag.class).exit();
                 }).input(42).exit();
