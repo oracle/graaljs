@@ -4,10 +4,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
-    "filePath" : "built-ins/Array/prototype/unshift/length-near-integer-limit.js",
-    "status" : "SKIP",
-    "comment" : "Long-running test: we iterate to ~2^53."
-  }, {
     "filePath" : "built-ins/Atomics/wait/undefined-index-defaults-to-zero.js",
     "status" : "SKIP",
     "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
