@@ -40,32 +40,37 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.runtime.*;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSException;
 
-public abstract class CommonJsDirnameGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
+public abstract class CommonJsResolveBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
-    CommonJsDirnameGetterBuiltin(JSContext context, JSBuiltin builtin) {
+    CommonJsResolveBuiltin(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
     }
 
     @Specialization
-    protected Object require() {
-        return getCurrentFolderName();
+    protected String require(String moduleIdentifier) {
+        TruffleFile cwd = CommonJsRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext());
+        TruffleFile maybeModule = CommonJsResolution.resolve(getContext(), moduleIdentifier, cwd);
+        if (maybeModule == null) {
+            throw fail(moduleIdentifier);
+        } else {
+            return maybeModule.getAbsoluteFile().normalize().toString();
+        }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private String getCurrentFolderName() {
-        String filePath = CommonJsResolution.getCurrentFileNameFromStack();
-        if (filePath != null) {
-            TruffleFile truffleFile = getContext().getRealm().getEnv().getPublicTruffleFile(filePath);
-            assert truffleFile.isRegularFile() && truffleFile.getParent().isDirectory();
-            return truffleFile.getParent().normalize().toString();
-        }
-        return CommonJsRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext()).getAbsoluteFile().toString();
+    private static JSException fail(String moduleIdentifier) {
+        return JSException.create(JSErrorType.TypeError, "Cannot find module: '" + moduleIdentifier + "'");
     }
 
 }

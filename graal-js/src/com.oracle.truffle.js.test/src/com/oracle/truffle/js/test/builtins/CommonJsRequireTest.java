@@ -388,4 +388,19 @@ public class CommonJsRequireTest {
         }
     }
 
+    @Test
+    public void testResolve() throws IOException {
+        Path root = getTempFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put("js.cjs-require", "true");
+        options.put("js.cjs-require-cwd", root.toString());
+        Path subFolder = Paths.get(root.normalize().toString(), "foo", "bar");
+        TestFile nestedFile = TestFile.create(subFolder, "foo.js", "require.resolve('../..');");
+        TestFile indexFile = TestFile.create(root, "index.js", "module.exports.foo = 42;");
+        try (Context cx = testContext(root)) {
+            Value js = cx.eval(nestedFile.getSource());
+            Assert.assertEquals(indexFile.getAbsolutePath(), js.asString());
+        }
+    }
+
 }

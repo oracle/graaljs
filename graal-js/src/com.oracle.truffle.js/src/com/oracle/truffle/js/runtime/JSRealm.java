@@ -1215,8 +1215,10 @@ public class JSRealm {
     private void addCommonJsGlobals() {
         if (getContext().getContextOptions().isCommonJsRequire()) {
             // Define `require` and other globals in global scope.
-            TruffleFile cwd = CommonJsRequireBuiltin.getModuleResolveCurrentWorkingDirectory(context);
-            putGlobalProperty(CommonJsRequireBuiltin.REQUIRE_PROPERTY_NAME, lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJsRequireBuiltin.REQUIRE_PROPERTY_NAME));
+            DynamicObject requireFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJsRequireBuiltin.REQUIRE_PROPERTY_NAME);
+            DynamicObject resolveFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJsRequireBuiltin.RESOLVE_PROPERTY_NAME);
+            JSObject.set(requireFunction, CommonJsRequireBuiltin.RESOLVE_PROPERTY_NAME, resolveFunction);
+            putGlobalProperty(CommonJsRequireBuiltin.REQUIRE_PROPERTY_NAME, requireFunction);
             DynamicObject dirnameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, "dirnameGetter");
             JSObject.defineOwnProperty(getGlobalObject(), CommonJsRequireBuiltin.DIRNAME_VAR_NAME, PropertyDescriptor.createAccessor(dirnameGetter, Undefined.instance, true, false));
             DynamicObject filenameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, "filenameGetter");
@@ -1227,7 +1229,8 @@ public class JSRealm {
             JSObject.set(getGlobalObject(), CommonJsRequireBuiltin.EXPORTS_PROPERTY_NAME, moduleObject);
             JSObject.set(moduleObject, CommonJsRequireBuiltin.EXPORTS_PROPERTY_NAME, exportsObject);
             this.commonJsRequireFunctionObject = JSObject.get(getGlobalObject(), CommonJsRequireBuiltin.REQUIRE_PROPERTY_NAME);
-            // Load an (optional) bootstrap module. Can be used to define global properties (e.g., Node.js builtin mock-ups).
+            // Load an (optional) bootstrap module. Can be used to define global properties (e.g.,
+            // Node.js builtin mock-ups).
             String commonJsRequireGlobals = getContext().getContextOptions().getCommonJsRequireGlobals();
             if (commonJsRequireGlobals != null && !"".equals(commonJsRequireGlobals)) {
                 try {
@@ -1237,7 +1240,9 @@ public class JSRealm {
                     throw Errors.createErrorFromException(e);
                 }
             }
-            // Configure an (optional) mapping from reserved module names (e.g., 'buffer') to arbitrary Npm modules. Can be used to provide user-specific implementations of the JS builtins.
+            // Configure an (optional) mapping from reserved module names (e.g., 'buffer') to
+            // arbitrary Npm modules. Can be used to provide user-specific implementations of the JS
+            // builtins.
             Map<String, String> commonJsRequireBuiltins = getContext().getContextOptions().getCommonJsRequireBuiltins();
             this.commonJsPreLoadedBuiltins = new HashMap<>();
             for (String builtin : commonJsRequireBuiltins.keySet()) {
