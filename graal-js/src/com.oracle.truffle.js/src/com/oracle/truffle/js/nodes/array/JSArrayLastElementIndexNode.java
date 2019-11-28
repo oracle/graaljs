@@ -190,7 +190,7 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
         long result = -1;
         DynamicObject chainObject = object;
         do {
-            result = Math.max(result, doObjectViaEnumerationIntl(object, length));
+            result = Math.max(result, doObjectViaEnumerationIntl(chainObject, length));
             chainObject = JSObject.getPrototype(chainObject);
         } while (chainObject != Null.instance);
         return result;
