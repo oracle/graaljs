@@ -117,7 +117,6 @@ public class EvalTest extends FineGrainedAccessTest {
                 // locals declaration
                 enterDeclareTag("a");
                 enterDeclareTag("arguments");
-                enterDeclareTag("bar");
 
                 // inside the foo function
                 // write the 42 into the argument variable
@@ -127,7 +126,7 @@ public class EvalTest extends FineGrainedAccessTest {
 
                 // create a local function bar
                 enter(WriteVariableTag.class, (e3, vw) -> {
-                    enter(LiteralTag.class).exit();
+                    enterDeclareTag("bar");
                     vw.input(assertJSFunctionInput);
                 }).exit();
 
