@@ -185,7 +185,7 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
         long result = Long.MAX_VALUE;
         DynamicObject chainObject = object;
         do {
-            result = Math.min(result, nextObjectViaEnumerationIntl(object, currentIndex, length));
+            result = Math.min(result, nextObjectViaEnumerationIntl(chainObject, currentIndex, length));
             chainObject = JSObject.getPrototype(chainObject);
         } while (chainObject != Null.instance);
         return result;

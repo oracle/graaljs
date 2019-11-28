@@ -38,40 +38,49 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.nashorn;
+package com.oracle.truffle.js.test.regress;
+
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.PolyglotException;
-
-import org.junit.Assert;
+import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.PolyglotException;
 
-public class ExitBuiltinTest {
+public class GR19796 {
 
     @Test
-    public void testExitInPromiseJob() {
-        Engine engine = Engine.create();
-        Context context = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").build();
-        try {
-            // Schedule a promise job that exits while the promise job queue is not empty.
-            context.eval(JavaScriptLanguage.ID, "var promise = Promise.resolve(42); promise.then(x => exit()); promise.then(x => x*x)");
-            Assert.fail("Exception expected");
-        } catch (PolyglotException pex) {
-            context.close();
-        }
-        // Create a new Context that shares JSContext with the original Context.
-        // It should not attempt to execute the remaining promise jobs
-        // (it would lead to IllegalStateException: The Context is already closed)
-        try (Context context2 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").build()) {
-            Value result = context2.eval(JavaScriptLanguage.ID, "6*7");
-            Assert.assertTrue(result.isNumber());
-            Assert.assertEquals(42, result.asInt());
+    public void test() {
+        try (Context context = Context.newBuilder(ID).allowAllAccess(true).build()) {
+            // Various objects with distinct InteropLibraries
+            Value[] values = new Value[]{
+                            context.eval(ID, "java.lang.Class"), // HostObject
+                            context.eval(ID, "java.lang.Class.forName"), // HostFunction
+                            context.getBindings(ID), // PolyglotLanguageBindings
+                            context.eval(ID, "new Object()").getMetaObject(), // JSMetaObject
+                            context.eval(ID, "Symbol()"), // Symbol
+                            context.eval(ID, "42n") // BigInt
+            };
+
+            Value max = context.eval("js", "Math.max");
+
+            // Activate JSToObjectArrayNode.doForeignObject() and exceed its cache limit
+            for (Value value : values) {
+                try {
+                    max.invokeMember("apply", "this", value);
+                } catch (PolyglotException pex) {
+                    assertTrue(pex.isGuestException());
+                }
+            }
+
+            // Ensure that undefined is handled correctly (i.e. not consumed by
+            // JSToObjectArrayNode.doForeignObject()).
+            Value result = max.invokeMember("apply", "this");
+            // Math.max() === -Infinity
+            assertTrue(result.isNumber());
+            assertTrue(result.asDouble() == Double.NEGATIVE_INFINITY);
         }
     }
-
 }

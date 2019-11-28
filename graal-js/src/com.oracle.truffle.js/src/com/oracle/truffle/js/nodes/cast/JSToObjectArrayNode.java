@@ -207,7 +207,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
         return list.toArray();
     }
 
-    @Specialization(guards = {"!isJSObject(obj)"}, limit = "5")
+    @Specialization(guards = {"isForeignObject(obj)"}, limit = "5")
     protected static Object[] doForeignObject(Object obj,
                     @CachedLibrary("obj") InteropLibrary interop,
                     @Cached("create()") BranchProfile hasPropertiesBranch,
