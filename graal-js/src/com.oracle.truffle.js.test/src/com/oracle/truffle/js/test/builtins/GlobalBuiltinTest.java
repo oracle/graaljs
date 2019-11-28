@@ -41,10 +41,18 @@
 package com.oracle.truffle.js.test.builtins;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 
 /**
  * Tests for the global builtin.
@@ -84,4 +92,25 @@ public class GlobalBuiltinTest extends JSTest {
         // int input, no radix
         assertEquals(123, testHelper.run("parseInt(123)"));
     }
+
+    @Test
+    public void testQuitInPromiseJob() {
+        Engine engine = Engine.create();
+        try (Context context = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(JSContextOptions.SHELL_NAME, "true").build()) {
+            // Schedule a promise job that exits while the promise job queue is not empty.
+            context.eval(JavaScriptLanguage.ID, "var promise = Promise.resolve(42); promise.then(x => quit()); promise.then(x => x*x)");
+            fail("Exception expected");
+        } catch (PolyglotException pex) {
+            assertTrue(pex.isExit());
+        }
+        // Create a new Context that shares JSContext with the original Context.
+        // It should not attempt to execute the remaining promise jobs
+        // (it would lead to IllegalStateException: The Context is already closed)
+        try (Context context2 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(JSContextOptions.SHELL_NAME, "true").build()) {
+            Value result = context2.eval(JavaScriptLanguage.ID, "6*7");
+            assertTrue(result.isNumber());
+            assertEquals(42, result.asInt());
+        }
+    }
+
 }
