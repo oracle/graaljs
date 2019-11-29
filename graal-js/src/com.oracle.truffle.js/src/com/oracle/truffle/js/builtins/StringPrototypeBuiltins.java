@@ -160,7 +160,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         localeCompare(1),
         match(1),
         replace(2),
-        replaceAll(2),
         search(1),
         slice(2),
         split(2),
@@ -203,7 +202,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         padEnd(1),
 
         // ES2020
-        matchAll(1);
+        matchAll(1),
+        replaceAll(2);
 
         private final int length;
 
@@ -227,7 +227,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return 6;
             } else if (EnumSet.range(padStart, padEnd).contains(this)) {
                 return 8;
-            } else if (this.equals(matchAll)) {
+            } else if (EnumSet.range(matchAll, replaceAll).contains(this)) {
                 return JSTruffleOptions.ECMAScript2020;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -1300,7 +1300,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected Object performReplaceAll(String searchValue, String replaceValue, Object thisObj, ReplaceStringParser.Token[] parsedReplaceParam) {
             String thisStr = toString(thisObj);
-            if (isSearchValueEmpty.profile(Boundaries.stringCompareTo(searchValue, "") == 0)) {
+            if (isSearchValueEmpty.profile(searchValue.isEmpty())) {
                 return Boundaries.stringReplaceAll(thisStr, "", replaceValue);
             }
             StringBuilder result = new StringBuilder();
@@ -1345,7 +1345,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             StringBuilder result = new StringBuilder();
             int position = 0;
 
-            if (isSearchValueEmpty.profile(Boundaries.stringCompareTo(searchString, "") == 0)) {
+            if (isSearchValueEmpty.profile(searchString.isEmpty())) {
                 while (position <= thisStr.length()) {
                     builtinReplace(searchString, replParam, thisStr, position, result);
                     if (position < thisStr.length()) {
