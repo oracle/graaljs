@@ -6,6 +6,7 @@ The main focus is on user-observable behavior of the engine.
 ## Version 20.0.0
 * Added `name` property to anonymous functions.
 * `String.prototype.matchAll` is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`) only.
+* `String.prototype.replaceAll` is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`) only.
 
 ## Version 19.3.0
 * Implemented the [Promise.allSettled](https://github.com/tc39/proposal-promise-allSettled) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
