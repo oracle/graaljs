@@ -58,7 +58,7 @@ A reference manual for GraalVM JavaScript is available on the [GraalVM website](
 ## Stay connected with the community
 
 See [graalvm.org/community](https://www.graalvm.org/community/) on how to stay connected with the development community.
-The discussion on [gitter](https://gitter.im/graalvm/graal-core) is a good way to get in touch with us.
+The channel _graaljs_ on [graalvm.slack.com](https://www.graalvm.org/slack-invitation) is a good way to get in touch with us.
 
 ## Authors
 
