@@ -193,7 +193,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         JSObject.set(env, ENV_PROPERTY_NAME, JSUserObject.create(getContext()));
         // Parse the module
         CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_END;
-        Source moduleSources = Source.newBuilder(JavaScriptLanguage.ID).mimeType(JavaScriptLanguage.TEXT_MIME_TYPE).name(filenameBuiltin).content(characters).build();
+        Source moduleSources = Source.newBuilder(JavaScriptLanguage.ID, characters, filenameBuiltin).mimeType(JavaScriptLanguage.TEXT_MIME_TYPE).build();
         CallTarget moduleCallTarget = realm.getEnv().parsePublic(moduleSources);
         Object moduleExecutableFunction = moduleCallTarget.call();
         // Execute the module.
@@ -254,7 +254,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return JSException.create(JSErrorType.TypeError, sb.toString());
     }
 
-    private DynamicObject createModuleBuiltin(JSRealm realm, DynamicObject exportsBuiltin, String fileNameBuiltin) {
+    private static DynamicObject createModuleBuiltin(JSRealm realm, DynamicObject exportsBuiltin, String fileNameBuiltin) {
         DynamicObject module = JSUserObject.create(realm.getContext(), realm);
         JSObject.set(module, EXPORTS_PROPERTY_NAME, exportsBuiltin);
         JSObject.set(module, ID_PROPERTY_NAME, fileNameBuiltin);
@@ -263,7 +263,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return module;
     }
 
-    private DynamicObject createRequireBuiltin(JSRealm realm, DynamicObject moduleBuiltin, String fileNameBuiltin) {
+    private static DynamicObject createRequireBuiltin(JSRealm realm, DynamicObject moduleBuiltin, String fileNameBuiltin) {
         DynamicObject mainRequire = (DynamicObject) realm.getCommonJsRequireFunctionObject();
         DynamicObject mainResolve = (DynamicObject) JSObject.get(mainRequire, RESOLVE_PROPERTY_NAME);
         JSFunctionData functionData = JSFunction.getFunctionData(mainRequire);
@@ -277,23 +277,23 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return newRequire;
     }
 
-    private DynamicObject createExportsBuiltin(JSRealm realm) {
+    private static DynamicObject createExportsBuiltin(JSRealm realm) {
         return JSUserObject.create(realm.getContext(), realm);
     }
 
-    private boolean isNodeBinFile(TruffleFile maybeModule) {
+    private static boolean isNodeBinFile(TruffleFile maybeModule) {
         return hasExtension(Objects.requireNonNull(maybeModule.getName()), NODE_EXT);
     }
 
-    private boolean isJsFile(TruffleFile maybeModule) {
+    private static boolean isJsFile(TruffleFile maybeModule) {
         return hasExtension(Objects.requireNonNull(maybeModule.getName()), JS_EXT);
     }
 
-    private boolean isJsonFile(TruffleFile maybeModule) {
+    private static boolean isJsonFile(TruffleFile maybeModule) {
         return hasExtension(Objects.requireNonNull(maybeModule.getName()), JSON_EXT);
     }
 
-    private boolean fileExists(TruffleFile modulePath) {
+    private static boolean fileExists(TruffleFile modulePath) {
         return modulePath.exists() && modulePath.isRegularFile();
     }
 
@@ -312,11 +312,11 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return getModuleResolveCurrentWorkingDirectory(getContext());
     }
 
-    private TruffleFile getParent(TruffleLanguage.Env env, String fileName) {
+    private static TruffleFile getParent(TruffleLanguage.Env env, String fileName) {
         return env.getPublicTruffleFile(fileName).getParent();
     }
 
-    private boolean isFile(TruffleLanguage.Env env, String fileName) {
+    private static boolean isFile(TruffleLanguage.Env env, String fileName) {
         return env.getPublicTruffleFile(fileName).exists();
     }
 

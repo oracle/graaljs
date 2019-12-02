@@ -137,7 +137,7 @@ final class CommonJsResolution {
         }
         // 3. If X begins with './' or '/' or '../'
         if (isPathFileName(moduleIdentifier)) {
-            TruffleFile module = loadAsFileOrDirectory(context, env, joinPaths(env, currentWorkingPath, moduleIdentifier), moduleIdentifier);
+            TruffleFile module = loadAsFileOrDirectory(context, env, joinPaths(env, currentWorkingPath, moduleIdentifier));
             // XXX(db) The Node.js informal spec says we should throw if module is null here.
             // Node v12.x, however, does not throw and attempts to load as a folder.
             if (module != null) {
@@ -160,7 +160,7 @@ final class CommonJsResolution {
          */
         List<TruffleFile> nodeModulesPaths = getNodeModulesPaths(env, startFolder);
         for (TruffleFile s : nodeModulesPaths) {
-            TruffleFile module = loadAsFileOrDirectory(cx, env, joinPaths(env, s, moduleIdentifier), moduleIdentifier);
+            TruffleFile module = loadAsFileOrDirectory(cx, env, joinPaths(env, s, moduleIdentifier));
             if (module != null) {
                 return module;
             }
@@ -168,7 +168,7 @@ final class CommonJsResolution {
         return null;
     }
 
-    private static TruffleFile loadIndex(TruffleLanguage.Env env, TruffleFile modulePath, String moduleIdentifier) {
+    private static TruffleFile loadIndex(TruffleLanguage.Env env, TruffleFile modulePath) {
         /* @formatter:off
          *
          * LOAD_INDEX(X)
@@ -192,7 +192,7 @@ final class CommonJsResolution {
         return null;
     }
 
-    private static TruffleFile loadAsFile(TruffleLanguage.Env env, TruffleFile modulePath, String moduleIdentifier) {
+    private static TruffleFile loadAsFile(TruffleLanguage.Env env, TruffleFile modulePath) {
         /* @formatter:off
          *
          * LOAD_AS_FILE(X)
@@ -236,10 +236,10 @@ final class CommonJsResolution {
         return list;
     }
 
-    private static TruffleFile loadAsFileOrDirectory(JSContext cx, TruffleLanguage.Env env, TruffleFile modulePath, String moduleIdentifier) {
-        TruffleFile maybeFile = loadAsFile(env, modulePath, moduleIdentifier);
+    private static TruffleFile loadAsFileOrDirectory(JSContext cx, TruffleLanguage.Env env, TruffleFile modulePath) {
+        TruffleFile maybeFile = loadAsFile(env, modulePath);
         if (maybeFile == null) {
-            return loadAsDirectory(cx, env, modulePath, moduleIdentifier);
+            return loadAsDirectory(cx, env, modulePath);
         } else {
             return maybeFile;
         }
@@ -255,25 +255,25 @@ final class CommonJsResolution {
         return paths;
     }
 
-    private static TruffleFile loadAsDirectory(JSContext cx, TruffleLanguage.Env env, TruffleFile modulePath, String moduleIdentifier) {
+    private static TruffleFile loadAsDirectory(JSContext cx, TruffleLanguage.Env env, TruffleFile modulePath) {
         TruffleFile packageJson = joinPaths(env, modulePath, PACKAGE_JSON);
         if (fileExists(packageJson)) {
             DynamicObject jsonObj = loadJsonObject(packageJson, cx);
             if (JSObject.isJSObject(jsonObj)) {
                 Object main = JSObject.get(jsonObj, PACKAGE_JSON_MAIN_PROPERTY_NAME);
                 if (!JSRuntime.isString(main)) {
-                    return loadIndex(env, modulePath, moduleIdentifier);
+                    return loadIndex(env, modulePath);
                 }
                 TruffleFile module = joinPaths(env, modulePath, JSRuntime.safeToString(main));
-                TruffleFile asFile = loadAsFile(env, module, moduleIdentifier);
+                TruffleFile asFile = loadAsFile(env, module);
                 if (asFile != null) {
                     return asFile;
                 } else {
-                    return loadIndex(env, module, moduleIdentifier);
+                    return loadIndex(env, module);
                 }
             }
         } else {
-            return loadIndex(env, modulePath, moduleIdentifier);
+            return loadIndex(env, modulePath);
         }
         return null;
     }

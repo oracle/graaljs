@@ -692,6 +692,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return file.getPath();
         }
 
+        @Override
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;

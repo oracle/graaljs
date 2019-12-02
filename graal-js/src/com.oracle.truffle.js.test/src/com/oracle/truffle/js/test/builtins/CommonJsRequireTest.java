@@ -137,7 +137,7 @@ public class CommonJsRequireTest {
         return Files.createTempDirectory("commonjs_testing");
     }
 
-    private void testBasicPackageJsonRequire(String moduleName, String packageJson) throws IOException {
+    private static void testBasicPackageJsonRequire(String moduleName, String packageJson) throws IOException {
         Path f = getTempFolder();
         try (Context cx = testContext(f)) {
             NodeModulesFolder nm = NodeModulesFolder.create(f, "foo");
@@ -150,15 +150,15 @@ public class CommonJsRequireTest {
         }
     }
 
-    private void testBasicPackageJsonRequire(String moduleName) throws IOException {
+    private static void testBasicPackageJsonRequire(String moduleName) throws IOException {
         testBasicPackageJsonRequire(moduleName, "{\"main\":\"index.js\"}");
     }
 
-    private void testBasicRequire(String moduleName) throws IOException {
+    private static void testBasicRequire(String moduleName) throws IOException {
         Path f = getTempFolder();
         try (Context cx = testContext(f)) {
             TestFile.create(f, "module.js", "module.exports.foo = 42;");
-            Value js = cx.eval(ID, "require('./module').foo;");
+            Value js = cx.eval(ID, "require('" + moduleName + "').foo;");
             Assert.assertEquals(42, js.asInt());
         }
     }

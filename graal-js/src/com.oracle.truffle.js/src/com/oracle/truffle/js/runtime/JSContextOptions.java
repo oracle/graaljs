@@ -638,7 +638,7 @@ public final class JSContextOptions {
         for (String s : options) {
             String[] builtin = s.split(":");
             if (builtin.length != 2) {
-                throw new IllegalArgumentException("Unexpected builtin arguments: " + builtin);
+                throw new IllegalArgumentException("Unexpected builtin arguments: " + s);
             }
             String key = builtin[0];
             String val = builtin[1];
