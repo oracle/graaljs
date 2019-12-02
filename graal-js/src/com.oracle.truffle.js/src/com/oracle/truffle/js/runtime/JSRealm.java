@@ -1212,6 +1212,7 @@ public class JSRealm {
         }
     }
 
+    @TruffleBoundary
     private void addCommonJsGlobals() {
         if (getContext().getContextOptions().isCommonJsRequire()) {
             // Define `require` and other globals in global scope.

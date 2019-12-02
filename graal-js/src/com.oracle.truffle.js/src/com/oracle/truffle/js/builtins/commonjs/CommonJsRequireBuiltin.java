@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.commonjs;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -116,6 +117,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
 
     private final TruffleFile modulesResolutionCwd;
 
+    @TruffleBoundary
     static TruffleFile getModuleResolveCurrentWorkingDirectory(JSContext context) {
         String cwdOption = context.getContextOptions().getRequireCwd();
         TruffleLanguage.Env env = context.getRealm().getEnv();
@@ -246,6 +248,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         return JSException.create(JSErrorType.TypeError, "Cannot load CommonJs module: '" + moduleIdentifier + "'");
     }
 
+    @TruffleBoundary
     private static JSException fail(String... message) {
         StringBuilder sb = new StringBuilder();
         for (String s : message) {

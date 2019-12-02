@@ -250,6 +250,7 @@ public final class JSContextOptions {
     public static final String COMMONJS_REQUIRE_NAME = JS_OPTION_PREFIX + "cjs-require";
     @Option(name = COMMONJS_REQUIRE_NAME, category = OptionCategory.USER, help = "Enable CommonJS require emulation.") //
     public static final OptionKey<Boolean> COMMONJS_REQUIRE_EMULATION = new OptionKey<>(false);
+    @CompilationFinal private boolean commonJsRequire;
 
     public static final String COMMONJS_REQUIRE_CWS_NAME = JS_OPTION_PREFIX + "cjs-require-cwd";
     @Option(name = COMMONJS_REQUIRE_CWS_NAME, category = OptionCategory.USER, help = "CommonJS default current working directory.") //
@@ -435,6 +436,7 @@ public final class JSContextOptions {
         this.functionConstructorCacheSize = readIntegerOption(FUNCTION_CONSTRUCTOR_CACHE_SIZE);
         this.stringLengthLimit = readIntegerOption(STRING_LENGTH_LIMIT);
         this.bindMemberFunctions = readBooleanOption(BIND_MEMBER_FUNCTIONS);
+        this.commonJsRequire = readBooleanOption(COMMONJS_REQUIRE_EMULATION);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -623,8 +625,7 @@ public final class JSContextOptions {
     }
 
     public boolean isCommonJsRequire() {
-        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
-        return COMMONJS_REQUIRE_EMULATION.getValue(optionValues);
+        return commonJsRequire;
     }
 
     public Map<String, String> getCommonJsRequireBuiltins() {
@@ -653,6 +654,7 @@ public final class JSContextOptions {
     }
 
     public String getRequireCwd() {
+        CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
         return COMMONJS_REQUIRE_CWS.getValue(optionValues);
     }
 
@@ -763,6 +765,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.functionConstructorCacheSize;
         hash = 53 * hash + this.stringLengthLimit;
         hash = 53 * hash + (this.bindMemberFunctions ? 1 : 0);
+        hash = 53 * hash + (this.commonJsRequire ? 1 : 0);
         return hash;
     }
 
@@ -866,6 +869,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.bindMemberFunctions != other.bindMemberFunctions) {
+            return false;
+        }
+        if (this.commonJsRequire != other.commonJsRequire) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

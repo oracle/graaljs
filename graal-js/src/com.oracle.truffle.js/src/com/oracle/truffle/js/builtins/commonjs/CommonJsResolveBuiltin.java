@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.commonjs;
 
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -65,6 +66,7 @@ public abstract class CommonJsResolveBuiltin extends GlobalBuiltins.JSFileLoadin
         }
     }
 
+    @TruffleBoundary
     private static JSException fail(String moduleIdentifier) {
         return JSException.create(JSErrorType.TypeError, "Cannot find module: '" + moduleIdentifier + "'");
     }
