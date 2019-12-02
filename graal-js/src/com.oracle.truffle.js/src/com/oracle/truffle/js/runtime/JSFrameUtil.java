@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -126,6 +127,7 @@ public final class JSFrameUtil {
         return true;
     }
 
+    @TruffleBoundary
     public static String getPublicName(FrameSlot frameSlot) {
         CompilerAsserts.neverPartOfCompilation();
         Object identifier = frameSlot.getIdentifier();
