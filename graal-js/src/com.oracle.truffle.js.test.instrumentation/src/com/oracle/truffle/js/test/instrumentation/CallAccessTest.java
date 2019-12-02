@@ -126,9 +126,9 @@ public class CallAccessTest extends FineGrainedAccessTest {
             write.input(assertJSObjectInput);
 
             enter(LiteralTag.class, (e1, literal) -> {
-                assertAttribute(e1, TYPE, LiteralTag.Type.ObjectLiteral.name());
+                assertAttribute(e1, LITERAL_TYPE, LiteralTag.Type.ObjectLiteral.name());
                 enter(LiteralTag.class, (e2) -> {
-                    assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                    assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
                 }).exit();
                 literal.input(assertJSFunctionInput);
             }).exit();
@@ -178,9 +178,9 @@ public class CallAccessTest extends FineGrainedAccessTest {
             write.input(assertJSObjectInput);
 
             enter(LiteralTag.class, (e1, literal) -> {
-                assertAttribute(e1, TYPE, LiteralTag.Type.ObjectLiteral.name());
+                assertAttribute(e1, LITERAL_TYPE, LiteralTag.Type.ObjectLiteral.name());
                 enter(LiteralTag.class, (e2) -> {
-                    assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                    assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
                 }).exit();
                 literal.input(assertJSFunctionInput);
             }).exit();
@@ -227,11 +227,11 @@ public class CallAccessTest extends FineGrainedAccessTest {
             write.input(assertGlobalObjectInput);
 
             enter(LiteralTag.class, (e1, oblit) -> {
-                assertAttribute(e1, TYPE, LiteralTag.Type.ObjectLiteral.name());
+                assertAttribute(e1, LITERAL_TYPE, LiteralTag.Type.ObjectLiteral.name());
                 enter(LiteralTag.class, (e2, arrlit) -> {
-                    assertAttribute(e2, TYPE, LiteralTag.Type.ArrayLiteral.name());
+                    assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.ArrayLiteral.name());
                     enter(LiteralTag.class, (e3) -> {
-                        assertAttribute(e3, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                        assertAttribute(e3, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
                     }).exit();
                     arrlit.input(assertJSFunctionInput);
                 }).exit();

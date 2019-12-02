@@ -95,6 +95,9 @@ public abstract class FineGrainedAccessTest {
     protected static final String KEY = "key";
     protected static final String NAME = "name";
     protected static final String TYPE = "type";
+    protected static final String DECL_NAME = DeclareTag.NAME;
+    protected static final String DECL_TYPE = DeclareTag.TYPE;
+    protected static final String LITERAL_TYPE = LiteralTag.TYPE;
     protected static final String OPERATOR = "operator";
 
     @SuppressWarnings("unchecked")
@@ -242,7 +245,7 @@ public abstract class FineGrainedAccessTest {
 
     protected void enterDeclareTag(String expectedVarName) {
         enter(DeclareTag.class, (e, c) -> {
-            assertAttribute(e, NAME, expectedVarName);
+            assertAttribute(e, DECL_NAME, expectedVarName);
         }).exit();
     }
 
@@ -429,7 +432,7 @@ public abstract class FineGrainedAccessTest {
 
     protected static final Consumer<Event> assertLiteralType(LiteralTag.Type type) {
         return e -> {
-            assertAttribute(e, TYPE, type.name());
+            assertAttribute(e, LITERAL_TYPE, type.name());
         };
     }
 
@@ -514,11 +517,11 @@ public abstract class FineGrainedAccessTest {
             write.input(assertGlobalObjectInput);
             enter(LiteralTag.class, (e2) -> {
                 if (value instanceof Integer) {
-                    assertAttribute(e2, TYPE, Type.NumericLiteral.name());
+                    assertAttribute(e2, LITERAL_TYPE, Type.NumericLiteral.name());
                 } else if (value instanceof Boolean) {
-                    assertAttribute(e2, TYPE, Type.BooleanLiteral.name());
+                    assertAttribute(e2, LITERAL_TYPE, Type.BooleanLiteral.name());
                 } else if (value instanceof String) {
-                    assertAttribute(e2, TYPE, Type.StringLiteral.name());
+                    assertAttribute(e2, LITERAL_TYPE, Type.StringLiteral.name());
                 }
             }).exit();
             write.input(value);
@@ -529,7 +532,7 @@ public abstract class FineGrainedAccessTest {
         enter(WritePropertyTag.class, (e, write) -> {
             write.input(assertGlobalObjectInput);
             enter(LiteralTag.class).exit((e1) -> {
-                assertAttribute(e1, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                assertAttribute(e1, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
                 Object[] results = (Object[]) e1.val;
                 assertTrue(results.length == 1);
                 assertTrue(JSFunction.isJSFunction(results[0]));

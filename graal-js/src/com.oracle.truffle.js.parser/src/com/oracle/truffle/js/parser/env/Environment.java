@@ -559,7 +559,8 @@ public abstract class Environment {
     public void addFrameSlotFromSymbol(com.oracle.js.parser.ir.Symbol symbol) {
         // Frame slot may already exist for simple parameters and "arguments".
         assert !getBlockFrameDescriptor().getIdentifiers().contains(symbol.getName()) || this instanceof FunctionEnvironment;
-        int flags = symbol.getFlags() & Symbol.KINDMASK; // other bits not needed
+        // other bits not needed
+        int flags = symbol.getFlags() & (Symbol.KINDMASK | Symbol.IS_HOISTABLE_DECLARATION);
         getBlockFrameDescriptor().findOrAddFrameSlot(symbol.getName(), FrameSlotFlags.of(flags), FrameSlotKind.Illegal);
     }
 

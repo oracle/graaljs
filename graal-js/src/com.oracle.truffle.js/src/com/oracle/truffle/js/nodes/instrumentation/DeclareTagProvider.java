@@ -69,6 +69,13 @@ public final class DeclareTagProvider {
         return node instanceof MaterializedFrameBlockScopeNode || node instanceof MaterializedFunctionBodyNode;
     }
 
+    public static NodeObjectDescriptor createDeclareNodeObject(Object name, Object type) {
+        NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
+        descriptor.addProperty(JSTags.DeclareTag.NAME, name);
+        descriptor.addProperty(JSTags.DeclareTag.TYPE, type);
+        return descriptor;
+    }
+
     private DeclareTagProvider() {
     }
 
@@ -77,7 +84,7 @@ public final class DeclareTagProvider {
         if (frameDescriptor != null) {
             List<FrameSlot> slots = new ArrayList<>();
             for (FrameSlot slot : frameDescriptor.getSlots()) {
-                if (!JSFrameUtil.isInternal(slot)) {
+                if (!JSFrameUtil.isInternal(slot) && !JSFrameUtil.isHoistable(slot)) {
                     slots.add(slot);
                 }
             }
@@ -183,16 +190,15 @@ public final class DeclareTagProvider {
 
         @Override
         public Object getNodeObject() {
-            NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
-            descriptor.addProperty("name", slot.getIdentifier());
+            String type;
             if (JSFrameUtil.isConst(slot)) {
-                descriptor.addProperty("type", "const");
+                type = "const";
             } else if (JSFrameUtil.isLet(slot)) {
-                descriptor.addProperty("type", "let");
+                type = "let";
             } else {
-                descriptor.addProperty("type", "var");
+                type = "var";
             }
-            return descriptor;
+            return createDeclareNodeObject(slot.getIdentifier(), type);
         }
 
         @Override

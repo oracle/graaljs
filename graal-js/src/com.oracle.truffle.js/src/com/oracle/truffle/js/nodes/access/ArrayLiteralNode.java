@@ -101,7 +101,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", LiteralTag.Type.ArrayLiteral.name());
+        return JSTags.createNodeObjectDescriptor(LiteralTag.TYPE, LiteralTag.Type.ArrayLiteral.name());
     }
 
     @Override

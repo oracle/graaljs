@@ -54,7 +54,7 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
         evalWithTag("x = undefined;", LiteralTag.class);
 
         enter(LiteralTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralTag.Type.UndefinedLiteral.name());
+            assertAttribute(l, LITERAL_TYPE, LiteralTag.Type.UndefinedLiteral.name());
         }).exit();
     }
 
@@ -63,7 +63,7 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
         evalWithTag("x = {};", LiteralTag.class);
 
         enter(LiteralTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralTag.Type.ObjectLiteral.name());
+            assertAttribute(l, LITERAL_TYPE, LiteralTag.Type.ObjectLiteral.name());
         }).exit();
     }
 
@@ -72,7 +72,7 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
         evalWithTag("x = [];", LiteralTag.class);
 
         enter(LiteralTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralTag.Type.ArrayLiteral.name());
+            assertAttribute(l, LITERAL_TYPE, LiteralTag.Type.ArrayLiteral.name());
         }).exit();
     }
 
@@ -83,7 +83,7 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
         evalWithTag(src, LiteralTag.class);
 
         enter(LiteralTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralTag.Type.FunctionLiteral.name());
+            assertAttribute(l, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
     }
 
@@ -95,7 +95,7 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
         evalWithTag(src, LiteralTag.class);
 
         enter(LiteralTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralTag.Type.FunctionLiteral.name());
+            assertAttribute(l, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
     }
 
@@ -106,7 +106,7 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
         evalWithTag(src, LiteralTag.class);
 
         enter(LiteralTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralTag.Type.FunctionLiteral.name());
+            assertAttribute(l, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
     }
 
@@ -117,7 +117,7 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
         evalWithTag(src, LiteralTag.class);
 
         enter(LiteralTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralTag.Type.FunctionLiteral.name());
+            assertAttribute(l, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
     }
 
@@ -128,10 +128,10 @@ public class PrimaryExpressions extends FineGrainedAccessTest {
         evalWithTag(src, LiteralTag.class);
 
         enter(LiteralTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralTag.Type.FunctionLiteral.name());
+            assertAttribute(l, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
         }).exit();
         enter(LiteralTag.class, (l) -> {
-            assertAttribute(l, TYPE, LiteralTag.Type.UndefinedLiteral.name());
+            assertAttribute(l, LITERAL_TYPE, LiteralTag.Type.UndefinedLiteral.name());
         }).exit();
     }
 

@@ -103,15 +103,15 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
     public Object getNodeObject() {
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor();
         if (this instanceof JSConstantDoubleNode || this instanceof JSConstantIntegerNode) {
-            descriptor.addProperty("type", LiteralTag.Type.NumericLiteral.name());
+            descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.NumericLiteral.name());
         } else if (this instanceof JSConstantBooleanNode) {
-            descriptor.addProperty("type", LiteralTag.Type.BooleanLiteral.name());
+            descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.BooleanLiteral.name());
         } else if (this instanceof JSConstantStringNode) {
-            descriptor.addProperty("type", LiteralTag.Type.StringLiteral.name());
+            descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.StringLiteral.name());
         } else if (this instanceof JSConstantNullNode) {
-            descriptor.addProperty("type", LiteralTag.Type.NullLiteral.name());
+            descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.NullLiteral.name());
         } else if (this instanceof JSConstantUndefinedNode) {
-            descriptor.addProperty("type", LiteralTag.Type.UndefinedLiteral.name());
+            descriptor.addProperty(LiteralTag.TYPE, LiteralTag.Type.UndefinedLiteral.name());
         }
         return descriptor;
     }

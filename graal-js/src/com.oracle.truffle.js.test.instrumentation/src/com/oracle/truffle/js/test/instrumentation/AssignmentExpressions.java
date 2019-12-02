@@ -101,7 +101,7 @@ public class AssignmentExpressions extends FineGrainedAccessTest {
             assertAttribute(e, KEY, "a");
             write.input(assertGlobalObjectInput);
             enter(LiteralTag.class, (e2) -> {
-                assertAttribute(e2, TYPE, Type.ArrayLiteral.name());
+                assertAttribute(e2, LITERAL_TYPE, Type.ArrayLiteral.name());
             }).exit();
             write.input(assertJSArrayInput);
         }).exit();

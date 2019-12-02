@@ -88,7 +88,7 @@ public class EvalTest extends FineGrainedAccessTest {
         enter(WritePropertyTag.class, (e, wp) -> {
             wp.input(assertGlobalObjectInput);
             enter(LiteralTag.class).exit((e2) -> {
-                assertAttribute(e2, TYPE, LiteralTag.Type.FunctionLiteral.name());
+                assertAttribute(e2, LITERAL_TYPE, LiteralTag.Type.FunctionLiteral.name());
             });
             wp.input(assertJSFunctionInput);
         }).exit();
@@ -117,7 +117,6 @@ public class EvalTest extends FineGrainedAccessTest {
                 // locals declaration
                 enterDeclareTag("a");
                 enterDeclareTag("arguments");
-                enterDeclareTag("bar");
 
                 // inside the foo function
                 // write the 42 into the argument variable
@@ -127,7 +126,7 @@ public class EvalTest extends FineGrainedAccessTest {
 
                 // create a local function bar
                 enter(WriteVariableTag.class, (e3, vw) -> {
-                    enter(LiteralTag.class).exit();
+                    enterDeclareTag("bar");
                     vw.input(assertJSFunctionInput);
                 }).exit();
 
