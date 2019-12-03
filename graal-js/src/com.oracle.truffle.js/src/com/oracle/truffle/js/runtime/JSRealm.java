@@ -284,8 +284,8 @@ public class JSRealm {
     private final DynamicObject asyncGeneratorFunctionConstructor;
     private final DynamicObject asyncGeneratorFunctionPrototype;
 
-    @CompilationFinal private DynamicObject throwerFunction;
-    @CompilationFinal private Accessor throwerAccessor;
+    private final DynamicObject throwerFunction;
+    private final Accessor throwerAccessor;
 
     private final DynamicObject promiseConstructor;
     private final DynamicObject promisePrototype;
@@ -386,6 +386,9 @@ public class JSRealm {
         this.functionPrototype = JSFunction.createFunctionPrototype(this, objectPrototype);
 
         this.objectFactories = context.newObjectFactoryRealmData();
+
+        this.throwerFunction = createThrowerFunction();
+        this.throwerAccessor = new Accessor(throwerFunction, throwerFunction);
 
         if (context.isOptionAnnexB()) {
             putProtoAccessorProperty(this);
@@ -986,22 +989,12 @@ public class JSRealm {
     }
 
     public final DynamicObject getThrowerFunction() {
-        if (throwerFunction == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (throwerFunction == null) {
-                throwerFunction = createThrowerFunction();
-            }
-        }
+        assert throwerFunction != null;
         return throwerFunction;
     }
 
     public final Accessor getThrowerAccessor() {
-        if (throwerAccessor == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (throwerAccessor == null) {
-                throwerAccessor = new Accessor(getThrowerFunction(), getThrowerFunction());
-            }
-        }
+        assert throwerAccessor != null;
         return throwerAccessor;
     }
 
@@ -1615,13 +1608,6 @@ public class JSRealm {
             localTimeZoneHolder = getTimeZoneFromEnv();
         }
         initTimeOffsetAndRandom();
-
-        // Perform the deferred part of setting up properties in the function prototype.
-        // Taken from JSFunction#fillFunctionPrototype, which is called from the JSRealm
-        // constructor.
-        if (getContext().getEcmaScriptVersion() >= 6) {
-            JSFunction.addRestrictedFunctionProperties(this, getFunctionPrototype());
-        }
 
         return true;
     }

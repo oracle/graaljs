@@ -688,15 +688,8 @@ public final class JSFunction extends JSBuiltinObject {
     }
 
     public static void addRestrictedFunctionProperties(JSRealm realm, DynamicObject obj) {
-        if (!realm.getEnv().isPreInitialization()) {
-            // Do not request the thrower function during context pre-initialization.
-            // Constructing the thrower functions triggers the setup of the shape of anonymous
-            // functions. However, the shape of anonymous functions depends on the v8-compat option.
-            // Therefore, when using pre-initialized contexts, we defer this part of the setup
-            // to context-patching time.
-            JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, CALLER, realm.getThrowerFunction(), realm.getThrowerFunction());
-            JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction());
-        }
+        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, CALLER, realm.getThrowerFunction(), realm.getThrowerFunction());
+        JSObjectUtil.putConstantAccessorProperty(realm.getContext(), obj, ARGUMENTS, realm.getThrowerFunction(), realm.getThrowerFunction());
     }
 
     public static JSFunctionData createNamedEmptyFunctionData(JSContext context, String name) {
