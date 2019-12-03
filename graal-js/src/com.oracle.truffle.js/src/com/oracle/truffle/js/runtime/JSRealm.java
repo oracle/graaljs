@@ -343,7 +343,7 @@ public class JSRealm {
     private PrintWriterWrapper outputWriter;
     private PrintWriterWrapper errorWriter;
 
-    @CompilationFinal private JSConsoleUtil consoleUtil;
+    private final JSConsoleUtil consoleUtil;
     private JSModuleLoader moduleLoader;
 
     /**
@@ -598,6 +598,7 @@ public class JSRealm {
         this.errorStream = System.err;
         this.outputWriter = new PrintWriterWrapper(outputStream, true);
         this.errorWriter = new PrintWriterWrapper(errorStream, true);
+        this.consoleUtil = new JSConsoleUtil();
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1819,10 +1820,6 @@ public class JSRealm {
     }
 
     public JSConsoleUtil getConsoleUtil() {
-        if (consoleUtil == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            consoleUtil = new JSConsoleUtil();
-        }
         return consoleUtil;
     }
 
