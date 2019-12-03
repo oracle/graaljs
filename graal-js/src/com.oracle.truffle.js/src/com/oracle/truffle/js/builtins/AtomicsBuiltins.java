@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.function.BinaryOperator;
 import java.util.function.IntBinaryOperator;
 
@@ -67,7 +66,6 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -817,13 +815,12 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
             SharedMemorySync.enterCriticalSection(getContext(), wl);
             try {
-                List<Integer> waiters = SharedMemorySync.removeWaiters(getContext(), wl, c);
-                int n = 0;
-                while (n < waiters.size()) {
-                    SharedMemorySync.wakeWaiter(getContext(), Boundaries.listGet(waiters, n++), wl);
+                int[] waiters = SharedMemorySync.removeWaiters(getContext(), wl, c);
+                int n;
+                for (n = 0; n < waiters.length; n++) {
+                    SharedMemorySync.wakeWaiter(getContext(), waiters[n]);
                 }
                 return n;
-
             } finally {
                 SharedMemorySync.leaveCriticalSection(getContext(), wl);
             }
@@ -887,10 +884,11 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                     return TIMED_OUT;
                 }
                 boolean awoken = SharedMemorySync.suspendAgent(getContext(), wl, id, t);
-                SharedMemorySync.removeWaiter(getContext(), wl, id);
                 if (awoken) {
+                    assert !wl.contains(id);
                     return OK;
                 } else {
+                    SharedMemorySync.removeWaiter(getContext(), wl, id);
                     return TIMED_OUT;
                 }
             } finally {

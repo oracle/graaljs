@@ -43,8 +43,6 @@ package com.oracle.truffle.js.builtins.helper;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -301,22 +299,19 @@ public final class SharedMemorySync {
 
     /* ECMA2017 24.4.1.10 - Wake up another agent */
     @TruffleBoundary
-    public static void wakeWaiter(JSContext cx, int w, JSAgentWaiterListEntry wl) {
+    public static void wakeWaiter(JSContext cx, int w) {
         assert cx.getJSAgent().inCriticalSection();
-        assert wl.contains(w);
         cx.getJSAgent().wakeAgent(w);
     }
 
     @TruffleBoundary
-    public static List<Integer> removeWaiters(JSContext cx, JSAgentWaiterListEntry wl, int count) {
+    public static int[] removeWaiters(JSContext cx, JSAgentWaiterListEntry wl, int count) {
         assert cx.getJSAgent().inCriticalSection();
         int c = Integer.min(wl.size(), count);
-        ArrayList<Integer> list = new ArrayList<>(c);
-        Integer[] s = wl.toArray(new Integer[]{});
+        int[] removed = new int[c];
         while (c-- > 0) {
-            int w = s[c];
-            list.add(w);
+            removed[c] = wl.poll();
         }
-        return list;
+        return removed;
     }
 }
