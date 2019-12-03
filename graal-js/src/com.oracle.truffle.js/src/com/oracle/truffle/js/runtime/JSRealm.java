@@ -284,8 +284,8 @@ public class JSRealm {
     private final DynamicObject asyncGeneratorFunctionConstructor;
     private final DynamicObject asyncGeneratorFunctionPrototype;
 
-    @CompilationFinal private DynamicObject throwerFunction;
-    @CompilationFinal private Accessor throwerAccessor;
+    private final DynamicObject throwerFunction;
+    private final Accessor throwerAccessor;
 
     private final DynamicObject promiseConstructor;
     private final DynamicObject promisePrototype;
@@ -343,7 +343,7 @@ public class JSRealm {
     private PrintWriterWrapper outputWriter;
     private PrintWriterWrapper errorWriter;
 
-    @CompilationFinal private JSConsoleUtil consoleUtil;
+    private final JSConsoleUtil consoleUtil;
     private JSModuleLoader moduleLoader;
 
     /**
@@ -386,6 +386,9 @@ public class JSRealm {
         this.functionPrototype = JSFunction.createFunctionPrototype(this, objectPrototype);
 
         this.objectFactories = context.newObjectFactoryRealmData();
+
+        this.throwerFunction = createThrowerFunction();
+        this.throwerAccessor = new Accessor(throwerFunction, throwerFunction);
 
         if (context.isOptionAnnexB()) {
             putProtoAccessorProperty(this);
@@ -595,6 +598,7 @@ public class JSRealm {
         this.errorStream = System.err;
         this.outputWriter = new PrintWriterWrapper(outputStream, true);
         this.errorWriter = new PrintWriterWrapper(errorStream, true);
+        this.consoleUtil = new JSConsoleUtil();
     }
 
     private void initializeTypedArrayConstructors() {
@@ -986,22 +990,12 @@ public class JSRealm {
     }
 
     public final DynamicObject getThrowerFunction() {
-        if (throwerFunction == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (throwerFunction == null) {
-                throwerFunction = createThrowerFunction();
-            }
-        }
+        assert throwerFunction != null;
         return throwerFunction;
     }
 
     public final Accessor getThrowerAccessor() {
-        if (throwerAccessor == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (throwerAccessor == null) {
-                throwerAccessor = new Accessor(getThrowerFunction(), getThrowerFunction());
-            }
-        }
+        assert throwerAccessor != null;
         return throwerAccessor;
     }
 
@@ -1616,13 +1610,6 @@ public class JSRealm {
         }
         initTimeOffsetAndRandom();
 
-        // Perform the deferred part of setting up properties in the function prototype.
-        // Taken from JSFunction#fillFunctionPrototype, which is called from the JSRealm
-        // constructor.
-        if (getContext().getEcmaScriptVersion() >= 6) {
-            JSFunction.addRestrictedFunctionProperties(this, getFunctionPrototype());
-        }
-
         return true;
     }
 
@@ -1833,10 +1820,6 @@ public class JSRealm {
     }
 
     public JSConsoleUtil getConsoleUtil() {
-        if (consoleUtil == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            consoleUtil = new JSConsoleUtil();
-        }
         return consoleUtil;
     }
 
