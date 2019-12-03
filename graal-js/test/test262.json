@@ -4,10 +4,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2019-05-21)"
   }, {
-    "filePath" : "built-ins/Atomics/wait/undefined-index-defaults-to-zero.js",
-    "status" : "SKIP",
-    "comment" : "fails randomly, highly timing sensitive (sleep(5) + wait(10)), will be fixed by Test262 update"
-  }, {
     "filePath" : "built-ins/RegExp/lookBehind/alternations.js",
     "status" : "FAIL",
     "comment" : "GR-10079: Alternations in lookbehind assertion, not supported by either TRegex or Joni. However, support for these could be added to TRegex."
