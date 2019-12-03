@@ -1215,6 +1215,11 @@ public class JSRealm {
     @TruffleBoundary
     private void addCommonJsGlobals() {
         if (getContext().getContextOptions().isCommonJsRequire()) {
+            String cwdOption = getContext().getContextOptions().getRequireCwd();
+            TruffleFile cwdFile = getEnv().getPublicTruffleFile(cwdOption);
+            if (cwdOption != null && !cwdFile.exists()) {
+                throw Errors.createError("Invalid Commonjs root folder: " + cwdOption);
+            }
             // Define `require` and other globals in global scope.
             DynamicObject requireFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJsRequireBuiltin.REQUIRE_PROPERTY_NAME);
             DynamicObject resolveFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJsRequireBuiltin.RESOLVE_PROPERTY_NAME);

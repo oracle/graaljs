@@ -45,10 +45,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.*;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -57,62 +54,7 @@ import static org.junit.Assert.assertEquals;
 
 public class CommonJsRequireTest {
 
-    private static final class NodeModulesFolder {
-        public static NodeModulesFolder create(Path folder, String name) throws IOException {
-            return new NodeModulesFolder(folder, name);
-        }
-
-        private final String moduleFolderPath;
-
-        private NodeModulesFolder(Path folder, String name) throws IOException {
-            String tmpFolder = folder.toAbsolutePath().toString();
-            String nodeModulesPath = tmpFolder + File.separator + "node_modules";
-            this.moduleFolderPath = nodeModulesPath + File.separator + name;
-            try {
-                Files.createDirectory(Paths.get(nodeModulesPath));
-            } catch (FileAlreadyExistsException e) {
-                // That's OK
-            }
-            Files.createDirectory(Paths.get(moduleFolderPath));
-        }
-    }
-
-    private static final class TestFile {
-        private final String absolutePath;
-        private final File file;
-
-        public static TestFile create(Path folder, String fileName, String src) throws IOException {
-            String path = folder.toAbsolutePath().toString();
-            return new TestFile(path, fileName, src);
-        }
-
-        public static TestFile create(NodeModulesFolder folder, String fileName, String src) throws IOException {
-            String path = folder.moduleFolderPath;
-            return new TestFile(path, fileName, src);
-        }
-
-        private TestFile(String path, String fileName, String src) throws IOException {
-            File tmpFile = new File(path + File.separator + fileName);
-            tmpFile.deleteOnExit();
-            Path folder = Paths.get(path);
-            if (!Files.exists(folder)) {
-                Files.createDirectories(folder);
-            }
-            FileWriter fileWriter = new FileWriter(tmpFile);
-            fileWriter.write(src);
-            fileWriter.flush();
-            this.absolutePath = tmpFile.getAbsolutePath();
-            this.file = tmpFile;
-        }
-
-        String getAbsolutePath() {
-            return absolutePath;
-        }
-
-        public Source getSource() throws IOException {
-            return Source.newBuilder("js", file).build();
-        }
-    }
+    private static final String PATH_OF_TESTS = "src/com.oracle.truffle.js.test/commonjs";
 
     private static Context testContext(Path tempFolder) {
         return testContext(tempFolder, System.out, System.err);
@@ -133,31 +75,30 @@ public class CommonJsRequireTest {
         return testContext(out, err, options);
     }
 
-    private static Path getTempFolder() throws IOException {
-        return Files.createTempDirectory("commonjs_testing");
+    private static Path getTestRootFolder() {
+        Path root = FileSystems.getDefault().getPath(PATH_OF_TESTS);
+        if (!Files.exists(root)) {
+            throw new AssertionError("Unable to locate test folder: " + root);
+        }
+        return root;
     }
 
-    private static void testBasicPackageJsonRequire(String moduleName, String packageJson) throws IOException {
-        Path f = getTempFolder();
+    private static Source getSourceFor(Path path) throws IOException {
+        File file = new File(path.normalize().toAbsolutePath().toString());
+        return Source.newBuilder("js", file).build();
+    }
+
+    private static void testBasicPackageJsonRequire(String moduleName) {
+        Path f = getTestRootFolder();
         try (Context cx = testContext(f)) {
-            NodeModulesFolder nm = NodeModulesFolder.create(f, "foo");
-            if (!"".equals(packageJson)) {
-                TestFile.create(nm, "package.json", packageJson);
-            }
-            TestFile.create(nm, "index.js", "module.exports.foo = 42;");
             Value js = cx.eval(ID, "require(" + moduleName + ").foo;");
             Assert.assertEquals(42, js.asInt());
         }
     }
 
-    private static void testBasicPackageJsonRequire(String moduleName) throws IOException {
-        testBasicPackageJsonRequire(moduleName, "{\"main\":\"index.js\"}");
-    }
-
-    private static void testBasicRequire(String moduleName) throws IOException {
-        Path f = getTempFolder();
+    private static void testBasicRequire(String moduleName) {
+        Path f = getTestRootFolder();
         try (Context cx = testContext(f)) {
-            TestFile.create(f, "module.js", "module.exports.foo = 42;");
             Value js = cx.eval(ID, "require('" + moduleName + "').foo;");
             Assert.assertEquals(42, js.asInt());
         }
@@ -165,7 +106,7 @@ public class CommonJsRequireTest {
 
     private static void assertThrows(String src, String expectedMessage) {
         try {
-            Path f = getTempFolder();
+            Path f = getTestRootFolder();
             try (Context cx = testContext(f)) {
                 cx.eval(ID, src);
             }
@@ -179,90 +120,75 @@ public class CommonJsRequireTest {
     }
 
     @Test
-    public void absoluteFilename() throws IOException {
-        Path f = getTempFolder();
+    public void absoluteFilename() {
+        Path f = getTestRootFolder();
         try (Context cx = testContext(f)) {
-            TestFile m = TestFile.create(f, "module.js", "module.exports.foo = 42;");
-            Value js = cx.eval(ID, "require('" + m.getAbsolutePath() + "').foo;");
+            Path path = Paths.get(f.toAbsolutePath().toString(), "module.js");
+            Value js = cx.eval(ID, "require('" + path.toString() + "').foo;");
             Assert.assertEquals(42, js.asInt());
         }
     }
 
     @Test
-    public void relativeFilename() throws IOException {
+    public void relativeFilename() {
         testBasicRequire("./module.js");
     }
 
     @Test
-    public void relativeNoExtFilename() throws IOException {
+    public void relativeNoExtFilename() {
         testBasicRequire("./module");
     }
 
     @Test
-    public void nodeModulesFolderWithPackageJson() throws IOException {
-        testBasicPackageJsonRequire("'foo'");
+    public void nodeModulesFolderWithPackageJson() {
+        testBasicPackageJsonRequire("'with-package'");
     }
 
     @Test
-    public void nodeModulesFolderWithPackageJson2() throws IOException {
-        testBasicPackageJsonRequire("'./foo'");
+    public void nodeModulesFolderWithPackageJson2() {
+        testBasicPackageJsonRequire("'./with-package'");
     }
 
     @Test
-    public void nodeModulesFolderWithPackageJson3() throws IOException {
-        testBasicPackageJsonRequire("'././foo'");
+    public void nodeModulesFolderWithPackageJson3() {
+        testBasicPackageJsonRequire("'././with-package'");
     }
 
     @Test
-    public void nodeModulesFolderWithPackageJsonNoMain() throws IOException {
-        testBasicPackageJsonRequire("'foo'", "{\"not_a_valid_main\":\"index.js\"}");
+    public void nodeModulesFolderWithPackageJsonNoMain() {
+        testBasicPackageJsonRequire("'wrong-package'");
     }
 
     @Test
-    public void nodeModulesFolderWithPackageJsonNoMain2() throws IOException {
-        testBasicPackageJsonRequire("'./foo'", "{\"not_a_valid_main\":\"index.js\"}");
+    public void nodeModulesFolderWithPackageJsonNoMain2() {
+        testBasicPackageJsonRequire("'./wrong-package'");
     }
 
     @Test
-    public void testMissingPackageJson() throws IOException {
-        testBasicPackageJsonRequire("'foo'", "");
+    public void testMissingPackageJson() {
+        testBasicPackageJsonRequire("'no-package'");
     }
 
     @Test
-    public void testMissingPackageJson2() throws IOException {
-        testBasicPackageJsonRequire("'foo'", "");
+    public void testMissingPackageJson2() {
+        testBasicPackageJsonRequire("'no-package'");
     }
 
     @Test
-    public void nestedRequire() throws IOException {
-        Path f = getTempFolder();
+    public void nestedRequire() {
+        Path f = getTestRootFolder();
         try (Context cx = testContext(f)) {
-            TestFile.create(f, "a.js", "module.exports.foo = 42;");
-            TestFile.create(f, "b.js", "const a = require('./a.js');" +
-                            "exports.foo = a.foo;");
-            Value js = cx.eval(ID, "require('./b.js').foo;");
+            Value js = cx.eval(ID, "require('./nested.js').foo;");
             Assert.assertEquals(42, js.asInt());
         }
     }
 
     @Test
     public void cyclicRequire() throws IOException {
-        Path f = getTempFolder();
+        Path f = getTestRootFolder();
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
         try (Context cx = testContext(f, out, err)) {
-            TestFile.create(f, "a.js", "console.log('a starting');" +
-                            "exports.done = false;" +
-                            "const b = require('./b.js');" +
-                            "console.log('in a, b.done = ' + b.done);" +
-                            "exports.done = true;" +
-                            "console.log('a done');");
-            TestFile.create(f, "b.js", "console.log('b starting');" +
-                            "exports.done = false;" +
-                            "const a = require('./a.js');" +
-                            "console.log('in b, a.done = ' + a.done);" +
-                            "exports.done = true;" +
-                            "console.log('b done');");
             Value js = cx.eval(ID, "console.log('main starting');" +
                             "const a = require('./a.js');" +
                             "const b = require('./b.js');" +
@@ -307,21 +233,19 @@ public class CommonJsRequireTest {
     }
 
     @Test
-    public void testLoadJson() throws IOException {
-        Path f = getTempFolder();
+    public void testLoadJson() {
+        Path f = getTestRootFolder();
         try (Context cx = testContext(f)) {
-            TestFile.create(f, "foo.json", "{\"foo\":42}");
-            Value js = cx.eval(ID, "require('./foo.json').foo;");
+            Value js = cx.eval(ID, "require('./valid.json').foo;");
             Assert.assertEquals(42, js.asInt());
         }
     }
 
     @Test
-    public void testLoadBrokenJson() throws IOException {
-        Path f = getTempFolder();
+    public void testLoadBrokenJson() {
+        Path f = getTestRootFolder();
         try (Context cx = testContext(f)) {
-            TestFile.create(f, "foo.json", "{not_a_valid:##json}");
-            cx.eval(ID, "require('./foo.json').foo;");
+            cx.eval(ID, "require('./invalid.json').foo;");
             assert false;
         } catch (Throwable t) {
             if (!t.getClass().isAssignableFrom(PolyglotException.class)) {
@@ -336,8 +260,8 @@ public class CommonJsRequireTest {
     }
 
     @Test
-    public void testHasGlobals() throws IOException {
-        Path f = getTempFolder();
+    public void testHasGlobals() {
+        Path f = getTestRootFolder();
         String[] builtins = new String[]{"require", "module", "exports", "module.exports", "__dirname", "__filename"};
         String[] types = new String[]{"function", "object", "object", "object", "string", "string"};
         for (int i = 0; i < builtins.length; i++) {
@@ -349,57 +273,62 @@ public class CommonJsRequireTest {
     }
 
     @Test
-    public void testDirnameFilenameInModule() throws IOException {
-        Path root = getTempFolder();
-        Map<String, String> options = new HashMap<>();
-        options.put("js.cjs-require", "true");
-        options.put("js.cjs-require-cwd", root.toString());
-        Path subFolder = Paths.get(root.normalize().toString(), "foo", "bar");
-        TestFile.create(subFolder, "testDir.js", "module.exports.dir = __dirname;");
-        TestFile fileFile = TestFile.create(subFolder, "testFile.js", "module.exports.file = __filename;");
-        try (Context cx = testContext(options)) {
+    public void testDirnameFilenameInModule() {
+        Path root = getTestRootFolder();
+        Path subFolder = Paths.get(root.toAbsolutePath().toString(), "foo", "bar");
+        File file = Paths.get(root.toAbsolutePath().toString(), "foo", "bar", "testFile.js").toFile();
+        try (Context cx = testContext(root)) {
             Value dir = cx.eval("js", "require('./foo/bar/testDir.js').dir;");
             Assert.assertEquals(subFolder.toString(), dir.asString());
             Value fil = cx.eval("js", "require('./foo/bar/testFile.js').file;");
-            Assert.assertEquals(fileFile.getAbsolutePath(), fil.asString());
+            Assert.assertEquals(file.getAbsolutePath(), fil.asString());
         }
     }
 
     @Test
     public void testGlobalDirnameFilename() throws IOException {
-        Path root = getTempFolder();
+        Path root = getTestRootFolder();
+        Path dirFile = Paths.get(root.normalize().toString(), "foo", "bar", "dirName.js");
+        Path dirName = Paths.get(root.normalize().toString(), "foo", "bar");
+        Path fileName = Paths.get(root.normalize().toString(), "foo", "bar", "fileName.js");
+        try (Context cx = testContext(root)) {
+            Value dir = cx.eval(getSourceFor(dirFile));
+            Assert.assertEquals(dirName.toAbsolutePath().toString(), dir.asString());
+            Value fil = cx.eval(getSourceFor(fileName));
+            Assert.assertEquals(fileName.toAbsolutePath().toString(), fil.asString());
+        }
+    }
+
+    @Test
+    public void testCwd() {
+        Path root = getTestRootFolder();
+        try (Context cx = testContext(root)) {
+            Value val = cx.eval("js", "__dirname");
+            Assert.assertEquals(root.toAbsolutePath().toString(), val.toString());
+        }
+    }
+
+    @Test
+    public void testWrongCwd() {
         Map<String, String> options = new HashMap<>();
         options.put("js.cjs-require", "true");
-        Path subFolder = Paths.get(root.normalize().toString(), "foo", "bar");
-        TestFile dirFile = TestFile.create(subFolder, "testDir.js", "__dirname;");
-        TestFile fileFile = TestFile.create(subFolder, "testFile.js", "__filename;");
-        try (Context cx = testContext(options)) {
-            Value dir = cx.eval(dirFile.getSource());
-            Assert.assertEquals(subFolder.toString(), dir.asString());
-            Value fil = cx.eval(fileFile.getSource());
-            Assert.assertEquals(fileFile.getAbsolutePath(), fil.asString());
-        }
         options.put("js.cjs-require-cwd", "/wrong/or/not/existing/folder");
         try (Context cx = testContext(options)) {
-            Value dir = cx.eval(dirFile.getSource());
-            Assert.assertEquals(subFolder.toString(), dir.asString());
-            Value fil = cx.eval(fileFile.getSource());
-            Assert.assertEquals(fileFile.getAbsolutePath(), fil.asString());
+            cx.eval("js", "__dirname");
+            assert false : "Should throw";
+        } catch (PolyglotException e) {
+            Assert.assertEquals("Error: Invalid Commonjs root folder: /wrong/or/not/existing/folder", e.getMessage());
         }
     }
 
     @Test
     public void testResolve() throws IOException {
-        Path root = getTempFolder();
-        Map<String, String> options = new HashMap<>();
-        options.put("js.cjs-require", "true");
-        options.put("js.cjs-require-cwd", root.toString());
-        Path subFolder = Paths.get(root.normalize().toString(), "foo", "bar");
-        TestFile nestedFile = TestFile.create(subFolder, "foo.js", "require.resolve('../..');");
-        TestFile indexFile = TestFile.create(root, "index.js", "module.exports.foo = 42;");
+        Path root = getTestRootFolder();
+        Path testCase = Paths.get(root.normalize().toString(), "foo", "bar", "foo.js");
+        Path expected = Paths.get(root.normalize().toString(), "index.js");
         try (Context cx = testContext(root)) {
-            Value js = cx.eval(nestedFile.getSource());
-            Assert.assertEquals(indexFile.getAbsolutePath(), js.asString());
+            Value js = cx.eval(getSourceFor(testCase));
+            Assert.assertEquals(expected.toAbsolutePath().toString(), js.asString());
         }
     }
 

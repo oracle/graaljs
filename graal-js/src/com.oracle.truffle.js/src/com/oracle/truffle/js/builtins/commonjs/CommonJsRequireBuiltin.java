@@ -119,10 +119,10 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
 
     @TruffleBoundary
     static TruffleFile getModuleResolveCurrentWorkingDirectory(JSContext context) {
-        String cwdOption = context.getContextOptions().getRequireCwd();
         TruffleLanguage.Env env = context.getRealm().getEnv();
         String currentFileNameFromStack = CommonJsResolution.getCurrentFileNameFromStack();
         if (currentFileNameFromStack == null) {
+            String cwdOption = context.getContextOptions().getRequireCwd();
             return cwdOption == null ? env.getCurrentWorkingDirectory() : env.getPublicTruffleFile(cwdOption);
         } else {
             TruffleFile truffleFile = env.getPublicTruffleFile(currentFileNameFromStack);
