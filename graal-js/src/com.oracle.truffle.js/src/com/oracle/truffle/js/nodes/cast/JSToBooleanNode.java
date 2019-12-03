@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -61,7 +60,6 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 @ImportStatic({JSRuntime.class})
 public abstract class JSToBooleanNode extends JSUnaryNode {
-    protected static final int MAX_CLASSES = 3;
 
     protected JSToBooleanNode(JavaScriptNode operand) {
         super(operand);
@@ -165,7 +163,6 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
         return true;
     }
 
-    @TruffleBoundary
     @Specialization(guards = "isForeignObject(value)", limit = "5")
     protected boolean doForeignObject(Object value,
                     @CachedLibrary("value") InteropLibrary interop) {
