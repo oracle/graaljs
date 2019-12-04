@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.runtime.JSContextOptions.*;
 import static org.junit.Assert.assertEquals;
 
 public class CommonJsRequireTest {
@@ -70,8 +71,8 @@ public class CommonJsRequireTest {
 
     private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {
         Map<String, String> options = new HashMap<>();
-        options.put("js.cjs-require", "true");
-        options.put("js.cjs-require-cwd", tempFolder.toAbsolutePath().toString());
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWS_NAME, tempFolder.toAbsolutePath().toString());
         return testContext(out, err, options);
     }
 
@@ -80,7 +81,7 @@ public class CommonJsRequireTest {
         if (!Files.exists(root)) {
             throw new AssertionError("Unable to locate test folder: " + root);
         }
-        return root;
+        return root.toAbsolutePath();
     }
 
     private static Source getSourceFor(Path path) throws IOException {
@@ -288,9 +289,9 @@ public class CommonJsRequireTest {
     @Test
     public void testGlobalDirnameFilename() throws IOException {
         Path root = getTestRootFolder();
-        Path dirFile = Paths.get(root.normalize().toString(), "foo", "bar", "dirName.js");
-        Path dirName = Paths.get(root.normalize().toString(), "foo", "bar");
-        Path fileName = Paths.get(root.normalize().toString(), "foo", "bar", "fileName.js");
+        Path dirFile = Paths.get(root.toAbsolutePath().toString(), "foo", "bar", "dirName.js");
+        Path dirName = Paths.get(root.toAbsolutePath().toString(), "foo", "bar");
+        Path fileName = Paths.get(root.toAbsolutePath().toString(), "foo", "bar", "fileName.js");
         try (Context cx = testContext(root)) {
             Value dir = cx.eval(getSourceFor(dirFile));
             Assert.assertEquals(dirName.toAbsolutePath().toString(), dir.asString());
@@ -311,8 +312,8 @@ public class CommonJsRequireTest {
     @Test
     public void testWrongCwd() {
         Map<String, String> options = new HashMap<>();
-        options.put("js.cjs-require", "true");
-        options.put("js.cjs-require-cwd", "/wrong/or/not/existing/folder");
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWS_NAME, "/wrong/or/not/existing/folder");
         try (Context cx = testContext(options)) {
             cx.eval("js", "__dirname");
             assert false : "Should throw";
@@ -329,6 +330,35 @@ public class CommonJsRequireTest {
         try (Context cx = testContext(root)) {
             Value js = cx.eval(getSourceFor(testCase));
             Assert.assertEquals(expected.toAbsolutePath().toString(), js.asString());
+        }
+    }
+
+    @Test
+    public void testCustomNodeBuiltin() {
+        Path root = getTestRootFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWS_NAME, root.toAbsolutePath().toString());
+        // requiring the 'fs' and 'path' built-in modules will resolve `module.js`
+        options.put(COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME, "path:./module,fs:./module.js");
+        try (Context cx = testContext(options)) {
+            Value js = cx.eval(ID, "require('path').foo + require('fs').foo;");
+            Assert.assertEquals(84, js.asInt());
+        }
+    }
+
+    @Test
+    public void testGlobals() {
+        Path root = getTestRootFolder();
+        Map<String, String> options = new HashMap<>();
+        options.put(GLOBAL_PROPERTY_NAME, "true");
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        options.put(COMMONJS_REQUIRE_CWS_NAME, root.toAbsolutePath().toString());
+        // At context creation, the `test-globals` module will be required.
+        options.put(COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME, "test-globals");
+        try (Context cx = testContext(options)) {
+            Value js = cx.eval(ID, "process.foo;");
+            Assert.assertEquals(42, js.asInt());
         }
     }
 

@@ -1044,7 +1044,7 @@ public final class JSFunction extends JSBuiltinObject {
         return initialShape;
     }
 
-    private static RootNode getFrameRootNode(FrameInstance frameInstance) {
+    public static RootNode getFrameRootNode(FrameInstance frameInstance) {
         Node callNode = frameInstance.getCallNode();
         if (callNode != null) {
             return callNode.getRootNode();

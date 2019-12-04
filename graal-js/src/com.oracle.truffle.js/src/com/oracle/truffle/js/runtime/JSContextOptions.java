@@ -249,7 +249,7 @@ public final class JSContextOptions {
 
     public static final String COMMONJS_REQUIRE_NAME = JS_OPTION_PREFIX + "cjs-require";
     @Option(name = COMMONJS_REQUIRE_NAME, category = OptionCategory.USER, help = "Enable CommonJS require emulation.") //
-    public static final OptionKey<Boolean> COMMONJS_REQUIRE_EMULATION = new OptionKey<>(false);
+    public static final OptionKey<Boolean> COMMONJS_REQUIRE = new OptionKey<>(false);
     @CompilationFinal private boolean commonJsRequire;
 
     public static final String COMMONJS_REQUIRE_CWS_NAME = JS_OPTION_PREFIX + "cjs-require-cwd";
@@ -436,7 +436,7 @@ public final class JSContextOptions {
         this.functionConstructorCacheSize = readIntegerOption(FUNCTION_CONSTRUCTOR_CACHE_SIZE);
         this.stringLengthLimit = readIntegerOption(STRING_LENGTH_LIMIT);
         this.bindMemberFunctions = readBooleanOption(BIND_MEMBER_FUNCTIONS);
-        this.commonJsRequire = readBooleanOption(COMMONJS_REQUIRE_EMULATION);
+        this.commonJsRequire = readBooleanOption(COMMONJS_REQUIRE);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
