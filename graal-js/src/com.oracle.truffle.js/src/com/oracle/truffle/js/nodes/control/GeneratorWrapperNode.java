@@ -41,17 +41,13 @@
 package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
-import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 public final class GeneratorWrapperNode extends JavaScriptNode implements RepeatingNode {
     @Child private JavaScriptNode childNode;
@@ -67,41 +63,28 @@ public final class GeneratorWrapperNode extends JavaScriptNode implements Repeat
 
     public static JavaScriptNode createWrapper(JavaScriptNode child, JavaScriptNode readStateNode, WriteNode writeStateNode) {
         JavaScriptNode wrapper = new GeneratorWrapperNode(child, readStateNode, writeStateNode);
-        if (child instanceof AwaitNode) {
-            wrapper.setSourceSection(child.getSourceSection());
-        }
+        Node realChild = child instanceof WrapperNode ? ((WrapperNode) child).getDelegateNode() : child;
+        wrapper.setSourceSection(realChild.getSourceSection());
         return wrapper;
     }
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == JSTags.ControlFlowBranchTag.class) {
-            return true;
-        }
-        if (tag == JSTags.InputNodeTag.class) {
-            Node child = childNode instanceof WrapperNode ? ((WrapperNode) childNode).getDelegateNode() : childNode;
-            if (child instanceof AwaitNode) {
-                return true;
-            }
+        Node child = childNode instanceof WrapperNode ? ((WrapperNode) childNode).getDelegateNode() : childNode;
+        if (child instanceof JavaScriptNode) {
+            return ((JavaScriptNode) child).hasTag(tag);
         }
         return super.hasTag(tag);
     }
 
     @Override
     public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor("type", JSTags.ControlFlowBranchTag.Type.Await.name());
-    }
-
-    @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(JSTags.ControlFlowBranchTag.class)) {
-            if (childNode instanceof AwaitNode) {
-                GeneratorWrapperNode materialized = new GeneratorWrapperNode(childNode, stateNode, writeStateNode);
-                transferSourceSection(this, materialized);
-                return materialized;
-            }
+        Node child = childNode instanceof WrapperNode ? ((WrapperNode) childNode).getDelegateNode() : childNode;
+        if (child instanceof JavaScriptNode) {
+            return ((JavaScriptNode) child).getNodeObject();
+        } else {
+            return null;
         }
-        return this;
     }
 
     @Override

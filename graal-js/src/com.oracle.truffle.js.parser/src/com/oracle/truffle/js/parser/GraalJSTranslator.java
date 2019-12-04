@@ -432,6 +432,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             body = handleFunctionReturn(functionNode, body);
 
             if (isAsyncFunction) {
+                ensureHasSourceSection(body, functionNode);
                 body = handleAsyncFunctionBody(body, currentFunction.getFunctionName());
             }
         }
