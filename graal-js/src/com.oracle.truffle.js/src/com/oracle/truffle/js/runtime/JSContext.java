@@ -285,7 +285,7 @@ public class JSContext {
     final JSFunctionData protoGetterFunctionData;
     final JSFunctionData protoSetterFunctionData;
 
-    private volatile Map<Shape, JSShapeData> shapeDataMap;
+    private Map<Shape, JSShapeData> shapeDataMap;
 
     final Assumption noChildRealmsAssumption;
     private final Assumption singleRealmAssumption;
@@ -952,6 +952,7 @@ public class JSContext {
     }
 
     public Map<Shape, JSShapeData> getShapeDataMap() {
+        assert Thread.holdsLock(this);
         Map<Shape, JSShapeData> map = shapeDataMap;
         if (map == null) {
             map = createShapeDataMap();
@@ -959,12 +960,10 @@ public class JSContext {
         return map;
     }
 
-    private synchronized Map<Shape, JSShapeData> createShapeDataMap() {
-        Map<Shape, JSShapeData> map = shapeDataMap;
-        if (map == null) {
-            map = new WeakHashMap<>();
-            shapeDataMap = map;
-        }
+    private Map<Shape, JSShapeData> createShapeDataMap() {
+        CompilerAsserts.neverPartOfCompilation();
+        Map<Shape, JSShapeData> map = new WeakHashMap<>();
+        shapeDataMap = map;
         return map;
     }
 
