@@ -78,7 +78,15 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             }
             s.append("] ");
             for (Object m : message) {
-                s.append(m == null ? "null" : m.toString());
+                String desc = "";
+                if (m == null) {
+                    desc = "null";
+                } else if (m instanceof DynamicObject) {
+                    desc = "   APIs: {" + JSObject.enumerableOwnNames((DynamicObject) m) + "}";
+                } else {
+                    desc = m.toString();
+                }
+                s.append(desc);
             }
             System.err.println(s.toString());
         }
@@ -177,7 +185,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         if (commonJsCache.containsKey(modulePath.normalize())) {
             DynamicObject moduleBuiltin = commonJsCache.get(modulePath.normalize());
             Object cached = JSObject.get(moduleBuiltin, EXPORTS_PROPERTY_NAME);
-            log("returning cached '", modulePath.normalize(), "'  APIs: {", JSObject.enumerableOwnNames((DynamicObject) cached), "}");
+            log("returning cached '", modulePath.normalize(), cached);
             return cached;
         }
         // Read the file.
@@ -213,7 +221,7 @@ public abstract class CommonJsRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             } finally {
                 debugStackPop();
                 Object module = JSObject.get(moduleBuiltin, EXPORTS_PROPERTY_NAME);
-                log("done '", moduleIdentifier, "' module.exports: ", module, "   APIs: {", JSObject.enumerableOwnNames((DynamicObject) module), "}");
+                log("done '", moduleIdentifier, "' module.exports: ", module, module);
             }
         }
         return null;
