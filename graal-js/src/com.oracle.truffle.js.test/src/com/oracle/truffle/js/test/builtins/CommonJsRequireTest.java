@@ -362,4 +362,16 @@ public class CommonJsRequireTest {
         }
     }
 
+    @Test
+    public void testRequireEsModuleCrashed() {
+        Map<String, String> options = new HashMap<>();
+        options.put(COMMONJS_REQUIRE_NAME, "true");
+        try (Context cx = testContext(options)) {
+            cx.eval("js", "require('./module.mjs');");
+            assert false : "Should throw";
+        } catch (PolyglotException e) {
+            Assert.assertEquals("TypeError: Cannot load CommonJs module: './module.mjs'", e.getMessage());
+        }
+    }
+
 }
