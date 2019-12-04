@@ -240,6 +240,11 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
+    public static String stringReplaceAll(String s, String regex, String replacement) {
+        return s.replaceAll(regex, replacement);
+    }
+
+    @TruffleBoundary
     public static boolean characterIsDigit(char ch) {
         return Character.isDigit(ch);
     }
