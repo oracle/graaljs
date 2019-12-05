@@ -1345,9 +1345,16 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             StringBuilder result = new StringBuilder();
             int position = 0;
 
+            boolean functionalReplace = isCallableNode.executeBoolean(replParam);
+            Object replaceValue;
+            if (functionalReplaceProfile.profile(functionalReplace)) {
+                replaceValue = replParam;
+            } else {
+                replaceValue = toString3Node.executeString(replParam);
+            }
             if (isSearchValueEmpty.profile(searchString.isEmpty())) {
                 while (position <= thisStr.length()) {
-                    builtinReplace(searchString, replParam, thisStr, position, result);
+                    builtinReplace(searchString, functionalReplace, replaceValue, thisStr, position, result);
                     if (position < thisStr.length()) {
                         Boundaries.builderAppend(result, thisStr.charAt(position));
                     }
@@ -1356,17 +1363,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return Boundaries.builderToString(result);
             }
             while (position < thisStr.length()) {
-                position = builtinReplace(searchString, replParam, thisStr, position, result);
+                position = builtinReplace(searchString, functionalReplace, replaceValue, thisStr, position, result);
             }
             return Boundaries.builderToString(result);
         }
 
-        private int builtinReplace(String searchString, Object replParam, String input, int position, StringBuilder result) {
-            boolean functionalReplace = isCallableNode.executeBoolean(replParam);
-            String replaceString = null;
-            if (!functionalReplaceProfile.profile(functionalReplace)) {
-                replaceString = toString3Node.executeString(replParam);
-            }
+        private int builtinReplace(String searchString, boolean functionalReplace, Object replParam, String input, int position, StringBuilder result) {
             int pos = input.indexOf(searchString, position);
             if (replaceNecessaryProfile.profile(pos < 0)) {
                 Boundaries.builderAppend(result, input, position, input.length());
@@ -1377,7 +1379,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 Object replValue = functionReplaceCall(replParam, Undefined.instance, new Object[]{searchString, pos, input});
                 Boundaries.builderAppend(result, toString3Node.executeString(replValue));
             } else {
-                appendSubstitution(result, input, replaceString, searchString, pos, dollarProfile);
+                appendSubstitution(result, input, (String) replParam, searchString, pos, dollarProfile);
             }
             return pos + searchString.length();
         }
