@@ -196,6 +196,11 @@ public final class JSShape {
         return JSShapeData.getEnumerablePropertyNames(shape);
     }
 
+    public static UnmodifiableArrayList<Property> getPropertiesIfHasEnumerablePropertyNames(Shape shape) {
+        assert JSTruffleOptions.FastOwnKeys;
+        return JSShapeData.getPropertiesIfHasEnumerablePropertyNames(shape);
+    }
+
     /**
      * Internal constructor for null shape et al.
      */
