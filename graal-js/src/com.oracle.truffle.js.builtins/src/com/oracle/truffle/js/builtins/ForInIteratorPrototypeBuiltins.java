@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
@@ -166,24 +167,21 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 DynamicObject object = state.object;
                 if (!state.objectWasVisited) {
                     JSClass jsclass = JSObject.getJSClass(object);
+                    Shape objectShape = object.getShape();
                     boolean fastOwnKeys;
                     List<?> list;
                     int size;
                     if (fastOwnKeysProfile.profile(JSTruffleOptions.FastOwnKeys && hasOnlyShapePropertiesNode.execute(object, jsclass))) {
                         fastOwnKeys = true;
-                        list = JSShape.getEnumerablePropertyNames(object.getShape());
-                        size = list.size();
                         // if the object does not have enumerable properties, no need to enumerate
-                        if (size != 0) {
-                            list = JSShape.getProperties(object.getShape());
-                            size = list.size();
-                        }
+                        list = JSShape.getPropertiesIfHasEnumerablePropertyNames(objectShape);
+                        size = list.size();
                     } else {
                         fastOwnKeys = false;
                         list = jsclass.ownPropertyKeys(object);
                         size = listSize.execute(list);
                     }
-                    state.objectShape = object.getShape();
+                    state.objectShape = objectShape;
                     state.remainingKeys = list;
                     state.remainingKeysSize = size;
                     state.remainingKeysIndex = 0;
