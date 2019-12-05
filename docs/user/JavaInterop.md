@@ -30,11 +30,12 @@ The method `Java.addToClasspath()` can be used to programmatically add to the cl
 
 ### Polyglot Context
 The preferred method of launching GraalVM JavaScript with Java interop support instance is via polyglot `Context`.
-For that, a new `org.graalvm.polyglot.Context` is built with the `hostAccess` option set:
+For that, a new `org.graalvm.polyglot.Context` is built with the `hostAccess` option set and a `allowHostClassLookup` Predicate provided:
 
 ```java
-Context context = Context.newBuilder("js").allowHostAccess(true).build();
-context.eval("js", jsSourceCode);
+try (Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
+    context.eval("js", jsSourceCode);
+}
 ```
 
 See [graalvm.org](http://www.graalvm.org/docs/reference-manual/polyglot/) for more details.
