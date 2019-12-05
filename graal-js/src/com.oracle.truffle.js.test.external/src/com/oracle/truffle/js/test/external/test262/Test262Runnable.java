@@ -128,6 +128,7 @@ public class Test262Runnable extends TestRunnable {
                     "String.prototype.endsWith",
                     "String.prototype.includes",
                     "String.prototype.matchAll",
+                    "String.prototype.replaceAll",
                     "String.prototype.trimStart",
                     "String.prototype.trimEnd",
                     "Symbol",
@@ -214,6 +215,7 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> ES2020_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Promise.allSettled",
                     "String.prototype.matchAll",
+                    "String.prototype.replaceAll",
                     "Symbol.matchAll",
                     "coalesce-expression",
                     "dynamic-import",
