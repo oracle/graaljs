@@ -1995,7 +1995,7 @@ public class Lexer extends Scanner {
                 if (ch0 == '<' && ch1 == '!' && ch2 == '-' && ch3 == '-') {
                     skipSingleLineHTMLOpenComment();
                     continue;
-                } else if (ch0 == '-' && ch1 == '-' && ch2 == '>' && seenEOL()) {
+                } else if (ch0 == '-' && ch1 == '-' && ch2 == '>' && seenEOL() && linePosition > 0) {
                     skipSingleLineHTMLCloseComment();
                     continue;
                 }
