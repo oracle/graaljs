@@ -1203,6 +1203,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
+    "filePath" : "mjsunit/html-comments.js",
+    "status" : "FAIL",
+    "comment" : "Off-spec: expects --> comment to work at the beginning of a file."
+  }, {
     "filePath" : "mjsunit/icu-date-lord-howe.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
