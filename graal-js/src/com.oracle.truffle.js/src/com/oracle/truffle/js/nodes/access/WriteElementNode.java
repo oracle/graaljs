@@ -75,6 +75,7 @@ import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
@@ -1736,6 +1737,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Child private InteropLibrary setterInterop;
         @Child private ExportValueNode exportKey;
         @Child private ExportValueNode exportValue;
+        @Child private JSToStringNode toStringNode;
 
         TruffleObjectWriteElementTypeCacheNode(Class<? extends TruffleObject> targetClass, WriteElementTypeCacheNode next) {
             super(next);
@@ -1744,6 +1746,7 @@ public class WriteElementNode extends JSTargetableNode {
             this.exportValue = ExportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(3);
             this.keyInterop = InteropLibrary.getFactory().createDispatched(3);
+            this.toStringNode = JSToStringNode.create();
         }
 
         @Override
@@ -1757,18 +1760,7 @@ public class WriteElementNode extends JSTargetableNode {
                 return;
             }
             Object exportedValue = exportValue.execute(value);
-            if (keyInterop.isString(convertedKey)) {
-                try {
-                    interop.writeMember(truffleObject, keyInterop.asString(convertedKey), exportedValue);
-                } catch (UnknownIdentifierException e) {
-                    if (root.context.isOptionNashornCompatibilityMode() && convertedKey instanceof String) {
-                        tryInvokeSetter(truffleObject, (String) convertedKey, exportedValue, root.context);
-                    }
-                    // do nothing
-                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
-                }
-            } else if (keyInterop.fitsInLong(convertedKey)) {
+            if (interop.hasArrayElements(truffleObject) && keyInterop.fitsInLong(convertedKey)) {
                 try {
                     interop.writeArrayElement(truffleObject, keyInterop.asLong(convertedKey), exportedValue);
                 } catch (InvalidArrayIndexException e) {
@@ -1777,7 +1769,17 @@ public class WriteElementNode extends JSTargetableNode {
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
                 }
             } else {
-                // do nothing
+                String propertyKey = toStringNode.executeString(convertedKey);
+                try {
+                    interop.writeMember(truffleObject, propertyKey, exportedValue);
+                } catch (UnknownIdentifierException e) {
+                    if (root.context.isOptionNashornCompatibilityMode()) {
+                        tryInvokeSetter(truffleObject, propertyKey, exportedValue, root.context);
+                    }
+                    // do nothing
+                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
+                }
             }
         }
 
