@@ -142,8 +142,8 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     @Child private NewPromiseCapabilityNode newPromiseCapability;
     private final String functionName;
 
-    @CompilationFinal private CallTarget resumptionTarget;
-    @Child private DirectCallNode asyncCallNode;
+    @CompilationFinal private volatile CallTarget resumptionTarget;
+    @Child private volatile DirectCallNode asyncCallNode;
 
     public AsyncFunctionBodyNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode asyncResult, String functionName) {
         this.context = context;
@@ -180,17 +180,23 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     private void initializeAsyncCallTarget() {
         CompilerAsserts.neverPartOfCompilation();
         atomic(() -> {
-            AsyncFunctionRootNode asyncRootNode = new AsyncFunctionRootNode(getContext(), functionBody, writeAsyncResult, getRootNode().getSourceSection(), functionName);
-            this.resumptionTarget = Truffle.getRuntime().createCallTarget(asyncRootNode);
-            this.asyncCallNode = insert(DirectCallNode.create(resumptionTarget));
-            // these children have been transferred to the async root node and are now disowned
-            this.functionBody = null;
-            this.writeAsyncResult = null;
+            if (asyncCallTargetInitializationRequired()) {
+                AsyncFunctionRootNode asyncRootNode = new AsyncFunctionRootNode(getContext(), functionBody, writeAsyncResult, getRootNode().getSourceSection(), functionName);
+                this.resumptionTarget = Truffle.getRuntime().createCallTarget(asyncRootNode);
+                this.asyncCallNode = insert(DirectCallNode.create(resumptionTarget));
+                // these children have been transferred to the async root node and are now disowned
+                this.functionBody = null;
+                this.writeAsyncResult = null;
+            }
         });
     }
 
+    private boolean asyncCallTargetInitializationRequired() {
+        return resumptionTarget == null || asyncCallNode == null;
+    }
+
     private void ensureAsyncCallTargetInitialized() {
-        if (resumptionTarget == null || asyncCallNode == null) {
+        if (asyncCallTargetInitializationRequired()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initializeAsyncCallTarget();
         }
@@ -222,13 +228,15 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized() {
-        if (resumptionTarget == null) {
-            return create(getContext(), cloneUninitialized(functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(writeAsyncResult), functionName);
-        } else {
-            AsyncFunctionRootNode asyncFunctionRoot = (AsyncFunctionRootNode) ((RootCallTarget) resumptionTarget).getRootNode();
-            return create(getContext(), cloneUninitialized(asyncFunctionRoot.functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(asyncFunctionRoot.writeAsyncResult),
-                            functionName);
-        }
+        return atomic(() -> {
+            if (resumptionTarget == null) {
+                return create(getContext(), cloneUninitialized(functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(writeAsyncResult), functionName);
+            } else {
+                AsyncFunctionRootNode asyncFunctionRoot = (AsyncFunctionRootNode) ((RootCallTarget) resumptionTarget).getRootNode();
+                return create(getContext(), cloneUninitialized(asyncFunctionRoot.functionBody), cloneUninitialized(writeAsyncContext), cloneUninitialized(asyncFunctionRoot.writeAsyncResult),
+                                functionName);
+            }
+        });
     }
 
 }
