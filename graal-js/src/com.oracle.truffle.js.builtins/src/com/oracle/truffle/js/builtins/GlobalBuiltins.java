@@ -640,7 +640,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Source sourceFromPath(String path, JSRealm realm) {
             Source source = null;
             JSContext ctx = getContext();
-            if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL()) && path.indexOf(':') != -1) {
+            if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL() || ctx.isOptionLoadFromClasspath()) && path.indexOf(':') != -1) {
                 source = sourceFromURI(path);
                 if (source != null) {
                     return source;
@@ -663,23 +663,27 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         private Source sourceFromURI(String resource) {
-            if (JSTruffleOptions.SubstrateVM || !getContext().isOptionNashornCompatibilityMode() && !getContext().isOptionLoadFromURL()) {
+            CompilerAsserts.neverPartOfCompilation();
+            if (JSTruffleOptions.SubstrateVM) {
                 return null;
             }
-            if ((resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) {
+            if ((getContext().isOptionNashornCompatibilityMode() && (resource.startsWith(LOAD_NASHORN) || resource.startsWith(LOAD_CLASSPATH) || resource.startsWith(LOAD_FX))) ||
+                            (getContext().isOptionLoadFromClasspath() && resource.startsWith(LOAD_CLASSPATH))) {
                 return sourceFromResourceURL(resource);
             }
-
-            try {
-                URL url = new URL(resource);
-                return sourceFromURL(url);
-            } catch (MalformedURLException e) {
+            if (getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromURL()) {
+                try {
+                    URL url = new URL(resource);
+                    return sourceFromURL(url);
+                } catch (MalformedURLException e) {
+                }
             }
             return null;
         }
 
         private Source sourceFromResourceURL(String resource) {
-            assert getContext().isOptionNashornCompatibilityMode();
+            CompilerAsserts.neverPartOfCompilation();
+            assert getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromClasspath();
             InputStream stream = null;
             if (resource.startsWith(LOAD_NASHORN)) {
                 if (resource.equals(NASHORN_PARSER_JS) || resource.equals(NASHORN_MOZILLA_COMPAT_JS)) {
