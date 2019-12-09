@@ -254,4 +254,13 @@ public class ProxyObjectTest {
         assertEquals(Arrays.asList("p1", "p2", "p3"), context.eval(ID, "Object.keys(Object.fromEntries(proxyArr));").as(List.class));
         assertEquals(Arrays.asList(41, 42, 43), context.eval(ID, "Object.values(Object.fromEntries(proxyArr));").as(List.class));
     }
+    
+    @Test
+    public void objectNumericKeys() {
+        context.getBindings(ID).putMember("proxyMap", ProxyObject.fromMap(new HashMap<>()));
+        context.eval(ID, "proxyMap[\"1\"] = \"123\";");
+        assertEquals("123", context.eval(ID, "proxyMap[\"1\"];").as(String.class));
+        context.eval(ID, "proxyMap[\"123\"] = \"abc\";");
+        assertEquals("abc", context.eval(ID, "proxyMap[\"123\"];").as(String.class));      
+    }    
 }

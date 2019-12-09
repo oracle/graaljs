@@ -1770,7 +1770,21 @@ public class WriteElementNode extends JSTargetableNode {
                 }
             } else if (keyInterop.fitsInLong(convertedKey)) {
                 try {
+                    if (interop.hasArrayElements(truffleObject)) {
                     interop.writeArrayElement(truffleObject, keyInterop.asLong(convertedKey), exportedValue);
+                    } else if (convertedKey instanceof Long) {
+                        String indexAsString = Long.toString((long)convertedKey);
+                        try {
+                            interop.writeMember(truffleObject, indexAsString, exportedValue);
+                        } catch (UnknownIdentifierException e) {
+                            if (root.context.isOptionNashornCompatibilityMode()) {
+                                tryInvokeSetter(truffleObject, indexAsString, exportedValue, root.context);
+                            }
+                            // do nothing       
+                        }                    
+                    } else {
+                        // do nothing
+                    }                 
                 } catch (InvalidArrayIndexException e) {
                     // do nothing
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
