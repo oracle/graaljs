@@ -168,7 +168,7 @@ public final class JSContextOptions {
     @CompilationFinal private boolean v8LegacyConst;
 
     public static final String NASHORN_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "nashorn-compat";
-    @Option(name = NASHORN_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the OpenJDK Nashorn engine.") //
+    @Option(name = NASHORN_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the OpenJDK Nashorn engine. Do not use with untrusted code.") //
     public static final OptionKey<Boolean> NASHORN_COMPATIBILITY_MODE = new OptionKey<>(false);
     @CompilationFinal private boolean nashornCompatibilityMode;
 
@@ -238,11 +238,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> LOAD = new OptionKey<>(true);
 
     public static final String LOAD_FROM_URL_NAME = JS_OPTION_PREFIX + "load-from-url";
-    @Option(name = LOAD_FROM_URL_NAME, category = OptionCategory.USER, help = "Allow 'load' to access URLs.") //
+    @Option(name = LOAD_FROM_URL_NAME, category = OptionCategory.USER, help = "Allow 'load' to access URLs. Do not use with untrusted code.") //
     public static final OptionKey<Boolean> LOAD_FROM_URL = new OptionKey<>(false);
 
     public static final String LOAD_FROM_CLASSPATH_NAME = JS_OPTION_PREFIX + "load-from-classpath";
-    @Option(name = LOAD_FROM_CLASSPATH_NAME, category = OptionCategory.USER, help = "Allow 'load' to access 'classpath:' URLs.") //
+    @Option(name = LOAD_FROM_CLASSPATH_NAME, category = OptionCategory.USER, help = "Allow 'load' to access 'classpath:' URLs. Do not use with untrusted code.") //
     public static final OptionKey<Boolean> LOAD_FROM_CLASSPATH = new OptionKey<>(false);
 
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
