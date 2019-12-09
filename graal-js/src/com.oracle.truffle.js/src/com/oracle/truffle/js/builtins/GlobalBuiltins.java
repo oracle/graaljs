@@ -645,7 +645,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             Source source = null;
             JSContext ctx = getContext();
             if ((ctx.isOptionNashornCompatibilityMode() || ctx.isOptionLoadFromURL() || ctx.isOptionLoadFromClasspath()) && path.indexOf(':') != -1) {
-                source = sourceFromURI(path);
+                source = sourceFromURI(path, realm);
                 if (source != null) {
                     return source;
                 }
@@ -666,7 +666,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return source;
         }
 
-        private Source sourceFromURI(String resource) {
+        private Source sourceFromURI(String resource, JSRealm realm) {
             CompilerAsserts.neverPartOfCompilation();
             if (JSTruffleOptions.SubstrateVM) {
                 return null;
@@ -678,7 +678,19 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (getContext().isOptionNashornCompatibilityMode() || getContext().isOptionLoadFromURL()) {
                 try {
                     URL url = new URL(resource);
-                    return sourceFromURL(url);
+                    if ("file".equals(url.getProtocol())) {
+                        String path = url.getPath();
+                        if (!path.isEmpty()) {
+                            try {
+                                TruffleFile file = realm.getEnv().getPublicTruffleFile(path);
+                                return sourceFromTruffleFile(file);
+                            } catch (SecurityException e) {
+                                throw Errors.createErrorFromException(e);
+                            }
+                        }
+                    } else {
+                        return sourceFromURL(url);
+                    }
                 } catch (MalformedURLException e) {
                 }
             }
