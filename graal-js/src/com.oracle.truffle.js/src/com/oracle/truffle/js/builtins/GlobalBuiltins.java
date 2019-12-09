@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -432,7 +433,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             String outStr = "";
             String errStr = "";
             Process process = null;
-            IOException[] exception = new IOException[2];
             try {
                 TruffleProcessBuilder builder = env.newProcessBuilder(cmds);
 
@@ -450,15 +450,13 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     }
                 }
 
+                ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
+                ByteArrayOutputStream errBuffer = new ByteArrayOutputStream();
+
+                builder.redirectOutput(builder.createRedirectToStream(outBuffer));
+                builder.redirectError(builder.createRedirectToStream(errBuffer));
+
                 process = builder.start();
-                StringBuilder outBuffer = new StringBuilder();
-                StringBuilder errBuffer = new StringBuilder();
-
-                Thread outThread = captureThread(env, exception, 0, outBuffer, process.getInputStream());
-                Thread errThread = captureThread(env, exception, 1, errBuffer, process.getErrorStream());
-
-                outThread.start();
-                errThread.start();
 
                 try (OutputStreamWriter outputStream = new OutputStreamWriter(process.getOutputStream())) {
                     if (input != null) {
@@ -468,8 +466,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 }
 
                 exitCode = process.waitFor();
-                outThread.join();
-                errThread.join();
 
                 outStr = outBuffer.toString();
                 errStr = errBuffer.toString();
@@ -488,28 +484,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             JSObject.set(globalObj, "$ERR", errStr);
             JSObject.set(globalObj, "$EXIT", exitCode);
 
-            for (int i = 0; i < exception.length; i++) {
-                if (exception[i] != null) {
-                    throw Errors.createTypeError(exception[i].getMessage());
-                }
-            }
             return outStr;
-        }
-
-        private static Thread captureThread(TruffleLanguage.Env env, IOException[] exception, int exceptionIdx, StringBuilder outBuffer, InputStream stream) {
-            return env.createThread(new Runnable() {
-                @Override
-                public void run() {
-                    char[] buffer = new char[1024];
-                    try (InputStreamReader inputStream = new InputStreamReader(stream)) {
-                        for (int length; (length = inputStream.read(buffer, 0, buffer.length)) != -1;) {
-                            outBuffer.append(buffer, 0, length);
-                        }
-                    } catch (IOException ex) {
-                        exception[exceptionIdx] = ex;
-                    }
-                }
-            }, env.newContextBuilder().build());
         }
     }
 
