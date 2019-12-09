@@ -241,6 +241,10 @@ public final class JSContextOptions {
     @Option(name = LOAD_FROM_URL_NAME, category = OptionCategory.USER, help = "Allow 'load' to access URLs.") //
     public static final OptionKey<Boolean> LOAD_FROM_URL = new OptionKey<>(false);
 
+    public static final String LOAD_FROM_CLASSPATH_NAME = JS_OPTION_PREFIX + "load-from-classpath";
+    @Option(name = LOAD_FROM_CLASSPATH_NAME, category = OptionCategory.USER, help = "Allow 'load' to access 'classpath:' URLs.") //
+    public static final OptionKey<Boolean> LOAD_FROM_CLASSPATH = new OptionKey<>(false);
+
     public static final String GRAAL_BUILTIN_NAME = JS_OPTION_PREFIX + "graal-builtin";
     @Option(name = GRAAL_BUILTIN_NAME, category = OptionCategory.USER, help = "Provide 'Graal' global property.") //
     public static final OptionKey<Boolean> GRAAL_BUILTIN = new OptionKey<>(true);
@@ -622,6 +626,10 @@ public final class JSContextOptions {
 
     public boolean isLoadFromURL() {
         return LOAD_FROM_URL.getValue(optionValues);
+    }
+
+    public boolean isLoadFromClasspath() {
+        return LOAD_FROM_CLASSPATH.getValue(optionValues);
     }
 
     public boolean isBigInt() {
