@@ -1278,7 +1278,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     public abstract static class JSStringReplaceAllNode extends JSStringReplaceBaseNode {
         private final ConditionProfile isSearchValueEmpty = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isRegExp = ConditionProfile.createBinaryProfile();
-        @Child private TRegexUtil.TRegexCompiledRegexSingleFlagAccessor globalFlagAccessor = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(TRegexUtil.Props.Flags.GLOBAL);
+
+        @Child private IsRegExpNode isRegExpNode;
+        @Child private PropertyGetNode getFlagsNode;
 
         public JSStringReplaceAllNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1317,10 +1319,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object searchVal = searchValueProfile.profile(searchValue);
             Object replaceVal = replaceValueProfile.profile(replaceValue);
             if (isSpecialProfile.profile(!(searchVal == Undefined.instance || searchVal == Null.instance))) {
-                if (isRegExp.profile(JSRegExp.isJSRegExp(searchValue))) {
-                    DynamicObject searchRegExp = (DynamicObject) searchValue;
-
-                    if (!globalFlagAccessor.get(JSRegExp.getCompiledRegex(searchRegExp))) {
+                if (isRegExp.profile(getIsRegExpNode().executeBoolean(searchValue))) {
+                    Object flags = getFlags(searchValue);
+                    requireObjectCoercible(flags);
+                    if (toString(flags).indexOf('g') == -1) {
                         throw Errors.createTypeError("Only global regexps allowed");
                     }
                 }
@@ -1345,9 +1347,16 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             StringBuilder result = new StringBuilder();
             int position = 0;
 
+            boolean functionalReplace = isCallableNode.executeBoolean(replParam);
+            Object replaceValue;
+            if (functionalReplaceProfile.profile(functionalReplace)) {
+                replaceValue = replParam;
+            } else {
+                replaceValue = toString3Node.executeString(replParam);
+            }
             if (isSearchValueEmpty.profile(searchString.isEmpty())) {
                 while (position <= thisStr.length()) {
-                    builtinReplace(searchString, replParam, thisStr, position, result);
+                    builtinReplace(searchString, functionalReplace, replaceValue, thisStr, position, result);
                     if (position < thisStr.length()) {
                         Boundaries.builderAppend(result, thisStr.charAt(position));
                     }
@@ -1356,17 +1365,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return Boundaries.builderToString(result);
             }
             while (position < thisStr.length()) {
-                position = builtinReplace(searchString, replParam, thisStr, position, result);
+                position = builtinReplace(searchString, functionalReplace, replaceValue, thisStr, position, result);
             }
             return Boundaries.builderToString(result);
         }
 
-        private int builtinReplace(String searchString, Object replParam, String input, int position, StringBuilder result) {
-            boolean functionalReplace = isCallableNode.executeBoolean(replParam);
-            String replaceString = null;
-            if (!functionalReplaceProfile.profile(functionalReplace)) {
-                replaceString = toString3Node.executeString(replParam);
-            }
+        private int builtinReplace(String searchString, boolean functionalReplace, Object replParam, String input, int position, StringBuilder result) {
             int pos = input.indexOf(searchString, position);
             if (replaceNecessaryProfile.profile(pos < 0)) {
                 Boundaries.builderAppend(result, input, position, input.length());
@@ -1377,7 +1381,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 Object replValue = functionReplaceCall(replParam, Undefined.instance, new Object[]{searchString, pos, input});
                 Boundaries.builderAppend(result, toString3Node.executeString(replValue));
             } else {
-                appendSubstitution(result, input, replaceString, searchString, pos, dollarProfile);
+                appendSubstitution(result, input, (String) replParam, searchString, pos, dollarProfile);
             }
             return pos + searchString.length();
         }
@@ -1395,6 +1399,22 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 ReplaceStringParser.processParsed(parsedReplaceParam, new ReplaceStringConsumer(result, input, replaceString, searchString, pos), null);
             }
             return pos + searchString.length();
+        }
+
+        private IsRegExpNode getIsRegExpNode() {
+            if (isRegExpNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isRegExpNode = insert(IsRegExpNode.create(getContext()));
+            }
+            return isRegExpNode;
+        }
+
+        private Object getFlags(Object regexp) {
+            if (getFlagsNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getFlagsNode = insert(PropertyGetNode.create(JSRegExp.FLAGS, getContext()));
+            }
+            return getFlagsNode.getValue(regexp);
         }
     }
 
