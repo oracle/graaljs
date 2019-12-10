@@ -1534,6 +1534,10 @@ public class JSContext {
         return contextOptions.isLoadFromURL();
     }
 
+    public boolean isOptionLoadFromClasspath() {
+        return contextOptions.isLoadFromClasspath();
+    }
+
     public Locale getLocale() {
         Locale loc = locale;
         if (loc == null) {
