@@ -254,4 +254,45 @@ public class ProxyObjectTest {
         assertEquals(Arrays.asList("p1", "p2", "p3"), context.eval(ID, "Object.keys(Object.fromEntries(proxyArr));").as(List.class));
         assertEquals(Arrays.asList(41, 42, 43), context.eval(ID, "Object.values(Object.fromEntries(proxyArr));").as(List.class));
     }
+
+    @Test
+    public void writeNumericMemberAsNumber() {
+        HashMap<String, Object> map = new HashMap<>();
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        context.eval(ID, "proxyObj[42] = 'foo'");
+        Value value = (Value) map.get("42");
+        assertEquals(value.asString(), "foo");
+    }
+
+    @Test
+    public void writeNumericMemberAsString() {
+        HashMap<String, Object> map = new HashMap<>();
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        context.eval(ID, "proxyObj['42'] = 'foo'");
+        Value value = (Value) map.get("42");
+        assertEquals(value.asString(), "foo");
+    }
+
+    @Test
+    public void readNumericMemberAsNumber() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("42", "foo");
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        Value value = context.eval(ID, "proxyObj[42]");
+        assertEquals(value.asString(), "foo");
+    }
+
+    @Test
+    public void readNumericMemberAsString() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("42", "foo");
+        ProxyObject proxyObject = ProxyObject.fromMap(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        Value value = context.eval(ID, "proxyObj['42']");
+        assertEquals(value.asString(), "foo");
+    }
+
 }
