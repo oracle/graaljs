@@ -200,6 +200,17 @@ describe('Object', function () {
             assert.strictEqual(names.indexOf("b") >= 0, true);
             assert.strictEqual(names.indexOf("c") >= 0, true);
         });
+        it('should not return duplicate entries', function () {
+            var oProto = {a: 'aa', c: 'cc'};
+            var o = Object.create(oProto);
+            o.a = 'aaa';
+            o.b = 'bbb';
+            var names = module.Object_GetPropertyNames(o);
+            assert.strictEqual(names.length, 3);
+            assert.strictEqual(names[0], 'a');
+            assert.strictEqual(names[1], 'b');
+            assert.strictEqual(names[2], 'c');
+        });
     });
     describe('Has by name', function () {
         it('querying simple properties by name', function () {
