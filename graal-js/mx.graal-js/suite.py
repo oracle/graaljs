@@ -216,6 +216,31 @@ suite = {
       "workingSets" : "Truffle,JavaScript",
     },
 
+    "com.oracle.truffle.js.jdk8" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.js",
+      ],
+      "overlayTarget" : "com.oracle.truffle.js",
+      "javaCompliance" : "8",
+      "checkstyle" : "com.oracle.truffle.js",
+      "workingSets" : "Truffle,JavaScript",
+    },
+
+    "com.oracle.truffle.js.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.js",
+      ],
+      "overlayTarget" : "com.oracle.truffle.js",
+      "multiReleaseJarVersion" : "11",
+      "javaCompliance" : "11+",
+      "checkstyle" : "com.oracle.truffle.js",
+      "workingSets" : "Truffle,JavaScript",
+    },
+
     "com.oracle.truffle.js.parser" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -452,7 +477,10 @@ suite = {
         ],
       },
       "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.js.parser"],
+      "dependencies" : [
+        "com.oracle.truffle.js",
+        "com.oracle.truffle.js.parser",
+      ],
       "distDependencies" : [
         "regex:TREGEX",
         "truffle:TRUFFLE_API",
