@@ -42,8 +42,6 @@ package com.oracle.truffle.js.builtins.helper;
 
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
 
-import java.lang.reflect.Field;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -54,8 +52,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
-
-import sun.misc.Unsafe;
+import com.oracle.truffle.js.runtime.util.Fences;
 
 /**
  * Implementation of the synchronization primitives of ECMA2017 Shared Memory model.
@@ -66,35 +63,10 @@ public final class SharedMemorySync {
         // should not be constructed
     }
 
-    private static final class SyncUtils {
-        @TruffleBoundary
-        public static void loadFence() {
-            UNSAFE.loadFence();
-        }
-
-        @TruffleBoundary
-        public static void storeFence() {
-            UNSAFE.storeFence();
-        }
-
-        private static final Unsafe UNSAFE = getTheUnsafe();
-
-        @SuppressWarnings("restriction")
-        private static Unsafe getTheUnsafe() {
-            try {
-                Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
-                singleoneInstanceField.setAccessible(true);
-                return (Unsafe) singleoneInstanceField.get(null);
-            } catch (IllegalArgumentException | SecurityException | NoSuchFieldException | IllegalAccessException e) {
-                throw new RuntimeException();
-            }
-        }
-    }
-
     // ##### Getters and setters with ordering and memory barriers
     @TruffleBoundary
     public static int doVolatileGet(DynamicObject target, int intArrayOffset) {
-        SyncUtils.loadFence();
+        Fences.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) array;
         return typedArray.getInt(target, intArrayOffset, true);
@@ -103,7 +75,7 @@ public final class SharedMemorySync {
     // ##### Getters and setters with ordering and memory barriers
     @TruffleBoundary
     public static BigInt doVolatileGetBigInt(DynamicObject target, int intArrayOffset) {
-        SyncUtils.loadFence();
+        Fences.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) array;
         return typedArray.getBigInt(target, intArrayOffset, true);
@@ -114,7 +86,7 @@ public final class SharedMemorySync {
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) array;
         typedArray.setInt(target, index, value, true);
-        SyncUtils.storeFence();
+        Fences.releaseFence();
     }
 
     @TruffleBoundary
@@ -122,7 +94,7 @@ public final class SharedMemorySync {
         TypedArray array = typedArrayGetArrayType(target);
         TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) array;
         typedArray.setBigInt(target, index, value, true);
-        SyncUtils.storeFence();
+        Fences.releaseFence();
     }
 
     // ##### Atomic CAS primitives
