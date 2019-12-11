@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -48,7 +51,11 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.*;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -57,7 +64,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-final class CommonJsResolution {
+final class CommonJSResolution {
 
     private static final String JS_EXT = ".js";
     private static final String JSON_EXT = ".json";
@@ -75,7 +82,7 @@ final class CommonJsResolution {
                     "stream", "string_decoder", "tls", "trace_events", "tty", "url", "util",
                     "v8", "vm", "worker_threads", "zlib"};
 
-    private CommonJsResolution() {
+    private CommonJSResolution() {
     }
 
     static boolean isCoreModule(String moduleIdentifier) {
@@ -103,7 +110,7 @@ final class CommonJsResolution {
     }
 
     /**
-     * CommonJs `require` implementation based on the Node.js runtime loading mechanism as described
+     * CommonJS `require` implementation based on the Node.js runtime loading mechanism as described
      * in the Node.js documentation: https://nodejs.org/api/modules.html.
      *
      * @formatter:off
@@ -297,7 +304,7 @@ final class CommonJsResolution {
                     return null;
                 }
                 DynamicObject parse = (DynamicObject) realm.getJsonParseFunctionObject();
-                String jsonString = source.getCharacters().toString().replace('\n', ' ');
+                String jsonString = source.getCharacters().toString();
                 Object jsonObj = JSFunction.call(JSArguments.create(parse, parse, jsonString));
                 if (JSObject.isJSObject(jsonObj)) {
                     return (DynamicObject) jsonObj;
@@ -322,13 +329,7 @@ final class CommonJsResolution {
     }
 
     private static boolean isPathFileName(String moduleIdentifier) {
-        if (moduleIdentifier.length() > 0 && moduleIdentifier.charAt(0) == '/') {
-            return true;
-        } else if (moduleIdentifier.length() > 1 && "./".equals(moduleIdentifier.substring(0, 2))) {
-            return true;
-        } else {
-            return moduleIdentifier.length() > 2 && "../".equals(moduleIdentifier.substring(0, 3));
-        }
+        return moduleIdentifier.startsWith("/") || moduleIdentifier.startsWith("./") || moduleIdentifier.startsWith("../");
     }
 
     private static TruffleFile joinPaths(TruffleLanguage.Env env, TruffleFile p1, String p2) {

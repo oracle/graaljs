@@ -40,33 +40,35 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSException;
 
-public abstract class CommonJsFilenameGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
+public abstract class CommonJSResolveBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
-    CommonJsFilenameGetterBuiltin(JSContext context, JSBuiltin builtin) {
+    CommonJSResolveBuiltin(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
     }
 
     @Specialization
-    protected Object require() {
-        return getCurrentFileName();
+    protected String resolve(String moduleIdentifier) {
+        TruffleFile cwd = CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext());
+        TruffleFile maybeModule = CommonJSResolution.resolve(getContext(), moduleIdentifier, cwd);
+        if (maybeModule == null) {
+            throw fail(moduleIdentifier);
+        } else {
+            return maybeModule.getAbsoluteFile().normalize().toString();
+        }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private String getCurrentFileName() {
-        String filePath = CommonJsResolution.getCurrentFileNameFromStack();
-        if (filePath != null) {
-            TruffleFile truffleFile = getContext().getRealm().getEnv().getPublicTruffleFile(filePath);
-            assert truffleFile.isRegularFile();
-            return truffleFile.normalize().toString();
-        }
-        return "unknown";
+    @TruffleBoundary
+    private static JSException fail(String moduleIdentifier) {
+        return JSException.create(JSErrorType.TypeError, "Cannot find module: '" + moduleIdentifier + "'");
     }
 
 }

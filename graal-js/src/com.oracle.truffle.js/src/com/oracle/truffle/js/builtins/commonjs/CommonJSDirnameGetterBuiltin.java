@@ -40,32 +40,33 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
-import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.runtime.*;
+import com.oracle.truffle.js.runtime.JSContext;
 
-public abstract class CommonJsDirnameGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
+public abstract class CommonJSDirnameGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
-    CommonJsDirnameGetterBuiltin(JSContext context, JSBuiltin builtin) {
+    CommonJSDirnameGetterBuiltin(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
     }
 
     @Specialization
-    protected Object require() {
+    protected Object getDirName() {
         return getCurrentFolderName();
     }
 
     @CompilerDirectives.TruffleBoundary
     private String getCurrentFolderName() {
-        String filePath = CommonJsResolution.getCurrentFileNameFromStack();
+        String filePath = CommonJSResolution.getCurrentFileNameFromStack();
         if (filePath != null) {
             TruffleFile truffleFile = getContext().getRealm().getEnv().getPublicTruffleFile(filePath);
             assert truffleFile.isRegularFile() && truffleFile.getParent().isDirectory();
             return truffleFile.getParent().normalize().toString();
         }
-        return CommonJsRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext()).getAbsoluteFile().toString();
+        return CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext()).getAbsoluteFile().toString();
     }
 
 }

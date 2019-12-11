@@ -40,35 +40,33 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSErrorType;
-import com.oracle.truffle.js.runtime.JSException;
 
-public abstract class CommonJsResolveBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
+public abstract class CommonJSFilenameGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
-    CommonJsResolveBuiltin(JSContext context, JSBuiltin builtin) {
+    CommonJSFilenameGetterBuiltin(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
     }
 
     @Specialization
-    protected String require(String moduleIdentifier) {
-        TruffleFile cwd = CommonJsRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext());
-        TruffleFile maybeModule = CommonJsResolution.resolve(getContext(), moduleIdentifier, cwd);
-        if (maybeModule == null) {
-            throw fail(moduleIdentifier);
-        } else {
-            return maybeModule.getAbsoluteFile().normalize().toString();
-        }
+    protected Object getFileName() {
+        return getCurrentFileName();
     }
 
-    @TruffleBoundary
-    private static JSException fail(String moduleIdentifier) {
-        return JSException.create(JSErrorType.TypeError, "Cannot find module: '" + moduleIdentifier + "'");
+    @CompilerDirectives.TruffleBoundary
+    private String getCurrentFileName() {
+        String filePath = CommonJSResolution.getCurrentFileNameFromStack();
+        if (filePath != null) {
+            TruffleFile truffleFile = getContext().getRealm().getEnv().getPublicTruffleFile(filePath);
+            assert truffleFile.isRegularFile();
+            return truffleFile.normalize().toString();
+        }
+        return "unknown";
     }
 
 }

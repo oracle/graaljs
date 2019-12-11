@@ -40,20 +40,35 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import org.graalvm.polyglot.*;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.*;
-import java.nio.file.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static com.oracle.truffle.js.runtime.JSContextOptions.*;
+
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_CWD_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.COMMONJS_REQUIRE_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.GLOBAL_PROPERTY_NAME;
 import static org.junit.Assert.assertEquals;
 
-public class CommonJsRequireTest {
+public class CommonJSRequireTest {
 
     private static final String PATH_OF_TESTS = "src/com.oracle.truffle.js.test/commonjs";
 
@@ -72,12 +87,13 @@ public class CommonJsRequireTest {
     private static Context testContext(Path tempFolder, OutputStream out, OutputStream err) {
         Map<String, String> options = new HashMap<>();
         options.put(COMMONJS_REQUIRE_NAME, "true");
-        options.put(COMMONJS_REQUIRE_CWS_NAME, tempFolder.toAbsolutePath().toString());
+        options.put(COMMONJS_REQUIRE_CWD_NAME, tempFolder.toAbsolutePath().toString());
         return testContext(out, err, options);
     }
 
     private static Path getTestRootFolder() {
-        Path root = FileSystems.getDefault().getPath(PATH_OF_TESTS);
+        String testPath = System.getProperty("commonjs.test.path", PATH_OF_TESTS);
+        Path root = FileSystems.getDefault().getPath(testPath);
         if (!Files.exists(root)) {
             throw new AssertionError("Unable to locate test folder: " + root);
         }
@@ -215,22 +231,22 @@ public class CommonJsRequireTest {
 
     @Test
     public void unknownModule() {
-        assertThrows("require('unknown')", "TypeError: Cannot load CommonJs module: 'unknown'");
+        assertThrows("require('unknown')", "TypeError: Cannot load CommonJS module: 'unknown'");
     }
 
     @Test
     public void unknownFile() {
-        assertThrows("require('./unknown')", "TypeError: Cannot load CommonJs module: './unknown'");
+        assertThrows("require('./unknown')", "TypeError: Cannot load CommonJS module: './unknown'");
     }
 
     @Test
     public void unknownFileWithExt() {
-        assertThrows("require('./unknown.js')", "TypeError: Cannot load CommonJs module: './unknown.js'");
+        assertThrows("require('./unknown.js')", "TypeError: Cannot load CommonJS module: './unknown.js'");
     }
 
     @Test
     public void unknownAbsolute() {
-        assertThrows("require('/path/to/unknown.js')", "TypeError: Cannot load CommonJs module: '/path/to/unknown.js'");
+        assertThrows("require('/path/to/unknown.js')", "TypeError: Cannot load CommonJS module: '/path/to/unknown.js'");
     }
 
     @Test
@@ -313,12 +329,12 @@ public class CommonJsRequireTest {
     public void testWrongCwd() {
         Map<String, String> options = new HashMap<>();
         options.put(COMMONJS_REQUIRE_NAME, "true");
-        options.put(COMMONJS_REQUIRE_CWS_NAME, "/wrong/or/not/existing/folder");
+        options.put(COMMONJS_REQUIRE_CWD_NAME, "/wrong/or/not/existing/folder");
         try (Context cx = testContext(options)) {
             cx.eval("js", "__dirname");
             assert false : "Should throw";
         } catch (PolyglotException e) {
-            Assert.assertEquals("Error: Invalid Commonjs root folder: /wrong/or/not/existing/folder", e.getMessage());
+            Assert.assertEquals("Error: Invalid CommonJS root folder: /wrong/or/not/existing/folder", e.getMessage());
         }
     }
 
@@ -338,7 +354,7 @@ public class CommonJsRequireTest {
         Path root = getTestRootFolder();
         Map<String, String> options = new HashMap<>();
         options.put(COMMONJS_REQUIRE_NAME, "true");
-        options.put(COMMONJS_REQUIRE_CWS_NAME, root.toAbsolutePath().toString());
+        options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
         // requiring the 'fs' and 'path' built-in modules will resolve `module.js`
         options.put(COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME, "path:./module,fs:./module.js");
         try (Context cx = testContext(options)) {
@@ -353,7 +369,7 @@ public class CommonJsRequireTest {
         Map<String, String> options = new HashMap<>();
         options.put(GLOBAL_PROPERTY_NAME, "true");
         options.put(COMMONJS_REQUIRE_NAME, "true");
-        options.put(COMMONJS_REQUIRE_CWS_NAME, root.toAbsolutePath().toString());
+        options.put(COMMONJS_REQUIRE_CWD_NAME, root.toAbsolutePath().toString());
         // At context creation, the `test-globals` module will be required.
         options.put(COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME, "test-globals");
         try (Context cx = testContext(options)) {
@@ -370,7 +386,7 @@ public class CommonJsRequireTest {
             cx.eval("js", "require('./module.mjs');");
             assert false : "Should throw";
         } catch (PolyglotException e) {
-            Assert.assertEquals("TypeError: Cannot load CommonJs module: './module.mjs'", e.getMessage());
+            Assert.assertEquals("TypeError: Cannot load CommonJS module: './module.mjs'", e.getMessage());
         }
     }
 

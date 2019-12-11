@@ -54,7 +54,7 @@ import java.util.SplittableRandom;
 import java.util.TimeZone;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.js.builtins.commonjs.CommonJsRequireBuiltin;
+import com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -244,8 +244,8 @@ public class JSRealm {
     private Object callFunctionObject;
     private Object reflectApplyFunctionObject;
     private Object reflectConstructFunctionObject;
-    private Object commonJsRequireFunctionObject;
-    private Map<String, DynamicObject> commonJsPreLoadedBuiltins;
+    private Object commonJSRequireFunctionObject;
+    private Map<String, DynamicObject> commonJSPreLoadedBuiltins;
     private Object jsonParseFunctionObject;
 
     private final DynamicObject arrayBufferConstructor;
@@ -384,7 +384,7 @@ public class JSRealm {
     /**
      * Per-realm CommonJs `require` cache.
      */
-    private final Map<TruffleFile, DynamicObject> commonJsRequireCache;
+    private final Map<TruffleFile, DynamicObject> commonJSRequireCache;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -610,10 +610,10 @@ public class JSRealm {
         this.errorWriter = new PrintWriterWrapper(errorStream, true);
         this.consoleUtil = new JSConsoleUtil();
 
-        if (context.getContextOptions().isCommonJsRequire()) {
-            this.commonJsRequireCache = new HashMap<>();
+        if (context.getContextOptions().isCommonJSRequire()) {
+            this.commonJSRequireCache = new HashMap<>();
         } else {
-            this.commonJsRequireCache = null;
+            this.commonJSRequireCache = null;
         }
     }
 
@@ -996,8 +996,8 @@ public class JSRealm {
         return reflectConstructFunctionObject;
     }
 
-    public final Object getCommonJsRequireFunctionObject() {
-        return commonJsRequireFunctionObject;
+    public final Object getCommonJSRequireFunctionObject() {
+        return commonJSRequireFunctionObject;
     }
 
     public final Object getJsonParseFunctionObject() {
@@ -1213,52 +1213,48 @@ public class JSRealm {
     }
 
     @TruffleBoundary
-    private void addCommonJsGlobals() {
-        if (getContext().getContextOptions().isCommonJsRequire()) {
+    private void addCommonJSGlobals() {
+        if (getContext().getContextOptions().isCommonJSRequire()) {
             String cwdOption = getContext().getContextOptions().getRequireCwd();
             TruffleFile cwdFile = getEnv().getPublicTruffleFile(cwdOption);
-            if (cwdOption != null && !cwdFile.exists()) {
-                throw Errors.createError("Invalid Commonjs root folder: " + cwdOption);
+            try {
+                if (cwdOption != null && !cwdFile.exists()) {
+                    throw Errors.createError("Invalid CommonJS root folder: " + cwdOption);
+                }
+            } catch (SecurityException se) {
+                throw Errors.createError("Access denied to CommonJS root folder: " + cwdOption);
             }
             // Define `require` and other globals in global scope.
-            DynamicObject requireFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJsRequireBuiltin.REQUIRE_PROPERTY_NAME);
-            DynamicObject resolveFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJsRequireBuiltin.RESOLVE_PROPERTY_NAME);
-            JSObject.set(requireFunction, CommonJsRequireBuiltin.RESOLVE_PROPERTY_NAME, resolveFunction);
-            putGlobalProperty(CommonJsRequireBuiltin.REQUIRE_PROPERTY_NAME, requireFunction);
+            DynamicObject requireFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJSRequireBuiltin.REQUIRE_PROPERTY_NAME);
+            DynamicObject resolveFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, CommonJSRequireBuiltin.RESOLVE_PROPERTY_NAME);
+            JSObject.set(requireFunction, CommonJSRequireBuiltin.RESOLVE_PROPERTY_NAME, resolveFunction);
+            putGlobalProperty(CommonJSRequireBuiltin.REQUIRE_PROPERTY_NAME, requireFunction);
             DynamicObject dirnameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, "dirnameGetter");
-            JSObject.defineOwnProperty(getGlobalObject(), CommonJsRequireBuiltin.DIRNAME_VAR_NAME, PropertyDescriptor.createAccessor(dirnameGetter, Undefined.instance, true, false));
+            JSObject.defineOwnProperty(getGlobalObject(), CommonJSRequireBuiltin.DIRNAME_VAR_NAME, PropertyDescriptor.createAccessor(dirnameGetter, Undefined.instance, true, false));
             DynamicObject filenameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, "filenameGetter");
-            JSObject.defineOwnProperty(getGlobalObject(), CommonJsRequireBuiltin.FILENAME_VAR_NAME, PropertyDescriptor.createAccessor(filenameGetter, Undefined.instance, true, false));
+            JSObject.defineOwnProperty(getGlobalObject(), CommonJSRequireBuiltin.FILENAME_VAR_NAME, PropertyDescriptor.createAccessor(filenameGetter, Undefined.instance, true, false));
             DynamicObject moduleObject = JSUserObject.create(context);
             DynamicObject exportsObject = JSUserObject.create(context);
-            JSObject.set(getGlobalObject(), CommonJsRequireBuiltin.MODULE_PROPERTY_NAME, moduleObject);
-            JSObject.set(getGlobalObject(), CommonJsRequireBuiltin.EXPORTS_PROPERTY_NAME, moduleObject);
-            JSObject.set(moduleObject, CommonJsRequireBuiltin.EXPORTS_PROPERTY_NAME, exportsObject);
-            this.commonJsRequireFunctionObject = JSObject.get(getGlobalObject(), CommonJsRequireBuiltin.REQUIRE_PROPERTY_NAME);
+            JSObject.set(getGlobalObject(), CommonJSRequireBuiltin.MODULE_PROPERTY_NAME, moduleObject);
+            JSObject.set(getGlobalObject(), CommonJSRequireBuiltin.EXPORTS_PROPERTY_NAME, moduleObject);
+            JSObject.set(moduleObject, CommonJSRequireBuiltin.EXPORTS_PROPERTY_NAME, exportsObject);
+            this.commonJSRequireFunctionObject = requireFunction;
             // Load an (optional) bootstrap module. Can be used to define global properties (e.g.,
             // Node.js builtin mock-ups).
-            String commonJsRequireGlobals = getContext().getContextOptions().getCommonJsRequireGlobals();
-            if (commonJsRequireGlobals != null && !"".equals(commonJsRequireGlobals)) {
-                try {
-                    // `require()` the module. Result is discarded.
-                    JSFunction.call(JSArguments.create(commonJsRequireFunctionObject, commonJsRequireFunctionObject, commonJsRequireGlobals));
-                } catch (Exception e) {
-                    throw Errors.createErrorFromException(e);
-                }
+            String commonJSRequireGlobals = getContext().getContextOptions().getCommonJSRequireGlobals();
+            if (commonJSRequireGlobals != null && !"".equals(commonJSRequireGlobals)) {
+                // `require()` the module. Result is discarded and exceptions are propagated.
+                JSFunction.call(JSArguments.create(commonJSRequireFunctionObject, commonJSRequireFunctionObject, commonJSRequireGlobals));
             }
             // Configure an (optional) mapping from reserved module names (e.g., 'buffer') to
             // arbitrary Npm modules. Can be used to provide user-specific implementations of the JS
             // builtins.
-            Map<String, String> commonJsRequireBuiltins = getContext().getContextOptions().getCommonJsRequireBuiltins();
-            this.commonJsPreLoadedBuiltins = new HashMap<>();
-            for (String builtin : commonJsRequireBuiltins.keySet()) {
-                try {
-                    String builtinModule = commonJsRequireBuiltins.get(builtin);
-                    DynamicObject obj = (DynamicObject) JSFunction.call(JSArguments.create(commonJsRequireFunctionObject, commonJsRequireFunctionObject, builtinModule));
-                    this.commonJsPreLoadedBuiltins.put(builtin, obj);
-                } catch (Exception e) {
-                    throw Errors.createErrorFromException(e);
-                }
+            Map<String, String> commonJSRequireBuiltins = getContext().getContextOptions().getCommonJSRequireBuiltins();
+            this.commonJSPreLoadedBuiltins = new HashMap<>();
+            for (String builtin : commonJSRequireBuiltins.keySet()) {
+                String builtinModule = commonJSRequireBuiltins.get(builtin);
+                DynamicObject obj = (DynamicObject) JSFunction.call(JSArguments.create(commonJSRequireFunctionObject, commonJSRequireFunctionObject, builtinModule));
+                this.commonJSPreLoadedBuiltins.put(builtin, obj);
             }
         }
     }
@@ -1290,7 +1286,7 @@ public class JSRealm {
         addConsoleGlobals();
         addPrintGlobals();
         addPerformanceGlobal();
-        addCommonJsGlobals();
+        addCommonJSGlobals();
 
         if (isJavaInteropEnabled()) {
             setupJavaInterop();
@@ -2086,9 +2082,9 @@ public class JSRealm {
         }
     }
 
-    public final Map<TruffleFile, DynamicObject> getCommonJsRequireCache() {
-        assert context.getContextOptions().isCommonJsRequire();
-        return commonJsRequireCache;
+    public final Map<TruffleFile, DynamicObject> getCommonJSRequireCache() {
+        assert context.getContextOptions().isCommonJSRequire();
+        return commonJSRequireCache;
     }
 
 }

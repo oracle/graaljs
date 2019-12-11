@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime;
 
 import static com.oracle.truffle.js.runtime.JSTruffleOptions.JS_OPTION_PREFIX;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -250,15 +251,36 @@ public final class JSContextOptions {
     public static final String COMMONJS_REQUIRE_NAME = JS_OPTION_PREFIX + "cjs-require";
     @Option(name = COMMONJS_REQUIRE_NAME, category = OptionCategory.USER, help = "Enable CommonJS require emulation.") //
     public static final OptionKey<Boolean> COMMONJS_REQUIRE = new OptionKey<>(false);
-    @CompilationFinal private boolean commonJsRequire;
+    @CompilationFinal private boolean commonJSRequire;
 
-    public static final String COMMONJS_REQUIRE_CWS_NAME = JS_OPTION_PREFIX + "cjs-require-cwd";
-    @Option(name = COMMONJS_REQUIRE_CWS_NAME, category = OptionCategory.USER, help = "CommonJS default current working directory.") //
-    public static final OptionKey<String> COMMONJS_REQUIRE_CWS = new OptionKey<>("");
+    public static final String COMMONJS_REQUIRE_CWD_NAME = JS_OPTION_PREFIX + "cjs-require-cwd";
+    @Option(name = COMMONJS_REQUIRE_CWD_NAME, category = OptionCategory.USER, help = "CommonJS default current working directory.") //
+    public static final OptionKey<String> COMMONJS_REQUIRE_CWD = new OptionKey<>("");
 
     public static final String COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME = JS_OPTION_PREFIX + "cjs-global-builtins";
-    @Option(name = COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME, category = OptionCategory.USER, help = "Npm packages used to replace global Node.js builtins. Syntax: <name,module-name>.") //
-    public static final OptionKey<String> COMMONJS_REQUIRE_GLOBAL_BUILTINS = new OptionKey<>("");
+    @Option(name = COMMONJS_REQUIRE_GLOBAL_BUILTINS_NAME, category = OptionCategory.USER, help = "Npm packages used to replace global Node.js builtins. Syntax: name1:module1,name2:module2,...") //
+    public static final OptionKey<Map<String, String>> COMMONJS_REQUIRE_GLOBAL_BUILTINS = new OptionKey<>(Collections.emptyMap(), new OptionType<>(
+                    "cjs-require-globals",
+                    new Function<String, Map<String, String>>() {
+                        @Override
+                        public Map<String, String> apply(String value) {
+                            Map<String, String> map = new HashMap<>();
+                            if ("".equals(value)) {
+                                return map;
+                            }
+                            String[] options = value.split(",");
+                            for (String s : options) {
+                                String[] builtin = s.split(":");
+                                if (builtin.length != 2) {
+                                    throw new IllegalArgumentException("Unexpected builtin arguments: " + s);
+                                }
+                                String key = builtin[0];
+                                String val = builtin[1];
+                                map.put(key, val);
+                            }
+                            return map;
+                        }
+                    }));
 
     public static final String COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME = JS_OPTION_PREFIX + "cjs-global-properties";
     @Option(name = COMMONJS_REQUIRE_GLOBAL_PROPERTIES_NAME, category = OptionCategory.USER, help = "Npm package used to populate Node.js global object.") //
@@ -436,7 +458,7 @@ public final class JSContextOptions {
         this.functionConstructorCacheSize = readIntegerOption(FUNCTION_CONSTRUCTOR_CACHE_SIZE);
         this.stringLengthLimit = readIntegerOption(STRING_LENGTH_LIMIT);
         this.bindMemberFunctions = readBooleanOption(BIND_MEMBER_FUNCTIONS);
-        this.commonJsRequire = readBooleanOption(COMMONJS_REQUIRE);
+        this.commonJSRequire = readBooleanOption(COMMONJS_REQUIRE);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -624,38 +646,23 @@ public final class JSContextOptions {
         return LOAD.getValue(optionValues) || (!LOAD.hasBeenSet(optionValues) && (isShell() || isNashornCompatibilityMode()));
     }
 
-    public boolean isCommonJsRequire() {
-        return commonJsRequire;
+    public boolean isCommonJSRequire() {
+        return commonJSRequire;
     }
 
-    public Map<String, String> getCommonJsRequireBuiltins() {
+    public Map<String, String> getCommonJSRequireBuiltins() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
-        String value = COMMONJS_REQUIRE_GLOBAL_BUILTINS.getValue(optionValues);
-        Map<String, String> map = new HashMap<>();
-        if ("".equals(value)) {
-            return map;
-        }
-        String[] options = value.split(",");
-        for (String s : options) {
-            String[] builtin = s.split(":");
-            if (builtin.length != 2) {
-                throw new IllegalArgumentException("Unexpected builtin arguments: " + s);
-            }
-            String key = builtin[0];
-            String val = builtin[1];
-            map.put(key, val);
-        }
-        return map;
+        return COMMONJS_REQUIRE_GLOBAL_BUILTINS.getValue(optionValues);
     }
 
-    public String getCommonJsRequireGlobals() {
+    public String getCommonJSRequireGlobals() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
         return COMMONJS_REQUIRE_GLOBAL_PROPERTIES.getValue(optionValues);
     }
 
     public String getRequireCwd() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option load was assumed not to be accessed in compiled code.");
-        return COMMONJS_REQUIRE_CWS.getValue(optionValues);
+        return COMMONJS_REQUIRE_CWD.getValue(optionValues);
     }
 
     public boolean isPerformance() {
@@ -765,7 +772,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.functionConstructorCacheSize;
         hash = 53 * hash + this.stringLengthLimit;
         hash = 53 * hash + (this.bindMemberFunctions ? 1 : 0);
-        hash = 53 * hash + (this.commonJsRequire ? 1 : 0);
+        hash = 53 * hash + (this.commonJSRequire ? 1 : 0);
         return hash;
     }
 
@@ -871,7 +878,7 @@ public final class JSContextOptions {
         if (this.bindMemberFunctions != other.bindMemberFunctions) {
             return false;
         }
-        if (this.commonJsRequire != other.commonJsRequire) {
+        if (this.commonJSRequire != other.commonJSRequire) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
