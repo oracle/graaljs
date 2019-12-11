@@ -50,7 +50,7 @@ final class ByteArraySupport {
 
     static final ByteArrayAccess LITTLE_ENDIAN_ORDER = new LittleEndianByteArrayAccess();
     static final ByteArrayAccess BIG_ENDIAN_ORDER = new BigEndianByteArrayAccess();
-    static final ByteArrayAccess NATIVE_ORDER = new VarHandleNativeOrderByteArrayAccess();
+    static final ByteArrayAccess NATIVE_ORDER = new ByteBufferNativeOrderByteArrayAccess();
 }
 
 final class VarHandleNativeOrderByteArrayAccess extends ByteArrayAccess {
