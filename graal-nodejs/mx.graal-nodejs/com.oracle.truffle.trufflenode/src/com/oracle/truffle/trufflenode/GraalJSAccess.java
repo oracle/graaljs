@@ -92,6 +92,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -936,7 +937,7 @@ public final class GraalJSAccess {
                     boolean enumerableOnly, boolean configurableOnly, boolean writableOnly,
                     boolean skipIndices, boolean skipSymbols, boolean skipStrings,
                     boolean keepNumbers) {
-        List<Object> keys = new ArrayList<>();
+        Set<Object> keys = new LinkedHashSet<>();
         DynamicObject dynamicObject = (DynamicObject) object;
         JSContext context = JSObject.getJSContext(dynamicObject);
         do {
