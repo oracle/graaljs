@@ -44,6 +44,8 @@ import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 import sun.misc.Unsafe;
 
 final class ByteArraySupport {
@@ -58,67 +60,71 @@ final class ByteArraySupport {
 final class SunMiscUnsafeNativeOrderByteArrayAccess extends ByteArrayAccess {
     @Override
     public int getInt8(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getByte(buffer, offset(offset, index, bytesPerElement));
+        return UNSAFE.getByte(buffer, offset(offset, index, bytesPerElement, buffer, Byte.BYTES));
     }
 
     @Override
     public int getInt16(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getShort(buffer, offset(offset, index, bytesPerElement));
+        return UNSAFE.getShort(buffer, offset(offset, index, bytesPerElement, buffer, Short.BYTES));
     }
 
     @Override
     public int getInt32(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getInt(buffer, offset(offset, index, bytesPerElement));
+        return UNSAFE.getInt(buffer, offset(offset, index, bytesPerElement, buffer, Integer.BYTES));
     }
 
     @Override
     public long getInt64(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getLong(buffer, offset(offset, index, bytesPerElement));
+        return UNSAFE.getLong(buffer, offset(offset, index, bytesPerElement, buffer, Long.BYTES));
     }
 
     @Override
     public float getFloat(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getFloat(buffer, offset(offset, index, bytesPerElement));
+        return UNSAFE.getFloat(buffer, offset(offset, index, bytesPerElement, buffer, Float.BYTES));
     }
 
     @Override
     public double getDouble(byte[] buffer, int offset, int index, int bytesPerElement) {
-        return UNSAFE.getDouble(buffer, offset(offset, index, bytesPerElement));
+        return UNSAFE.getDouble(buffer, offset(offset, index, bytesPerElement, buffer, Double.BYTES));
     }
 
     @Override
     public void putInt8(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        UNSAFE.putByte(buffer, offset(offset, index, bytesPerElement), (byte) value);
+        UNSAFE.putByte(buffer, offset(offset, index, bytesPerElement, buffer, Byte.BYTES), (byte) value);
     }
 
     @Override
     public void putInt16(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        UNSAFE.putShort(buffer, offset(offset, index, bytesPerElement), (short) value);
+        UNSAFE.putShort(buffer, offset(offset, index, bytesPerElement, buffer, Short.BYTES), (short) value);
     }
 
     @Override
     public void putInt32(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-        UNSAFE.putInt(buffer, offset(offset, index, bytesPerElement), value);
+        UNSAFE.putInt(buffer, offset(offset, index, bytesPerElement, buffer, Integer.BYTES), value);
     }
 
     @Override
     public void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
-        UNSAFE.putLong(buffer, offset(offset, index, bytesPerElement), value);
+        UNSAFE.putLong(buffer, offset(offset, index, bytesPerElement, buffer, Long.BYTES), value);
     }
 
     @Override
     public void putFloat(byte[] buffer, int offset, int index, int bytesPerElement, float value) {
-        UNSAFE.putFloat(buffer, offset(offset, index, bytesPerElement), value);
+        UNSAFE.putFloat(buffer, offset(offset, index, bytesPerElement, buffer, Float.BYTES), value);
     }
 
     @Override
     public void putDouble(byte[] buffer, int offset, int index, int bytesPerElement, double value) {
-        UNSAFE.putDouble(buffer, offset(offset, index, bytesPerElement), value);
+        UNSAFE.putDouble(buffer, offset(offset, index, bytesPerElement, buffer, Double.BYTES), value);
     }
 
-    private static long offset(int offset, int index, int bytesPerElement) {
-        long byteIndex = offset + (long) index * bytesPerElement;
-        return byteIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+    private static long offset(int offset, int index, int bytesPerElement, byte[] buffer, int elementSize) {
+        int byteIndex = offset + index * bytesPerElement;
+        if (byteIndex < 0 || byteIndex > buffer.length - elementSize) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IndexOutOfBoundsException();
+        }
+        return (long) byteIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE + Unsafe.ARRAY_BYTE_BASE_OFFSET;
     }
 
     private static final Unsafe UNSAFE = AccessController.doPrivileged(new PrivilegedAction<Unsafe>() {
