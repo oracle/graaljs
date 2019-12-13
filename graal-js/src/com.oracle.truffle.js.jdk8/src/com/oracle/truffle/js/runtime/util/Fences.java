@@ -62,10 +62,6 @@ public final class Fences {
         @Override
         public Unsafe run() {
             try {
-                return Unsafe.getUnsafe();
-            } catch (SecurityException e) {
-            }
-            try {
                 Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
                 theUnsafeInstance.setAccessible(true);
                 return (Unsafe) theUnsafeInstance.get(Unsafe.class);
