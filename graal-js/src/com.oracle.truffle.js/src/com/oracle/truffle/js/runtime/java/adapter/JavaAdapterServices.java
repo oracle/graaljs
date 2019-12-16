@@ -132,7 +132,7 @@ public final class JavaAdapterServices {
         return obj.invokeMember(name, args);
     }
 
-    private static boolean hasOwnProperty(final Value obj, final String name) {
+    public static boolean hasOwnProperty(final Value obj, final String name) {
         Value hasOwnProperty = obj.getContext().eval(HAS_OWN_PROPERTY_SOURCE);
         try {
             return hasOwnProperty.execute(obj, name).asBoolean();
@@ -150,10 +150,11 @@ public final class JavaAdapterServices {
     }
 
     /**
-     * Obtains a method handle executing a {@link Value}, adapted for the given {@link MethodType}.
+     * Obtains a method handle invoking a member of a {@link Value}, adapted for the given
+     * {@link MethodType}.
      */
     @TruffleBoundary
-    public static MethodHandle getHandle(final MethodType type) {
+    public static MethodHandle getInvokeMemberHandle(final MethodType type) {
         MethodHandle call = VALUE_INVOKE_MEMBER_HANDLE;
 
         call = call.asCollector(Object[].class, type.parameterCount());
@@ -162,8 +163,31 @@ public final class JavaAdapterServices {
             call = MethodHandles.filterReturnValue(call, createReturnValueConverter(type.returnType()));
         }
 
-        // insert [object, methodName]
+        // insert [receiver object, method name]
         call = call.asType(type.insertParameterTypes(0, Value.class, String.class));
+        return call;
+    }
+
+    /**
+     * Obtains a method handle executing a {@link Value}, adapted for the given {@link MethodType}.
+     */
+    @TruffleBoundary
+    public static MethodHandle getExecuteHandle(final MethodType type) {
+        MethodHandle call;
+        if (type.returnType() == void.class) {
+            call = VALUE_EXECUTE_VOID_METHOD_HANDLE;
+        } else {
+            call = VALUE_EXECUTE_METHOD_HANDLE;
+        }
+
+        call = call.asCollector(Object[].class, type.parameterCount());
+
+        if (type.returnType() != void.class) {
+            call = MethodHandles.filterReturnValue(call, createReturnValueConverter(type.returnType()));
+        }
+
+        // insert [function object]
+        call = call.asType(type.insertParameterTypes(0, Value.class));
         return call;
     }
 

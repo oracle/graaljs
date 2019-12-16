@@ -153,9 +153,6 @@ public final class JSTruffleOptions {
     public static final boolean DumpHeapOnExit = booleanOption("DumpHeapOnExit", false);
     public static final String HeapDumpFileName = stringOption("HeapDumpFileName", null);
 
-    // Java Interop options
-    public static final boolean SingleThreaded = booleanOption("SingleThreaded", false);
-
     // Tracing
     public static final boolean TracePolymorphicPropertyAccess = booleanOption("TracePolymorphicPropertyAccess", false);
     public static final boolean TraceMegamorphicPropertyAccess = booleanOption("TraceMegamorphicPropertyAccess", false);
