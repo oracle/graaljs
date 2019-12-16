@@ -815,7 +815,7 @@ final class JavaAdapterBytecodeGenerator {
         // Invoke the target method handle
         final Label tryBlockStart = new Label();
         mv.visitLabel(tryBlockStart);
-        mv.invokevirtual(METHOD_HANDLE_TYPE.getInternalName(), "invokeExact", type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), false);
+        mv.invokevirtual(METHOD_HANDLE_TYPE.getInternalName(), "invokeExact", type.insertParameterTypes(0, Value.class, String.class).toMethodDescriptorString(), false);
         final Label tryBlockEnd = new Label();
         mv.visitLabel(tryBlockEnd);
         mv.areturn(asmReturnType);

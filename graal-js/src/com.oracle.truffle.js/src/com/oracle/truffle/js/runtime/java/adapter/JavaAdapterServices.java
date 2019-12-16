@@ -46,12 +46,10 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
@@ -61,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
 public final class JavaAdapterServices {
     private static final MethodHandle VALUE_EXECUTE_METHOD_HANDLE;
     private static final MethodHandle VALUE_EXECUTE_VOID_METHOD_HANDLE;
+    private static final MethodHandle VALUE_INVOKE_MEMBER_HANDLE;
     private static final MethodHandle VALUE_AS_METHOD_HANDLE;
     private static final Source HAS_OWN_PROPERTY_SOURCE = Source.newBuilder(ID, "(function(obj, name){return Object.prototype.hasOwnProperty.call(obj, name);})", "hasOwnProperty").buildLiteral();
 
@@ -68,6 +67,7 @@ public final class JavaAdapterServices {
         try {
             VALUE_EXECUTE_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "execute", MethodType.methodType(Value.class, Object[].class));
             VALUE_EXECUTE_VOID_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "executeVoid", MethodType.methodType(void.class, Object[].class));
+            VALUE_INVOKE_MEMBER_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "invokeMember", MethodType.methodType(Value.class, String.class, Object[].class));
             VALUE_AS_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "as", MethodType.methodType(Object.class, Class.class));
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new RuntimeException(e);
@@ -94,40 +94,46 @@ public final class JavaAdapterServices {
     }
 
     /**
-     * Given a JS object, retrieves a function from it by name, bound to the object.
+     * Given a JS object and a method name, checks if a method can be called.
      *
-     * This method is public mainly for implementation reasons, so the adapter classes can invoke it
-     * from their constructors that take a {@link Value} as last argument to obtain the functions
-     * for their method implementations.
+     * This method is public mainly for implementation reasons, so the adapter classes can invoke
+     * it.
      *
      * @param obj the script object
      * @param name the name of the property that contains the function
-     * @return a {@link Value} representing a member function (bound to the object if need be), or
-     *         null if the value of the property is either null or undefined, or "toString" was
-     *         requested as the name and the object doesn't directly define it but just inherits it.
+     * @return true if the {@link Value} has an invocable member function, or false if the member
+     *         does not exist or is either null, undefined, not callable, or "toString" was
+     *         requested and the object does not have an own "toString" method but just inherits it.
      */
-    @TruffleBoundary
-    public static Value getFunction(final Value obj, final String name) {
+    public static boolean hasMethod(final Value obj, final String name) {
         // Since every JS Object has a toString, we only override "String toString()" it if it's
         // explicitly specified
         if (JSRuntime.TO_STRING.equals(name) && !hasOwnProperty(obj, JSRuntime.TO_STRING)) {
-            return null;
+            return false;
         }
 
-        final Value fnObj = obj.getMember(name);
-        if (fnObj == null) { // member does not exist
-            return null;
-        } else if (fnObj.canExecute()) {
-            return fnObj;
-        } else if (fnObj.isNull()) { // null or undefined
-            return null;
-        } else {
-            throw Errors.createTypeErrorNotAFunction(fnObj);
-        }
+        return obj.canInvokeMember(name);
+    }
+
+    /**
+     * Invokes the method of the given object with the given name.
+     *
+     * This method is public mainly for implementation reasons, so the adapter classes can invoke
+     * it.
+     *
+     * @param obj the script object
+     * @param name the name of the property that contains the function
+     * @param args the arguments to the method
+     * @return the result {@link Value value} of the method invocation
+     * @throws org.graalvm.polyglot.PolyglotException if a guest language error occurred during the
+     *             method invocation
+     */
+    public static Value invokeMethod(final Value obj, final String name, final Object[] args) {
+        return obj.invokeMember(name, args);
     }
 
     private static boolean hasOwnProperty(final Value obj, final String name) {
-        Value hasOwnProperty = Context.getCurrent().eval(HAS_OWN_PROPERTY_SOURCE);
+        Value hasOwnProperty = obj.getContext().eval(HAS_OWN_PROPERTY_SOURCE);
         try {
             return hasOwnProperty.execute(obj, name).asBoolean();
         } catch (Exception e) {
@@ -148,21 +154,16 @@ public final class JavaAdapterServices {
      */
     @TruffleBoundary
     public static MethodHandle getHandle(final MethodType type) {
-        MethodHandle call;
-        if (type.returnType() == void.class) {
-            call = VALUE_EXECUTE_VOID_METHOD_HANDLE;
-        } else {
-            call = VALUE_EXECUTE_METHOD_HANDLE;
-        }
-        // TODO this has to be adapted to work with varargs methods as well
+        MethodHandle call = VALUE_INVOKE_MEMBER_HANDLE;
+
         call = call.asCollector(Object[].class, type.parameterCount());
 
         if (type.returnType() != void.class) {
             call = MethodHandles.filterReturnValue(call, createReturnValueConverter(type.returnType()));
         }
 
-        // insert [function object]
-        call = call.asType(type.insertParameterTypes(0, Value.class));
+        // insert [object, methodName]
+        call = call.asType(type.insertParameterTypes(0, Value.class, String.class));
         return call;
     }
 
