@@ -78,6 +78,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRequiresNew
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallWeakRefNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBigIntNodeGen;
@@ -104,6 +105,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNod
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CreateDynamicFunctionNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.PromiseConstructorNodeGen;
@@ -195,6 +197,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -259,6 +262,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         Map(0),
         Set(0),
+        WeakRef(1),
         WeakMap(0),
         WeakSet(0),
         GeneratorFunction(1),
@@ -339,6 +343,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructStringNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
                                 : ConstructStringNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context)))
                                 : CallStringNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+
+            case WeakRef:
+                return construct ? (newTarget ? ConstructWeakRefNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
+                                : ConstructWeakRefNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context)))
+                                : CallWeakRefNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+
             case Collator:
                 return construct ? (newTarget
                                 ? ConstructCollatorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
@@ -1061,6 +1071,44 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getStringPrototype();
+        }
+
+    }
+
+    public abstract static class CallWeakRefNode extends JSBuiltinNode {
+        public CallWeakRefNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected DynamicObject callWeakRef(@SuppressWarnings("unused") Object[] args) {
+            throw Errors.createTypeError("Cannot call WeakRef");
+        }
+    }
+
+    public abstract static class ConstructWeakRefNode extends ConstructWithNewTargetNode {
+
+        public ConstructWeakRefNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
+            super(context, builtin, newTargetCase);
+        }
+
+        @Specialization(guards = {"args.length == 0"})
+        protected DynamicObject constructWeakRefInt0(@SuppressWarnings("unused") DynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
+            throw Errors.createTypeError("Cannot create WeakRef on undefined");
+        }
+
+        @Specialization(guards = {"args.length != 0"})
+        protected DynamicObject constructWeakRef(DynamicObject newTarget, Object[] args) {
+            // This check is bad, I think I need Specialization
+            if (!(args[0] instanceof DynamicObject)) {
+                throw Errors.createTypeError("Cannot create WeakRef on non-object");
+            }
+            return swapPrototype(JSWeakRef.create(getContext(), args[0]), newTarget);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getWeakRefPrototype();
         }
 
     }
