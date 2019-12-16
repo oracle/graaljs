@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -123,12 +124,8 @@ public final class JavaAdapterFactory {
         JavaAdapterBytecodeGenerator bytecodeGenerator = new JavaAdapterBytecodeGenerator(superClass, interfaces, commonLoader, classOverride);
         JavaAdapterClassLoader generatedClassLoader = bytecodeGenerator.createAdapterClassLoader();
 
-        JavaAdapterServices.setClassOverrides(Context.getCurrent().asValue(classOverrides));
-        try {
-            return generatedClassLoader.generateClass(commonLoader);
-        } finally {
-            JavaAdapterServices.setClassOverrides(null);
-        }
+        Value classOverridesValue = classOverride ? Context.getCurrent().asValue(classOverrides) : null;
+        return generatedClassLoader.generateClass(commonLoader, classOverridesValue);
     }
 
     @TruffleBoundary

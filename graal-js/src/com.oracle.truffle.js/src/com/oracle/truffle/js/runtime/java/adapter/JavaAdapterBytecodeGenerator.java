@@ -160,15 +160,16 @@ final class JavaAdapterBytecodeGenerator {
     private static final Type STRING_TYPE = Type.getType(String.class);
     private static final Type METHOD_TYPE_TYPE = Type.getType(MethodType.class);
     private static final Type METHOD_HANDLE_TYPE = Type.getType(MethodHandle.class);
+    private static final Type CLASS_LOADER_TYPE = Type.getType(ClassLoader.class);
     /** @see JavaAdapterServices#getHandle(MethodType) */
     private static final String GET_HANDLE_NAME = "getHandle";
     private static final String GET_HANDLE_DESCRIPTOR = Type.getMethodDescriptor(METHOD_HANDLE_TYPE, METHOD_TYPE_TYPE);
     /** @see JavaAdapterServices#getFunction */
     private static final String GET_CALLEE_NAME = "getFunction";
     private static final String GET_CALLEE_DESCRIPTOR = Type.getMethodDescriptor(POLYGLOT_VALUE_TYPE, POLYGLOT_VALUE_TYPE, STRING_TYPE);
-    /** @see JavaAdapterServices#getClassOverrides() */
+    /** @see JavaAdapterServices#getClassOverrides(ClassLoader) */
     private static final String GET_CLASS_OVERRIDES_METHOD_NAME = "getClassOverrides";
-    private static final String GET_CLASS_OVERRIDES_METHOD_DESCRIPTOR = Type.getMethodDescriptor(POLYGLOT_VALUE_TYPE);
+    private static final String GET_CLASS_OVERRIDES_METHOD_DESCRIPTOR = Type.getMethodDescriptor(POLYGLOT_VALUE_TYPE, CLASS_LOADER_TYPE);
 
     private static final Type RUNTIME_EXCEPTION_TYPE = Type.getType(RuntimeException.class);
     private static final Type THROWABLE_TYPE = Type.getType(Throwable.class);
@@ -192,6 +193,9 @@ final class JavaAdapterBytecodeGenerator {
     private static final String CURRENT_THREAD_DESCRIPTOR = Type.getMethodDescriptor(Type.getType(Thread.class));
     private static final String GET_ID_NAME = "getId";
     private static final String GET_ID_DESCRIPTOR = Type.getMethodDescriptor(Type.LONG_TYPE);
+    private static final String CLASS_TYPE_NAME = Type.getInternalName(Class.class);
+    private static final String GET_CLASS_LOADER_NAME = "getClassLoader";
+    private static final String GET_CLASS_LOADER_DESCRIPTOR = Type.getMethodDescriptor(CLASS_LOADER_TYPE);
 
     /*
      * Package used when the adapter can't be defined in the adaptee's package (either because it's
@@ -383,6 +387,8 @@ final class JavaAdapterBytecodeGenerator {
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(ACC_STATIC, CLASS_INIT, Type.getMethodDescriptor(Type.VOID_TYPE), null, null));
 
         if (classOverride) {
+            mv.visitLdcInsn(getGeneratedClassAsType());
+            mv.invokevirtual(CLASS_TYPE_NAME, GET_CLASS_LOADER_NAME, GET_CLASS_LOADER_DESCRIPTOR, false);
             mv.invokestatic(SERVICES_CLASS_TYPE_NAME, GET_CLASS_OVERRIDES_METHOD_NAME, GET_CLASS_OVERRIDES_METHOD_DESCRIPTOR, false);
             final Label initGlobal;
             if (samName != null) {
@@ -446,6 +452,10 @@ final class JavaAdapterBytecodeGenerator {
         }
 
         endInitMethod(mv);
+    }
+
+    private Type getGeneratedClassAsType() {
+        return Type.getType('L' + generatedClassName + ';');
     }
 
     private static void loadUndefined(final InstructionAdapter mv) {

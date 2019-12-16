@@ -63,7 +63,6 @@ public final class JavaAdapterServices {
     private static final MethodHandle VALUE_EXECUTE_VOID_METHOD_HANDLE;
     private static final MethodHandle VALUE_AS_METHOD_HANDLE;
     private static final Source HAS_OWN_PROPERTY_SOURCE = Source.newBuilder(ID, "(function(obj, name){return Object.prototype.hasOwnProperty.call(obj, name);})", "hasOwnProperty").buildLiteral();
-    private static final ThreadLocal<Value> classOverrides = new ThreadLocal<>();
 
     static {
         try {
@@ -80,20 +79,18 @@ public final class JavaAdapterServices {
     }
 
     /**
-     * Returns a thread-local JS object used to define methods for the adapter class being
-     * initialized on the current thread. This method is public solely for implementation reasons,
-     * so the adapter classes can invoke it from their static initializers.
+     * Returns a JS object used to define methods for the adapter class being initialized. The
+     * object is retrieved from the class loader.
      *
-     * @return the thread-local JS object used to define methods for the class being initialized.
+     * This method is public solely for implementation reasons, so the adapter classes can invoke it
+     * from their static initializers.
+     *
+     * @return the JS object used to define methods for the class being initialized.
      */
-    public static Value getClassOverrides() {
-        final Value overrides = classOverrides.get();
+    public static Value getClassOverrides(ClassLoader classLoader) {
+        final Value overrides = JavaAdapterClassLoader.getClassOverrides(classLoader);
         assert overrides != null;
         return overrides;
-    }
-
-    static void setClassOverrides(Value overrides) {
-        classOverrides.set(overrides);
     }
 
     /**
