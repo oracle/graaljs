@@ -186,7 +186,7 @@ public final class JSTruffleOptions {
     public static final int SpreadArgumentPlaceholderCount = integerOption("SpreadArgumentPlaceholderCount", 3);
 
     // Truffle Interop options
-    public static final boolean BindProgramResult = booleanOption("BindProgramResult", true);
+    public static final boolean BindProgramResult = booleanOption("BindProgramResult", false);
 
     public static final boolean UseTRegex = booleanOption("UseTRegex", true);
     public static final boolean RegexRegressionTestMode = booleanOption("RegexRegressionTestMode", false);
