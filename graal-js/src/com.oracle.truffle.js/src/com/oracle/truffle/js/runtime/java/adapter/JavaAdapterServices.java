@@ -42,6 +42,8 @@ package com.oracle.truffle.js.runtime.java.adapter;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -49,30 +51,20 @@ import java.lang.invoke.MethodType;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
  * Provides static utility services to generated Java adapter classes.
  */
 public final class JavaAdapterServices {
-    private static final MethodHandle VALUE_EXECUTE_METHOD_HANDLE;
-    private static final MethodHandle VALUE_EXECUTE_VOID_METHOD_HANDLE;
-    private static final MethodHandle VALUE_INVOKE_MEMBER_HANDLE;
-    private static final MethodHandle VALUE_AS_METHOD_HANDLE;
+    private static final MethodType VALUE_EXECUTE_METHOD_TYPE = MethodType.methodType(Value.class, Object[].class);
+    private static final MethodType VALUE_EXECUTE_VOID_METHOD_TYPE = MethodType.methodType(void.class, Object[].class);
+    private static final MethodType VALUE_INVOKE_MEMBER_METHOD_TYPE = MethodType.methodType(Value.class, String.class, Object[].class);
+    private static final MethodType VALUE_AS_METHOD_TYPE = MethodType.methodType(Object.class, Class.class);
     private static final Source HAS_OWN_PROPERTY_SOURCE = Source.newBuilder(ID, "(function(obj, name){return Object.prototype.hasOwnProperty.call(obj, name);})", "hasOwnProperty").buildLiteral();
 
-    static {
-        try {
-            VALUE_EXECUTE_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "execute", MethodType.methodType(Value.class, Object[].class));
-            VALUE_EXECUTE_VOID_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "executeVoid", MethodType.methodType(void.class, Object[].class));
-            VALUE_INVOKE_MEMBER_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "invokeMember", MethodType.methodType(Value.class, String.class, Object[].class));
-            VALUE_AS_METHOD_HANDLE = MethodHandles.publicLookup().findVirtual(Value.class, "as", MethodType.methodType(Object.class, Class.class));
-        } catch (NoSuchMethodException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    static final int BOOTSTRAP_VALUE_INVOKE_MEMBER = 1;
+    static final int BOOTSTRAP_VALUE_EXECUTE = 2;
 
     private JavaAdapterServices() {
         assert !JSTruffleOptions.SubstrateVM;
@@ -102,36 +94,22 @@ public final class JavaAdapterServices {
      * @param obj the script object
      * @param name the name of the property that contains the function
      * @return true if the {@link Value} has an invocable member function, or false if the member
-     *         does not exist or is either null, undefined, not callable, or "toString" was
-     *         requested and the object does not have an own "toString" method but just inherits it.
+     *         does not exist or is not callable.
      */
     public static boolean hasMethod(final Value obj, final String name) {
-        // Since every JS Object has a toString, we only override "String toString()" it if it's
-        // explicitly specified
-        if (JSRuntime.TO_STRING.equals(name) && !hasOwnProperty(obj, JSRuntime.TO_STRING)) {
-            return false;
-        }
-
         return obj.canInvokeMember(name);
     }
 
     /**
-     * Invokes the method of the given object with the given name.
+     * Checks if the given JS object has an own (non-inherited) property with the given name.
      *
      * This method is public mainly for implementation reasons, so the adapter classes can invoke
      * it.
      *
      * @param obj the script object
      * @param name the name of the property that contains the function
-     * @param args the arguments to the method
-     * @return the result {@link Value value} of the method invocation
-     * @throws org.graalvm.polyglot.PolyglotException if a guest language error occurred during the
-     *             method invocation
+     * @return true if the {@link Value} has an own property with the given name.
      */
-    public static Value invokeMethod(final Value obj, final String name, final Object[] args) {
-        return obj.invokeMember(name, args);
-    }
-
     public static boolean hasOwnProperty(final Value obj, final String name) {
         Value hasOwnProperty = obj.getContext().eval(HAS_OWN_PROPERTY_SOURCE);
         try {
@@ -147,48 +125,6 @@ public final class JavaAdapterServices {
      */
     public static boolean isFunction(final Object obj) {
         return obj instanceof Value && ((Value) obj).canExecute();
-    }
-
-    /**
-     * Obtains a method handle invoking a member of a {@link Value}, adapted for the given
-     * {@link MethodType}.
-     */
-    @TruffleBoundary
-    public static MethodHandle getInvokeMemberHandle(final MethodType type) {
-        MethodHandle call = VALUE_INVOKE_MEMBER_HANDLE;
-
-        call = call.asCollector(Object[].class, type.parameterCount());
-
-        if (type.returnType() != void.class) {
-            call = MethodHandles.filterReturnValue(call, createReturnValueConverter(type.returnType()));
-        }
-
-        // insert [receiver object, method name]
-        call = call.asType(type.insertParameterTypes(0, Value.class, String.class));
-        return call;
-    }
-
-    /**
-     * Obtains a method handle executing a {@link Value}, adapted for the given {@link MethodType}.
-     */
-    @TruffleBoundary
-    public static MethodHandle getExecuteHandle(final MethodType type) {
-        MethodHandle call;
-        if (type.returnType() == void.class) {
-            call = VALUE_EXECUTE_VOID_METHOD_HANDLE;
-        } else {
-            call = VALUE_EXECUTE_METHOD_HANDLE;
-        }
-
-        call = call.asCollector(Object[].class, type.parameterCount());
-
-        if (type.returnType() != void.class) {
-            call = MethodHandles.filterReturnValue(call, createReturnValueConverter(type.returnType()));
-        }
-
-        // insert [function object]
-        call = call.asType(type.insertParameterTypes(0, Value.class));
-        return call;
     }
 
     /**
@@ -214,7 +150,43 @@ public final class JavaAdapterServices {
         return new RuntimeException(t);
     }
 
-    private static MethodHandle createReturnValueConverter(Class<?> returnType) {
-        return MethodHandles.insertArguments(VALUE_AS_METHOD_HANDLE, 1, returnType);
+    private static MethodHandle createReturnValueConverter(MethodHandles.Lookup lookup, Class<?> returnType) throws NoSuchMethodException, IllegalAccessException {
+        return MethodHandles.insertArguments(lookup.findVirtual(Value.class, "as", VALUE_AS_METHOD_TYPE), 1, returnType);
+    }
+
+    /**
+     * Bootstrap a typed method handle for {@link Value#invokeMember} or {@link Value#execute}.
+     *
+     * This method is public solely for implementation reasons, so the adapter classes can use it.
+     *
+     * @param methodName the method's name.
+     * @param type the method's type with a leading receiver {@link Value} parameter.
+     * @param flags 0 for {@link Value#invokeMember}, 1 for {@link Value#execute}.
+     * @return a CallSite for invoking the member of, or executing a {@link Value}.
+     */
+    public static CallSite bootstrap(MethodHandles.Lookup lookup, String methodName, MethodType type, int flags) throws NoSuchMethodException, IllegalAccessException {
+        MethodHandle target;
+        if (flags == BOOTSTRAP_VALUE_INVOKE_MEMBER) {
+            target = lookup.findVirtual(Value.class, "invokeMember", VALUE_INVOKE_MEMBER_METHOD_TYPE);
+            // insert method name parameter
+            target = MethodHandles.insertArguments(target, 1, methodName);
+        } else {
+            assert flags == BOOTSTRAP_VALUE_EXECUTE;
+            if (type.returnType() == void.class) {
+                target = lookup.findVirtual(Value.class, "executeVoid", VALUE_EXECUTE_VOID_METHOD_TYPE);
+            } else {
+                target = lookup.findVirtual(Value.class, "execute", VALUE_EXECUTE_METHOD_TYPE);
+            }
+        }
+
+        // collect arguments
+        target = target.asCollector(Object[].class, type.parameterCount() - 1);
+
+        if (type.returnType() != void.class) {
+            target = MethodHandles.filterReturnValue(target, createReturnValueConverter(lookup, type.returnType()));
+        }
+
+        target = target.asType(type);
+        return new ConstantCallSite(target);
     }
 }

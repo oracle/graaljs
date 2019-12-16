@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.java.adapter;
 
+import static com.oracle.truffle.js.runtime.java.adapter.JavaAdapterServices.BOOTSTRAP_VALUE_EXECUTE;
+import static com.oracle.truffle.js.runtime.java.adapter.JavaAdapterServices.BOOTSTRAP_VALUE_INVOKE_MEMBER;
 import static org.objectweb.asm.Opcodes.ACC_FINAL;
 import static org.objectweb.asm.Opcodes.ACC_PRIVATE;
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
@@ -47,11 +49,13 @@ import static org.objectweb.asm.Opcodes.ACC_STATIC;
 import static org.objectweb.asm.Opcodes.ACC_SUPER;
 import static org.objectweb.asm.Opcodes.ACC_VARARGS;
 import static org.objectweb.asm.Opcodes.ALOAD;
+import static org.objectweb.asm.Opcodes.H_INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.RETURN;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 
 import java.lang.annotation.Annotation;
-import java.lang.invoke.MethodHandle;
+import java.lang.invoke.CallSite;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -66,12 +70,11 @@ import java.util.Set;
 
 import org.graalvm.polyglot.Value;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.InstructionAdapter;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Generates bytecode for a Java adapter class. Used by the {@link JavaAdapterFactory}.
@@ -112,8 +115,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * </p>
  * <p>
  * For adapter methods that return values, all the JavaScript-to-Java conversions supported by
- * Nashorn will be in effect to coerce the JavaScript function return value to the expected Java
- * return type.
+ * {@link Value#as} will be in effect to coerce the JavaScript function return value to the expected
+ * Java return type.
  * </p>
  * <p>
  * Since we are adding a trailing argument to the generated constructors in the adapter class, they
@@ -154,14 +157,7 @@ final class JavaAdapterBytecodeGenerator {
     private static final String BOOLEAN_TYPE_DESCRIPTOR = BOOLEAN_TYPE.getDescriptor();
 
     private static final Type STRING_TYPE = Type.getType(String.class);
-    private static final Type METHOD_TYPE_TYPE = Type.getType(MethodType.class);
-    private static final Type METHOD_HANDLE_TYPE = Type.getType(MethodHandle.class);
     private static final Type CLASS_LOADER_TYPE = Type.getType(ClassLoader.class);
-    private static final String GET_HANDLE_DESCRIPTOR = Type.getMethodDescriptor(METHOD_HANDLE_TYPE, METHOD_TYPE_TYPE);
-    /** @see JavaAdapterServices#getExecuteHandle(MethodType) */
-    private static final String GET_EXECUTE_HANDLE_NAME = "getExecuteHandle";
-    /** @see JavaAdapterServices#getInvokeMemberHandle(MethodType) */
-    private static final String GET_INVOKE_MEMBER_HANDLE_NAME = "getInvokeMemberHandle";
     /** @see JavaAdapterServices#hasMethod(Value, String) */
     private static final String HAS_METHOD_NAME = "hasMethod";
     private static final String HAS_METHOD_DESCRIPTOR = Type.getMethodDescriptor(BOOLEAN_TYPE, POLYGLOT_VALUE_TYPE, STRING_TYPE);
@@ -187,11 +183,13 @@ final class JavaAdapterBytecodeGenerator {
     private static final String ERROR_TYPE_NAME = Type.getInternalName(Error.class);
     private static final String THROWABLE_TYPE_NAME = THROWABLE_TYPE.getInternalName();
 
-    private static final String METHOD_HANDLE_TYPE_DESCRIPTOR = METHOD_HANDLE_TYPE.getDescriptor();
-
     private static final String CLASS_TYPE_NAME = Type.getInternalName(Class.class);
     private static final String GET_CLASS_LOADER_NAME = "getClassLoader";
     private static final String GET_CLASS_LOADER_DESCRIPTOR = Type.getMethodDescriptor(CLASS_LOADER_TYPE);
+
+    // ASM handle to the bootstrap method
+    private static final Handle BOOTSTRAP_HANDLE = new Handle(H_INVOKESTATIC, Type.getInternalName(JavaAdapterServices.class), "bootstrap",
+                    MethodType.methodType(CallSite.class, Lookup.class, String.class, MethodType.class, int.class).toMethodDescriptorString(), false);
 
     /*
      * Package used when the adapter can't be defined in the adaptee's package (either because it's
@@ -233,7 +231,6 @@ final class JavaAdapterBytecodeGenerator {
     private final String superClassName;
     // Binary name of the generated class.
     private final String generatedClassName;
-    private final Set<String> usedFieldNames = new HashSet<>();
     private final Set<String> abstractMethodNames = new HashSet<>();
     private final String samName;
     private final Set<MethodInfo> finalMethods = new HashSet<>(EXCLUDED);
@@ -248,8 +245,8 @@ final class JavaAdapterBytecodeGenerator {
      *
      * @param superClass the superclass the adapter will extend.
      * @param interfaces the interfaces the adapter will implement.
-     * @param commonLoader the class loader that can see all of superClass, interfaces, and Nashorn
-     *            classes.
+     * @param commonLoader the class loader that can see all of superClass, interfaces, and
+     *            {@link JavaAdapterServices}.
      * @param classOverride true to generate the bytecode for the adapter that has both class-level
      *            and instance-level overrides, false to generate the bytecode for the adapter that
      *            only has instance-level overrides.
@@ -291,7 +288,6 @@ final class JavaAdapterBytecodeGenerator {
             samName = null;
         }
 
-        generateHandleFields();
         generateClassInit();
         autoConvertibleFromFunction = generateConstructors();
         generateMethods();
@@ -302,7 +298,6 @@ final class JavaAdapterBytecodeGenerator {
 
     private void generateField(final String name, final String fieldDesc) {
         cw.visitField(ACC_PRIVATE | ACC_FINAL | (classOverride ? ACC_STATIC : 0), name, fieldDesc, null, null).visitEnd();
-        usedFieldNames.add(name);
     }
 
     private void loadField(final InstructionAdapter mv, final String name, final String desc) {
@@ -365,21 +360,6 @@ final class JavaAdapterBytecodeGenerator {
         return interfaceNames;
     }
 
-    private void generateHandleFields() {
-        for (final MethodInfo mi : methodInfos) {
-            cw.visitField(ACC_PRIVATE | ACC_STATIC | ACC_FINAL, mi.getMethodHandleFieldName(), METHOD_HANDLE_TYPE_DESCRIPTOR, null, null).visitEnd();
-            if (samName != null && mi.getName().equals(samName)) {
-                cw.visitField(ACC_PRIVATE | ACC_STATIC | ACC_FINAL, mi.getFunctionHandleFieldName(), METHOD_HANDLE_TYPE_DESCRIPTOR, null, null).visitEnd();
-            }
-        }
-    }
-
-    /**
-     * The generated class initializer will invoke {@link JavaAdapterServices#getInvokeMemberHandle}
-     * to obtain the method handles; these methods make sure to add the necessary conversions and
-     * arity adjustments so that the resulting method handles can be invoked from generated methods
-     * using {@code invokeExact}.
-     */
     private void generateClassInit() {
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(ACC_STATIC, CLASS_INIT, Type.getMethodDescriptor(Type.VOID_TYPE), null, null));
 
@@ -397,18 +377,6 @@ final class JavaAdapterBytecodeGenerator {
             }
 
             mv.putstatic(generatedClassName, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-        }
-
-        // Assign MethodHandle fields through invoking getHandle() for a ScriptObject
-        for (final MethodInfo mi : methodInfos) {
-            mv.aconst(Type.getMethodType(mi.type.toMethodDescriptorString()));
-            if (samName != null && mi.getName().equals(samName)) {
-                mv.dup();
-                mv.invokestatic(SERVICES_CLASS_TYPE_NAME, GET_EXECUTE_HANDLE_NAME, GET_HANDLE_DESCRIPTOR, false);
-                mv.putstatic(generatedClassName, mi.getFunctionHandleFieldName(), METHOD_HANDLE_TYPE_DESCRIPTOR);
-            }
-            mv.invokestatic(SERVICES_CLASS_TYPE_NAME, GET_INVOKE_MEMBER_HANDLE_NAME, GET_HANDLE_DESCRIPTOR, false);
-            mv.putstatic(generatedClassName, mi.getMethodHandleFieldName(), METHOD_HANDLE_TYPE_DESCRIPTOR);
         }
 
         endInitMethod(mv);
@@ -433,16 +401,9 @@ final class JavaAdapterBytecodeGenerator {
             }
         }
         if (!gotCtor) {
-            throwNoAccessibleConstructorError();
+            throw new IllegalArgumentException("No accessible constructor: " + superClass.getCanonicalName());
         }
         return canBeAutoConverted;
-    }
-
-    @TruffleBoundary
-    private void throwNoAccessibleConstructorError() {
-        // throw new AdaptationException(ERROR_NO_ACCESSIBLE_CONSTRUCTOR,
-        // superClass.getCanonicalName());
-        throw new RuntimeException("No accessible constructor: " + superClass.getCanonicalName());
     }
 
     private boolean generateConstructors(final Constructor<?> ctor) {
@@ -501,15 +462,6 @@ final class JavaAdapterBytecodeGenerator {
      * value of the "fromFunction" parameter), and initialize all the method handle fields of the
      * adapter instance with functions from the script object (or the script function itself, if
      * that's what's passed).
-     *
-     * There is one method handle field in the adapter class for every method that can be
-     * implemented or overridden; the name of every field is the same as the name of the method,
-     * with a number suffix that makes it unique in case of overloaded methods. The constructor that
-     * takes a script function will only initialize the methods with the same name as the single
-     * abstract method.
-     *
-     * The constructor will also store the Nashorn global that was current at the constructor
-     * invocation time in a field named "global".
      *
      * The generated constructor will be public, regardless of whether the supertype constructor was
      * public or protected. The generated constructor will not be variable arity, even if the
@@ -595,8 +547,6 @@ final class JavaAdapterBytecodeGenerator {
     private static final class MethodInfo {
         private final Method method;
         private final MethodType type;
-        private String methodHandleFieldName;
-        private String functionHandleFieldName;
 
         private MethodInfo(final Class<?> clazz, final String name, final Class<?>... argTypes) throws NoSuchMethodException {
             this(clazz.getDeclaredMethod(name, argTypes));
@@ -625,31 +575,6 @@ final class JavaAdapterBytecodeGenerator {
         public int hashCode() {
             return getName().hashCode() ^ type.hashCode();
         }
-
-        void assignFields(final Set<String> usedFieldNames) {
-            methodHandleFieldName = nextName(usedFieldNames, "");
-            functionHandleFieldName = nextName(usedFieldNames, "$execute");
-        }
-
-        String nextName(final Set<String> usedFieldNames, final String suffix) {
-            int i = 0;
-            final String name = getName().concat(suffix);
-            String nextName = name;
-            while (!usedFieldNames.add(nextName)) {
-                final String ordinal = String.valueOf(i++);
-                final int maxNameLen = 255 - ordinal.length();
-                nextName = (name.length() <= maxNameLen ? name : name.substring(0, maxNameLen)).concat(ordinal);
-            }
-            return nextName;
-        }
-
-        public String getMethodHandleFieldName() {
-            return methodHandleFieldName;
-        }
-
-        public String getFunctionHandleFieldName() {
-            return functionHandleFieldName;
-        }
     }
 
     private void generateMethods() {
@@ -659,22 +584,19 @@ final class JavaAdapterBytecodeGenerator {
     }
 
     /**
-     * Generates a method in the adapter class that adapts a method from the original class. The
-     * generated methods will inspect the method handle field assigned to them. If it is null (the
-     * JS object doesn't provide an implementation for the method) then it will either invoke its
-     * version in the supertype, or if it is abstract, throw an
-     * {@link UnsupportedOperationException}. Otherwise, if the method handle field's value is not
-     * null, the handle is invoked using invokeExact (signature polymorphic invocation as per JLS
-     * 15.12.3). Before the invocation, the current Nashorn {link Context} is checked, and if it is
-     * different than the global used to create the adapter instance, the creating global is set to
-     * be the current global. In this case, the previously current global is restored after the
-     * invocation. If invokeExact results in a Throwable that is not one of the method's declared
-     * exceptions, and is not an unchecked throwable, then it is wrapped into a
-     * {@link RuntimeException} and the runtime exception is thrown.
+     * Generates a method in the adapter class that adapts a method from the original class.
      *
-     * The method handle retrieved from the field is guaranteed to exactly match the signature of
-     * the method; this is guaranteed by the way constructors of the adapter class obtain them using
-     * {@link JavaAdapterServices#getInvokeMemberHandle}.
+     * If the super class has a single abstract method, the generated methods will inspect
+     * the @{code isFunction} field, i.e., if a function object was passed to the constructor; if it
+     * is true, then methods with the same name will execute the provided function object and other
+     * methods will fall back to the super method. Else, it will invoke a method of the passed
+     * "overrides" object if it has an invokable member with the method's name, otherwise it will
+     * fall back to the super method. If the super method it is abstract, it will throw an
+     * {@link UnsupportedOperationException}.
+     *
+     * If the invoked member or function results in a Throwable that is not one of the method's
+     * declared exceptions, and is not an unchecked throwable, then it is wrapped into a
+     * {@link RuntimeException} and the runtime exception is thrown.
      *
      * @param mi the method info describing the method to be generated.
      */
@@ -719,17 +641,15 @@ final class JavaAdapterBytecodeGenerator {
                 final Label notFunction = new Label();
                 mv.ifeq(notFunction);
                 // stack: []
-                // load execute method handle
-                mv.getstatic(generatedClassName, mi.functionHandleFieldName, METHOD_HANDLE_TYPE_DESCRIPTOR);
                 // If it's a SAM method, it'll load delegate as the "callee".
                 loadField(mv, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-                // stack: [delegate, handle]
+                // stack: [delegate]
 
                 // Load all parameters on the stack for dynamic invocation.
                 loadParams(mv, asmArgTypes, 1);
 
                 // Invoke the target method handle
-                mv.invokevirtual(METHOD_HANDLE_TYPE.getInternalName(), "invokeExact", type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), false);
+                mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_EXECUTE);
                 mv.areturn(asmReturnType);
 
                 mv.visitLabel(notFunction);
@@ -785,17 +705,12 @@ final class JavaAdapterBytecodeGenerator {
 
         mv.visitLabel(hasMethod);
         // stack: [delegate]
-        mv.getstatic(generatedClassName, mi.methodHandleFieldName, METHOD_HANDLE_TYPE_DESCRIPTOR);
-        mv.swap();
-        // stack: [delegate, handle]
-        mv.visitLdcInsn(name);
-        // stack: [name, delegate, handle]
 
         // Load all parameters on the stack for dynamic invocation.
         loadParams(mv, asmArgTypes, 1);
 
         // Invoke the target method handle
-        mv.invokevirtual(METHOD_HANDLE_TYPE.getInternalName(), "invokeExact", type.insertParameterTypes(0, Value.class, String.class).toMethodDescriptorString(), false);
+        mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_INVOKE_MEMBER);
         mv.areturn(asmReturnType);
 
         final Label tryBlockEnd = new Label();
@@ -963,7 +878,6 @@ final class JavaAdapterBytecodeGenerator {
                         if (Modifier.isAbstract(m)) {
                             abstractMethodNames.add(mi.getName());
                         }
-                        mi.assignFields(usedFieldNames);
                     }
                 }
             }
