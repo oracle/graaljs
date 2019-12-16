@@ -40,16 +40,14 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
+import static com.oracle.truffle.js.runtime.array.ByteArraySupport.NATIVE_ORDER;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetByteArray;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetByteBuffer;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetOffset;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -58,8 +56,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import sun.misc.Unsafe;
 
 public abstract class TypedArray extends ScriptArray {
 
@@ -240,8 +236,8 @@ public abstract class TypedArray extends ScriptArray {
         return offset;
     }
 
-    protected static BufferAccess getBufferAccess(boolean littleEndian) {
-        return littleEndian ? TypedArray.LITTLE_ENDIAN_ORDER : TypedArray.BIG_ENDIAN_ORDER;
+    protected static ByteArrayAccess getBufferAccess(boolean littleEndian) {
+        return littleEndian ? ByteArraySupport.LITTLE_ENDIAN_ORDER : ByteArraySupport.BIG_ENDIAN_ORDER;
     }
 
     protected static ByteBuffer getByteBufferFromBuffer(DynamicObject buffer, boolean littleEndian, boolean condition) {
@@ -1099,315 +1095,4 @@ public abstract class TypedArray extends ScriptArray {
             getByteBufferFromBuffer(buffer, littleEndian, condition).putDouble(index, JSRuntime.doubleValue((Number) value));
         }
     }
-
-    public abstract static class BufferAccess {
-        public abstract int getInt8(byte[] buffer, int offset, int index, int bytesPerElement);
-
-        public final int getUint8(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return getInt8(buffer, offset, index, bytesPerElement) & 0xff;
-        }
-
-        public abstract int getInt16(byte[] buffer, int offset, int index, int bytesPerElement);
-
-        public final int getUint16(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return getInt16(buffer, offset, index, bytesPerElement) & 0xffff;
-        }
-
-        public abstract int getInt32(byte[] buffer, int offset, int index, int bytesPerElement);
-
-        public final long getUint32(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return getInt32(buffer, offset, index, bytesPerElement) & 0xffffffffL;
-        }
-
-        public abstract float getFloat(byte[] buffer, int offset, int index, int bytesPerElement);
-
-        public abstract double getDouble(byte[] buffer, int offset, int index, int bytesPerElement);
-
-        public abstract long getInt64(byte[] buffer, int offset, int index, int bytesPerElement);
-
-        public abstract void putInt8(byte[] buffer, int offset, int index, int bytesPerElement, int value);
-
-        public abstract void putInt16(byte[] buffer, int offset, int index, int bytesPerElement, int value);
-
-        public abstract void putInt32(byte[] buffer, int offset, int index, int bytesPerElement, int value);
-
-        public abstract void putFloat(byte[] buffer, int offset, int index, int bytesPerElement, float value);
-
-        public abstract void putDouble(byte[] buffer, int offset, int index, int bytesPerElement, double value);
-
-        public abstract void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value);
-    }
-
-    protected abstract static class NormalBufferAccess extends BufferAccess {
-        private static int makeInt16(byte b0, byte b1) {
-            return (b1 << 8) | (b0 & 0xff);
-        }
-
-        private static int makeInt32(byte b0, byte b1, byte b2, byte b3) {
-            return (((b3) << 24) | ((b2 & 0xff) << 16) | ((b1 & 0xff) << 8) | ((b0 & 0xff)));
-        }
-
-        private static long makeInt64(byte b0, byte b1, byte b2, byte b3, byte b4, byte b5, byte b6, byte b7) {
-            return ((((long) b7) << 56) | (((long) b6 & 0xff) << 48) | (((long) b5 & 0xff) << 40) | (((long) b4 & 0xff) << 32) | (((long) b3 & 0xff) << 24) | (((long) b2 & 0xff) << 16) |
-                            (((long) b1 & 0xff) << 8) | (((long) b0 & 0xff)));
-        }
-
-        @Override
-        public final int getInt8(byte[] buffer, int offset, int index, int bytesPerElement) {
-            int byteIndex = offset + index * bytesPerElement;
-            return buffer[byteIndex];
-        }
-
-        @Override
-        public final int getInt16(byte[] buffer, int offset, int index, int bytesPerElement) {
-            int byteIndex = offset + index * bytesPerElement;
-            return makeInt16(buffer[byteIndex + b(0, 2)], buffer[byteIndex + b(1, 2)]);
-        }
-
-        @Override
-        public final int getInt32(byte[] buffer, int offset, int index, int bytesPerElement) {
-            int byteIndex = offset + index * bytesPerElement;
-            return makeInt32(buffer[byteIndex + b(0, 4)], buffer[byteIndex + b(1, 4)], buffer[byteIndex + b(2, 4)], buffer[byteIndex + b(3, 4)]);
-        }
-
-        @Override
-        public final float getFloat(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return Float.intBitsToFloat(getInt32(buffer, offset, index, bytesPerElement));
-        }
-
-        @Override
-        public final double getDouble(byte[] buffer, int offset, int index, int bytesPerElement) {
-            int byteIndex = offset + index * bytesPerElement;
-            return Double.longBitsToDouble(makeInt64(buffer[byteIndex + b(0, 8)], buffer[byteIndex + b(1, 8)], buffer[byteIndex + b(2, 8)], buffer[byteIndex + b(3, 8)], buffer[byteIndex + b(4, 8)],
-                            buffer[byteIndex + b(5, 8)], buffer[byteIndex + b(6, 8)], buffer[byteIndex + b(7, 8)]));
-        }
-
-        @Override
-        public long getInt64(byte[] buffer, int offset, int index, int bytesPerElement) {
-            int byteIndex = offset + index * bytesPerElement;
-            return makeInt64(buffer[byteIndex + b(0, 8)], buffer[byteIndex + b(1, 8)], buffer[byteIndex + b(2, 8)], buffer[byteIndex + b(3, 8)], buffer[byteIndex + b(4, 8)],
-                            buffer[byteIndex + b(5, 8)], buffer[byteIndex + b(6, 8)], buffer[byteIndex + b(7, 8)]);
-        }
-
-        @Override
-        public final void putInt8(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-            int byteIndex = offset + index * bytesPerElement;
-            buffer[byteIndex] = (byte) value;
-        }
-
-        @Override
-        public final void putInt16(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-            int byteIndex = offset + index * bytesPerElement;
-            buffer[byteIndex + b(0, 2)] = (byte) (value);
-            buffer[byteIndex + b(1, 2)] = (byte) (value >> 8);
-        }
-
-        @Override
-        public final void putInt32(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-            int byteIndex = offset + index * bytesPerElement;
-            buffer[byteIndex + b(0, 4)] = (byte) (value);
-            buffer[byteIndex + b(1, 4)] = (byte) (value >> 8);
-            buffer[byteIndex + b(2, 4)] = (byte) (value >> 16);
-            buffer[byteIndex + b(3, 4)] = (byte) (value >> 24);
-        }
-
-        @Override
-        public final void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
-            int byteIndex = offset + index * bytesPerElement;
-            buffer[byteIndex + b(0, 8)] = (byte) (value);
-            buffer[byteIndex + b(1, 8)] = (byte) (value >> 8);
-            buffer[byteIndex + b(2, 8)] = (byte) (value >> 16);
-            buffer[byteIndex + b(3, 8)] = (byte) (value >> 24);
-            buffer[byteIndex + b(4, 8)] = (byte) (value >> 32);
-            buffer[byteIndex + b(5, 8)] = (byte) (value >> 40);
-            buffer[byteIndex + b(6, 8)] = (byte) (value >> 48);
-            buffer[byteIndex + b(7, 8)] = (byte) (value >> 56);
-        }
-
-        @Override
-        public final void putFloat(byte[] buffer, int offset, int index, int bytesPerElement, float value) {
-            putInt32(buffer, offset, index, bytesPerElement, Float.floatToIntBits(value));
-        }
-
-        @Override
-        public final void putDouble(byte[] buffer, int offset, int index, int bytesPerElement, double value) {
-            putInt64(buffer, offset, index, bytesPerElement, Double.doubleToRawLongBits(value));
-        }
-
-        /**
-         * Byte order.
-         *
-         * @param bytePos byte position in little endian byte order
-         * @param size size of type in bytes
-         */
-        protected abstract int b(int bytePos, int size);
-    }
-
-    protected static final class LittleEndianBufferAccess extends NormalBufferAccess {
-        @Override
-        protected int b(int bytePos, int size) {
-            return bytePos;
-        }
-    }
-
-    protected static final class BigEndianBufferAccess extends NormalBufferAccess {
-        @Override
-        protected int b(int bytePos, int size) {
-            return size - 1 - bytePos;
-        }
-    }
-
-    protected static final class SunMiscUnsafeNativeOrderBufferAccess extends BufferAccess {
-        @Override
-        public int getInt8(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return UNSAFE.getByte(buffer, offset(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public int getInt16(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return UNSAFE.getShort(buffer, offset(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public int getInt32(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return UNSAFE.getInt(buffer, offset(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public long getInt64(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return UNSAFE.getLong(buffer, offset(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public float getFloat(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return UNSAFE.getFloat(buffer, offset(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public double getDouble(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return UNSAFE.getDouble(buffer, offset(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public void putInt8(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-            UNSAFE.putByte(buffer, offset(offset, index, bytesPerElement), (byte) value);
-        }
-
-        @Override
-        public void putInt16(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-            UNSAFE.putShort(buffer, offset(offset, index, bytesPerElement), (short) value);
-        }
-
-        @Override
-        public void putInt32(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-            UNSAFE.putInt(buffer, offset(offset, index, bytesPerElement), value);
-        }
-
-        @Override
-        public void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
-            UNSAFE.putLong(buffer, offset(offset, index, bytesPerElement), value);
-        }
-
-        @Override
-        public void putFloat(byte[] buffer, int offset, int index, int bytesPerElement, float value) {
-            UNSAFE.putFloat(buffer, offset(offset, index, bytesPerElement), value);
-        }
-
-        @Override
-        public void putDouble(byte[] buffer, int offset, int index, int bytesPerElement, double value) {
-            UNSAFE.putDouble(buffer, offset(offset, index, bytesPerElement), value);
-        }
-
-        private static long offset(int offset, int index, int bytesPerElement) {
-            long byteIndex = offset + (long) index * bytesPerElement;
-            return byteIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-
-        private static final Unsafe UNSAFE = AccessController.doPrivileged(new PrivilegedAction<Unsafe>() {
-            @Override
-            public Unsafe run() {
-                try {
-                    return Unsafe.getUnsafe();
-                } catch (SecurityException e) {
-                }
-                try {
-                    Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-                    theUnsafeInstance.setAccessible(true);
-                    return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-                } catch (Exception e) {
-                    throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-                }
-            }
-        });
-    }
-
-    protected static final class ByteBufferNativeOrderBufferAccess extends BufferAccess {
-        @Override
-        public int getInt8(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).get(byteIndex(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public int getInt16(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getShort(byteIndex(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public int getInt32(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getInt(byteIndex(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public float getFloat(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getFloat(byteIndex(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public double getDouble(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getDouble(byteIndex(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public long getInt64(byte[] buffer, int offset, int index, int bytesPerElement) {
-            return ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getLong(byteIndex(offset, index, bytesPerElement));
-        }
-
-        @Override
-        public void putInt8(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-            ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).put(byteIndex(offset, index, bytesPerElement), (byte) value);
-        }
-
-        @Override
-        public void putInt16(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-            ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putShort(byteIndex(offset, index, bytesPerElement), (short) value);
-        }
-
-        @Override
-        public void putInt32(byte[] buffer, int offset, int index, int bytesPerElement, int value) {
-            ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putInt(byteIndex(offset, index, bytesPerElement), value);
-        }
-
-        @Override
-        public void putFloat(byte[] buffer, int offset, int index, int bytesPerElement, float value) {
-            ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putFloat(byteIndex(offset, index, bytesPerElement), value);
-        }
-
-        @Override
-        public void putDouble(byte[] buffer, int offset, int index, int bytesPerElement, double value) {
-            ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putDouble(byteIndex(offset, index, bytesPerElement), value);
-        }
-
-        @Override
-        public void putInt64(byte[] buffer, int offset, int index, int bytesPerElement, long value) {
-            ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).putLong(byteIndex(offset, index, bytesPerElement), value);
-        }
-
-        private static int byteIndex(int offset, int index, int bytesPerElement) {
-            return offset + index * bytesPerElement;
-        }
-    }
-
-    static final BufferAccess NATIVE_ORDER = new SunMiscUnsafeNativeOrderBufferAccess();
-    private static final BufferAccess LITTLE_ENDIAN_ORDER = new LittleEndianBufferAccess();
-    private static final BufferAccess BIG_ENDIAN_ORDER = new BigEndianBufferAccess();
 }
