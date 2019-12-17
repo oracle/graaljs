@@ -61,6 +61,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -602,8 +603,8 @@ final class JavaAdapterBytecodeGenerator {
      */
     private void generateMethod(final MethodInfo mi) {
         final Method method = mi.method;
-        final Class<?>[] exceptions = method.getExceptionTypes();
-        final String[] exceptionNames = getExceptionNames(exceptions);
+        final Class<?>[] declaredExceptions = method.getExceptionTypes();
+        final String[] exceptionNames = getExceptionNames(declaredExceptions);
         final MethodType type = mi.type;
         final String methodDesc = type.toMethodDescriptorString();
         final String name = mi.getName();
@@ -619,6 +620,8 @@ final class JavaAdapterBytecodeGenerator {
         final Label defaultBehavior = new Label();
         final Label hasMethod = new Label();
 
+        final List<TryBlock> tryBlocks = new ArrayList<>();
+
         loadField(mv, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
         // For the cases like scripted overridden methods invoked from super constructors get
         // adapter global/delegate fields as null, since we
@@ -628,13 +631,9 @@ final class JavaAdapterBytecodeGenerator {
         mv.ifnull(defaultBehavior);
         // stack: []
 
-        final Label tryBlockStart = new Label();
-        mv.visitLabel(tryBlockStart);
-
         // If this is a SAM type...
         if (samName != null) {
-            // ...every method will be checking whether we're initialized with a
-            // function.
+            // ...every method will be checking whether we're initialized with a function.
             loadField(mv, IS_FUNCTION_FIELD_NAME, BOOLEAN_TYPE_DESCRIPTOR);
             // stack: [isFunction]
             if (name.equals(samName)) {
@@ -648,8 +647,16 @@ final class JavaAdapterBytecodeGenerator {
                 // Load all parameters on the stack for dynamic invocation.
                 loadParams(mv, asmArgTypes, 1);
 
+                final Label tryBlockStart = new Label();
+                mv.visitLabel(tryBlockStart);
+
                 // Invoke the target method handle
                 mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_EXECUTE);
+
+                final Label tryBlockEnd = new Label();
+                mv.visitLabel(tryBlockEnd);
+                tryBlocks.add(new TryBlock(tryBlockStart, tryBlockEnd));
+
                 mv.areturn(asmReturnType);
 
                 mv.visitLabel(notFunction);
@@ -709,44 +716,59 @@ final class JavaAdapterBytecodeGenerator {
         // Load all parameters on the stack for dynamic invocation.
         loadParams(mv, asmArgTypes, 1);
 
+        final Label tryBlockStart = new Label();
+        mv.visitLabel(tryBlockStart);
+
         // Invoke the target method handle
         mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_INVOKE_MEMBER);
-        mv.areturn(asmReturnType);
 
         final Label tryBlockEnd = new Label();
         mv.visitLabel(tryBlockEnd);
+        tryBlocks.add(new TryBlock(tryBlockStart, tryBlockEnd));
 
+        mv.areturn(asmReturnType);
+
+        emitTryCatchBlocks(mv, declaredExceptions, tryBlocks);
+
+        endMethod(mv);
+    }
+
+    private static final class TryBlock {
+        final Label start;
+        final Label end;
+
+        TryBlock(Label start, Label end) {
+            this.start = start;
+            this.end = end;
+        }
+    }
+
+    private static void emitTryCatchBlocks(final InstructionAdapter mv, final Class<?>[] declaredExceptions, final List<TryBlock> tryBlocks) {
+        if (isThrowableDeclared(declaredExceptions)) {
+            // Method declares Throwable, no need for a try-catch
+            return;
+        }
+
+        // If Throwable is not declared, we need an adapter from Throwable to RuntimeException
         final Label rethrowHandler = new Label();
         mv.visitLabel(rethrowHandler);
         // Rethrow handler for RuntimeException, Error, and all declared exception types
         mv.athrow();
 
-        // If Throwable is not declared, we need an adapter from Throwable to RuntimeException
-        final boolean throwableDeclared = isThrowableDeclared(exceptions);
-        final Label throwableHandler;
-        if (!throwableDeclared) {
-            // Add "throw new RuntimeException(Throwable)" handler for Throwable
-            throwableHandler = new Label();
-            mv.visitLabel(throwableHandler);
-            wrapThrowable(mv);
-            mv.athrow();
-        } else {
-            throwableHandler = null;
-        }
+        // Add "throw new RuntimeException(Throwable)" handler for Throwable
+        final Label throwableHandler = new Label();
+        mv.visitLabel(throwableHandler);
+        wrapThrowable(mv);
+        mv.athrow();
 
-        if (throwableDeclared) {
-            mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, rethrowHandler, THROWABLE_TYPE_NAME);
-            assert throwableHandler == null;
-        } else {
-            mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, rethrowHandler, RUNTIME_EXCEPTION_TYPE_NAME);
-            mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, rethrowHandler, ERROR_TYPE_NAME);
-            for (final String excName : exceptionNames) {
-                mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, rethrowHandler, excName);
+        for (TryBlock tryBlock : tryBlocks) {
+            mv.visitTryCatchBlock(tryBlock.start, tryBlock.end, rethrowHandler, RUNTIME_EXCEPTION_TYPE_NAME);
+            mv.visitTryCatchBlock(tryBlock.start, tryBlock.end, rethrowHandler, ERROR_TYPE_NAME);
+            for (Class<?> exception : declaredExceptions) {
+                mv.visitTryCatchBlock(tryBlock.start, tryBlock.end, rethrowHandler, Type.getInternalName(exception));
             }
-            mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, throwableHandler, THROWABLE_TYPE_NAME);
+            mv.visitTryCatchBlock(tryBlock.start, tryBlock.end, throwableHandler, THROWABLE_TYPE_NAME);
         }
-
-        endMethod(mv);
     }
 
     private static void wrapThrowable(InstructionAdapter mv) {
