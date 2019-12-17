@@ -47,6 +47,8 @@ import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Array;
+import java.util.Arrays;
 
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -61,10 +63,13 @@ public final class JavaAdapterServices {
     private static final MethodType VALUE_EXECUTE_VOID_METHOD_TYPE = MethodType.methodType(void.class, Object[].class);
     private static final MethodType VALUE_INVOKE_MEMBER_METHOD_TYPE = MethodType.methodType(Value.class, String.class, Object[].class);
     private static final MethodType VALUE_AS_METHOD_TYPE = MethodType.methodType(Object.class, Class.class);
+    private static final MethodType CONCAT_ARRAYS_METHOD_TYPE = MethodType.methodType(Object[].class, Object[].class, Object.class);
+
     private static final Source HAS_OWN_PROPERTY_SOURCE = Source.newBuilder(ID, "(function(obj, name){return Object.prototype.hasOwnProperty.call(obj, name);})", "hasOwnProperty").buildLiteral();
 
-    static final int BOOTSTRAP_VALUE_INVOKE_MEMBER = 1;
-    static final int BOOTSTRAP_VALUE_EXECUTE = 2;
+    static final int BOOTSTRAP_VALUE_INVOKE_MEMBER = 1 << 0;
+    static final int BOOTSTRAP_VALUE_EXECUTE = 1 << 1;
+    static final int BOOTSTRAP_VARARGS = 1 << 2;
 
     private JavaAdapterServices() {
         assert !JSTruffleOptions.SubstrateVM;
@@ -166,12 +171,12 @@ public final class JavaAdapterServices {
      */
     public static CallSite bootstrap(MethodHandles.Lookup lookup, String methodName, MethodType type, int flags) throws NoSuchMethodException, IllegalAccessException {
         MethodHandle target;
-        if (flags == BOOTSTRAP_VALUE_INVOKE_MEMBER) {
+        if ((flags & BOOTSTRAP_VALUE_INVOKE_MEMBER) != 0) {
             target = lookup.findVirtual(Value.class, "invokeMember", VALUE_INVOKE_MEMBER_METHOD_TYPE);
             // insert method name parameter
             target = MethodHandles.insertArguments(target, 1, methodName);
         } else {
-            assert flags == BOOTSTRAP_VALUE_EXECUTE;
+            assert (flags & BOOTSTRAP_VALUE_EXECUTE) != 0;
             if (type.returnType() == void.class) {
                 target = lookup.findVirtual(Value.class, "executeVoid", VALUE_EXECUTE_VOID_METHOD_TYPE);
             } else {
@@ -179,8 +184,31 @@ public final class JavaAdapterServices {
             }
         }
 
-        // collect arguments
-        target = target.asCollector(Object[].class, type.parameterCount() - 1);
+        boolean varargs = (flags & BOOTSTRAP_VARARGS) != 0;
+        if (varargs) {
+            Class<?> varargsParameter = type.parameterType(type.parameterCount() - 1);
+            if (type.parameterCount() == 2 && varargsParameter == Object[].class) {
+                // easy case: no need to collect anything, just pass through
+            } else {
+                // collect non-varargs arguments into an Object[]
+                MethodHandle fixedCollector = MethodHandles.identity(Object[].class).asCollector(Object[].class, type.parameterCount() - 2);
+                MethodType fixedCollectorType = MethodType.methodType(Object[].class, Arrays.copyOfRange(type.parameterArray(), 1, type.parameterCount() - 1));
+                fixedCollector = fixedCollector.asType(fixedCollectorType);
+
+                // concatenate fixed Object[] and varargs array
+                MethodHandle concatArray = lookup.findStatic(JavaAdapterServices.class, "concatArrays", CONCAT_ARRAYS_METHOD_TYPE);
+                concatArray = concatArray.asType(CONCAT_ARRAYS_METHOD_TYPE.changeParameterType(1, varargsParameter));
+
+                // combine collectors => Object[](fixed..., varargs)
+                MethodHandle collector = MethodHandles.collectArguments(concatArray, 0, fixedCollector);
+
+                // apply collector
+                target = MethodHandles.collectArguments(target, 1, collector);
+            }
+        } else {
+            // collect arguments
+            target = target.asCollector(Object[].class, type.parameterCount() - 1);
+        }
 
         if (type.returnType() != void.class) {
             target = MethodHandles.filterReturnValue(target, createReturnValueConverter(lookup, type.returnType()));
@@ -188,5 +216,15 @@ public final class JavaAdapterServices {
 
         target = target.asType(type);
         return new ConstantCallSite(target);
+    }
+
+    public static Object[] concatArrays(Object[] fixed, Object va) {
+        int fixedLen = fixed.length;
+        int vaLen = Array.getLength(va);
+        Object[] concat = Arrays.copyOf(fixed, fixedLen + vaLen);
+        for (int i = 0; i < vaLen; i++) {
+            concat[fixedLen + i] = Array.get(va, i);
+        }
+        return concat;
     }
 }

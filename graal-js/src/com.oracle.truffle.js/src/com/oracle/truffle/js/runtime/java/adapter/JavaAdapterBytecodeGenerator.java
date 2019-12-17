@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.java.adapter;
 
 import static com.oracle.truffle.js.runtime.java.adapter.JavaAdapterServices.BOOTSTRAP_VALUE_EXECUTE;
 import static com.oracle.truffle.js.runtime.java.adapter.JavaAdapterServices.BOOTSTRAP_VALUE_INVOKE_MEMBER;
+import static com.oracle.truffle.js.runtime.java.adapter.JavaAdapterServices.BOOTSTRAP_VARARGS;
 import static org.objectweb.asm.Opcodes.ACC_FINAL;
 import static org.objectweb.asm.Opcodes.ACC_PRIVATE;
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
@@ -616,6 +617,7 @@ final class JavaAdapterBytecodeGenerator {
         mv.visitCode();
 
         final Type asmReturnType = Type.getType(type.returnType());
+        final int bootstrapFlags = method.isVarArgs() ? BOOTSTRAP_VARARGS : 0;
 
         final Label defaultBehavior = new Label();
         final Label hasMethod = new Label();
@@ -651,7 +653,7 @@ final class JavaAdapterBytecodeGenerator {
                 mv.visitLabel(tryBlockStart);
 
                 // Invoke the target method handle
-                mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_EXECUTE);
+                mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_EXECUTE | bootstrapFlags);
 
                 final Label tryBlockEnd = new Label();
                 mv.visitLabel(tryBlockEnd);
@@ -720,7 +722,7 @@ final class JavaAdapterBytecodeGenerator {
         mv.visitLabel(tryBlockStart);
 
         // Invoke the target method handle
-        mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_INVOKE_MEMBER);
+        mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_INVOKE_MEMBER | bootstrapFlags);
 
         final Label tryBlockEnd = new Label();
         mv.visitLabel(tryBlockEnd);
