@@ -343,6 +343,11 @@ public final class JSContextOptions {
     public static final OptionKey<Integer> STRING_LENGTH_LIMIT = new OptionKey<>(JSTruffleOptions.StringLengthLimit);
     @CompilationFinal private int stringLengthLimit;
 
+    public static final String BIND_MEMBER_FUNCTIONS_NAME = JS_OPTION_PREFIX + "bind-member-functions";
+    @Option(name = BIND_MEMBER_FUNCTIONS_NAME, category = OptionCategory.EXPERT, help = "Bind functions returned by Value.getMember to the receiver object.") //
+    public static final OptionKey<Boolean> BIND_MEMBER_FUNCTIONS = new OptionKey<>(false);
+    @CompilationFinal private boolean bindMemberFunctions;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -411,6 +416,7 @@ public final class JSContextOptions {
         this.validateRegExpLiterals = readBooleanOption(VALIDATE_REGEXP_LITERALS);
         this.functionConstructorCacheSize = readIntegerOption(FUNCTION_CONSTRUCTOR_CACHE_SIZE);
         this.stringLengthLimit = readIntegerOption(STRING_LENGTH_LIMIT);
+        this.bindMemberFunctions = readBooleanOption(BIND_MEMBER_FUNCTIONS);
     }
 
     private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
@@ -667,6 +673,10 @@ public final class JSContextOptions {
         return stringLengthLimit;
     }
 
+    public boolean bindMemberFunctions() {
+        return bindMemberFunctions;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -700,6 +710,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.validateRegExpLiterals ? 1 : 0);
         hash = 53 * hash + this.functionConstructorCacheSize;
         hash = 53 * hash + this.stringLengthLimit;
+        hash = 53 * hash + (this.bindMemberFunctions ? 1 : 0);
         return hash;
     }
 
@@ -800,6 +811,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.stringLengthLimit != other.stringLengthLimit) {
+            return false;
+        }
+        if (this.bindMemberFunctions != other.bindMemberFunctions) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

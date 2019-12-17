@@ -40,14 +40,17 @@
  */
 package com.oracle.truffle.js.test.interop;
 
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 
 public class FunctionTest {
 
@@ -71,6 +74,38 @@ public class FunctionTest {
             Value instanceOf = context.eval("js", "(function(instance, fn) { return instance instanceof fn; })");
             assertTrue(instanceOf.canExecute());
             assertTrue(instanceOf.execute(instance, function).asBoolean());
+        }
+    }
+
+    @Test
+    public void testInteropBindMemberFunctions() throws Exception {
+        Source source = Source.newBuilder(ID, "" +
+                        "var ob = {v:2};\n" +
+                        "var v = 0;" +
+                        "var f = function(a) {\n" +
+                        "  this.v += a;" +
+                        "}\n" +
+                        "ob.f = f;\n" +
+                        "ob\n",
+                        "bindTest.js").build();
+
+        try (Context context = Context.newBuilder(ID).allowExperimentalOptions(true).option(JSContextOptions.BIND_MEMBER_FUNCTIONS_NAME, "true").build()) {
+            Value object = context.eval(source);
+            object.getMember("f").execute(40);
+            Value result = object.getMember("v");
+            assertTrue("Is number: " + result, result.isNumber());
+            assertEquals(42, result.asInt());
+        }
+
+        try (Context context = Context.newBuilder(ID).allowExperimentalOptions(true).option(JSContextOptions.BIND_MEMBER_FUNCTIONS_NAME, "false").build()) {
+            Value object = context.eval(source);
+            object.getMember("f").execute(40);
+            Value result = object.getMember("v");
+            assertTrue("Is number: " + result, result.isNumber());
+            assertEquals(2, result.asInt());
+            result = context.getBindings(ID).getMember("v");
+            assertTrue("Is number: " + result, result.isNumber());
+            assertEquals(40, result.asInt());
         }
     }
 

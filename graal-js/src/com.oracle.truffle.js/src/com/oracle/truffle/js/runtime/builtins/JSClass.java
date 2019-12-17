@@ -71,6 +71,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
+import com.oracle.truffle.js.nodes.interop.ExportMemberValueNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
@@ -510,9 +511,9 @@ public abstract class JSClass extends ObjectType {
 
     @ExportMessage
     static Object readMember(DynamicObject target, String key,
-                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
+                    @CachedLanguage LanguageReference<JavaScriptLanguage> languageRef,
                     @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @Cached ExportMemberValueNode exportNode) throws UnknownIdentifierException, UnsupportedMessageException {
         ensureHasMembers(target);
         Object result;
         if (readNode == null) {
@@ -523,7 +524,7 @@ public abstract class JSClass extends ObjectType {
         if (result == null) {
             throw UnknownIdentifierException.create(key);
         }
-        return exportNode.executeWithTarget(result, target);
+        return exportNode.execute(result, target, languageRef);
     }
 
     @ExportMessage
@@ -634,7 +635,7 @@ public abstract class JSClass extends ObjectType {
         if (result == null) {
             throw InvalidArrayIndexException.create(index);
         }
-        return exportNode.executeWithTarget(result, target);
+        return exportNode.execute(result);
     }
 
     @ExportMessage
@@ -698,7 +699,7 @@ public abstract class JSClass extends ObjectType {
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(target, Undefined.instance, args);
-            return exportNode.executeWithTarget(result, Undefined.instance);
+            return exportNode.execute(result);
         } finally {
             language.interopBoundaryExit(realm);
         }
@@ -719,7 +720,7 @@ public abstract class JSClass extends ObjectType {
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(target, args);
-            return exportNode.executeWithTarget(result, Undefined.instance);
+            return exportNode.execute(result);
         } finally {
             language.interopBoundaryExit(realm);
         }
@@ -740,7 +741,7 @@ public abstract class JSClass extends ObjectType {
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(target, id, args);
-            return exportNode.executeWithTarget(result, target);
+            return exportNode.execute(result);
         } finally {
             language.interopBoundaryExit(realm);
         }
