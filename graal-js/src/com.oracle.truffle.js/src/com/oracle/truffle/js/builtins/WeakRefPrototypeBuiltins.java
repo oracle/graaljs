@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,13 +101,15 @@ public final class WeakRefPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization// (guards = "isJSWeakRef(thisObj)")
+        @Specialization(guards = "isJSWeakRef(thisObj)")
         protected static DynamicObject deref(DynamicObject thisObj) {
             Object referent = JSWeakRef.getInternalWeakRef(thisObj).get();
+            // Do I need to check if the referent is an object? Like it is done before the create()
+            // method call, ConstructorBuiltins.java, line 1108
             return referent != null ? (DynamicObject) referent : Undefined.instance;
         }
 
-        @Specialization// (guards = "!isJSWeakRef(thisObj)")
+        @Specialization(guards = "!isJSWeakRef(thisObj)")
         protected static DynamicObject notWeakRef(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeError("WeakRef expected");
         }

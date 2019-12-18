@@ -1157,7 +1157,6 @@ public class JSRealm {
 
             putGlobalProperty(JSMap.CLASS_NAME, getMapConstructor());
             putGlobalProperty(JSSet.CLASS_NAME, getSetConstructor());
-            putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
             putGlobalProperty(JSWeakMap.CLASS_NAME, getWeakMapConstructor());
             putGlobalProperty(JSWeakSet.CLASS_NAME, getWeakSetConstructor());
             putGlobalProperty(JSSymbol.CLASS_NAME, getSymbolConstructor());
@@ -1180,6 +1179,9 @@ public class JSRealm {
         }
         if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2019) {
             putGlobalProperty("globalThis", global);
+        }
+        if (context.getEcmaScriptVersion() >= JSTruffleOptions.ECMAScript2020) {
+            putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
         }
         if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject();

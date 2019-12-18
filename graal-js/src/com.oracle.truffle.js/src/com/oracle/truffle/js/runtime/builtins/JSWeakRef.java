@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,14 +76,11 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
     }
 
     public static DynamicObject create(JSContext context, Object referent) {
-        // We want to have an referred object for creating the WeakReference
         DynamicObject obj = JSObject.create(context, context.getWeakRefFactory(), new WeakReference<>(referent));
         assert isJSWeakRef(obj);
         return obj;
     }
 
-    // IDK what does it do. Actually, IDK if it is needed at all. More no than yes.
-    // UPD: actually, it may be needed.
     public static WeakReference<?> getInternalWeakRef(DynamicObject obj) {
         assert isJSWeakRef(obj);
         return (WeakReference<?>) WEAKREF_PROPERTY.get(obj, isJSWeakRef(obj));
@@ -95,8 +92,7 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
         DynamicObject prototype = JSObject.createInit(realm, realm.getObjectPrototype(), JSUserObject.INSTANCE);
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakRefPrototypeBuiltins.BUILTINS);
-        // Actually IDK what is this. Does it just contain the class name?
-        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.configurableNotEnumerableNotWritable());
         return prototype;
     }
 

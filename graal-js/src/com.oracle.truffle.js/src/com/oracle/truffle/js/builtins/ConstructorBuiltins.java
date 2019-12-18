@@ -64,6 +64,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -128,6 +129,7 @@ import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
@@ -1075,6 +1077,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
+    // I suppose there should be more elegant way to prohibit calling the WeakRef constructor
+    // function.
     public abstract static class CallWeakRefNode extends JSBuiltinNode {
         public CallWeakRefNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1087,6 +1091,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     }
 
     public abstract static class ConstructWeakRefNode extends ConstructWithNewTargetNode {
+        private final ConditionProfile isNotObject = ConditionProfile.createBinaryProfile();
+        @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
 
         public ConstructWeakRefNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
@@ -1099,8 +1105,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"args.length != 0"})
         protected DynamicObject constructWeakRef(DynamicObject newTarget, Object[] args) {
-            // This check is bad, I think I need Specialization
-            if (!(args[0] instanceof DynamicObject)) {
+            // I have to find more elegant way to do these checks.
+            requireObjectCoercible(args[0]);
+            if (isNotObject.profile(!(args[0] instanceof DynamicObject))) {
                 throw Errors.createTypeError("Cannot create WeakRef on non-object");
             }
             return swapPrototype(JSWeakRef.create(getContext(), args[0]), newTarget);
@@ -1111,6 +1118,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getWeakRefPrototype();
         }
 
+        protected final void requireObjectCoercible(Object target) {
+            if (requireObjectCoercibleNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                requireObjectCoercibleNode = insert(RequireObjectCoercibleNode.create());
+            }
+            requireObjectCoercibleNode.executeVoid(target);
+        }
     }
 
     public abstract static class CallCollatorNode extends JSBuiltinNode {
