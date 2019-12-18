@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
-public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFactory.Default.WithSpecies, PrototypeSupplier {
+public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final JSWeakRef INSTANCE = new JSWeakRef();
 

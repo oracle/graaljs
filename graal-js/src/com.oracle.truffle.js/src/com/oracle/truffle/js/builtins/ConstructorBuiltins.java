@@ -347,9 +347,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 : CallStringNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
 
             case WeakRef:
-                return construct ? (newTarget ? ConstructWeakRefNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                                : ConstructWeakRefNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context)))
-                                : CallWeakRefNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
+                return construct ? (newTarget ? ConstructWeakRefNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
+                                : ConstructWeakRefNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
+                                : CallWeakRefNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
 
             case Collator:
                 return construct ? (newTarget
@@ -1085,7 +1085,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected DynamicObject callWeakRef(@SuppressWarnings("unused") Object[] args) {
+        protected DynamicObject callWeakRef(@SuppressWarnings("unused") Object target) {
             throw Errors.createTypeError("Cannot call WeakRef");
         }
     }
@@ -1098,19 +1098,22 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, newTargetCase);
         }
 
-        @Specialization(guards = {"args.length == 0"})
-        protected DynamicObject constructWeakRefInt0(@SuppressWarnings("unused") DynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
-            throw Errors.createTypeError("Cannot create WeakRef on undefined");
-        }
-
-        @Specialization(guards = {"args.length != 0"})
-        protected DynamicObject constructWeakRef(DynamicObject newTarget, Object[] args) {
+// @Specialization(guards = {"args.length == 0"})
+// protected DynamicObject constructWeakRefInt0(@SuppressWarnings("unused") DynamicObject newTarget,
+// @SuppressWarnings("unused") Object target) {
+// throw Errors.createTypeError("Cannot create WeakRef on undefined");
+// }
+//
+// @Specialization(guards = {"args.length != 0"})
+// IDK if this @Specialization is needed here.
+        @Specialization
+        protected DynamicObject constructWeakRef(DynamicObject newTarget, Object target) {
             // I have to find more elegant way to do these checks.
-            requireObjectCoercible(args[0]);
-            if (isNotObject.profile(!(args[0] instanceof DynamicObject))) {
+            requireObjectCoercible(target);
+            if (isNotObject.profile(!(target instanceof DynamicObject))) {
                 throw Errors.createTypeError("Cannot create WeakRef on non-object");
             }
-            return swapPrototype(JSWeakRef.create(getContext(), args[0]), newTarget);
+            return swapPrototype(JSWeakRef.create(getContext(), target), newTarget);
         }
 
         @Override
