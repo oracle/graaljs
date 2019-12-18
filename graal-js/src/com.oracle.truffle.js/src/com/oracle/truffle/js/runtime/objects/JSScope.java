@@ -411,10 +411,13 @@ public abstract class JSScope {
 
         @Override
         protected Object getArguments(Frame frame) {
-            if (rootNode == null || mFrame == null) {
+            if (rootNode == null) {
                 return null;
             }
-            return new VariablesMapObject(collectArgs(rootNode), mFrame.getArguments(), mFrame);
+
+            Object[] arguments = mFrame != null ? mFrame.getArguments() : null;
+
+            return new VariablesMapObject(collectArgs(rootNode), arguments, mFrame);
         }
 
         @Override
