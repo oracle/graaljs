@@ -21,6 +21,15 @@ function prepareMainThreadExecution(expandArgv1 = false) {
       setupCoverageHooks(process.env.NODE_V8_COVERAGE);
   }
 
+  // If source-map support has been enabled, we substitute in a new
+  // prepareStackTrace method, replacing the default in errors.js.
+  if (getOptionValue('--enable-source-maps')) {
+    const { prepareStackTrace } =
+      require('internal/source_map/prepare_stack_trace');
+    const { setPrepareStackTraceCallback } = internalBinding('errors');
+    setPrepareStackTraceCallback(prepareStackTrace);
+  }
+
   setupDebugEnv();
 
   // Only main thread receives signals.
@@ -126,7 +135,18 @@ function setupCoverageHooks(dir) {
   const cwd = require('internal/process/execution').tryGetCwd();
   const { resolve } = require('path');
   const coverageDirectory = resolve(cwd, dir);
-  internalBinding('profiler').setCoverageDirectory(coverageDirectory);
+  const { sourceMapCacheToObject } =
+    require('internal/source_map/source_map_cache');
+
+  if (process.features.inspector) {
+    internalBinding('profiler').setCoverageDirectory(coverageDirectory);
+    internalBinding('profiler').setSourceMapCacheGetter(sourceMapCacheToObject);
+  } else {
+    process.emitWarning('The inspector is disabled, ' +
+                        'coverage could not be collected',
+                        'Warning');
+    return '';
+  }
   return coverageDirectory;
 }
 
@@ -268,6 +288,10 @@ function initializeDeprecations() {
     process.binding = deprecate(process.binding,
                                 'process.binding() is deprecated. ' +
                                 'Please use public APIs instead.', 'DEP0111');
+
+    process._tickCallback = deprecate(process._tickCallback,
+                                      'process._tickCallback() is deprecated',
+                                      'DEP0134');
   }
 
   // Create global.process and global.Buffer as getters so that we have a
@@ -397,12 +421,12 @@ function initializeESMLoader() {
     // track of for different ESM modules.
     setInitializeImportMetaObjectCallback(esm.initializeImportMetaObject);
     setImportModuleDynamicallyCallback(esm.importModuleDynamicallyCallback);
-    const userLoader = getOptionValue('--loader');
-    // If --loader is specified, create a loader with user hooks. Otherwise
-    // create the default loader.
+    const userLoader = getOptionValue('--experimental-loader');
+    // If --experimental-loader is specified, create a loader with user hooks.
+    // Otherwise create the default loader.
     if (userLoader) {
       const { emitExperimentalWarning } = require('internal/util');
-      emitExperimentalWarning('--loader');
+      emitExperimentalWarning('--experimental-loader');
     }
     esm.initializeLoader(process.cwd(), userLoader);
   }

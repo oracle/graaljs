@@ -108,6 +108,9 @@ Requires Node.js to be built with
 .It Fl -es-module-specifier-resolution
 Select extension resolution algorithm for ES Modules; either 'explicit' (default) or 'node'
 .
+.It Fl -experimental-json-modules
+Enable experimental JSON interop support for the ES Module loader.
+.
 .It Fl -experimental-modules
 Enable experimental ES module support and caching modules.
 .
@@ -200,9 +203,9 @@ Default is
 V8 Inspector integration allows attaching Chrome DevTools and IDEs to Node.js instances for debugging and profiling.
 It uses the Chrome DevTools Protocol.
 .
-.It Fl -loader Ns = Ns Ar file
+.It Fl -experimental-loader Ns = Ns Ar module
 Specify the
-.Ar file
+.Ar module
 as a custom loader, to load
 .Fl -experimental-modules .
 .

@@ -149,8 +149,8 @@ function loadSession(hello) {
 
   if (hello.sessionId.length <= 0 ||
       hello.tlsTicket ||
-      owner.server &&
-      !owner.server.emit('resumeSession', hello.sessionId, onSession)) {
+      (owner.server &&
+      !owner.server.emit('resumeSession', hello.sessionId, onSession))) {
     // Sessions without identifiers can't be resumed.
     // Sessions with tickets can be resumed directly from the ticket, no server
     // session storage is necessary.
@@ -411,7 +411,9 @@ function TLSSocket(socket, opts) {
   net.Socket.call(this, {
     handle: this._wrapHandle(wrap),
     allowHalfOpen: socket ? socket.allowHalfOpen : tlsOptions.allowHalfOpen,
-    readable: false,
+    pauseOnCreate: tlsOptions.pauseOnConnect,
+    // The readable flag is only needed if pauseOnCreate will be handled.
+    readable: tlsOptions.pauseOnConnect,
     writable: false
   });
 
@@ -859,6 +861,7 @@ function makeSocketMethodProxy(name) {
 
 [
   'getCipher',
+  'getSharedSigalgs',
   'getEphemeralKeyInfo',
   'getFinished',
   'getPeerFinished',
@@ -925,7 +928,8 @@ function tlsConnectionListener(rawSocket) {
     handshakeTimeout: this[kHandshakeTimeout],
     ALPNProtocols: this.ALPNProtocols,
     SNICallback: this[kSNICallback] || SNICallback,
-    enableTrace: this[kEnableTrace]
+    enableTrace: this[kEnableTrace],
+    pauseOnConnect: this.pauseOnConnect,
   });
 
   socket.on('secure', onServerSocketSecure);
@@ -1113,15 +1117,14 @@ Server.prototype.setSecureContext = function(options) {
   else
     this.crl = undefined;
 
+  this.sigalgs = options.sigalgs;
+
   if (options.ciphers)
     this.ciphers = options.ciphers;
   else
     this.ciphers = undefined;
 
-  if (options.ecdhCurve !== undefined)
-    this.ecdhCurve = options.ecdhCurve;
-  else
-    this.ecdhCurve = undefined;
+  this.ecdhCurve = options.ecdhCurve;
 
   if (options.dhparam)
     this.dhparam = options.dhparam;
@@ -1157,6 +1160,7 @@ Server.prototype.setSecureContext = function(options) {
     clientCertEngine: this.clientCertEngine,
     ca: this.ca,
     ciphers: this.ciphers,
+    sigalgs: this.sigalgs,
     ecdhCurve: this.ecdhCurve,
     dhparam: this.dhparam,
     minVersion: this.minVersion,

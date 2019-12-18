@@ -11,7 +11,10 @@ import re
 import shlex
 import subprocess
 import shutil
+import io
+
 from distutils.spawn import find_executable as which
+from distutils.version import StrictVersion
 
 # If not run from node/, cd to node/.
 os.chdir(os.path.dirname(__file__) or '.')
@@ -314,23 +317,23 @@ shared_optgroup.add_option('--shared-zlib-libpath',
 
 shared_optgroup.add_option('--shared-cares',
     action='store_true',
-    dest='shared_libcares',
+    dest='shared_cares',
     help='link to a shared cares DLL instead of static linking')
 
 shared_optgroup.add_option('--shared-cares-includes',
     action='store',
-    dest='shared_libcares_includes',
+    dest='shared_cares_includes',
     help='directory containing cares header files')
 
 shared_optgroup.add_option('--shared-cares-libname',
     action='store',
-    dest='shared_libcares_libname',
+    dest='shared_cares_libname',
     default='cares',
     help='alternative lib name to link to [default: %default]')
 
 shared_optgroup.add_option('--shared-cares-libpath',
     action='store',
-    dest='shared_libcares_libpath',
+    dest='shared_cares_libpath',
     help='a directory to search for the shared cares DLL')
 
 parser.add_option_group(shared_optgroup)
@@ -726,7 +729,7 @@ def get_version_helper(cc, regexp):
   if match:
     return match.group(2)
   else:
-    return '0'
+    return '0.0'
 
 def get_nasm_version(asm):
   try:
@@ -737,7 +740,7 @@ def get_nasm_version(asm):
     warn('''No acceptable ASM compiler found!
          Please make sure you have installed NASM from https://www.nasm.us
          and refer BUILDING.md.''')
-    return '0'
+    return '0.0'
 
   match = re.match(r"NASM version ([2-9]\.[0-9][0-9]+)",
                    to_utf8(proc.communicate()[0]))
@@ -745,11 +748,11 @@ def get_nasm_version(asm):
   if match:
     return match.group(1)
   else:
-    return '0'
+    return '0.0'
 
 def get_llvm_version(cc):
   return get_version_helper(
-    cc, r"(^(?:FreeBSD )?clang version|based on LLVM) ([3-9]\.[0-9]+)")
+    cc, r"(^(?:FreeBSD )?clang version|based on LLVM) ([0-9]+\.[0-9]+)")
 
 def get_xcode_version(cc):
   return get_version_helper(
@@ -778,7 +781,7 @@ def get_gas_version(cc):
     return match.group(1)
   else:
     warn('Could not recognize `gas`: ' + gas_ret)
-    return '0'
+    return '0.0'
 
 # Note: Apple clang self-reports as clang 4.2.0 and gcc 4.2.1.  It passes
 # the version check more by accident than anything else but a more rigorous
@@ -789,7 +792,7 @@ def check_compiler(o):
     if not options.openssl_no_asm and options.dest_cpu in ('x86', 'x64'):
       nasm_version = get_nasm_version('nasm')
       o['variables']['nasm_version'] = nasm_version
-      if nasm_version == 0:
+      if nasm_version == '0.0':
         o['variables']['openssl_no_asm'] = 1
     return
 
@@ -797,7 +800,8 @@ def check_compiler(o):
   if not ok:
     warn('failed to autodetect C++ compiler version (CXX=%s)' % CXX)
   elif clang_version < (8, 0, 0) if is_clang else gcc_version < (6, 3, 0):
-    warn('C++ compiler too old, need g++ 6.3.0 or clang++ 8.0.0 (CXX=%s)' % CXX)
+    warn('C++ compiler (CXX=%s, %s) too old, need g++ 6.3.0 or clang++ 8.0.0' %
+      (CXX, ".".join(map(str, clang_version if is_clang else gcc_version))))
 
   ok, is_clang, clang_version, gcc_version = try_check_compiler(CC, 'c')
   if not ok:
@@ -806,9 +810,10 @@ def check_compiler(o):
     # clang 3.2 is a little white lie because any clang version will probably
     # do for the C bits.  However, we might as well encourage people to upgrade
     # to a version that is not completely ancient.
-    warn('C compiler too old, need gcc 4.2 or clang 3.2 (CC=%s)' % CC)
+    warn('C compiler (CC=%s, %s) too old, need gcc 4.2 or clang 3.2' %
+      (CC, ".".join(map(str, gcc_version))))
 
-  o['variables']['llvm_version'] = get_llvm_version(CC) if is_clang else 0
+  o['variables']['llvm_version'] = get_llvm_version(CC) if is_clang else '0.0'
 
   # Need xcode_version or gas_version when openssl asm files are compiled.
   if options.without_ssl or options.openssl_no_asm or options.shared_openssl:
@@ -1177,12 +1182,13 @@ def configure_napi(output):
   version = getnapibuildversion.get_napi_version()
   output['variables']['napi_build_version'] = version
 
-def configure_library(lib, output):
+def configure_library(lib, output, pkgname=None):
   shared_lib = 'shared_' + lib
   output['variables']['node_' + shared_lib] = b(getattr(options, shared_lib))
 
   if getattr(options, shared_lib):
-    (pkg_libs, pkg_cflags, pkg_libpath, pkg_modversion) = pkg_config(lib)
+    (pkg_libs, pkg_cflags, pkg_libpath, pkg_modversion) = (
+        pkg_config(pkgname or lib))
 
     if options.__dict__[shared_lib + '_includes']:
       output['include_dirs'] += [options.__dict__[shared_lib + '_includes']]
@@ -1274,10 +1280,10 @@ def configure_openssl(o):
     # supported asm compiler for AVX2. See https://github.com/openssl/openssl/
     # blob/OpenSSL_1_1_0-stable/crypto/modes/asm/aesni-gcm-x86_64.pl#L52-L69
     openssl110_asm_supported = \
-      ('gas_version' in variables and float(variables['gas_version']) >= 2.23) or \
-      ('xcode_version' in variables and float(variables['xcode_version']) >= 5.0) or \
-      ('llvm_version' in variables and float(variables['llvm_version']) >= 3.3) or \
-      ('nasm_version' in variables and float(variables['nasm_version']) >= 2.10)
+      ('gas_version' in variables and StrictVersion(variables['gas_version']) >= StrictVersion('2.23')) or \
+      ('xcode_version' in variables and StrictVersion(variables['xcode_version']) >= StrictVersion('5.0')) or \
+      ('llvm_version' in variables and StrictVersion(variables['llvm_version']) >= StrictVersion('3.3')) or \
+      ('nasm_version' in variables and StrictVersion(variables['nasm_version']) >= StrictVersion('2.10'))
 
     if is_x86 and not openssl110_asm_supported:
       error('''Did not find a new enough assembler, install one or build with
@@ -1546,10 +1552,11 @@ def configure_intl(o):
   icu_ver_major = None
   matchVerExp = r'^\s*#define\s+U_ICU_VERSION_SHORT\s+"([^"]*)".*'
   match_version = re.compile(matchVerExp)
-  for line in open(uvernum_h).readlines():
-    m = match_version.match(line)
-    if m:
-      icu_ver_major = m.group(1)
+  with io.open(uvernum_h, encoding='utf8') as in_file:
+    for line in in_file:
+      m = match_version.match(line)
+      if m:
+        icu_ver_major = str(m.group(1))
   if not icu_ver_major:
     error('Could not read U_ICU_VERSION_SHORT version from %s' % uvernum_h)
   elif int(icu_ver_major) < icu_versions['minimum_icu']:
@@ -1665,11 +1672,8 @@ configure_napi(output)
 configure_library('zlib', output)
 configure_library('http_parser', output)
 configure_library('libuv', output)
-configure_library('libcares', output)
-configure_library('nghttp2', output)
-# stay backwards compatible with shared cares builds
-output['variables']['node_shared_cares'] = \
-    output['variables'].pop('node_shared_libcares')
+configure_library('cares', output, pkgname='libcares')
+configure_library('nghttp2', output, pkgname='libnghttp2')
 configure_v8(output)
 configure_openssl(output)
 configure_intl(output)

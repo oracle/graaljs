@@ -2,7 +2,7 @@
 
 <!--introduced_in=v10.5.0-->
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 The `worker_threads` module enables the use of threads that execute JavaScript
 in parallel. To access it:
@@ -290,7 +290,7 @@ This method can be called when no further communication will happen over this
 The [`'close'` event][] will be emitted on both `MessagePort` instances that
 are part of the channel.
 
-### port.postMessage(value[, transferList])
+### port.postMessage(value\[, transferList\])
 <!-- YAML
 added: v10.5.0
 -->
@@ -303,13 +303,14 @@ Sends a JavaScript value to the receiving side of this channel.
 the [HTML structured clone algorithm][].
 
 In particular, the significant differences to `JSON` are:
-- `value` may contain circular references.
-- `value` may contain instances of builtin JS types such as `RegExp`s,
+
+* `value` may contain circular references.
+* `value` may contain instances of builtin JS types such as `RegExp`s,
   `BigInt`s, `Map`s, `Set`s, etc.
-- `value` may contain typed arrays, both using `ArrayBuffer`s
+* `value` may contain typed arrays, both using `ArrayBuffer`s
    and `SharedArrayBuffer`s.
-- `value` may contain [`WebAssembly.Module`][] instances.
-- `value` may not contain native (C++-backed) objects other than `MessagePort`s.
+* `value` may contain [`WebAssembly.Module`][] instances.
+* `value` may not contain native (C++-backed) objects other than `MessagePort`s.
 
 ```js
 const { MessageChannel } = require('worker_threads');
@@ -423,26 +424,26 @@ Most Node.js APIs are available inside of it.
 
 Notable differences inside a Worker environment are:
 
-- The [`process.stdin`][], [`process.stdout`][] and [`process.stderr`][]
+* The [`process.stdin`][], [`process.stdout`][] and [`process.stderr`][]
   may be redirected by the parent thread.
-- The [`require('worker_threads').isMainThread`][] property is set to `false`.
-- The [`require('worker_threads').parentPort`][] message port is available.
-- [`process.exit()`][] does not stop the whole program, just the single thread,
+* The [`require('worker_threads').isMainThread`][] property is set to `false`.
+* The [`require('worker_threads').parentPort`][] message port is available.
+* [`process.exit()`][] does not stop the whole program, just the single thread,
   and [`process.abort()`][] is not available.
-- [`process.chdir()`][] and `process` methods that set group or user ids
+* [`process.chdir()`][] and `process` methods that set group or user ids
   are not available.
-- [`process.env`][] is a copy of the parent thread's environment variables,
+* [`process.env`][] is a copy of the parent thread's environment variables,
   unless otherwise specified. Changes to one copy will not be visible in other
   threads, and will not be visible to native add-ons (unless
   [`worker.SHARE_ENV`][] has been passed as the `env` option to the
   [`Worker`][] constructor).
-- [`process.title`][] cannot be modified.
-- Signals will not be delivered through [`process.on('...')`][Signals events].
-- Execution may stop at any point as a result of [`worker.terminate()`][]
+* [`process.title`][] cannot be modified.
+* Signals will not be delivered through [`process.on('...')`][Signals events].
+* Execution may stop at any point as a result of [`worker.terminate()`][]
   being invoked.
-- IPC channels from parent processes are not accessible.
-- The [`trace_events`][] module is not supported.
-- Native add-ons can only be loaded from multiple threads if they fulfill
+* IPC channels from parent processes are not accessible.
+* The [`trace_events`][] module is not supported.
+* Native add-ons can only be loaded from multiple threads if they fulfill
   [certain conditions][Addons worker support].
 
 Creating `Worker` instances inside of other `Worker`s is possible.
@@ -486,7 +487,7 @@ if (isMainThread) {
 }
 ```
 
-### new Worker(filename[, options])
+### new Worker(filename\[, options\])
 
 * `filename` {string} The path to the Worker’s main script. Must be
   either an absolute path or a relative path (i.e. relative to the
@@ -560,7 +561,7 @@ added: v10.5.0
 The `'online'` event is emitted when the worker thread has started executing
 JavaScript code.
 
-### worker.postMessage(value[, transferList])
+### worker.postMessage(value\[, transferList\])
 <!-- YAML
 added: v10.5.0
 -->
