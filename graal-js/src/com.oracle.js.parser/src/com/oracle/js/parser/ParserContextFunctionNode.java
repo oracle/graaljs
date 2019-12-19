@@ -79,8 +79,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     /** Optional parameter initialization block (replaces parameter list). */
     private ParserContextBlockNode parameterBlock;
     /** Function body (i.e. var declaration) scope. */
-    /** Function body block. */
-    private ParserContextBlockNode bodyBlock;
+    private Scope bodyScope;
 
     /** Token for function start */
     private final long token;
@@ -110,7 +109,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * @param parentScope The parent scope
      */
     ParserContextFunctionNode(final long token, final IdentNode ident, final String name, final Namespace namespace, final int line, final int flags,
-                    final List<IdentNode> parameters, final int length, Scope parentScope) {
+                    final List<IdentNode> parameters, final int length, Scope parentScope, Scope functionScope) {
         super(flags);
         this.ident = ident;
         this.namespace = namespace;
@@ -120,8 +119,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         this.token = token;
         this.length = length;
         this.parentScope = parentScope;
+        this.bodyScope = functionScope;
         this.parameterCount = parameters == null ? 0 : parameters.size();
         assert calculateLength(parameters) == length;
+        assert functionScope == null || (functionScope.isFunctionTopScope() || functionScope.isEvalScope()) : functionScope;
     }
 
     /**
@@ -151,6 +152,13 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      */
     public boolean isStrict() {
         return getFlag(FunctionNode.IS_STRICT) != 0;
+    }
+
+    /**
+     * @return if function in strict mode
+     */
+    public boolean isModule() {
+        return getFlag(FunctionNode.IS_MODULE) != 0;
     }
 
     /**
@@ -321,7 +329,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         boolean tdz = hasParameterExpressions();
         Symbol paramSymbol = new Symbol(bindingIdentifier.getName(), Symbol.IS_LET | Symbol.IS_PARAM);
         if (getParameterScope().putSymbol(paramSymbol) == null) {
-            // declareParameter(bindingIdentifier.getName());
             return true;
         } else {
             if (duplicateParameterBinding == null) {
@@ -404,7 +411,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     public ParserContextBlockNode createParameterBlock() {
-        assert bodyBlock == null; // parameter block must be created before body block
+        assert bodyScope == null : "parameter block must be created before body block";
         parameterBlock = new ParserContextBlockNode(token, Scope.createParameter(parentScope, getFlags()));
         parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK | Block.IS_SYNTHETIC);
         return parameterBlock;
@@ -420,56 +427,50 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             paramValue = new ParameterNode(paramToken, paramFinish, index);
         }
         parameterBlock.appendStatement(new VarNode(line, Token.recast(paramToken, TokenType.LET), paramFinish, param, paramValue, VarNode.IS_LET));
-        declareParameter(param.getName());
-    }
-
-    private void declareParameter(String parameterName) {
-        if (hasParameterExpressions()) {
-            // Parameters have a temporal dead zone (unless the parameter list is simple).
-            // parameterBlock.getScope().putSymbol(new Symbol(parameterName, Symbol.IS_LET |
-            // Symbol.IS_PARAM));
-            assert parameterBlock.getScope().hasSymbol(parameterName);
-        }
-    }
-
-    private void finalizeParameters() {
-        if (!hasParameterExpressions()) {
-            if (parameters != null) {
-                for (int i = 0; i < parameters.size(); i++) {
-                    IdentNode parameter = parameters.get(i);
-                    getBodyScope().putSymbol(new Symbol(parameter.getName(), Symbol.IS_VAR | Symbol.IS_PARAM));
-                }
-            }
-        } else {
-            parameterBlock.getScope().close();
-            parameters = Collections.emptyList();
-        }
-    }
-
-    public ParserContextBlockNode getBodyBlock() {
-        return bodyBlock;
-    }
-
-    public void setBodyBlock(ParserContextBlockNode bodyBlock) {
-        assert this.bodyBlock == null;
-        this.bodyBlock = bodyBlock;
-        finalizeParameters();
-    }
-
-    public void setParameterBlock(ParserContextBlockNode parameterBlock) {
-        assert this.parameterBlock == null;
-        this.parameterBlock = parameterBlock;
+        assert hasParameterExpressions() && getParameterScope().hasSymbol(param.getName());
     }
 
     public Scope createBodyScope() {
-        assert bodyBlock == null;
+        assert !isScriptOrModule();
         // We only need the parameter scope if the parameter list contains expressions.
-        Scope parent = hasParameterExpressions() ? parameterBlock.getScope() : parentScope;
-        return Scope.createFunctionBody(parent, getFlags());
+        Scope parent;
+        if (hasParameterExpressions()) {
+            parent = getParameterScope();
+            parent.close();
+            parameters = Collections.emptyList();
+        } else {
+            parent = parentScope;
+        }
+
+        Scope scope = Scope.createFunctionBody(parent, getFlags());
+        if (!hasParameterExpressions()) {
+            // finalize parameters
+            if (parameters != null) {
+                for (int i = 0; i < parameters.size(); i++) {
+                    IdentNode parameter = parameters.get(i);
+                    scope.putSymbol(new Symbol(parameter.getName(), Symbol.IS_VAR | Symbol.IS_PARAM));
+                }
+            }
+        }
+        return initBodyScope(scope);
+    }
+
+    private Scope initBodyScope(Scope scope) {
+        assert this.bodyScope == null && scope != null;
+        this.bodyScope = scope;
+        return scope;
     }
 
     public Scope getBodyScope() {
-        return bodyBlock.getScope();
+        return bodyScope;
+    }
+
+    /**
+     * Replace non-strict with strict eval scope.
+     */
+    public void replaceBodyScope(Scope scope) {
+        assert this.bodyScope != null && this.bodyScope.getSymbolCount() == 0 && scope != null;
+        this.bodyScope = scope;
     }
 
     public Scope getParameterScope() {

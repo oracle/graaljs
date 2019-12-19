@@ -514,7 +514,6 @@ public class Parser extends AbstractParser {
             assert lc.getCurrentScope() == null;
             lc.push(function);
             final ParserContextBlockNode body = newBlock(function.createBodyScope());
-            function.setBodyBlock(body);
             functionDeclarations = new ArrayList<>();
             try {
                 sourceElements(0);
@@ -635,6 +634,11 @@ public class Parser extends AbstractParser {
 
     private ParserContextFunctionNode createParserContextFunctionNode(final IdentNode ident, final long functionToken, final int functionFlags, final int functionLine,
                     final List<IdentNode> parameters, int functionLength) {
+        return createParserContextFunctionNode(ident, functionToken, functionFlags, functionLine, parameters, functionLength, null);
+    }
+
+    private ParserContextFunctionNode createParserContextFunctionNode(final IdentNode ident, final long functionToken, final int functionFlags, final int functionLine,
+                    final List<IdentNode> parameters, int functionLength, Scope functionTopScope) {
         final ParserContextFunctionNode parentFunction = lc.getCurrentFunction();
 
         assert ident.getName() != null;
@@ -650,19 +654,16 @@ public class Parser extends AbstractParser {
         }
 
         final Scope parentScope = lc.getCurrentScope();
-        return new ParserContextFunctionNode(functionToken, ident, name, namespace, functionLine, flags, parameters, functionLength, parentScope);
+        return new ParserContextFunctionNode(functionToken, ident, name, namespace, functionLine, flags, parameters, functionLength, parentScope, functionTopScope);
     }
 
     private FunctionNode createFunctionNode(final ParserContextFunctionNode function, final long startToken, final IdentNode ident,
                     final int functionLine, final Block body) {
         assert body.isFunctionBody() || (body.isParameterBlock() && ((BlockStatement) body.getLastStatement()).getBlock().isFunctionBody());
 
-        if (function.getBodyBlock() != null) {
-            Scope varScope = function.getBodyScope();
-            VarNode varNode = varScope.verifyHoistedVarDeclarations();
-            if (varNode != null) {
-                throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", varNode.getName().getName()), varNode.getToken());
-            }
+        VarNode varNode = function.getBodyScope().verifyHoistedVarDeclarations();
+        if (varNode != null) {
+            throw error(ECMAErrors.getMessage("syntax.error.redeclare.variable", varNode.getName().getName()), varNode.getToken());
         }
 
         long lastTokenWithDelimiter = Token.withDelimiter(function.getLastToken());
@@ -983,17 +984,16 @@ public class Parser extends AbstractParser {
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
         final int functionLine = line;
 
+        final Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
         final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), scriptName);
         final ParserContextFunctionNode script = createParserContextFunctionNode(
                         ident,
                         functionToken,
                         FunctionNode.IS_SCRIPT,
                         functionLine,
-                        Collections.<IdentNode> emptyList(), 0);
+                        Collections.<IdentNode> emptyList(), 0, topScope);
         lc.push(script);
-        final Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
         final ParserContextBlockNode body = newBlock(topScope);
-        script.setBodyBlock(body);
         functionDeclarations = new ArrayList<>();
         try {
             sourceElements(parseFlags);
@@ -1159,7 +1159,9 @@ public class Parser extends AbstractParser {
         if (body.getScope().isGlobalScope()) {
             Scope evalScope = Scope.createEval(null);
             body.setScope(evalScope);
-            assert lc.getCurrentFunction().getBodyScope() == evalScope;
+            ParserContextFunctionNode function = lc.getCurrentFunction();
+            function.replaceBodyScope(evalScope);
+            assert function.getBodyScope() == evalScope;
         }
     }
 
@@ -4818,7 +4820,6 @@ public class Parser extends AbstractParser {
         Object endParserState = null;
         // Create a new function block.
         ParserContextBlockNode body = newBlock(functionNode.createBodyScope());
-        functionNode.setBodyBlock(body);
         try {
             final int functionId = functionNode.getId();
             parseBody = reparsedFunction == null || functionId <= reparsedFunction.getFunctionNodeId();
@@ -4832,7 +4833,7 @@ public class Parser extends AbstractParser {
                 final Expression expr = assignmentExpression(true);
                 long lastToken = previousToken;
                 functionNode.setLastToken(previousToken);
-                assert lc.getCurrentBlock() == functionNode.getBodyBlock();
+                assert lc.getCurrentBlock().getScope().isFunctionBodyScope();
                 // EOL uses length field to store the line number
                 final int lastFinish = Token.descPosition(lastToken) + (Token.descType(lastToken) == EOL ? 0 : Token.descLength(lastToken));
                 /*
@@ -5945,19 +5946,18 @@ public class Parser extends AbstractParser {
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
         final int functionLine = line;
 
+        final Scope moduleScope = Scope.createModule();
         final IdentNode ident = new IdentNode(functionToken, Token.descPosition(functionToken), moduleName);
         final ParserContextFunctionNode script = createParserContextFunctionNode(
                         ident,
                         functionToken,
                         FunctionNode.IS_MODULE,
                         functionLine,
-                        Collections.<IdentNode> emptyList(), 0);
+                        Collections.<IdentNode> emptyList(), 0, moduleScope);
         lc.push(script);
 
         final ParserContextModuleNode module = new ParserContextModuleNode(moduleName);
-        Scope moduleScope = Scope.createModule();
         final ParserContextBlockNode body = newBlock(moduleScope);
-        script.setBodyBlock(body);
         functionDeclarations = new ArrayList<>();
 
         try {

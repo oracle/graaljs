@@ -371,6 +371,10 @@ public final class Scope {
         return (type & CLASS_SCOPE) != 0;
     }
 
+    public boolean isEvalScope() {
+        return (type & EVAL_SCOPE) != 0;
+    }
+
     public boolean inFunction() {
         return (flags & IN_FUNCTION) != 0;
     }
