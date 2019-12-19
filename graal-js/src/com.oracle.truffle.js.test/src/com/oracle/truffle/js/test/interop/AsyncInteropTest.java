@@ -87,10 +87,43 @@ public class AsyncInteropTest {
     }
 
     /**
+     * A Java object with a method called 'then' can be used as the `executor` function for a
+     * JavaScript promise.
+     */
+    @Test
+    public void testJavaExecutor() {
+        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
+        TestOutput out = new TestOutput();
+        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+            Executable javaExecutable = (resolve, reject) -> resolve.execute(42);
+            context.getBindings(ID).putMember("javaExecutable", javaExecutable);
+            Value asyncFn = context.eval(ID, "new Promise(javaExecutable).then(x => console.log(x));");
+            Consumer<Value> javaThen = (Value v) -> out.write("All done :)");
+            asyncFn.invokeMember("then", javaThen);
+        }
+        assertEquals("42\nAll done :)", out.toString());
+    }
+
+    /**
      * Java functions can be used as functions in `then`.
      */
     @Test
     public void testPromiseJavaThen() {
+        Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
+        TestOutput out = new TestOutput();
+        try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
+            Value jsPromise = context.eval(ID, "Promise.resolve(42);");
+            Consumer<Object> javaThen = (value) -> out.write("Resolved from JavaScript: " + value);
+            jsPromise.invokeMember("then", javaThen);
+        }
+        assertEquals("Resolved from JavaScript: 42", out.toString());
+    }
+
+    /**
+     * Java functions can be used as functions in `then`.
+     */
+    @Test
+    public void testPromiseJavaThenAsync() {
         Assume.assumeFalse(JSTruffleOptions.InteropCompletePromises);
         TestOutput out = new TestOutput();
         try (Context context = Context.newBuilder(ID).allowHostAccess(HostAccess.ALL).out(out).allowExperimentalOptions(true).option(JSContextOptions.CONSOLE_NAME, "true").build()) {
@@ -228,6 +261,11 @@ public class AsyncInteropTest {
 
     public interface Thenable {
         void then(Value onResolve, Value onReject);
+    }
+
+    @FunctionalInterface
+    public interface Executable {
+        void onPromiseCreation(Value onResolve, Value onReject);
     }
 
     private static class TestOutput extends ByteArrayOutputStream {

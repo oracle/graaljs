@@ -262,6 +262,56 @@ try {
 }
 ```
 
+### Promises
+
+GraalVM JavaScript provides support for interoperability between JavaScript `Promise` objects and Java.
+Java objects can be exposed to JavaScript code as _thenable_ objects, allowing JavaScript code to `await` Java objects.
+Moreover, JavaScript `Promise` objects are regular JavaScript objects, and can be accessed from Java using the mechanisms described in this document.
+This allows Java code to be called back from JavaScript when a JavaScript promise is resolved or rejected.
+
+#### Creating JavaScript `Promise` objects that can be resolved from Java
+
+JavaScript applications can create `Promise` objects delegating to Java the resolution of the `Promise` instance.
+This can be achieved from JavaScript by using a Java object as the ["executor"](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) function of the JavaScript `Promise`.
+For example, Java objects implementing the following functional interface can be used to create new `Promise` objects:
+```
+@FunctionalInterface
+public interface PromiseExecutor {
+    void onPromiseCreation(Value onResolve, Value onReject);
+}
+```
+Any Java object implementing `PromiseExecutor` can be used to create a JavaScript `Promise`:
+```
+// `javaExecutable` is a Java object implementing the `PromiseExecutor` interface
+var myPromise = new Promise(javaExecutable).then(...);
+```
+JavaScript `Promise` objects can be created not only using functional interfaces, but also using any other Java object that can be executed by the GraalVM JavaScript engine (for example, any Java object implementing the Polyglot [ProxyExecutable](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/proxy/ProxyExecutable.html) interface).
+More detailed example usages are available in the GraalVM JavaScript [unit tests](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.test/src/com/oracle/truffle/js/test/interop/AsyncInteropTest.java).
+
+#### Using `await` with Java Objects
+
+JavaScript applications can use the `await` expression with Java objects.
+This can be useful when Java and JavaScript have to interact with asynchronous events.
+To expose a Java object to GraalVM JavaScript as a _thenable_ object, the Java object should implement a method called `then()` having the following signature:
+```
+void then(Value onResolve, Value onReject);
+```
+When `await` is used with a Java object implementing `then()`, the GraalVM JavaScript runtime will treat the object as a JavaScript `Promise`.
+The `onResolve` and `onReject` arguments are executable `Value` objects that should be used by the Java code to resume or abort the JavaScript `await` expression associated with the corresponding Java object.
+More detailed example usages are available in the GraalVM JavaScript [unit tests](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.test/src/com/oracle/truffle/js/test/interop/AsyncInteropTest.java).
+
+#### Using JavaScript Promises from Java
+
+`Promise` objects created in JavaScript can be exposed to Java code like any other JavaScript object.
+Java code can access such objects like normal `Value` objects, with the possibility to register new promise resolution functions using the `Promise`'s default `then()` and `catch()` functions.
+As an example, the following Java code registers a Java callback to be executed when a JavaScript promise resolves:
+```
+Value jsPromise = context.eval(ID, "Promise.resolve(42);");
+Consumer<Object> javaThen = (value) -> System.out.println("Resolved from JavaScript: " + value);
+jsPromise.invokeMember("then", javaThen);
+```
+More detailed example usages are available in the GraalVM JavaScript [unit tests](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.test/src/com/oracle/truffle/js/test/interop/AsyncInteropTest.java).
+
 ## Multithreading
 
 GraalVM JavaScript supports multithreading when used in combination with Java. More details about the GraalVM JavaScript multithreading model can be found in the [Multithreading](Multithreading.md) documentation.
