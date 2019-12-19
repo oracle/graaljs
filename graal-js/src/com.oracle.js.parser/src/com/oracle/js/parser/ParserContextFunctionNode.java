@@ -327,7 +327,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
         // Parameters have a temporal dead zone if the parameter list contains expressions.
         boolean tdz = hasParameterExpressions();
-        Symbol paramSymbol = new Symbol(bindingIdentifier.getName(), Symbol.IS_LET | Symbol.IS_PARAM);
+        Symbol paramSymbol = new Symbol(bindingIdentifier.getName(), Symbol.IS_LET | Symbol.IS_PARAM | (!tdz ? Symbol.HAS_BEEN_DECLARED : 0));
         if (getParameterScope().putSymbol(paramSymbol) == null) {
             return true;
         } else {
