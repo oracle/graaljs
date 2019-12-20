@@ -2120,6 +2120,10 @@ namespace v8 {
         return reinterpret_cast<const GraalSymbol*> (this)->Name();
     }
 
+    Local<Symbol> Symbol::GetIterator(Isolate* isolate) {
+        return GraalSymbol::GetIterator(isolate);
+    }
+
     Local<Private> Private::New(Isolate* isolate, Local<String> name) {
         return reinterpret_cast<Private*> (*name);
     }

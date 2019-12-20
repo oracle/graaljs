@@ -192,6 +192,7 @@
       { "name": "stringExternalResourceCallback" },
       { "name": "stringObjectNew" },
       { "name": "stringObjectValueOf" },
+      { "name": "symbolGetIterator" },
       { "name": "symbolName" },
       { "name": "symbolNew" },
       { "name": "templateSet" },

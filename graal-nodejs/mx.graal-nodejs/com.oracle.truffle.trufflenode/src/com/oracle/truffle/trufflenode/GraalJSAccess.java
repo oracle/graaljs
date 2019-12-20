@@ -1285,6 +1285,10 @@ public final class GraalJSAccess {
         return ((Symbol) symbol).getDescription();
     }
 
+    public Object symbolGetIterator() {
+        return Symbol.SYMBOL_ITERATOR;
+    }
+
     public Object functionNewInstance(Object function, Object[] arguments) {
         DynamicObject functionObject = (DynamicObject) function;
         JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
