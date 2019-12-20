@@ -64,7 +64,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -128,7 +127,6 @@ import com.oracle.truffle.js.nodes.access.OrdinaryCreateFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
-import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSNumericToNumberNode;
@@ -1080,42 +1078,23 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     }
 
     public abstract static class ConstructWeakRefNode extends ConstructWithNewTargetNode {
-        private final ConditionProfile isNotObject = ConditionProfile.createBinaryProfile();
-        @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
-
         public ConstructWeakRefNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
         }
 
-// @Specialization(guards = {"args.length == 0"})
-// protected DynamicObject constructWeakRefInt0(@SuppressWarnings("unused") DynamicObject newTarget,
-// @SuppressWarnings("unused") Object target) {
-// throw Errors.createTypeError("Cannot create WeakRef on undefined");
-// }
-//
-// @Specialization(guards = {"args.length != 0"})
-// IDK if this @Specialization is needed here.
-        @Specialization
+        @Specialization(guards = {"isJSObject(target)"})
         protected DynamicObject constructWeakRef(DynamicObject newTarget, Object target) {
-            // I have to find more elegant way to do these checks.
-            requireObjectCoercible(target);
-            if (isNotObject.profile(!(target instanceof DynamicObject))) {
-                throw Errors.createTypeError("Cannot create WeakRef on non-object");
-            }
             return swapPrototype(JSWeakRef.create(getContext(), target), newTarget);
+        }
+
+        @Specialization(guards = {"!isJSObject(target)"})
+        protected DynamicObject constructWeakRefNonObject(@SuppressWarnings("unused") DynamicObject newTarget, @SuppressWarnings("unused") Object target) {
+            throw Errors.createTypeError("Cannot create WeakRef on non-object");
         }
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getWeakRefPrototype();
-        }
-
-        protected final void requireObjectCoercible(Object target) {
-            if (requireObjectCoercibleNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                requireObjectCoercibleNode = insert(RequireObjectCoercibleNode.create());
-            }
-            requireObjectCoercibleNode.executeVoid(target);
         }
     }
 
