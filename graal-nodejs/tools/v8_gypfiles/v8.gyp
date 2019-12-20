@@ -271,7 +271,7 @@
         ['v8_use_snapshot==1', {
           'dependencies': ['v8_base', 'v8_snapshot'],
         }, {
-          'dependencies': ['v8_base', 'v8_init', 'v8_nosnapshot'],
+          'dependencies': ['v8_base', 'v8_nosnapshot'],
         }],
       ]
     },  # v8_maybe_snapshot
@@ -490,9 +490,9 @@
     {
       'target_name': 'v8_nosnapshot',
       'type': 'static_library',
-      'dependencies': [],
+      'dependencies': [ 'v8_base' ],
       'sources': [
-        './extras-libraries.cc',
+        '<(V8_ROOT)/src/snapshot/embedded/embedded-empty.cc'
       ],
       'conditions': []
     },  # v8_nosnapshot
