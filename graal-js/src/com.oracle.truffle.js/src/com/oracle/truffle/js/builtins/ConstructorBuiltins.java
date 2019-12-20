@@ -79,7 +79,6 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRequiresNew
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallWeakRefNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructBigIntNodeGen;
@@ -347,9 +346,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 : CallStringNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
 
             case WeakRef:
-                return construct ? (newTarget ? ConstructWeakRefNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                : ConstructWeakRefNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
-                                : CallWeakRefNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                if (construct) {
+                    return newTarget ? ConstructWeakRefNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
+                                    : ConstructWeakRefNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
 
             case Collator:
                 return construct ? (newTarget
@@ -1075,19 +1077,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getStringPrototype();
         }
 
-    }
-
-    // I suppose there should be more elegant way to prohibit calling the WeakRef constructor
-    // function.
-    public abstract static class CallWeakRefNode extends JSBuiltinNode {
-        public CallWeakRefNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected DynamicObject callWeakRef(@SuppressWarnings("unused") Object target) {
-            throw Errors.createTypeError("Cannot call WeakRef");
-        }
     }
 
     public abstract static class ConstructWeakRefNode extends ConstructWithNewTargetNode {
