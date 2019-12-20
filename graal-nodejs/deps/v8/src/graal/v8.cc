@@ -3214,6 +3214,10 @@ namespace v8 {
         return false;
     }
 
+    void MicrotasksScope::PerformCheckpoint(Isolate* isolate) {
+        isolate->RunMicrotasks();
+    }
+
     void Object::CheckCast(v8::Value* obj) {}
     void Promise::CheckCast(v8::Value* obj) {}
     void Function::CheckCast(v8::Value* obj) {}
