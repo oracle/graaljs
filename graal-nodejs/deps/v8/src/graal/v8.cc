@@ -1036,8 +1036,13 @@ namespace v8 {
         return true;
     }
 
-    void V8::InitializePlatform(Platform*) {
-        TRACE
+    static v8::Platform* platform_ = nullptr;
+    void V8::InitializePlatform(Platform* platform) {
+        platform_ = platform;
+    }
+
+    void V8::ShutdownPlatform() {
+        platform_ = nullptr;
     }
 
     void V8::MakeWeak(internal::Address* global_handle, void* data,
@@ -2678,10 +2683,6 @@ namespace v8 {
     }
 
     v8::base::Mutex::~Mutex() {
-        TRACE
-    }
-
-    void V8::ShutdownPlatform() {
         TRACE
     }
 
