@@ -51,14 +51,10 @@ const wrapToModuleMap = new WeakMap();
 const kNoError = Symbol('kNoError');
 
 class SourceTextModule {
-  #wrap;
-  #identifier;
-  #context;
-  #dependencySpecifiers;
-  #statusOverride;
-  #error = kNoError;
 
   constructor(source, options = {}) {
+    this._dependencySpecifiers = undefined;
+    this._error = kNoError;
     emitExperimentalWarning('vm.SourceTextModule');
 
     validateString(source, 'source');
@@ -112,15 +108,15 @@ class SourceTextModule {
       perContextModuleId.set(context, 1);
     }
 
-    this.#wrap = new ModuleWrap(
+    this._wrap = new ModuleWrap(
       source, identifier, context,
       lineOffset, columnOffset,
     );
-    wrapToModuleMap.set(this.#wrap, this);
-    this.#identifier = identifier;
-    this.#context = context;
+    wrapToModuleMap.set(this._wrap, this);
+    this._identifier = identifier;
+    this._context = context;
 
-    binding.callbackMap.set(this.#wrap, {
+    binding.callbackMap.set(this._wrap, {
       initializeImportMeta,
       importModuleDynamically: importModuleDynamically ?
         importModuleDynamicallyWrap(importModuleDynamically) :
@@ -129,79 +125,67 @@ class SourceTextModule {
   }
 
   get status() {
-    try {
-      this.#error;
-    } catch {
+    if (!('_error' in this)) {
       throw new ERR_VM_MODULE_NOT_MODULE();
     }
-    if (this.#error !== kNoError) {
+    if (this._error !== kNoError) {
       return 'errored';
     }
-    if (this.#statusOverride) {
-      return this.#statusOverride;
+    if (this._statusOverride) {
+      return this._statusOverride;
     }
-    return STATUS_MAP[this.#wrap.getStatus()];
+    return STATUS_MAP[this._wrap.getStatus()];
   }
 
   get identifier() {
-    try {
-      return this.#identifier;
-    } catch {
+    if (!('_identifier' in this)) {
       throw new ERR_VM_MODULE_NOT_MODULE();
     }
+    return this._identifier;
   }
 
   get context() {
-    try {
-      return this.#context;
-    } catch {
+    if (!('_context' in this)) {
       throw new ERR_VM_MODULE_NOT_MODULE();
     }
+    return this._context;
   }
 
   get namespace() {
-    try {
-      this.#wrap;
-    } catch {
+    if (!('_wrap' in this)) {
       throw new ERR_VM_MODULE_NOT_MODULE();
     }
-    if (this.#wrap.getStatus() < kInstantiated) {
+    if (this._wrap.getStatus() < kInstantiated) {
       throw new ERR_VM_MODULE_STATUS('must not be unlinked or linking');
     }
-    return this.#wrap.getNamespace();
+    return this._wrap.getNamespace();
   }
 
   get dependencySpecifiers() {
-    try {
-      this.#dependencySpecifiers;
-    } catch {
+    if (!('_dependencySpecifiers' in this)) {
       throw new ERR_VM_MODULE_NOT_MODULE();
     }
-    if (this.#dependencySpecifiers === undefined) {
-      this.#dependencySpecifiers = this.#wrap.getStaticDependencySpecifiers();
+    if (this._dependencySpecifiers === undefined) {
+      this._dependencySpecifiers = this._wrap.getStaticDependencySpecifiers();
     }
-    return this.#dependencySpecifiers;
+    return this._dependencySpecifiers;
   }
 
   get error() {
-    try {
-      this.#error;
-    } catch {
+    if (!('_error' in this)) {
       throw new ERR_VM_MODULE_NOT_MODULE();
     }
-    if (this.#error !== kNoError) {
-      return this.#error;
+    if (this._error !== kNoError) {
+      return this._error;
     }
-    if (this.#wrap.getStatus() !== kErrored) {
+    if (this._wrap.getStatus() !== kErrored) {
       throw new ERR_VM_MODULE_STATUS('must be errored');
     }
-    return this.#wrap.getError();
+    return this._wrap.getError();
   }
 
   async link(linker) {
-    try {
-      this.#link;
-    } catch {
+    if (!('_link' in this)) {
       throw new ERR_VM_MODULE_NOT_MODULE();
     }
 
@@ -212,19 +196,17 @@ class SourceTextModule {
       throw new ERR_VM_MODULE_ALREADY_LINKED();
     }
 
-    await this.#link(linker);
+    await this._link(linker);
 
-    this.#wrap.instantiate();
+    this._wrap.instantiate();
   }
 
-  #link = async function(linker) {
-    this.#statusOverride = 'linking';
+  async _link(linker) {
+    this._statusOverride = 'linking';
 
-    const promises = this.#wrap.link(async (identifier) => {
+    const promises = this._wrap.link(async (identifier) => {
       const module = await linker(identifier, this);
-      try {
-        module.#wrap;
-      } catch {
+      if (!('_wrap' in module)) {
         throw new ERR_VM_MODULE_NOT_MODULE();
       }
       if (module.context !== this.context) {
@@ -234,9 +216,9 @@ class SourceTextModule {
         throw new ERR_VM_MODULE_LINKING_ERRORED();
       }
       if (module.status === 'unlinked') {
-        await module.#link(linker);
+        await module._link(linker);
       }
-      return module.#wrap;
+      return module._wrap;
     });
 
     try {
@@ -244,18 +226,16 @@ class SourceTextModule {
         await SafePromise.all(promises);
       }
     } catch (e) {
-      this.#error = e;
+      this._error = e;
       throw e;
     } finally {
-      this.#statusOverride = undefined;
+      this._statusOverride = undefined;
     }
   };
 
 
   async evaluate(options = {}) {
-    try {
-      this.#wrap;
-    } catch {
+    if (!('_wrap' in this)) {
       throw new ERR_VM_MODULE_NOT_MODULE();
     }
 
@@ -274,7 +254,7 @@ class SourceTextModule {
       throw new ERR_INVALID_ARG_TYPE('options.breakOnSigint', 'boolean',
                                      breakOnSigint);
     }
-    const status = this.#wrap.getStatus();
+    const status = this._wrap.getStatus();
     if (status !== kInstantiated &&
         status !== kEvaluated &&
         status !== kErrored) {
@@ -282,7 +262,7 @@ class SourceTextModule {
         'must be one of linked, evaluated, or errored'
       );
     }
-    const result = this.#wrap.evaluate(timeout, breakOnSigint);
+    const result = this._wrap.evaluate(timeout, breakOnSigint);
     return { __proto__: null, result };
   }
 
@@ -293,9 +273,7 @@ class SourceTextModule {
       if (isModuleNamespaceObject(m)) {
         return m;
       }
-      try {
-        m.#wrap;
-      } catch {
+      if (!('_wrap' in Object(m))) {
         throw new ERR_VM_MODULE_NOT_MODULE();
       }
       if (m.status === 'errored') {

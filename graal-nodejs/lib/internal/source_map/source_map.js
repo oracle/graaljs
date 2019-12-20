@@ -112,16 +112,16 @@ class StringCharIterator {
  * @param {SourceMapV3} payload
  */
 class SourceMap {
-  #reverseMappingsBySourceURL = [];
-  #mappings = [];
-  #sources = {};
-  #sourceContentByURL = {};
 
   /**
    * @constructor
    * @param {SourceMapV3} payload
    */
   constructor(payload) {
+    this._reverseMappingsBySourceURL = [];
+    this._mappings = [];
+    this._sources = {};
+    this._sourceContentByURL = {};
     if (!base64Map) {
       const base64Digits =
              'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -129,26 +129,26 @@ class SourceMap {
       for (let i = 0; i < base64Digits.length; ++i)
         base64Map[base64Digits[i]] = i;
     }
-    this.#parseMappingPayload(payload);
+    this._parseMappingPayload(payload);
   }
 
   /**
    * @param {SourceMapV3} mappingPayload
    */
-  #parseMappingPayload = (mappingPayload) => {
+  _parseMappingPayload(mappingPayload) {
     if (mappingPayload.sections)
-      this.#parseSections(mappingPayload.sections);
+      this._parseSections(mappingPayload.sections);
     else
-      this.#parseMap(mappingPayload, 0, 0);
+      this._parseMap(mappingPayload, 0, 0);
   }
 
   /**
    * @param {Array.<SourceMapV3.Section>} sections
    */
-  #parseSections = (sections) => {
+  _parseSections(sections) {
     for (let i = 0; i < sections.length; ++i) {
       const section = sections[i];
-      this.#parseMap(section.map, section.offset.line, section.offset.column);
+      this._parseMap(section.map, section.offset.line, section.offset.column);
     }
   }
 
@@ -159,11 +159,11 @@ class SourceMap {
    */
   findEntry(lineNumber, columnNumber) {
     let first = 0;
-    let count = this.#mappings.length;
+    let count = this._mappings.length;
     while (count > 1) {
       const step = count >> 1;
       const middle = first + step;
-      const mapping = this.#mappings[middle];
+      const mapping = this._mappings[middle];
       if (lineNumber < mapping[0] ||
           (lineNumber === mapping[0] && columnNumber < mapping[1])) {
         count = step;
@@ -172,7 +172,7 @@ class SourceMap {
         count -= step;
       }
     }
-    const entry = this.#mappings[first];
+    const entry = this._mappings[first];
     if (!first && entry && (lineNumber < entry[0] ||
         (lineNumber === entry[0] && columnNumber < entry[1]))) {
       return null;
@@ -186,19 +186,19 @@ class SourceMap {
    * @return {Array}
    */
   findEntryReversed(sourceURL, lineNumber) {
-    const mappings = this.#reverseMappingsBySourceURL[sourceURL];
+    const mappings = this._reverseMappingsBySourceURL[sourceURL];
     for (; lineNumber < mappings.length; ++lineNumber) {
       const mapping = mappings[lineNumber];
       if (mapping)
         return mapping;
     }
-    return this.#mappings[0];
+    return this._mappings[0];
   }
 
   /**
    * @override
    */
-  #parseMap = (map, lineNumber, columnNumber) => {
+  _parseMap(map, lineNumber, columnNumber) {
     let sourceIndex = 0;
     let sourceLineNumber = 0;
     let sourceColumnNumber = 0;
@@ -209,10 +209,10 @@ class SourceMap {
       const url = map.sources[i];
       originalToCanonicalURLMap[url] = url;
       sources.push(url);
-      this.#sources[url] = true;
+      this._sources[url] = true;
 
       if (map.sourcesContent && map.sourcesContent[i])
-        this.#sourceContentByURL[url] = map.sourcesContent[i];
+        this._sourceContentByURL[url] = map.sourcesContent[i];
     }
 
     const stringCharIterator = new StringCharIterator(map.mappings);
@@ -233,7 +233,7 @@ class SourceMap {
 
       columnNumber += decodeVLQ(stringCharIterator);
       if (isSeparator(stringCharIterator.peek())) {
-        this.#mappings.push([lineNumber, columnNumber]);
+        this._mappings.push([lineNumber, columnNumber]);
         continue;
       }
 
@@ -248,18 +248,18 @@ class SourceMap {
         // Unused index into the names list.
         decodeVLQ(stringCharIterator);
 
-      this.#mappings.push([lineNumber, columnNumber, sourceURL,
+      this._mappings.push([lineNumber, columnNumber, sourceURL,
                            sourceLineNumber, sourceColumnNumber]);
     }
 
-    for (let i = 0; i < this.#mappings.length; ++i) {
-      const mapping = this.#mappings[i];
+    for (let i = 0; i < this._mappings.length; ++i) {
+      const mapping = this._mappings[i];
       const url = mapping[2];
       if (!url)
         continue;
-      if (!this.#reverseMappingsBySourceURL[url])
-        this.#reverseMappingsBySourceURL[url] = [];
-      const reverseMappings = this.#reverseMappingsBySourceURL[url];
+      if (!this._reverseMappingsBySourceURL[url])
+        this._reverseMappingsBySourceURL[url] = [];
+      const reverseMappings = this._reverseMappingsBySourceURL[url];
       const sourceLine = mapping[3];
       if (!reverseMappings[sourceLine])
         reverseMappings[sourceLine] = [mapping[0], mapping[1]];

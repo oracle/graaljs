@@ -52,12 +52,12 @@ function REACTION_LOG(error) {
 }
 
 class Manifest {
-  #integrities = new SafeMap();
-  #dependencies = new SafeMap();
-  #reaction = null;
   constructor(obj, manifestURL) {
-    const integrities = this.#integrities;
-    const dependencies = this.#dependencies;
+    this._integrities = new SafeMap();
+    this._dependencies = new SafeMap();
+    this._reaction = null;
+    const integrities = this._integrities;
+    const dependencies = this._dependencies;
     let reaction = REACTION_THROW;
 
     if (obj.onerror) {
@@ -72,7 +72,7 @@ class Manifest {
       }
     }
 
-    this.#reaction = reaction;
+    this._reaction = reaction;
     const manifestEntries = entries(obj.resources);
 
     const parsedURLs = new SafeMap();
@@ -185,11 +185,11 @@ class Manifest {
 
   getRedirector(requester) {
     requester = `${requester}`;
-    const dependencies = this.#dependencies;
+    const dependencies = this._dependencies;
     if (dependencies.has(requester)) {
       return {
         resolve: (to) => dependencies.get(requester)(`${to}`),
-        reaction: this.#reaction
+        reaction: this._reaction
       };
     }
     return null;
@@ -198,7 +198,7 @@ class Manifest {
   assertIntegrity(url, content) {
     const href = `${url}`;
     debug(`Checking integrity of ${href}`);
-    const integrities = this.#integrities;
+    const integrities = this._integrities;
     const realIntegrities = new Map();
 
     if (integrities.has(href)) {
@@ -225,7 +225,7 @@ class Manifest {
       }
     }
     const error = new ERR_MANIFEST_ASSERT_INTEGRITY(url, realIntegrities);
-    this.#reaction(error);
+    this._reaction(error);
   }
 }
 
