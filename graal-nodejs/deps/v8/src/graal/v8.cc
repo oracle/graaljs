@@ -3057,6 +3057,10 @@ namespace v8 {
 
     void Isolate::Initialize(Isolate* isolate, const CreateParams& params) {
         GraalIsolate::New(params, isolate);
+        // We don't need this reference (i.e. we don't use it) by now.
+        // Unfortunately, PerIsolatePlatformData::Shutdown()
+        // assumes that someone holds the reference (V8 does so).
+        reinterpret_cast<GraalIsolate*> (isolate)->task_runner_ = platform_->GetForegroundTaskRunner(isolate);
     }
 
     internal::Address* Isolate::GetDataFromSnapshotOnce(size_t index) {

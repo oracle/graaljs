@@ -45,6 +45,7 @@
 #include "current_isolate.h"
 #include "graal_handle_content.h"
 #include "include/v8.h"
+#include "include/v8-platform.h"
 #include "jni.h"
 #include <string.h>
 #include <vector>
@@ -688,6 +689,7 @@ private:
 
     jobject error_to_ignore_;
     int calls_on_stack_;
+    std::shared_ptr<v8::TaskRunner> task_runner_;
     friend class GraalFunction;
     friend class v8::Isolate;
 
