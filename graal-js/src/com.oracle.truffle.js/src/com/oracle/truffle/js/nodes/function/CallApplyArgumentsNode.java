@@ -42,9 +42,16 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.arguments.AccessArgumentsArrayDirectlyNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.runtime.JSContext;
+
+import java.util.Set;
 
 public class CallApplyArgumentsNode extends JavaScriptNode {
     private final JSContext context;
@@ -66,6 +73,17 @@ public class CallApplyArgumentsNode extends JavaScriptNode {
         }
 
         return callNode.executeCall(callNode.createArguments(frame, target, function));
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (materializedTags.contains(StandardTags.ExpressionTag.class) || materializedTags.contains(JSTags.FunctionCallTag.class)) {
+            replaceWithOrdinaryCall();
+            // return a copy of the ordinary call node corresponding to this `apply` call, as the
+            // materialized node needs not be adopted.
+            return NodeUtil.cloneNode(callNode);
+        }
+        return this;
     }
 
     private void replaceWithOrdinaryCall() {

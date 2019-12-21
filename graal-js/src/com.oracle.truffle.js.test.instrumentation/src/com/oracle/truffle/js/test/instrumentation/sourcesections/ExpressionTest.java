@@ -149,4 +149,28 @@ public class ExpressionTest extends SourceSectionInstrumentationTest {
         });
     }
 
+    @Test
+    public void expressionsApplyCall() {
+        evalExpressions("function foo(a) {" +
+                        "    return a;" +
+                        "};" +
+                        "function bar() {" +
+                        "    return foo.apply(undefined, arguments);" +
+                        "};" +
+                        "console.log(bar(1));");
+        assertSourceSections(new String[]{
+                        "console",
+                        "console.log",
+                        "bar",
+                        "1",
+                        "foo",
+                        "foo.apply",
+                        "undefined",
+                        "arguments",
+                        "a",
+                        "foo.apply(undefined, arguments)",
+                        "bar(1)",
+                        "console.log(bar(1))",
+        });
+    }
 }
