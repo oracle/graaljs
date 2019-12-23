@@ -78,6 +78,8 @@ public final class JSWeakRef extends JSBuiltinObject implements JSConstructorFac
     public static DynamicObject create(JSContext context, Object referent) {
         DynamicObject obj = JSObject.create(context, context.getWeakRefFactory(), new WeakReference<>(referent));
         assert isJSWeakRef(obj);
+        // Used for KeepDuringJob(target) in the specification
+        JSRealm.addWeakRefTargetToSet(referent);
         return obj;
     }
 

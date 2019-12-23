@@ -47,9 +47,11 @@ import java.io.Writer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.TimeZone;
 import java.util.WeakHashMap;
@@ -378,6 +380,12 @@ public class JSRealm {
      * Used to the pass call site source location for caller sensitive built-in functions.
      */
     private JavaScriptNode callNode;
+
+    /**
+     * Used to keep alive objects from weak references in the current job. Made for specification
+     * compliance.
+     */
+    private static Set<Object> weakRefTargets;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -2027,6 +2035,14 @@ public class JSRealm {
             }
             return realm;
         }
+    }
+
+    public static boolean addWeakRefTargetToSet(Object target) {
+        if (weakRefTargets == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            weakRefTargets = new HashSet<>();
+        }
+        return weakRefTargets.add(target);
     }
 
 }

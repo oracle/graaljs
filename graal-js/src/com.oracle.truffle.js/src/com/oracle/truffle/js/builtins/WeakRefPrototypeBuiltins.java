@@ -104,8 +104,6 @@ public final class WeakRefPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         @Specialization(guards = "isJSWeakRef(thisObj)")
         protected static DynamicObject deref(DynamicObject thisObj) {
             Object referent = JSWeakRef.getInternalWeakRef(thisObj).get();
-            // Do I need to check if the referent is an object? Like it is done before the create()
-            // method call, ConstructorBuiltins.java, line 1108
             return referent != null ? (DynamicObject) referent : Undefined.instance;
         }
 
