@@ -1867,7 +1867,7 @@ public final class GraalJSAccess {
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
-            extraArgument = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(context) : Undefined.instance;
+            extraArgument = USE_NIO_BUFFER ? NIOBufferObject.createInitFunction(context) : Null.instance;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
             CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(this));
             JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
@@ -1878,7 +1878,7 @@ public final class GraalJSAccess {
             extraArgument = SharedMemMessagingBindings.createInitFunction(this, context);
         } else if ("inspector.js".equals(moduleName)) {
             TruffleObject inspector = lookupInstrument("inspect", TruffleObject.class);
-            extraArgument = (inspector == null) ? Undefined.instance : inspector;
+            extraArgument = (inspector == null) ? Null.instance : inspector;
         }
         return extraArgument;
     }
