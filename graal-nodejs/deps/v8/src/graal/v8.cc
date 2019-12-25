@@ -3073,7 +3073,7 @@ namespace v8 {
     }
 
     void Isolate::SetPrepareStackTraceCallback(PrepareStackTraceCallback callback) {
-        TRACE
+        reinterpret_cast<GraalIsolate*> (this)->SetPrepareStackTraceCallback(callback);
     }
 
     bool Isolate::AddMessageListenerWithErrorLevel(MessageCallback callback, int message_levels, Local<Value> data) {

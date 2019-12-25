@@ -157,6 +157,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.LargeInteger;
+import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
@@ -2733,6 +2734,16 @@ public final class GraalJSAccess {
             }
         } : null;
         mainJSContext.setImportModuleDynamicallyCallback(callback);
+    }
+
+    public void isolateEnablePrepareStackTraceCallback(boolean enable) {
+        PrepareStackTraceCallback callback = enable ? new PrepareStackTraceCallback() {
+            @Override
+            public Object prepareStackTrace(JSRealm realm, DynamicObject error, DynamicObject structuredStackTrace) {
+                return NativeAccess.executePrepareStackTraceCallback(realm, error, structuredStackTrace);
+            }
+        } : null;
+        mainJSContext.setPrepareStackTraceCallback(callback);
     }
 
     private void exit(int status) {

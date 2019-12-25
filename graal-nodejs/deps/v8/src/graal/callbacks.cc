@@ -101,6 +101,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
     CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
     CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
+    CALLBACK("executePrepareStackTraceCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecutePrepareStackTraceCallback),
     CALLBACK("writeHostObject", "(JLjava/lang/Object;)V", &GraalWriteHostObject),
     CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
     CALLBACK("throwDataCloneError", "(JLjava/lang/String;)V", &GraalThrowDataCloneError),
@@ -717,6 +718,25 @@ jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAc
         v8::Local<v8::Promise> v8_promise = v8_result.ToLocalChecked();
         GraalPromise* graal_promise = reinterpret_cast<GraalPromise*> (*v8_promise);
         return env->NewLocalRef(graal_promise->GetJavaObject());
+    }
+}
+
+jobject GraalExecutePrepareStackTraceCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_error, jobject java_stack_trace) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
+    GraalContext* graal_context = new GraalContext(graal_isolate, java_context);
+    GraalValue* graal_error = GraalValue::FromJavaObject(graal_isolate, java_error);
+    GraalValue* graal_stack_trace = GraalValue::FromJavaObject(graal_isolate, java_stack_trace);
+    v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
+    v8::Local<v8::Value> v8_error = reinterpret_cast<v8::Value*> (graal_error);
+    v8::Local<v8::Array> v8_stack_trace = reinterpret_cast<v8::Array*> (graal_stack_trace);
+    v8::MaybeLocal<v8::Value> v8_result = graal_isolate->NotifyPrepareStackTraceCallback(v8_context, v8_error, v8_stack_trace);
+    if (v8_result.IsEmpty()) {
+        return NULL;
+    } else {
+        v8::Local<v8::Value> v8_stack = v8_result.ToLocalChecked();
+        GraalValue* graal_stack = reinterpret_cast<GraalValue*> (*v8_stack);
+        return env->NewLocalRef(graal_stack->GetJavaObject());
     }
 }
 

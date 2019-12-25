@@ -148,4 +148,6 @@ jint GraalGetSharedArrayBufferId(JNIEnv* env, jclass nativeAccess, jlong delegat
 
 jobject GraalGetSharedArrayBufferFromId(JNIEnv* env, jclass nativeAccess, jlong delegate, jint id);
 
+jobject GraalExecutePrepareStackTraceCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_error, jobject java_stack_trace);
+
 #endif /* CALLBACKS_H_ */

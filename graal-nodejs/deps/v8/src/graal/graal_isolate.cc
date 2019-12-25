@@ -695,6 +695,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_promise_reject_callback, "isolateEnablePromiseRejectCallback", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_import_meta_initializer, "isolateEnableImportMetaInitializer", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enable_import_module_dynamically, "isolateEnableImportModuleDynamically", "(Z)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_enable_prepare_stack_trace_callback, "isolateEnablePrepareStackTraceCallback", "(Z)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_enter, "isolateEnter", "(J)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_exit, "isolateExit", "(J)J")
     ACCESS_METHOD(GraalAccessMethod::isolate_enqueue_microtask, "isolateEnqueueMicrotask", "(Ljava/lang/Object;)V")
@@ -1344,6 +1345,24 @@ v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleDynamically(v8::Loca
         return import_module_dynamically(context, referrer, specifier);
     } else {
         return v8::MaybeLocal<v8::Promise>();
+    }
+}
+
+void GraalIsolate::SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback) {
+    bool wasNull = prepare_stack_trace_callback_ == nullptr;
+    bool isNull = callback == nullptr;
+    if (wasNull != isNull) {
+        // turn the notification on/off
+        JNI_CALL_VOID(this, GraalAccessMethod::isolate_enable_prepare_stack_trace_callback, (jboolean) !isNull);
+    }
+    prepare_stack_trace_callback_ = callback;
+}
+
+v8::MaybeLocal<v8::Value> GraalIsolate::NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites) {
+    if (prepare_stack_trace_callback_ != nullptr) {
+        return prepare_stack_trace_callback_(context, error, sites);
+    } else {
+        return v8::MaybeLocal<v8::Value>();
     }
 }
 
