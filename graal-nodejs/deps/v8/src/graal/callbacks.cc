@@ -106,7 +106,8 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
     CALLBACK("throwDataCloneError", "(JLjava/lang/String;)V", &GraalThrowDataCloneError),
     CALLBACK("getSharedArrayBufferId", "(JLjava/lang/Object;)I", &GraalGetSharedArrayBufferId),
-    CALLBACK("getSharedArrayBufferFromId", "(JI)Ljava/lang/Object;", &GraalGetSharedArrayBufferFromId)
+    CALLBACK("getSharedArrayBufferFromId", "(JI)Ljava/lang/Object;", &GraalGetSharedArrayBufferFromId),
+    CALLBACK("syntheticModuleEvaluationSteps", "(JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalSyntheticModuleEvaluationSteps)
  };
 
 static const int CALLBACK_COUNT = sizeof(callbacks) / sizeof(*callbacks);
@@ -790,5 +791,22 @@ jobject GraalGetSharedArrayBufferFromId(JNIEnv* env, jclass nativeAccess, jlong 
     } else {
         v8::Local<v8::SharedArrayBuffer> v8_buffer = v8_maybe_buffer.ToLocalChecked();
         return reinterpret_cast<GraalHandleContent*> (*v8_buffer)->GetJavaObject();
+    }
+}
+
+jobject GraalSyntheticModuleEvaluationSteps(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_module) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
+    GraalContext* graal_context = new GraalContext(graal_isolate, java_context);
+    GraalModule* graal_module = new GraalModule(graal_isolate, java_module);
+    v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
+    v8::Local<v8::Module> v8_module = reinterpret_cast<v8::Module*> (graal_module);
+    v8::MaybeLocal<v8::Value> v8_result = ((v8::Module::SyntheticModuleEvaluationSteps) callback)(v8_context, v8_module);
+    if (v8_result.IsEmpty()) {
+        return NULL;
+    } else {
+        v8::Local<v8::Value> v8_value = v8_result.ToLocalChecked();
+        GraalValue* graal_value = reinterpret_cast<GraalValue*> (*v8_value);
+        return env->NewLocalRef(graal_value->GetJavaObject());
     }
 }

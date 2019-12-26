@@ -87,6 +87,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -118,6 +119,9 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -3107,6 +3111,43 @@ public final class GraalJSAccess {
 
     public int moduleGetIdentityHash(Object module) {
         return System.identityHashCode(module);
+    }
+
+    public Object moduleCreateSyntheticModule(String moduleName, Object[] exportNames, final long evaluationStepsCallback) {
+        FrameDescriptor frameDescriptor = new FrameDescriptor(Undefined.instance);
+        List<Module.ExportEntry> localExportEntries = new ArrayList<>();
+        for (Object exportName : exportNames) {
+            frameDescriptor.addFrameSlot(exportName);
+            localExportEntries.add(Module.ExportEntry.exportSpecifier((String) exportName));
+        }
+        Module module = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
+        final JSModuleRecord moduleRecord = new JSModuleRecord(module, mainJSContext, getModuleLoader(), null, () -> {
+        });
+        moduleRecord.setFrameDescriptor(frameDescriptor);
+        JavaScriptRootNode rootNode = new JavaScriptRootNode(null, null, frameDescriptor) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                moduleRecord.setEnvironment(frame.materialize());
+                return invokeEvaluationStepsCallback(mainJSContext.getRealm());
+            }
+
+            @TruffleBoundary
+            private Object invokeEvaluationStepsCallback(JSRealm realm) {
+                return NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, moduleRecord);
+            }
+        };
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        JSFunctionData functionData = JSFunctionData.createCallOnly(mainJSContext, callTarget, 0, moduleName);
+        moduleRecord.setFunctionData(functionData);
+        return moduleRecord;
+    }
+
+    public void moduleSetSyntheticModuleExport(Object module, String exportName, Object exportValue) {
+        JSModuleRecord moduleRecord = (JSModuleRecord) module;
+        FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
+        FrameSlot frameSlot = frameDescriptor.findFrameSlot(exportName);
+        MaterializedFrame frame = moduleRecord.getEnvironment();
+        frame.setObject(frameSlot, exportValue);
     }
 
     public String scriptOrModuleGetResourceName(Object scriptOrModule) {

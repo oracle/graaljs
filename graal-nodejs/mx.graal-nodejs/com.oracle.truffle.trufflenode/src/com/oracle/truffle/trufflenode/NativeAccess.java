@@ -160,4 +160,6 @@ public final class NativeAccess {
 
     public static native Object getSharedArrayBufferFromId(long delegate, int id);
 
+    public static native Object syntheticModuleEvaluationSteps(long callback, Object context, Object module);
+
 }

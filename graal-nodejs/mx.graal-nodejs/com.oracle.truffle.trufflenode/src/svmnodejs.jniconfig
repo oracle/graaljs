@@ -116,6 +116,7 @@
       { "name": "messageGetStackTrace" },
       { "name": "messageGetStartColumn" },
       { "name": "moduleCompile" },
+      { "name": "moduleCreateSyntheticModule" },
       { "name": "moduleEvaluate" },
       { "name": "moduleInstantiate" },
       { "name": "moduleGetException" },
@@ -124,6 +125,7 @@
       { "name": "moduleGetRequest" },
       { "name": "moduleGetRequestsLength" },
       { "name": "moduleGetStatus" },
+      { "name": "moduleSetSyntheticModuleExport" },
       { "name": "nullInstance" },
       { "name": "numberNew" },
       { "name": "numberObjectNew" },
@@ -302,7 +304,8 @@
       { "name": "readHostObject" },
       { "name": "throwDataCloneError" },
       { "name": "getSharedArrayBufferFromId" },
-      { "name": "getSharedArrayBufferId" }
+      { "name": "getSharedArrayBufferId" },
+      { "name": "syntheticModuleEvaluationSteps" }
     ]
   },
   {

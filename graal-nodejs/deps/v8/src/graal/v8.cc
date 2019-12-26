@@ -2197,6 +2197,17 @@ namespace v8 {
         return reinterpret_cast<const GraalModule*> (this)->GetModuleRequest(i);
     }
 
+    Local<Module> Module::CreateSyntheticModule(
+            Isolate* isolate, Local<String> module_name,
+            const std::vector<Local<String>>&export_names,
+            SyntheticModuleEvaluationSteps evaluation_steps) {
+        return GraalModule::CreateSyntheticModule(isolate, module_name, export_names, evaluation_steps);
+    }
+
+    void Module::SetSyntheticModuleExport(Local<String> export_name, Local<Value> export_value) {
+        reinterpret_cast<GraalModule*> (this)->SetSyntheticModuleExport(export_name, export_value);
+    }
+
     MaybeLocal<Module> ScriptCompiler::CompileModule(Isolate* isolate, Source* source,
             CompileOptions options, NoCacheReason no_cache_reason) {
         Local<Value> resource_name = source->resource_name;
