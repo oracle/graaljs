@@ -18,6 +18,7 @@ test-error-reporting: FAIL
 
 # Triggers stack-overflow that is not handled well
 test-async-wrap-pop-id-during-load: SKIP # (async function fn() { fn(); })() fails in class initialization
+test-promise-reject-callback-exception: SKIP
 test-ttywrap-stack: SKIP
 
 # Different error message 
@@ -59,8 +60,15 @@ test-v8-flags: FAIL
 test-heapdump-async-hooks-init-promise: SKIP
 test-http2-ping-settings-heapdump: SKIP
 
+# Custom v8::ArrayBuffer::Allocator is not supported
+test-worker-sharedarraybuffer-from-worker-thread: SKIP
+
 # Profiling is not supported
 test-tick-processor-arguments: FAIL
+test-worker-prof: FAIL
+
+# Class field declaration is not supported yet
+test-events-once: FAIL
 
 # Class field declaration is not supported yet +
 # v8::Object::GetConstructorName() returns `Klass` for
