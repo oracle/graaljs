@@ -3113,6 +3113,12 @@ public final class GraalJSAccess {
         return System.identityHashCode(module);
     }
 
+    /**
+     * Exports of synthetic modules that were set before the evaluation of the module started (and
+     * the storage for the exports was created).
+     */
+    private Map<JSModuleRecord, Map<String, Object>> earlySyntheticModuleExports = new WeakHashMap<>();
+
     public Object moduleCreateSyntheticModule(String moduleName, Object[] exportNames, final long evaluationStepsCallback) {
         FrameDescriptor frameDescriptor = new FrameDescriptor(Undefined.instance);
         List<Module.ExportEntry> localExportEntries = new ArrayList<>();
@@ -3133,6 +3139,12 @@ public final class GraalJSAccess {
 
             @TruffleBoundary
             private Object invokeEvaluationStepsCallback(JSRealm realm) {
+                Map<String, Object> map = earlySyntheticModuleExports.get(moduleRecord);
+                if (map != null) {
+                    for (Map.Entry<String, Object> entry : map.entrySet()) {
+                        moduleSetSyntheticModuleExport(moduleRecord, entry.getKey(), entry.getValue());
+                    }
+                }
                 return NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, moduleRecord);
             }
         };
@@ -3147,7 +3159,16 @@ public final class GraalJSAccess {
         FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
         FrameSlot frameSlot = frameDescriptor.findFrameSlot(exportName);
         MaterializedFrame frame = moduleRecord.getEnvironment();
-        frame.setObject(frameSlot, exportValue);
+        if (frame == null) {
+            Map<String, Object> map = earlySyntheticModuleExports.get(module);
+            if (map == null) {
+                map = new HashMap<>();
+                earlySyntheticModuleExports.put(moduleRecord, map);
+            }
+            map.put(exportName, exportValue);
+        } else {
+            frame.setObject(frameSlot, exportValue);
+        }
     }
 
     public String scriptOrModuleGetResourceName(Object scriptOrModule) {
