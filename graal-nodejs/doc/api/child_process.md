@@ -43,19 +43,19 @@ and asynchronous alternatives to [`child_process.spawn()`][] and
 [`child_process.spawnSync()`][]. Each of these alternatives are implemented on
 top of [`child_process.spawn()`][] or [`child_process.spawnSync()`][].
 
-  * [`child_process.exec()`][]: spawns a shell and runs a command within that
-    shell, passing the `stdout` and `stderr` to a callback function when
-    complete.
-  * [`child_process.execFile()`][]: similar to [`child_process.exec()`][] except
-    that it spawns the command directly without first spawning a shell by
-    default.
-  * [`child_process.fork()`][]: spawns a new Node.js process and invokes a
-    specified module with an IPC communication channel established that allows
-    sending messages between parent and child.
-  * [`child_process.execSync()`][]: a synchronous version of
-    [`child_process.exec()`][] that will block the Node.js event loop.
-  * [`child_process.execFileSync()`][]: a synchronous version of
-    [`child_process.execFile()`][] that will block the Node.js event loop.
+* [`child_process.exec()`][]: spawns a shell and runs a command within that
+  shell, passing the `stdout` and `stderr` to a callback function when
+  complete.
+* [`child_process.execFile()`][]: similar to [`child_process.exec()`][] except
+  that it spawns the command directly without first spawning a shell by
+  default.
+* [`child_process.fork()`][]: spawns a new Node.js process and invokes a
+  specified module with an IPC communication channel established that allows
+  sending messages between parent and child.
+* [`child_process.execSync()`][]: a synchronous version of
+  [`child_process.exec()`][] that will block the Node.js event loop.
+* [`child_process.execFileSync()`][]: a synchronous version of
+  [`child_process.execFile()`][] that will block the Node.js event loop.
 
 For certain use cases, such as automating shell scripts, the
 [synchronous counterparts][] may be more convenient. In many cases, however,
@@ -112,7 +112,7 @@ bat.on('exit', (code) => {
 
 ```js
 // OR...
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 exec('my.bat', (err, stdout, stderr) => {
   if (err) {
     console.error(err);
@@ -129,7 +129,7 @@ exec('"my script.cmd" a b', (err, stdout, stderr) => {
 });
 ```
 
-### child_process.exec(command[, options][, callback])
+### child_process.exec(command\[, options\]\[, callback\])
 <!-- YAML
 added: v0.1.90
 changes:
@@ -233,7 +233,7 @@ async function lsExample() {
 lsExample();
 ```
 
-### child_process.execFile(file[, args][, options][, callback])
+### child_process.execFile(file\[, args\]\[, options\]\[, callback\])
 <!-- YAML
 added: v0.1.91
 changes:
@@ -317,7 +317,7 @@ getVersion();
 function. Any input containing shell metacharacters may be used to trigger
 arbitrary command execution.**
 
-### child_process.fork(modulePath[, args][, options])
+### child_process.fork(modulePath\[, args\]\[, options\])
 <!-- YAML
 added: v0.5.0
 changes:
@@ -361,7 +361,7 @@ returned [`ChildProcess`][] will have an additional communication channel
 built-in that allows messages to be passed back and forth between the parent and
 child. See [`subprocess.send()`][] for details.
 
-It is important to keep in mind that spawned Node.js child processes are
+Keep in mind that spawned Node.js child processes are
 independent of the parent with exception of the IPC communication channel
 that is established between the two. Each process has its own memory, with
 their own V8 instances. Because of the additional resource allocations
@@ -382,7 +382,7 @@ current process.
 The `shell` option available in [`child_process.spawn()`][] is not supported by
 `child_process.fork()` and will be ignored if set.
 
-### child_process.spawn(command[, args][, options])
+### child_process.spawn(command\[, args\]\[, options\])
 <!-- YAML
 added: v0.1.90
 changes:
@@ -599,21 +599,21 @@ equal to `['pipe', 'pipe', 'pipe']`.
 
 For convenience, `options.stdio` may be one of the following strings:
 
-* `'pipe'` - equivalent to `['pipe', 'pipe', 'pipe']` (the default)
-* `'ignore'` - equivalent to `['ignore', 'ignore', 'ignore']`
-* `'inherit'` - equivalent to `['inherit', 'inherit', 'inherit']` or `[0, 1, 2]`
+* `'pipe'`: equivalent to `['pipe', 'pipe', 'pipe']` (the default)
+* `'ignore'`: equivalent to `['ignore', 'ignore', 'ignore']`
+* `'inherit'`: equivalent to `['inherit', 'inherit', 'inherit']` or `[0, 1, 2]`
 
 Otherwise, the value of `options.stdio` is an array where each index corresponds
 to an fd in the child. The fds 0, 1, and 2 correspond to stdin, stdout,
 and stderr, respectively. Additional fds can be specified to create additional
 pipes between the parent and child. The value is one of the following:
 
-1. `'pipe'` - Create a pipe between the child process and the parent process.
+1. `'pipe'`: Create a pipe between the child process and the parent process.
    The parent end of the pipe is exposed to the parent as a property on the
    `child_process` object as [`subprocess.stdio[fd]`][`subprocess.stdio`]. Pipes
-   created for fds 0 - 2 are also available as [`subprocess.stdin`][],
+   created for fds 0, 1, and 2 are also available as [`subprocess.stdin`][],
    [`subprocess.stdout`][] and [`subprocess.stderr`][], respectively.
-2. `'ipc'` - Create an IPC channel for passing messages/file descriptors
+2. `'ipc'`: Create an IPC channel for passing messages/file descriptors
    between parent and child. A [`ChildProcess`][] may have at most one IPC
    stdio file descriptor. Setting this option enables the
    [`subprocess.send()`][] method. If the child is a Node.js process, the
@@ -624,25 +624,25 @@ pipes between the parent and child. The value is one of the following:
    Accessing the IPC channel fd in any way other than [`process.send()`][]
    or using the IPC channel with a child process that is not a Node.js instance
    is not supported.
-3. `'ignore'` - Instructs Node.js to ignore the fd in the child. While Node.js
-   will always open fds 0 - 2 for the processes it spawns, setting the fd to
-   `'ignore'` will cause Node.js to open `/dev/null` and attach it to the
+3. `'ignore'`: Instructs Node.js to ignore the fd in the child. While Node.js
+   will always open fds 0, 1, and 2 for the processes it spawns, setting the fd
+   to `'ignore'` will cause Node.js to open `/dev/null` and attach it to the
    child's fd.
-4. `'inherit'` - Pass through the corresponding stdio stream to/from the
+4. `'inherit'`: Pass through the corresponding stdio stream to/from the
    parent process. In the first three positions, this is equivalent to
    `process.stdin`, `process.stdout`, and `process.stderr`, respectively. In
    any other position, equivalent to `'ignore'`.
-5. {Stream} object - Share a readable or writable stream that refers to a tty,
+5. {Stream} object: Share a readable or writable stream that refers to a tty,
    file, socket, or a pipe with the child process. The stream's underlying
    file descriptor is duplicated in the child process to the fd that
    corresponds to the index in the `stdio` array. The stream must have an
    underlying descriptor (file streams do not until the `'open'` event has
    occurred).
-6. Positive integer - The integer value is interpreted as a file descriptor
+6. Positive integer: The integer value is interpreted as a file descriptor
    that is currently open in the parent process. It is shared with the child
    process, similar to how {Stream} objects can be shared. Passing sockets
    is not supported on Windows.
-7. `null`, `undefined` - Use default value. For stdio fds 0, 1, and 2 (in other
+7. `null`, `undefined`: Use default value. For stdio fds 0, 1, and 2 (in other
    words, stdin, stdout, and stderr) a pipe is created. For fd 3 and up, the
    default is `'ignore'`.
 
@@ -686,7 +686,7 @@ Blocking calls like these are mostly useful for simplifying general-purpose
 scripting tasks and for simplifying the loading/processing of application
 configuration at startup.
 
-### child_process.execFileSync(file[, args][, options])
+### child_process.execFileSync(file\[, args\]\[, options\])
 <!-- YAML
 added: v0.11.12
 changes:
@@ -753,7 +753,7 @@ If the process times out or has a non-zero exit code, this method will throw an
 function. Any input containing shell metacharacters may be used to trigger
 arbitrary command execution.**
 
-### child_process.execSync(command[, options])
+### child_process.execSync(command\[, options\])
 <!-- YAML
 added: v0.11.12
 changes:
@@ -813,7 +813,7 @@ The [`Error`][] object will contain the entire result from
 **Never pass unsanitized user input to this function. Any input containing shell
 metacharacters may be used to trigger arbitrary command execution.**
 
-### child_process.spawnSync(command[, args][, options])
+### child_process.spawnSync(command\[, args\]\[, options\])
 <!-- YAML
 added: v0.11.12
 changes:
@@ -955,7 +955,7 @@ The `'error'` event is emitted whenever:
 3. Sending a message to the child process failed.
 
 The `'exit'` event may or may not fire after an error has occurred. When
-listening to both the `'exit'` and `'error'` events, it is important to guard
+listening to both the `'exit'` and `'error'` events, guard
 against accidentally invoking handler functions multiple times.
 
 See also [`subprocess.kill()`][] and [`subprocess.send()`][].
@@ -1038,7 +1038,7 @@ When the child process is a Node.js instance (e.g. spawned using
 [`child_process.fork()`][]), the `process.disconnect()` method can be invoked
 within the child process to close the IPC channel as well.
 
-### subprocess.kill([signal])
+### subprocess.kill(\[signal\])
 <!-- YAML
 added: v0.1.90
 -->
@@ -1148,7 +1148,7 @@ subprocess.unref();
 subprocess.ref();
 ```
 
-### subprocess.send(message[, sendHandle[, options]][, callback])
+### subprocess.send(message\[, sendHandle\[, options\]\]\[, callback\])
 <!-- YAML
 added: v0.5.9
 changes:

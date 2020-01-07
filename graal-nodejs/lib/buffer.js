@@ -21,7 +21,19 @@
 
 'use strict';
 
-const { Math, Object } = primordials;
+const {
+  Object: {
+    defineProperties: ObjectDefineProperties,
+    defineProperty: ObjectDefineProperty,
+    setPrototypeOf: ObjectSetPrototypeOf,
+    create: ObjectCreate
+  },
+  Math: {
+    floor: MathFloor,
+    trunc: MathTrunc,
+    min: MathMin
+  }
+} = primordials;
 
 const graalBuffer = require('internal/graal/buffer');
 const {
@@ -90,7 +102,7 @@ FastBuffer.prototype.constructor = Buffer;
 Buffer.prototype = FastBuffer.prototype;
 addBufferPrototypeMethods(Buffer.prototype);
 
-const constants = Object.defineProperties({}, {
+const constants = ObjectDefineProperties({}, {
   MAX_LENGTH: {
     value: kMaxLength,
     writable: false,
@@ -114,7 +126,7 @@ graalBuffer.install(Buffer.prototype);
 // do not own the ArrayBuffer allocator.  Zero fill is always on in that case.
 const zeroFill = bindingZeroFill || [0];
 
-const encodingsMap = Object.create(null);
+const encodingsMap = ObjectCreate(null);
 for (let i = 0; i < encodings.length; ++i)
   encodingsMap[encodings[i]] = i;
 
@@ -171,7 +183,7 @@ function toInteger(n, defaultVal) {
   if (!Number.isNaN(n) &&
       n >= Number.MIN_SAFE_INTEGER &&
       n <= Number.MAX_SAFE_INTEGER) {
-    return ((n % 1) === 0 ? n : Math.floor(n));
+    return ((n % 1) === 0 ? n : MathFloor(n));
   }
   return defaultVal;
 }
@@ -256,7 +268,7 @@ function Buffer(arg, encodingOrOffset, length) {
   return Buffer.from(arg, encodingOrOffset, length);
 }
 
-Object.defineProperty(Buffer, Symbol.species, {
+ObjectDefineProperty(Buffer, Symbol.species, {
   enumerable: false,
   configurable: true,
   get() { return FastBuffer; }
@@ -314,7 +326,7 @@ const of = (...items) => {
 };
 Buffer.of = of;
 
-Object.setPrototypeOf(Buffer, Uint8Array);
+ObjectSetPrototypeOf(Buffer, Uint8Array);
 
 // The 'assertSize' method will remove itself from the callstack when an error
 // occurs. This is done simply to keep the internal details of the
@@ -367,8 +379,8 @@ function SlowBuffer(length) {
   return createUnsafeBuffer(length);
 }
 
-Object.setPrototypeOf(SlowBuffer.prototype, Uint8Array.prototype);
-Object.setPrototypeOf(SlowBuffer, Uint8Array);
+ObjectSetPrototypeOf(SlowBuffer.prototype, Uint8Array.prototype);
+ObjectSetPrototypeOf(SlowBuffer, Uint8Array);
 
 function allocate(size) {
   if (size <= 0) {
@@ -715,7 +727,7 @@ function byteLength(string, encoding) {
 Buffer.byteLength = byteLength;
 
 // For backwards compatibility.
-Object.defineProperty(Buffer.prototype, 'parent', {
+ObjectDefineProperty(Buffer.prototype, 'parent', {
   enumerable: true,
   get() {
     if (!(this instanceof Buffer))
@@ -723,7 +735,7 @@ Object.defineProperty(Buffer.prototype, 'parent', {
     return this.buffer;
   }
 });
-Object.defineProperty(Buffer.prototype, 'offset', {
+ObjectDefineProperty(Buffer.prototype, 'offset', {
   enumerable: true,
   get() {
     if (!(this instanceof Buffer))
@@ -792,7 +804,7 @@ let INSPECT_MAX_BYTES = 50;
 // Override how buffers are presented by util.inspect().
 Buffer.prototype[customInspectSymbol] = function inspect(recurseTimes, ctx) {
   const max = INSPECT_MAX_BYTES;
-  const actualMax = Math.min(max, this.length);
+  const actualMax = MathMin(max, this.length);
   const remaining = this.length - max;
   let str = this.hexSlice(0, actualMax).replace(/(.{2})/g, '$1 ').trim();
   if (remaining > 0)
@@ -805,7 +817,7 @@ Buffer.prototype[customInspectSymbol] = function inspect(recurseTimes, ctx) {
       extras = true;
       obj[key] = this[key];
       return obj;
-    }, Object.create(null));
+    }, ObjectCreate(null));
     if (extras) {
       if (this.length !== 0)
         str += ', ';
@@ -1045,7 +1057,7 @@ Buffer.prototype.toJSON = function toJSON() {
 function adjustOffset(offset, length) {
   // Use Math.trunc() to convert offset to an integer value that can be larger
   // than an Int32. Hence, don't use offset | 0 or similar techniques.
-  offset = Math.trunc(offset);
+  offset = MathTrunc(offset);
   if (offset === 0) {
     return 0;
   }
@@ -1166,7 +1178,7 @@ module.exports = {
   kStringMaxLength
 };
 
-Object.defineProperties(module.exports, {
+ObjectDefineProperties(module.exports, {
   constants: {
     configurable: false,
     enumerable: true,

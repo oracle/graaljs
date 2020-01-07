@@ -3,6 +3,9 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 19.3.1
+* Updated Node.js to version 12.14.0.
+
 ## Version 19.3.0
 * Implemented the [Promise.allSettled](https://github.com/tc39/proposal-promise-allSettled) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
 * Implemented the [nullish coalescing](https://github.com/tc39/proposal-nullish-coalescing) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).

@@ -41,7 +41,7 @@ if (cluster.isMaster) {
 
 Running Node.js will now share port 8000 between the workers:
 
-```txt
+```console
 $ node server.js
 Master 3596 is running
 Worker 4324 started
@@ -336,7 +336,9 @@ added: v6.0.0
 
 * {boolean}
 
-Set by calling `.kill()` or `.disconnect()`. Until then, it is `undefined`.
+This property is `true` if the worker exited due to `.kill()` or
+`.disconnect()`. If the worker exited any other way, it is `false`. If the
+worker has not exited, it is `undefined`.
 
 The boolean [`worker.exitedAfterDisconnect`][] allows distinguishing between
 voluntary and accidental exit, the master may choose not to respawn a worker
@@ -413,7 +415,7 @@ if (cluster.isMaster) {
 }
 ```
 
-### worker.kill([signal='SIGTERM'])
+### worker.kill(\[signal='SIGTERM'\])
 <!-- YAML
 added: v0.9.12
 -->
@@ -454,7 +456,7 @@ Workers will call `process.exit(0)` if the `'disconnect'` event occurs
 on `process` and `.exitedAfterDisconnect` is not `true`. This protects against
 accidental disconnection.
 
-### worker.send(message[, sendHandle][, callback])
+### worker.send(message\[, sendHandle\[, options\]\]\[, callback\])
 <!-- YAML
 added: v0.7.0
 changes:
@@ -465,6 +467,12 @@ changes:
 
 * `message` {Object}
 * `sendHandle` {Handle}
+* `options` {Object} The `options` argument, if present, is an object used to
+  parameterize the sending of certain types of handles. `options` supports
+  the following properties:
+  * `keepOpen` {boolean} A value that can be used when passing instances of
+    `net.Socket`. When `true`, the socket is kept open in the sending process.
+    **Default:** `false`.
 * `callback` {Function}
 * Returns: {boolean}
 
@@ -523,7 +531,7 @@ added: v0.7.9
 
 When any of the workers die the cluster module will emit the `'exit'` event.
 
-This can be used to restart the worker by calling `.fork()` again.
+This can be used to restart the worker by calling [`.fork()`][] again.
 
 ```js
 cluster.on('exit', (worker, code, signal) => {
@@ -611,24 +619,6 @@ Emitted when the cluster master receives a message from any worker.
 
 See [`child_process` event: `'message'`][].
 
-Before Node.js v6.0, this event emitted only the message and the handle,
-but not the worker object, contrary to what the documentation stated.
-
-If support for older versions is required but a worker object is not
-required, it is possible to work around the discrepancy by checking the
-number of arguments:
-
-```js
-cluster.on('message', (worker, message, handle) => {
-  if (arguments.length === 2) {
-    handle = message;
-    message = worker;
-    worker = undefined;
-  }
-  // ...
-});
-```
-
 ## Event: 'online'
 <!-- YAML
 added: v0.7.0
@@ -654,15 +644,15 @@ added: v0.7.1
 
 * `settings` {Object}
 
-Emitted every time `.setupMaster()` is called.
+Emitted every time [`.setupMaster()`][] is called.
 
 The `settings` object is the `cluster.settings` object at the time
-`.setupMaster()` was called and is advisory only, since multiple calls to
-`.setupMaster()` can be made in a single tick.
+[`.setupMaster()`][] was called and is advisory only, since multiple calls to
+[`.setupMaster()`][] can be made in a single tick.
 
 If accuracy is important, use `cluster.settings`.
 
-## cluster.disconnect([callback])
+## cluster.disconnect(\[callback\])
 <!-- YAML
 added: v0.7.7
 -->
@@ -680,7 +670,7 @@ finished.
 
 This can only be called from the master process.
 
-## cluster.fork([env])
+## cluster.fork(\[env\])
 <!-- YAML
 added: v0.6.0
 -->
@@ -720,7 +710,7 @@ added: v0.11.2
 The scheduling policy, either `cluster.SCHED_RR` for round-robin or
 `cluster.SCHED_NONE` to leave it to the operating system. This is a
 global setting and effectively frozen once either the first worker is spawned,
-or `cluster.setupMaster()` is called, whichever comes first.
+or [`.setupMaster()`][] is called, whichever comes first.
 
 `SCHED_RR` is the default on all operating systems except Windows.
 Windows will change to `SCHED_RR` once libuv is able to effectively
@@ -770,12 +760,12 @@ changes:
   * `windowsHide` {boolean} Hide the forked processes console window that would
     normally be created on Windows systems. **Default:** `false`.
 
-After calling `.setupMaster()` (or `.fork()`) this settings object will contain
-the settings, including the default values.
+After calling [`.setupMaster()`][] (or [`.fork()`][]) this settings object will
+contain the settings, including the default values.
 
 This object is not intended to be changed or set manually.
 
-## cluster.setupMaster([settings])
+## cluster.setupMaster(\[settings\])
 <!-- YAML
 added: v0.7.1
 changes:
@@ -789,11 +779,11 @@ changes:
 `setupMaster` is used to change the default 'fork' behavior. Once called,
 the settings will be present in `cluster.settings`.
 
-Any settings changes only affect future calls to `.fork()` and have no
+Any settings changes only affect future calls to [`.fork()`][] and have no
 effect on workers that are already running.
 
 The only attribute of a worker that cannot be set via `.setupMaster()` is
-the `env` passed to `.fork()`.
+the `env` passed to [`.fork()`][].
 
 The defaults above apply to the first call only; the defaults for later
 calls are the current values at the time of `cluster.setupMaster()` is called.
@@ -872,6 +862,8 @@ socket.on('data', (id) => {
 });
 ```
 
+[`.fork()`]: #cluster_cluster_fork_env
+[`.setupMaster()`]: #cluster_cluster_setupmaster_settings
 [`ChildProcess.send()`]: child_process.html#child_process_subprocess_send_message_sendhandle_options_callback
 [`child_process.fork()`]: child_process.html#child_process_child_process_fork_modulepath_args_options
 [`child_process` event: `'exit'`]: child_process.html#child_process_event_exit

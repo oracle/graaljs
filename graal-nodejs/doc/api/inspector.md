@@ -27,7 +27,7 @@ require('inspector').console.log('a message');
 The inspector console does not have API parity with Node.js
 console.
 
-## inspector.open([port[, host[, wait]]])
+## inspector.open(\[port\[, host\[, wait\]\]\])
 
 * `port` {number} Port to listen on for inspector connections. Optional.
   **Default:** what was specified on the CLI.
@@ -121,9 +121,15 @@ session.on('Debugger.paused', ({ params }) => {
 added: v8.0.0
 -->
 
-Connects a session to the inspector back-end. An exception will be thrown
-if there is already a connected session established either through the API or by
-a front-end connected to the Inspector WebSocket port.
+Connects a session to the inspector back-end.
+
+### session.connectToMainThread()
+<!-- YAML
+added: v12.11.0
+-->
+
+Connects a session to the main thread inspector back-end. An exception will
+be thrown if this API was not called on a Worker thread.
 
 ### session.disconnect()
 <!-- YAML
@@ -131,11 +137,11 @@ added: v8.0.0
 -->
 
 Immediately close the session. All pending message callbacks will be called
-with an error. [`session.connect()`] will need to be called to be able to send
+with an error. [`session.connect()`][] will need to be called to be able to send
 messages again. Reconnected session will lose all inspector state, such as
 enabled agents or configured breakpoints.
 
-### session.post(method[, params][, callback])
+### session.post(method\[, params\]\[, callback\])
 <!-- YAML
 added: v8.0.0
 -->
@@ -146,7 +152,7 @@ added: v8.0.0
 
 Posts a message to the inspector back-end. `callback` will be notified when
 a response is received. `callback` is a function that accepts two optional
-arguments - error and message-specific result.
+arguments: error and message-specific result.
 
 ```js
 session.post('Runtime.evaluate', { expression: '2 + 2' },
@@ -210,7 +216,7 @@ session.on('HeapProfiler.addHeapSnapshotChunk', (m) => {
 });
 
 session.post('HeapProfiler.takeHeapSnapshot', null, (err, r) => {
-  console.log('Runtime.takeHeapSnapshot done:', err, r);
+  console.log('HeapProfiler.takeHeapSnapshot done:', err, r);
   session.disconnect();
   fs.closeSync(fd);
 });

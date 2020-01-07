@@ -45,6 +45,7 @@
 #include "current_isolate.h"
 #include "graal_handle_content.h"
 #include "include/v8.h"
+#include "include/v8-platform.h"
 #include "jni.h"
 #include <string.h>
 #include <vector>
@@ -201,6 +202,7 @@ enum GraalAccessMethod {
     isolate_enable_promise_reject_callback,
     isolate_enable_import_meta_initializer,
     isolate_enable_import_module_dynamically,
+    isolate_enable_prepare_stack_trace_callback,
     isolate_enter,
     isolate_exit,
     isolate_enqueue_microtask,
@@ -289,6 +291,7 @@ enum GraalAccessMethod {
     json_stringify,
     symbol_new,
     symbol_name,
+    symbol_get_iterator,
     promise_result,
     promise_state,
     promise_resolver_new,
@@ -303,6 +306,8 @@ enum GraalAccessMethod {
     module_get_namespace,
     module_get_identity_hash,
     module_get_exception,
+    module_create_synthetic_module,
+    module_set_synthetic_module_export,
     script_or_module_get_resource_name,
     script_or_module_get_host_defined_options,
     value_serializer_new,
@@ -379,6 +384,8 @@ public:
     void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
     void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback);
     v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier);
+    void SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback);
+    v8::MaybeLocal<v8::Value> NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites);
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
     void RunMicrotasks();
     void Enter();
@@ -687,6 +694,7 @@ private:
 
     jobject error_to_ignore_;
     int calls_on_stack_;
+    std::shared_ptr<v8::TaskRunner> task_runner_;
     friend class GraalFunction;
     friend class v8::Isolate;
 
@@ -710,6 +718,7 @@ private:
     v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
     v8::HostImportModuleDynamicallyCallback import_module_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
+    v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
 };
 
 #endif /* GRAAL_ISOLATE_H_ */

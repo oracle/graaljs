@@ -3,6 +3,9 @@
 #include "node_options-inl.h"
 #include "node_v8_platform-inl.h"
 #include "util-inl.h"
+#if defined(LEAK_SANITIZER)
+#include <sanitizer/lsan_interface.h>
+#endif
 
 namespace node {
 
@@ -151,7 +154,6 @@ int NodeMainInstance::Run() {
   RunAtExit(env.get());
 
   per_process::v8_platform.DrainVMTasks(isolate_);
-  per_process::v8_platform.CancelVMTasks(isolate_);
 
 #if defined(LEAK_SANITIZER)
   __lsan_do_leak_check();
@@ -179,6 +181,7 @@ std::unique_ptr<Environment> NodeMainInstance::CreateMainEnvironment(
   if (deserialize_mode_) {
     context =
         Context::FromSnapshot(isolate_, kNodeContextIndex).ToLocalChecked();
+    InitializeContextRuntime(context);
     SetIsolateUpForNode(isolate_, IsolateSettingCategories::kErrorHandlers);
   } else {
     context = NewContext(isolate_);
@@ -200,7 +203,7 @@ std::unique_ptr<Environment> NodeMainInstance::CreateMainEnvironment(
 
   // TODO(joyeecheung): when we snapshot the bootstrapped context,
   // the inspector and diagnostics setup should after after deserialization.
-#if HAVE_INSPECTOR && NODE_USE_V8_PLATFORM
+#if HAVE_INSPECTOR
   *exit_code = env->InitializeInspector(nullptr);
 #endif
   if (env->options()->debug_options().break_node_first_line) {

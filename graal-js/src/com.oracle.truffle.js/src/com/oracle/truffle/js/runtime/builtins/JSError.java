@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JSTruffleOptions;
+import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -276,41 +277,64 @@ public final class JSError extends JSBuiltinObject {
         JSObjectUtil.defineProxyProperty(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, JSAttributes.getDefaultNotEnumerable() | JSProperty.PROXY);
     }
 
+    public static Object prepareStack(JSRealm realm, DynamicObject errorObj, GraalJSException exception) {
+        JSStackTraceElement[] stackTrace = exception.getJSStackTrace();
+        if (realm.isPreparingStackTrace()) {
+            // Do not call Error.prepareStackTrace or PrepareStackTraceCallback
+            // for errors that occur during their invocation
+            return formatStackTrace(stackTrace, errorObj, realm);
+        } else {
+            try {
+                realm.setPreparingStackTrace(true);
+                PrepareStackTraceCallback prepareStackTraceCallback = realm.getContext().getPrepareStackTraceCallback();
+                if (prepareStackTraceCallback == null) {
+                    return prepareStackNoCallback(realm, errorObj, stackTrace);
+                } else {
+                    return prepareStackTraceWithCallback(realm, prepareStackTraceCallback, errorObj, stackTrace);
+                }
+            } finally {
+                realm.setPreparingStackTrace(false);
+            }
+        }
+    }
+
     /**
      * Prepares the value to be set to the errObj.stack property. If Error.prepareStackTrace() is a
      * function, it is called and the result is used; otherwise, the stack is formatted as string.
      */
     @TruffleBoundary
-    public static Object prepareStack(JSRealm realm, DynamicObject errorObj, GraalJSException exception) {
+    public static Object prepareStackNoCallback(JSRealm realm, DynamicObject errorObj, JSStackTraceElement[] jsStackTrace) {
         DynamicObject error = realm.getErrorConstructor(JSErrorType.Error);
         Object prepareStackTrace = JSObject.get(error, PREPARE_STACK_TRACE_NAME);
-        JSStackTraceElement[] jsStackTrace = exception.getJSStackTrace();
         if (JSFunction.isJSFunction(prepareStackTrace)) {
-            // Do not call Error.prepareStackTrace for errors that occur during its invocation
-            boolean inPrepareStackTrace = realm.isPreparingStackTrace();
-            if (!inPrepareStackTrace) {
-                try {
-                    realm.setPreparingStackTrace(true);
-                    return prepareStackWithUserFunction(realm, (DynamicObject) prepareStackTrace, errorObj, jsStackTrace);
-                } finally {
-                    realm.setPreparingStackTrace(false);
-                }
-            }
+            return prepareStackWithUserFunction(realm, (DynamicObject) prepareStackTrace, errorObj, jsStackTrace);
         }
         return formatStackTrace(jsStackTrace, errorObj, realm);
     }
 
+    @TruffleBoundary
+    private static Object prepareStackTraceWithCallback(JSRealm realm, PrepareStackTraceCallback callback, DynamicObject errorObj, JSStackTraceElement[] stackTrace) {
+        try {
+            return callback.prepareStackTrace(realm, errorObj, toStructuredStackTrace(realm, stackTrace));
+        } catch (Exception ex) {
+            return formatStackTrace(stackTrace, errorObj, realm);
+        }
+    }
+
     private static Object prepareStackWithUserFunction(JSRealm realm, DynamicObject prepareStackTraceFun, DynamicObject errorObj, JSStackTraceElement[] stackTrace) {
+        try {
+            return JSFunction.call(prepareStackTraceFun, errorObj, new Object[]{errorObj, toStructuredStackTrace(realm, stackTrace)});
+        } catch (Exception ex) {
+            return formatStackTrace(stackTrace, errorObj, realm);
+        }
+    }
+
+    private static DynamicObject toStructuredStackTrace(JSRealm realm, JSStackTraceElement[] stackTrace) {
         Object[] elements = new Object[stackTrace.length];
         for (int i = 0; i < stackTrace.length; i++) {
             elements[i] = prepareStackElement(realm, stackTrace[i]);
         }
-        DynamicObject structuredStackTrace = JSArray.createConstant(realm.getContext(), elements);
-        try {
-            return JSFunction.call(prepareStackTraceFun, errorObj, new Object[]{errorObj, structuredStackTrace});
-        } catch (Exception ex) {
-            return formatStackTrace(stackTrace, errorObj, realm);
-        }
+        return JSArray.createConstant(realm.getContext(), elements);
     }
 
     private static Object prepareStackElement(JSRealm realm, JSStackTraceElement stackTraceElement) {
