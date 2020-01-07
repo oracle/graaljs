@@ -345,7 +345,7 @@ public final class JSContextOptions {
 
     public static final String BIND_MEMBER_FUNCTIONS_NAME = JS_OPTION_PREFIX + "bind-member-functions";
     @Option(name = BIND_MEMBER_FUNCTIONS_NAME, category = OptionCategory.EXPERT, help = "Bind functions returned by Value.getMember to the receiver object.") //
-    public static final OptionKey<Boolean> BIND_MEMBER_FUNCTIONS = new OptionKey<>(false);
+    public static final OptionKey<Boolean> BIND_MEMBER_FUNCTIONS = new OptionKey<>(true);
     @CompilationFinal private boolean bindMemberFunctions;
 
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {

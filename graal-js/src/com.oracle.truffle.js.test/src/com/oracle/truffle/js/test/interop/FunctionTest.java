@@ -107,6 +107,15 @@ public class FunctionTest {
             assertTrue("Is number: " + result, result.isNumber());
             assertEquals(40, result.asInt());
         }
+
+        // default
+        try (Context context = Context.newBuilder(ID).build()) {
+            Value object = context.eval(source);
+            object.getMember("f").execute(40);
+            Value result = object.getMember("v");
+            assertTrue("Is number: " + result, result.isNumber());
+            assertEquals(42, result.asInt());
+        }
     }
 
 }
