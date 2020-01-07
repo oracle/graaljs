@@ -77,6 +77,15 @@ We are currently working on implementing negative lookahead and more support for
 GraalVM JavaScript uses [Nashorn](http://openjdk.java.net/projects/nashorn/)'s port of the Joni engine, which is based on ECMAScript 5 and misses support for most features of ECMAScript 6 and beyond.
 For more details on the implementation of the engines, see [RegExpImplementation.md](../contributor/RegExpImplementation.md).
 
+### JavaScript modules
+
+GraalVM JavaScript supports modules as defined by ECMAScript 6 and later.
+Be aware that the support for this feature grew and still grows over time, be sure to use the latest ECMAScript version for the all the latest features.
+
+When loading modules via a polyglot `Source`, you can use the inofficial `application/javascript+module` mime type to specify you are loading a module.
+When loading with JavaScript code from a file, make sure the module is loaded from a file with the `.mjs` extension.
+Loading with the `import` keyword is not limited by that, you can `import` from a file of any extension.
+
 ## Compatibility extensions
 
 The following objects and methods are available in GraalVM JavaScript for compatibility with other JavaScript execution engines.
