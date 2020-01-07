@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
@@ -71,7 +72,6 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
-import com.oracle.truffle.js.nodes.interop.ExportMemberValueNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSForeignToJSTypeNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
@@ -511,9 +511,10 @@ public abstract class JSClass extends ObjectType {
 
     @ExportMessage
     static Object readMember(DynamicObject target, String key,
-                    @CachedLanguage LanguageReference<JavaScriptLanguage> languageRef,
+                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
                     @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Cached ExportMemberValueNode exportNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @Cached(value = "languageRef.get().bindMemberFunctions()", allowUncached = true) boolean bindMemberFunctions,
+                    @Cached @Exclusive ExportValueNode exportNode) throws UnknownIdentifierException, UnsupportedMessageException {
         ensureHasMembers(target);
         Object result;
         if (readNode == null) {
@@ -524,7 +525,7 @@ public abstract class JSClass extends ObjectType {
         if (result == null) {
             throw UnknownIdentifierException.create(key);
         }
-        return exportNode.execute(result, target, languageRef);
+        return exportNode.execute(result, target, bindMemberFunctions);
     }
 
     @ExportMessage
