@@ -259,15 +259,19 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         brokenModules = [                                        # Uses:
             '_stream_readable.js',                               # await
             'assert.js',                                         # await
+            join('internal', 'fs', 'dir.js'),                    # await
             join('internal', 'fs', 'promises.js'),               # await
             join('internal', 'modules', 'cjs', 'loader.js'),     # await
             join('internal', 'modules', 'esm', 'loader.js'),     # await
             join('internal', 'modules', 'esm', 'module_job.js'), # await
             join('internal', 'modules', 'esm', 'translators.js'),# await
             join('internal', 'process', 'esm_loader.js'),        # await
+            join('internal', 'process', 'execution.js'),         # await
             join('internal', 'readline', 'utils.js'),            # yield
             join('internal', 'streams', 'buffer_list.js'),       # yield
+            join('internal', 'streams', 'from.js'),              # await
             join('internal', 'vm', 'source_text_module.js'),     # await
+            'repl.js',                                           # await
             'vm.js',                                             # await
         ]
 

@@ -18,7 +18,6 @@
 #include <ctime>
 #include <cwctype>
 #include <fstream>
-#include <iomanip>
 
 constexpr int NODE_REPORT_VERSION = 1;
 constexpr int NANOS_PER_SEC = 1000 * 1000 * 1000;
@@ -111,8 +110,7 @@ std::string TriggerNodeReport(Isolate* isolate,
     }
     // Check for errors on the file open
     if (!outfile.is_open()) {
-      std::cerr << std::endl
-                << "Failed to open Node.js report file: " << filename;
+      std::cerr << "\nFailed to open Node.js report file: " << filename;
 
       if (env != nullptr && options->report_directory.length() > 0)
         std::cerr << " directory: " << options->report_directory;
@@ -121,7 +119,7 @@ std::string TriggerNodeReport(Isolate* isolate,
       return "";
     }
     outstream = &outfile;
-    std::cerr << std::endl << "Writing Node.js report to file: " << filename;
+    std::cerr << "\nWriting Node.js report to file: " << filename;
   }
 
   WriteNodeReport(isolate, env, message, trigger, filename, *outstream,
@@ -132,7 +130,7 @@ std::string TriggerNodeReport(Isolate* isolate,
     outfile.close();
   }
 
-  std::cerr << std::endl << "Node.js report completed" << std::endl;
+  std::cerr << "\nNode.js report completed" << std::endl;
   return filename;
 }
 

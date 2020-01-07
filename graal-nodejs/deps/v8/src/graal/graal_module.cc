@@ -127,3 +127,32 @@ v8::Local<v8::Value> GraalModule::GetException() const {
     GraalValue* graal_error = GraalValue::FromJavaObject(graal_isolate, java_error);
     return reinterpret_cast<v8::Value*> (graal_error);
 }
+
+v8::Local<v8::Module> GraalModule::CreateSyntheticModule(
+        v8::Isolate* isolate, v8::Local<v8::String> module_name,
+        const std::vector<v8::Local<v8::String>>&export_names,
+        v8::Module::SyntheticModuleEvaluationSteps evaluation_steps) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    JNIEnv* env = graal_isolate->GetJNIEnv();
+    GraalString* graal_module_name = reinterpret_cast<GraalString*> (*module_name);
+    jobjectArray java_export_names = env->NewObjectArray(export_names.size(), graal_isolate->GetObjectClass(), NULL);
+    for (int i = 0; i < export_names.size(); i++) {
+        GraalString* graal_export_name = reinterpret_cast<GraalString*> (*export_names[i]);
+        jobject java_export_name = graal_export_name->GetJavaObject();
+        env->SetObjectArrayElement(java_export_names, i, java_export_name);
+    }
+    jobject java_module_name = graal_module_name->GetJavaObject();
+    jlong java_callback = (jlong) evaluation_steps;
+    JNI_CALL(jobject, java_module, graal_isolate, GraalAccessMethod::module_create_synthetic_module, Object, java_module_name, java_export_names, java_callback);
+    GraalModule* graal_module = new GraalModule(graal_isolate, java_module);
+    return reinterpret_cast<v8::Module*> (graal_module);
+}
+
+void GraalModule::SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8::Local<v8::Value> export_value) {
+    GraalIsolate* graal_isolate = Isolate();
+    GraalString* graal_name = reinterpret_cast<GraalString*> (*export_name);
+    GraalValue* graal_value = reinterpret_cast<GraalValue*> (*export_value);
+    jobject java_name = graal_name->GetJavaObject();
+    jobject java_value = graal_value->GetJavaObject();
+    JNI_CALL_VOID(graal_isolate, GraalAccessMethod::module_set_synthetic_module_export, GetJavaObject(), java_name, java_value);
+}

@@ -189,6 +189,9 @@ public class JSContext {
     /** The TRegex engine, as obtained from RegexLanguage. */
     @CompilationFinal private Object tRegexEngine;
 
+    private PrepareStackTraceCallback prepareStackTraceCallback;
+    private final Assumption prepareStackTraceCallbackNotUsedAssumption;
+
     private PromiseRejectionTracker promiseRejectionTracker;
     private final Assumption promiseRejectionTrackerNotUsedAssumption;
 
@@ -409,6 +412,7 @@ public class JSContext {
 
         this.moduleNamespaceFactory = JSObjectFactory.createBound(this, Null.instance, JSModuleNamespace.makeInitialShape(this).createFactory());
 
+        this.prepareStackTraceCallbackNotUsedAssumption = Truffle.getRuntime().createAssumption("prepareStackTraceCallbackNotUsedAssumption");
         this.promiseHookNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseHookNotUsedAssumption");
         this.promiseRejectionTrackerNotUsedAssumption = Truffle.getRuntime().createAssumption("promiseRejectionTrackerNotUsedAssumption");
         this.importMetaInitializerNotUsedAssumption = Truffle.getRuntime().createAssumption("importMetaInitializerNotUsedAssumption");
@@ -1216,6 +1220,22 @@ public class JSContext {
 
     public boolean usePromiseResolve() {
         return contextOptions.isAwaitOptimization();
+    }
+
+    public final void setPrepareStackTraceCallback(PrepareStackTraceCallback callback) {
+        invalidatePrepareStackTraceCallbackNotUsedAssumption();
+        this.prepareStackTraceCallback = callback;
+    }
+
+    public final PrepareStackTraceCallback getPrepareStackTraceCallback() {
+        return prepareStackTraceCallbackNotUsedAssumption.isValid() ? null : prepareStackTraceCallback;
+    }
+
+    private void invalidatePrepareStackTraceCallbackNotUsedAssumption() {
+        if (prepareStackTraceCallbackNotUsedAssumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            prepareStackTraceCallbackNotUsedAssumption.invalidate("prepare stack trace callback unused");
+        }
     }
 
     public final void setPromiseRejectionTracker(PromiseRejectionTracker tracker) {

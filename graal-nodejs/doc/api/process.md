@@ -80,7 +80,7 @@ all `'exit'` listeners have finished running the Node.js process will terminate.
 
 The listener callback function is invoked with the exit code specified either
 by the [`process.exitCode`][] property, or the `exitCode` argument passed to the
-[`process.exit()`] method.
+[`process.exit()`][] method.
 
 ```js
 process.on('exit', (code) => {
@@ -271,8 +271,8 @@ process will exit with a non-zero exit code and the stack trace will be printed.
 This is to avoid infinite recursion.
 
 Attempting to resume normally after an uncaught exception can be similar to
-pulling out of the power cord when upgrading a computer — nine out of ten
-times nothing happens - but the 10th time, the system becomes corrupted.
+pulling out the power cord when upgrading a computer. Nine out of ten
+times, nothing happens. But the tenth time, the system becomes corrupted.
 
 The correct use of `'uncaughtException'` is to perform synchronous cleanup
 of allocated resources (e.g. file descriptors, handles, etc) before shutting
@@ -374,7 +374,7 @@ command-line option can be used to suppress the default console output but the
 The following example illustrates the warning that is printed to `stderr` when
 too many listeners have been added to an event:
 
-```txt
+```console
 $ node
 > events.defaultMaxListeners = 1;
 > process.on('foo', () => {});
@@ -386,7 +386,7 @@ detected. 2 foo listeners added. Use emitter.setMaxListeners() to increase limit
 In contrast, the following example turns off the default warning output and
 adds a custom handler to the `'warning'` event:
 
-```txt
+```console
 $ node --no-warnings
 > const p = process.on('warning', (warning) => console.warn('Do not do that!'));
 > events.defaultMaxListeners = 1;
@@ -511,16 +511,16 @@ environment variable.
 representations.  `process.allowedNodeEnvironmentFlags.has()` will
 return `true` in the following cases:
 
-- Flags may omit leading single (`-`) or double (`--`) dashes; e.g.,
+* Flags may omit leading single (`-`) or double (`--`) dashes; e.g.,
   `inspect-brk` for `--inspect-brk`, or `r` for `-r`.
-- Flags passed through to V8 (as listed in `--v8-options`) may replace
+* Flags passed through to V8 (as listed in `--v8-options`) may replace
   one or more *non-leading* dashes for an underscore, or vice-versa;
   e.g., `--perf_basic_prof`, `--perf-basic-prof`, `--perf_basic-prof`,
   etc.
-- Flags may contain one or more equals (`=`) characters; all
+* Flags may contain one or more equals (`=`) characters; all
   characters after and including the first equals will be ignored;
   e.g., `--stack-trace-limit=100`.
-- Flags *must* be allowable within [`NODE_OPTIONS`][].
+* Flags *must* be allowable within [`NODE_OPTIONS`][].
 
 When iterating over `process.allowedNodeEnvironmentFlags`, flags will
 appear only *once*; each will begin with one or more dashes. Flags
@@ -551,11 +551,9 @@ added: v0.5.0
 
 * {string}
 
-The `process.arch` property returns a string identifying the operating system
-CPU architecture for which the Node.js binary was compiled.
-
-The current possible values are: `'arm'`, `'arm64'`, `'ia32'`, `'mips'`,
-`'mipsel'`, `'ppc'`, `'ppc64'`, `'s390'`, `'s390x'`, `'x32'`, and `'x64'`.
+The operating system CPU architecture for which the Node.js binary was compiled.
+Possible values are: `'arm'`, `'arm64'`, `'ia32'`, `'mips'`,`'mipsel'`, `'ppc'`,
+`'ppc64'`, `'s390'`, `'s390x'`, `'x32'`, and `'x64'`.
 
 ```js
 console.log(`This processor architecture is ${process.arch}`);
@@ -570,8 +568,8 @@ added: v0.1.27
 
 The `process.argv` property returns an array containing the command line
 arguments passed when the Node.js process was launched. The first element will
-be [`process.execPath`]. See `process.argv0` if access to the original value of
-`argv[0]` is needed. The second element will be the path to the JavaScript
+be [`process.execPath`][]. See `process.argv0` if access to the original value
+of `argv[0]` is needed. The second element will be the path to the JavaScript
 file being executed. The remaining elements will be any additional command line
 arguments.
 
@@ -679,7 +677,7 @@ An example of the possible output looks like:
   variables:
    {
      host_arch: 'x64',
-     napi_build_version: 4,
+     napi_build_version: 5,
      node_install_npm: 'true',
      node_prefix: '',
      node_shared_cares: 'false',
@@ -715,7 +713,7 @@ and [Cluster][] documentation), the `process.connected` property will return
 Once `process.connected` is `false`, it is no longer possible to send messages
 over the IPC channel using `process.send()`.
 
-## process.cpuUsage([previousValue])
+## process.cpuUsage(\[previousValue\])
 <!-- YAML
 added: v6.1.0
 -->
@@ -723,8 +721,8 @@ added: v6.1.0
 * `previousValue` {Object} A previous return value from calling
   `process.cpuUsage()`
 * Returns: {Object}
-    * `user` {integer}
-    * `system` {integer}
+  * `user` {integer}
+  * `system` {integer}
 
 The `process.cpuUsage()` method returns the user and system CPU time usage of
 the current process, in an object with properties `user` and `system`, whose
@@ -765,6 +763,7 @@ console.log(`Current directory: ${process.cwd()}`);
 <!-- YAML
 added: v0.7.2
 -->
+
 * {number}
 
 The port used by Node.js's debugger when enabled.
@@ -789,7 +788,7 @@ The effect of calling `process.disconnect()` is the same as calling
 If the Node.js process was not spawned with an IPC channel,
 `process.disconnect()` will be `undefined`.
 
-## process.dlopen(module, filename[, flags])
+## process.dlopen(module, filename\[, flags\])
 <!-- YAML
 added: v0.1.16
 changes:
@@ -831,7 +830,7 @@ process.dlopen(module, require.resolve('binding'),
 module.exports.foo();
 ```
 
-## process.emitWarning(warning[, options])
+## process.emitWarning(warning\[, options\])
 <!-- YAML
 added: v8.0.0
 -->
@@ -877,7 +876,7 @@ process.on('warning', (warning) => {
 
 If `warning` is passed as an `Error` object, the `options` argument is ignored.
 
-## process.emitWarning(warning[, type[, code]][, ctor])
+## process.emitWarning(warning\[, type\[, code\]\]\[, ctor\])
 <!-- YAML
 added: v6.0.0
 -->
@@ -1111,7 +1110,7 @@ that started the Node.js process.
 '/usr/local/bin/node'
 ```
 
-## process.exit([code])
+## process.exit(\[code\])
 <!-- YAML
 added: v0.1.13
 -->
@@ -1121,7 +1120,7 @@ added: v0.1.13
 The `process.exit()` method instructs Node.js to terminate the process
 synchronously with an exit status of `code`. If `code` is omitted, exit uses
 either the 'success' code `0` or the value of `process.exitCode` if it has been
-set. Node.js will not terminate until all the [`'exit'`] event listeners are
+set. Node.js will not terminate until all the [`'exit'`][] event listeners are
 called.
 
 To exit with a 'failure' code:
@@ -1291,7 +1290,7 @@ added: v9.3.0
 Indicates whether a callback has been set using
 [`process.setUncaughtExceptionCaptureCallback()`][].
 
-## process.hrtime([time])
+## process.hrtime(\[time\])
 <!-- YAML
 added: v0.7.6
 -->
@@ -1338,7 +1337,7 @@ added: v10.7.0
 * Returns: {bigint}
 
 The `bigint` version of the [`process.hrtime()`][] method returning the
-current high-resolution real time in a `bigint`.
+current high-resolution real time in nanoseconds as a `bigint`.
 
 Unlike [`process.hrtime()`][], it does not support an additional `time`
 argument since the difference can just be computed directly
@@ -1384,7 +1383,7 @@ This function is only available on POSIX platforms (i.e. not Windows or
 Android).
 This feature is not available in [`Worker`][] threads.
 
-## process.kill(pid[, signal])
+## process.kill(pid\[, signal\])
 <!-- YAML
 added: v0.0.6
 -->
@@ -1450,10 +1449,10 @@ changes:
 -->
 
 * Returns: {Object}
-    * `rss` {integer}
-    * `heapTotal` {integer}
-    * `heapUsed` {integer}
-    * `external` {integer}
+  * `rss` {integer}
+  * `heapTotal` {integer}
+  * `heapUsed` {integer}
+  * `external` {integer}
 
 The `process.memoryUsage()` method returns an object describing the memory usage
 of the Node.js process measured in bytes.
@@ -1489,7 +1488,7 @@ _code segment_.
 When using [`Worker`][] threads, `rss` will be a value that is valid for the
 entire process, while the other fields will only refer to the current thread.
 
-## process.nextTick(callback[, ...args])
+## process.nextTick(callback\[, ...args\])
 <!-- YAML
 added: v0.1.26
 changes:
@@ -1505,7 +1504,7 @@ changes:
 fully drained after the current operation on the JavaScript stack runs to
 completion and before the event loop is allowed to continue. It's possible to
 create an infinite loop if one were to recursively call `process.nextTick()`.
-See the [Event Loop] guide for more background.
+See the [Event Loop][] guide for more background.
 
 ```js
 console.log('start');
@@ -1636,7 +1635,10 @@ Android operating system. However, Android support in Node.js
 
 ## process.ppid
 <!-- YAML
-added: v9.2.0
+added:
+  - v9.2.0
+  - v8.10.0
+  - v6.13.0
 -->
 
 * {integer}
@@ -1679,9 +1681,9 @@ tarball.
 * `lts` {string} a string label identifying the [LTS][] label for this release.
   This property only exists for LTS releases and is `undefined` for all other
   release types, including _Current_ releases. Currently the valid values are:
-  - `'Argon'` for the 4.x LTS line beginning with 4.2.0.
-  - `'Boron'` for the 6.x LTS line beginning with 6.9.0.
-  - `'Carbon'` for the 8.x LTS line beginning with 8.9.1.
+  * `'Argon'` for the 4.x LTS line beginning with 4.2.0.
+  * `'Boron'` for the 6.x LTS line beginning with 6.9.0.
+  * `'Carbon'` for the 8.x LTS line beginning with 8.9.1.
 
 <!-- eslint-skip -->
 ```js
@@ -1745,7 +1747,7 @@ value is the empty string.
 console.log(`Report filename is ${process.report.filename}`);
 ```
 
-### process.report.getReport([err])
+### process.report.getReport(\[err\])
 <!-- YAML
 added: v11.8.0
 -->
@@ -1833,7 +1835,7 @@ The signal used to trigger the creation of a diagnostic report. Defaults to
 console.log(`Report signal: ${process.report.signal}`);
 ```
 
-### process.report.writeReport([filename][, err])
+### process.report.writeReport(\[filename\]\[, err\])
 <!-- YAML
 added: v11.8.0
 -->
@@ -1866,45 +1868,45 @@ added: v12.6.0
 * Returns: {Object} the resource usage for the current process. All of these
   values come from the `uv_getrusage` call which returns
   a [`uv_rusage_t` struct][uv_rusage_t].
-    * `userCPUTime` {integer} maps to `ru_utime` computed in microseconds.
-      It is the same value as [`process.cpuUsage().user`][process.cpuUsage].
-    * `systemCPUTime` {integer} maps to `ru_stime` computed in microseconds.
-      It is the same value as [`process.cpuUsage().system`][process.cpuUsage].
-    * `maxRSS` {integer} maps to `ru_maxrss` which is the maximum resident set
-      size used in kilobytes.
-    * `sharedMemorySize` {integer} maps to `ru_ixrss` but is not supported by
-      any platform.
-    * `unsharedDataSize` {integer} maps to `ru_idrss` but is not supported by
-      any platform.
-    * `unsharedStackSize` {integer} maps to `ru_isrss` but is not supported by
-      any platform.
-    * `minorPageFault` {integer} maps to `ru_minflt` which is the number of
-      minor page faults for the process, see
-      [this article for more details][wikipedia_minor_fault].
-    * `majorPageFault` {integer} maps to `ru_majflt` which is the number of
-      major page faults for the process, see
-      [this article for more details][wikipedia_major_fault]. This field is not
-      supported on Windows.
-    * `swappedOut` {integer} maps to `ru_nswap` but is not supported by any
-      platform.
-    * `fsRead` {integer} maps to `ru_inblock` which is the number of times the
-      file system had to perform input.
-    * `fsWrite` {integer} maps to `ru_oublock` which is the number of times the
-      file system had to perform output.
-    * `ipcSent` {integer} maps to `ru_msgsnd` but is not supported by any
-      platform.
-    * `ipcReceived` {integer} maps to `ru_msgrcv` but is not supported by any
-      platform.
-    * `signalsCount` {integer} maps to `ru_nsignals` but is not supported by any
-      platform.
-    * `voluntaryContextSwitches` {integer} maps to `ru_nvcsw` which is the
-      number of times a CPU context switch resulted due to a process voluntarily
-      giving up the processor before its time slice was completed (usually to
-      await availability of a resource). This field is not supported on Windows.
-    * `involuntaryContextSwitches` {integer} maps to `ru_nivcsw` which is the
-      number of times a CPU context switch resulted due to a higher priority
-      process becoming runnable or because the current process exceeded its
-      time slice. This field is not supported on Windows.
+  * `userCPUTime` {integer} maps to `ru_utime` computed in microseconds.
+    It is the same value as [`process.cpuUsage().user`][process.cpuUsage].
+  * `systemCPUTime` {integer} maps to `ru_stime` computed in microseconds.
+    It is the same value as [`process.cpuUsage().system`][process.cpuUsage].
+  * `maxRSS` {integer} maps to `ru_maxrss` which is the maximum resident set
+    size used in kilobytes.
+  * `sharedMemorySize` {integer} maps to `ru_ixrss` but is not supported by
+    any platform.
+  * `unsharedDataSize` {integer} maps to `ru_idrss` but is not supported by
+    any platform.
+  * `unsharedStackSize` {integer} maps to `ru_isrss` but is not supported by
+    any platform.
+  * `minorPageFault` {integer} maps to `ru_minflt` which is the number of
+    minor page faults for the process, see
+    [this article for more details][wikipedia_minor_fault].
+  * `majorPageFault` {integer} maps to `ru_majflt` which is the number of
+    major page faults for the process, see
+    [this article for more details][wikipedia_major_fault]. This field is not
+    supported on Windows.
+  * `swappedOut` {integer} maps to `ru_nswap` but is not supported by any
+    platform.
+  * `fsRead` {integer} maps to `ru_inblock` which is the number of times the
+    file system had to perform input.
+  * `fsWrite` {integer} maps to `ru_oublock` which is the number of times the
+    file system had to perform output.
+  * `ipcSent` {integer} maps to `ru_msgsnd` but is not supported by any
+    platform.
+  * `ipcReceived` {integer} maps to `ru_msgrcv` but is not supported by any
+    platform.
+  * `signalsCount` {integer} maps to `ru_nsignals` but is not supported by any
+    platform.
+  * `voluntaryContextSwitches` {integer} maps to `ru_nvcsw` which is the
+    number of times a CPU context switch resulted due to a process voluntarily
+    giving up the processor before its time slice was completed (usually to
+    await availability of a resource). This field is not supported on Windows.
+  * `involuntaryContextSwitches` {integer} maps to `ru_nivcsw` which is the
+    number of times a CPU context switch resulted due to a higher priority
+    process becoming runnable or because the current process exceeded its
+    time slice. This field is not supported on Windows.
 
 ```js
 console.log(process.resourceUsage());
@@ -1931,14 +1933,18 @@ console.log(process.resourceUsage());
 */
 ```
 
-## process.send(message[, sendHandle[, options]][, callback])
+## process.send(message\[, sendHandle\[, options\]\]\[, callback\])
 <!-- YAML
 added: v0.5.9
 -->
 
 * `message` {Object}
 * `sendHandle` {net.Server|net.Socket}
-* `options` {Object}
+* `options` {Object} used to parameterize the sending of certain types of
+  handles.`options` supports the following properties:
+  * `keepOpen` {boolean} A value that can be used when passing instances of
+    `net.Socket`. When `true`, the socket is kept open in the sending process.
+    **Default:** `false`.
 * `callback` {Function}
 * Returns: {boolean}
 
@@ -2057,6 +2063,7 @@ This feature is not available in [`Worker`][] threads.
 <!-- YAML
 added: v0.1.28
 -->
+
 * `id` {integer | string}
 
 The `process.setuid(id)` method sets the user identity of the process. (See
@@ -2176,9 +2183,9 @@ important ways:
    respectively.
 2. Writes may be synchronous depending on what the stream is connected to
    and whether the system is Windows or POSIX:
-   - Files: *synchronous* on Windows and POSIX
-   - TTYs (Terminals): *asynchronous* on Windows, *synchronous* on POSIX
-   - Pipes (and sockets): *synchronous* on Windows, *asynchronous* on POSIX
+   * Files: *synchronous* on Windows and POSIX
+   * TTYs (Terminals): *asynchronous* on Windows, *synchronous* on POSIX
+   * Pipes (and sockets): *synchronous* on Windows, *asynchronous* on POSIX
 
 These behaviors are partly for historical reasons, as changing them would
 create backwards incompatibility, but they are also expected by some users.
@@ -2222,11 +2229,28 @@ added: v0.9.12
 
 * {boolean}
 
-The `process.throwDeprecation` property indicates whether the
-`--throw-deprecation` flag is set on the current Node.js process. See the
+The initial value of `process.throwDeprecation` indicates whether the
+`--throw-deprecation` flag is set on the current Node.js process.
+`process.throwDeprecation` is mutable, so whether or not deprecation
+warnings result in errors may be altered at runtime. See the
 documentation for the [`'warning'` event][process_warning] and the
-[`emitWarning()` method][process_emit_warning] for more information about this
-flag's behavior.
+[`emitWarning()` method][process_emit_warning] for more information.
+
+```console
+$ node --throw-deprecation -p "process.throwDeprecation"
+true
+$ node -p "process.throwDeprecation"
+undefined
+$ node
+> process.emitWarning('test', 'DeprecationWarning');
+undefined
+> (node:26598) DeprecationWarning: test
+> process.throwDeprecation = true;
+true
+> process.emitWarning('test', 'DeprecationWarning');
+Thrown:
+[DeprecationWarning: test] { name: 'DeprecationWarning' }
+```
 
 ## process.title
 <!-- YAML
@@ -2261,7 +2285,7 @@ documentation for the [`'warning'` event][process_warning] and the
 [`emitWarning()` method][process_emit_warning] for more information about this
 flag's behavior.
 
-## process.umask([mask])
+## process.umask(\[mask\])
 <!-- YAML
 added: v0.1.19
 -->
@@ -2360,40 +2384,40 @@ Node.js will normally exit with a `0` status code when no more async
 operations are pending. The following status codes are used in other
 cases:
 
-* `1` **Uncaught Fatal Exception** - There was an uncaught exception,
+* `1` **Uncaught Fatal Exception**: There was an uncaught exception,
   and it was not handled by a domain or an [`'uncaughtException'`][] event
   handler.
-* `2` - Unused (reserved by Bash for builtin misuse)
-* `3` **Internal JavaScript Parse Error** - The JavaScript source code
+* `2`: Unused (reserved by Bash for builtin misuse)
+* `3` **Internal JavaScript Parse Error**: The JavaScript source code
   internal in Node.js's bootstrapping process caused a parse error. This
   is extremely rare, and generally can only happen during development
   of Node.js itself.
-* `4` **Internal JavaScript Evaluation Failure** - The JavaScript
+* `4` **Internal JavaScript Evaluation Failure**: The JavaScript
   source code internal in Node.js's bootstrapping process failed to
   return a function value when evaluated. This is extremely rare, and
   generally can only happen during development of Node.js itself.
-* `5` **Fatal Error** - There was a fatal unrecoverable error in V8.
+* `5` **Fatal Error**: There was a fatal unrecoverable error in V8.
   Typically a message will be printed to stderr with the prefix `FATAL
   ERROR`.
-* `6` **Non-function Internal Exception Handler** - There was an
+* `6` **Non-function Internal Exception Handler**: There was an
   uncaught exception, but the internal fatal exception handler
   function was somehow set to a non-function, and could not be called.
-* `7` **Internal Exception Handler Run-Time Failure** - There was an
+* `7` **Internal Exception Handler Run-Time Failure**: There was an
   uncaught exception, and the internal fatal exception handler
   function itself threw an error while attempting to handle it. This
   can happen, for example, if an [`'uncaughtException'`][] or
   `domain.on('error')` handler throws an error.
-* `8` - Unused. In previous versions of Node.js, exit code 8 sometimes
+* `8`: Unused. In previous versions of Node.js, exit code 8 sometimes
   indicated an uncaught exception.
-* `9` - **Invalid Argument** - Either an unknown option was specified,
+* `9` **Invalid Argument**: Either an unknown option was specified,
   or an option requiring a value was provided without a value.
-* `10` **Internal JavaScript Run-Time Failure** - The JavaScript
+* `10` **Internal JavaScript Run-Time Failure**: The JavaScript
   source code internal in Node.js's bootstrapping process threw an error
   when the bootstrapping function was called. This is extremely rare,
   and generally can only happen during development of Node.js itself.
-* `12` **Invalid Debug Argument** - The `--inspect` and/or `--inspect-brk`
+* `12` **Invalid Debug Argument**: The `--inspect` and/or `--inspect-brk`
   options were set, but the port number chosen was invalid or unavailable.
-* `>128` **Signal Exits** - If Node.js receives a fatal signal such as
+* `>128` **Signal Exits**: If Node.js receives a fatal signal such as
   `SIGKILL` or `SIGHUP`, then its exit code will be `128` plus the
   value of the signal code. This is a standard POSIX practice, since
   exit codes are defined to be 7-bit integers, and signal exits set

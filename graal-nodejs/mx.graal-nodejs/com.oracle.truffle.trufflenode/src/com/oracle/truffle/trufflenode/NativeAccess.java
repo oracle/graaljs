@@ -148,6 +148,8 @@ public final class NativeAccess {
 
     public static native Object executeImportModuleDynamicallyCallback(Object context, Object referrer, String specifier);
 
+    public static native Object executePrepareStackTraceCallback(Object context, Object error, Object structuredStackTrace);
+
     public static native void writeHostObject(long delegate, Object object);
 
     public static native Object readHostObject(long delegate);
@@ -157,5 +159,7 @@ public final class NativeAccess {
     public static native int getSharedArrayBufferId(long delegate, Object sharedArrayBuffer);
 
     public static native Object getSharedArrayBufferFromId(long delegate, int id);
+
+    public static native Object syntheticModuleEvaluationSteps(long callback, Object context, Object module);
 
 }

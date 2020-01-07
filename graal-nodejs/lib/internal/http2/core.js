@@ -82,6 +82,7 @@ const {
   hideStackFrames
 } = require('internal/errors');
 const { validateNumber, validateString } = require('internal/validators');
+const fsPromisesInternal = require('internal/fs/promises');
 const { utcDate } = require('internal/http');
 const { onServerStream,
         Http2ServerRequest,
@@ -161,7 +162,8 @@ function debugSessionObj(session, message, ...args) {
 
 const kMaxFrameSize = (2 ** 24) - 1;
 const kMaxInt = (2 ** 32) - 1;
-const kMaxStreams = (2 ** 31) - 1;
+const kMaxStreams = (2 ** 32) - 1;
+const kMaxALTSVC = (2 ** 14) - 2;
 
 // eslint-disable-next-line no-control-regex
 const kQuotedString = /^[\x09\x20-\x5b\x5d-\x7e\x80-\xff]*$/;
@@ -434,23 +436,27 @@ function sessionListenerRemoved(name) {
 // Also keep track of listeners for the Http2Stream instances, as some events
 // are emitted on those objects.
 function streamListenerAdded(name) {
+  const session = this[kSession];
+  if (!session) return;
   switch (name) {
     case 'priority':
-      this[kSession][kNativeFields][kSessionPriorityListenerCount]++;
+      session[kNativeFields][kSessionPriorityListenerCount]++;
       break;
     case 'frameError':
-      this[kSession][kNativeFields][kSessionFrameErrorListenerCount]++;
+      session[kNativeFields][kSessionFrameErrorListenerCount]++;
       break;
   }
 }
 
 function streamListenerRemoved(name) {
+  const session = this[kSession];
+  if (!session) return;
   switch (name) {
     case 'priority':
-      this[kSession][kNativeFields][kSessionPriorityListenerCount]--;
+      session[kNativeFields][kSessionPriorityListenerCount]--;
       break;
     case 'frameError':
-      this[kSession][kNativeFields][kSessionFrameErrorListenerCount]--;
+      session[kNativeFields][kSessionFrameErrorListenerCount]--;
       break;
   }
 }
@@ -513,6 +519,7 @@ function onSettings() {
     return;
   session[kUpdateTimer]();
   debugSessionObj(session, 'new settings received');
+  session[kRemoteSettings] = undefined;
   session.emit('remoteSettings', session.remoteSettings);
 }
 
@@ -1494,7 +1501,7 @@ class ServerHttp2Session extends Http2Session {
       throw new ERR_INVALID_CHAR('alt');
 
     // Max length permitted for ALTSVC
-    if ((alt.length + (origin !== undefined ? origin.length : 0)) > 16382)
+    if ((alt.length + (origin !== undefined ? origin.length : 0)) > kMaxALTSVC)
       throw new ERR_HTTP2_ALTSVC_LENGTH();
 
     this[kHandle].altsvc(stream, origin || '', alt);
@@ -1526,7 +1533,7 @@ class ServerHttp2Session extends Http2Session {
       len += origin.length;
     }
 
-    if (len > 16382)
+    if (len > kMaxALTSVC)
       throw new ERR_HTTP2_ORIGIN_LENGTH();
 
     this[kHandle].origin(arr, count);
@@ -2167,14 +2174,11 @@ function processHeaders(oldHeaders) {
   return headers;
 }
 
-function onFileCloseError(stream, err) {
-  stream.emit(err);
-}
 
 function onFileUnpipe() {
   const stream = this.sink[kOwner];
   if (stream.ownsFd)
-    this.source.close().catch(onFileCloseError.bind(stream));
+    this.source.close().catch(stream.destroy.bind(stream));
   else
     this.source.releaseFD();
 }
@@ -2539,7 +2543,10 @@ class ServerHttp2Stream extends Http2Stream {
       this[kState].flags |= STREAM_FLAGS_HAS_TRAILERS;
     }
 
-    validateNumber(fd, 'fd');
+    if (fd instanceof fsPromisesInternal.FileHandle)
+      fd = fd.fd;
+    else if (typeof fd !== 'number')
+      throw new ERR_INVALID_ARG_TYPE('fd', ['number', 'FileHandle'], fd);
 
     debugStreamObj(this, 'initiating response from fd');
     this[kUpdateTimer]();
@@ -2914,7 +2921,7 @@ function connect(authority, options, listener) {
   } else {
     switch (protocol) {
       case 'http:':
-        socket = net.connect(options.port || port, options.host || host);
+        socket = net.connect({ port, host, ...options });
         break;
       case 'https:':
         socket = tls.connect(port, host, initializeTLSOptions(options, host));
