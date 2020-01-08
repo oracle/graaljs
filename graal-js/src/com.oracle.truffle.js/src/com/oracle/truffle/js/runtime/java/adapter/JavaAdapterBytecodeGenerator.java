@@ -40,26 +40,29 @@
  */
 package com.oracle.truffle.js.runtime.java.adapter;
 
+import static com.oracle.truffle.js.runtime.java.adapter.JavaAdapterServices.BOOTSTRAP_VALUE_EXECUTE;
+import static com.oracle.truffle.js.runtime.java.adapter.JavaAdapterServices.BOOTSTRAP_VALUE_INVOKE_MEMBER;
+import static com.oracle.truffle.js.runtime.java.adapter.JavaAdapterServices.BOOTSTRAP_VARARGS;
 import static org.objectweb.asm.Opcodes.ACC_FINAL;
 import static org.objectweb.asm.Opcodes.ACC_PRIVATE;
 import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
 import static org.objectweb.asm.Opcodes.ACC_STATIC;
 import static org.objectweb.asm.Opcodes.ACC_SUPER;
 import static org.objectweb.asm.Opcodes.ACC_VARARGS;
-import static org.objectweb.asm.Opcodes.ACONST_NULL;
 import static org.objectweb.asm.Opcodes.ALOAD;
-import static org.objectweb.asm.Opcodes.DUP;
-import static org.objectweb.asm.Opcodes.IFNONNULL;
-import static org.objectweb.asm.Opcodes.POP;
+import static org.objectweb.asm.Opcodes.H_INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.RETURN;
+import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 
 import java.lang.annotation.Annotation;
-import java.lang.invoke.MethodHandle;
+import java.lang.invoke.CallSite;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -69,13 +72,11 @@ import java.util.Set;
 
 import org.graalvm.polyglot.Value;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.InstructionAdapter;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.js.runtime.JSTruffleOptions;
 
 /**
  * Generates bytecode for a Java adapter class. Used by the {@link JavaAdapterFactory}.
@@ -116,8 +117,8 @@ import com.oracle.truffle.js.runtime.JSTruffleOptions;
  * </p>
  * <p>
  * For adapter methods that return values, all the JavaScript-to-Java conversions supported by
- * Nashorn will be in effect to coerce the JavaScript function return value to the expected Java
- * return type.
+ * {@link Value#as} will be in effect to coerce the JavaScript function return value to the expected
+ * Java return type.
  * </p>
  * <p>
  * Since we are adding a trailing argument to the generated constructors in the adapter class, they
@@ -155,20 +156,19 @@ final class JavaAdapterBytecodeGenerator {
     private static final String OBJECT_TYPE_NAME = OBJECT_TYPE.getInternalName();
     private static final Type POLYGLOT_VALUE_TYPE = Type.getType(Value.class);
     private static final String POLYGLOT_VALUE_TYPE_DESCRIPTOR = POLYGLOT_VALUE_TYPE.getDescriptor();
-    private static final String LONG_TYPE_DESCRIPTOR = Type.LONG_TYPE.getDescriptor();
+    private static final String BOOLEAN_TYPE_DESCRIPTOR = BOOLEAN_TYPE.getDescriptor();
 
     private static final Type STRING_TYPE = Type.getType(String.class);
-    private static final Type METHOD_TYPE_TYPE = Type.getType(MethodType.class);
-    private static final Type METHOD_HANDLE_TYPE = Type.getType(MethodHandle.class);
-    /** @see JavaAdapterServices#getHandle(MethodType) */
-    private static final String GET_HANDLE_NAME = "getHandle";
-    private static final String GET_HANDLE_DESCRIPTOR = Type.getMethodDescriptor(METHOD_HANDLE_TYPE, METHOD_TYPE_TYPE);
-    /** @see JavaAdapterServices#getFunction */
-    private static final String GET_CALLEE_NAME = "getFunction";
-    private static final String GET_CALLEE_DESCRIPTOR = Type.getMethodDescriptor(POLYGLOT_VALUE_TYPE, POLYGLOT_VALUE_TYPE, STRING_TYPE);
-    /** @see JavaAdapterServices#getClassOverrides() */
+    private static final Type CLASS_LOADER_TYPE = Type.getType(ClassLoader.class);
+    /** @see JavaAdapterServices#hasMethod(Value, String) */
+    private static final String HAS_METHOD_NAME = "hasMethod";
+    private static final String HAS_METHOD_DESCRIPTOR = Type.getMethodDescriptor(BOOLEAN_TYPE, POLYGLOT_VALUE_TYPE, STRING_TYPE);
+    /** @see JavaAdapterServices#hasOwnProperty(Value, String) */
+    private static final String HAS_OWN_PROPERTY_NAME = "hasOwnProperty";
+    private static final String HAS_OWN_PROPERTY_DESCRIPTOR = Type.getMethodDescriptor(BOOLEAN_TYPE, POLYGLOT_VALUE_TYPE, STRING_TYPE);
+    /** @see JavaAdapterServices#getClassOverrides(ClassLoader) */
     private static final String GET_CLASS_OVERRIDES_METHOD_NAME = "getClassOverrides";
-    private static final String GET_CLASS_OVERRIDES_METHOD_DESCRIPTOR = Type.getMethodDescriptor(POLYGLOT_VALUE_TYPE);
+    private static final String GET_CLASS_OVERRIDES_METHOD_DESCRIPTOR = Type.getMethodDescriptor(POLYGLOT_VALUE_TYPE, CLASS_LOADER_TYPE);
 
     private static final Type RUNTIME_EXCEPTION_TYPE = Type.getType(RuntimeException.class);
     private static final Type THROWABLE_TYPE = Type.getType(Throwable.class);
@@ -185,13 +185,13 @@ final class JavaAdapterBytecodeGenerator {
     private static final String ERROR_TYPE_NAME = Type.getInternalName(Error.class);
     private static final String THROWABLE_TYPE_NAME = THROWABLE_TYPE.getInternalName();
 
-    private static final String METHOD_HANDLE_TYPE_DESCRIPTOR = METHOD_HANDLE_TYPE.getDescriptor();
+    private static final String CLASS_TYPE_NAME = Type.getInternalName(Class.class);
+    private static final String GET_CLASS_LOADER_NAME = "getClassLoader";
+    private static final String GET_CLASS_LOADER_DESCRIPTOR = Type.getMethodDescriptor(CLASS_LOADER_TYPE);
 
-    private static final String THREAD_CLASS_TYPE_NAME = Type.getInternalName(Thread.class);
-    private static final String CURRENT_THREAD_NAME = "currentThread";
-    private static final String CURRENT_THREAD_DESCRIPTOR = Type.getMethodDescriptor(Type.getType(Thread.class));
-    private static final String GET_ID_NAME = "getId";
-    private static final String GET_ID_DESCRIPTOR = Type.getMethodDescriptor(Type.LONG_TYPE);
+    // ASM handle to the bootstrap method
+    private static final Handle BOOTSTRAP_HANDLE = new Handle(H_INVOKESTATIC, Type.getInternalName(JavaAdapterServices.class), "bootstrap",
+                    MethodType.methodType(CallSite.class, Lookup.class, String.class, MethodType.class, int.class).toMethodDescriptorString(), false);
 
     /*
      * Package used when the adapter can't be defined in the adaptee's package (either because it's
@@ -206,8 +206,8 @@ final class JavaAdapterBytecodeGenerator {
     private static final String JAVA_PACKAGE_PREFIX = "java/";
     private static final int MAX_GENERATED_TYPE_NAME_LENGTH = 255;
 
-    private static final String OVERRIDES_FIELD_NAME = "overrides";
-    private static final String THREAD_FIELD_NAME = "thread";
+    private static final String DELEGATE_FIELD_NAME = "delegate";
+    private static final String IS_FUNCTION_FIELD_NAME = "isFunction";
 
     // Method name prefix for invoking super-methods
     static final String SUPER_PREFIX = "super$";
@@ -233,7 +233,6 @@ final class JavaAdapterBytecodeGenerator {
     private final String superClassName;
     // Binary name of the generated class.
     private final String generatedClassName;
-    private final Set<String> usedFieldNames = new HashSet<>();
     private final Set<String> abstractMethodNames = new HashSet<>();
     private final String samName;
     private final Set<MethodInfo> finalMethods = new HashSet<>(EXCLUDED);
@@ -242,16 +241,14 @@ final class JavaAdapterBytecodeGenerator {
 
     private final ClassWriter cw;
 
-    private final boolean emitSameThreadCheck;
-
     /**
      * Creates a generator for the bytecode for the adapter for the specified superclass and
      * interfaces.
      *
      * @param superClass the superclass the adapter will extend.
      * @param interfaces the interfaces the adapter will implement.
-     * @param commonLoader the class loader that can see all of superClass, interfaces, and Nashorn
-     *            classes.
+     * @param commonLoader the class loader that can see all of superClass, interfaces, and
+     *            {@link JavaAdapterServices}.
      * @param classOverride true to generate the bytecode for the adapter that has both class-level
      *            and instance-level overrides, false to generate the bytecode for the adapter that
      *            only has instance-level overrides.
@@ -282,18 +279,17 @@ final class JavaAdapterBytecodeGenerator {
 
         cw.visit(Opcodes.V1_8, ACC_PUBLIC | ACC_SUPER, generatedClassName, null, superClassName, getInternalTypeNames(interfaces));
 
-        generateOverridesField();
+        generateField(DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
 
         gatherMethods(superClass);
         gatherMethods(interfaces);
-        samName = abstractMethodNames.size() == 1 ? abstractMethodNames.iterator().next() : null;
-
-        emitSameThreadCheck = JSTruffleOptions.SingleThreaded;
-        if (emitSameThreadCheck) {
-            generateThreadField();
+        if (abstractMethodNames.size() == 1) {
+            samName = abstractMethodNames.iterator().next();
+            generateField(IS_FUNCTION_FIELD_NAME, BOOLEAN_TYPE_DESCRIPTOR);
+        } else {
+            samName = null;
         }
 
-        generateHandleFields();
         generateClassInit();
         autoConvertibleFromFunction = generateConstructors();
         generateMethods();
@@ -302,22 +298,16 @@ final class JavaAdapterBytecodeGenerator {
         cw.visitEnd();
     }
 
-    private void generateThreadField() {
-        cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, THREAD_FIELD_NAME, LONG_TYPE_DESCRIPTOR, null, null).visitEnd();
-        usedFieldNames.add(THREAD_FIELD_NAME);
+    private void generateField(final String name, final String fieldDesc) {
+        cw.visitField(ACC_PRIVATE | ACC_FINAL | (classOverride ? ACC_STATIC : 0), name, fieldDesc, null, null).visitEnd();
     }
 
-    private void generateOverridesField() {
-        cw.visitField(ACC_PRIVATE | ACC_FINAL | (classOverride ? ACC_STATIC : 0), OVERRIDES_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR, null, null).visitEnd();
-        usedFieldNames.add(OVERRIDES_FIELD_NAME);
-    }
-
-    void loadOverridesField(InstructionAdapter mv) {
+    private void loadField(final InstructionAdapter mv, final String name, final String desc) {
         if (classOverride) {
-            mv.getstatic(generatedClassName, OVERRIDES_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+            mv.getstatic(generatedClassName, name, desc);
         } else {
             mv.visitVarInsn(ALOAD, 0);
-            mv.getfield(generatedClassName, OVERRIDES_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+            mv.getfield(generatedClassName, name, desc);
         }
     }
 
@@ -372,92 +362,34 @@ final class JavaAdapterBytecodeGenerator {
         return interfaceNames;
     }
 
-    private void generateHandleFields() {
-        for (final MethodInfo mi : methodInfos) {
-            cw.visitField(ACC_PRIVATE | ACC_FINAL | ACC_STATIC, mi.methodHandleFieldName, METHOD_HANDLE_TYPE_DESCRIPTOR, null, null).visitEnd();
-            cw.visitField(ACC_PRIVATE | ACC_FINAL | (classOverride ? ACC_STATIC : 0), mi.calleeFieldName, POLYGLOT_VALUE_TYPE_DESCRIPTOR, null, null).visitEnd();
-        }
-    }
-
     private void generateClassInit() {
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(ACC_STATIC, CLASS_INIT, Type.getMethodDescriptor(Type.VOID_TYPE), null, null));
 
         if (classOverride) {
+            mv.visitLdcInsn(getGeneratedClassAsType());
+            mv.invokevirtual(CLASS_TYPE_NAME, GET_CLASS_LOADER_NAME, GET_CLASS_LOADER_DESCRIPTOR, false);
             mv.invokestatic(SERVICES_CLASS_TYPE_NAME, GET_CLASS_OVERRIDES_METHOD_NAME, GET_CLASS_OVERRIDES_METHOD_DESCRIPTOR, false);
-            final Label initGlobal;
+            // stack: [delegate]
+
             if (samName != null) {
                 // If the class is a SAM, allow having a ScriptFunction passed as class overrides
-                final Label notAFunction = new Label();
                 mv.dup();
                 emitIsFunction(mv);
-                mv.ifeq(notAFunction);
-                castFunction(mv);
-
-                /*
-                 * Assign MethodHandle fields through invoking getHandle() for a ScriptFunction,
-                 * only assigning the SAM method(s).
-                 */
-                for (final MethodInfo mi : methodInfos) {
-                    if (mi.getName().equals(samName)) {
-                        mv.dup();
-                    } else {
-                        mv.visitInsn(ACONST_NULL);
-                    }
-                    mv.putstatic(generatedClassName, mi.calleeFieldName, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-                }
-
-                loadUndefined(mv);
-                mv.putstatic(generatedClassName, OVERRIDES_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-
-                initGlobal = new Label();
-                mv.goTo(initGlobal);
-                mv.visitLabel(notAFunction);
-            } else {
-                initGlobal = null;
+                mv.putstatic(generatedClassName, IS_FUNCTION_FIELD_NAME, BOOLEAN_TYPE_DESCRIPTOR);
             }
 
-            mv.dup();
-            mv.putstatic(generatedClassName, OVERRIDES_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-
-            // Assign MethodHandle fields through invoking getHandle() for a ScriptObject
-            for (final MethodInfo mi : methodInfos) {
-                mv.dup();
-                mv.aconst(mi.getName());
-                mv.invokestatic(SERVICES_CLASS_TYPE_NAME, GET_CALLEE_NAME, GET_CALLEE_DESCRIPTOR, false);
-                mv.putstatic(generatedClassName, mi.calleeFieldName, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-            }
-
-            if (initGlobal != null) {
-                mv.visitLabel(initGlobal);
-            }
-        }
-
-        // Assign MethodHandle fields through invoking getHandle() for a ScriptObject
-        for (final MethodInfo mi : methodInfos) {
-            mv.aconst(Type.getMethodType(mi.type.toMethodDescriptorString()));
-            mv.invokestatic(SERVICES_CLASS_TYPE_NAME, GET_HANDLE_NAME, GET_HANDLE_DESCRIPTOR, false);
-            mv.putstatic(generatedClassName, mi.methodHandleFieldName, METHOD_HANDLE_TYPE_DESCRIPTOR);
-        }
-
-        if (emitSameThreadCheck) {
-            mv.invokestatic(THREAD_CLASS_TYPE_NAME, CURRENT_THREAD_NAME, CURRENT_THREAD_DESCRIPTOR, false);
-            mv.invokevirtual(THREAD_CLASS_TYPE_NAME, GET_ID_NAME, GET_ID_DESCRIPTOR, false);
-            mv.putstatic(generatedClassName, THREAD_FIELD_NAME, LONG_TYPE_DESCRIPTOR);
+            mv.putstatic(generatedClassName, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
         }
 
         endInitMethod(mv);
     }
 
-    private static void loadUndefined(final InstructionAdapter mv) {
-        mv.visitInsn(ACONST_NULL);
+    private Type getGeneratedClassAsType() {
+        return Type.getType('L' + generatedClassName + ';');
     }
 
     private static void emitIsFunction(final InstructionAdapter mv) {
         mv.invokestatic(SERVICES_CLASS_TYPE_NAME, "isFunction", Type.getMethodDescriptor(Type.getType(boolean.class), OBJECT_TYPE), false);
-    }
-
-    private static void castFunction(final InstructionAdapter mv) {
-        mv.checkcast(POLYGLOT_VALUE_TYPE);
     }
 
     private boolean generateConstructors() {
@@ -471,16 +403,9 @@ final class JavaAdapterBytecodeGenerator {
             }
         }
         if (!gotCtor) {
-            throwNoAccessibleConstructorError();
+            throw new IllegalArgumentException("No accessible constructor: " + superClass.getCanonicalName());
         }
         return canBeAutoConverted;
-    }
-
-    @TruffleBoundary
-    private void throwNoAccessibleConstructorError() {
-        // throw new AdaptationException(ERROR_NO_ACCESSIBLE_CONSTRUCTOR,
-        // superClass.getCanonicalName());
-        throw new RuntimeException("No accessible constructor: " + superClass.getCanonicalName());
     }
 
     private boolean generateConstructors(final Constructor<?> ctor) {
@@ -540,18 +465,6 @@ final class JavaAdapterBytecodeGenerator {
      * adapter instance with functions from the script object (or the script function itself, if
      * that's what's passed).
      *
-     * There is one method handle field in the adapter class for every method that can be
-     * implemented or overridden; the name of every field is the same as the name of the method,
-     * with a number suffix that makes it unique in case of overloaded methods. The generated
-     * constructor will invoke {@link JavaAdapterServices#getHandle} to obtain the method handles;
-     * these methods make sure to add the necessary conversions and arity adjustments so that the
-     * resulting method handles can be invoked from generated methods using {@code invokeExact}. The
-     * constructor that takes a script function will only initialize the methods with the same name
-     * as the single abstract method.
-     *
-     * The constructor will also store the Nashorn global that was current at the constructor
-     * invocation time in a field named "global".
-     *
      * The generated constructor will be public, regardless of whether the supertype constructor was
      * public or protected. The generated constructor will not be variable arity, even if the
      * supertype constructor was.
@@ -591,61 +504,29 @@ final class JavaAdapterBytecodeGenerator {
             emitIsFunction(mv);
             mv.ifeq(notAFunction);
 
-            // Function branch: assign the function argument to the abstract method(s)
-            generateOverridingConstructorPart(true, mv, offset);
+            // Function branch
+            // isFunction = true
+            mv.visitVarInsn(ALOAD, 0);
+            mv.iconst(1);
+            mv.putfield(generatedClassName, IS_FUNCTION_FIELD_NAME, BOOLEAN_TYPE_DESCRIPTOR);
 
             mv.goTo(end);
             mv.visitLabel(notAFunction);
 
-            // Object branch: for each method, get member and assign it as function if not null
-            generateOverridingConstructorPart(false, mv, offset);
+            // Object branch
+            // isFunction = false
+            mv.visitVarInsn(ALOAD, 0);
+            mv.iconst(0);
+            mv.putfield(generatedClassName, IS_FUNCTION_FIELD_NAME, BOOLEAN_TYPE_DESCRIPTOR);
 
             mv.visitLabel(end);
-        } else {
-            // Object branch: for each method, get member and assign it as function if not null
-            generateOverridingConstructorPart(false, mv, offset);
         }
+
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitVarInsn(ALOAD, offset); // delegate object
+        mv.putfield(generatedClassName, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
 
         endInitMethod(mv);
-    }
-
-    private void generateOverridingConstructorPart(final boolean fromFunction, final InstructionAdapter mv, int offset) {
-        // Assign function fields through invoking getFunction()
-        for (final MethodInfo mi : methodInfos) {
-            mv.visitVarInsn(ALOAD, 0);
-            if (fromFunction) {
-                if (mi.getName().equals(samName)) {
-                    mv.visitVarInsn(ALOAD, offset); // function object
-                    // stack [function, this]
-                    mv.putfield(generatedClassName, mi.calleeFieldName, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-                } else {
-                    /*
-                     * Constructors initializing from a ScriptFunction only initialize methods with
-                     * the SAM name. NOTE: if there's a concrete overloaded method sharing the SAM
-                     * name, it'll be overridden too. This is a deliberate design choice. All other
-                     * method handles are initialized to null.
-                     */
-                    mv.visitInsn(ACONST_NULL);
-                    mv.putfield(generatedClassName, mi.calleeFieldName, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-                }
-            } else {
-                mv.visitVarInsn(ALOAD, offset); // overrides object
-                mv.aconst(mi.getName());
-                // stack [name, overrides, this]
-                mv.invokestatic(SERVICES_CLASS_TYPE_NAME, GET_CALLEE_NAME, GET_CALLEE_DESCRIPTOR, false);
-                mv.putfield(generatedClassName, mi.calleeFieldName, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-            }
-        }
-
-        if (fromFunction) {
-            mv.visitVarInsn(ALOAD, 0);
-            loadUndefined(mv);
-            mv.putfield(generatedClassName, OVERRIDES_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-        } else {
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitVarInsn(ALOAD, offset); // overrides object
-            mv.putfield(generatedClassName, OVERRIDES_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-        }
     }
 
     private static void endInitMethod(final InstructionAdapter mv) {
@@ -668,8 +549,6 @@ final class JavaAdapterBytecodeGenerator {
     private static final class MethodInfo {
         private final Method method;
         private final MethodType type;
-        private String methodHandleFieldName;
-        private String calleeFieldName;
 
         private MethodInfo(final Class<?> clazz, final String name, final Class<?>... argTypes) throws NoSuchMethodException {
             this(clazz.getDeclaredMethod(name, argTypes));
@@ -698,24 +577,6 @@ final class JavaAdapterBytecodeGenerator {
         public int hashCode() {
             return getName().hashCode() ^ type.hashCode();
         }
-
-        void setIsCanonical(final Set<String> usedFieldNames) {
-            methodHandleFieldName = nextName(usedFieldNames);
-            calleeFieldName = nextName(usedFieldNames);
-        }
-
-        String nextName(final Set<String> usedFieldNames) {
-            int i = 0;
-            final String name = getName();
-            String nextName = name;
-            while (!usedFieldNames.add(nextName)) {
-                final String ordinal = String.valueOf(i++);
-                final int maxNameLen = 255 - ordinal.length();
-                nextName = (name.length() <= maxNameLen ? name : name.substring(0, maxNameLen)).concat(ordinal);
-            }
-            return nextName;
-        }
-
     }
 
     private void generateMethods() {
@@ -725,29 +586,26 @@ final class JavaAdapterBytecodeGenerator {
     }
 
     /**
-     * Generates a method in the adapter class that adapts a method from the original class. The
-     * generated methods will inspect the method handle field assigned to them. If it is null (the
-     * JS object doesn't provide an implementation for the method) then it will either invoke its
-     * version in the supertype, or if it is abstract, throw an
-     * {@link UnsupportedOperationException}. Otherwise, if the method handle field's value is not
-     * null, the handle is invoked using invokeExact (signature polymorphic invocation as per JLS
-     * 15.12.3). Before the invocation, the current Nashorn {link Context} is checked, and if it is
-     * different than the global used to create the adapter instance, the creating global is set to
-     * be the current global. In this case, the previously current global is restored after the
-     * invocation. If invokeExact results in a Throwable that is not one of the method's declared
-     * exceptions, and is not an unchecked throwable, then it is wrapped into a
-     * {@link RuntimeException} and the runtime exception is thrown.
+     * Generates a method in the adapter class that adapts a method from the original class.
      *
-     * The method handle retrieved from the field is guaranteed to exactly match the signature of
-     * the method; this is guaranteed by the way constructors of the adapter class obtain them using
-     * {@link JavaAdapterServices#getHandle}.
+     * If the super class has a single abstract method, the generated methods will inspect
+     * the @{code isFunction} field, i.e., if a function object was passed to the constructor; if it
+     * is true, then methods with the same name will execute the provided function object and other
+     * methods will fall back to the super method. Else, it will invoke a method of the passed
+     * "overrides" object if it has an invokable member with the method's name, otherwise it will
+     * fall back to the super method. If the super method it is abstract, it will throw an
+     * {@link UnsupportedOperationException}.
+     *
+     * If the invoked member or function results in a Throwable that is not one of the method's
+     * declared exceptions, and is not an unchecked throwable, then it is wrapped into a
+     * {@link RuntimeException} and the runtime exception is thrown.
      *
      * @param mi the method info describing the method to be generated.
      */
     private void generateMethod(final MethodInfo mi) {
         final Method method = mi.method;
-        final Class<?>[] exceptions = method.getExceptionTypes();
-        final String[] exceptionNames = getExceptionNames(exceptions);
+        final Class<?>[] declaredExceptions = method.getExceptionTypes();
+        final String[] exceptionNames = getExceptionNames(declaredExceptions);
         final MethodType type = mi.type;
         final String methodDesc = type.toMethodDescriptorString();
         final String name = mi.getName();
@@ -758,29 +616,91 @@ final class JavaAdapterBytecodeGenerator {
         final InstructionAdapter mv = new InstructionAdapter(cw.visitMethod(getAccessModifiers(method), name, methodDesc, null, exceptionNames));
         mv.visitCode();
 
-        final Label hasFunction = new Label();
-
         final Type asmReturnType = Type.getType(type.returnType());
+        final int bootstrapFlags = method.isVarArgs() ? BOOTSTRAP_VARARGS : 0;
 
-        // See if we have instance handle defined
-        mv.getstatic(generatedClassName, mi.methodHandleFieldName, METHOD_HANDLE_TYPE_DESCRIPTOR);
-        // stack: [handle]
+        final Label defaultBehavior = new Label();
+        final Label hasMethod = new Label();
 
-        if (classOverride) {
-            // See if we have the static handle
-            mv.getstatic(generatedClassName, mi.calleeFieldName, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-            jumpIfNonNullKeepOperand(mv, hasFunction);
-        } else {
-            mv.visitVarInsn(ALOAD, 0);
-            mv.getfield(generatedClassName, mi.calleeFieldName, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
-            jumpIfNonNullKeepOperand(mv, hasFunction);
+        final List<TryBlock> tryBlocks = new ArrayList<>();
+
+        loadField(mv, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+        // For the cases like scripted overridden methods invoked from super constructors get
+        // adapter global/delegate fields as null, since we
+        // cannot set these fields before invoking super constructor better solution is opt out of
+        // scripted overridden method if global/delegate fields
+        // are null and invoke super method instead
+        mv.ifnull(defaultBehavior);
+        // stack: []
+
+        // If this is a SAM type...
+        if (samName != null) {
+            // ...every method will be checking whether we're initialized with a function.
+            loadField(mv, IS_FUNCTION_FIELD_NAME, BOOLEAN_TYPE_DESCRIPTOR);
+            // stack: [isFunction]
+            if (name.equals(samName)) {
+                final Label notFunction = new Label();
+                mv.ifeq(notFunction);
+                // stack: []
+                // If it's a SAM method, it'll load delegate as the "callee".
+                loadField(mv, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+                // stack: [delegate]
+
+                // Load all parameters on the stack for dynamic invocation.
+                loadParams(mv, asmArgTypes, 1);
+
+                final Label tryBlockStart = new Label();
+                mv.visitLabel(tryBlockStart);
+
+                // Invoke the target method handle
+                mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_EXECUTE | bootstrapFlags);
+
+                final Label tryBlockEnd = new Label();
+                mv.visitLabel(tryBlockEnd);
+                tryBlocks.add(new TryBlock(tryBlockStart, tryBlockEnd));
+
+                mv.areturn(asmReturnType);
+
+                mv.visitLabel(notFunction);
+                // stack: []
+            } else {
+                // If it's not a SAM method, and the delegate is a function,
+                // it'll fall back to default behavior
+                mv.ifne(defaultBehavior);
+                // stack: []
+            }
         }
-        // stack: [callee, handle]
 
-        // else: no override available, pop handle
+        loadField(mv, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+        // stack: [delegate]
+
+        if (name.equals("toString")) {
+            Label hasNoToString = new Label();
+            // Since every JS Object has a toString, we only override
+            // "String toString()" it if it's explicitly specified on the object.
+            mv.dup();
+            mv.visitLdcInsn(name);
+            // stack: ["toString", delegate, delegate]
+            mv.invokestatic(SERVICES_CLASS_TYPE_NAME, HAS_OWN_PROPERTY_NAME, HAS_OWN_PROPERTY_DESCRIPTOR, false);
+            // stack: [hasOwnToString, delegate]
+            mv.ifne(hasNoToString);
+            mv.pop();
+            // stack: []
+            mv.goTo(defaultBehavior);
+            mv.visitLabel(hasNoToString);
+        }
+
+        mv.dup();
+        mv.visitLdcInsn(name);
+        mv.invokestatic(SERVICES_CLASS_TYPE_NAME, HAS_METHOD_NAME, HAS_METHOD_DESCRIPTOR, false);
+        mv.ifne(hasMethod);
+        // stack: [delegate]
+
+        // else: no override available, clear the stack
         mv.pop();
 
-        // No handle is available, fall back to default behavior
+        // No override available, fall back to default behavior
+        mv.visitLabel(defaultBehavior);
         if (Modifier.isAbstract(method.getModifiers())) {
             // If the super method is abstract, throw an exception
             mv.visitLdcInsn(name);
@@ -792,74 +712,70 @@ final class JavaAdapterBytecodeGenerator {
             mv.areturn(Type.getMethodType(methodDesc).getReturnType());
         }
 
-        mv.visitLabel(hasFunction);
-        // stack: [callee, handle]
+        mv.visitLabel(hasMethod);
+        // stack: [delegate]
 
-        // Load all parameters back on stack for dynamic invocation.
-        int varOffset = 1;
-        for (final Type t : asmArgTypes) {
-            mv.load(varOffset, t);
-            varOffset += t.getSize();
-        }
+        // Load all parameters on the stack for dynamic invocation.
+        loadParams(mv, asmArgTypes, 1);
 
-        // Invoke the target method handle
         final Label tryBlockStart = new Label();
         mv.visitLabel(tryBlockStart);
-        mv.invokevirtual(METHOD_HANDLE_TYPE.getInternalName(), "invokeExact", type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), false);
+
+        // Invoke the target method handle
+        mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_INVOKE_MEMBER | bootstrapFlags);
+
         final Label tryBlockEnd = new Label();
         mv.visitLabel(tryBlockEnd);
+        tryBlocks.add(new TryBlock(tryBlockStart, tryBlockEnd));
+
         mv.areturn(asmReturnType);
 
+        emitTryCatchBlocks(mv, declaredExceptions, tryBlocks);
+
+        endMethod(mv);
+    }
+
+    private static final class TryBlock {
+        final Label start;
+        final Label end;
+
+        TryBlock(Label start, Label end) {
+            this.start = start;
+            this.end = end;
+        }
+    }
+
+    private static void emitTryCatchBlocks(final InstructionAdapter mv, final Class<?>[] declaredExceptions, final List<TryBlock> tryBlocks) {
+        if (isThrowableDeclared(declaredExceptions)) {
+            // Method declares Throwable, no need for a try-catch
+            return;
+        }
+
+        // If Throwable is not declared, we need an adapter from Throwable to RuntimeException
         final Label rethrowHandler = new Label();
         mv.visitLabel(rethrowHandler);
         // Rethrow handler for RuntimeException, Error, and all declared exception types
         mv.athrow();
 
-        // If Throwable is not declared, we need an adapter from Throwable to RuntimeException
-        final boolean throwableDeclared = isThrowableDeclared(exceptions);
-        final Label throwableHandler;
-        if (!throwableDeclared) {
-            // Add "throw new RuntimeException(Throwable)" handler for Throwable
-            throwableHandler = new Label();
-            mv.visitLabel(throwableHandler);
-            wrapThrowable(mv);
-            mv.athrow();
-        } else {
-            throwableHandler = null;
-        }
+        // Add "throw new RuntimeException(Throwable)" handler for Throwable
+        final Label throwableHandler = new Label();
+        mv.visitLabel(throwableHandler);
+        wrapThrowable(mv);
+        mv.athrow();
 
-        if (throwableDeclared) {
-            mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, rethrowHandler, THROWABLE_TYPE_NAME);
-            assert throwableHandler == null;
-        } else {
-            mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, rethrowHandler, RUNTIME_EXCEPTION_TYPE_NAME);
-            mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, rethrowHandler, ERROR_TYPE_NAME);
-            for (final String excName : exceptionNames) {
-                mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, rethrowHandler, excName);
+        for (TryBlock tryBlock : tryBlocks) {
+            mv.visitTryCatchBlock(tryBlock.start, tryBlock.end, rethrowHandler, RUNTIME_EXCEPTION_TYPE_NAME);
+            mv.visitTryCatchBlock(tryBlock.start, tryBlock.end, rethrowHandler, ERROR_TYPE_NAME);
+            for (Class<?> exception : declaredExceptions) {
+                mv.visitTryCatchBlock(tryBlock.start, tryBlock.end, rethrowHandler, Type.getInternalName(exception));
             }
-            mv.visitTryCatchBlock(tryBlockStart, tryBlockEnd, throwableHandler, THROWABLE_TYPE_NAME);
+            mv.visitTryCatchBlock(tryBlock.start, tryBlock.end, throwableHandler, THROWABLE_TYPE_NAME);
         }
-
-        endMethod(mv);
     }
 
     private static void wrapThrowable(InstructionAdapter mv) {
         // original Throwable on the top of the stack
         mv.invokestatic(SERVICES_CLASS_TYPE_NAME, WRAP_THROWABLE_METHOD_NAME, WRAP_THROWABLE_METHOD_DESCRIPTOR, false);
-    }
-
-    /**
-     * Emits code for jumping to a label if the top stack operand is not null. The operand is kept
-     * on the stack if it is not null (so is available to code at the jump address) and is popped if
-     * it is null.
-     *
-     * @param mv the instruction adapter being used to emit code
-     * @param label the label to jump to
-     */
-    private static void jumpIfNonNullKeepOperand(final InstructionAdapter mv, final Label label) {
-        mv.visitInsn(DUP);
-        mv.visitJumpInsn(IFNONNULL, label);
-        mv.visitInsn(POP);
     }
 
     private static boolean isThrowableDeclared(final Class<?>[] exceptions) {
@@ -921,12 +837,7 @@ final class JavaAdapterBytecodeGenerator {
 
     private int emitSuperCall(final InstructionAdapter mv, final Class<?> owner, final String name, final String methodDesc, boolean constructor) {
         mv.visitVarInsn(ALOAD, 0);
-        int nextParam = 1;
-        final Type methodType = Type.getMethodType(methodDesc);
-        for (final Type t : methodType.getArgumentTypes()) {
-            mv.load(nextParam, t);
-            nextParam += t.getSize();
-        }
+        int nextParam = loadParams(mv, Type.getMethodType(methodDesc).getArgumentTypes(), 1);
 
         // default method - non-abstract interface method
         if (!constructor && Modifier.isInterface(owner.getModifiers())) {
@@ -938,6 +849,15 @@ final class JavaAdapterBytecodeGenerator {
             mv.invokespecial(superClassName, name, methodDesc, false);
         }
         return nextParam;
+    }
+
+    private static int loadParams(final InstructionAdapter mv, final Type[] paramTypes, final int paramOffset) {
+        int varOffset = paramOffset;
+        for (final Type t : paramTypes) {
+            mv.load(varOffset, t);
+            varOffset += t.getSize();
+        }
+        return varOffset;
     }
 
     private static String[] getExceptionNames(final Class<?>[] exceptions) {
@@ -982,7 +902,6 @@ final class JavaAdapterBytecodeGenerator {
                         if (Modifier.isAbstract(m)) {
                             abstractMethodNames.add(mi.getName());
                         }
-                        mi.setIsCanonical(usedFieldNames);
                     }
                 }
             }

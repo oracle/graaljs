@@ -159,7 +159,7 @@ import com.oracle.truffle.js.runtime.truffleinterop.JSInteropUtil;
                 JavaScriptLanguage.APPLICATION_MIME_TYPE,
                 JavaScriptLanguage.TEXT_MIME_TYPE,
                 JavaScriptLanguage.MODULE_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, dependentLanguages = "regex", fileTypeDetectors = JSFileTypeDetector.class)
-public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
+public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final String TEXT_MIME_TYPE = "text/javascript";
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
     public static final String MODULE_MIME_TYPE = "application/javascript+module";
@@ -578,6 +578,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
     }
 
+    @SuppressWarnings("static-method")
     public void interopBoundaryEnter(JSRealm realm) {
         realm.getAgent().interopBoundaryEnter();
     }
@@ -597,6 +598,10 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     public JSContext getJSContext() {
         return languageContext;
+    }
+
+    public boolean bindMemberFunctions() {
+        return getJSContext().getContextOptions().bindMemberFunctions();
     }
 
     private static void ensureErrorClassesInitialized() {

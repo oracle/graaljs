@@ -4,11 +4,12 @@ This changelog summarizes major changes between GraalVM versions of the GraalVM 
 The main focus is on user-observable behavior of the engine.
 
 ## Version 20.0.0
+* Updated Node.js to version 12.14.0.
 * Added `name` property to anonymous functions.
 * `String.prototype.matchAll` is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`) only.
 * Implemented the [String.prototype.replaceAll](https://github.com/tc39/proposal-string-replaceall) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).
 * Added `js.load-from-classpath` option to allow loading files from the classpath via `classpath:` pseudo URLs (disabled by default). Do not use with untrusted code.
-* Updated Node.js to version 12.14.0.
+* Added option `js.bind-member-functions` for the implicit binding of unbound functions returned by [Value.getMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getMember-java.lang.String-) to the receiver. The preferred way of calling members is using [Value.invokeMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#invokeMember-java.lang.String-java.lang.Object...-).
 
 ## Version 19.3.0
 * Implemented the [Promise.allSettled](https://github.com/tc39/proposal-promise-allSettled) proposal. It is available in ECMAScript 2020 mode (`--js.ecmascript-version=2020`).

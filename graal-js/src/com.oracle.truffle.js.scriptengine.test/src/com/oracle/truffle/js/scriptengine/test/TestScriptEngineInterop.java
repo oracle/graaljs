@@ -100,8 +100,9 @@ public class TestScriptEngineInterop {
     }
 
     @Test
-    public void testClose() {
+    public void testClose() throws ScriptException {
         GraalJSScriptEngine engine = GraalJSScriptEngine.create();
+        Object obj = engine.eval("({})");
         engine.close();
 
         expectIllegalState(() -> engine.eval(""));
@@ -116,7 +117,7 @@ public class TestScriptEngineInterop {
             return null;
         });
         expectIllegalState(() -> {
-            engine.invokeMethod("", "");
+            engine.invokeMethod(obj, "");
             return null;
         });
         expectIllegalState(() -> {

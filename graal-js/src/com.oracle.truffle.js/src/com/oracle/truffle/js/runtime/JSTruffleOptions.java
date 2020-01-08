@@ -153,9 +153,6 @@ public final class JSTruffleOptions {
     public static final boolean DumpHeapOnExit = booleanOption("DumpHeapOnExit", false);
     public static final String HeapDumpFileName = stringOption("HeapDumpFileName", null);
 
-    // Java Interop options
-    public static final boolean SingleThreaded = booleanOption("SingleThreaded", false);
-
     // Tracing
     public static final boolean TracePolymorphicPropertyAccess = booleanOption("TracePolymorphicPropertyAccess", false);
     public static final boolean TraceMegamorphicPropertyAccess = booleanOption("TraceMegamorphicPropertyAccess", false);
@@ -187,9 +184,6 @@ public final class JSTruffleOptions {
 
     // Spreading options
     public static final int SpreadArgumentPlaceholderCount = integerOption("SpreadArgumentPlaceholderCount", 3);
-
-    // Truffle Interop options
-    public static final boolean BindProgramResult = booleanOption("BindProgramResult", true);
 
     public static final boolean UseTRegex = booleanOption("UseTRegex", true);
     public static final boolean RegexRegressionTestMode = booleanOption("RegexRegressionTestMode", false);
