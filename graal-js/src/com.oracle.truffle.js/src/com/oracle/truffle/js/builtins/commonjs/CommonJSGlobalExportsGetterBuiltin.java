@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,55 +40,30 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
-import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-/**
- * Built-ins for CommonJS 'require' emulation.
- */
-public class GlobalCommonJSRequireBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalCommonJSRequireBuiltins.GlobalRequire> {
-    public GlobalCommonJSRequireBuiltins() {
-        super(GlobalRequire.class);
+public abstract class CommonJSGlobalExportsGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
+
+    CommonJSGlobalExportsGetterBuiltin(JSContext context, JSBuiltin builtin) {
+        super(context, builtin);
     }
 
-    public enum GlobalRequire implements BuiltinEnum<GlobalRequire> {
-        require(1),
-        dirnameGetter(0),
-        filenameGetter(0),
-        globalExportsGetter(0),
-        globalModuleGetter(0),
-        resolve(1);
-
-        private final int length;
-
-        GlobalRequire(int length) {
-            this.length = length;
-        }
-
-        @Override
-        public int getLength() {
-            return length;
-        }
+    @Specialization
+    protected Object getObject() {
+        return getExportsObject();
     }
 
-    @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalRequire builtinEnum) {
-        switch (builtinEnum) {
-            case require:
-                return CommonJSRequireBuiltinNodeGen.create(context, builtin, args().function().fixedArgs(1).createArgumentNodes(context));
-            case dirnameGetter:
-                return CommonJSDirnameGetterBuiltinNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-            case filenameGetter:
-                return CommonJSFilenameGetterBuiltinNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-            case globalExportsGetter:
-                return CommonJSGlobalExportsGetterBuiltinNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-            case globalModuleGetter:
-                return CommonJSGlobalModuleGetterBuiltinNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-            case resolve:
-                return CommonJSResolveBuiltinNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-        }
-        return null;
+    @CompilerDirectives.TruffleBoundary
+    private DynamicObject getExportsObject() {
+        DynamicObject moduleObject = CommonJSGlobalModuleGetterBuiltin.getOrCreateModuleObject(getContext());
+        assert moduleObject != Undefined.instance && moduleObject != null;
+        return (DynamicObject) JSObject.get(moduleObject, CommonJSRequireBuiltin.EXPORTS_PROPERTY_NAME);
     }
 }

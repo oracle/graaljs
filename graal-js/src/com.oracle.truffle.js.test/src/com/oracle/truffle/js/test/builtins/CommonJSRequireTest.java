@@ -201,6 +201,33 @@ public class CommonJSRequireTest {
     }
 
     @Test
+    public void cyclicRequireFromMain() throws IOException {
+        Path root = getTestRootFolder();
+        Path testCase = Paths.get(root.normalize().toString(), "cycle_main.js");
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context cx = testContext(root, out, err)) {
+            Value js = cx.eval(getSourceFor(testCase));
+
+            out.flush();
+            err.flush();
+            String outPrint = new String(out.toByteArray());
+            String errPrint = new String(err.toByteArray());
+
+            String dirName = getTestRootFolder().toString() + testCase.getFileSystem().getSeparator();
+
+            Assert.assertEquals("main starting at " + dirName + "cycle_main.js\n" +
+                            "other starting at " + dirName + "cycle_other.js\n" +
+                            "main.done = false\n" +
+                            "other done\n" +
+                            "other.done = true\n" +
+                            "main done\n", outPrint);
+            Assert.assertEquals("", errPrint);
+            Assert.assertEquals(84, js.asInt());
+        }
+    }
+
+    @Test
     public void cyclicRequire() throws IOException {
         Path f = getTestRootFolder();
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -279,8 +306,8 @@ public class CommonJSRequireTest {
     @Test
     public void testHasGlobals() {
         Path f = getTestRootFolder();
-        String[] builtins = new String[]{"require", "module", "exports", "module.exports", "__dirname", "__filename"};
-        String[] types = new String[]{"function", "object", "object", "object", "string", "string"};
+        String[] builtins = new String[]{"require", "__dirname", "__filename"};
+        String[] types = new String[]{"function", "string", "string"};
         for (int i = 0; i < builtins.length; i++) {
             try (Context cx = testContext(f)) {
                 Value val = cx.eval(ID, "(typeof " + builtins[i] + ");");

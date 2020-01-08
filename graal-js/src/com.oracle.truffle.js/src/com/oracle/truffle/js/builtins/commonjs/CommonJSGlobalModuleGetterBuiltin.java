@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,55 +40,54 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
-import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSUserObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
-/**
- * Built-ins for CommonJS 'require' emulation.
- */
-public class GlobalCommonJSRequireBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalCommonJSRequireBuiltins.GlobalRequire> {
-    public GlobalCommonJSRequireBuiltins() {
-        super(GlobalRequire.class);
+import java.util.Map;
+
+public abstract class CommonJSGlobalModuleGetterBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
+
+    CommonJSGlobalModuleGetterBuiltin(JSContext context, JSBuiltin builtin) {
+        super(context, builtin);
     }
 
-    public enum GlobalRequire implements BuiltinEnum<GlobalRequire> {
-        require(1),
-        dirnameGetter(0),
-        filenameGetter(0),
-        globalExportsGetter(0),
-        globalModuleGetter(0),
-        resolve(1);
+    @Specialization
+    protected Object getObject() {
+        return getOrCreateModuleObject(getContext());
+    }
 
-        private final int length;
-
-        GlobalRequire(int length) {
-            this.length = length;
-        }
-
-        @Override
-        public int getLength() {
-            return length;
+    @CompilerDirectives.TruffleBoundary
+    public static DynamicObject getOrCreateModuleObject(JSContext context) {
+        String filePath = CommonJSResolution.getCurrentFileNameFromStack();
+        if (filePath != null) {
+            TruffleFile truffleFile = context.getRealm().getEnv().getPublicTruffleFile(filePath);
+            assert truffleFile.isRegularFile();
+            Map<TruffleFile, DynamicObject> requireCache = context.getRealm().getCommonJSRequireCache();
+            DynamicObject cached = requireCache.get(truffleFile);
+            if (cached != null) {
+                return cached;
+            } else {
+                DynamicObject moduleObject = createModuleObject(context);
+                requireCache.put(truffleFile, moduleObject);
+                return moduleObject;
+            }
+        } else {
+            return createModuleObject(context);
         }
     }
 
-    @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalRequire builtinEnum) {
-        switch (builtinEnum) {
-            case require:
-                return CommonJSRequireBuiltinNodeGen.create(context, builtin, args().function().fixedArgs(1).createArgumentNodes(context));
-            case dirnameGetter:
-                return CommonJSDirnameGetterBuiltinNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-            case filenameGetter:
-                return CommonJSFilenameGetterBuiltinNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-            case globalExportsGetter:
-                return CommonJSGlobalExportsGetterBuiltinNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-            case globalModuleGetter:
-                return CommonJSGlobalModuleGetterBuiltinNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-            case resolve:
-                return CommonJSResolveBuiltinNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-        }
-        return null;
+    private static DynamicObject createModuleObject(JSContext context) {
+        DynamicObject moduleObject = JSUserObject.create(context);
+        DynamicObject exportsObject = JSUserObject.create(context);
+        JSObject.set(moduleObject, CommonJSRequireBuiltin.EXPORTS_PROPERTY_NAME, exportsObject);
+        return moduleObject;
     }
+
 }
