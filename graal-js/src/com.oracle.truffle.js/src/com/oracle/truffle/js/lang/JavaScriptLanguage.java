@@ -307,7 +307,7 @@ public class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 code.append(") {\n");
                 code.append("return eval(").append(JSRuntime.quote(source.getCharacters().toString())).append(");\n");
                 code.append("})");
-                Source wrappedSource = Source.newBuilder(ID, code.toString(), Evaluator.FUNCTION_SOURCE_NAME).build();
+                Source wrappedSource = Source.newBuilder(source).content(code.toString()).build();
                 Object function = parseInContext(wrappedSource, realm.getContext()).run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }
