@@ -44,6 +44,10 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
@@ -79,6 +83,12 @@ public abstract class JSAgent implements EcmaAgent {
      * This flag is used to implement this semantics.
      */
     private int interopCallStackDepth;
+
+    /**
+     * Used to keep alive objects from weak references in the current job. Made for specification
+     * compliance.
+     */
+    private EconomicSet<Object> weakRefTargets;
 
     public JSAgent(boolean canBlock) {
         this.signifier = signifierGenerator.incrementAndGet();
@@ -147,6 +157,11 @@ public abstract class JSAgent implements EcmaAgent {
                         JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
                     } finally {
                         functionRealm.getTruffleContext().leave(prev);
+                        // Maybe I should add isEmpty() check with ConditionProfile and then clear
+                        // And check if the set isn't null with ConditionProfile too
+                        if (weakRefTargets != null) {
+                            weakRefTargets.clear();
+                        }
                     }
                 }
             }
@@ -163,5 +178,13 @@ public abstract class JSAgent implements EcmaAgent {
 
     public final boolean interopBoundaryExit() {
         return --interopCallStackDepth == 0;
+    }
+
+    public boolean addWeakRefTargetToSet(Object target) {
+        if (weakRefTargets == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            weakRefTargets = EconomicSet.create(Equivalence.IDENTITY);
+        }
+        return weakRefTargets.add(target);
     }
 }
