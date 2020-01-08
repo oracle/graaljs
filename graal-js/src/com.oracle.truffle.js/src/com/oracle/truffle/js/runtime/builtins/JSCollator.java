@@ -263,7 +263,11 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     @TruffleBoundary
     public static int compare(DynamicObject collatorObj, String one, String two) {
         Collator collator = getCollatorProperty(collatorObj);
-        return collator.compare(one, two);
+        return collator.compare(normalize(one), normalize(two));
+    }
+
+    private static String normalize(String s) {
+        return Normalizer.normalize(s, Normalizer.Form.NFD);
     }
 
     @TruffleBoundary
@@ -278,7 +282,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
         if (input == null) {
             return null;
         }
-        StringBuilder resultBuilder = new StringBuilder(Normalizer.normalize(input, Normalizer.Form.NFD));
+        StringBuilder resultBuilder = new StringBuilder(normalize(input));
         stripLlAccents(resultBuilder);
         Pattern accentMatchingPattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
         return accentMatchingPattern.matcher(resultBuilder).replaceAll("");
