@@ -41,8 +41,11 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.text.Normalizer;
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import com.ibm.icu.text.Collator;
@@ -91,6 +94,32 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
     public static final JSCollator INSTANCE = new JSCollator();
 
+    // Valid values of Unicode collation ("co") type key.
+    // Based on https://github.com/unicode-org/cldr/blob/master/common/bcp47/collation.xml
+    // "standard" and "search" are missing from the list because ECMAScript spec says:
+    // The values "standard" and "search" must not be used as elements
+    // in any [[SortLocaleData]].[[<locale>]].[[co]]
+    // and [[SearchLocaleData]].[[<locale>]].[[co]] list.
+    private static final Set<String> VALID_COLLATION_TYPES = new HashSet<>(Arrays.asList(new String[]{
+                    "big5han",
+                    "compat",
+                    "dict",
+                    "direct",
+                    "ducet",
+                    "emoji",
+                    "eor",
+                    "gb2312",
+                    "phonebk",
+                    "phonetic",
+                    "pinyin",
+                    "reformed",
+                    "searchjl",
+                    "stroke",
+                    "trad",
+                    "unihan",
+                    "zhuyin"
+    }));
+
     static {
         Shape.Allocator allocator = JSShape.makeAllocator(JSObject.LAYOUT);
         INTERNAL_STATE_PROPERTY = JSObjectUtil.makeHiddenProperty(INTERNAL_STATE_ID, allocator.locationForType(InternalState.class, EnumSet.of(LocationModifier.NonNull, LocationModifier.Final)));
@@ -134,6 +163,9 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                     String sensitivity, Boolean ignorePunctuation) {
         Boolean kn = optkn;
         String kf = optkf;
+        // Set collator.[[Usage]] to usage.
+        // "search" maps to -u-co-search, "sort" means the default behavior
+        String co = IntlUtil.SEARCH.equals(usage) ? IntlUtil.SEARCH : null;
         state.initializedCollator = true;
         state.usage = usage;
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
@@ -152,19 +184,40 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
                     kf = ktype;
                 }
             }
+            if (co == null && ek.equals("co")) {
+                String coType = selectedLocale.getUnicodeLocaleType(ek);
+                if (!coType.isEmpty()) {
+                    co = coType;
+                }
+            }
         }
+        Locale.Builder builder = new Locale.Builder().setLocale(strippedLocale);
         if (kn != null) {
             state.numeric = kn;
         }
         if (kf != null) {
             state.caseFirst = kf;
         }
+        if (VALID_COLLATION_TYPES.contains(co)) {
+            // Let collation be r.[[co]].
+            state.collation = co;
+            builder.setUnicodeLocaleKeyword("co", co);
+        }
         if (sensitivity != null) {
             state.sensitivity = sensitivity;
         }
         state.ignorePunctuation = ignorePunctuation;
-        state.locale = strippedLocale.toLanguageTag();
-        state.collator = Collator.getInstance(Locale.forLanguageTag(state.locale));
+        Locale collatorLocale = builder.build();
+        state.locale = collatorLocale.toLanguageTag();
+
+        // "search" is not allowed in r.[[co]] but it must be set in the Locale
+        // used by the Collator (so that the Collator uses "search" collation).
+        if (IntlUtil.SEARCH.equals(usage)) {
+            assert IntlUtil.SEARCH.equals(co);
+            collatorLocale = builder.setUnicodeLocaleKeyword("co", IntlUtil.SEARCH).build();
+        }
+
+        state.collator = Collator.getInstance(collatorLocale);
         state.collator.setDecomposition(Collator.CANONICAL_DECOMPOSITION);
         switch (state.sensitivity) {
             case IntlUtil.BASE:
