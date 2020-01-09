@@ -42,10 +42,12 @@ package com.oracle.truffle.js.runtime.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
 import java.util.MissingResourceException;
+import java.util.Set;
 
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
@@ -216,23 +218,19 @@ public final class IntlUtil {
         return getAvailableLocales().contains(lookForLocale) || ctx.getLocale().equals(lookForLocale);
     }
 
-    private static final LazyValue<List<Locale>> availableLocales = new LazyValue<>(IntlUtil::initAvailableLocales);
+    private static final LazyValue<Set<Locale>> AVAILABLE_LOCALES = new LazyValue<>(IntlUtil::initAvailableLocales);
 
-    private static List<Locale> getAvailableLocales() {
-        return availableLocales.get();
+    private static Set<Locale> getAvailableLocales() {
+        return AVAILABLE_LOCALES.get();
     }
 
-    private static List<Locale> initAvailableLocales() {
-        List<Locale> result = new ArrayList<>();
+    private static Set<Locale> initAvailableLocales() {
+        Set<Locale> result = new HashSet<>();
 
         try {
-            ULocale[] localesAvailable = ULocale.getAvailableLocales();
-            Locale[] javaLocalesAvailable = new Locale[localesAvailable.length];
-            int i = 0;
-            for (ULocale ul : localesAvailable) {
-                javaLocalesAvailable[i++] = ul.toLocale();
+            for (ULocale ul : ULocale.getAvailableLocales()) {
+                result.add(ul.toLocale());
             }
-            result.addAll(Arrays.asList(javaLocalesAvailable));
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }
