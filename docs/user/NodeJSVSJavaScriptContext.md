@@ -86,6 +86,79 @@ More details about evaluating files using the Context API are available in the [
 CommonJS modules can be loaded in GraalVM JavaScript in the following way:
 
 1. In Node.js, modules can be loaded using the `require()` built-in function, as expected.
-2. The `Context` API does not support CommonJS modules, and has no built-in `require()` function.
+2. By default, the `Context` API does not support CommonJS modules, and has no built-in `require()` function.
 In order to be loaded and used from a `Context` in Java, a CJS module needs to be _bundled_ into a self-contained JavaScript source file.
 This can be done using one of the many popular open-source bundling tools such as Parcel, Browserify and Webpack.
+Experimental support for CommonJS modules can be enabled through the `js.cjs-require` option as described below.
+
+#### Experimental support for CommonJS Npm modules in the `Context` API.
+
+The `js.cjs-require` option provides a built-in `require()` function that can be used to load Npm-compatible CommonJS modules in a JavaScript `Context`.
+Currently, this is an experimental feature not for production usage.
+
+To enable CommonJS support, a JavaScript context can be created in the following way:
+```
+Map<String, String> options = new HashMap<>();
+// Enable CommonJS experimental support.
+options.put("js.cjs-require", "true");
+// (optional) folder where the Npm modules to be loaded are located.
+options.put("js.cjs-require-cwd", "/path/to/root/folder");
+// (optional) initialization script to pre-define globals.
+options.put("js.cjs-global-properties", "./globals.js");
+// (optional) Node.js built-in replacements as a comma separated list.
+options.put("js.cjs-global-builtins",
+            "buffer:buffer/," +
+            "path:path-browserify");
+// Create context with IO support and experimental options.
+Context cx = Context.newBuilder("js")
+                            .allowExperimentalOptions(true)
+                            .allowIO(true)
+                            .options(options)
+                            .build();
+// Require a module
+Value module = cx.eval("js", "require('some-module');");
+```
+
+##### Differences with Node.js built-in `require()` function.
+
+The `Context` built-in `require()` function can load regular Npm modules implemented in JavaScript, but cannot load _native_ Npm modules.
+The built-in `require()` relies on the [Truffle FileSystem](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html), and therefore cannot load Npm modules that depend on the Node.js `'fs'` module for I/O.
+The built-in `require()` aims to be largely compatible with Node.js, and we expect it to work with any Npm module that would work in a browser (e.g., created using a package bundler).
+
+##### Installing an Npm module to be used via the `Context` API.
+
+In order to be used from a JavaScript `Context`, an Npm module needs to be installed to a local folder.
+This can be done using GraalVM JavaScript's `npm install` command like one would normally do for Node.js applications.
+At runtime, the option `js.cjs-require-cwd` can be used to specify the main installation folder for Npm packages.
+The `require()` built-in function will resolve packages according to the default Node.js' [package resolution protocol](https://nodejs.org/api/modules.html#modules_all_together) starting from the directory specified via `js.cjs-require-cwd`.
+When no option is provided, the current working directory of the application will be used.
+
+##### Node.js core modules mockups.
+
+Some JavaScript applications or Npm modules might need functionalities that are available in Node.js' built-in modules (e.g., `'fs'`, `'buffer'`, etc.)
+Such modules are not available in the `Context` API.
+Thankfully, the Node.js community has developed high-quality JavaScript implementations for many Node.js core modules (e.g.,: the ['buffer'](https://www.npmjs.com/package/buffer) module for the browser).
+Such alternative module implementations can be exposed to a JavaScript `Context` using the `js.cjs-global-builtins` option, in the following way:
+```
+options.put("js.cjs-global-builtins", "buffer:my-buffer-implementation");
+```
+As the code suggests, the option instructs the GraalVM JavaScript runtime to load a module called `my-buffer-implementation` when an application attempts to load the Node.js `'buffer'` built-in module using `require('buffer')`.
+
+##### Global symbols pre-initialization.
+
+An Npm module or a JavaScript application might expect certain global properties to be defined in the global scope.
+For example, applications or modules might expect the `Buffer` global symbol to be defined in the `globalThis` object.
+The option `js.cjs-global-properties` can be used to pre-initialize such global symbols using the `Context` API.
+The option can be used in the following way:
+```
+options.put("js.cjs-global-properties", "./globals.js");
+```
+Once specified, the file `globals.js` will be loaded at context creation time, that is, before any JavaScript source execution.
+An example `globals.js` file might perform the following initialization steps:
+```
+// define an empty object called 'process'
+globalThis.process = {}
+// define the 'Buffer' global symbol
+globalThis.Buffer = require('some-buffer-implementation').Buffer;
+```
+The file will be executed at context creation time, and `Buffer` will be available as a global symbol in all new `Context` instances.
