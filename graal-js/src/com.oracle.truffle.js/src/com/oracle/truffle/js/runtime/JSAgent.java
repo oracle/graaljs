@@ -157,11 +157,6 @@ public abstract class JSAgent implements EcmaAgent {
                         JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
                     } finally {
                         functionRealm.getTruffleContext().leave(prev);
-                        // Maybe I should add isEmpty() check with ConditionProfile and then clear
-                        // And check if the set isn't null with ConditionProfile too
-                        if (weakRefTargets != null) {
-                            weakRefTargets.clear();
-                        }
                     }
                 }
             }
@@ -169,6 +164,9 @@ public abstract class JSAgent implements EcmaAgent {
             // Ensure that there are no leftovers when the processing
             // is terminated by an exception (like ExitException).
             promiseJobsQueue.clear();
+            if (weakRefTargets != null) {
+                weakRefTargets.clear();
+            }
         }
     }
 
