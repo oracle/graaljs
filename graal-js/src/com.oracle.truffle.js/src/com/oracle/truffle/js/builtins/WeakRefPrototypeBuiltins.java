@@ -46,6 +46,7 @@ import com.oracle.truffle.js.builtins.WeakRefPrototypeBuiltinsFactory.JSWeakRefD
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
@@ -97,14 +98,21 @@ public final class WeakRefPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
      */
     public abstract static class JSWeakRefDerefNode extends JSWeakRefOperation {
 
+        private static JSAgent agent;
+
         public JSWeakRefDerefNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            agent = context.getJSAgent();
         }
 
         @Specialization(guards = "isJSWeakRef(thisObj)")
         protected static DynamicObject deref(DynamicObject thisObj) {
             Object referent = JSWeakRef.getInternalWeakRef(thisObj).get();
-            return referent != null ? (DynamicObject) referent : Undefined.instance;
+            if (referent != null) {
+                agent.addWeakRefTargetToSet(referent);
+                return (DynamicObject) referent;
+            }
+            return Undefined.instance;
         }
 
         @Specialization(guards = "!isJSWeakRef(thisObj)")
