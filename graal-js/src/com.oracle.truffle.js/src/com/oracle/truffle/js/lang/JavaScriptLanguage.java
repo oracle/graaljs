@@ -101,7 +101,6 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
