@@ -27,25 +27,6 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/collator/check-co-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl/collator/check-kf-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl/collator/check-kn-option.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl/collator/de-sort.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "intl/collator/options.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/date-format/calendar-with-multiple-type-subtags.js",
     "status" : "FAIL"
   }, {
@@ -172,12 +153,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/general/mapped-locale.js",
-    "status" : "FAIL",
-    "statusOverrides" : {
-      "AARCH64" : "PASS"
-    }
-  }, {
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
@@ -298,13 +273,6 @@
     "filePath" : "intl/regress-8525.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
-    "filePath" : "intl/regress-8604.js",
-    "status" : "FAIL",
-    "statusOverrides" : {
-      "AARCH64" : "PASS"
-    },
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "intl/regress-8657.js",
     "status" : "FAIL",
