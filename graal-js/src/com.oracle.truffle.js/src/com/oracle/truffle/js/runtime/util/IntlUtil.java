@@ -214,8 +214,20 @@ public final class IntlUtil {
 
     private static boolean lookupMatch(JSContext ctx, Locale locale, boolean stripIt) {
         Locale lookForLocale = stripIt ? locale.stripExtensions() : locale;
+        Set<Locale> availableLocales = getAvailableLocales();
+        if (availableLocales.contains(lookForLocale)) {
+            return true;
+        }
+
         // default locale might be missing in the available locale list
-        return getAvailableLocales().contains(lookForLocale) || ctx.getLocale().equals(lookForLocale);
+        if (ctx.getLocale().equals(lookForLocale)) {
+            return true;
+        }
+
+        // Check if the locale is among the available ones when we add likely sub-tags
+        ULocale ulocale = ULocale.forLocale(lookForLocale);
+        ulocale = ULocale.addLikelySubtags(ulocale);
+        return availableLocales.contains(ulocale.toLocale());
     }
 
     private static final LazyValue<Set<Locale>> AVAILABLE_LOCALES = new LazyValue<>(IntlUtil::initAvailableLocales);
