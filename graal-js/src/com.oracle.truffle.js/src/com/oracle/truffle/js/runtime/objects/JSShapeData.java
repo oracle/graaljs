@@ -103,45 +103,69 @@ public final class JSShapeData {
     private static JSShapeData getShapeData(Shape shape) {
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = JSShape.getJSContext(shape);
-        Map<Shape, JSShapeData> map = context.getShapeDataMap();
-        return map.computeIfAbsent(shape, s -> new JSShapeData());
+        synchronized (context) {
+            Map<Shape, JSShapeData> map = context.getShapeDataMap();
+            JSShapeData shapeData = map.get(shape);
+            if (shapeData == null) {
+                shapeData = new JSShapeData();
+                map.put(shape, shapeData);
+            }
+            return shapeData;
+        }
     }
 
     @TruffleBoundary
     private static Property[] getPropertiesArray(Shape shape) {
-        if (shape.getPropertyCount() == 0) {
-            return EMPTY_PROPERTY_ARRAY;
-        } else {
-            JSShapeData shapeData = getShapeData(shape);
-            if (shapeData.propertyArray == null) {
-                assert shape.getPropertyCount() != 0;
-                shapeData.propertyArray = createPropertiesArray(shape);
-                assert shapeData.propertyArray.length == shape.getPropertyCount();
-            }
-            return shapeData.propertyArray;
+        assert shape.getPropertyCount() != 0;
+        return getPropertiesArray(getShapeData(shape), shape);
+    }
+
+    private static Property[] getPropertiesArray(JSShapeData shapeData, Shape shape) {
+        Property[] propertyArray = shapeData.propertyArray;
+        if (propertyArray == null) {
+            propertyArray = createPropertiesArray(shape);
+            assert propertyArray.length == shape.getPropertyCount();
+            shapeData.propertyArray = propertyArray;
         }
+        return propertyArray;
     }
 
     static UnmodifiableArrayList<Property> getProperties(Shape shape) {
-        return asUnmodifiableList(getPropertiesArray(shape));
+        return asUnmodifiableList(shape.getPropertyCount() == 0 ? EMPTY_PROPERTY_ARRAY : getPropertiesArray(shape));
     }
 
     @TruffleBoundary
     private static String[] getEnumerablePropertyNamesArray(Shape shape) {
-        if (shape.getPropertyCount() == 0) {
-            return EMPTY_STRING_ARRAY;
-        } else {
-            JSShapeData shapeData = getShapeData(shape);
-            if (shapeData.enumerablePropertyNames == null) {
-                assert shape.getPropertyCount() != 0;
-                shapeData.enumerablePropertyNames = createEnumerablePropertyNamesArray(shape);
-            }
-            return shapeData.enumerablePropertyNames;
+        assert shape.getPropertyCount() != 0;
+        return getEnumerablePropertyNamesArray(getShapeData(shape), shape);
+    }
+
+    private static String[] getEnumerablePropertyNamesArray(JSShapeData shapeData, Shape shape) {
+        String[] enumeratePropertyNames = shapeData.enumerablePropertyNames;
+        if (enumeratePropertyNames == null) {
+            enumeratePropertyNames = createEnumerablePropertyNamesArray(shape);
+            shapeData.enumerablePropertyNames = enumeratePropertyNames;
         }
+        return enumeratePropertyNames;
     }
 
     static UnmodifiableArrayList<String> getEnumerablePropertyNames(Shape shape) {
-        return asUnmodifiableList(getEnumerablePropertyNamesArray(shape));
+        return asUnmodifiableList(shape.getPropertyCount() == 0 ? EMPTY_STRING_ARRAY : getEnumerablePropertyNamesArray(shape));
+    }
+
+    @TruffleBoundary
+    private static Property[] getPropertiesArrayIfHasEnumerablePropertyNames(Shape shape) {
+        assert shape.getPropertyCount() != 0;
+        JSShapeData shapeData = getShapeData(shape);
+        if (getEnumerablePropertyNamesArray(shapeData, shape).length == 0) {
+            return EMPTY_PROPERTY_ARRAY;
+        } else {
+            return getPropertiesArray(shapeData, shape);
+        }
+    }
+
+    static UnmodifiableArrayList<Property> getPropertiesIfHasEnumerablePropertyNames(Shape shape) {
+        return asUnmodifiableList(shape.getPropertyCount() == 0 ? EMPTY_PROPERTY_ARRAY : getPropertiesArrayIfHasEnumerablePropertyNames(shape));
     }
 
     private static <T> UnmodifiableArrayList<T> asUnmodifiableList(T[] array) {
