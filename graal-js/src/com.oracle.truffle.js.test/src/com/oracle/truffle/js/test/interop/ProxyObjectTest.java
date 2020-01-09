@@ -44,7 +44,6 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
 
 import java.util.HashMap;
-import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
