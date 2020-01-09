@@ -101,7 +101,6 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -307,7 +306,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                 code.append(") {\n");
                 code.append("return eval(").append(JSRuntime.quote(source.getCharacters().toString())).append(");\n");
                 code.append("})");
-                Source wrappedSource = Source.newBuilder(ID, code.toString(), Evaluator.FUNCTION_SOURCE_NAME).build();
+                Source wrappedSource = Source.newBuilder(source).content(code.toString()).build();
                 Object function = parseInContext(wrappedSource, realm.getContext()).run(realm);
                 return JSRuntime.jsObjectToJavaObject(JSFunction.call(JSArguments.create(Undefined.instance, function, arguments)));
             }
