@@ -125,4 +125,8 @@ public final class JSTaggedExecutionNode extends JavaScriptNode {
     protected JavaScriptNode copyUninitialized() {
         return new JSTaggedExecutionNode(cloneUninitialized(child), expectedTag, inputTag, descriptor);
     }
+
+    public JavaScriptNode getDelegateNode() {
+        return child;
+    }
 }

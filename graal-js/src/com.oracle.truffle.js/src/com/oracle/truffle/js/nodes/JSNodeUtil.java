@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.nodes.Node;
@@ -49,8 +50,12 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
+import com.oracle.truffle.js.nodes.access.JSTargetableWrapperNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
+import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
+import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 
 public final class JSNodeUtil {
@@ -128,5 +133,43 @@ public final class JSNodeUtil {
     public static boolean hasExactlyOneRootBodyTag(JavaScriptNode body) {
         CompilerAsserts.neverPartOfCompilation();
         return NodeUtil.countNodes(body, node -> !(node instanceof GeneratorWrapperNode) && node instanceof JavaScriptNode && ((JavaScriptNode) node).hasTag(RootBodyTag.class)) == 1;
+    }
+
+    /**
+     * Returns <code>true</code> if <code>node</code> is a JavaScript node that is considered a
+     * wrapper.
+     */
+    public static boolean isWrapperNode(JavaScriptNode node) {
+        return (node instanceof WrapperNode ||
+                        node instanceof GlobalScopeVarWrapperNode ||
+                        node instanceof JSInputGeneratingNodeWrapper ||
+                        node instanceof JSTaggedExecutionNode ||
+                        node instanceof JSTargetableWrapperNode);
+    }
+
+    /**
+     * Helper to retrieve the node wrapped by a given JavaScript node.
+     *
+     * @param node a JavaScript node that is possibly a wrapper
+     * @return the (delegate) node that is wrapped by the parameter <code>node</code>, or
+     *         <code>node</code> itself if it is not a wrapper that can be stripped
+     */
+    public static JavaScriptNode getWrappedNode(JavaScriptNode node) {
+        JavaScriptNode unwrapped = node;
+        if (node instanceof WrapperNode) {
+            WrapperNode wrapper = (WrapperNode) node;
+            // JavaScriptNode wrappers have a JavaScriptNode as delegate
+            unwrapped = (JavaScriptNode) wrapper.getDelegateNode();
+        } else if (node instanceof GlobalScopeVarWrapperNode) {
+            unwrapped = ((GlobalScopeVarWrapperNode) node).getDelegateNode();
+        } else if (node instanceof JSInputGeneratingNodeWrapper) {
+            unwrapped = ((JSInputGeneratingNodeWrapper) node).getDelegateNode();
+        } else if (node instanceof JSTaggedExecutionNode) {
+            unwrapped = ((JSTaggedExecutionNode) node).getDelegateNode();
+        } else if (node instanceof JSTargetableWrapperNode) {
+            unwrapped = ((JSTargetableWrapperNode) node).getDelegate();
+        }
+        assert !isWrapperNode(unwrapped);
+        return unwrapped;
     }
 }
