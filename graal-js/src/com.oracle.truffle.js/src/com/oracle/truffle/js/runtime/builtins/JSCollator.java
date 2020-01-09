@@ -161,48 +161,56 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
     @TruffleBoundary
     public static void initializeCollator(JSContext ctx, JSCollator.InternalState state, String[] locales, String usage, @SuppressWarnings("unused") String localeMatcher, Boolean optkn, String optkf,
                     String sensitivity, Boolean ignorePunctuation) {
-        Boolean kn = optkn;
-        String kf = optkf;
-        // Set collator.[[Usage]] to usage.
-        // "search" maps to -u-co-search, "sort" means the default behavior
-        String co = IntlUtil.SEARCH.equals(usage) ? IntlUtil.SEARCH : null;
         state.initializedCollator = true;
         state.usage = usage;
         String selectedTag = IntlUtil.selectedLocale(ctx, locales);
         Locale selectedLocale = selectedTag != null ? Locale.forLanguageTag(selectedTag) : ctx.getLocale();
         Locale strippedLocale = selectedLocale.stripExtensions();
-        for (String ek : selectedLocale.getUnicodeLocaleKeys()) {
-            if (kn == null && ek.equals("kn")) {
-                String ktype = selectedLocale.getUnicodeLocaleType(ek);
-                if (ktype.isEmpty() || ktype.equals("true")) {
-                    kn = true;
-                }
+        Locale.Builder builder = new Locale.Builder().setLocale(strippedLocale);
+
+        Boolean kn = optkn;
+        if (kn == null) {
+            String knType = selectedLocale.getUnicodeLocaleType("kn");
+            if ("".equals(knType) || "true".equals(knType)) {
+                kn = true;
+            } else if ("false".equals(knType)) {
+                kn = false;
             }
-            if (kf == null && ek.equals("kf")) {
-                String ktype = selectedLocale.getUnicodeLocaleType(ek);
-                if (!ktype.isEmpty()) {
-                    kf = ktype;
-                }
-            }
-            if (co == null && ek.equals("co")) {
-                String coType = selectedLocale.getUnicodeLocaleType(ek);
-                if (!coType.isEmpty()) {
-                    co = coType;
-                }
+            if (kn != null) {
+                // Test262 and TestV8 expect -u-kn-true to be converted to -u-kn.
+                // This seems to be off-spec. The spec. tells us to keep the actual
+                // value (knType) of the kn extension instead.
+                String value = kn ? "" : "false";
+                builder.setUnicodeLocaleKeyword("kn", value);
             }
         }
-        Locale.Builder builder = new Locale.Builder().setLocale(strippedLocale);
         if (kn != null) {
             state.numeric = kn;
+        }
+
+        String kf = optkf;
+        if (kf == null) {
+            String kfType = selectedLocale.getUnicodeLocaleType("kf");
+            if ("upper".equals(kfType) || "lower".equals(kfType) || "false".equals(kfType)) {
+                kf = kfType;
+                builder.setUnicodeLocaleKeyword("kf", kfType);
+            }
         }
         if (kf != null) {
             state.caseFirst = kf;
         }
-        if (VALID_COLLATION_TYPES.contains(co)) {
-            // Let collation be r.[[co]].
-            state.collation = co;
-            builder.setUnicodeLocaleKeyword("co", co);
+
+        // Set collator.[[Usage]] to usage.
+        // "search" maps to -u-co-search, "sort" means the default behavior
+        boolean searchUsage = IntlUtil.SEARCH.equals(usage);
+        if (!searchUsage) {
+            String coType = selectedLocale.getUnicodeLocaleType("co");
+            if (VALID_COLLATION_TYPES.contains(coType)) {
+                builder.setUnicodeLocaleKeyword("co", coType);
+                state.collation = coType;
+            }
         }
+
         if (sensitivity != null) {
             state.sensitivity = sensitivity;
         }
@@ -212,8 +220,7 @@ public final class JSCollator extends JSBuiltinObject implements JSConstructorFa
 
         // "search" is not allowed in r.[[co]] but it must be set in the Locale
         // used by the Collator (so that the Collator uses "search" collation).
-        if (IntlUtil.SEARCH.equals(usage)) {
-            assert IntlUtil.SEARCH.equals(co);
+        if (searchUsage) {
             collatorLocale = builder.setUnicodeLocaleKeyword("co", IntlUtil.SEARCH).build();
         }
 
